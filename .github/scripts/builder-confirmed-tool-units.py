@@ -188,6 +188,11 @@ FILES += [
     "api/tests/unit_tests/services/dify_builder/native_testing/test_scope_deadline.py",
     "api/tests/unit_tests/services/dify_builder/native_testing/test_unconsumed_failure.py",
 ]
+# ENG-1386: actor-scoped knowledge metadata and nonexecuting preference protocol.
+FILES += [
+    "api/tests/unit_tests/services/dify_builder/test_knowledge_inventory.py",
+    "api/tests/unit_tests/services/dify_builder/test_knowledge_discovery.py",
+]
 SELECTED_GUARDS = [
     "api/tests/unit_tests/core/dify_builder/test_handlers_edit.py::test_sufficient_goal_reaches_plan_gate_or_actionable_retry_with_monotonic_progress",
     "api/tests/unit_tests/core/dify_builder/test_handlers_edit.py::test_edit_capability_check_renders_agent_fields",
@@ -2625,6 +2630,71 @@ for module, functions in {
     },
 }.items():
     a4_expected.setdefault(module, a3_expected.get(module, {}).copy()).update(functions)
+# ENG-1386: exact collected functions and parameters, including the actor contract.
+a4_expected.update(
+    {
+        "tests.unit_tests.services.dify_builder.test_knowledge_inventory": {
+            "test_no_actor_never_returns_tenant_catalogue": 1,
+            "test_legacy_access_uses_actual_member_and_positive_partial_grants": 1,
+            "test_nonmember_or_cross_workspace_actor_returns_no_names": 2,
+            "test_rbac_uses_native_whitelist_and_exact_resource_permissions": 1,
+            "test_permission_use_does_not_imply_metadata_preview": 1,
+            "test_rbac_maintainer_retains_native_visibility_and_use_without_batch_grants": 2,
+            "test_rbac_failure_is_unavailable_not_tenantwide_or_successful_empty": 1,
+            "test_empty_knowledge_is_discoverable_but_not_runtime_readiness": 1,
+            "test_document_status_metadata_ignores_disabled_and_archived_content": 1,
+            "test_inventory_reads_only_authorized_metadata_columns": 1,
+            "test_native_legacy_role_visibility_is_retained": 2,
+            "test_banned_account_cannot_discover_metadata": 1,
+            "test_indexed_and_failed_document_metadata_remains_discovery_only": 2,
+            "test_tags_are_authorized_tenant_metadata_only": 1
+        },
+        "tests.unit_tests.services.dify_builder.test_knowledge_discovery": {
+            "test_only_dataset_is_recommended_as_nonexecuting_preference": 1,
+            "test_knowledge_confirmation_is_metadata_only_and_never_replans": 1,
+            "test_revoked_or_missing_selected_knowledge_refuses_entire_selection": 2,
+            "test_handler_remembers_preference_but_waits_without_checkpoint_or_plan_approval": 1,
+            "test_unoffered_knowledge_id_never_reaches_reconciliation": 1,
+            "test_mixed_unoffered_knowledge_id_does_not_silently_keep_model": 1,
+            "test_selected_knowledge_cannot_be_unchecked_into_a_silent_executable_substitute": 1,
+            "test_metadata_confirmation_does_not_even_resolve_a_cognition_model": 1,
+            "test_source_failure_never_uses_a_retained_dataset_as_authority": 1,
+            "test_real_agent_and_handler_wait_without_any_workflow_or_model_side_effect": 1,
+            "test_real_discovery_card_persists_its_exact_knowledge_allowlist": 1,
+            "test_reconfirmation_rechecks_permission_even_after_preference_was_recorded": 1,
+            "test_first_decline_asks_explicit_goal_change_instead_of_approving": 2,
+            "test_knowledge_catalogue_failure_without_selected_id_cannot_approve": 1,
+            "test_refusing_goal_change_keeps_knowledge_wait_and_never_replans": 1,
+            "test_explicit_goal_change_is_traceable_and_allows_no_knowledge_plan": 1,
+            "test_forged_or_old_decision_field_does_not_modify_goal": 1,
+            "test_public_description_is_bounded_escaped_data_in_same_discovery_call": 1,
+            "test_replaying_resolved_scope_card_does_not_reauthorize_or_replan": 1,
+            "test_decision_is_rejected_after_goal_or_actor_changes": 1,
+            "test_real_discovery_empty_or_failed_source_cannot_authorize_omission": 4
+        },
+        "tests.unit_tests.services.dify_builder.test_resources": {
+            "test_list_tenant_resources_normalizes_all_three_kinds": 1,
+            "test_each_source_degrades_to_empty": 1,
+            "test_mixed_failure_partial_success": 1,
+            "test_malformed_tool_record_degrades": 1,
+            "test_an_unauthorized_tool_is_reported_as_missing_config": 1,
+            "test_a_tool_needing_no_credentials_is_ready": 1,
+            "test_an_authorized_tool_is_ready": 1,
+            "test_authorization_lookup_failure_is_never_reported_ready": 1,
+            "test_list_tenant_resources_logs_when_a_source_fails": 1,
+            "test_installed_unauthenticated_tool_is_discoverable_as_missing_config": 1,
+            "test_configured_no_auth_and_hardcoded_tools_are_ready": 1,
+            "test_credential_visibility_follows_the_acting_account": 6,
+            "test_without_an_actor_only_team_shared_credentials_count": 1,
+            "test_invalid_partial_grants_do_not_make_a_tool_ready": 3,
+            "test_legacy_and_colliding_provider_ids_follow_native_normalization": 4,
+            "test_other_tenants_rows_and_installs_never_leak": 1,
+            "test_an_unverifiable_credential_lookup_reports_not_ready_with_a_reason": 1,
+            "test_a_plugin_daemon_outage_keeps_hardcoded_tools_in_the_inventory": 1,
+            "test_models_keep_semantics_and_knowledge_inventory_receives_actor": 1
+        }
+    }
+)
 for module, expected in {**a3_expected, **a4_expected}.items():
     actual = {}
     for classname, name in identities:

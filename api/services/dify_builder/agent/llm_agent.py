@@ -259,7 +259,9 @@ class LlmBuilderAgent:
         self, plan, resource_ids, *, goal_text, requirements, reply_language: str | None = None
     ):
         return build.reconcile_resource_plan(
-            self.model_or_none() if resource_ids else None,
+            self.model_or_none()
+            if resource_ids and not any(rid.startswith("knowledge:") for rid in resource_ids)
+            else None,
             self._tenant_id,
             plan,
             resource_ids,

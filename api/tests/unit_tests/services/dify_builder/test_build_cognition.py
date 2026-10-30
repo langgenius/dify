@@ -1207,7 +1207,9 @@ def test_initial_plan_defers_actor_eligible_published_agent_metadata_to_discover
     monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
     inventory_reads: list[str] = []
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: inventory_reads.append("models") or [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: inventory_reads.append("datasets") or [])
+    monkeypatch.setattr(
+        resources, "_list_datasets", lambda _tenant_id, _account_id=None: inventory_reads.append("datasets") or []
+    )
     monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: inventory_reads.append("tools") or [])
     steps = ["start node receives report", "New Agent v2 node reviews the report", "end node returns summary"]
     model = _FakeInstance([_plan_reply(steps), json.dumps({"resource_ids": [f"agent:{case.agent.id}"]})])
@@ -1717,7 +1719,7 @@ def installed_tools(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> t
         ),
     )
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id, _account_id=None: [])
     return daemon, forbid_secret_and_business_calls(monkeypatch)
 
 
@@ -1986,7 +1988,7 @@ def test_discovery_prompt_keeps_the_readiness_reason_for_a_long_description(
         ),
     )
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id, _account_id=None: [])
     if drop_credential_table:
         with sqlite_engine.begin() as connection:
             connection.execute(text("DROP TABLE tool_builtin_providers"))
