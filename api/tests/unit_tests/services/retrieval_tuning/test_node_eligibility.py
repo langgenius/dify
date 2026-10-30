@@ -161,7 +161,10 @@ def test_multiple_dataset_nodes_are_classified_from_the_node(
 
 def test_router_mode_and_nodes_without_usable_configuration() -> None:
     router = _node(retrieval_mode="single")
-    no_config = {"id": "node", "data": {"type": "knowledge-retrieval", "dataset_ids": [], "retrieval_mode": "multiple"}}
+    no_config: dict[str, object] = {
+        "id": "node",
+        "data": {"type": "knowledge-retrieval", "dataset_ids": [], "retrieval_mode": "multiple"},
+    }
 
     assert _records(_graph(router), _facts())[0].category == NodeEligibilityCategory.ROUTER_SINGLE
     assert _records(_graph(no_config))[0].category == NodeEligibilityCategory.OTHER

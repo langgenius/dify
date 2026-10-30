@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from datetime import datetime
 
 import pytest
@@ -29,7 +30,9 @@ class _PagedQuery:
         return self.pages[after_app_id]
 
 
-def _counts(app_id: str, *, likes: int = 0, dislikes: int = 0, linked: int = 0, messages: int = 10):
+def _counts(
+    app_id: str, *, likes: int = 0, dislikes: int = 0, linked: int = 0, messages: int = 10
+) -> AppFeedbackCounts:
     return AppFeedbackCounts(
         tenant_id="tenant",
         app_id=app_id,
@@ -42,7 +45,7 @@ def _counts(app_id: str, *, likes: int = 0, dislikes: int = 0, linked: int = 0, 
     )
 
 
-def _report(query: _PagedQuery):
+def _report(query: _PagedQuery) -> Iterator[AppFeedbackVolumeRecord]:
     return FeedbackVolumeService(query=query).report(since=_SINCE, until=_UNTIL, tenant_id=None, page_size=2)
 
 

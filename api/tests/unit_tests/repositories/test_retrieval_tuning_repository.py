@@ -1,16 +1,17 @@
 import json
 from datetime import datetime, timedelta
+from decimal import Decimal
 from uuid import uuid4
 
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from models.enums import FeedbackFromSource, FeedbackRating
+from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating, IndexingStatus
 from models.model import App, AppMode, MessageFeedback
 from models.workflow import WorkflowType
 from repositories.retrieval_tuning_repository import RetrievalTuningRepository
-from services.retrieval_tuning.feedback_volume import AppFeedbackCounts
+from services.retrieval_tuning.feedback_volume import AppFeedbackCounts, AppFeedbackCountsPage
 from services.retrieval_tuning.node_eligibility import DatasetFacts, PublishedAppGraph
 from tests.helpers.unit.model_factories import make_dataset, make_document, make_message, make_workflow
 
@@ -48,10 +49,10 @@ def _add_message(
             query="private query",
             message=[],
             answer="private answer",
-            message_unit_price=0,
-            answer_unit_price=0,
+            message_unit_price=Decimal(0),
+            answer_unit_price=Decimal(0),
             currency="USD",
-            from_source="api",
+            from_source=ConversationFromSource.API,
             invoke_from=invoke_from,
             workflow_run_id=workflow_run_id,
             created_at=created_at,
@@ -79,7 +80,9 @@ def _rate(
     )
 
 
-def _page(factory: sessionmaker[Session], *, tenant_id: str | None = None, after: str | None = None, limit: int = 10):
+def _page(
+    factory: sessionmaker[Session], *, tenant_id: str | None = None, after: str | None = None, limit: int = 10
+) -> AppFeedbackCountsPage:
     return RetrievalTuningRepository(session_factory=factory).get_feedback_counts_page(
         since=_SINCE, until=_UNTIL, tenant_id=tenant_id, after_app_id=after, limit=limit
     )
@@ -253,7 +256,7 @@ def _add_document(
     dataset_id: str,
     tenant_id: str = _TENANT_ID,
     doc_form: IndexStructureType = IndexStructureType.PARAGRAPH_INDEX,
-    indexing_status: str = "completed",
+    indexing_status: IndexingStatus = IndexingStatus.COMPLETED,
     enabled: bool = True,
     archived: bool = False,
 ) -> None:
@@ -360,7 +363,7 @@ def test_dataset_facts_apply_the_runtime_availability_rule_and_tenant_scope(
         external = _add_dataset(session, provider="external")
         empty = _add_dataset(session)
         indexing = _add_dataset(session)
-        _add_document(session, dataset_id=indexing, indexing_status="indexing")
+        _add_document(session, dataset_id=indexing, indexing_status=IndexingStatus.INDEXING)
         disabled = _add_dataset(session)
         _add_document(session, dataset_id=disabled, enabled=False)
         archived = _add_dataset(session)

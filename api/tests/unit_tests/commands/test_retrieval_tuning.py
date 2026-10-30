@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -12,7 +13,7 @@ from dify_app import DifyApp
 from extensions import ext_commands
 from extensions.application_services.retrieval_tuning import RetrievalTuningServices, build_retrieval_tuning_services
 from libs.datetime_utils import naive_utc_now
-from models.enums import FeedbackFromSource, FeedbackRating
+from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, MessageFeedback
 from models.workflow import WorkflowType
 from tests.helpers.unit.model_factories import make_message, make_workflow
@@ -48,10 +49,10 @@ def _seed_rated_app(factory: sessionmaker[Session]) -> tuple[str, str]:
                 query="private query",
                 message=[],
                 answer="private answer",
-                message_unit_price=0,
-                answer_unit_price=0,
+                message_unit_price=Decimal(0),
+                answer_unit_price=Decimal(0),
                 currency="USD",
-                from_source="api",
+                from_source=ConversationFromSource.API,
                 created_at=naive_utc_now(),
             )
         )
