@@ -164,7 +164,7 @@ class WorkspaceRecord(NamedTuple):
 class WorkspaceSummary(NamedTuple):
     id: str
     name: str | None
-    plan: str
+    plan: str | None
     status: str
     created_at: datetime
     last_opened_at: datetime | None

@@ -316,7 +316,7 @@ class DeploymentWorkspacePlanGateway(WorkspacePlanGateway):
     """Resolve workspace plans using deployment-specific Billing and Feature sources."""
 
     @override
-    def resolve_many(self, workspace_ids: Sequence[str]) -> Mapping[str, str]:
+    def resolve_many(self, workspace_ids: Sequence[str]) -> Mapping[str, str | None]:
         ids = tuple(workspace_ids)
         if not ids:
             return {}
@@ -325,18 +325,23 @@ class DeploymentWorkspacePlanGateway(WorkspacePlanGateway):
         if is_enterprise_only:
             return dict.fromkeys(ids, str(CloudPlan.SANDBOX))
 
-        is_saas = dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
-        bulk_plans = BillingService.get_plan_bulk(ids) if is_saas else {}
-        if is_saas and not bulk_plans:
-            logger.warning("get_plan_bulk returned empty result, falling back to FeatureService")
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            try:
+                bulk_plans = BillingService.get_plan_bulk(ids)
+            except Exception:
+                # List decoration is not entitlement authority. Do not expose
+                # upstream detail or fan out to Stripe-backed feature reads.
+                logger.warning("Workspace list plan lookup failed; displaying unknown plans")
+                return dict.fromkeys(ids, None)
+            return {
+                workspace_id: tenant_plan["plan"] or None
+                if (tenant_plan := bulk_plans.get(workspace_id)) is not None
+                else None
+                for workspace_id in ids
+            }
 
-        resolved: dict[str, str] = {}
+        resolved: dict[str, str | None] = {}
         for workspace_id in ids:
-            tenant_plan = bulk_plans.get(workspace_id)
-            if tenant_plan:
-                resolved[workspace_id] = tenant_plan["plan"] or CloudPlan.SANDBOX
-                continue
-
             features = FeatureService.get_features(workspace_id, exclude_vector_space=True)
             resolved[workspace_id] = features.billing.subscription.plan or CloudPlan.SANDBOX
 

@@ -459,7 +459,7 @@ class TestWorkspaceRepositoryCases:
             result = WorkspaceQueryService(workspaces=seeded, plans=plans).list_for_account(context)
             assert result[0].current
             assert result[0].plan == "team"
-            assert result[1].plan == "sandbox"
+            assert result[1].plan is None
             assert not checked_out
         finally:
             event.remove(sqlite_engine, "checkout", checkout)

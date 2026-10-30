@@ -10,6 +10,7 @@ import pytest
 from core.model_billing_profile import ModelBillingSource
 from enums import CloudPlan
 from machinery.context import RequestContext
+from services.errors.billing import BillingUpstreamUnavailableError
 from services.errors.file import UnsupportedFileTypeError
 from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError
 from services.workspace.contracts import (
@@ -214,3 +215,23 @@ def test_model_provider_credits_delegates_to_gateway(dependencies: tuple[Workspa
     features.get_model_provider_credits.return_value = credits
     assert service.get_model_provider_credits("workspace") is credits
     features.get_model_provider_credits.assert_called_once_with("workspace")
+
+
+@pytest.mark.parametrize("operation", ["summary", "switch", "model_provider_credits"])
+def test_list_plan_tolerance_does_not_suppress_billing_failures_on_authoritative_paths(
+    dependencies: tuple[WorkspaceService, Mock, Mock, Mock], operation: str
+) -> None:
+    service, store, features, _ = dependencies
+    failure = BillingUpstreamUnavailableError()
+    store.switch.return_value = WORKSPACE
+    features.get_features.side_effect = failure
+    features.get_effective_credit_pool.side_effect = failure
+    features.get_model_provider_credits.side_effect = failure
+    call = {
+        "summary": lambda: service.current_summary(CONTEXT),
+        "switch": lambda: service.switch(CONTEXT, "target"),
+        "model_provider_credits": lambda: service.get_model_provider_credits("workspace"),
+    }[operation]
+    with pytest.raises(BillingUpstreamUnavailableError) as error:
+        call()
+    assert error.value is failure

@@ -340,8 +340,15 @@ class TestWorkspaceCreditPoolCases:
     @pytest.mark.parametrize(
         ("edition", "bulk", "expected", "fallback_ids"),
         [
-            (DeploymentEdition.CLOUD, {"w1": {"plan": "team"}}, {"w1": "team", "w2": "professional"}, ["w2"]),
-            (DeploymentEdition.CLOUD, {}, {"w1": "professional", "w2": "professional"}, ["w1", "w2"]),
+            (DeploymentEdition.CLOUD, {"w1": {"plan": "team"}}, {"w1": "team", "w2": None}, []),
+            (DeploymentEdition.CLOUD, {}, {"w1": None, "w2": None}, []),
+            (DeploymentEdition.CLOUD, {"w1": {"plan": ""}}, {"w1": None, "w2": None}, []),
+            (
+                DeploymentEdition.CLOUD,
+                {"w1": {"plan": "sandbox"}, "w2": {"plan": "professional"}},
+                {"w1": "sandbox", "w2": "professional"},
+                [],
+            ),
             (DeploymentEdition.COMMUNITY, {}, {"w1": "professional", "w2": "professional"}, ["w1", "w2"]),
             (DeploymentEdition.ENTERPRISE, {}, {"w1": "sandbox", "w2": "sandbox"}, []),
         ],
@@ -351,7 +358,7 @@ class TestWorkspaceCreditPoolCases:
         config_overrides: Callable[..., None],
         edition: DeploymentEdition,
         bulk: dict[str, dict[str, str]],
-        expected: int | None,
+        expected: dict[str, str | None],
         fallback_ids: list[str],
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=edition)
@@ -364,6 +371,31 @@ class TestWorkspaceCreditPoolCases:
         assert DeploymentWorkspacePlanGateway().resolve_many(["w1", "w2"]) == expected
         assert [call.args[0] for call in feature_query.call_args_list] == fallback_ids
         assert bulk_query.call_count == int(edition == DeploymentEdition.CLOUD)
+
+    @staticmethod
+    def test_cloud_plan_list_failure_does_not_fan_out_to_features(
+        monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], caplog: pytest.LogCaptureFixture
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        bulk_query = Mock(side_effect=RuntimeError("private upstream subscription detail"))
+        features = Mock(side_effect=AssertionError("List failure must not trigger more billing requests"))
+        monkeypatch.setattr(gateways.BillingService, "get_plan_bulk", bulk_query)
+        monkeypatch.setattr(gateways.FeatureService, "get_features", features)
+
+        assert DeploymentWorkspacePlanGateway().resolve_many(["w1", "w2"]) == {"w1": None, "w2": None}
+        bulk_query.assert_called_once_with(("w1", "w2"))
+        features.assert_not_called()
+        assert "private upstream" not in caplog.text
+
+    @staticmethod
+    def test_empty_workspace_plan_list_does_not_query_any_source(monkeypatch: pytest.MonkeyPatch) -> None:
+        bulk_query = Mock(side_effect=AssertionError("No workspaces to resolve"))
+        features = Mock(side_effect=AssertionError("No workspaces to resolve"))
+        monkeypatch.setattr(gateways.BillingService, "get_plan_bulk", bulk_query)
+        monkeypatch.setattr(gateways.FeatureService, "get_features", features)
+        assert DeploymentWorkspacePlanGateway().resolve_many([]) == {}
+        bulk_query.assert_not_called()
+        features.assert_not_called()
 
 
 """File adapter keeps admitted identity explicit across the FileService boundary."""

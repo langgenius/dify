@@ -3,7 +3,6 @@
 from collections.abc import Iterator, Mapping, Sequence
 from typing import Protocol
 
-from enums import CloudPlan
 from enums.model_billing import ModelBillingSource
 from machinery.context import RequestContext
 from services.errors.file import UnsupportedFileTypeError
@@ -198,7 +197,7 @@ class WorkspaceService:
 
 
 class WorkspacePlanGateway(Protocol):
-    def resolve_many(self, workspace_ids: Sequence[str]) -> Mapping[str, str]: ...
+    def resolve_many(self, workspace_ids: Sequence[str]) -> Mapping[str, str | None]: ...
 
 
 class WorkspaceQuery(Protocol):
@@ -226,7 +225,7 @@ class WorkspaceQueryService:
             WorkspaceSummary(
                 id=record.id,
                 name=record.name,
-                plan=plans.get(record.id, CloudPlan.SANDBOX),
+                plan=plans.get(record.id),
                 status=record.status,
                 created_at=record.created_at,
                 last_opened_at=record.last_opened_at,

@@ -205,9 +205,10 @@ class TestWorkspaceCases:
         return services
 
     @staticmethod
-    def test_workspace_list_serialization(workspaces: WorkspaceMocks) -> None:
+    @pytest.mark.parametrize("plan", ["team", "sandbox", None])
+    def test_workspace_list_serialization(workspaces: WorkspaceMocks, plan: str | None) -> None:
         workspaces.queries.list_for_account.return_value = (
-            WorkspaceSummary("workspace-1", "Test", "team", "normal", NOW, None, True),
+            WorkspaceSummary("workspace-1", "Test", plan, "normal", NOW, None, True),
         )
         body, status = unwrap(controller.TenantListApi.get)(controller.TenantListApi(), CONTEXT)
         assert status == HTTPStatus.OK
@@ -215,7 +216,7 @@ class TestWorkspaceCases:
             {
                 "id": "workspace-1",
                 "name": "Test",
-                "plan": "team",
+                "plan": plan,
                 "status": "normal",
                 "created_at": int(NOW.timestamp()),
                 "last_opened_at": None,
