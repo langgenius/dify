@@ -597,6 +597,12 @@ class SkillPackageTooLarge(OpenApiError):  # noqa: N818
     description = "The skill folder is over a limit of this server."
 
 
+class AgentNotPublished(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.AGENT_NOT_PUBLISHED
+    description = "The Agent has not been published."
+
+
 class AppPackageInvalid(OpenApiError):  # noqa: N818
     code = 400
     error_code = OpenApiErrorCode.APP_PACKAGE_INVALID
