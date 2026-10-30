@@ -269,6 +269,7 @@ export type AppPackageImportPayload = {
     | {
         [key: string]: Blob | File | Array<Blob | File>
       }
+  preserve_agent_bindings?: boolean
 }
 
 export type AppSettingsInfo = {

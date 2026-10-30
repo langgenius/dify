@@ -54,6 +54,7 @@ from machinery.context import AppRequestContext, RequestContext
 from services.agent.errors import (
     InvalidRosterAgentPackageError,
     RosterAgentPackageTooLargeError,
+    RosterReferenceNotAcceptedError,
     WorkspaceSkillNotFoundError,
 )
 from services.app.console_service import ConsoleAppNotFoundError
@@ -225,14 +226,16 @@ class AppPackageImportApi(Resource):
     """Import an app from a ``.ifpkg`` package: one file, or the unpacked folder with one part per file.
 
     Provide ``app_id`` to overwrite an existing workflow or advanced-chat app; omit it to create a new app.
-    Roster Agent nodes keep their links to the workspace's Agents, and inline Agents keep their links to
-    the workspace's skills. The root app's YAML goes through the same checks as ``import.console_app.dsl``:
+    With ``preserve_agent_bindings=true``, roster Agent nodes keep their links to the workspace's Agents and
+    inline Agents keep their links to the workspace's skills; without it every packaged Agent and skill is
+    imported as a copy. The root app's YAML goes through the same checks as ``import.console_app.dsl``:
     409 ``draft_changed`` when ``draft_hash`` no longer matches the draft, 422 ``dsl_invalid`` when the
     graph has errors.
 
     Returns 202 when the DSL version requires an explicit confirmation step; confirm it with the imports
-    :confirm method. Returns 400 ``app_package_invalid`` for a package that cannot be read or that links a
-    skill this workspace does not have (each one is in details), and 413 for one over this server's limits.
+    :confirm method. Returns 400 ``app_package_invalid`` for a package that cannot be read, that links
+    roster Agents without ``preserve_agent_bindings=true``, or that keeps links to skills this workspace does
+    not have (each one is in details), and 413 for one over this server's limits.
     """
 
     @endpoint(
@@ -258,7 +261,7 @@ class AppPackageImportApi(Resource):
     )
     def post(self, ctx: RequestContext, workspace_id: str, *, body: AppPackageImportPayload):
         params = DraftGuardedImportParams.model_validate(
-            body.model_dump(exclude={"package"}) | {"mode": ImportMode.YAML_CONTENT}
+            body.model_dump(exclude={"package", "preserve_agent_bindings"}) | {"mode": ImportMode.YAML_CONTENT}
         )
         with _package_source(body.package) as source:
             try:
@@ -266,7 +269,7 @@ class AppPackageImportApi(Resource):
                     ctx,
                     params,
                     source=source,
-                    preserve_agent_bindings=True,
+                    preserve_agent_bindings=body.preserve_agent_bindings,
                     prepare_dsl=lambda dsl: _prepared_yaml(
                         ctx, mode=ImportMode.YAML_CONTENT, source=dsl, app_id=body.app_id, draft_hash=body.draft_hash
                     ),
@@ -276,7 +279,7 @@ class AppPackageImportApi(Resource):
                     exc.description,
                     hint=(
                         "Import each missing skill into the Skill Hub first, "
-                        "or export the app with preserve_agent_bindings=false to bundle a copy."
+                        "or import with preserve_agent_bindings=false to use the package's copy of each skill."
                     ),
                     details=[
                         ErrorDetail(
@@ -286,6 +289,14 @@ class AppPackageImportApi(Resource):
                         )
                         for name in exc.names
                     ],
+                ) from exc
+            except RosterReferenceNotAcceptedError as exc:
+                raise AppPackageInvalid(
+                    exc.description,
+                    hint=(
+                        "If the package was exported for editing, import it with preserve_agent_bindings=true. "
+                        "To import a copy, export the app with preserve_agent_bindings=false to bundle every Agent."
+                    ),
                 ) from exc
             except InvalidRosterAgentPackageError as exc:
                 raise AppPackageInvalid(exc.description) from exc
