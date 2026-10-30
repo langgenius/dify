@@ -169,15 +169,13 @@ class FeatureService:
         else:
             features.is_allow_transfer_workspace = False
 
-        if "trigger_event" in features_usage_info:
-            features.trigger_event.usage = features_usage_info["trigger_event"]["usage"]
-            features.trigger_event.limit = features_usage_info["trigger_event"]["limit"]
-            features.trigger_event.reset_date = features_usage_info["trigger_event"].get("reset_date", -1)
+        features.trigger_event.usage = features_usage_info.trigger_event.usage
+        features.trigger_event.limit = features_usage_info.trigger_event.limit
+        features.trigger_event.reset_date = features_usage_info.trigger_event.reset_date
 
-        if "api_rate_limit" in features_usage_info:
-            features.api_rate_limit.usage = features_usage_info["api_rate_limit"]["usage"]
-            features.api_rate_limit.limit = features_usage_info["api_rate_limit"]["limit"]
-            features.api_rate_limit.reset_date = features_usage_info["api_rate_limit"].get("reset_date", -1)
+        features.api_rate_limit.usage = features_usage_info.api_rate_limit.usage
+        features.api_rate_limit.limit = features_usage_info.api_rate_limit.limit
+        features.api_rate_limit.reset_date = features_usage_info.api_rate_limit.reset_date
 
         features.members.size = billing_info.members.size
         features.members.limit = billing_info.members.limit
