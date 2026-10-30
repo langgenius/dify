@@ -1,6 +1,8 @@
 'use client'
 import type { MenuContentProps } from '@langgenius/dify-ui/menu'
 import type { SiteInfo } from '@/models/share'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
+import { Button } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   Menu,
@@ -22,6 +24,7 @@ import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
 import { resolveWebAppAddress } from '@/service/webapp-address'
 import { webAppLogout } from '@/service/webapp-auth'
+import { useWebAppEntry } from '../webapp-entry'
 import InfoModal from './info-modal'
 
 type Props = Readonly<
@@ -31,15 +34,22 @@ type Props = Readonly<
   }
 >
 
+// Replace the preview identity when the Webapp account profile API is available.
+const accountName = 'Joel'
+
 function TextGenerationMenu({ data, side, align, hideLogout }: Props) {
   const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
+  const entry = useWebAppEntry()
+  const accountAuthenticated = entry && 'account' in entry && entry.account === 'authenticated'
   const router = useRouter()
   const pathname = usePathname()
   const { t } = useTranslation(['common', 'share'])
 
   const handleLogout = async () => {
-    await webAppLogout(resolveWebAppAddress())
-    router.replace(`/webapp-signin?redirect_url=${pathname}`)
+    const address = resolveWebAppAddress()
+    await webAppLogout(address)
+    if (accountAuthenticated && address?.kind === 'default') window.location.reload()
+    else router.replace(`/webapp-signin?redirect_url=${pathname}`)
   }
 
   const { theme, setTheme } = useTheme()
@@ -55,13 +65,29 @@ function TextGenerationMenu({ data, side, align, hideLogout }: Props) {
       <Menu>
         <MenuTrigger
           render={
-            <IconButton
-              aria-label={t(($) => $['operation.more'], { ns: 'common' })}
-              size="lg"
-              className="data-popup-open:bg-state-base-hover"
-            >
-              <span aria-hidden className="i-ri-equalizer-2-line h-4.5 w-4.5" />
-            </IconButton>
+            accountAuthenticated ? (
+              <Button
+                variant="ghost"
+                className="h-auto max-w-full gap-0 rounded-full p-0.5 data-popup-open:bg-state-base-hover"
+              >
+                <Avatar size="sm" className="rounded-full" aria-hidden="true">
+                  <AvatarFallback className="rounded-full border-[0.5px] border-divider-regular bg-components-panel-bg">
+                    <span className="i-ri-robot-2-fill size-4 text-text-accent" />
+                  </AvatarFallback>
+                </Avatar>
+                <span className="min-w-0 px-2 system-sm-medium text-text-secondary">
+                  {accountName}
+                </span>
+              </Button>
+            ) : (
+              <IconButton
+                aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+                size="lg"
+                className="data-popup-open:bg-state-base-hover"
+              >
+                <span aria-hidden className="i-ri-equalizer-2-line h-4.5 w-4.5" />
+              </IconButton>
+            )
           }
         />
         <MenuContent side={side} align={align} className="w-56">
@@ -134,15 +160,14 @@ function TextGenerationMenu({ data, side, align, hideLogout }: Props) {
           <MenuItem className="system-md-regular" onClick={handleOpenInfoModal}>
             {t(($) => $['userProfile.about'], { ns: 'common' })}
           </MenuItem>
-          {!(
-            hideLogout ||
-            webAppAccessMode === AccessMode.EXTERNAL_MEMBERS ||
-            webAppAccessMode === AccessMode.PUBLIC
-          ) && (
-            <MenuItem className="system-md-regular" onClick={handleLogout}>
-              {t(($) => $['userProfile.logout'], { ns: 'common' })}
-            </MenuItem>
-          )}
+          {!hideLogout &&
+            (accountAuthenticated ||
+              (webAppAccessMode !== AccessMode.EXTERNAL_MEMBERS &&
+                webAppAccessMode !== AccessMode.PUBLIC)) && (
+              <MenuItem className="system-md-regular" onClick={handleLogout}>
+                {t(($) => $['userProfile.logout'], { ns: 'common' })}
+              </MenuItem>
+            )}
         </MenuContent>
       </Menu>
       {show && (
