@@ -18,9 +18,10 @@ from werkzeug.exceptions import BadRequest, NotFound, TooManyRequests
 
 from constants.oauth_bearer import TokenType
 from controllers.openapi import app_run
-from controllers.openapi._errors import AppModeMismatch
+from controllers.openapi._errors import AgentNotPublished, AppModeMismatch
 from controllers.openapi._models import (
     AdvancedChatRunPayload,
+    AgentRunPayload,
     ChatRunPayload,
     CompletionRunPayload,
     TaskStopResponse,
@@ -36,6 +37,7 @@ from controllers.openapi.app_run import (
 from controllers.openapi.auth.subjects import Subject, subject_from_auth
 from controllers.service_api.app.error import TriggerWorkflowServiceModeUnavailableError
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import AppInvokeQuotaExceededError
 from extensions.ext_application_services import ApplicationServices
@@ -93,6 +95,18 @@ def test_translate_maps_value_error_to_a_fixed_bad_request():
     assert exc.value.description == "invalid run input"
 
 
+def test_unpublished_agent_maps_to_its_own_error():
+    with pytest.raises(AgentNotPublished) as exc:
+        with _translate_service_errors():
+            raise AgentAppNotPublishedError("Agent has not been published")
+    assert exc.value.code == 400
+    assert exc.value.error_code == "agent_not_published"
+    with pytest.raises(BadRequest) as other:
+        with _translate_service_errors():
+            raise ValueError("not an agent error")
+    assert other.value.description == "invalid run input"
+
+
 """Tests for the /openapi/v1 run routes: per-mode bodies and handlers, task stop."""
 
 
@@ -145,6 +159,26 @@ def _subject(token_type: TokenType = TokenType.OAUTH_ACCOUNT) -> Subject:
 def test_per_mode_payloads_reject_what_the_mode_does_not_take(model: type[BaseModel], payload: dict):
     with pytest.raises(ValidationError):
         model.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param({}, id="query_missing"),
+        pytest.param({"query": "   "}, id="query_blank"),
+        pytest.param({"query": "hi", "workspace_id": str(uuid.uuid4())}, id="workspace_id_is_a_path_param"),
+        pytest.param({"query": "hi", "draft_type": "x"}, id="foreign_field"),
+    ],
+)
+def test_agent_run_payload_refuses(payload: dict):
+    with pytest.raises(ValidationError):
+        AgentRunPayload.model_validate(payload)
+
+
+def test_agent_run_payload_dumps_without_a_workspace():
+    dumped = AgentRunPayload.model_validate({"query": " hi "}).model_dump()
+    assert dumped["query"] == "hi"
+    assert "workspace_id" not in dumped
 
 
 def test_chat_payload_normalizes_conversation_id():
@@ -342,6 +376,32 @@ def test_chat_route_passes_a_message_end_without_conversation_through(app: Flask
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
         response = api.post.__handler__(api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body)
         assert list(response.response) == [end]
+
+
+def _message_end_events() -> list[str]:
+    end = {
+        "event": "message_end",
+        "conversation_id": "c1",
+        "message_id": "m1",
+        "created_at": 1,
+        "id": "m1",
+        "task_id": "t1",
+    }
+    return [f"data: {json.dumps(end)}\n\n"]
+
+
+def _hint_input(events: list[str]) -> dict:
+    return json.loads(events[0][len("data: ") :])["hints"][0]["input"]
+
+
+def test_reply_hints_keep_the_app_target():
+    events = list(app_run._reply_layer(_message_end_events(), "run.console_app.chat", _TEST_APP_ID))
+    assert _hint_input(events) == {"app_id": _TEST_APP_ID, "conversation_id": "c1", "query": None, "inputs": {}}
+
+
+def test_reply_hints_carry_any_target():
+    events = list(app_run.with_reply_hints(_message_end_events(), op="run.agent", target={"agent_id": "a"}))
+    assert _hint_input(events) == {"agent_id": "a", "conversation_id": "c1", "query": None, "inputs": {}}
 
 
 def test_draft_runs_do_not_hint_the_form_submit_op() -> None:
