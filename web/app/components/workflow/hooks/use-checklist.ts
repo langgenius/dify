@@ -51,7 +51,7 @@ import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
 import { hasValidInlineAgentBinding, isAgentV2NodeData } from '../nodes/agent-v2/types'
 import AgentDefault from '../nodes/agent/default'
-import { getContactRecipientQueryOptions } from '../nodes/human-input-v2/contact-provider'
+import { getContactRecipientQueryOptions } from '../nodes/human-input-v2/contact-queries'
 import { isHumanInputV2NodeData } from '../nodes/human-input-v2/types'
 import { IndexMethodEnum } from '../nodes/knowledge-base/types'
 import {

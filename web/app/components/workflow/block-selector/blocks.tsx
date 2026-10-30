@@ -1,7 +1,6 @@
 import type { NodeDefault, OnSelectBlock } from '../types'
 import type { BlockClassification } from './types'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   createPreviewCardHandle,
   PreviewCard,
@@ -40,6 +39,7 @@ const Blocks = ({
 }: BlocksProps) => {
   const { t } = useTranslation(['workflow', 'workflowLogic', 'navigation'])
   const store = useStoreApi()
+  const migration = useHumanInputMigration()
   const blocksFromHooks = useBlocks()
   const [previewCardHandle] = useState(() => createPreviewCardHandle<BlockPreviewPayload>())
   const previewDescriptionBaseId = useId()
@@ -166,25 +166,19 @@ const Blocks = ({
                   render={
                     <button
                       type="button"
-                      aria-label={block.metaData.title}
                       aria-describedby={describedBy || undefined}
                       aria-disabled={isHumanInputDisabled}
                       data-disabled={isHumanInputDisabled || undefined}
-                      className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden data-[disabled]:cursor-not-allowed data-[disabled]:text-text-disabled data-[disabled]:hover:bg-transparent"
+                      className="group/block-row flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden data-[disabled]:cursor-not-allowed data-[disabled]:text-text-disabled data-[disabled]:hover:bg-transparent"
                       onClick={() => {
                         if (!isHumanInputDisabled) onSelect(block.metaData.type)
                       }}
                     >
                       <BlockIcon
-                        className={cn('me-2 shrink-0', isHumanInputDisabled && 'opacity-30')}
+                        className="me-2 shrink-0 group-data-disabled/block-row:opacity-30"
                         type={block.metaData.type}
                       />
-                      <span
-                        className={cn(
-                          'min-w-0 grow truncate text-sm text-text-secondary',
-                          isHumanInputDisabled && 'opacity-30',
-                        )}
-                      >
+                      <span className="min-w-0 grow truncate text-sm text-text-secondary group-data-disabled/block-row:opacity-30">
                         {block.metaData.title}
                       </span>
                       {isHumanInputDisabled && (
@@ -193,7 +187,7 @@ const Blocks = ({
                             ns: 'workflow',
                           })}
                           size="xs"
-                          className="ms-2 shrink-0 px-[5px] py-[3px]"
+                          className="ms-2 shrink-0 px-1.25 py-0.75"
                         />
                       )}
                       {block.metaData.type === BlockEnum.KnowledgeRetrievalV2 && (
@@ -213,6 +207,16 @@ const Blocks = ({
                     </button>
                   }
                 />
+                {isHumanInputDisabled && migration?.canEdit && (
+                  <Button
+                    className="my-1 ms-3"
+                    size="small"
+                    loading={migration.pending}
+                    onClick={migration.openMigrationDialog}
+                  >
+                    {t(($) => $['nodes.humanInputMigration.action.migrateNow'], { ns: 'workflow' })}
+                  </Button>
+                )}
                 {previewDescriptionId && (
                   <span id={previewDescriptionId} className="sr-only">
                     {block.metaData.description}
@@ -229,7 +233,7 @@ const Blocks = ({
         </div>
       )
     },
-    [groups, onSelect, previewCardHandle, previewDescriptionBaseId, t, store],
+    [groups, onSelect, previewCardHandle, previewDescriptionBaseId, t, store, migration],
   )
 
   return (
@@ -253,7 +257,6 @@ type BlockPreviewCardProps = {
 
 function BlockPreviewCard({ payload }: BlockPreviewCardProps) {
   const { t } = useTranslation(['workflow'])
-  const migration = useHumanInputMigration()
   if (!payload) return null
 
   const { block, disabled } = payload
@@ -284,18 +287,6 @@ function BlockPreviewCard({ payload }: BlockPreviewCardProps) {
                 {t(($) => $['nodes.humanInputMigration.preview.description'], { ns: 'workflow' })}
               </div>
             </div>
-            {migration?.canEdit && (
-              <Button
-                size="small"
-                variant="primary"
-                className="mt-2 gap-0.5"
-                disabled={migration.pending}
-                onClick={migration.openMigrationDialog}
-              >
-                {t(($) => $['nodes.humanInputMigration.action.migrateNow'], { ns: 'workflow' })}
-                <span aria-hidden className="i-ri-arrow-right-line size-3.5" />
-              </Button>
-            )}
           </div>
         </div>
       </BlockSelectorPreviewCardContent>

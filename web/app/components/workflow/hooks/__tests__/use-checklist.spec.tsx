@@ -17,7 +17,7 @@ import ReactFlow, { ReactFlowProvider, useEdges, useNodes } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
-import { consoleQuery, invalidateHumanInputContactQueries } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
@@ -880,7 +880,9 @@ describe('HITL contact recipient availability', () => {
 
     resolveContacts.mockResolvedValue({ data: [] })
     await act(async () => {
-      await invalidateHumanInputContactQueries(queryClient, 'workspace-1')
+      await queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.humanInput.v2.contactOptions.batch.get.key(),
+      })
     })
     await waitFor(() =>
       expect(result.current.run.warningNodes).toEqual([

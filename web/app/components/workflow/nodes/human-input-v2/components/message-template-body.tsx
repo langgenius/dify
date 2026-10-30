@@ -1,6 +1,7 @@
 import type { RangeSelection } from 'lexical'
 import type { ComponentProps } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import {
@@ -112,22 +113,28 @@ const MessageTemplateBody = ({ nodeId, error, ...props }: MessageTemplateBodyPro
   const [toolbar, setToolbar] = useState<HTMLDivElement | null>(null)
   const hasRequestURL = getRequestURLCount(props.value ?? '') > 0
   return (
-    <div
+    <Field
+      name="body"
+      invalid={!!error}
       id={`${nodeId}-message-body`}
-      role="group"
       aria-labelledby={`${nodeId}-message-body-label`}
       aria-describedby={`${nodeId}-message-body-hint${error ? ` ${nodeId}-message-body-error` : ''}`}
     >
       <div className="mb-1 flex min-h-6 items-center justify-between gap-2">
-        <span id={`${nodeId}-message-body-label`} className="system-sm-medium text-text-secondary">
+        <FieldLabel
+          id={`${nodeId}-message-body-label`}
+          className="system-sm-medium text-text-secondary"
+        >
           {t(($) => $['nodes.humanInputV2.template.body'], { ns: 'workflow' })}
-        </span>
+        </FieldLabel>
         <div ref={setToolbar} />
       </div>
       <div className="[&>div>[contenteditable]]:min-h-[118px]">
         <MailBodyInput
           {...props}
           aria-labelledby={`${nodeId}-message-body-label`}
+          aria-describedby={`${nodeId}-message-body-hint${error ? ` ${nodeId}-message-body-error` : ''}`}
+          aria-invalid={!!error}
           requestURLSelectable={!hasRequestURL}
         >
           <InsertRequestURL
@@ -137,19 +144,22 @@ const MessageTemplateBody = ({ nodeId, error, ...props }: MessageTemplateBodyPro
           />
         </MailBodyInput>
       </div>
-      <p id={`${nodeId}-message-body-hint`} className="mt-1.5 system-xs-regular text-text-tertiary">
+      <FieldDescription
+        id={`${nodeId}-message-body-hint`}
+        className="mt-1.5 system-xs-regular text-text-tertiary"
+      >
         {t(($) => $['nodes.humanInputV2.template.requestURLHint'], { ns: 'workflow' })}
-      </p>
+      </FieldDescription>
       {error && (
-        <div
+        <FieldError
+          match
           id={`${nodeId}-message-body-error`}
-          role="alert"
           className="mt-1 system-xs-regular text-text-destructive"
         >
           {error}
-        </div>
+        </FieldError>
       )}
-    </div>
+    </Field>
   )
 }
 

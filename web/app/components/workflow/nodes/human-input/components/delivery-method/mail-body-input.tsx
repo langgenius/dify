@@ -15,6 +15,8 @@ type MailBodyInputProps = {
   children?: ReactNode
   requestURLSelectable?: boolean
   'aria-labelledby'?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
 }
 
 const MailBodyInput = ({
@@ -26,6 +28,8 @@ const MailBodyInput = ({
   children,
   requestURLSelectable = true,
   'aria-labelledby': ariaLabelledby,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
 }: MailBodyInputProps) => {
   const { t } = useTranslation(['workflow'])
 
@@ -39,6 +43,8 @@ const MailBodyInput = ({
       className="min-h-32"
       editable={!readOnly}
       aria-labelledby={ariaLabelledby}
+      aria-describedby={ariaDescribedBy}
+      aria-invalid={ariaInvalid}
       value={value}
       requestURLBlock={{
         show: true,

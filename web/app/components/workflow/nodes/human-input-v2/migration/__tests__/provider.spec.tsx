@@ -1,8 +1,10 @@
+import type { ReactNode } from 'react'
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { Node } from '@/app/components/workflow/types'
 import { ORPCError } from '@orpc/client'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { use } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -123,6 +125,15 @@ const PolicyProbe = () => {
   )
 }
 
+const render = (ui: ReactNode) => {
+  const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  })
+}
+
 const renderProvider = (canEdit = true) =>
   render(
     <HumanInputMigrationProvider canEdit={canEdit}>
@@ -186,9 +197,7 @@ describe('Human Input migration provider', () => {
     const view = renderProvider()
     expect(screen.getByText('insertion-blocked')).toBeInTheDocument()
     expect(
-      screen.getByRole('complementary', {
-        name: 'workflow.nodes.humanInputMigration.banner.ariaLabel',
-      }),
+      screen.getByText('workflow.nodes.humanInputMigration.banner.description'),
     ).toBeInTheDocument()
 
     await user.click(
@@ -210,7 +219,7 @@ describe('Human Input migration provider', () => {
       { context: { silent: true } },
     )
     expect(mocks.saveHistory).toHaveBeenCalledTimes(1)
-    expect(mocks.toastSuccess).toHaveBeenCalledWith('workflow.nodes.humanInputMigration.success')
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
     expect((runtime.nodes[0]!.data as { version?: unknown }).version).toBe('2')
 
     view.rerender(
@@ -341,11 +350,11 @@ describe('Human Input migration provider', () => {
     expect(mocks.setNodes).toHaveBeenCalledTimes(1)
     expect(mocks.doSync).toHaveBeenCalledTimes(1)
     expect(
-      screen.getByRole('button', { name: /workflow.nodes.humanInputMigration.action.migrating/ }),
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
     ).toHaveAttribute('aria-disabled', 'true')
 
     await act(async () => settleSync?.())
-    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
   })
 
   it('rolls back the complete graph and retains retry guidance after sync failure', async () => {
@@ -431,7 +440,7 @@ describe('Human Input migration provider', () => {
       screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
     )
 
-    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     expect(mocks.setNodes).toHaveBeenCalledTimes(1)
     expect(mocks.saveHistory).toHaveBeenCalledTimes(1)
   })

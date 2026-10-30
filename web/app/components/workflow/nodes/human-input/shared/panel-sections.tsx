@@ -1,22 +1,20 @@
 import type { FormInputItem, HumanInputSharedNodeType, UserAction } from './types'
-import type { Var } from '@/app/components/workflow/types'
-import { Button } from '@langgenius/dify-ui/button'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
-import { useCallback, useId } from 'react'
+import { useId, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { useStore } from '@/app/components/workflow/store'
 import { VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { isHumanInputV2NodeData } from '../../human-input-v2/types'
 import FormContent from '../components/form-content'
-import FormContentPreview from '../components/form-content-preview'
+import { FormContentPreviewTrigger } from '../components/form-content-preview'
 import TimeoutInput from '../components/timeout'
 import UserActionItem from '../components/user-action'
 import { UserActionButtonType } from './types'
@@ -48,11 +46,15 @@ export type HumanInputSharedPanelConfig<T extends HumanInputSharedNodeType> = {
 type HumanInputSharedPanelSectionsProps<T extends HumanInputSharedNodeType> = {
   id: string
   config: HumanInputSharedPanelConfig<T>
+  availableVars: NodeOutPutVar[]
+  availableNodes: Node[]
 }
 
 const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
   id,
   config,
+  availableVars,
+  availableNodes,
 }: HumanInputSharedPanelSectionsProps<T>) => {
   const { t } = useTranslation(['workflow', 'workflowHumanInput', 'common', 'share'])
   const actionsLabelId = useId()
@@ -72,23 +74,21 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
     structuredOutputCollapsed,
     setStructuredOutputCollapsed,
   } = config
-  const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
-    onlyLeafNodeVar: false,
-    filterVar: (varPayload: Var) => {
-      const supportedVariableTypes: readonly VarType[] = [
-        VarType.string,
-        VarType.number,
-        VarType.secret,
-        VarType.arrayString,
-      ]
-      return supportedVariableTypes.includes(varPayload.type)
-    },
-  })
   const [isExpandFormContent, { toggle: toggleExpandFormContent }] = useBoolean(false)
-  const [isPreview, { toggle: togglePreview, setFalse: hidePreview }] = useBoolean(false)
   const nodePanelWidth = useStore((state) => state.nodePanelWidth)
 
-  const onAddUserAction = useCallback(() => {
+  const addActionRef = useRef<HTMLButtonElement>(null)
+  const actionsRef = useRef<HTMLDivElement>(null)
+  const actionFocusRef = useRef<number | undefined>(undefined)
+  useLayoutEffect(() => {
+    const index = actionFocusRef.current
+    if (index === undefined) return
+    actionFocusRef.current = undefined
+    const input = actionsRef.current?.children[index]?.querySelector<HTMLInputElement>('input')
+    if (input) input.focus()
+    else addActionRef.current?.focus()
+  }, [inputs.user_actions])
+  const onAddUserAction = () => {
     const existingIds = new Set(inputs.user_actions.map((action) => action.id))
     let index = inputs.user_actions.length + 1
     while (existingIds.has(`action_${index}`)) index += 1
@@ -100,7 +100,7 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
       }),
       button_style: UserActionButtonType.Default,
     })
-  }, [handleUserActionAdd, inputs.user_actions, t])
+  }
 
   return (
     <>
@@ -129,40 +129,31 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
           </div>
           {!readOnly && (
             <div className="flex items-center">
-              <Button
-                variant="ghost"
-                size="small"
-                className={cn(
-                  'flex items-center px-2',
-                  isPreview && 'bg-state-accent-active text-text-accent',
-                )}
-                onClick={togglePreview}
-              >
-                <span className="i-ri-eye-line size-3.5" aria-hidden />
-                <span className="system-xs-medium">
-                  {t(($) => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflowHumanInput' })}
-                </span>
-              </Button>
+              <FormContentPreviewTrigger
+                content={inputs.form_content}
+                formInputs={inputs.inputs}
+                userActions={inputs.user_actions}
+                nodeId={isHumanInputV2NodeData(inputs) ? id : undefined}
+              />
               <div className="mx-2 h-3 w-px bg-divider-regular" />
               <div className="flex items-center space-x-1">
-                <button
+                <IconButton
                   type="button"
                   aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
-                  className="flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-components-button-ghost-bg-hover focus-visible:ring-1 focus-visible:ring-components-button-secondary-accent-border"
                   onClick={() => {
                     copy(inputs.form_content)
                     toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
                   }}
                 >
                   <span className="i-ri-clipboard-line size-4 text-text-secondary" aria-hidden />
-                </button>
-                <button
+                </IconButton>
+                <IconButton
                   type="button"
                   aria-label={t(($) => $[isExpandFormContent ? 'chat.collapse' : 'chat.expand'], {
                     ns: 'share',
                   })}
                   className={cn(
-                    'flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-text-secondary hover:bg-components-button-ghost-bg-hover focus-visible:ring-1 focus-visible:ring-components-button-secondary-accent-border',
+                    'text-text-secondary',
                     isExpandFormContent && 'bg-state-accent-active text-text-accent',
                   )}
                   onClick={toggleExpandFormContent}
@@ -172,7 +163,7 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
                   ) : (
                     <span className="i-ri-expand-diagonal-line size-4" aria-hidden />
                   )}
-                </button>
+                </IconButton>
               </div>
             </div>
           )}
@@ -188,7 +179,7 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
           onFormInputItemRemove={handleFormInputItemRemove}
           isExpand={isExpandFormContent}
           availableVars={availableVars}
-          availableNodes={availableNodesWithParent}
+          availableNodes={availableNodes}
           readonly={readOnly}
         />
       </div>
@@ -209,6 +200,7 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
           {!readOnly && (
             <div className="flex items-center px-1">
               <IconButton
+                ref={addActionRef}
                 aria-label={t(($) => $['operation.add'], { ns: 'common' })}
                 onClick={onAddUserAction}
               >
@@ -223,15 +215,20 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
           </div>
         )}
         {!!inputs.user_actions.length && (
-          <div className="space-y-2">
+          <div ref={actionsRef} className="space-y-2">
             {inputs.user_actions.map((action, index) => (
               <UserActionItem
-                // Action IDs are editable; keep each input mounted while its ID changes.
                 // oxlint-disable-next-line react/no-array-index-key -- Editable action IDs cannot provide stable keys while typing.
                 key={`${id}-${index}`}
                 data={action}
                 onChange={(data) => handleUserActionChange(index, data)}
-                onDelete={handleUserActionDelete}
+                onDelete={(actionId) => {
+                  actionFocusRef.current = Math.max(
+                    0,
+                    Math.min(index, inputs.user_actions.length - 2),
+                  )
+                  handleUserActionDelete(actionId)
+                }}
                 readonly={readOnly}
               />
             ))}
@@ -277,17 +274,6 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
           description={t(($) => $[`${i18nPrefix}.output.renderedContent`], { ns: 'workflow' })}
         />
       </OutputVars>
-
-      {isPreview && (
-        <FormContentPreview
-          content={inputs.form_content}
-          formInputs={inputs.inputs}
-          userActions={inputs.user_actions}
-          onClose={hidePreview}
-          nodeId={isHumanInputV2NodeData(inputs) ? id : undefined}
-          readOnly={readOnly}
-        />
-      )}
     </>
   )
 }

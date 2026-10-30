@@ -8,6 +8,7 @@ import {
   render as rtlRender,
   renderHook as rtlRenderHook,
   screen,
+  waitFor,
 } from '@testing-library/react'
 import { createElement, StrictMode, useEffect, useRef } from 'react'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
@@ -156,17 +157,15 @@ describe('human-input/hooks/use-single-run-form-params', () => {
         setRunInputData: mockSetRunInputData,
       }),
     )
-    let request!: Promise<void>
     act(() => {
-      request = result.current.handleShowGeneratedForm({ topic: 'saved' })
+      result.current.handleShowGeneratedForm({ topic: 'saved' })
     })
-    expect(result.current.isGeneratingForm).toBe(true)
+    await waitFor(() => expect(result.current.isGeneratingForm).toBe(true))
     expect(mockFetchHumanInputNodeStepRunForm).not.toHaveBeenCalled()
     await act(async () => {
       resolveSave({})
-      await request
     })
-    expect(result.current.showGeneratedForm).toBe(true)
+    await waitFor(() => expect(result.current.showGeneratedForm).toBe(true))
     expect(mockFetchHumanInputNodeStepRunForm).toHaveBeenCalledOnce()
   })
 
@@ -186,8 +185,8 @@ describe('human-input/hooks/use-single-run-form-params', () => {
       await result.current.handleShowGeneratedForm({})
     })
     expect(mockFetchHumanInputNodeStepRunForm).not.toHaveBeenCalled()
-    expect(result.current.showGeneratedForm).toBe(false)
-    expect(result.current.isGeneratingForm).toBe(false)
+    await waitFor(() => expect(result.current.showGeneratedForm).toBe(false))
+    await waitFor(() => expect(result.current.isGeneratingForm).toBe(false))
     expect(mockToastError).toHaveBeenCalledWith('nodes.humanInputV2.template.testSaveFailed')
   })
 
@@ -205,13 +204,13 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     await act(async () => {
       await result.current.handleShowGeneratedForm({})
     })
-    expect(result.current.showGeneratedForm).toBe(false)
-    expect(result.current.isGeneratingForm).toBe(false)
-    expect(mockToastError).toHaveBeenCalledWith('Preview unavailable')
+    await waitFor(() => expect(result.current.showGeneratedForm).toBe(false))
+    await waitFor(() => expect(result.current.isGeneratingForm).toBe(false))
+    expect(mockToastError).not.toHaveBeenCalled()
     await act(async () => {
       await result.current.handleShowGeneratedForm({})
     })
-    expect(result.current.showGeneratedForm).toBe(true)
+    await waitFor(() => expect(result.current.showGeneratedForm).toBe(true))
   })
 
   it('normalizes nullable server defaults and rejects malformed response fields', async () => {
@@ -231,6 +230,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     await act(async () => {
       await result.current.handleShowGeneratedForm({})
     })
+    await waitFor(() => expect(result.current.showGeneratedForm).toBe(true))
     expect(result.current.formData?.inputs).toEqual([
       {
         type: InputVarType.paragraph,
@@ -248,8 +248,8 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     await act(async () => {
       await result.current.handleShowGeneratedForm({})
     })
-    expect(result.current.showGeneratedForm).toBe(false)
-    expect(result.current.isGeneratingForm).toBe(false)
+    await waitFor(() => expect(result.current.showGeneratedForm).toBe(false))
+    await waitFor(() => expect(result.current.isGeneratingForm).toBe(false))
   })
   it.each([undefined, '2'] as const)(
     'automatically generates the V%s form when the child mounts in StrictMode',
@@ -310,9 +310,8 @@ describe('human-input/hooks/use-single-run-form-params', () => {
         setRunInputData: mockSetRunInputData,
       }),
     )
-    let oldRequest!: Promise<void>
     act(() => {
-      oldRequest = result.current.handleShowGeneratedForm({ topic: 'old' })
+      result.current.handleShowGeneratedForm({ topic: 'old' })
     })
     currentInputs = createPayload({ _isSingleRun: false })
     rerender()
@@ -323,9 +322,8 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     })
     await act(async () => {
       resolveOld({ ...mockFormData, form_content: 'Old response' })
-      await oldRequest
     })
-    expect(result.current.formData?.form_content).toBe('Rendered content')
+    await waitFor(() => expect(result.current.formData?.form_content).toBe('Rendered content'))
     await act(async () => {
       await result.current.handleSubmitHumanInputForm({
         action: 'approve',
@@ -342,9 +340,20 @@ describe('human-input/hooks/use-single-run-form-params', () => {
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form.preview.post': (input: {
+        params: { app_id: string; node_id: string }
+        body: unknown
+      }) =>
+        mockFetchHumanInputNodeStepRunForm(
+          `/apps/${input.params.app_id}/workflows/draft/human-input/nodes/${input.params.node_id}/form`,
+          input.body,
+        ),
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form.preview.post': (input: {
         params: { app_id: string; node_id: string }

@@ -76,9 +76,12 @@ describe('Human Input migration dialog', () => {
 
     expect(onConfirm).toHaveBeenCalledTimes(1)
     expect(
-      screen.getByRole('button', { name: /workflow.nodes.humanInputMigration.action.migrating/ }),
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
     ).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     await user.keyboard('{Escape}')
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
   })

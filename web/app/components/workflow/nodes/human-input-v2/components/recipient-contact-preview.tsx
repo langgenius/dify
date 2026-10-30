@@ -1,5 +1,5 @@
+import type { ContactOption } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
-import type { ContactRecipientOption } from '../contact-provider'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
@@ -8,39 +8,27 @@ import { ContactChannelIcon } from '@/features/contacts/management/channel-icon'
 import { RecipientAvatar } from './recipient-avatar'
 
 type RecipientContactPreviewProps = {
-  contact: ContactRecipientOption
+  contact: ContactOption
   children: ReactElement
-  selectOnClick?: boolean
-  conflictingContact?: ContactRecipientOption
+  conflictingContact?: ContactOption
   onReplace?: () => void
 }
 
 export function RecipientContactPreview({
   contact,
   children,
-  selectOnClick,
   conflictingContact,
   onReplace,
 }: RecipientContactPreviewProps) {
   const { t } = useTranslation(['workflow', 'contacts'])
   const [open, setOpen] = useState(false)
-  const sourceLabel = (source: ContactRecipientOption['source']) =>
-    source === 'organization'
+  const sourceLabel = (source: ContactOption['type']) =>
+    source === 'platform'
       ? t(($) => $['type.platform'], { ns: 'contacts' })
       : t(($) => $[`nodes.humanInputV2.recipients.contactSource.${source}`], { ns: 'workflow' })
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(nextOpen, details) => {
-        if (selectOnClick && details.reason === 'trigger-press') {
-          details.cancel()
-          setOpen(false)
-          return
-        }
-        setOpen(nextOpen)
-      }}
-    >
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger render={children} openOnHover delay={300} closeDelay={150} />
       <PopoverContent
         side="left"
@@ -54,7 +42,7 @@ export function RecipientContactPreview({
         >
           <RecipientAvatar
             identity={contact.id}
-            avatar={contact.avatar ?? null}
+            avatar={contact.avatar_url ?? null}
             name={contact.name}
             size="xl"
             className="size-full inset-ring-[0.5px] inset-ring-divider-regular"
@@ -66,7 +54,7 @@ export function RecipientContactPreview({
               {contact.name}
             </PopoverTitle>
             <span className="mt-0.5 shrink-0 rounded-[5px] bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary inset-ring-1 inset-ring-divider-deep">
-              {sourceLabel(contact.source)}
+              {sourceLabel(contact.type)}
             </span>
           </div>
           {contact.email && (
@@ -92,7 +80,7 @@ export function RecipientContactPreview({
                   {t(($) => $['nodes.humanInputV2.recipients.duplicateSource'], {
                     ns: 'workflow',
                     name: conflictingContact.name,
-                    source: sourceLabel(conflictingContact.source),
+                    source: sourceLabel(conflictingContact.type),
                   })}
                 </p>
                 <p className="text-text-tertiary">

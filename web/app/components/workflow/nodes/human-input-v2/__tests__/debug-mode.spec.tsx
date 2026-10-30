@@ -41,7 +41,7 @@ describe('Human Input v2 Debug Mode', () => {
     expect(screen.getAllByRole('checkbox')).toHaveLength(2)
   })
 
-  it('shows the real email and prevents clearing the final selected channel with an explanatory tooltip', async () => {
+  it('shows the real email and prevents clearing the final selected channel with a keyboard-reachable explanation', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     render(
@@ -59,13 +59,13 @@ describe('Human Input v2 Debug Mode', () => {
     expect(checkbox).toBeChecked()
     expect(checkbox).toHaveAttribute('aria-disabled', 'true')
     expect(screen.getByText('reviewer@example.com')).toBeInTheDocument()
-    await user.click(screen.getByText(channelLabel('email')))
+    await user.click(screen.getByRole('checkbox', { name: channelLabel('email') }))
     expect(onChange).not.toHaveBeenCalled()
-    await user.unhover(screen.getByText(channelLabel('email')))
-    await user.hover(checkbox)
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'workflow.nodes.humanInputV2.debug.keepOneChannel',
-    )
+    expect(checkbox).toHaveAccessibleDescription('workflow.nodes.humanInputV2.debug.keepOneChannel')
+    expect(checkbox).not.toBeDisabled()
+    await user.click(checkbox)
+    await user.keyboard(' ')
+    expect(onChange).not.toHaveBeenCalled()
     await user.click(screen.getByRole('checkbox', { name: channelLabel('slack') }))
     expect(onChange).toHaveBeenLastCalledWith({ enabled: true, channels: ['email', 'slack'] })
   })
@@ -88,8 +88,10 @@ describe('Human Input v2 Debug Mode', () => {
       'true',
     )
     expect(screen.queryByRole('checkbox', { name: channelLabel('feishu') })).not.toBeInTheDocument()
-    expect(screen.getByRole('img', { name: channelLabel('email') })).toBeInTheDocument()
-    await user.click(screen.getByText(channelLabel('email')))
+    expect(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.debug.configure' }),
+    ).toHaveAccessibleDescription(channelLabel('email'))
+    await user.click(screen.getByRole('checkbox', { name: channelLabel('email') }))
     expect(onChange).not.toHaveBeenCalled()
   })
 
@@ -195,8 +197,8 @@ describe('Human Input v2 Debug Mode', () => {
     )
 
     expect(
-      screen.getByRole('img', { name: `${channelLabel('email')}, ${channelLabel('slack')}` }),
-    ).toBeInTheDocument()
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.debug.configure' }),
+    ).toHaveAccessibleDescription(`${channelLabel('email')}, ${channelLabel('slack')}`)
     expect(
       screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.debug.configure' }),
     ).toBeDisabled()
@@ -219,8 +221,8 @@ describe('Human Input v2 Debug Mode', () => {
     )
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(
-      screen.getByRole('img', { name: `${channelLabel('lark')}, ${channelLabel('email')}` }),
-    ).toBeInTheDocument()
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.debug.configure' }),
+    ).toHaveAccessibleDescription(`${channelLabel('lark')}, ${channelLabel('email')}`)
     await user.click(
       screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.debug.configure' }),
     )
@@ -234,7 +236,9 @@ describe('Human Input v2 Debug Mode', () => {
         readonly={false}
       />,
     )
-    expect(screen.getByRole('img', { name: channelLabel('email') })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.debug.configure' }),
+    ).toHaveAccessibleDescription(channelLabel('email'))
     await user.click(screen.getByRole('checkbox', { name: channelLabel('lark') }))
     expect(onChange).toHaveBeenLastCalledWith({ enabled: true, channels: ['email', 'lark'] })
   })

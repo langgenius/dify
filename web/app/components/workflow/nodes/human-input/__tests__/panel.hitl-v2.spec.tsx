@@ -129,6 +129,7 @@ vi.mock('../components/form-content', () => ({
 
 vi.mock('../components/form-content-preview', () => ({
   __esModule: true,
+  FormContentPreviewTrigger: () => null,
   default: (props: { onClose: () => void }) => {
     mockFormContentPreview(props)
     return (

@@ -113,7 +113,7 @@ export type RecipientSummary = {
 
 export function deriveRecipientSummary(
   recipients: HumanInputV2Recipient[],
-  contactLabels: ReadonlyMap<string, string> = new Map(),
+  contactLabels?: ReadonlyMap<string, string>,
   visibleLimit = 3,
 ): RecipientSummary {
   if (!recipients.length) {
@@ -139,8 +139,8 @@ export function deriveRecipientSummary(
     if (getRecipientValidationError(recipient)) invalid = true
     if (recipient.type === 'contact') {
       contactCount += 1
-      const label = contactLabels.get(recipient.contact_id)
-      if (!label) invalid = true
+      const label = contactLabels?.get(recipient.contact_id)
+      if (contactLabels && !contactLabels.has(recipient.contact_id)) invalid = true
       return label || recipient.contact_id || 'contact'
     }
     if (recipient.type === 'dynamic_email') {

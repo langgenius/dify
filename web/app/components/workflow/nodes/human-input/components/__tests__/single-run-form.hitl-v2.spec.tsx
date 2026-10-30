@@ -106,7 +106,7 @@ describe('SingleRunForm', () => {
     await user.type(screen.getByRole('textbox', { name: 'review' }), 'Keep this answer')
     await user.click(screen.getByRole('button', { name: 'Approve' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Approve' })).toBeEnabled())
-    expect(mockToastError).toHaveBeenCalledWith('Submission unavailable')
+    expect(mockToastError).not.toHaveBeenCalled()
     expect(screen.getByRole('textbox', { name: 'review' })).toHaveValue('Keep this answer')
     await user.click(screen.getByRole('button', { name: 'Approve' }))
     expect(onSubmit).toHaveBeenLastCalledWith({

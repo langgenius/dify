@@ -1,24 +1,20 @@
-import type { ContactRecipientOption, ContactRecipientOptionProvider } from './contact-provider'
 import type { HumanInputV2NodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import HumanInputNodeBranches from '@/app/components/workflow/nodes/human-input/shared/node-branches'
 import { ENABLE_HITL_IM } from '@/config'
-import { useContactRecipientOptionProvider } from './contact-provider'
+import { currentWorkspaceIdAtom } from '@/context/workspace-state'
+import { getContactRecipientQueryOptions } from './contact-queries'
 import { HumanInputV2Disabled } from './disabled'
 import { deriveRecipientSummary } from './recipient-utils'
 
-const HumanInputV2NodeContent = ({
-  provider,
-  ...props
-}: NodeProps<HumanInputV2NodeType> & {
-  provider: ContactRecipientOptionProvider
-}) => {
+const HumanInputV2NodeContent = (props: NodeProps<HumanInputV2NodeType>) => {
   const { t } = useTranslation(['workflow'])
   const { data } = props
-  const [contacts, setContacts] = useState<ContactRecipientOption[]>([])
+  const workspaceId = useAtomValue(currentWorkspaceIdAtom)
   const contactIds = useMemo(
     () => [
       ...new Set(
@@ -30,26 +26,12 @@ const HumanInputV2NodeContent = ({
     [data.recipients_spec],
   )
 
-  useEffect(() => {
-    if (!contactIds.length) return
-
-    let active = true
-    void provider
-      .resolve({ contact_ids: contactIds })
-      .then((options) => {
-        if (active) setContacts(options)
-      })
-      .catch(() => {
-        if (active) setContacts([])
-      })
-    return () => {
-      active = false
-    }
-  }, [contactIds, provider])
-
+  const contacts = useQuery(getContactRecipientQueryOptions(workspaceId, contactIds))
   const summary = deriveRecipientSummary(
     data.recipients_spec,
-    new Map(contacts.map((contact) => [contact.id, contact.name])),
+    contacts.isSuccess
+      ? new Map(contacts.data.data.map((contact) => [contact.id, contact.name]))
+      : undefined,
   )
 
   const summaryLabel = (() => {
@@ -98,7 +80,7 @@ const HumanInputV2NodeContent = ({
 
   return (
     <>
-      <div className="space-y-0.5 py-1">
+      <div className="space-y-0.5 py-1" aria-busy={contactIds.length > 0 && contacts.isPending}>
         {summary.state !== 'empty' && (
           <div className="px-2.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
             {t(($) => $['nodes.humanInputV2.recipients.title'], { ns: 'workflow' })}
@@ -106,15 +88,8 @@ const HumanInputV2NodeContent = ({
         )}
         <div className="px-2.5">
           <div
-            className={cn(
-              'flex min-h-6 items-center gap-1 rounded-md px-1.5 py-1 system-xs-regular',
-              summary.state === 'empty' &&
-                'bg-state-warning-hover px-2 text-text-warning ring-[0.5px] ring-state-warning-active',
-              summary.state === 'invalid' &&
-                'bg-state-destructive-hover text-text-destructive-secondary',
-              (summary.state === 'configured' || summary.state === 'overflow') &&
-                'bg-workflow-block-parma-bg text-text-secondary',
-            )}
+            data-state={summary.state}
+            className="flex min-h-6 items-center gap-1 rounded-md px-1.5 py-1 system-xs-regular data-[state=configured]:bg-workflow-block-parma-bg data-[state=configured]:text-text-secondary data-[state=empty]:bg-state-warning-hover data-[state=empty]:px-2 data-[state=empty]:text-text-warning data-[state=empty]:ring-[0.5px] data-[state=empty]:ring-state-warning-active data-[state=invalid]:bg-state-destructive-hover data-[state=invalid]:text-text-destructive-secondary data-[state=overflow]:bg-workflow-block-parma-bg data-[state=overflow]:text-text-secondary"
           >
             {summary.state === 'invalid' && (
               <span className="i-ri-alert-line size-4 shrink-0" aria-hidden />
@@ -128,11 +103,6 @@ const HumanInputV2NodeContent = ({
   )
 }
 
-const EnabledHumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
-  const { provider, workspaceId } = useContactRecipientOptionProvider()
-  return <HumanInputV2NodeContent key={workspaceId} {...props} provider={provider} />
-}
-
 export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
   if (!ENABLE_HITL_IM) {
     return (
@@ -143,5 +113,5 @@ export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
     )
   }
 
-  return <EnabledHumanInputV2Node {...props} />
+  return <HumanInputV2NodeContent {...props} />
 }
