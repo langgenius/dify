@@ -13,7 +13,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import Field, ValidationError
 
-from core.dify_builder.models import Run
+from core.dify_builder.models import ChecklistError, DifyBuilderContext, Run
 from libs.json_in_md_parser import parse_json_markdown
 from runtime_contracts.builder.execution import canonical_digest, canonical_json
 from runtime_contracts.builder.native.contracts import FrozenDTO
@@ -45,6 +45,35 @@ class CodeFacts:
     model_facts: dict[str, Any]
     # Only transient local provenance, never persisted or sent to the model.
     graph: dict[str, Any]
+
+
+def assessment_goal(context: DifyBuilderContext) -> str:
+    """Use Fix's existing validation intent only for Code risk facts.
+
+    Fix has no Build business goal. Do not populate that shared field or infer
+    business expectations/permission from a request to validate a repair.
+    Empty, unrelated contexts still lack a task to assess.
+    """
+    if context.goal_text:
+        return context.goal_text
+    if not isinstance(context.source, str):
+        return ""
+    if context.source in {"", "run"} and isinstance(context.failed_run_id, str) and context.failed_run_id.strip():
+        origin = "a failed Run"
+    elif (
+        context.source == "checklist"
+        and isinstance(context.checklist_errors, list)
+        and context.checklist_errors
+        and all(isinstance(issue, ChecklistError) for issue in context.checklist_errors)
+    ):
+        origin = "checklist errors"
+    else:
+        return ""
+    return (
+        f"Validate the existing workflow draft after repairing {origin}. "
+        "The original business goal is unknown. Assess the supplied Code and input facts; "
+        "this repair-validation intent grants no additional effect authorization."
+    )
 
 
 def _structure(value: Any) -> dict[str, Any]:
