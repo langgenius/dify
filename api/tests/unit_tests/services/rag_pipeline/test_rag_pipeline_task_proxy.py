@@ -6,6 +6,8 @@ from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
@@ -151,29 +153,21 @@ class TestRagPipelineTaskProxyCases:
     # --- _upload_invoke_entities ---
 
     @staticmethod
-    def test_upload_invoke_entities_returns_file_id(mocker: MockerFixture, proxy) -> None:
-        upload_file = UploadFile(
-            tenant_id="tenant-1",
-            storage_type=StorageType.LOCAL,
-            key="rag-pipeline.json",
-            name="rag-pipeline.json",
-            size=1,
-            extension="json",
-            mime_type="application/json",
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by="user-1",
-            created_at=datetime(2025, 1, 1),
-            used=True,
-        )
-        upload_file.id = "uploaded-file-1"
-        file_service_cls = mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
-        file_service_cls.return_value.upload_text.return_value = upload_file
-        mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.db", SimpleNamespace(engine="fake-engine"))
+    def test_upload_invoke_entities_returns_file_id(
+        mocker: MockerFixture, proxy, sqlite_engine: Engine, sqlite_session: Session
+    ) -> None:
+        storage = mocker.patch("services.file_service.storage")
+        mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.db", SimpleNamespace(engine=sqlite_engine))
 
         result = proxy._upload_invoke_entities()
 
-        assert result == "uploaded-file-1"
-        file_service_cls.return_value.upload_text.assert_called_once()
+        upload_file = sqlite_session.get(UploadFile, result)
+        assert upload_file is not None
+        assert upload_file.tenant_id == "tenant-1"
+        assert upload_file.created_by == "user-1"
+        assert upload_file.name == "rag_pipeline_invoke_entities.json"
+        assert upload_file.used is True
+        storage.save.assert_called_once_with(upload_file.key, b'[{"doc": "data"}]')
 
 
 class RagPipelineTaskProxyTestDataFactory:
