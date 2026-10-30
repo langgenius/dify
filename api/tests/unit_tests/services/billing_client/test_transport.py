@@ -1,8 +1,10 @@
+import logging
+
 import httpx
 import pytest
 import tenacity
 
-from services.billing_client import transport
+from services.billing_client import billing, transport
 from services.billing_client.transport import BillingModel, Upstream
 from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
 from tests.unit_tests.services.billing_client.conftest import RespondWith
@@ -85,3 +87,53 @@ def test_upstream_selects_base_url(
 
     assert _get(upstream).ok is True
     assert str(requests[0].url) == expected
+
+
+def test_invalid_body_is_reported_and_kept_raw_while_observed(
+    respond_with: RespondWith, caplog: pytest.LogCaptureFixture
+) -> None:
+    respond_with(
+        httpx.Response(
+            200,
+            json={
+                "enabled": True,
+                "subscription": {"plan": "enterprise", "interval": "month", "education": "yes"},
+                "members": {"size": "3", "limit": 5},
+                "vector_space": None,
+                "next_credit_reset_date": "1767225600",
+            },
+        )
+    )
+
+    with caplog.at_level(logging.ERROR, logger=transport.__name__):
+        info = billing.subscription_get_subscription_info(tenant_id="t1", exclude_vector_space=True)
+
+    assert "GET /subscription/info" in caplog.text
+    assert caplog.records[0].exc_info is not None
+    assert info.subscription is not None
+    assert info.subscription.plan == "enterprise"
+    assert info.subscription.interval == "month"
+    assert info.subscription.education is True
+    assert info.subscription.paid_period_end is None
+    assert info.members == billing.SubscriptionQuota(size=3, limit=5)
+    assert info.vector_space is None
+    assert info.next_credit_reset_date == 1767225600
+    assert info.apps is None
+
+
+def test_invalid_body_is_an_invalid_response_once_enforced(
+    respond_with: RespondWith, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(transport, "ENFORCED_RESPONSE_PATHS", frozenset({"/probe"}))
+    respond_with(httpx.Response(200, json={"ok": "maybe"}))
+
+    with pytest.raises(BillingUpstreamInvalidResponseError):
+        _get(Upstream.BILLING)
+
+
+@pytest.mark.parametrize("content", [b"not json", b"[]"])
+def test_non_object_body_is_an_invalid_response(respond_with: RespondWith, content: bytes) -> None:
+    respond_with(httpx.Response(200, content=content))
+
+    with pytest.raises(BillingUpstreamInvalidResponseError):
+        _get(Upstream.BILLING)

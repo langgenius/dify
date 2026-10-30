@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from services.billing_client import billing
+from services.billing_client import billing, transport
 from services.errors.billing import BillingUpstreamInvalidResponseError
 from tests.unit_tests.services.billing_client.conftest import RespondWith
 
@@ -42,7 +42,10 @@ def test_request_body_is_serialized_from_the_model(respond_with: RespondWith) ->
     assert body.model_validate_json(requests[0].content) == body
 
 
-def test_missing_required_field_is_an_invalid_response(respond_with: RespondWith) -> None:
+def test_missing_required_field_is_an_invalid_response_once_enforced(
+    respond_with: RespondWith, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(transport, "ENFORCED_RESPONSE_PATHS", frozenset({"/quota/balance"}))
     respond_with(httpx.Response(200, json={"available": "1"}))
 
     with pytest.raises(BillingUpstreamInvalidResponseError):

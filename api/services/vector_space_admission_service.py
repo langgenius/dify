@@ -358,10 +358,10 @@ class VectorSpaceAdmissionService:
     def _get_usage_and_limit_mb(self, tenant_id: str) -> tuple[float, int]:
         try:
             vector_space = BillingService.get_vector_space(tenant_id)
-            if vector_space.get("usage_unknown", False):
+            if vector_space.usage_unknown:
                 raise ValueError("Vector storage usage is unknown")
-            current_usage_mb = float(vector_space["size"])
-            plan_limit_mb = int(vector_space["limit"])
+            current_usage_mb = float(vector_space.size)
+            plan_limit_mb = int(vector_space.limit)
             if not math.isfinite(current_usage_mb) or current_usage_mb < 0 or plan_limit_mb < -1:
                 raise ValueError("Invalid vector storage quota")
         except Exception as error:
@@ -441,7 +441,7 @@ class VectorSpaceAdmissionService:
 
         plan = None
         try:
-            plan = CloudPlan(billing_info["subscription"]["plan"])
+            plan = CloudPlan(billing_info.subscription.plan)
         except ValueError:
             logger.warning(
                 "Skipping TiDB vector-space admission for unknown plan tenant_id=%s",

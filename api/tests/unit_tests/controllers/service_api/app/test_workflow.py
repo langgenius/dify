@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
@@ -50,6 +51,7 @@ from services.errors.app import (
 )
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from tests.helpers import billing_builders as builders
 
 """
 Unit tests for Service API Workflow controllers.
@@ -457,6 +459,7 @@ class TestWorkflowCases:
             self,
             app: Flask,
             monkeypatch: pytest.MonkeyPatch,
+            mocker: MockerFixture,
             sqlite_session: Session,
             config_overrides: Callable[..., None],
             api_class: type[WorkflowRunApi | WorkflowRunByIdApi],
@@ -466,9 +469,7 @@ class TestWorkflowCases:
             error_code: str,
         ) -> None:
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-            monkeypatch.setattr(
-                BillingService, "get_info", Mock(return_value={"subscription": {"plan": CloudPlan.PROFESSIONAL}})
-            )
+            mocker.patch.object(BillingService, "get_info", return_value=builders.subscription_info("professional"))
             generate = Mock(side_effect=source_error("rate limit reached"))
             monkeypatch.setattr(AppGenerateService, "generate", generate)
 
@@ -519,15 +520,17 @@ class TestWorkflowCases:
             self,
             app: Flask,
             monkeypatch: pytest.MonkeyPatch,
+            mocker: MockerFixture,
             sqlite_session: Session,
             config_overrides: Callable[..., None],
         ) -> None:
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
             sys.modules["controllers.service_api.app.workflow"]
 
-            billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
+            billing_get_info = mocker.patch.object(
+                BillingService, "get_info", return_value=builders.subscription_info("sandbox")
+            )
             generate = Mock(return_value={"result": "ok"})
-            monkeypatch.setattr(BillingService, "get_info", billing_get_info)
             monkeypatch.setattr(AppGenerateService, "generate", generate)
 
             api = WorkflowRunApi()
@@ -577,15 +580,17 @@ class TestWorkflowCases:
             self,
             app: Flask,
             monkeypatch: pytest.MonkeyPatch,
+            mocker: MockerFixture,
             sqlite_session: Session,
             config_overrides: Callable[..., None],
         ) -> None:
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
             sys.modules["controllers.service_api.app.workflow"]
 
-            billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
+            billing_get_info = mocker.patch.object(
+                BillingService, "get_info", return_value=builders.subscription_info("sandbox")
+            )
             generate = Mock()
-            monkeypatch.setattr(BillingService, "get_info", billing_get_info)
             monkeypatch.setattr(AppGenerateService, "generate", generate)
 
             api = WorkflowRunByIdApi()
@@ -627,6 +632,7 @@ class TestWorkflowCases:
             self,
             app: Flask,
             monkeypatch: pytest.MonkeyPatch,
+            mocker: MockerFixture,
             deployment_edition: DeploymentEdition,
             plan: CloudPlan,
             sqlite_session: Session,
@@ -634,9 +640,10 @@ class TestWorkflowCases:
         ) -> None:
             config_overrides(DEPLOYMENT_EDITION=deployment_edition)
 
-            billing_get_info = Mock(return_value={"subscription": {"plan": plan}})
+            billing_get_info = mocker.patch.object(
+                BillingService, "get_info", return_value=builders.subscription_info(plan)
+            )
             generate = Mock(return_value={"result": "ok"})
-            monkeypatch.setattr(BillingService, "get_info", billing_get_info)
             monkeypatch.setattr(AppGenerateService, "generate", generate)
 
             api = WorkflowRunByIdApi()
