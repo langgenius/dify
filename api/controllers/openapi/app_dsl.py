@@ -55,7 +55,7 @@ from services.agent.errors import (
     InvalidRosterAgentPackageError,
     RosterAgentPackageTooLargeError,
     RosterReferenceNotAcceptedError,
-    WorkspaceSkillNotFoundError,
+    WorkspaceSkillUnavailableError,
 )
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.app_entities import AppExportOptions
@@ -235,7 +235,7 @@ class AppPackageImportApi(Resource):
     Returns 202 when the DSL version requires an explicit confirmation step; confirm it with the imports
     :confirm method. Returns 400 ``app_package_invalid`` for a package that cannot be read, that links
     roster Agents without ``preserve_agent_bindings=true``, or that keeps links to skills this workspace does
-    not have (each one is in details), and 413 for one over this server's limits.
+    not have or never published (each one is in details), and 413 for one over this server's limits.
     """
 
     @endpoint(
@@ -274,20 +274,16 @@ class AppPackageImportApi(Resource):
                         ctx, mode=ImportMode.YAML_CONTENT, source=dsl, app_id=body.app_id, draft_hash=body.draft_hash
                     ),
                 )
-            except WorkspaceSkillNotFoundError as exc:
+            except WorkspaceSkillUnavailableError as exc:
                 raise AppPackageInvalid(
                     exc.description,
                     hint=(
-                        "Import each missing skill into the Skill Hub first, "
+                        "Fix each skill in details, "
                         "or import with preserve_agent_bindings=false to use the package's copy of each skill."
                     ),
                     details=[
-                        ErrorDetail(
-                            type=exc.error_code,
-                            loc=["workspace_skills", name],
-                            msg=f'Workspace Skill "{name}" is not in this workspace.',
-                        )
-                        for name in exc.names
+                        ErrorDetail(type=problem, loc=["workspace_skills", name], msg=problem.describe(name))
+                        for name, problem in exc.problems.items()
                     ],
                 ) from exc
             except RosterReferenceNotAcceptedError as exc:
