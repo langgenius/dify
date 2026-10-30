@@ -1,8 +1,6 @@
 """Actor-scoped metadata discovery: real SQL policies, native RBAC readback boundary."""
 
 from collections.abc import Callable, Sequence
-from types import SimpleNamespace
-from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import event, select
@@ -18,6 +16,7 @@ from services.dify_builder.agent import resources
 from services.dify_builder.native_testing.agent_catalog import AgentCatalogService
 from services.enterprise.rbac_service import RBACService
 from services.rbac.contracts import ResourceWhitelistResources
+from tests.unit_tests.services.dify_builder.test_dify_port import PortDatabase
 
 TENANT = "aaaaaaaa-0000-4000-8000-000000000001"
 OTHER = "aaaaaaaa-0000-4000-8000-000000000002"
@@ -30,7 +29,7 @@ IDS = [f"cccccccc-0000-4000-8000-{i:012d}" for i in range(1, 7)]
 def inventory(
     monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
 ) -> sessionmaker[Session]:
-    monkeypatch.setattr(resources, "db", SimpleNamespace(engine=sqlite_engine))
+    monkeypatch.setattr(resources, "db", PortDatabase(sqlite_engine))
     monkeypatch.setattr(resources, "_list_models", lambda *_: [])
     monkeypatch.setattr(resources, "_list_tools", lambda *_: [])
     monkeypatch.setattr(AgentCatalogService, "list_candidates", lambda *_args, **_kwargs: [])
@@ -90,15 +89,22 @@ def rbac(
     unrestricted: bool = True,
     whitelist: Sequence[str] = (),
     permissions: dict[str, list[str]] | None = None,
-) -> Mock:
+) -> list[list[str]]:
     monkeypatch.setattr(
         RBACService.DatasetAccess,
         "whitelist_resources",
-        Mock(return_value=ResourceWhitelistResources(unrestricted=unrestricted, resource_ids=list(whitelist))),
+        lambda *_args: ResourceWhitelistResources(unrestricted=unrestricted, resource_ids=list(whitelist)),
     )
-    get = Mock(return_value=permissions or {})
-    monkeypatch.setattr(RBACService.DatasetPermissions, "batch_get", get)
-    return get
+    calls: list[list[str]] = []
+
+    def batch_get(tenant_id: str, account_id: str, resource_ids: Sequence[str]) -> dict[str, list[str]]:
+        assert tenant_id == TENANT
+        assert account_id == ACTOR
+        calls.append(list(resource_ids))
+        return permissions or {}
+
+    monkeypatch.setattr(RBACService.DatasetPermissions, "batch_get", batch_get)
+    return calls
 
 
 def test_rbac_uses_native_whitelist_and_exact_resource_permissions(
@@ -119,7 +125,8 @@ def test_rbac_uses_native_whitelist_and_exact_resource_permissions(
     )
     inv = resources.list_tenant_resources(TENANT, account_id=ACTOR)
     assert {r.id for r in inv.datasets} == {IDS[0], IDS[1], IDS[2]}
-    assert IDS[5] not in get.call_args.args[2]
+    assert get
+    assert IDS[5] not in get[-1]
     preview = next(r for r in inv.datasets if r.id == IDS[1])
     assert preview.availability["use"] == "not_allowed"
     assert preview.availability["scope"] == "discovery_only"
@@ -144,7 +151,8 @@ def test_rbac_maintainer_retains_native_visibility_and_use_without_batch_grants(
     assert [ref.id for ref in inv.datasets] == [IDS[2]]
     assert inv.datasets[0].availability["use"] == "allowed"
     assert inv.datasets[0].availability["runtime"] == "not_supported"
-    assert IDS[5] not in get.call_args.args[2]  # Same maintainer in another tenant grants nothing.
+    assert get
+    assert IDS[5] not in get[-1]  # Same maintainer in another tenant grants nothing.
 
 
 def test_rbac_failure_is_unavailable_not_tenantwide_or_successful_empty(
@@ -152,9 +160,11 @@ def test_rbac_failure_is_unavailable_not_tenantwide_or_successful_empty(
 ) -> None:
     config_overrides(RBAC_ENABLED=True)
     rbac(monkeypatch)
-    monkeypatch.setattr(
-        RBACService.DatasetPermissions, "batch_get", Mock(side_effect=RuntimeError("private backend failure"))
-    )
+
+    def unavailable(*_args: object) -> dict[str, list[str]]:
+        raise RuntimeError("private backend failure")
+
+    monkeypatch.setattr(RBACService.DatasetPermissions, "batch_get", unavailable)
     inv = resources.list_tenant_resources(TENANT, account_id=ACTOR)
     assert inv.datasets == []
     assert inv.dataset_source_error == "inventory_unavailable"
