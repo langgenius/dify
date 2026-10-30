@@ -44,7 +44,9 @@ export const TagManagementModal = ({
       enabled: show && canManageTags,
     }),
   )
-  const createTagMutation = useMutation(consoleQuery.tags.post.mutationOptions())
+  const createTagMutation = useMutation(
+    consoleQuery.tags.post.mutationOptions({ context: { silent: true } }),
+  )
   const [name, setName] = useState<string>('')
 
   const createNewTag = () => {

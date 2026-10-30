@@ -26,6 +26,7 @@ export function useChangeProviderPriority(
   const { mutate: changePriority, isPending: isChangingPriority } = useMutation(
     consoleQuery.workspaces.current.modelProviders.byProvider.preferredProviderType.post.mutationOptions(
       {
+        context: { silent: true },
         onSuccess: () => {
           queryClient.invalidateQueries({
             queryKey: modelProviderModelListQueryKey,

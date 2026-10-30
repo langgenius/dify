@@ -39,7 +39,7 @@ A success toast is appropriate when the result is not on screen: a background jo
 ## Errors
 
 - When a request fails and the server returns an error message, the request layer shows that message unless the request is `silent`; see `afterResponseErrorCode` in [request layer]. Do not add a second toast for the same failure in `catch` or `onError`.
-- To present a request error differently, make the request `silent` (`{ context: { silent: true } }` for generated clients) and show the error inline. A `silent` request with no other error presentation fails without any feedback.
+- When a business flow owns the error feedback, make its requests `silent` (`{ context: { silent: true } }` for generated clients) and present the failure once at that business boundary. Prefer inline errors; use a business-specific toast only when the feedback cannot live where the user acted. For multi-request actions, let the business flow choose one message for the overall result. A `silent` request with no other error presentation fails without any feedback.
 - Failures that never reach the request layer, such as a rejected clipboard write or a client-side exception, still need their own feedback.
 - Client-side validation belongs at the field through the [form contract], never in a toast.
 

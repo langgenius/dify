@@ -208,7 +208,10 @@ it('imports fresh canonical detail through the real list and form, then checks d
   )
   await submit(user)
   await waitFor(() => expect(api.push).toHaveBeenCalledWith('/app/created-app/configuration'))
-  expect(api.detail).toHaveBeenCalledExactlyOnceWith({ params: { app_id: 'canonical-template' } })
+  expect(api.detail).toHaveBeenCalledExactlyOnceWith(
+    { params: { app_id: 'canonical-template' } },
+    { context: { silent: true } },
+  )
   expect(api.import).toHaveBeenCalledWith({
     body: expect.objectContaining({
       yaml_content: 'fresh-dsl',

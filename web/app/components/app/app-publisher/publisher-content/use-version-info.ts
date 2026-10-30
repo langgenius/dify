@@ -21,7 +21,7 @@ export function useVersionInfo({
 }) {
   const { t } = useTranslation(['workflowHistory'])
   const [isOpen, setIsOpen] = useState(false)
-  const { mutateAsync: updateWorkflow } = useUpdateWorkflow()
+  const { mutateAsync: updateWorkflow } = useUpdateWorkflow({ silent: true })
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
 
   function openEditor() {

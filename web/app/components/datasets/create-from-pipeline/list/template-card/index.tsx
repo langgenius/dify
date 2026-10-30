@@ -47,7 +47,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     }),
   )
   const { mutate: createDataset } = useMutation(
-    consoleQuery.rag.pipeline.dataset.post.mutationOptions(),
+    consoleQuery.rag.pipeline.dataset.post.mutationOptions({ context: { silent: true } }),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const invalidDatasetList = useCallback(() => {
@@ -104,7 +104,9 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
   }, [])
 
   const { mutate: exportPipelineDSL, isPending: isExporting } = useMutation(
-    consoleQuery.rag.pipeline.customized.templates.byTemplateId.post.mutationOptions(),
+    consoleQuery.rag.pipeline.customized.templates.byTemplateId.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
 
   const handleExportDSL = useCallback(() => {

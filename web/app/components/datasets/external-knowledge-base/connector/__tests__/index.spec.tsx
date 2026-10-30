@@ -138,19 +138,22 @@ describe('ExternalKnowledgeBaseConnector', () => {
 
       // Verify API was called with form data
       await waitFor(() => {
-        expect(createExternalKnowledgeBase).toHaveBeenCalledWith({
-          body: expect.objectContaining({
-            name: 'Test Knowledge Base',
-            external_knowledge_id: 'kb-123',
-            external_knowledge_api_id: 'api-1',
-            provider: 'external',
-            external_retrieval_model: {
-              top_k: 4,
-              score_threshold: 0.5,
-              score_threshold_enabled: false,
-            },
-          }),
-        })
+        expect(createExternalKnowledgeBase).toHaveBeenCalledWith(
+          {
+            body: expect.objectContaining({
+              name: 'Test Knowledge Base',
+              external_knowledge_id: 'kb-123',
+              external_knowledge_api_id: 'api-1',
+              provider: 'external',
+              external_retrieval_model: {
+                top_k: 4,
+                score_threshold: 0.5,
+                score_threshold_enabled: false,
+              },
+            }),
+          },
+          { silent: true },
+        )
       })
 
       // Verify success notification

@@ -139,9 +139,12 @@ function AppCardOperationsMenuItems({
     try {
       await openAsyncWindow(
         async () => {
-          const { installed_apps } = await consoleClient.installedApps.get({
-            query: { app_id: app.id },
-          })
+          const { installed_apps } = await consoleClient.installedApps.get(
+            {
+              query: { app_id: app.id },
+            },
+            { context: { silent: true } },
+          )
           if (installed_apps?.length > 0)
             return `${basePath}${buildInstalledAppPath(installed_apps[0]!.id)}`
           throw new Error(t(($) => $.notPublishedYet, { ns: 'app' }))
@@ -258,12 +261,14 @@ export function AppCardInteractions({
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { push } = useRouter()
-  const { mutate: copyApp } = useMutation(consoleQuery.apps.byAppId.copy.post.mutationOptions())
+  const { mutate: copyApp } = useMutation(
+    consoleQuery.apps.byAppId.copy.post.mutationOptions({ context: { silent: true } }),
+  )
   const { mutate: starApp, isPending: isStarring } = useMutation(
-    consoleQuery.apps.byAppId.star.post.mutationOptions(),
+    consoleQuery.apps.byAppId.star.post.mutationOptions({ context: { silent: true } }),
   )
   const { mutate: unstarApp, isPending: isUnstarring } = useMutation(
-    consoleQuery.apps.byAppId.star.delete.mutationOptions(),
+    consoleQuery.apps.byAppId.star.delete.mutationOptions({ context: { silent: true } }),
   )
 
   const editActionsRef = useRef<DialogActions>(null)

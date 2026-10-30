@@ -114,13 +114,16 @@ export function useRenameDocumentAction(document: LogicalDocument) {
   const { invalidateDocuments, knowledgeSpaceId } = useDocumentInvalidation()
   const { mutateAsync: renameDocument } = useMutation({
     mutationFn: (title: string) =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
-        body: {
-          expectedRowVersion: document.rowVersion,
-          patch: { displayName: title },
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch(
+        {
+          body: {
+            expectedRowVersion: document.rowVersion,
+            patch: { displayName: title },
+          },
+          params: { control_space_id: knowledgeSpaceId, document_id: document.id },
         },
-        params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-      }),
+        { context: { silent: true } },
+      ),
   })
 
   const run = useCallback(
@@ -157,9 +160,12 @@ export function useDownloadDocumentAction(
   const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const { mutateAsync: downloadDocument } = useMutation({
     mutationFn: () =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.download.get({
-        params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-      }),
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.download.get(
+        {
+          params: { control_space_id: knowledgeSpaceId, document_id: document.id },
+        },
+        { context: { silent: true } },
+      ),
   })
 
   const run = useCallback(async () => {
@@ -202,10 +208,13 @@ export function useToggleDocumentAvailabilityAction(
   const { invalidateDocuments, knowledgeSpaceId } = useDocumentInvalidation()
   const { mutateAsync: toggleDocument } = useMutation({
     mutationFn: () =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.patch({
-        body: { enabled: !document.enabled, expectedRowVersion: document.rowVersion },
-        params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-      }),
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.patch(
+        {
+          body: { enabled: !document.enabled, expectedRowVersion: document.rowVersion },
+          params: { control_space_id: knowledgeSpaceId, document_id: document.id },
+        },
+        { context: { silent: true } },
+      ),
   })
 
   const run = useCallback(async () => {
@@ -243,11 +252,14 @@ export function useRemoveDocumentAction() {
     reset,
   } = useMutation({
     mutationFn: (document: LogicalDocument) =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete({
-        body: { expectedRevision: document.rowVersion },
-        headers: { 'Idempotency-Key': createRequestId() },
-        params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-      }),
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete(
+        {
+          body: { expectedRevision: document.rowVersion },
+          headers: { 'Idempotency-Key': createRequestId() },
+          params: { control_space_id: knowledgeSpaceId, document_id: document.id },
+        },
+        { context: { silent: true } },
+      ),
   })
 
   const run = async (documentId: string) => {

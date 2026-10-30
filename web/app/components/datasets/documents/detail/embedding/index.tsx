@@ -58,6 +58,7 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
     toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
   }, [t])
   const pauseMutation = usePauseIndexing({
+    context: { silent: true },
     datasetId,
     documentId,
     onSuccess: () => {
@@ -67,6 +68,7 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
     onError: handleError,
   })
   const resumeMutation = useResumeIndexing({
+    context: { silent: true },
     datasetId,
     documentId,
     onSuccess: () => {

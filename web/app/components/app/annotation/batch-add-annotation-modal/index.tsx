@@ -66,9 +66,12 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
   const checkProcess = async (jobID: string) => {
     try {
-      const res = await consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get({
-        params: { app_id: appId, job_id: jobID },
-      })
+      const res = await consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get(
+        {
+          params: { app_id: appId, job_id: jobID },
+        },
+        { context: { silent: true } },
+      )
       setImportStatus(res.job_status)
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
         setTimeout(() => checkProcess(res.job_id), 2500)

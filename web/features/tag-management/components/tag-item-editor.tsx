@@ -24,8 +24,12 @@ type TagItemEditorProps = {
 }
 export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
   const { t } = useTranslation(['common'])
-  const updateTagMutation = useMutation(consoleQuery.tags.byTagId.patch.mutationOptions())
-  const deleteTagMutation = useMutation(consoleQuery.tags.byTagId.delete.mutationOptions())
+  const updateTagMutation = useMutation(
+    consoleQuery.tags.byTagId.patch.mutationOptions({ context: { silent: true } }),
+  )
+  const deleteTagMutation = useMutation(
+    consoleQuery.tags.byTagId.delete.mutationOptions({ context: { silent: true } }),
+  )
   const [isEditing, setIsEditing] = useState(false)
   const editTag = (tagId: string, name: string) => {
     if (name === tag.name) {

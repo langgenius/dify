@@ -84,7 +84,9 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   }, [invalidDatasetDetail, invalidDatasetList])
 
   const { mutateAsync: exportPipelineConfig } = useMutation(
-    consoleQuery.rag.pipelines.byPipelineId.exports.get.mutationOptions(),
+    consoleQuery.rag.pipelines.byPipelineId.exports.get.mutationOptions({
+      context: { silent: true },
+    }),
   )
 
   const handleExportPipeline = useCallback(

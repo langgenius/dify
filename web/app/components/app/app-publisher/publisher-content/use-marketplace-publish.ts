@@ -12,9 +12,12 @@ export function useMarketplacePublish(appId?: string) {
 
     setIsPublishing(true)
     try {
-      const response = await consoleClient.apps.byAppId.publishToCreatorsPlatform.post({
-        params: { app_id: appId },
-      })
+      const response = await consoleClient.apps.byAppId.publishToCreatorsPlatform.post(
+        {
+          params: { app_id: appId },
+        },
+        { context: { silent: true } },
+      )
       if (response.redirect_url) window.open(response.redirect_url, '_blank')
     } catch {
       toast.error(t(($) => $['common.publishToMarketplaceFailed'], { ns: 'workflow' }))

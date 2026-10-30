@@ -101,6 +101,7 @@ export function EnvironmentWebAppCard({
     subjectsQuery.data.subjects.length > 0
   const siteMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentSite.mutationOptions({
+      context: { silent: true },
       scope: {
         id: `environment-web-app-toggle:${appId}:${environmentId}`,
       },
@@ -112,6 +113,7 @@ export function EnvironmentWebAppCard({
   const resetAccessTokenMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.resetEnvironmentSiteAccessToken.mutationOptions(
       {
+        context: { silent: true },
         onSuccess: (updatedSite) => {
           queryClient.setQueryData(siteQueryOptions.queryKey, updatedSite)
           setShowRegenerate(false)

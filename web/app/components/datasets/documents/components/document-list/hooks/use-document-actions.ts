@@ -39,16 +39,20 @@ export const useDocumentActions = ({
 
   const documents = consoleQuery.datasets.byDatasetId.documents
   const { mutateAsync: changeDocumentStatus } = useMutation(
-    documents.status.byAction.batch.patch.mutationOptions(),
+    documents.status.byAction.batch.patch.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: generateSummary } = useMutation(
-    documents.generateSummary.post.mutationOptions(),
+    documents.generateSummary.post.mutationOptions({ context: { silent: true } }),
   )
-  const { mutateAsync: deleteDocuments } = useMutation(documents.delete.mutationOptions())
+  const { mutateAsync: deleteDocuments } = useMutation(
+    documents.delete.mutationOptions({ context: { silent: true } }),
+  )
   const { mutateAsync: retryIndexDocuments } = useMutation(
-    consoleQuery.datasets.byDatasetId.retry.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.retry.post.mutationOptions({ context: { silent: true } }),
   )
-  const { mutateAsync: requestDocumentsZip, isPending: isDownloadingZip } = useDocumentDownloadZip()
+  const { mutateAsync: requestDocumentsZip, isPending: isDownloadingZip } = useDocumentDownloadZip({
+    silent: true,
+  })
 
   type SupportedActionType =
     | typeof DocumentActionType.archive

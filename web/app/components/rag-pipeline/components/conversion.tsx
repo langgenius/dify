@@ -34,7 +34,9 @@ const Conversion = () => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const { mutate: convert, isPending } = useMutation(
-    consoleQuery.rag.pipelines.transform.datasets.byDatasetId.post.mutationOptions(),
+    consoleQuery.rag.pipelines.transform.datasets.byDatasetId.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const queryClient = useQueryClient()
   const invalidDatasetDetail = React.useCallback(() => {

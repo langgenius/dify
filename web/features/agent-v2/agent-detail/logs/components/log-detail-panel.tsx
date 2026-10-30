@@ -31,7 +31,7 @@ export function AgentLogDetailPanel({
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
   const feedbackMutation = useMutation(
-    consoleQuery.agent.byAgentId.feedbacks.post.mutationOptions(),
+    consoleQuery.agent.byAgentId.feedbacks.post.mutationOptions({ context: { silent: true } }),
   )
   const messagesQuery = useQuery(
     consoleQuery.agent.byAgentId.logs.byConversationId.messages.get.queryOptions({

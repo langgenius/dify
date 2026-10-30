@@ -167,13 +167,16 @@ export function SourceActions({
       'toggle',
       async () =>
         sourceFromApi(
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
-            body: {
-              ...(source.version === undefined ? {} : { expectedVersion: source.version }),
-              status: source.status === 'disabled' ? 'active' : 'disabled',
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch(
+            {
+              body: {
+                ...(source.version === undefined ? {} : { expectedVersion: source.version }),
+                status: source.status === 'disabled' ? 'active' : 'disabled',
+              },
+              params: { control_space_id: knowledgeSpaceId, source_id: source.id },
             },
-            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-          }),
+            { context: { silent: true } },
+          ),
         ),
       (updatedSource) => {
         const nextSyncWorkflow =
@@ -194,10 +197,13 @@ export function SourceActions({
       'edit',
       async () =>
         sourceFromApi(
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
-            body: values,
-            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-          }),
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch(
+            {
+              body: values,
+              params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+            },
+            { context: { silent: true } },
+          ),
           { useResponseStatus: true },
         ),
       acceptSourceSnapshot,
@@ -208,12 +214,15 @@ export function SourceActions({
       'remove',
       async () => {
         if (source.version === undefined) throw new Error('Source version is required')
-        return consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete({
-          body: { expectedRevision: source.version },
-          headers: { 'Idempotency-Key': createIdempotencyKey() },
-          params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-          query: { documents: 'keep' },
-        })
+        return consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete(
+          {
+            body: { expectedRevision: source.version },
+            headers: { 'Idempotency-Key': createIdempotencyKey() },
+            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+            query: { documents: 'keep' },
+          },
+          { context: { silent: true } },
+        )
       },
       () => removeSourceFromList(source.id),
     )

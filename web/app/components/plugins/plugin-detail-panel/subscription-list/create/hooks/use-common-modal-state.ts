@@ -127,9 +127,11 @@ export const useCommonModalState = ({
   // Mutations
   const { mutate: verifyCredentials, isPending: isVerifyingCredentials } =
     useVerifyAndUpdateTriggerSubscriptionBuilder()
-  const { mutateAsync: createBuilder } = useCreateTriggerSubscriptionBuilder()
-  const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
-  const { mutate: updateBuilder } = useUpdateTriggerSubscriptionBuilder()
+  const { mutateAsync: createBuilder } = useCreateTriggerSubscriptionBuilder({ silent: true })
+  const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription({
+    silent: true,
+  })
+  const { mutate: updateBuilder } = useUpdateTriggerSubscriptionBuilder({ silent: true })
 
   // Schemas
   const manualPropertiesSchema = detail?.declaration?.trigger?.subscription_schema || []

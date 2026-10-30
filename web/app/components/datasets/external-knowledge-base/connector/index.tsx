@@ -22,7 +22,7 @@ const ExternalKnowledgeBaseConnector = () => {
   const handleConnect = async (formValue: CreateKnowledgeBaseReq) => {
     try {
       setLoading(true)
-      const result = await createExternalKnowledgeBase({ body: formValue })
+      const result = await createExternalKnowledgeBase({ body: formValue }, { silent: true })
       if (result && result.id) {
         toast.success(t(($) => $['externalKnowledgeForm.connectedSuccess'], { ns: 'dataset' }))
         trackEvent('create_external_knowledge_base', {

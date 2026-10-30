@@ -208,7 +208,7 @@ const useEnvPanelActions = ({
       }
       try {
         const { updateEnvironmentVariables } = await import('@/service/workflow')
-        await updateEnvironmentVariables({ appId: resource.appId, ...patch })
+        await updateEnvironmentVariables({ appId: resource.appId, ...patch }, { silent: true })
         await emitVarsAndFeaturesUpdate(syncWorkflowDraft)
         return true
       } catch (error) {
@@ -301,6 +301,7 @@ const useEnvPanelActions = ({
       const parameterRules = await fetchModelParameterRulesForModel(
         nextModel.provider,
         nextModel.name,
+        { silent: true },
       )
 
       return () => {

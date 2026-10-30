@@ -267,7 +267,9 @@ function DeleteSkillDialog({
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const queryClient = useQueryClient()
   const deleteMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const referencesQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
@@ -425,7 +427,9 @@ function SkillCard({
   const draftStatusId = useId()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const duplicateMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const exportMutation = useMutation({
     mutationFn: () => fetchSkillArchiveBlob(skill.id),

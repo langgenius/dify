@@ -85,7 +85,9 @@ export function Popup({
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { mutateAsync: publishWorkflow } = useMutation(
-    consoleQuery.rag.pipelines.byPipelineId.workflows.publish.post.mutationOptions(),
+    consoleQuery.rag.pipelines.byPipelineId.workflows.publish.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const workflowStore = useWorkflowStore()
   const { data: isAllowPublishAsCustomKnowledgePipelineTemplate } = useQuery(

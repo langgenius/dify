@@ -297,7 +297,7 @@ export const VersionHistoryPanel = ({
     ],
   )
 
-  const deleteWorkflow = useDeleteWorkflow(resource)
+  const deleteWorkflow = useDeleteWorkflow(resource, { silent: true })
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -315,7 +315,7 @@ export const VersionHistoryPanel = ({
     [deleteWorkflow, t, resetWorkflowVersionHistory, deleteAllInspectVars, invalidAllLastRun],
   )
 
-  const { mutateAsync: updateWorkflow } = useUpdateWorkflow()
+  const { mutateAsync: updateWorkflow } = useUpdateWorkflow({ silent: true })
 
   const handleUpdateWorkflow = useCallback(
     async (params: { id?: string; title: string; releaseNotes: string }) => {

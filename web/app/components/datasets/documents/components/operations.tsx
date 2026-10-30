@@ -66,25 +66,25 @@ const Operations = ({
   const router = useRouter()
   const documents = consoleQuery.datasets.byDatasetId.documents
   const { mutateAsync: changeDocumentStatus } = useMutation(
-    documents.status.byAction.batch.patch.mutationOptions(),
+    documents.status.byAction.batch.patch.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: downloadDocument, isPending: isDownloading } = useMutation(
-    documents.byDocumentId.download.get.mutationOptions(),
+    documents.byDocumentId.download.get.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: syncNotionDocument } = useMutation(
-    documents.byDocumentId.notion.sync.get.mutationOptions(),
+    documents.byDocumentId.notion.sync.get.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: syncWebsiteDocument } = useMutation(
-    documents.byDocumentId.websiteSync.get.mutationOptions(),
+    documents.byDocumentId.websiteSync.get.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: generateSummary } = useMutation(
-    documents.generateSummary.post.mutationOptions(),
+    documents.generateSummary.post.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: pauseDocument } = useMutation(
-    documents.byDocumentId.processing.pause.patch.mutationOptions(),
+    documents.byDocumentId.processing.pause.patch.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: resumeDocument } = useMutation(
-    documents.byDocumentId.processing.resume.patch.mutationOptions(),
+    documents.byDocumentId.processing.resume.patch.mutationOptions({ context: { silent: true } }),
   )
   const isListScene = scene === 'list'
   const canShowRenameAction = canEdit && !archived

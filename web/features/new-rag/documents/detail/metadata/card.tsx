@@ -145,21 +145,27 @@ function DocumentMetadataCardContent() {
       if (!editBaseline) throw new Error('Missing metadata edit baseline')
       const defaultValue = documentMetadataDefaultValue(type)
       if (retryableCreateName !== name) {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post({
-          body: { name, type },
-          params: { control_space_id: controlSpaceId },
-        })
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post(
+          {
+            body: { name, type },
+            params: { control_space_id: controlSpaceId },
+          },
+          { context: { silent: true } },
+        )
         // Only a confirmed field lets a retry skip creation and go straight to the document update.
         markCreateRetryable(name)
       }
       const response =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
-          body: { expectedRowVersion: editBaseline.rowVersion, patch: { [name]: defaultValue } },
-          params: {
-            control_space_id: controlSpaceId,
-            document_id: document.id,
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch(
+          {
+            body: { expectedRowVersion: editBaseline.rowVersion, patch: { [name]: defaultValue } },
+            params: {
+              control_space_id: controlSpaceId,
+              document_id: document.id,
+            },
           },
-        })
+          { context: { silent: true } },
+        )
       return { document: logicalDocumentFromApi(response), name, type, value: defaultValue }
     },
     onError: () => {
@@ -185,13 +191,16 @@ function DocumentMetadataCardContent() {
       patch: Record<string, unknown>
       rowVersion: number
     }) =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
-        body: { expectedRowVersion: rowVersion, patch },
-        params: {
-          control_space_id: controlSpaceId,
-          document_id: document.id,
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch(
+        {
+          body: { expectedRowVersion: rowVersion, patch },
+          params: {
+            control_space_id: controlSpaceId,
+            document_id: document.id,
+          },
         },
-      }),
+        { context: { silent: true } },
+      ),
     onError: () => {
       toast.error(t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }))
     },

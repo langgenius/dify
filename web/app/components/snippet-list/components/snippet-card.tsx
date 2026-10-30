@@ -54,9 +54,9 @@ const SnippetCard = ({
   )
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const updateSnippetMutation = useUpdateSnippetMutation()
-  const exportSnippetMutation = useExportSnippetMutation()
-  const deleteSnippetMutation = useDeleteSnippetMutation()
+  const updateSnippetMutation = useUpdateSnippetMutation({ silent: true })
+  const exportSnippetMutation = useExportSnippetMutation({ silent: true })
+  const deleteSnippetMutation = useDeleteSnippetMutation({ silent: true })
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const canManageSnippet = canManageSnippets(workspacePermissionKeys)
   const canShowOperations = canCreateAndModifySnippet || canManageSnippet

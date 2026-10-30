@@ -442,7 +442,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     consoleQuery.agent.byAgentId.buildDraft.put.mutationOptions(),
   )
   const { mutateAsync: discardBuildDraft, isPending: isDiscardingBuildDraft } = useMutation(
-    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions(),
+    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions({ context: { silent: true } }),
   )
   const getInlineAgentSoulDraft = useCallback(
     () =>

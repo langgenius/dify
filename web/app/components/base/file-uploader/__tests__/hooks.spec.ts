@@ -380,7 +380,9 @@ it('keeps public chat tokens on the normal upload transport', async () => {
   )
   await waitFor(() => expect(fileUpload).toHaveBeenCalledWith(expect.any(Object), true, undefined))
   await act(async () => result.current.handleLoadFileFromLink('https://example.com/report.pdf'))
-  expect(uploadPublicRemoteFileInfo).toHaveBeenCalledWith('https://example.com/report.pdf')
+  expect(uploadPublicRemoteFileInfo).toHaveBeenCalledWith('https://example.com/report.pdf', {
+    silent: true,
+  })
 })
 
 it.each(['unsupported', 'oversized', 'failed'] as const)(

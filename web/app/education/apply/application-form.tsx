@@ -60,7 +60,9 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
   const openAsyncWindow = useAsyncWindowOpen()
-  const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
+  const switchWorkspaceMutation = useMutation(
+    consoleQuery.workspaces.switch.post.mutationOptions({ context: { silent: true } }),
+  )
 
   const appliedEducationCase = (() => {
     if (!isCurrentWorkspaceManager) return AppliedEducationCase.noPaymentPermission
@@ -97,7 +99,9 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
     try {
       await openAsyncWindow(
         async () => {
-          const res = await consoleClient.billing.invoices.get()
+          const res = await consoleClient.billing.invoices.get(undefined, {
+            context: { silent: true },
+          })
           if (res.url) return res.url
 
           throw new Error('Failed to open billing page')

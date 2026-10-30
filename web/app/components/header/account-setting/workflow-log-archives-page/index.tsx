@@ -378,7 +378,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
     }),
   )
   const createDownloadMutation = useMutation(
-    consoleQuery.workflowRunArchives.downloads.post.mutationOptions(),
+    consoleQuery.workflowRunArchives.downloads.post.mutationOptions({ context: { silent: true } }),
   )
   const currentTask = latestDownloadTask(cachedTask, taskQuery.data)
   const isTaskPreparing = isPreparingStatus(currentTask?.status)

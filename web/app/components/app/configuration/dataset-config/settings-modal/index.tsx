@@ -182,7 +182,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
           }
         })
       }
-      await updateDatasetSetting(requestParams)
+      await updateDatasetSetting(requestParams, { silent: true })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onSave({
         ...localeCurrentDataset,

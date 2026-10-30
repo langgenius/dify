@@ -60,7 +60,9 @@ export function SkillTagsEditor({
   const tags = persistedTags
   const visibleTags = draftTags ?? tags
   const metadataMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const tagsQuery = useQuery(consoleQuery.workspaces.current.skills.tags.get.queryOptions())
   const normalizedTagSearch = tagSearch.trim()

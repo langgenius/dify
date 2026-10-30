@@ -218,15 +218,19 @@ function BadCaseRow({
   const [pending, setPending] = useState(false)
 
   const getBadCase = () =>
-    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get({
-      params: { bad_case_id: item.id, control_space_id: knowledgeSpaceId },
-    })
+    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get(
+      {
+        params: { bad_case_id: item.id, control_space_id: knowledgeSpaceId },
+      },
+      { context: { silent: true } },
+    )
   const openTrace = async (retest: boolean) => {
     setPending(true)
     try {
       const reference =
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.traceReference.get(
           { params: { bad_case_id: item.id, control_space_id: knowledgeSpaceId } },
+          { context: { silent: true } },
         )
       const search = new URLSearchParams(
         retest
@@ -244,14 +248,17 @@ function BadCaseRow({
     try {
       const badCase = await getBadCase()
       try {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch({
-          body: {
-            expected_revision: badCase.revision,
-            status: 'dismissed',
-            tags: badCase.tags,
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch(
+          {
+            body: {
+              expected_revision: badCase.revision,
+              status: 'dismissed',
+              tags: badCase.tags,
+            },
+            params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
           },
-          params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
-        })
+          { context: { silent: true } },
+        )
       } catch (mutationError) {
         const refreshed = await getBadCase().catch(() => undefined)
         if (refreshed?.status !== 'dismissed') throw mutationError

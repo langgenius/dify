@@ -158,9 +158,12 @@ const AppsContent = () => {
       hideTryAppPanel()
 
       try {
-        const detail = await consoleClient.explore.apps.byAppId.get({
-          params: { app_id: currApp.app_id },
-        })
+        const detail = await consoleClient.explore.apps.byAppId.get(
+          {
+            params: { app_id: currApp.app_id },
+          },
+          { context: { silent: true } },
+        )
         currentCreateAppModeRef.current = detail.mode
         const payload = {
           ...getTemplateImportSource(detail),

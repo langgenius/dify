@@ -228,7 +228,7 @@ export const useFormState = (currentDataset: DatasetDetailWithPartialMembersResp
         })
       }
 
-      await updateDatasetSetting({ datasetId: currentDataset.id, body })
+      await updateDatasetSetting({ datasetId: currentDataset.id, body }, { silent: true })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
 
       if (mutateDatasets) {

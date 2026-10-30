@@ -210,7 +210,9 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
     })
   const query = useInfiniteQuery(queryOptions)
   const deleteMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(
+      { context: { silent: true } },
+    ),
   )
   const items = query.data?.pages.flatMap((page) => page.data) ?? []
   const allSelected = items.length > 0 && selected.size === items.length

@@ -602,9 +602,12 @@ describe('AppCard', () => {
       await user.click(await screen.findByRole('option', { name: 'Tag 1' }))
       await user.keyboard('{Escape}')
       await waitFor(() =>
-        expect(api.bind).toHaveBeenCalledWith({
-          body: { tag_ids: ['tag1'], target_id: 'test-app-id', type: 'app' },
-        }),
+        expect(api.bind).toHaveBeenCalledWith(
+          {
+            body: { tag_ids: ['tag1'], target_id: 'test-app-id', type: 'app' },
+          },
+          { context: { silent: true } },
+        ),
       )
       expect(mockPush).not.toHaveBeenCalled()
     },

@@ -11,7 +11,7 @@ type UseSnippetDSLOptions = {
 
 export const useSnippetDSL = ({ snippetId, snippetName }: UseSnippetDSLOptions) => {
   const { t } = useTranslation(['snippet'])
-  const exportSnippetMutation = useExportSnippetMutation()
+  const exportSnippetMutation = useExportSnippetMutation({ silent: true })
 
   const handleExportDSL = useCallback(
     async (include = false, workflowId?: string) => {

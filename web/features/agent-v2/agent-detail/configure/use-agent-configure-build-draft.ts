@@ -298,7 +298,7 @@ export function useAgentConfigureBuildDraftActions({
     consoleQuery.agent.byAgentId.buildDraft.apply.post.mutationOptions(),
   )
   const discardBuildDraftMutation = useMutation(
-    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions(),
+    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: finalizeBuildChatRequest } = finalizeBuildChatMutation
   const { mutateAsync: applyBuildDraftRequest } = applyBuildDraftMutation
@@ -324,21 +324,10 @@ export function useAgentConfigureBuildDraftActions({
     if (!forceCheckoutBeforeNextBuildRunRef.current) return prepareBuildDraftBeforeRun()
 
     await saveDraft()
-    try {
-      const buildDraft = await forceCheckoutBuildDraft()
-      forceCheckoutBeforeNextBuildRunRef.current = false
-      return buildDraft
-    } catch (error) {
-      toast.error(tCommon(($) => $['api.actionFailed']))
-      throw error
-    }
-  }, [
-    cancelBuildDraftRefresh,
-    forceCheckoutBuildDraft,
-    prepareBuildDraftBeforeRun,
-    saveDraft,
-    tCommon,
-  ])
+    const buildDraft = await forceCheckoutBuildDraft()
+    forceCheckoutBeforeNextBuildRunRef.current = false
+    return buildDraft
+  }, [cancelBuildDraftRefresh, forceCheckoutBuildDraft, prepareBuildDraftBeforeRun, saveDraft])
 
   const startFreshBuildSession = useCallback(async () => {
     cancelBuildDraftRefresh()

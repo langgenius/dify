@@ -7121,9 +7121,6 @@
     }
   },
   "web/service/log.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-deprecated": {
       "count": 2
     }

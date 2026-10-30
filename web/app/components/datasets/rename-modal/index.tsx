@@ -130,10 +130,13 @@ function RenameDatasetForm({
         body.external_knowledge_id = externalKnowledgeId
         body.external_knowledge_api_id = externalKnowledgeApiId
       }
-      await updateDatasetSetting({
-        datasetId: dataset.id,
-        body,
-      })
+      await updateDatasetSetting(
+        {
+          datasetId: dataset.id,
+          body,
+        },
+        { silent: true },
+      )
       if (onSuccess) onSuccess()
       onClose()
     } catch {

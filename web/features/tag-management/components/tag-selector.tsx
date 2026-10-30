@@ -90,7 +90,7 @@ export const TagSelector = ({
 
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const { isPending: isCreatingTag, mutate: createTag } = useMutation(
-    consoleQuery.tags.post.mutationOptions(),
+    consoleQuery.tags.post.mutationOptions({ context: { silent: true } }),
   )
   const { data: tagList = [] } = useQuery(
     consoleQuery.tags.get.queryOptions({

@@ -198,7 +198,9 @@ function VersionRow({
   const [versionName, setVersionName] = useState(version.version_name)
   const [publishNote, setPublishNote] = useState(version.publish_note)
   const renameMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const restoreMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions({

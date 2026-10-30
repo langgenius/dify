@@ -379,6 +379,7 @@ export function HomeContent() {
       try {
         const appDetail = await queryClient.query({
           ...consoleQuery.explore.apps.byAppId.get.queryOptions({
+            context: { silent: true },
             input: { params: { app_id: appId } },
           }),
           staleTime: 0,
