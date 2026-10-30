@@ -1,6 +1,6 @@
 import type { StartNodeType } from '../../nodes/start/types'
+import type { useTestConnections } from '../test-connections/use-test-connections'
 import type { ChatWrapperRefType } from './index'
-import type { useTestConnections } from './use-test-connections'
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
@@ -17,10 +17,10 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
 import { useStore, useWorkflowStore } from '../../store'
 import { BlockEnum, WorkflowRunningStatus } from '../../types'
+import { TestConnectionSetup } from '../test-connections'
 import ConversationVariableModal from './conversation-variable-modal'
 import Empty from './empty'
 import { useChat } from './hooks'
-import { TestConnectionSetup } from './test-connections'
 import UserInput from './user-input'
 
 type ChatWrapperProps = {
@@ -57,7 +57,7 @@ const ChatWrapper = ({
   const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   const inputs = useStore((s) => s.inputs)
   const setInputs = useStore((s) => s.setInputs)
-  const { beforeSend: checkTestConnections, cancelPendingCheck } = testConnections
+  const { beforeRun: checkTestConnections, cancelPendingCheck } = testConnections
 
   const initialInputs = useMemo(() => {
     const initInputs: Record<string, any> = {}

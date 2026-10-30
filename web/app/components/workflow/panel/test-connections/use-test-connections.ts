@@ -10,21 +10,11 @@ import { workflowAppIdentityAtom } from '../../editor-resource/state'
 import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
 import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
-import { ToolCredentialSource } from '../../nodes/tool/types'
-import { BlockEnum } from '../../types'
-
-function getTestNodes(nodes: Node[]) {
-  return nodes.filter(
-    (node): node is Node<ToolNodeType> =>
-      node.data.type === BlockEnum.Tool &&
-      'credential_source' in node.data &&
-      node.data.credential_source === ToolCredentialSource.EndUser,
-  )
-}
+import { getTestCredentialNodes } from '../../nodes/tool/authorization'
 
 function getSelectionKey(nodes: Node[]) {
   return JSON.stringify(
-    getTestNodes(nodes).map(({ id, data }) => [
+    getTestCredentialNodes(nodes).map(({ id, data }) => [
       id,
       data.provider_type,
       data.provider_id,
@@ -60,12 +50,12 @@ export function useTestConnections() {
       context: { silent: true },
     }),
   )
-  const testNodes = getTestNodes(nodes)
+  const testNodes = getTestCredentialNodes(nodes)
   const selectionKey = getSelectionKey(nodes)
   const credentials = result?.key === selectionKey ? result.data.credentials : []
 
   const check = async () => {
-    if (!getTestNodes(graph.getNodes()).length) return true
+    if (!getTestCredentialNodes(graph.getNodes()).length) return true
     if (checkingRef.current || getNodesReadOnly()) return false
     checkingRef.current = true
     setChecking(true)
@@ -96,7 +86,7 @@ export function useTestConnections() {
 
   const onSelect = (nodeId: string, credentialId: string) => {
     if (checkingRef.current || getNodesReadOnly()) return
-    const node = getTestNodes(graph.getNodes()).find((item) => item.id === nodeId)
+    const node = getTestCredentialNodes(graph.getNodes()).find((item) => item.id === nodeId)
     if (!node) return
     handleNodeDataUpdate({ id: nodeId, data: { test_credential_id: credentialId } })
     void check()
@@ -107,7 +97,7 @@ export function useTestConnections() {
     if (nextOpen) void check()
   }
 
-  const beforeSend = async ({ openOnFailure }: { openOnFailure: boolean }) => {
+  const beforeRun = async ({ openOnFailure }: { openOnFailure: boolean }) => {
     const generation = generationRef.current
     const ready = await check()
     if (generation !== generationRef.current) return false
@@ -129,7 +119,7 @@ export function useTestConnections() {
     onOpenChange,
     onSelect,
     check,
-    beforeSend,
+    beforeRun,
     cancelPendingCheck,
   }
 }

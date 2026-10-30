@@ -104,6 +104,26 @@ describe('useWorkflowStartRunByCanEdit', () => {
     expect(workflowStore.getState().showInputsPanel).toBe(false)
   })
 
+  it('opens connection setup instead of auto-running when an EndUser tool needs test credentials', async () => {
+    canvasNodes = toNodes([
+      { id: 'start', data: { type: BlockEnum.Start, variables: [] } },
+      {
+        id: 'tool',
+        data: { type: BlockEnum.Tool, credential_source: 'end_user', provider_id: 'provider' },
+      },
+    ])
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
+
+    await act(async () => result.current.handleWorkflowStartRunInWorkflow())
+
+    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockHandleRun).not.toHaveBeenCalled()
+    expect(workflowStore.getState().showDebugAndPreviewPanel).toBe(true)
+    expect(workflowStore.getState().showInputsPanel).toBe(true)
+  })
+
   it('should open the input panel instead of running immediately when start inputs are required', async () => {
     canvasNodes = toNodes([
       { id: 'inset-s-1', data: { type: BlockEnum.Start, variables: [{ name: 'query' }] } },

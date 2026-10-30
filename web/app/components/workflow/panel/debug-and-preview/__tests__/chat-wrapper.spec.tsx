@@ -14,9 +14,9 @@ import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { useTestConnections } from '../../test-connections/use-test-connections'
 import ChatWrapperContent from '../chat-wrapper'
 import DebugAndPreview from '../index'
-import { useTestConnections } from '../use-test-connections'
 
 const mockUseChat = vi.hoisted(() => vi.fn())
 

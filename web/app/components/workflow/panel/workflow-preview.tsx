@@ -23,13 +23,19 @@ import HumanInputFilledFormList from './human-input-filled-form-list'
 import HumanInputFormList from './human-input-form-list'
 import InputsPanel from './inputs-panel'
 import { getPreviewPanelMaxWidth } from './panel-width'
+import TestConnections, { TestConnectionSetup } from './test-connections'
+import { useTestConnections } from './test-connections/use-test-connections'
 
 const WorkflowPreview = () => {
   const { t } = useTranslation(['common', 'runLog', 'workflow'])
   const panelId = useId()
   const appId = useAtomValue(editorAppIdAtom)
+  const connections = useTestConnections()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
+  const isRunActive =
+    workflowRunningData?.result.status === WorkflowRunningStatus.Running ||
+    workflowRunningData?.result.status === WorkflowRunningStatus.Paused
   const isListening = useStore((s) => s.isListening)
   const showInputsPanel = useStore((s) => s.showInputsPanel)
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
@@ -113,7 +119,7 @@ const WorkflowPreview = () => {
   return (
     <div
       id={panelId}
-      className="relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
+      className="relative flex h-full flex-col rounded-s-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{ width: `${panelWidth}px` }}
     >
       <ResizeHandle
@@ -124,26 +130,33 @@ const WorkflowPreview = () => {
         controls={panelId}
         label={t(($) => $['singleRun.testRun'], { ns: 'workflow' })}
         onResize={setPreviewPanelWidth}
-        className="absolute top-1/2 bottom-0 left-0.75 z-50 h-6 w-0.75 cursor-col-resize bg-state-base-handle"
+        className="absolute inset-s-0.75 top-1/2 bottom-0 z-50 h-6 w-0.75 cursor-col-resize bg-state-base-handle"
         onMouseDown={startResizing}
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
-        {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at, workflowRunningData?.result.status)}`}
-        <button
-          type="button"
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          onClick={() => handleCancelDebugAndPreviewPanel()}
-        >
-          <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
-        </button>
+        {`Test Run${workflowRunningData ? formatWorkflowRunIdentifier(workflowRunningData.result.finished_at, workflowRunningData.result.status) : ''}`}
+        <div className="flex items-center gap-1">
+          <TestConnections
+            connections={connections}
+            isResponding={isRunActive}
+            showTrigger={currentTab !== 'INPUT'}
+          />
+          <button
+            type="button"
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            onClick={() => handleCancelDebugAndPreviewPanel()}
+          >
+            <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
+          </button>
+        </div>
       </div>
       <div className="relative flex grow flex-col">
         <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
           {showInputsPanel && (
             <div
               className={cn(
-                'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
+                'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
                 currentTab === 'INPUT' && 'border-[rgb(21,94,239)]! text-text-secondary',
               )}
               onClick={() => switchTab('INPUT')}
@@ -153,7 +166,7 @@ const WorkflowPreview = () => {
           )}
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
+              'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'RESULT' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
@@ -166,7 +179,7 @@ const WorkflowPreview = () => {
           </div>
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
+              'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'DETAIL' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
@@ -179,7 +192,7 @@ const WorkflowPreview = () => {
           </div>
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
+              'me-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-4.5 font-semibold text-text-tertiary',
               currentTab === 'TRACING' && 'border-[rgb(21,94,239)]! text-text-secondary',
               !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
@@ -198,7 +211,23 @@ const WorkflowPreview = () => {
           )}
         >
           {currentTab === 'INPUT' && showInputsPanel && (
-            <InputsPanel onRun={() => switchTab('RESULT')} />
+            <>
+              {connections.nodes.length > 0 && (
+                <div className="px-4 pt-4">
+                  <TestConnectionSetup connections={connections} isResponding={isRunActive} />
+                </div>
+              )}
+              <InputsPanel
+                onRun={() => switchTab('RESULT')}
+                beforeRun={
+                  connections.nodes.length
+                    ? () => connections.beforeRun({ openOnFailure: false })
+                    : undefined
+                }
+                preparingRun={connections.checking}
+                disabled={connections.nodes.length > 0 && isRunActive}
+              />
+            </>
           )}
           {currentTab === 'RESULT' && (
             <div className="p-2">
@@ -240,7 +269,7 @@ const WorkflowPreview = () => {
                 workflowRunningData?.resultText &&
                 typeof workflowRunningData?.resultText === 'string' && (
                   <Button
-                    className={cn('mb-4 ml-4')}
+                    className={cn('ms-4 mb-4')}
                     onClick={() => {
                       const content = workflowRunningData?.resultText
                       if (typeof content === 'string') copy(content)

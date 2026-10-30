@@ -21,9 +21,9 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { useTestConnections } from '../../test-connections/use-test-connections'
 import ChatWrapperContent from '../chat-wrapper'
 import ConversationVariableModal from '../conversation-variable-modal'
-import { useTestConnections } from '../use-test-connections'
 import UserInput from '../user-input'
 
 function ChatWrapper(props: Omit<ComponentProps<typeof ChatWrapperContent>, 'connections'>) {

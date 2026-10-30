@@ -17,9 +17,9 @@ import { useResizePanel } from '../../nodes/_base/hooks/use-resize-panel'
 import { useSetDebugPreviewPanelWidth } from '../../persistence/local-storage-options'
 import { BlockEnum } from '../../types'
 import { getPreviewPanelMaxWidth } from '../panel-width'
+import TestConnections from '../test-connections'
+import { useTestConnections } from '../test-connections/use-test-connections'
 import ChatWrapper from './chat-wrapper'
-import TestConnections from './test-connections'
-import { useTestConnections } from './use-test-connections'
 
 export type ChatWrapperRefType = {
   handleRestart: () => void

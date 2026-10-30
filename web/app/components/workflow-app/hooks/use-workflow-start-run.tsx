@@ -7,6 +7,7 @@ import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { useWorkflowInteractions } from '@/app/components/workflow/hooks/use-workflow-panel-interactions'
+import { getTestCredentialNodes } from '@/app/components/workflow/nodes/tool/authorization'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
@@ -53,7 +54,11 @@ const useWorkflowStartRunBase = (
       return
     }
 
-    if (!startVariables.length && !fileSettings?.image?.enabled) {
+    if (
+      !startVariables.length &&
+      !fileSettings?.image?.enabled &&
+      !getTestCredentialNodes(nodes).length
+    ) {
       await doSyncWorkflowDraft()
       handleRun({ inputs: {}, files: [] })
       setShowDebugAndPreviewPanel(true)
