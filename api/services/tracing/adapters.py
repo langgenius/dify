@@ -27,7 +27,6 @@ from services.tracing.scopes import TraceScopes
 DELIVER_TASK = "tasks.trace_delivery_task.deliver_trace_event"
 RETRY_TASK = "tasks.trace_delivery_task.retry_trace_export"
 AGENT_TRACE_EXPORT_TASK = "tasks.application_trace_task.export_application_trace"
-TRACE_QUEUE = "ops_trace"
 PAYLOAD_PREFIX = "trace_payloads"
 INLINE_EVENT_BYTES = 256 * 1024
 # Node executions may be saved by another worker after their run row; give them time to land.
@@ -50,7 +49,7 @@ class CeleryTraceEmitter(TraceEmitter):
         else:
             envelope = {"event": encoded}
         countdown = WORKFLOW_SETTLE_SECONDS if event.payload.kind == "workflow_run" else 0
-        celery_app.send_task(DELIVER_TASK, args=(envelope,), queue=TRACE_QUEUE, countdown=countdown)
+        celery_app.send_task(DELIVER_TASK, args=(envelope,), countdown=countdown)
 
 
 class StoredPolicyTraceScopes(ExecutionTraceScopes):
@@ -89,7 +88,7 @@ class CeleryExportRetryQueue(ExportRetryQueue):
     def schedule(self, job: ExportJob, *, delay_seconds: int) -> None:
         key = payload_key(datetime.now(UTC), "exports", uuid4().hex)
         storage.save(key, job.model_dump_json().encode())
-        celery_app.send_task(RETRY_TASK, args=(key,), queue=TRACE_QUEUE, countdown=delay_seconds)
+        celery_app.send_task(RETRY_TASK, args=(key,), countdown=delay_seconds)
 
 
 class WorkspaceTracingSecretCipher(TracingSecretCipher):
@@ -107,7 +106,7 @@ class WorkspaceTracingSecretCipher(TracingSecretCipher):
 
 
 def schedule_agent_trace_export(run_id: str) -> None:
-    celery_app.send_task(AGENT_TRACE_EXPORT_TASK, args=(run_id,), queue=TRACE_QUEUE)
+    celery_app.send_task(AGENT_TRACE_EXPORT_TASK, args=(run_id,))
 
 
 def send_to_enterprise_telemetry(record: BaseTraceInfo) -> None:

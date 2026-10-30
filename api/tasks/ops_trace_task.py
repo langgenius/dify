@@ -2,7 +2,8 @@
 
 Producers from before an upgrade may still enqueue this task. Its payload uses
 the previous record format, so the message is dropped and its payload deleted;
-``sweep_trace_payloads`` removes any payload this task never sees.
+only old workers can export it. Keep new workers off the old queue until it has
+drained. The new pipeline's sweeper leaves legacy payloads alone.
 """
 
 import logging

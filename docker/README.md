@@ -99,6 +99,18 @@ this is intentional fail-closed behavior. Do not add a proxy route, set
 `KNOWLEDGE_FS_ENABLED=true`, or send product traffic until readiness returns `200` and the migration
 and per-Workspace cutover gates are complete.
 
+### Ops tracing rolling upgrades
+
+New tracing tasks use `OPS_TRACE_QUEUE=ops_trace_v2` by default. Set it consistently on the API,
+workers, and Beat in `docker/envs/core-services/shared.env` (or `docker/.env`). Default worker
+subscriptions follow this value; explicit `CELERY_QUEUES` or `CELERY_WORKER_QUEUES` lists must
+include it and exclude legacy `ops_trace` while old workers are draining.
+
+Keep an old tracing worker pool on `ops_trace` until old producers stop and their queued, active, reserved, scheduled, and
+retry tasks finish. To return to `ops_trace`, first remove old workers, have new workers consume
+both queues, then change `OPS_TRACE_QUEUE` on all new processes and drain `ops_trace_v2` before
+removing its consumers. See the [complete rollout sequence](../api/providers/trace/README.md#rolling-upgrade-from-the-previous-pipeline).
+
 ### KnowledgeFS lifecycle and upgrade workers
 
 The standard Dify worker consumes `knowledge_fs_lifecycle` for provisioning, deletion, initial

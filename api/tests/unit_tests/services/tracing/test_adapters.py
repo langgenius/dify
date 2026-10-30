@@ -12,7 +12,6 @@ from services.tracing.adapters import (
     DELIVER_TASK,
     INLINE_EVENT_BYTES,
     RETRY_TASK,
-    TRACE_QUEUE,
     WORKFLOW_SETTLE_SECONDS,
     CeleryExportRetryQueue,
     CeleryTraceEmitter,
@@ -31,10 +30,10 @@ CORRELATION = TraceCorrelation(
 
 class _Broker:
     def __init__(self) -> None:
-        self.sent: list[tuple[str, tuple[object, ...], str]] = []
+        self.sent: list[tuple[str, tuple[object, ...], str | None]] = []
         self.countdowns: list[int] = []
 
-    def send_task(self, name: str, *, args: tuple[object, ...], queue: str, countdown: int = 0) -> None:
+    def send_task(self, name: str, *, args: tuple[object, ...], queue: str | None = None, countdown: int = 0) -> None:
         self.sent.append((name, args, queue))
         self.countdowns.append(countdown)
 
@@ -102,7 +101,7 @@ def test_small_events_travel_inline(broker: _Broker, storage: _Storage) -> None:
     CeleryTraceEmitter().emit(event)
 
     ((name, (envelope,), queue),) = broker.sent
-    assert (name, queue) == (DELIVER_TASK, TRACE_QUEUE)
+    assert (name, queue) == (DELIVER_TASK, None)
     assert isinstance(envelope, dict)
     assert TraceEvent.model_validate_json(envelope["event"]) == event
     assert storage.files == {}
@@ -169,7 +168,7 @@ def test_export_retries_persist_the_trace_and_run_after_their_delay(broker: _Bro
     CeleryExportRetryQueue().schedule(job, delay_seconds=20)
 
     ((name, (key,), queue),) = broker.sent
-    assert (name, queue, broker.countdowns) == (RETRY_TASK, TRACE_QUEUE, [20])
+    assert (name, queue, broker.countdowns) == (RETRY_TASK, None, [20])
     assert isinstance(key, str)
     assert key.startswith("trace_payloads/")
     assert "/exports/" in key
@@ -179,7 +178,7 @@ def test_export_retries_persist_the_trace_and_run_after_their_delay(broker: _Bro
 def test_agent_trace_exports_run_on_the_trace_queue(broker: _Broker) -> None:
     schedule_agent_trace_export("run-1")
 
-    assert broker.sent == [(AGENT_TRACE_EXPORT_TASK, ("run-1",), TRACE_QUEUE)]
+    assert broker.sent == [(AGENT_TRACE_EXPORT_TASK, ("run-1",), None)]
 
 
 @pytest.mark.parametrize(

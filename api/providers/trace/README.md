@@ -84,7 +84,7 @@ Stored configurations keep the provider's fields at the top level, with `secret(
    - moderation, tools, retrieval, conversation naming and suggested questions.
 
    A scope exists only when the app has tracing enabled or enterprise telemetry is on.
-2. `tasks.trace_delivery_task` hands each event on the `ops_trace` queue to `services.tracing.delivery.TraceDeliveryService`:
+2. `tasks.trace_delivery_task` hands each event on `OPS_TRACE_QUEUE` (default `ops_trace_v2`) to `services.tracing.delivery.TraceDeliveryService`:
    - `repositories.trace_record_repository` reloads the records through the event's workspace.
    - Enterprise telemetry receives every record.
    - The Agent trace collector (`services.tracing.service`) takes the executions it manages.
@@ -92,3 +92,37 @@ Stored configurations keep the provider's fields at the top level, with `secret(
 3. A retryable failure stores only the built trace and schedules that send again. Payloads that an interrupted delivery leaves in storage are removed daily by `sweep_trace_payloads`.
 
 The tracing services depend only on the ports they declare: records, destinations, the provider catalog, secret encryption, the retry queue and the Agent trace ledger. `extensions/application_services/tracing.py` is the one place that chooses their adapters (`services/tracing/adapters.py`, `services/tracing/egress.py`, `services/tracing/registry.py` and the tracing repositories) and reads tracing configuration.
+
+## Rolling upgrade from the previous pipeline
+
+The new task names and payloads are incompatible with old workers. Use separate queues while
+both versions run. `OPS_TRACE_QUEUE` defaults to `ops_trace_v2` for event delivery, export retries,
+Agent trace exports/reconciliation, payload sweeping, and the sandbox metering task that previously
+shared `ops_trace`. Celery routing is configured in `extensions/ext_celery.py`.
+This isolates tracing tasks; other queues and database migrations still need their normal
+compatibility checks when running both versions.
+
+1. Apply the database migrations and start new workers with `OPS_TRACE_QUEUE=ops_trace_v2`.
+   The Docker and development worker launchers include this queue by default and exclude
+   `ops_trace`. Explicit `CELERY_QUEUES`, `CELERY_WORKER_QUEUES`, or `--queues` lists must select
+   `ops_trace_v2` for the new pool. Keep the old tracing worker pool subscribed only to `ops_trace`.
+2. Roll out the new API and all other producers with the same setting. Replace the old Beat
+   scheduler with the new one; do not run duplicate schedules. Allow old in-flight requests,
+   workflow jobs, and their buffered trace producers to finish before stopping them.
+3. Let the old workers finish exporting their tasks. Check broker messages **and** worker
+   active, reserved/prefetched, scheduled/ETA, and retry deliveries. An empty broker queue alone
+   does not prove it has drained. Then stop the old workers gracefully and confirm no old
+   producers or workers remain. The new sweeper never deletes legacy `ops_trace/` payloads.
+4. Keeping `ops_trace_v2` is supported. To restore the old queue name, first have **new-version**
+   workers consume both `ops_trace_v2,ops_trace`. Set `OPS_TRACE_QUEUE=ops_trace` on every new API,
+   worker, and Beat process and roll them out. Keep consumers for both queues until the new
+   queue, active tasks, reservations, ETA tasks, and retries drain; a redelivery can retain its
+   original queue. Then remove `ops_trace_v2` from worker subscriptions.
+
+Do not use the new version's retired `process_trace_tasks` handler to drain old messages: it can
+only discard them, not export the legacy format. Do not purge queues or legacy payloads during
+the transition. Returning to old binaries after publishing new-format tasks also requires
+keeping new-version consumers available until those tasks finish.
+
+Saved provider configuration and credentials need no changes. Queue migration is deployment
+configuration, shared by the API, workers, and Beat; it does not change app tracing settings.

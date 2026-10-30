@@ -1420,6 +1420,11 @@ class MultiModalTransferConfig(BaseSettings):
 
 
 class OpsTraceConfig(BaseSettings):
+    OPS_TRACE_QUEUE: str = Field(
+        default="ops_trace_v2",
+        pattern=r"^[A-Za-z0-9_.-]+$",
+        description="Celery queue for tracing and sandbox metering; isolate new workers during rolling upgrades.",
+    )
     OPS_AGENT_TRACE_ENABLED: bool = Field(
         default=False, description="Enable application-scoped Agent tracing collection and delivery."
     )

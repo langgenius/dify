@@ -159,6 +159,11 @@ def init_app(app: DifyApp) -> Celery:
         timezone=pytz.timezone(dify_config.LOG_TZ or "UTC"),
         task_ignore_result=True,
         task_annotations=dify_config.CELERY_TASK_ANNOTATIONS,
+        task_routes={
+            "tasks.trace_delivery_task.*": {"queue": dify_config.OPS_TRACE_QUEUE},
+            "tasks.application_trace_task.*": {"queue": dify_config.OPS_TRACE_QUEUE},
+            "schedule.collect_agent_sandbox_usage.collect_agent_sandbox_usage": {"queue": dify_config.OPS_TRACE_QUEUE},
+        },
     )
 
     if dify_config.CELERY_BACKEND == "redis":
@@ -210,7 +215,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.knowledge_fs_background_tasks",  # local-engine tasks on dedicated prefork queues
         "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
         "tasks.trace_delivery_task",  # trace delivery and provider export retries
-        "tasks.ops_trace_task",  # drains trace tasks enqueued before the pipeline upgrade
+        "tasks.ops_trace_task",  # retired endpoint; old workers must drain pre-upgrade tasks
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 

@@ -1,4 +1,4 @@
-"""Celery entry points of the trace pipeline, on the ``ops_trace`` queue.
+"""Celery entry points of the trace pipeline, routed by ``OPS_TRACE_QUEUE``.
 
 Delivery is at most once per sink: an event is redelivered only while its
 records are not persisted yet, or when the Agent collector could not decide
@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 REDELIVERY_LIMIT = 10
 PAYLOAD_RETENTION = timedelta(days=2)
-_LEGACY_PAYLOAD_PREFIX = "ops_trace/"
 _PAYLOAD_DAY = re.compile(rf"{PAYLOAD_PREFIX}/(\d{{4}}-\d{{2}}-\d{{2}})/")
 
 
@@ -48,7 +47,7 @@ def _delete_quietly(key: str) -> None:
         logger.warning("Trace payload cleanup failed: key=%s", key, exc_info=True)
 
 
-@shared_task(queue="ops_trace", bind=True, max_retries=REDELIVERY_LIMIT)
+@shared_task(bind=True, max_retries=REDELIVERY_LIMIT)
 def deliver_trace_event(self, envelope: dict[str, Any]) -> None:
     payload_key = envelope.get("payload_key")
     redelivering = False
@@ -84,7 +83,7 @@ def deliver_trace_event(self, envelope: dict[str, Any]) -> None:
             _delete_quietly(payload_key)
 
 
-@shared_task(queue="ops_trace")
+@shared_task
 def retry_trace_export(job_key: str) -> None:
     try:
         job = ExportJob.model_validate_json(storage.load(job_key))
@@ -98,18 +97,16 @@ def retry_trace_export(job_key: str) -> None:
         _delete_quietly(job_key)
 
 
-@shared_task(queue="ops_trace")
+@shared_task
 def sweep_trace_payloads() -> None:
-    """Delete payloads a crashed delivery left behind, and payloads of the previous pipeline."""
+    """Delete expired new-pipeline payloads; legacy workers still own their payloads during an upgrade."""
     cutoff = (datetime.now(UTC) - PAYLOAD_RETENTION).date()
     # Directory listings need the trailing slash on some storage backends.
-    for prefix in (f"{PAYLOAD_PREFIX}/", _LEGACY_PAYLOAD_PREFIX):
-        try:
-            keys = storage.scan(prefix, files=True)
-        except (FileNotFoundError, NotImplementedError):
-            continue
-        for key in keys:
-            if not key.startswith(prefix):
-                continue
-            if prefix == _LEGACY_PAYLOAD_PREFIX or _expired(key, cutoff):
-                _delete_quietly(key)
+    prefix = f"{PAYLOAD_PREFIX}/"
+    try:
+        keys = storage.scan(prefix, files=True)
+    except (FileNotFoundError, NotImplementedError):
+        return
+    for key in keys:
+        if key.startswith(prefix) and _expired(key, cutoff):
+            _delete_quietly(key)

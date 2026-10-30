@@ -20,6 +20,12 @@ def test_ops_trace_export_attempts_must_be_positive() -> None:
         OpsTraceConfig(OPS_TRACE_EXPORT_MAX_ATTEMPTS=0)
 
 
+@pytest.mark.parametrize("queue", ["", " ", "ops_trace,ops_trace_v2", "ops trace", "ops_trace\n"])
+def test_ops_trace_queue_requires_one_shell_safe_queue_name(queue: str) -> None:
+    with pytest.raises(ValidationError, match="OPS_TRACE_QUEUE"):
+        OpsTraceConfig(OPS_TRACE_QUEUE=queue)
+
+
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
@@ -113,6 +119,7 @@ def test_dify_config() -> None:
     assert config.APP_MAX_EXECUTION_TIME == 3600
     assert config.WORKFLOW_MAX_EXECUTION_TIME == 3600
     assert config.OPS_TRACE_EXPORT_MAX_ATTEMPTS == 6
+    assert config.OPS_TRACE_QUEUE == "ops_trace_v2"
     assert config.ENABLE_TRACE_PAYLOAD_SWEEP_TASK is True
     assert config.GRAPH_ENGINE_MAX_WORKERS == 10
 

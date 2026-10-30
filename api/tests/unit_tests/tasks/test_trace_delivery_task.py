@@ -262,7 +262,7 @@ def test_unreadable_export_jobs_are_dropped(delivery: _Delivery, storage: _Stora
     assert storage.files == {}
 
 
-def test_sweep_removes_expired_and_legacy_payloads_only(storage: _Storage) -> None:
+def test_sweep_preserves_legacy_payloads_while_old_workers_drain(storage: _Storage) -> None:
     today = datetime.now(UTC)
     fresh = payload_key(today, "events", "fresh")
     expired = payload_key(today - timedelta(days=3), "events", "expired")
@@ -271,4 +271,6 @@ def test_sweep_removes_expired_and_legacy_payloads_only(storage: _Storage) -> No
 
     sweep_trace_payloads.run()
 
-    assert sorted(storage.files) == sorted([fresh, "trace_payloads/not-a-date/x.json", "other/keep.json"])
+    assert sorted(storage.files) == sorted(
+        [fresh, "trace_payloads/not-a-date/x.json", "ops_trace/app-1/legacy.json", "other/keep.json"]
+    )
