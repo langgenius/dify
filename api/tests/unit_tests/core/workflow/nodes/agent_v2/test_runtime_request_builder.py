@@ -1502,6 +1502,54 @@ def test_previous_node_remote_url_file_mapping_is_not_truncated_in_workflow_cont
     assert "...[truncated]" not in _workflow_user_prompt(result)
 
 
+def _long_previous_node_text_context(long_text: str) -> WorkflowAgentRuntimeBuildContext:
+    class LongTextVariablePool(FakeVariablePool):
+        def get(self, selector):
+            if list(selector) == ["previous-node", "text"]:
+                return StringSegment(value=long_text)
+            return super().get(selector)
+
+    context = replace(_context(), variable_pool=LongTextVariablePool())
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Use {{#previous-node.text#}}",
+        }
+    )
+    return context
+
+
+def test_previous_node_output_exceeding_default_limit_is_truncated_in_workflow_context():
+    long_text = "x" * 2500
+
+    result = WorkflowAgentRuntimeRequestBuilder().build(_long_previous_node_text_context(long_text))
+
+    prompt = _workflow_user_prompt(result)
+    assert "...[truncated]" in prompt
+    assert long_text not in prompt
+
+
+def test_previous_node_output_limit_is_configurable(monkeypatch: pytest.MonkeyPatch):
+    apply_config_overrides(monkeypatch, WORKFLOW_AGENT_PREVIOUS_NODE_OUTPUT_MAX_CHARS=4000)
+    long_text = "x" * 2500
+
+    result = WorkflowAgentRuntimeRequestBuilder().build(_long_previous_node_text_context(long_text))
+
+    prompt = _workflow_user_prompt(result)
+    assert long_text in prompt
+    assert "...[truncated]" not in prompt
+
+
+def test_previous_node_output_truncation_can_be_disabled(monkeypatch: pytest.MonkeyPatch):
+    apply_config_overrides(monkeypatch, WORKFLOW_AGENT_PREVIOUS_NODE_OUTPUT_MAX_CHARS=0)
+    long_text = "x" * 2500
+
+    result = WorkflowAgentRuntimeRequestBuilder().build(_long_previous_node_text_context(long_text))
+
+    prompt = _workflow_user_prompt(result)
+    assert long_text in prompt
+    assert "...[truncated]" not in prompt
+
+
 # ── Agent config declaration layer ────────────────────────────────────────────
 
 

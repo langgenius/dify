@@ -459,8 +459,9 @@ class WorkflowAgentRuntimeRequestBuilder:
             return json.dumps(prompt_payload, ensure_ascii=False, separators=(",", ":"))
 
         text = str(value)
-        if len(text) > 2000:
-            return text[:2000] + "...[truncated]"
+        max_chars = dify_config.WORKFLOW_AGENT_PREVIOUS_NODE_OUTPUT_MAX_CHARS
+        if max_chars > 0 and len(text) > max_chars:
+            return text[:max_chars] + "...[truncated]"
         return text
 
     @classmethod
