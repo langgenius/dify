@@ -704,6 +704,7 @@ ROUTES: tuple[Route, ...] = (
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route("skills.import", "POST", "/workspaces/{workspace_id}/skills/imports", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route("agents.list", "GET", "/workspaces/{workspace_id}/agents", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route(
         "agent_run.run",
         "POST",
@@ -1373,6 +1374,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "workspaces.members.update_role": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "plugins.install": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "skills.list": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "agents.list": dict(_ACCOUNT_MEMBER_NO_ROLE),
     "skills.publish": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "skills.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "model_providers.credential.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
@@ -1691,6 +1693,7 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "account.sessions.revoke_one": _REQ_ACCOUNT_FULL,
     "apps.describe": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_APP_DESCRIBE[1:]),
     "apps.list": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_ACCOUNT_APPS_READ_MEMBER[1:]),
+    "agents.list": _REQ_ACCOUNT_APPS_READ_MEMBER,
     "workspaces.list": (
         CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
         *_REQ_ACCOUNT_WORKSPACE_READ[1:],
@@ -2269,6 +2272,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ),
     ("get", "/workspaces/{workspace_id}/knowledge-bases"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/skills"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/agents"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}"): frozenset({"200", "default"}),
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}/versions"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}/archive"): frozenset({"200", "422", "default"}),

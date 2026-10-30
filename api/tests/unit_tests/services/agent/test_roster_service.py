@@ -57,7 +57,7 @@ from services.agent.errors import (
     InvalidComposerConfigError,
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
-from services.agent.roster_service import AgentRosterService
+from services.agent.roster_service import AgentRosterService, RosterAgentEntry
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.agent.workspace_service import AgentWorkspaceService
 from services.app_service import AppListParams, AppService
@@ -7407,3 +7407,141 @@ def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.Monkey
     persisted = sqlite_session.get(WorkflowAgentNodeBinding, result.id)
     assert persisted is not None
     assert persisted.node_job_config_dict == job.model_dump(mode="json")
+
+
+def _openapi_agent_app(
+    session: Session,
+    key: str,
+    *,
+    published: bool = False,
+    enable_api: bool = True,
+    scope: AgentScope = AgentScope.ROSTER,
+) -> None:
+    agent = _agent(
+        agent_id=f"agent-{key}",
+        name=f"Agent {key}",
+        scope=scope,
+        source=AgentSource.AGENT_APP,
+        app_id=f"app-{key}",
+    )
+    session.add_all(
+        [
+            make_app(
+                app_id=f"app-{key}",
+                name=f"App {key}",
+                mode=AppMode.AGENT,
+                enable_api=enable_api,
+                created_by="account-1",
+            ),
+            agent,
+        ]
+    )
+    if published:
+        agent.active_config_snapshot_id = f"snapshot-{key}"
+        agent.active_config_is_published = True
+        session.add(
+            AgentConfigRevision(
+                tenant_id="tenant-1",
+                agent_id=agent.id,
+                current_snapshot_id=agent.active_config_snapshot_id,
+                revision=1,
+                operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+            )
+        )
+
+
+@pytest.fixture
+def openapi_roster(sqlite_session: Session) -> Session:
+    _openapi_agent_app(sqlite_session, "published", published=True)
+    _openapi_agent_app(sqlite_session, "draft")
+    _openapi_agent_app(sqlite_session, "api-off", published=True, enable_api=False)
+    _openapi_agent_app(sqlite_session, "workflow-only", scope=AgentScope.WORKFLOW_ONLY)
+    sqlite_session.commit()
+    return sqlite_session
+
+
+def _list_openapi_agents(
+    session: Session,
+    *,
+    published: bool | None = None,
+    accessible_agent_ids: set[str] | None = None,
+    name: str | None = None,
+) -> tuple[list[RosterAgentEntry], int]:
+    return AgentRosterService(session).list_openapi_roster_agents(
+        tenant_id="tenant-1",
+        account_id="account-9",
+        page=1,
+        limit=20,
+        name=name,
+        published=published,
+        accessible_agent_ids=accessible_agent_ids,
+    )
+
+
+@pytest.mark.parametrize(
+    ("published", "accessible_agent_ids", "expected"),
+    [
+        (None, None, {"agent-published", "agent-draft"}),
+        (True, None, {"agent-published"}),
+        (False, None, {"agent-draft"}),
+        (None, {"agent-draft"}, {"agent-draft"}),
+        (None, {"agent-draft", "agent-api-off", "agent-workflow-only"}, {"agent-draft"}),
+        (True, {"agent-draft"}, set()),
+        (None, set(), set()),
+    ],
+    ids=["unfiltered", "published", "drafts", "accessible", "accessible-hidden", "none-match", "empty-access"],
+)
+def test_list_openapi_roster_agents_filters(
+    openapi_roster: Session,
+    published: bool | None,
+    accessible_agent_ids: set[str] | None,
+    expected: set[str],
+) -> None:
+    entries, total = _list_openapi_agents(
+        openapi_roster, published=published, accessible_agent_ids=accessible_agent_ids
+    )
+
+    assert {entry.agent_id for entry in entries} == expected
+    assert total == len(expected)
+
+
+def test_list_openapi_roster_agents_maps_the_entry(openapi_roster: Session) -> None:
+    entries, _ = _list_openapi_agents(openapi_roster, name="App published")
+
+    [entry] = entries
+    assert (
+        entry.agent_id,
+        entry.app_id,
+        entry.name,
+        entry.description,
+        entry.role,
+        entry.published,
+        entry.service_api_enabled,
+    ) == ("agent-published", "app-published", "App published", "", "assistant", True, True)
+
+
+def test_list_openapi_roster_agents_reports_an_unpublished_agent(openapi_roster: Session) -> None:
+    entries, _ = _list_openapi_agents(openapi_roster, name="App draft")
+
+    assert [entry.published for entry in entries] == [False]
+
+
+def test_list_openapi_roster_agents_drops_an_app_without_a_roster_agent(
+    openapi_roster: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(AgentRosterService, "load_app_backing_agents_by_app_id", lambda _self, **_kwargs: {})
+
+    entries, total = _list_openapi_agents(openapi_roster)
+
+    assert (entries, total) == ([], 2)
+
+
+def test_list_openapi_roster_agents_writes_nothing(openapi_roster: Session) -> None:
+    conversations = select(AgentDebugConversation)
+    before = openapi_roster.scalars(conversations).all()
+
+    _list_openapi_agents(openapi_roster)
+
+    assert not openapi_roster.new
+    assert not openapi_roster.dirty
+    assert openapi_roster.scalars(conversations).all() == before

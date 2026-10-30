@@ -104,6 +104,27 @@ class AppListResponse(PaginationEnvelope[AppListRow]):
     pass
 
 
+class AgentListQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(None, max_length=200, description="Filter by a name substring")
+    published: bool | None = Field(None, description="true lists published Agents, false lists Agents never published")
+
+
+class AgentListRow(BaseModel):
+    agent_id: str
+    app_id: str
+    name: str
+    description: str
+    role: str
+    published: bool
+    updated_at: datetime
+
+
+class AgentListResponse(PaginationEnvelope[AgentListRow]):
+    pass
+
+
 class PermittedExternalAppsListResponse(PaginationEnvelope[AppListRow]):
     pass
 
