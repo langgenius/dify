@@ -47,3 +47,13 @@ def test_missing_required_field_is_an_invalid_response(respond_with: RespondWith
 
     with pytest.raises(BillingUpstreamInvalidResponseError):
         billing.quota_get_balance(tenant_id="t1", feature_key="api_rate_limit", bucket="")
+
+
+def test_omitted_optional_field_parses_as_none(respond_with: RespondWith) -> None:
+    respond_with(httpx.Response(200, json={"size": 1.25, "limit": "50"}))
+
+    quota = billing.subscription_get_subscription_vector_space(tenant_id="t1", bypass_cache=False)
+
+    assert quota.size == 1.25
+    assert quota.limit == 50
+    assert quota.usage_unknown is None

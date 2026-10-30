@@ -1436,8 +1436,7 @@
         "description": "Vector space quota (size is double because dataset sizes are fractional MB)",
         "required": [
           "size",
-          "limit",
-          "usage_unknown"
+          "limit"
         ]
       },
       "VerifyEducationIdentityReply": {

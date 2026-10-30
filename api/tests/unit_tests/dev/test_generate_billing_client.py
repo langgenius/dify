@@ -68,12 +68,13 @@ def test_snapshot_keeps_only_allowlisted_operations_and_reachable_schemas() -> N
 
 
 @pytest.mark.usefixtures("subscription_info_only")
-def test_snapshot_marks_every_field_required_and_messages_nullable() -> None:
+def test_snapshot_marks_presence_from_protojson_rules() -> None:
     schema = generator.build_snapshot("billing", _source_spec(), "abc123")["components"]["schemas"][
         "GetSubscriptionInfoReply"
     ]
 
-    assert schema["required"] == ["plan", "paid_period_end", "members", "usage_unknown", "tags"]
+    # Proto3 optional fields are omitted when unset, so only they stay out of required.
+    assert schema["required"] == ["plan", "paid_period_end", "members", "tags"]
     assert schema["properties"]["members"] == {"allOf": [{"$ref": "#/components/schemas/Quota"}], "nullable": True}
     assert "nullable" not in schema["properties"]["plan"]
 
@@ -87,7 +88,7 @@ def test_rendered_module_types_fields_and_operations() -> None:
     assert 'plan: Literal["sandbox", "team"]' in source
     assert "paid_period_end: int\n" in source
     assert "members: Quota | None\n" in source
-    assert "usage_unknown: bool | None\n" in source
+    assert "usage_unknown: bool | None = None\n" in source
     assert "def subscription_get_subscription_info() -> GetSubscriptionInfoReply:" in source
     assert '"/subscription/info",' in source
 

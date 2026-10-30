@@ -91,7 +91,7 @@ class SubscriptionQuota(BillingModel):
 class VectorSpaceQuota(BillingModel):
     size: float
     limit: int
-    usage_unknown: bool | None
+    usage_unknown: bool | None = None
 
 
 class GetSubscriptionInfoReply(BillingModel):

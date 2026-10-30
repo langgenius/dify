@@ -11,9 +11,10 @@ dify is public, and every other dify-saas endpoint stays out of this repository.
 The dify-saas checkout defaults to `../dify-saas` next to the dify repository; override it with
 `DIFY_SAAS_REPO`.
 
-Kratos serializes with protojson `EmitUnpopulated: true`, so every field is present on the wire.
-The snapshot step records that: scalars, enums, lists, and maps are required and non-null; message
-fields and proto3 `optional` fields (annotated `nullable` in dify-saas) are required but nullable.
+Kratos serializes with protojson `EmitUnpopulated: true`, which the snapshot step records as presence:
+scalars, enums, lists, and maps are required and non-null; message fields are required but nullable
+(unset messages are emitted as null). Proto3 `optional` fields (annotated `nullable` in dify-saas) are
+synthetic oneofs, which protojson omits when unset, so they are optional and nullable.
 """
 
 from __future__ import annotations
@@ -167,15 +168,18 @@ def _ref_names(node: Any) -> set[str]:
 def _annotate_presence(schema: JsonObject) -> JsonObject:
     properties: dict[str, JsonObject] = schema.get("properties", {})
     annotated: dict[str, JsonObject] = {}
+    required: list[str] = []
     for name, field in properties.items():
         if "$ref" in field:
             # OpenAPI 3.0 ignores siblings of $ref, so nullable refs are wrapped in allOf.
             annotated[name] = {"allOf": [{"$ref": field["$ref"]}], "nullable": True}
         else:
             annotated[name] = field
+        if "$ref" in field or not field.get("nullable"):
+            required.append(name)
     result = {**schema, "properties": annotated}
-    if annotated:
-        result["required"] = list(annotated)
+    if required:
+        result["required"] = required
     return result
 
 
