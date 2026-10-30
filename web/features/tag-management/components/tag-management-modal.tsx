@@ -10,7 +10,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -32,6 +32,7 @@ export const TagManagementModal = ({
   onTagsChange,
 }: TagManagementModalProps) => {
   const { t } = useTranslation(['common'])
+  const dialogRef = useRef<HTMLDivElement>(null)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
   const { data: tagList = [] } = useQuery(
@@ -79,7 +80,7 @@ export const TagManagementModal = ({
 
   return (
     <Dialog open={show} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="w-150">
+      <DialogContent ref={dialogRef} className="w-150">
         <DialogHeader>
           <DialogTitle>{t(($) => $['tag.manageTags'], { ns: 'common' })}</DialogTitle>
           <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
@@ -96,7 +97,12 @@ export const TagManagementModal = ({
             onBlur={createNewTag}
           />
           {tagList.map((tag) => (
-            <TagItemEditor key={tag.id} tag={tag} onTagsChange={onTagsChange} />
+            <TagItemEditor
+              key={tag.id}
+              tag={tag}
+              onTagsChange={onTagsChange}
+              finalFocus={dialogRef}
+            />
           ))}
         </DialogBody>
       </DialogContent>
