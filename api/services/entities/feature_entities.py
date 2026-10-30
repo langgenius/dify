@@ -149,6 +149,7 @@ class FeatureModel(FeatureResponseModel):
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
     enable_skill: bool = True
+    enable_knowledge_fs: bool = False
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     # Indexing tasks still consume this internally; Console queries vector usage separately.
@@ -164,6 +165,9 @@ class FeatureModel(FeatureResponseModel):
     api_rate_limit: Quota = Quota(usage=0, limit=5000, reset_date=0)
     # Controls whether email delivery is allowed for HumanInput nodes.
     human_input_email_delivery_enabled: bool = False
+    # Centrally managed IM channels and default bindings cannot be edited in Console.
+    # Workspaces may override bindings without changing the shared channel credentials.
+    im_centrally_managed: bool = False
     knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
     # Workspace and model-provider credit responses own the public reset-date contract.
     next_credit_reset_date: int = Field(default=0, exclude=True)

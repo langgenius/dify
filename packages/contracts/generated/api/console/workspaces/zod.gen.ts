@@ -112,6 +112,98 @@ export const zEndpointUpdatePayload = z.object({
 })
 
 /**
+ * ChannelConflictResponse
+ */
+export const zChannelConflictResponse = z.object({
+  code: z.enum(['provider_configuration_updated', 'replacement_required']),
+  message: z.string(),
+  status: z.literal(409).optional().default(409),
+})
+
+/**
+ * ExternalContactCreateRequest
+ *
+ * Request body for creating or updating one external contact.
+ */
+export const zExternalContactCreateRequest = z.object({
+  avatar: z.string().nullish(),
+  email: z.string(),
+  name: z.string().min(1).max(255),
+})
+
+/**
+ * ExternalContactUpdateRequest
+ *
+ * Request body for creating or updating one external contact.
+ */
+export const zExternalContactUpdateRequest = z.object({
+  avatar: z.string().nullish(),
+  email: z.string().nullish(),
+  name: z.string().min(1).max(255).nullish(),
+})
+
+/**
+ * AddPlatformContactsRequest
+ *
+ * Request body for adding one or more organization members as platform contacts.
+ */
+export const zAddPlatformContactsRequest = z.object({
+  candidate_ids: z.array(z.string()).min(1),
+})
+
+/**
+ * RemoveContactsRequest
+ *
+ * Request body for batch-removing platform or external contacts.
+ */
+export const zRemoveContactsRequest = z.object({
+  contact_ids: z.array(z.string()).min(1),
+})
+
+/**
+ * RemoveContactsResponse
+ *
+ * Response body returned after batch-removing contacts.
+ */
+export const zRemoveContactsResponse = z.object({
+  removed_contact_ids: z.array(z.string()),
+})
+
+/**
+ * DeleteIMBindingResponse
+ */
+export const zDeleteImBindingResponse = z.record(z.string(), z.unknown())
+
+/**
+ * IMContactSyncErrorResponse
+ *
+ * Stable expected application failure returned by IM sync and binding routes.
+ */
+export const zImContactSyncErrorResponse = z.object({
+  code: z.string(),
+  message: z.string(),
+  status: z.int(),
+})
+
+/**
+ * CreateIMBindingRequest
+ *
+ * Request body for setting one workspace-scoped IM override.
+ */
+export const zCreateImBindingRequest = z.object({
+  identity_id: z.string(),
+})
+
+/**
+ * SetContactIMOverrideRequest
+ *
+ * Request body for setting one workspace-scoped IM override.
+ */
+export const zSetContactImOverrideRequest = z.object({
+  identity_id: z.string(),
+})
+
+/**
  * MemberInvitePayload
  */
 export const zMemberInvitePayload = z.object({
@@ -1372,6 +1464,127 @@ export const zSnippetImportResponse = z.object({
   warnings: z.array(zDslImportWarning),
 })
 
+export const zSenderName = z.string().min(1).max(255)
+
+/**
+ * ChannelStatus
+ */
+export const zChannelStatus = z.enum([
+  'configured',
+  'connected',
+  'connection_failure',
+  'invalid_credentials',
+])
+
+/**
+ * ChannelTestResponse
+ */
+export const zChannelTestResponse = z.object({
+  status: zChannelStatus,
+  status_description: z.string(),
+})
+
+export const zChannelId = z.string().min(1)
+
+/**
+ * ChannelDeleteResponse
+ */
+export const zChannelDeleteResponse = z.object({
+  channel_id: zChannelId,
+})
+
+export const zConfigVersion = z.string().min(1)
+
+/**
+ * UnchangedInput
+ *
+ * Retain the addressed saved field; valid only for updates and saved tests.
+ */
+export const zUnchangedInput = z.object({
+  type: z.literal('unchanged'),
+})
+
+/**
+ * HumanInputContactSummary
+ *
+ * A trimmed version of `HumanInputContact` that only includes the fields needed for workflow orchestration.
+ */
+export const zHumanInputContactSummary = z.object({
+  avatar_url: z.string().optional().default(''),
+  created_at: z.int(),
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * BatchGetContactsResponse
+ */
+export const zBatchGetContactsResponse = z.object({
+  data: z.array(zHumanInputContactSummary),
+})
+
+/**
+ * NodeDataMigrationBlocker
+ *
+ * Stable node-scoped reason why the backend cannot produce lossless v2 data.
+ */
+export const zNodeDataMigrationBlocker = z.object({
+  code: z.enum([
+    'configured-disabled-method',
+    'conflicting-email-templates',
+    'invalid-default-value',
+    'invalid-email',
+    'invalid-email-configuration',
+    'missing-recipients',
+    'unresolved-member',
+    'unsupported-delivery-method',
+    'unsupported-version',
+  ]),
+  method_id: z.string().nullish(),
+  node_id: z.string(),
+  node_title: z.string(),
+  value: z.string().nullish(),
+})
+
+/**
+ * NodeDataMigrationFailureResponse
+ *
+ * Whole-batch failure response without partial converted node data.
+ */
+export const zNodeDataMigrationFailureResponse = z.object({
+  blockers: z.array(zNodeDataMigrationBlocker),
+  code: z
+    .literal('hitl_node_data_migration_failure')
+    .optional()
+    .default('hitl_node_data_migration_failure'),
+  message: z.string(),
+  status: z.literal(400).optional().default(400),
+})
+
+/**
+ * OrganizationCandidate
+ *
+ * One organization member candidate that may become a platform contact.
+ */
+export const zOrganizationCandidate = z.object({
+  avatar_url: z.string().nullish(),
+  email: z.string(),
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * ListOrganizationCandidatesResponse
+ *
+ * Paginated response body for organization candidate search.
+ */
+export const zListOrganizationCandidatesResponse = z.object({
+  data: z.array(zOrganizationCandidate),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
 /**
  * MemberInviteSuccessResponse
  */
@@ -2425,6 +2638,554 @@ export const zAccountWithRoleListResponse = z.object({
 })
 
 /**
+ * EmailProviderType
+ *
+ * Email provider supported by organization-level Human Input delivery.
+ */
+export const zEmailProviderType = z.enum(['resend'])
+
+/**
+ * IMProvider
+ *
+ * IM provider supported by Human Input contact and delivery flows.
+ */
+export const zImProvider = z.enum(['ding_talk', 'feishu', 'lark', 'ms_teams', 'slack', 'we_com'])
+
+/**
+ * ChannelProvider
+ */
+export const zChannelProvider = z.object({
+  connection_mode: z.literal('custom_app').optional().default('custom_app'),
+  provider: z.union([zEmailProviderType, zImProvider]),
+})
+
+/**
+ * ListChannelProvidersResponse
+ */
+export const zListChannelProvidersResponse = z.object({
+  email_providers: z.array(zChannelProvider),
+  im_providers: z.array(zChannelProvider),
+})
+
+/**
+ * ChannelSummary
+ */
+export const zChannelSummary = z.object({
+  config_version: zConfigVersion,
+  created_at: z.int(),
+  display_identifier: z.string(),
+  id: zChannelId,
+  kind: z.enum(['email', 'im']),
+  provider: z.union([zEmailProviderType, zImProvider]),
+  status: zChannelStatus,
+  status_description: z.string(),
+  updated_at: z.int(),
+  webhook_url: z.string().nullable(),
+})
+
+/**
+ * ListChannelsResponse
+ */
+export const zListChannelsResponse = z.object({
+  channels: z.array(zChannelSummary),
+})
+
+/**
+ * EmailChannelMutationResponse
+ */
+export const zEmailChannelMutationResponse = z.object({
+  summary: zChannelSummary,
+})
+
+/**
+ * IMChannelMutationResponse
+ */
+export const zImChannelMutationResponse = z.object({
+  summary: zChannelSummary,
+})
+
+/**
+ * ResendCredentials
+ */
+export const zResendCredentials = z.object({
+  provider: z.literal('resend').optional().default('resend'),
+})
+
+export const zEmailProviderCredentials = zResendCredentials
+
+/**
+ * EmailChannelCreatePayload
+ */
+export const zEmailChannelCreatePayload = z.object({
+  credentials: zEmailProviderCredentials,
+  sender_email: z.string(),
+  sender_name: zSenderName,
+})
+
+/**
+ * EmailChannelTestPayload
+ */
+export const zEmailChannelTestPayload = z.object({
+  credentials: zEmailProviderCredentials,
+  sender_email: z.string(),
+  sender_name: zSenderName,
+})
+
+/**
+ * Redacted
+ *
+ * A configured credential whose stored value is omitted.
+ */
+export const zRedacted = z.object({
+  type: z.literal('redacted').optional().default('redacted'),
+})
+
+/**
+ * ResendCredentialsResponse
+ */
+export const zResendCredentialsResponse = z.object({
+  api_key: zRedacted,
+  provider: z.literal('resend'),
+})
+
+/**
+ * EmailChannelDetailResponse
+ */
+export const zEmailChannelDetailResponse = z.object({
+  credentials: zResendCredentialsResponse,
+  sender_email: z.string(),
+  sender_name: z.string(),
+  summary: zChannelSummary,
+})
+
+/**
+ * ResendCredentialsUpdateInput
+ */
+export const zResendCredentialsUpdateInput = z.object({
+  api_key: zUnchangedInput,
+  provider: z.literal('resend'),
+})
+
+export const zEmailProviderCredentialsUpdateInput = zResendCredentialsUpdateInput
+
+/**
+ * EmailChannelUpdatePayload
+ */
+export const zEmailChannelUpdatePayload = z.object({
+  credentials: zEmailProviderCredentialsUpdateInput,
+  expected_config_version: zConfigVersion,
+  sender_email: z.union([z.string(), zUnchangedInput]),
+  sender_name: z.union([zSenderName, zUnchangedInput]),
+})
+
+/**
+ * FeishuCredentialsInput
+ */
+export const zFeishuCredentialsInput = z.object({
+  app_id: z.string().min(1),
+  provider: z.literal('feishu'),
+})
+
+/**
+ * LarkCredentialsInput
+ */
+export const zLarkCredentialsInput = z.object({
+  app_id: z.string().min(1),
+  provider: z.literal('lark'),
+})
+
+/**
+ * SlackCredentialsInput
+ */
+export const zSlackCredentialsInput = z.object({
+  client_id: z.string().min(1),
+  provider: z.literal('slack'),
+})
+
+/**
+ * DingTalkCredentialsInput
+ */
+export const zDingTalkCredentialsInput = z.object({
+  client_id: z.string().min(1),
+  corp_id: z.string().min(1),
+  provider: z.literal('ding_talk'),
+})
+
+/**
+ * MSTeamsCredentialsInput
+ */
+export const zMsTeamsCredentialsInput = z.object({
+  client_id: z.string().min(1),
+  provider: z.literal('ms_teams'),
+  tenant_id: z.string().min(1),
+})
+
+/**
+ * WeComCredentialsInput
+ */
+export const zWeComCredentialsInput = z.object({
+  agent_id: z.string().min(1),
+  corp_id: z.string().min(1),
+  provider: z.literal('we_com'),
+})
+
+export const zImProviderCredentialsInput = z.discriminatedUnion('provider', [
+  zFeishuCredentialsInput,
+  zLarkCredentialsInput,
+  zSlackCredentialsInput,
+  zDingTalkCredentialsInput,
+  zMsTeamsCredentialsInput,
+  zWeComCredentialsInput,
+])
+
+/**
+ * IMChannelCreatePayload
+ */
+export const zImChannelCreatePayload = z.object({
+  credentials: zImProviderCredentialsInput,
+})
+
+/**
+ * IMChannelTestPayload
+ */
+export const zImChannelTestPayload = z.object({
+  credentials: zImProviderCredentialsInput,
+})
+
+/**
+ * IMChannelReplacementPayload
+ */
+export const zImChannelReplacementPayload = z.object({
+  credentials: zImProviderCredentialsInput,
+  expected_config_version: zConfigVersion,
+})
+
+/**
+ * FeishuLarkCredentialsResponse
+ */
+export const zFeishuLarkCredentialsResponse = z.object({
+  app_id: z.string(),
+  app_secret: zRedacted,
+  encrypt_key: zRedacted.nullable(),
+  provider: z.enum(['feishu', 'lark']),
+  verification_token: zRedacted.nullable(),
+})
+
+/**
+ * SlackCredentialsResponse
+ */
+export const zSlackCredentialsResponse = z.object({
+  app_token: zRedacted.nullable(),
+  bot_token: zRedacted,
+  client_id: z.string(),
+  client_secret: zRedacted,
+  provider: z.literal('slack'),
+  signing_secret: zRedacted,
+})
+
+/**
+ * DingTalkCredentialsResponse
+ */
+export const zDingTalkCredentialsResponse = z.object({
+  client_id: z.string(),
+  client_secret: zRedacted,
+  corp_id: z.string(),
+  provider: z.literal('ding_talk'),
+})
+
+/**
+ * MSTeamsCredentialsResponse
+ */
+export const zMsTeamsCredentialsResponse = z.object({
+  client_id: z.string(),
+  client_secret: zRedacted,
+  provider: z.literal('ms_teams'),
+  tenant_id: z.string(),
+})
+
+/**
+ * WeComCredentialsResponse
+ */
+export const zWeComCredentialsResponse = z.object({
+  agent_id: z.string(),
+  corp_id: z.string(),
+  provider: z.literal('we_com'),
+  secret: zRedacted,
+})
+
+export const zImProviderCredentialsResponse = z.discriminatedUnion('provider', [
+  zFeishuLarkCredentialsResponse.extend({ provider: z.literal('feishu') }),
+  zFeishuLarkCredentialsResponse.extend({ provider: z.literal('lark') }),
+  zSlackCredentialsResponse,
+  zDingTalkCredentialsResponse,
+  zMsTeamsCredentialsResponse,
+  zWeComCredentialsResponse,
+])
+
+/**
+ * IMChannelDetailResponse
+ */
+export const zImChannelDetailResponse = z.object({
+  credentials: zImProviderCredentialsResponse,
+  summary: zChannelSummary,
+})
+
+/**
+ * HumanInputContactType
+ *
+ * Concrete contact classification resolved in one workspace.
+ */
+export const zHumanInputContactType = z.enum(['external', 'platform', 'workspace'])
+
+/**
+ * ContactOption
+ *
+ * Least-privilege contact projection returned to workflow editors.
+ */
+export const zContactOption = z.object({
+  avatar_url: z.string().nullish(),
+  email: z.string().nullish(),
+  id: z.string(),
+  name: z.string(),
+  type: zHumanInputContactType,
+})
+
+/**
+ * ListContactOptionsResponse
+ *
+ * Paginated editor-safe contact picker response.
+ */
+export const zListContactOptionsResponse = z.object({
+  data: z.array(zContactOption),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * BatchGetContactOptionsResponse
+ */
+export const zBatchGetContactOptionsResponse = z.object({
+  data: z.array(zContactOption),
+})
+
+/**
+ * ContactIMIdentityDetail
+ *
+ * Display fields for the identity selected by an effective contact binding.
+ */
+export const zContactImIdentityDetail = z.object({
+  display_name: z.string().nullable(),
+  email: z.string().nullable(),
+  id: z.string(),
+  provider_user_id: z.string(),
+})
+
+/**
+ * IMBindingScope
+ *
+ * Resolution scope of a contact-to-IM-identity binding.
+ */
+export const zImBindingScope = z.enum(['organization', 'workspace'])
+
+/**
+ * ContactIMBindingDetail
+ */
+export const zContactImBindingDetail = z.object({
+  id: z.string(),
+  identity: zContactImIdentityDetail,
+  provider: zImProvider,
+  scope: zImBindingScope,
+})
+
+/**
+ * IMBinding
+ */
+export const zImBinding = z.object({
+  id: z.string(),
+  provider: zImProvider,
+  scope: zImBindingScope,
+})
+
+/**
+ * HumanInputContact
+ *
+ * One contact entity returned by contact-related APIs.
+ */
+export const zHumanInputContact = z.object({
+  avatar_url: z.string().optional().default(''),
+  created_at: z.int(),
+  email: z.string().nullish(),
+  id: z.string(),
+  im_bindings: z.array(zImBinding).optional(),
+  name: z.string(),
+  type: zHumanInputContactType,
+})
+
+/**
+ * ListContactsResponse
+ *
+ * Paginated response body for contact list APIs.
+ */
+export const zListContactsResponse = z.object({
+  data: z.array(zHumanInputContact),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * ExternalContactCreateResponse
+ */
+export const zExternalContactCreateResponse = z.object({
+  contact: zHumanInputContact,
+})
+
+/**
+ * ExternalContactUpdateResponse
+ */
+export const zExternalContactUpdateResponse = z.object({
+  contact: zHumanInputContact,
+})
+
+/**
+ * AddPlatformContactsResponse
+ *
+ * Response body for adding platform contacts.
+ */
+export const zAddPlatformContactsResponse = z.object({
+  data: z.array(zHumanInputContact),
+})
+
+/**
+ * GetContactResponse
+ *
+ * Response body for one contact resolved in the current workspace scope.
+ */
+export const zGetContactResponse = z.object({
+  contact: zHumanInputContact,
+  im_binding_details: z.array(zContactImBindingDetail),
+})
+
+/**
+ * CreateIMBindingResponse
+ *
+ * Response body returned after binding one IM identity to the workspace.
+ */
+export const zCreateImBindingResponse = z.object({
+  contact: zHumanInputContact,
+})
+
+/**
+ * ResetContactIMOverrideResponse
+ *
+ * Response body returned after resetting one contact IM override.
+ */
+export const zResetContactImOverrideResponse = z.object({
+  contact: zHumanInputContact,
+})
+
+/**
+ * SetContactIMOverrideResponse
+ *
+ * Response body returned after setting one contact IM override.
+ */
+export const zSetContactImOverrideResponse = z.object({
+  contact: zHumanInputContact,
+})
+
+/**
+ * IMIdentityBindingStatus
+ *
+ * Whether a synchronized IM identity is currently bound.
+ */
+export const zImIdentityBindingStatus = z.enum(['bound', 'unbound'])
+
+/**
+ * IMIdentity
+ *
+ * One synced IM identity that may be bound or overridden.
+ */
+export const zImIdentity = z.object({
+  binding_status: zImIdentityBindingStatus,
+  display_name: z.string().nullish(),
+  email: z.string().nullish(),
+  id: z.string(),
+  provider: zImProvider,
+  provider_user_id: z.string(),
+})
+
+/**
+ * ListIMIdentitiesResponse
+ *
+ * Paginated response body for synced IM identity search.
+ */
+export const zListImIdentitiesResponse = z.object({
+  data: z.array(zImIdentity),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * IMSyncRunResultCounts
+ *
+ * Aggregate result counts for one IM sync run.
+ */
+export const zImSyncRunResultCounts = z.object({
+  added: z.int(),
+  failed: z.int(),
+  not_matched: z.int(),
+  removed: z.int(),
+  skipped: z.int(),
+})
+
+/**
+ * IMSyncRunStatus
+ *
+ * Lifecycle state of a manual IM directory synchronization.
+ */
+export const zImSyncRunStatus = z.enum(['failed', 'queued', 'running', 'succeeded'])
+
+/**
+ * IMSyncRun
+ *
+ * One IM sync run snapshot.
+ *
+ * The latest-only UI displays ``finished_at`` as the explicit sync time. The
+ * transport contract intentionally does not expose a ``started_by`` actor.
+ */
+export const zImSyncRun = z.object({
+  channel_config_version: z.int().gte(1),
+  channel_id: z.string(),
+  error_message: z.string().nullish(),
+  finished_at: z.int().nullish(),
+  id: z.string(),
+  provider: zImProvider,
+  result_counts: zImSyncRunResultCounts,
+  started_at: z.int().nullish(),
+  status: zImSyncRunStatus,
+})
+
+/**
+ * CreateIMSyncRunResponse
+ *
+ * Response body returned after creating one sync run.
+ */
+export const zCreateImSyncRunResponse = z.object({
+  run: zImSyncRun,
+})
+
+/**
+ * GetLatestIMSyncRunResponse
+ *
+ * Response body for reading the latest IM sync run summary.
+ */
+export const zGetLatestImSyncRunResponse = z.object({
+  run: zImSyncRun,
+})
+
+/**
  * ConfigurateMethod
  *
  * Enum class for configurate method of provider model.
@@ -3310,6 +4071,292 @@ export const zEndpointDeclarationResponse = z.object({
   path: z.string(),
 })
 
+export const zRequiredSecret = z.string().min(1)
+
+export const zOptionalSecret = z.string().min(1).nullable()
+
+export const zIdentifier = z.string().min(1).regex(/\S/)
+
+/**
+ * FeishuCredentialsUpdateInput
+ */
+export const zFeishuCredentialsUpdateInput = z.object({
+  app_id: z.union([zIdentifier, zUnchangedInput]),
+  app_secret: zUnchangedInput,
+  encrypt_key: zUnchangedInput,
+  provider: z.literal('feishu'),
+  verification_token: zUnchangedInput,
+})
+
+/**
+ * LarkCredentialsUpdateInput
+ */
+export const zLarkCredentialsUpdateInput = z.object({
+  app_id: z.union([zIdentifier, zUnchangedInput]),
+  app_secret: zUnchangedInput,
+  encrypt_key: zUnchangedInput,
+  provider: z.literal('lark'),
+  verification_token: zUnchangedInput,
+})
+
+/**
+ * SlackCredentialsUpdateInput
+ */
+export const zSlackCredentialsUpdateInput = z.object({
+  app_token: zUnchangedInput,
+  bot_token: zUnchangedInput,
+  client_id: z.union([zIdentifier, zUnchangedInput]),
+  client_secret: zUnchangedInput,
+  provider: z.literal('slack'),
+  signing_secret: zUnchangedInput,
+})
+
+/**
+ * DingTalkCredentialsUpdateInput
+ */
+export const zDingTalkCredentialsUpdateInput = z.object({
+  client_id: z.union([zIdentifier, zUnchangedInput]),
+  client_secret: zUnchangedInput,
+  corp_id: z.union([zIdentifier, zUnchangedInput]),
+  provider: z.literal('ding_talk'),
+})
+
+/**
+ * WeComCredentialsUpdateInput
+ */
+export const zWeComCredentialsUpdateInput = z.object({
+  agent_id: z.union([z.string(), zUnchangedInput]),
+  corp_id: z.union([zIdentifier, zUnchangedInput]),
+  provider: z.literal('we_com'),
+  secret: zUnchangedInput,
+})
+
+export const zUuidString = z
+  .string()
+  .regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)
+
+/**
+ * MSTeamsCredentialsUpdateInput
+ */
+export const zMsTeamsCredentialsUpdateInput = z.object({
+  client_id: z.union([zUuidString, zUnchangedInput]),
+  client_secret: zUnchangedInput,
+  provider: z.literal('ms_teams'),
+  tenant_id: z.union([zUuidString, zUnchangedInput]),
+})
+
+export const zImProviderCredentialsUpdateInput = z.discriminatedUnion('provider', [
+  zFeishuCredentialsUpdateInput,
+  zLarkCredentialsUpdateInput,
+  zSlackCredentialsUpdateInput,
+  zDingTalkCredentialsUpdateInput,
+  zMsTeamsCredentialsUpdateInput,
+  zWeComCredentialsUpdateInput,
+])
+
+/**
+ * IMChannelUpdatePayload
+ */
+export const zImChannelUpdatePayload = z.object({
+  credentials: zImProviderCredentialsUpdateInput,
+  expected_config_version: zConfigVersion,
+})
+
+/**
+ * IMDirectoryEntry
+ *
+ * Normalized provider-side account observed during an IM sync run.
+ *
+ * The entry is run-scoped input to identity and binding reconciliation. It does
+ * not represent a stable Dify identity and must not be referenced by bindings
+ * or runtime authorization. Sync results may retain a snapshot for display,
+ * diagnostics, and audit; durable references use IMIdentity or IMBinding IDs.
+ */
+export const zImDirectoryEntry = z.object({
+  display_name: z.string().nullish(),
+  email: z.string().nullish(),
+  provider_user_id: z.string(),
+})
+
+/**
+ * IMSyncResultAdded
+ */
+export const zImSyncResultAdded = z.object({
+  contact: zHumanInputContactSummary,
+  entry: zImDirectoryEntry,
+  type: z.literal('added').optional().default('added'),
+})
+
+/**
+ * IMSyncResultFailed
+ */
+export const zImSyncResultFailed = z.object({
+  entry: zImDirectoryEntry.nullish(),
+  reason: z.string(),
+  type: z.literal('failed').optional().default('failed'),
+})
+
+/**
+ * IMSyncResultNotMatched
+ */
+export const zImSyncResultNotMatched = z.object({
+  entry: zImDirectoryEntry.nullish(),
+  type: z.literal('not_matched').optional().default('not_matched'),
+})
+
+/**
+ * IMSyncResultSkipped
+ */
+export const zImSyncResultSkipped = z.object({
+  contact: zHumanInputContactSummary,
+  entry: zImDirectoryEntry.nullish(),
+  type: z.literal('skipped').optional().default('skipped'),
+})
+
+/**
+ * IMIdentitySnapshot
+ *
+ * Last known persistent IM identity state retained by a sync result.
+ */
+export const zImIdentitySnapshot = z.object({
+  display_name: z.string().nullish(),
+  email: z.string().nullish(),
+  identity_id: z.string(),
+  provider_user_id: z.string(),
+})
+
+/**
+ * IMSyncRemovalReason
+ *
+ * Stable reason for removing or replacing a current IM binding.
+ */
+export const zImSyncRemovalReason = z.enum([
+  'binding_invalidated',
+  'binding_replaced',
+  'not_present_in_directory',
+])
+
+/**
+ * IMSyncResultRemoved
+ */
+export const zImSyncResultRemoved = z.object({
+  contact: zHumanInputContactSummary,
+  last_known_identity: zImIdentitySnapshot,
+  reason: zImSyncRemovalReason,
+  type: z.literal('removed').optional().default('removed'),
+})
+
+/**
+ * IMSyncResultItem
+ *
+ * One paginated reconciliation result entry for the latest sync run.
+ */
+export const zImSyncResultItem = z.object({
+  id: z.string(),
+  result: z.discriminatedUnion('type', [
+    zImSyncResultAdded,
+    zImSyncResultRemoved,
+    zImSyncResultFailed,
+    zImSyncResultNotMatched,
+    zImSyncResultSkipped,
+  ]),
+})
+
+/**
+ * ListLatestIMSyncRunResultsResponse
+ *
+ * Page-based latest-run results without cursor state or a repeated run summary.
+ */
+export const zListLatestImSyncRunResultsResponse = z.object({
+  data: z.array(zImSyncResultItem),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * ErrorStrategy
+ */
+export const zErrorStrategy = z.enum(['default-value', 'fail-branch'])
+
+/**
+ * RetryConfig
+ *
+ * node retry config
+ */
+export const zRetryConfig = z.object({
+  max_retries: z.int().optional().default(0),
+  retry_enabled: z.boolean().optional().default(false),
+  retry_interval: z.int().optional().default(0),
+})
+
+/**
+ * TimeoutUnit
+ *
+ * Timeout unit for form expiration.
+ */
+export const zTimeoutUnit = z.enum(['day', 'hour'])
+
+export const zNodeType = z.string()
+
+/**
+ * MessageTemplateConfig
+ */
+export const zMessageTemplateConfig = z.object({
+  body: z.string(),
+  subject: z.string(),
+})
+
+/**
+ * Contact
+ */
+export const zContact = z.object({
+  contact_id: z.string(),
+  type: z.literal('contact').optional().default('contact'),
+})
+
+/**
+ * DynamicEmail
+ */
+export const zDynamicEmail = z.object({
+  selector: z.array(z.string()),
+  type: z.literal('dynamic_email').optional().default('dynamic_email'),
+})
+
+/**
+ * OnetimeEmail
+ */
+export const zOnetimeEmail = z.object({
+  email: z.string(),
+  type: z.literal('onetime_email').optional().default('onetime_email'),
+})
+
+/**
+ * Initiator
+ */
+export const zInitiator = z.object({
+  type: z.literal('initiator').optional().default('initiator'),
+})
+
+/**
+ * AllWorkspaceContacts
+ *
+ * Migration marker preserving legacy whole-workspace recipient intent.
+ *
+ * Runtime expansion is deliberately owned by the recipient resolver rather
+ * than the node-data migration helper.
+ */
+export const zAllWorkspaceContacts = z.object({
+  type: z.literal('all_workspace_contacts').optional().default('all_workspace_contacts'),
+})
+
+/**
+ * TimeoutUnit
+ *
+ * Timeout unit for form expiration.
+ */
+export const zTimeoutUnitStrictStrictFalse = z.enum(['day', 'hour'])
+
 /**
  * UnaddedModelConfiguration
  *
@@ -3704,6 +4751,87 @@ export const zEndpointListItemResponse = z.object({
  */
 export const zEndpointListResponse = z.object({
   endpoints: z.array(zEndpointListItemResponse),
+})
+
+/**
+ * DefaultValueType
+ */
+export const zDefaultValueType = z.enum([
+  'array[file]',
+  'array[number]',
+  'array[object]',
+  'array[string]',
+  'number',
+  'object',
+  'string',
+])
+
+/**
+ * DefaultValue
+ */
+export const zDefaultValue = z.object({
+  key: z.string(),
+  type: zDefaultValueType,
+  value: z.unknown().optional(),
+})
+
+/**
+ * _InteractiveSurfaceDeliveryConfig
+ */
+export const zInteractiveSurfaceDeliveryConfig = z.record(z.string(), z.unknown())
+
+/**
+ * InteractiveSurfaceDeliveryMethod
+ */
+export const zInteractiveSurfaceDeliveryMethod = z.object({
+  config: zInteractiveSurfaceDeliveryConfig.optional(),
+  enabled: z.boolean().optional().default(true),
+  id: z.uuid().optional(),
+  type: z.literal('webapp').optional().default('webapp'),
+})
+
+/**
+ * ButtonStyle
+ *
+ * Button styles for user actions.
+ */
+export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
+
+/**
+ * UserActionConfig
+ *
+ * User action configuration.
+ */
+export const zUserActionConfig = z.object({
+  button_style: zButtonStyle.optional().default('default'),
+  id: z
+    .string()
+    .max(20)
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
+  title: z.string().max(100),
+})
+
+/**
+ * DebugChannel
+ *
+ * Delivery selection for editor debugging, resolved to current channel configuration.
+ */
+export const zDebugChannel = z.enum([
+  'ding_talk',
+  'email',
+  'feishu',
+  'lark',
+  'ms_teams',
+  'slack',
+  'we_com',
+])
+
+/**
+ * DebugModeConfig
+ */
+export const zDebugModeConfig = z.object({
+  channels: z.array(zDebugChannel),
+  enabled: z.boolean().optional().default(false),
 })
 
 /**
@@ -4489,6 +5617,287 @@ export const zPluginBundleDependency = z.object({
 export const zPluginBundleUploadResponse = z.array(zPluginBundleDependency)
 
 /**
+ * InstantMessageProvider
+ */
+export const zInstantMessageProvider = z.enum(['discord', 'slack', 'teams'])
+
+/**
+ * FileType
+ */
+export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
+
+/**
+ * FileTransferMethod
+ */
+export const zFileTransferMethod = z.enum([
+  'datasource_file',
+  'local_file',
+  'remote_url',
+  'tool_file',
+])
+
+/**
+ * FileInputConfig
+ */
+export const zFileInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  output_variable_name: z.string(),
+  type: z.literal('file').optional().default('file'),
+})
+
+/**
+ * FileListInputConfig
+ */
+export const zFileListInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  number_limits: z.int().gte(0).optional().default(0),
+  output_variable_name: z.string(),
+  type: z.literal('file-list').optional().default('file-list'),
+})
+
+/**
+ * BoundRecipient
+ */
+export const zBoundRecipient = z.object({
+  reference_id: z.string(),
+  type: z.literal('member').optional().default('member'),
+})
+
+/**
+ * ExternalRecipient
+ */
+export const zExternalRecipient = z.object({
+  email: z.string(),
+  type: z.literal('external').optional().default('external'),
+})
+
+/**
+ * EmailRecipients
+ */
+export const zEmailRecipients = z.object({
+  include_bound_group: z.boolean().optional().default(false),
+  items: z.array(z.union([zBoundRecipient, zExternalRecipient])).optional(),
+})
+
+/**
+ * EmailDeliveryConfig
+ */
+export const zEmailDeliveryConfig = z.object({
+  body: z.string(),
+  debug_mode: z.boolean().optional().default(false),
+  recipients: zEmailRecipients,
+  subject: z.string(),
+})
+
+/**
+ * EmailDeliveryMethod
+ */
+export const zEmailDeliveryMethod = z.object({
+  config: zEmailDeliveryConfig,
+  enabled: z.boolean().optional().default(true),
+  id: z.uuid().optional(),
+  type: z.literal('email').optional().default('email'),
+})
+
+/**
+ * InstantMessageChannelRecipient
+ */
+export const zInstantMessageChannelRecipient = z.object({
+  channel_id: z.string(),
+  type: z.literal('channel').optional().default('channel'),
+})
+
+/**
+ * InstantMessageUserRecipient
+ */
+export const zInstantMessageUserRecipient = z.object({
+  type: z.literal('user').optional().default('user'),
+  user_id: z.string(),
+})
+
+/**
+ * InstantMessageRecipients
+ */
+export const zInstantMessageRecipients = z.object({
+  items: z
+    .array(z.union([zInstantMessageChannelRecipient, zInstantMessageUserRecipient]))
+    .optional(),
+})
+
+/**
+ * InstantMessageDeliveryConfig
+ */
+export const zInstantMessageDeliveryConfig = z.object({
+  message: z.string().nullish(),
+  provider: zInstantMessageProvider,
+  recipients: zInstantMessageRecipients.optional(),
+})
+
+/**
+ * InstantMessageDeliveryMethod
+ */
+export const zInstantMessageDeliveryMethod = z.object({
+  config: zInstantMessageDeliveryConfig,
+  enabled: z.boolean().optional().default(true),
+  id: z.uuid().optional(),
+  type: z.literal('im').optional().default('im'),
+})
+
+/**
+ * ValueSourceType
+ *
+ * ValueSourceType records whether the value comes from a static setting
+ * in form definition, or a variable while the workflow is running.
+ */
+export const zValueSourceType = z.enum(['constant', 'variable'])
+
+/**
+ * StringSource
+ *
+ * Default configuration for form inputs.
+ */
+export const zStringSource = z.object({
+  selector: z.array(z.string()).optional(),
+  type: zValueSourceType,
+  value: z.string().optional().default(''),
+})
+
+/**
+ * ParagraphInputConfig
+ *
+ * Form input definition.
+ */
+export const zParagraphInputConfig = z.object({
+  default: zStringSource.nullish(),
+  output_variable_name: z.string(),
+  type: z.literal('paragraph').optional().default('paragraph'),
+})
+
+/**
+ * StringListSource
+ */
+export const zStringListSource = z.object({
+  selector: z.array(z.string()).optional(),
+  type: zValueSourceType,
+  value: z.array(z.string()).optional(),
+})
+
+/**
+ * SelectInputConfig
+ */
+export const zSelectInputConfig = z.object({
+  option_source: zStringListSource,
+  output_variable_name: z.string(),
+  type: z.literal('select').optional().default('select'),
+})
+
+export const zFormInputConfig = z.discriminatedUnion('type', [
+  zParagraphInputConfig,
+  zSelectInputConfig,
+  zFileInputConfig,
+  zFileListInputConfig,
+])
+
+/**
+ * HumanInputNodeDataFull
+ */
+export const zLegacyHitLv1NodeData = z.object({
+  default_value: z.array(zDefaultValue).nullish(),
+  delivery_methods: z
+    .array(
+      z.union([
+        zInteractiveSurfaceDeliveryMethod,
+        zEmailDeliveryMethod,
+        zInstantMessageDeliveryMethod,
+      ]),
+    )
+    .optional(),
+  desc: z.string().nullish(),
+  error_strategy: zErrorStrategy.nullish(),
+  form_content: z.string().optional().default(''),
+  inputs: z.array(zFormInputConfig).optional(),
+  retry_config: zRetryConfig.optional(),
+  timeout: z.int().optional().default(36),
+  timeout_unit: zTimeoutUnit.optional().default('hour'),
+  title: z.string().optional().default(''),
+  type: zNodeType.optional().default('human-input'),
+  user_actions: z.array(zUserActionConfig).optional(),
+  version: z.string().optional().default('1'),
+})
+
+/**
+ * NodeDataMigrationInput
+ *
+ * One legacy node submitted through the frontend migration adapter boundary.
+ */
+export const zNodeDataMigrationInput = z.object({
+  node_data: zLegacyHitLv1NodeData,
+  node_id: z.string(),
+})
+
+/**
+ * NodeDataMigrationPayload
+ *
+ * Complete legacy-node batch submitted for one migration attempt.
+ */
+export const zNodeDataMigrationPayload = z.object({
+  nodes: z.array(zNodeDataMigrationInput).min(1),
+})
+
+/**
+ * HumanInputNodeData
+ *
+ * Human Input node data.
+ */
+export const zHumanInputNodeData = z.object({
+  debug_mode: zDebugModeConfig,
+  default_value: z.array(zDefaultValue).nullish(),
+  desc: z.string().nullish(),
+  error_strategy: zErrorStrategy.nullish(),
+  form_content: z.string().optional().default(''),
+  inputs: z.array(zFormInputConfig).optional(),
+  message_template: zMessageTemplateConfig,
+  recipients_spec: z.array(
+    z.union([zContact, zDynamicEmail, zOnetimeEmail, zInitiator, zAllWorkspaceContacts]),
+  ),
+  retry_config: zRetryConfig.optional(),
+  timeout: z.int().optional().default(36),
+  timeout_unit: zTimeoutUnitStrictStrictFalse.optional().default('hour'),
+  title: z.string().optional().default(''),
+  type: z.literal('human-input').optional().default('human-input'),
+  user_actions: z.array(zUserActionConfig).optional(),
+  version: z.string().optional().default('2'),
+})
+
+/**
+ * NodeDataMigrationResult
+ *
+ * One converted node returned with its frontend correlation identifier.
+ */
+export const zNodeDataMigrationResult = z.object({
+  node_data: zHumanInputNodeData,
+  node_id: z.string(),
+})
+
+/**
+ * NodeDataMigrationResponse
+ *
+ * Successful all-node conversion response.
+ */
+export const zNodeDataMigrationResponse = z.object({
+  data: z.array(zNodeDataMigrationResult),
+})
+
+/**
+ * DeleteIMBindingResponse
+ */
+export const zDeleteImBindingResponseWritable = z.record(z.string(), z.unknown())
+
+/**
  * AccountWithRoleResponse
  */
 export const zAccountWithRoleResponseWritable = z.object({
@@ -4510,6 +5919,235 @@ export const zAccountWithRoleResponseWritable = z.object({
 export const zAccountWithRoleListResponseWritable = z.object({
   accounts: z.array(zAccountWithRoleResponseWritable),
 })
+
+/**
+ * ResendCredentials
+ */
+export const zResendCredentialsWritable = z.object({
+  api_key: zRequiredSecret,
+  provider: z.literal('resend').optional().default('resend'),
+})
+
+export const zEmailProviderCredentialsWritable = zResendCredentialsWritable
+
+/**
+ * EmailChannelCreatePayload
+ */
+export const zEmailChannelCreatePayloadWritable = z.object({
+  credentials: zEmailProviderCredentialsWritable,
+  sender_email: z.string(),
+  sender_name: zSenderName,
+})
+
+/**
+ * EmailChannelTestPayload
+ */
+export const zEmailChannelTestPayloadWritable = z.object({
+  credentials: zEmailProviderCredentialsWritable,
+  sender_email: z.string(),
+  sender_name: zSenderName,
+})
+
+/**
+ * ResendCredentialsUpdateInput
+ */
+export const zResendCredentialsUpdateInputWritable = z.object({
+  api_key: z.union([zRequiredSecret, zUnchangedInput]),
+  provider: z.literal('resend'),
+})
+
+export const zEmailProviderCredentialsUpdateInputWritable = zResendCredentialsUpdateInputWritable
+
+/**
+ * EmailChannelUpdatePayload
+ */
+export const zEmailChannelUpdatePayloadWritable = z.object({
+  credentials: zEmailProviderCredentialsUpdateInputWritable,
+  expected_config_version: zConfigVersion,
+  sender_email: z.union([z.string(), zUnchangedInput]),
+  sender_name: z.union([zSenderName, zUnchangedInput]),
+})
+
+/**
+ * FeishuCredentialsInput
+ */
+export const zFeishuCredentialsInputWritable = z.object({
+  app_id: z.string().min(1),
+  app_secret: zRequiredSecret,
+  encrypt_key: zOptionalSecret.optional(),
+  provider: z.literal('feishu'),
+  verification_token: zOptionalSecret.optional(),
+})
+
+/**
+ * LarkCredentialsInput
+ */
+export const zLarkCredentialsInputWritable = z.object({
+  app_id: z.string().min(1),
+  app_secret: zRequiredSecret,
+  encrypt_key: zOptionalSecret.optional(),
+  provider: z.literal('lark'),
+  verification_token: zOptionalSecret.optional(),
+})
+
+/**
+ * SlackCredentialsInput
+ */
+export const zSlackCredentialsInputWritable = z.object({
+  app_token: zOptionalSecret.optional(),
+  bot_token: zRequiredSecret,
+  client_id: z.string().min(1),
+  client_secret: zRequiredSecret,
+  provider: z.literal('slack'),
+  signing_secret: zRequiredSecret,
+})
+
+/**
+ * DingTalkCredentialsInput
+ */
+export const zDingTalkCredentialsInputWritable = z.object({
+  client_id: z.string().min(1),
+  client_secret: zRequiredSecret,
+  corp_id: z.string().min(1),
+  provider: z.literal('ding_talk'),
+})
+
+/**
+ * MSTeamsCredentialsInput
+ */
+export const zMsTeamsCredentialsInputWritable = z.object({
+  client_id: z.string().min(1),
+  client_secret: zRequiredSecret,
+  provider: z.literal('ms_teams'),
+  tenant_id: z.string().min(1),
+})
+
+/**
+ * WeComCredentialsInput
+ */
+export const zWeComCredentialsInputWritable = z.object({
+  agent_id: z.string().min(1),
+  corp_id: z.string().min(1),
+  provider: z.literal('we_com'),
+  secret: zRequiredSecret,
+})
+
+export const zImProviderCredentialsInputWritable = z.discriminatedUnion('provider', [
+  zFeishuCredentialsInputWritable,
+  zLarkCredentialsInputWritable,
+  zSlackCredentialsInputWritable,
+  zDingTalkCredentialsInputWritable,
+  zMsTeamsCredentialsInputWritable,
+  zWeComCredentialsInputWritable,
+])
+
+/**
+ * IMChannelCreatePayload
+ */
+export const zImChannelCreatePayloadWritable = z.object({
+  credentials: zImProviderCredentialsInputWritable,
+})
+
+/**
+ * IMChannelTestPayload
+ */
+export const zImChannelTestPayloadWritable = z.object({
+  credentials: zImProviderCredentialsInputWritable,
+})
+
+/**
+ * IMChannelReplacementPayload
+ */
+export const zImChannelReplacementPayloadWritable = z.object({
+  credentials: zImProviderCredentialsInputWritable,
+  expected_config_version: zConfigVersion,
+})
+
+/**
+ * FeishuCredentialsUpdateInput
+ */
+export const zFeishuCredentialsUpdateInputWritable = z.object({
+  app_id: z.union([zIdentifier, zUnchangedInput]),
+  app_secret: z.union([zRequiredSecret, zUnchangedInput]),
+  encrypt_key: z.union([zOptionalSecret, zUnchangedInput]),
+  provider: z.literal('feishu'),
+  verification_token: z.union([zOptionalSecret, zUnchangedInput]),
+})
+
+/**
+ * LarkCredentialsUpdateInput
+ */
+export const zLarkCredentialsUpdateInputWritable = z.object({
+  app_id: z.union([zIdentifier, zUnchangedInput]),
+  app_secret: z.union([zRequiredSecret, zUnchangedInput]),
+  encrypt_key: z.union([zOptionalSecret, zUnchangedInput]),
+  provider: z.literal('lark'),
+  verification_token: z.union([zOptionalSecret, zUnchangedInput]),
+})
+
+/**
+ * SlackCredentialsUpdateInput
+ */
+export const zSlackCredentialsUpdateInputWritable = z.object({
+  app_token: z.union([zOptionalSecret, zUnchangedInput]),
+  bot_token: z.union([zRequiredSecret, zUnchangedInput]),
+  client_id: z.union([zIdentifier, zUnchangedInput]),
+  client_secret: z.union([zRequiredSecret, zUnchangedInput]),
+  provider: z.literal('slack'),
+  signing_secret: z.union([zRequiredSecret, zUnchangedInput]),
+})
+
+/**
+ * DingTalkCredentialsUpdateInput
+ */
+export const zDingTalkCredentialsUpdateInputWritable = z.object({
+  client_id: z.union([zIdentifier, zUnchangedInput]),
+  client_secret: z.union([zRequiredSecret, zUnchangedInput]),
+  corp_id: z.union([zIdentifier, zUnchangedInput]),
+  provider: z.literal('ding_talk'),
+})
+
+/**
+ * MSTeamsCredentialsUpdateInput
+ */
+export const zMsTeamsCredentialsUpdateInputWritable = z.object({
+  client_id: z.union([zUuidString, zUnchangedInput]),
+  client_secret: z.union([zRequiredSecret, zUnchangedInput]),
+  provider: z.literal('ms_teams'),
+  tenant_id: z.union([zUuidString, zUnchangedInput]),
+})
+
+/**
+ * WeComCredentialsUpdateInput
+ */
+export const zWeComCredentialsUpdateInputWritable = z.object({
+  agent_id: z.union([z.string(), zUnchangedInput]),
+  corp_id: z.union([zIdentifier, zUnchangedInput]),
+  provider: z.literal('we_com'),
+  secret: z.union([zRequiredSecret, zUnchangedInput]),
+})
+
+export const zImProviderCredentialsUpdateInputWritable = z.discriminatedUnion('provider', [
+  zFeishuCredentialsUpdateInputWritable,
+  zLarkCredentialsUpdateInputWritable,
+  zSlackCredentialsUpdateInputWritable,
+  zDingTalkCredentialsUpdateInputWritable,
+  zMsTeamsCredentialsUpdateInputWritable,
+  zWeComCredentialsUpdateInputWritable,
+])
+
+/**
+ * IMChannelUpdatePayload
+ */
+export const zImChannelUpdatePayloadWritable = z.object({
+  credentials: zImProviderCredentialsUpdateInputWritable,
+  expected_config_version: zConfigVersion,
+})
+
+/**
+ * _InteractiveSurfaceDeliveryConfig
+ */
+export const zInteractiveSurfaceDeliveryConfigWritable = z.record(z.string(), z.unknown())
 
 /**
  * Success
@@ -4754,6 +6392,346 @@ export const zPatchWorkspacesCurrentEndpointsByIdPath = z.object({
  * Endpoint updated successfully
  */
 export const zPatchWorkspacesCurrentEndpointsByIdResponse = zEndpointMutationResponse
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentHumanInputV2ChannelProvidersResponse =
+  zListChannelProvidersResponse
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentHumanInputV2ChannelsResponse = zListChannelsResponse
+
+export const zPostWorkspacesCurrentHumanInputV2ChannelsEmailBody =
+  zEmailChannelCreatePayloadWritable
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentHumanInputV2ChannelsEmailResponse = zEmailChannelMutationResponse
+
+export const zPostWorkspacesCurrentHumanInputV2ChannelsEmailTestBody =
+  zEmailChannelTestPayloadWritable
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentHumanInputV2ChannelsEmailTestResponse = zChannelTestResponse
+
+export const zDeleteWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdPath = z.object({
+  channel_id: z.uuid(),
+})
+
+export const zDeleteWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdQuery = z.object({
+  expected_config_version: z.string().min(1),
+})
+
+/**
+ * Success
+ */
+export const zDeleteWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdResponse =
+  zChannelDeleteResponse
+
+export const zGetWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdPath = z.object({
+  channel_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdResponse =
+  zEmailChannelDetailResponse
+
+export const zPutWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdBody =
+  zEmailChannelUpdatePayloadWritable
+
+export const zPutWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdPath = z.object({
+  channel_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdResponse =
+  zEmailChannelMutationResponse
+
+export const zPostWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdTestBody =
+  zEmailChannelUpdatePayloadWritable
+
+export const zPostWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdTestPath = z.object({
+  channel_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdTestResponse =
+  zChannelTestResponse
+
+export const zPostWorkspacesCurrentHumanInputV2ChannelsImBody = zImChannelCreatePayloadWritable
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentHumanInputV2ChannelsImResponse = zImChannelMutationResponse
+
+export const zPostWorkspacesCurrentHumanInputV2ChannelsImTestBody = zImChannelTestPayloadWritable
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentHumanInputV2ChannelsImTestResponse = zChannelTestResponse
+
+export const zDeleteWorkspacesCurrentHumanInputV2ChannelsImByChannelIdPath = z.object({
+  channel_id: z.uuid(),
+})
+
+export const zDeleteWorkspacesCurrentHumanInputV2ChannelsImByChannelIdQuery = z.object({
+  expected_config_version: z.string().min(1),
+})
+
+/**
+ * Success
+ */
+export const zDeleteWorkspacesCurrentHumanInputV2ChannelsImByChannelIdResponse =
+  zChannelDeleteResponse
+
+export const zGetWorkspacesCurrentHumanInputV2ChannelsImByChannelIdPath = z.object({
+  channel_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentHumanInputV2ChannelsImByChannelIdResponse =
+  zImChannelDetailResponse
+
+export const zPutWorkspacesCurrentHumanInputV2ChannelsImByChannelIdBody =
+  zImChannelUpdatePayloadWritable
+
+export const zPutWorkspacesCurrentHumanInputV2ChannelsImByChannelIdPath = z.object({
+  channel_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentHumanInputV2ChannelsImByChannelIdResponse =
+  zImChannelMutationResponse
+
+export const zPostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdReplacementBody =
+  zImChannelReplacementPayloadWritable
+
+export const zPostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdReplacementPath = z.object({
+  channel_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdReplacementResponse =
+  zImChannelMutationResponse
+
+export const zPostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdTestBody =
+  zImChannelUpdatePayloadWritable
+
+export const zPostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdTestPath = z.object({
+  channel_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdTestResponse =
+  zChannelTestResponse
+
+export const zGetWorkspacesCurrentHumanInputV2ContactOptionsQuery = z.object({
+  keyword: z.string().optional(),
+  limit: z.int().gt(0).lte(100).optional().default(20),
+  page: z.int().gt(0).optional().default(1),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentHumanInputV2ContactOptionsResponse = zListContactOptionsResponse
+
+export const zGetWorkspacesCurrentHumanInputV2ContactOptionsBatchQuery = z.object({
+  contact_ids: z.array(z.string()),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentHumanInputV2ContactOptionsBatchResponse =
+  zBatchGetContactOptionsResponse
+
+export const zGetWorkspacesCurrentHumanInputV2ContactsQuery = z.object({
+  group: z.enum(['external', 'platform', 'workspace']).optional(),
+  keyword: z.string().optional(),
+  limit: z.int().gt(0).lte(100).optional().default(20),
+  page: z.int().gt(0).optional().default(1),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentHumanInputV2ContactsResponse = zListContactsResponse
+
+export const zGetWorkspacesCurrentHumanInputV2ContactsBatchQuery = z.object({
+  contact_ids: z.array(z.string()),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentHumanInputV2ContactsBatchResponse = zBatchGetContactsResponse
+
+export const zPostWorkspacesCurrentHumanInputV2ContactsExternalBody = zExternalContactCreateRequest
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentHumanInputV2ContactsExternalResponse =
+  zExternalContactCreateResponse
+
+export const zPatchWorkspacesCurrentHumanInputV2ContactsExternalByContactIdBody =
+  zExternalContactUpdateRequest
+
+export const zPatchWorkspacesCurrentHumanInputV2ContactsExternalByContactIdPath = z.object({
+  contact_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zPatchWorkspacesCurrentHumanInputV2ContactsExternalByContactIdResponse =
+  zExternalContactUpdateResponse
+
+export const zPostWorkspacesCurrentHumanInputV2ContactsPlatformBody = zAddPlatformContactsRequest
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentHumanInputV2ContactsPlatformResponse =
+  zAddPlatformContactsResponse
+
+export const zPostWorkspacesCurrentHumanInputV2ContactsRemoveBody = zRemoveContactsRequest
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentHumanInputV2ContactsRemoveResponse = zRemoveContactsResponse
+
+export const zGetWorkspacesCurrentHumanInputV2ContactsByContactIdPath = z.object({
+  contact_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentHumanInputV2ContactsByContactIdResponse = zGetContactResponse
+
+export const zDeleteWorkspacesCurrentHumanInputV2ContactsByContactIdImBindingsPath = z.object({
+  contact_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zDeleteWorkspacesCurrentHumanInputV2ContactsByContactIdImBindingsResponse =
+  zDeleteImBindingResponse
+
+export const zPutWorkspacesCurrentHumanInputV2ContactsByContactIdImBindingsBody =
+  zCreateImBindingRequest
+
+export const zPutWorkspacesCurrentHumanInputV2ContactsByContactIdImBindingsPath = z.object({
+  contact_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentHumanInputV2ContactsByContactIdImBindingsResponse =
+  zCreateImBindingResponse
+
+export const zDeleteWorkspacesCurrentHumanInputV2ContactsByContactIdImOverridePath = z.object({
+  contact_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zDeleteWorkspacesCurrentHumanInputV2ContactsByContactIdImOverrideResponse =
+  zResetContactImOverrideResponse
+
+export const zPutWorkspacesCurrentHumanInputV2ContactsByContactIdImOverrideBody =
+  zSetContactImOverrideRequest
+
+export const zPutWorkspacesCurrentHumanInputV2ContactsByContactIdImOverridePath = z.object({
+  contact_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentHumanInputV2ContactsByContactIdImOverrideResponse =
+  zSetContactImOverrideResponse
+
+export const zGetWorkspacesCurrentHumanInputV2ImIdentitiesQuery = z.object({
+  keyword: z.string().optional(),
+  limit: z.int().gt(0).lte(100).optional().default(20),
+  page: z.int().gt(0).optional().default(1),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentHumanInputV2ImIdentitiesResponse = zListImIdentitiesResponse
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentHumanInputV2ImSyncRunsResponse = zCreateImSyncRunResponse
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentHumanInputV2ImSyncRunsLatestResponse = zGetLatestImSyncRunResponse
+
+export const zGetWorkspacesCurrentHumanInputV2ImSyncRunsLatestResultsQuery = z.object({
+  limit: z.int().gt(0).lte(100).optional().default(20),
+  page: z.int().gt(0).optional().default(1),
+  result: z.enum(['added', 'failed', 'not_matched', 'removed', 'skipped']),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentHumanInputV2ImSyncRunsLatestResultsResponse =
+  zListLatestImSyncRunResultsResponse
+
+export const zPostWorkspacesCurrentHumanInputV2NodeDataMigrationBody = zNodeDataMigrationPayload
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentHumanInputV2NodeDataMigrationResponse =
+  zNodeDataMigrationResponse
+
+export const zGetWorkspacesCurrentHumanInputV2OrganizationCandidatesQuery = z.object({
+  keyword: z.string().optional(),
+  limit: z.int().gt(0).lte(100).optional().default(20),
+  page: z.int().gt(0).optional().default(1),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentHumanInputV2OrganizationCandidatesResponse =
+  zListOrganizationCandidatesResponse
 
 export const zGetWorkspacesCurrentMembersQuery = z.object({
   language: z.enum(['en', 'ja', 'zh']).optional(),

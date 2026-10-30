@@ -10,6 +10,7 @@ from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 from yarl import URL
 
 from configs.app_config import DifyConfig
+from configs.deploy import IMEventTransportMode
 from configs.feature import OpsTraceConfig
 from enums import DeploymentEdition
 
@@ -42,6 +43,32 @@ def test_ops_trace_config_accepts_parent_context_ttl_covering_retry_window() -> 
     )
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("WEBHOOK", IMEventTransportMode.WEBHOOK),
+        ("STREAM", IMEventTransportMode.STREAM),
+    ],
+)
+def test_im_event_transport_mode_loads_both_supported_values(
+    value: str,
+    expected: IMEventTransportMode,
+) -> None:
+    config = _make_config(HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE=value)
+
+    assert config.HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE is expected
+    assert {mode.value for mode in IMEventTransportMode} == {"WEBHOOK", "STREAM"}
+
+
+def test_im_event_transport_mode_defaults_to_webhook() -> None:
+    assert _IsolatedDifyConfig().HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE == IMEventTransportMode.WEBHOOK
+
+
+def test_im_event_transport_mode_rejects_invalid_values() -> None:
+    with pytest.raises(ValidationError, match="HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE"):
+        _make_config(HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE="SOCKET")
+
+
 class _IsolatedDifyConfig(DifyConfig):
     """Load explicit test values and packaging metadata without consulting process state."""
 
@@ -66,6 +93,7 @@ class _IsolatedDifyConfig(DifyConfig):
 
 
 def _make_config(**values: object) -> DifyConfig:
+    values.setdefault("HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE", "WEBHOOK")
     # Pydantic exposes a generated field-wise signature, while this helper intentionally forwards heterogeneous input.
     factory = cast(Callable[..., _IsolatedDifyConfig], _IsolatedDifyConfig)
     return factory(**values)

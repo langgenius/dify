@@ -49,6 +49,7 @@
   "generation.tabs.saved": "Zapisane",
   "generation.title": "Uzupełnianie AI",
   "humanInput.completed": "Wygląda na to, że to żądanie zostało obsłużone gdzie indziej.",
+  "humanInput.currentAccount": "Bieżące konto: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "Ta akcja wygaśnie {{relativeTime}}.",
   "humanInput.expired": "Wygląda na to, że to żądanie wygasło.",
   "humanInput.expiredTip": "Ta akcja wygasła.",
@@ -57,6 +58,9 @@
   "humanInput.recorded": "Twój wpis został zapisany.",
   "humanInput.sorry": "Przepraszamy!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "Zmień konto",
   "humanInput.thanks": "Dziękujemy!",
+  "humanInput.unavailableDescription": "Link może być niedostępny lub nie pasować do konta, na które jesteś zalogowany. Otwórz formularz z otrzymanego powiadomienia lub spróbuj zmienić konto.",
+  "humanInput.unavailableTitle": "Nie można otworzyć tego formularza",
   "login.backToHome": "Powrót do strony głównej"
 }

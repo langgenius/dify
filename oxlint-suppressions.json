@@ -516,9 +516,6 @@
     }
   },
   "web/app/components/app/configuration/dataset-config/params-config/config-content.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -618,9 +615,6 @@
     }
   },
   "web/app/components/app/configuration/debug/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    },
     "eslint-react/set-state-in-effect": {
       "count": 1
     },
@@ -631,11 +625,6 @@
   "web/app/components/app/configuration/debug/types.ts": {
     "typescript/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/app/configuration/prompt-value-panel/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/app/components/app/configuration/tools/external-data-tool-modal.tsx": {
@@ -803,9 +792,6 @@
     }
   },
   "web/app/components/app/text-generate/item/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    },
     "dify/require-disable-directive-description": {
       "count": 4
     },
@@ -1001,7 +987,7 @@
   },
   "web/app/components/base/chat/chat-with-history/chat-wrapper.tsx": {
     "typescript/no-explicit-any": {
-      "count": 7
+      "count": 6
     }
   },
   "web/app/components/base/chat/chat-with-history/context.ts": {
@@ -1092,9 +1078,6 @@
     }
   },
   "web/app/components/base/chat/chat/answer/workflow-process.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    },
     "eslint-react/set-state-in-effect": {
       "count": 1
     }
@@ -3936,16 +3919,6 @@
       "count": 1
     }
   },
-  "web/app/components/step-by-step-tour/coachmark.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/step-by-step-tour/mount.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/edit-custom-collection-modal/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 4
@@ -4059,11 +4032,6 @@
   "web/app/components/workflow/block-selector/block-selector-row.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
-    }
-  },
-  "web/app/components/workflow/block-selector/blocks.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
     }
   },
   "web/app/components/workflow/block-selector/constants.tsx": {
@@ -4259,11 +4227,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/header/running-title.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/header/test-run-menu-helpers.tsx": {
     "dify/require-disable-directive-description": {
       "count": 1
@@ -4342,11 +4305,6 @@
   "web/app/components/workflow/hooks/use-workflow-variables.ts": {
     "typescript/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx": {
@@ -5042,11 +5000,6 @@
   },
   "web/app/components/workflow/nodes/human-input/hooks/__tests__/use-single-run-form-params.spec.ts": {
     "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
   },
@@ -5979,9 +5932,6 @@
     }
   },
   "web/app/components/workflow/panel/workflow-preview.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 4
     },
@@ -6461,11 +6411,6 @@
       "count": 2
     }
   },
-  "web/features/agent-v2/agent-detail/access/components/workflow-references-table.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/features/agent-v2/agent-detail/configure/__tests__/configure-test-env.tsx": {
     "typescript/no-deprecated": {
       "count": 1
@@ -6504,11 +6449,6 @@
   "web/features/agent-v2/agent-detail/configure/components/orchestrate/files/upload-dialog.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 5
-    }
-  },
-  "web/features/agent-v2/agent-detail/configure/components/orchestrate/knowledge/dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/features/agent-v2/agent-detail/configure/components/orchestrate/prompt-editor/slash.tsx": {
@@ -6614,17 +6554,7 @@
       "count": 2
     }
   },
-  "web/features/agent-v2/agent-detail/logs/components/logs-table.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 8
-    }
-  },
   "web/features/agent-v2/agent-detail/logs/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/features/agent-v2/agent-detail/monitoring/chart.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
@@ -6819,26 +6749,6 @@
       "count": 2
     }
   },
-  "web/features/new-rag/quality/bad-cases-panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 10
-    }
-  },
-  "web/features/new-rag/quality/golden-question-dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/features/new-rag/quality/golden-questions-panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 16
-    }
-  },
-  "web/features/new-rag/quality/quality-evaluation-panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 22
-    }
-  },
   "web/features/new-rag/quality/quality-row-menu-trigger.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -6879,29 +6789,9 @@
       "count": 1
     }
   },
-  "web/features/new-rag/settings/retrieval-settings.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
-  "web/features/new-rag/sources/create/connected-source-workflow.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/features/new-rag/sources/create/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/features/new-rag/sources/create/website-crawl-preview.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/features/new-rag/sources/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/features/new-rag/sources/setup/connected-source-configuration.tsx": {
@@ -6995,11 +6885,6 @@
     },
     "no-restricted-globals": {
       "count": 1
-    }
-  },
-  "web/features/skills/detail/markdown-editor.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 15
     }
   },
   "web/features/skills/detail/page.tsx": {

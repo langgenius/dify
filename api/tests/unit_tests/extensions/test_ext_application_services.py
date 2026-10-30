@@ -329,6 +329,7 @@ def test_build_application_services_preserves_composed_boundaries(
     assert services.dataset_api_keys._access is services.knowledge.datasets._dataset_access
     assert isinstance(services.oauth_device, OAuthDeviceApplicationService)
     assert register_script.call_count == 3
+    assert services.conversation_queries._files is services.message_queries._files
 
     assert isinstance(services.installed_apps.generation, InstalledAppGenerationService)
     installed_apps = services.installed_apps.access._installed_apps

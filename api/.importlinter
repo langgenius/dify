@@ -29,6 +29,12 @@ layers =
 # error makes this list shrink whenever a legacy dependency is removed.
 unmatched_ignore_imports_alerting = error
 ignore_imports =
+    # The Dify node factory composes the Human Input runtime for workflow execution.
+    core.workflow.node_factory -> services.human_input_v2.composition
+    # Legacy generators delegate configured file defaults to the application owner during core migration.
+    core.app.apps.base_app_generator -> services.app.file_input_defaults
+    core.app.apps.advanced_chat.app_generator -> services.app.file_input_defaults
+    core.app.apps.workflow.app_generator -> services.app.file_input_defaults
     core.app.app_config.easy_ui_based_app.dataset.manager -> services.knowledge.dataset_service
     core.app.apps.advanced_chat.app_generator -> controllers.console.app.workflow
     core.app.apps.advanced_chat.app_generator -> services.conversation_service
@@ -1040,12 +1046,13 @@ forbidden_modules =
     werkzeug
 
 [importlinter:contract:conversation-name-boundary]
-name = Conversation naming, commands and queries are framework and persistence neutral
+name = Conversation application services are framework and persistence neutral
 type = forbidden
 source_modules =
     services.conversation_name_service
     services.conversation_command_service
     services.conversation_query_service
+    services.conversation_variable_command_service
 forbidden_modules =
     controllers
     extensions
@@ -1055,6 +1062,19 @@ forbidden_modules =
     services.conversation_service
     sqlalchemy
     werkzeug
+
+[importlinter:contract:console-conversation-controller-boundary]
+name = Console conversation controllers reach persistence through the composition root
+type = forbidden
+source_modules =
+    controllers.console.app.conversation
+forbidden_modules =
+    extensions.ext_database
+    models
+    repositories
+    services.conversation_service
+    sqlalchemy
+allow_indirect_imports = True
 
 [importlinter:contract:billing-application-boundary]
 name = Billing application services and ports are framework and infrastructure neutral

@@ -574,7 +574,7 @@ def test_deduct_credits_capped_uses_billing_consume_capped_when_enabled(
     ],
 )
 def test_non_positive_credit_request_skips_tenant_redis_lock(
-    deduct_method,
+    deduct_method: Callable[..., int],
     sqlite_session: Session,
 ) -> None:
     with patch("services.credit_pool_service.redis_client.lock") as lock:
