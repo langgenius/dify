@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 
 import pytest
 from sqlalchemy.orm import Session
@@ -18,6 +19,7 @@ from tests.helpers.unit.model_factories import make_app
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 AGENT_ID = "11111111-1111-4111-8111-111111111111"
+UPDATED_AT = datetime(2026, 10, 30, 12, 0, 0)
 
 
 @dataclass
@@ -90,15 +92,17 @@ def test_get_agent_rejects_an_unknown_query_field(admitted_bearer: AdmittedWorld
 
 def test_get_agent_returns_the_rows_of_the_workspace(admitted_bearer: AdmittedWorld, sqlite_session: Session) -> None:
     app_id = str(uuid.uuid4())
+    app = make_app(
+        app_id=app_id,
+        tenant_id=admitted_bearer.workspace_id,
+        name="Support desk",
+        description="Answers tickets",
+        mode=AppMode.AGENT,
+    )
+    app.updated_at = UPDATED_AT
     sqlite_session.add_all(
         [
-            make_app(
-                app_id=app_id,
-                tenant_id=admitted_bearer.workspace_id,
-                name="Support desk",
-                description="Answers tickets",
-                mode=AppMode.AGENT,
-            ),
+            app,
             Agent(
                 id=AGENT_ID,
                 tenant_id=admitted_bearer.workspace_id,
@@ -116,13 +120,14 @@ def test_get_agent_returns_the_rows_of_the_workspace(admitted_bearer: AdmittedWo
     body = _get(admitted_bearer, "?name=support").get_json()
 
     [row] = body["data"]
-    assert AgentListRow.model_validate(row).model_dump(exclude={"updated_at"}) == {
+    assert AgentListRow.model_validate(row).model_dump() == {
         "agent_id": AGENT_ID,
         "app_id": app_id,
         "name": "Support desk",
         "description": "Answers tickets",
         "role": "triage",
         "published": False,
+        "updated_at": UPDATED_AT.isoformat(),
     }
     assert (body["total"], body["has_more"], body["hints"]) == (1, False, [])
 

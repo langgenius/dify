@@ -108,7 +108,13 @@ class AgentListQuery(PageQuery):
     model_config = ConfigDict(extra="forbid")
 
     name: str | None = Field(None, max_length=200, description="Filter by a name substring")
-    published: bool | None = Field(None, description="true lists published Agents, false lists Agents never published")
+    published: bool | None = Field(
+        None,
+        description=(
+            "true lists Agents whose latest edits are published; "
+            "false lists Agents never published or edited since their last publish"
+        ),
+    )
 
 
 class AgentListRow(BaseModel):
@@ -117,8 +123,8 @@ class AgentListRow(BaseModel):
     name: str
     description: str
     role: str
-    published: bool
-    updated_at: datetime
+    published: bool = Field(description="true when the Agent has a published version and no edits since")
+    updated_at: str | None = None
 
 
 class AgentListResponse(PaginationEnvelope[AgentListRow]):
