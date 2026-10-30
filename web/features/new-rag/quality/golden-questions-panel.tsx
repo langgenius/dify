@@ -127,10 +127,16 @@ function GoldenQuestionEditorDialog({
   const [error, setError] = useState<string>()
   const [submitting, setSubmitting] = useState(false)
   const createMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const updateMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.patch.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.patch.mutationOptions(
+      {
+        context: { silent: true },
+      },
+    ),
   )
 
   const close = () => {
@@ -159,8 +165,8 @@ function GoldenQuestionEditorDialog({
         queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
       })
       close()
-    } catch {
-      setError(t(($) => $.unknownError, { ns: 'dataset' }))
+    } catch (error) {
+      setError(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
     } finally {
       setSubmitting(false)
     }

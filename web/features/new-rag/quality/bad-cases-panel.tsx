@@ -93,10 +93,16 @@ function BadCasePromotionDialog({
   const [submitting, setSubmitting] = useState(false)
   const promotedGoldenQuestionIdsRef = useRef(new Map<string, string>())
   const createGoldenMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const deleteGoldenMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(
+      {
+        context: { silent: true },
+      },
+    ),
   )
 
   const close = () => {
@@ -104,22 +110,26 @@ function BadCasePromotionDialog({
     onOpenChange(undefined)
   }
   const getBadCase = (badCaseId: string) =>
-    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get({
-      params: { bad_case_id: badCaseId, control_space_id: knowledgeSpaceId },
-    })
+    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get(
+      { params: { bad_case_id: badCaseId, control_space_id: knowledgeSpaceId } },
+      { context: { silent: true } },
+    )
   const markBadCaseDismissed = async (
     badCase: KnowledgeFsBadCaseResponse,
     tags: string[] = badCase.tags,
   ) => {
     try {
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch({
-        body: {
-          expected_revision: badCase.revision,
-          status: 'dismissed',
-          tags,
+      await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch(
+        {
+          body: {
+            expected_revision: badCase.revision,
+            status: 'dismissed',
+            tags,
+          },
+          params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
         },
-        params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
-      })
+        { context: { silent: true } },
+      )
     } catch (mutationError) {
       const refreshed = await getBadCase(badCase.id).catch(() => undefined)
       if (refreshed?.status !== 'dismissed') throw mutationError
@@ -171,8 +181,8 @@ function BadCasePromotionDialog({
       ])
       toast.success(t(($) => $['qualityPage.promotedToast'], { ns: 'knowledgeQuality' }))
       close()
-    } catch {
-      setError(t(($) => $.unknownError, { ns: 'dataset' }))
+    } catch (error) {
+      setError(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
     } finally {
       setSubmitting(false)
     }

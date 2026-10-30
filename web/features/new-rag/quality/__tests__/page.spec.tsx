@@ -2,6 +2,7 @@ import type { KnowledgeFsProductPermission } from '@dify/contracts/api/console/k
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { toast } from '@/app/notifications'
 import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
@@ -611,6 +612,44 @@ describe('QualityPage', () => {
     expect(screen.queryByText('dataset.unknownError')).not.toBeInTheDocument()
   })
 
+  it.each(['create', 'edit'] as const)(
+    'keeps the %s failure reason in the golden question dialog',
+    async (mode) => {
+      const message = 'This workspace cannot save more golden questions'
+      const mutation = mode === 'create' ? serviceMock.createGolden : serviceMock.updateGolden
+      mutation.mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 403 }), { message }),
+      )
+      const user = userEvent.setup()
+      renderPage()
+
+      await screen.findByText('What is the refund policy?')
+      if (mode === 'create') {
+        await user.click(
+          screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }),
+        )
+        await user.type(
+          screen.getByPlaceholderText('knowledgeQuality.qualityPage.questionPlaceholder'),
+          'New question',
+        )
+      } else {
+        await user.click(
+          screen.getByRole('button', { name: /knowledgeQuality\.qualityPage\.questionActions/ }),
+        )
+        await user.click(
+          await screen.findByRole('menuitem', { name: 'knowledgeQuality.qualityPage.edit' }),
+        )
+      }
+      const dialog = screen.getByRole('dialog')
+      await user.click(
+        within(dialog).getByRole('button', { name: 'knowledgeQuality.qualityPage.save' }),
+      )
+
+      expect(await within(dialog).findByText(message)).toBeVisible()
+      expect(toast.error).not.toHaveBeenCalled()
+    },
+  )
+
   it('reveals the full annotation and submits edits through the update contract', async () => {
     const user = userEvent.setup()
     serviceMock.updateGolden.mockResolvedValue({})
@@ -1101,7 +1140,15 @@ describe('QualityPage', () => {
     })
 
     await user.click(promote)
-    await screen.findByText('dataset.unknownError')
+    await screen.findByText('dismiss failed')
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(serviceMock.getBadCase).toHaveBeenLastCalledWith(
+      { params: { bad_case_id: 'bad-1', control_space_id: 'space-1' } },
+      { context: { silent: true } },
+    )
+    expect(serviceMock.updateBadCase).toHaveBeenLastCalledWith(expect.anything(), {
+      context: { silent: true },
+    })
     await user.click(promote)
 
     await waitFor(() => expect(serviceMock.updateBadCase).toHaveBeenCalledTimes(2))
