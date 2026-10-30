@@ -1,9 +1,10 @@
 """Owner-scoped Connection storage; external I/O never runs in these transactions."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from hashlib import sha256
 from typing import Any, cast
+from uuid import UUID
 
 import sqlalchemy as sa
 from sqlalchemy.engine import CursorResult
@@ -33,10 +34,13 @@ from models.model import App, AppMode, Conversation, EndUser, Site
 from models.provider_ids import ToolProviderID
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
+from services.consumer_service import ConsumerIdentity
 from services.end_user_connections.claim import ConnectionClaimSource
 from services.end_user_connections.contracts import ConnectionPage, ConnectionSummary, ListConnectionsInput
 from services.end_user_connections.entities import (
+    AccountConnectionContext,
     ConnectionAccessRecord,
+    ConnectionManagementContext,
     ConnectionMutationGuard,
     ConnectionOAuthClient,
     ConnectionOwner,
@@ -46,6 +50,7 @@ from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionConflictError,
     ConnectionIdentityError,
+    ConnectionNotFoundError,
     ConnectionReauthorizationRequiredError,
     ConnectionRevisionChangedError,
 )
@@ -68,6 +73,116 @@ from services.workflow.tool_credentials import get_tool_authorization_requiremen
 class EndUserConnectionRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._sessions = session_factory
+
+    def account_connection_context(self, identity: ConsumerIdentity, connection_id: str) -> AccountConnectionContext:
+        with self._sessions() as session:
+            tenant_id = session.scalar(
+                sa.select(EndUserConnection.tenant_id).where(
+                    EndUserConnection.id == connection_id,
+                    EndUserConnection.account_id == identity.account_id,
+                    EndUserConnection.end_user_id.is_(None),
+                )
+            )
+            if tenant_id is None:
+                raise ConnectionNotFoundError()
+            context = AccountConnectionContext(tenant_id, identity.account_id, connection_id)
+            self._require_management_context(session, context, lock=False)
+            return context
+
+    def account_connections(
+        self, identity: ConsumerIdentity, *, provider: str | None, after: str | None, limit: int
+    ) -> tuple[ConnectionSummary, ...]:
+        """Discover an Account's own resources across tenant namespaces without secrets.
+
+        This is an explicit Account-wide query, independent of memberships. Each
+        mutation subsequently resolves and revalidates the resource's tenant.
+        """
+        with self._sessions() as session:
+            stmt = (
+                sa.select(EndUserConnection)
+                .options(
+                    load_only(
+                        EndUserConnection.id,
+                        EndUserConnection.name,
+                        EndUserConnection.provider,
+                        EndUserConnection.credential_type,
+                        EndUserConnection.status,
+                        EndUserConnection.oauth_client_fingerprint,
+                        EndUserConnection.oauth_plugin_unique_identifier,
+                        EndUserConnection.account_label,
+                        EndUserConnection.expires_at,
+                        EndUserConnection.created_at,
+                        EndUserConnection.updated_at,
+                        EndUserConnection.last_active_at,
+                        raiseload=True,
+                    )
+                )
+                .where(
+                    EndUserConnection.account_id == identity.account_id,
+                    EndUserConnection.end_user_id.is_(None),
+                )
+            )
+            if provider is not None:
+                stmt = stmt.where(EndUserConnection.provider == provider)
+            if after is not None:
+                stmt = stmt.where(EndUserConnection.id > str(UUID(after)))
+            return tuple(
+                self._summary(row) for row in session.scalars(stmt.order_by(EndUserConnection.id).limit(limit))
+            )
+
+    def account_connection_apps(
+        self, identity: ConsumerIdentity, connection_ids: Sequence[str]
+    ) -> Mapping[str, tuple[str, ...]]:
+        if not connection_ids:
+            return {}
+        queries = [
+            sa.select(reference.connection_id, reference.app_id)
+            .join(
+                EndUserConnection,
+                sa.and_(
+                    EndUserConnection.id == reference.connection_id,
+                    EndUserConnection.tenant_id == reference.tenant_id,
+                ),
+            )
+            .join(App, sa.and_(App.id == reference.app_id, App.tenant_id == reference.tenant_id))
+            .where(
+                EndUserConnection.account_id == identity.account_id,
+                EndUserConnection.end_user_id.is_(None),
+                EndUserConnection.id.in_(connection_ids),
+            )
+            for reference in (AppConnection, SessionConnection)
+        ]
+        with self._sessions() as session:
+            rows = session.execute(sa.union(*queries).order_by("connection_id", "app_id"))
+            associations: dict[str, list[str]] = {}
+            for connection_id, app_id in rows:
+                associations.setdefault(connection_id, []).append(app_id)
+            return {key: tuple(ids) for key, ids in associations.items()}
+
+    @classmethod
+    def _require_management_context(
+        cls, session: Session, context: ConnectionManagementContext, *, lock: bool
+    ) -> App | None:
+        if isinstance(context, WebConnectionContext):
+            return cls._require_context(session, context, lock=lock)
+        account = sa.select(Account.id).where(
+            Account.id == context.account_id,
+            Account.status.in_((AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED)),
+        )
+        if lock:
+            account = account.with_for_update()
+        if session.scalar(account) is None:
+            raise ConnectionIdentityError()
+        connection = sa.select(EndUserConnection.id).where(
+            EndUserConnection.id == context.connection_id,
+            EndUserConnection.tenant_id == context.tenant_id,
+            *cls._owner(context.owner),
+        )
+        if lock:
+            connection = connection.with_for_update()
+        if session.scalar(connection) is None:
+            raise ConnectionNotFoundError()
+        return None
 
     def save_revision(self, snapshot: ConnectionContractSnapshot) -> str:
         canonical = snapshot.canonical_json()
@@ -698,7 +813,7 @@ class EndUserConnectionRepository:
         )
 
     @classmethod
-    def _summary_query(cls, context: WebConnectionContext) -> sa.Select[tuple[EndUserConnection]]:
+    def _summary_query(cls, context: ConnectionManagementContext) -> sa.Select[tuple[EndUserConnection]]:
         return (
             sa.select(EndUserConnection)
             .options(
@@ -743,9 +858,11 @@ class EndUserConnectionRepository:
             data = tuple(self._summary(row) for row in rows[: query.limit])
             return ConnectionPage(data=data, next_cursor=data[-1].id if len(rows) > query.limit else None)
 
-    def find(self, context: WebConnectionContext, connection_id: str) -> StoredConnection | None:
+    def find(self, context: ConnectionManagementContext, connection_id: str) -> StoredConnection | None:
+        if isinstance(context, AccountConnectionContext) and connection_id != context.connection_id:
+            return None
         with self._sessions() as session:
-            self._require_context(session, context, lock=False)
+            self._require_management_context(session, context, lock=False)
             row = session.scalar(
                 sa.select(EndUserConnection).where(
                     EndUserConnection.id == connection_id,
@@ -791,10 +908,10 @@ class EndUserConnectionRepository:
             return self._summary(row)
 
     def update(
-        self, context: WebConnectionContext, guard: ConnectionMutationGuard, changes: ConnectionChanges
+        self, context: ConnectionManagementContext, guard: ConnectionMutationGuard, changes: ConnectionChanges
     ) -> StoredConnection:
         with self._sessions.begin() as session:
-            self._require_context(session, context, lock=True)
+            self._require_management_context(session, context, lock=True)
             predicates = self._guard(context, guard)
             values: dict[str, Any] = {}
             if changes.name is not None:
@@ -823,13 +940,13 @@ class EndUserConnectionRepository:
                 row = session.scalar(sa.select(EndUserConnection).where(*predicates).with_for_update())
             if row is None:
                 raise ConnectionConflictError()
-            if changes.revision_acceptance is not None:
+            if changes.revision_acceptance is not None and isinstance(context, WebConnectionContext):
                 self._record_revision_acceptance(session, context, changes.revision_acceptance)
             return self._stored(row)
 
-    def delete(self, context: WebConnectionContext, guard: ConnectionMutationGuard) -> None:
+    def delete(self, context: ConnectionManagementContext, guard: ConnectionMutationGuard) -> None:
         with self._sessions.begin() as session:
-            self._require_context(session, context, lock=True)
+            self._require_management_context(session, context, lock=True)
             result = cast(
                 CursorResult, session.execute(sa.delete(EndUserConnection).where(*self._guard(context, guard)))
             )
@@ -941,7 +1058,7 @@ class EndUserConnectionRepository:
 
     def validate_oauth_context(self, attempt: ConnectionOAuthAttempt) -> None:
         with self._sessions() as session:
-            self._require_context(session, attempt.context, lock=False)
+            self._require_management_context(session, attempt.context, lock=False)
 
     @staticmethod
     def _oauth_client_configuration(
@@ -982,7 +1099,7 @@ class EndUserConnectionRepository:
     ) -> ConnectionSummary:
         context = attempt.context
         with self._sessions.begin() as session:
-            app = self._require_context(session, context, lock=True)
+            app = self._require_management_context(session, context, lock=True)
             client = attempt.client
             current = self._oauth_client_configuration(
                 session, context.tenant_id, attempt.provider, client.source, lock=True
@@ -994,7 +1111,7 @@ class EndUserConnectionRepository:
             ):
                 raise ConnectionReauthorizationRequiredError()
             if attempt.guard is None:
-                if attempt.target is None:
+                if attempt.target is None or not isinstance(context, WebConnectionContext) or app is None:
                     raise ConnectionConfigurationError()
                 if attempt.target_workflow_id is None:
                     raise ConnectionConfigurationError()
@@ -1060,13 +1177,19 @@ class EndUserConnectionRepository:
                 )
                 if row is None:
                     raise ConnectionConflictError()
-            self._record_revision_acceptance(session, context, revision_acceptance)
+            if isinstance(context, WebConnectionContext):
+                self._record_revision_acceptance(session, context, revision_acceptance)
             return self._summary(row)
 
     def _guard(
-        self, context: WebConnectionContext, guard: ConnectionMutationGuard
+        self, context: ConnectionManagementContext, guard: ConnectionMutationGuard
     ) -> tuple[sa.ColumnElement[bool], ...]:
-        if guard.tenant_id != context.tenant_id or guard.owner != context.owner:
+        if (
+            guard.tenant_id != context.tenant_id
+            or guard.owner != context.owner
+            or isinstance(context, AccountConnectionContext)
+            and guard.connection_id != context.connection_id
+        ):
             raise ConnectionConflictError()
         return (
             EndUserConnection.id == guard.connection_id,

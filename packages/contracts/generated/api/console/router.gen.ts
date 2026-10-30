@@ -29,6 +29,7 @@ import { instructionGenerate } from './instruction-generate/orpc.gen.ts'
 import { knowledgeFs } from './knowledge-fs/orpc.gen.ts'
 import { login } from './login/orpc.gen.ts'
 import { logout } from './logout/orpc.gen.ts'
+import { me } from './me/orpc.gen.ts'
 import { notification } from './notification/orpc.gen.ts'
 import { notion } from './notion/orpc.gen.ts'
 import { oauth } from './oauth/orpc.gen.ts'
@@ -86,6 +87,7 @@ const communityContract = {
   knowledgeFs,
   login,
   logout,
+  me,
   notification,
   notion,
   oauth,

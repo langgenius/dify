@@ -43,6 +43,7 @@ from models import (
     WorkflowSchedulePlan,
 )
 from models.agent import WorkflowAgentNodeBinding
+from models.consumer import AccountAppUsage
 from models.tools import WorkflowToolProvider
 from models.trigger import WorkflowPluginTrigger, WorkflowTriggerLog, WorkflowWebhookTrigger
 from models.web import PinnedConversation, SavedMessage
@@ -126,6 +127,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_app_resource_access_token_relations(tenant_id, app_id)
         _delete_installed_apps(tenant_id, app_id)
         _delete_app_stars(tenant_id, app_id)
+        _delete_consumer_app_usage(tenant_id, app_id)
         _delete_recommended_apps(tenant_id, app_id)
         _delete_app_annotation_data(tenant_id, app_id)
         _delete_app_dataset_joins(tenant_id, app_id)
@@ -158,6 +160,16 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
     except Exception as e:
         logger.exception(click.style(f"Error occurred while deleting app {app_id} and related data", fg="red"))
         raise self.retry(exc=e, countdown=60) from e  # Retry after 60 seconds
+
+
+def _delete_consumer_app_usage(tenant_id: str, app_id: str) -> None:
+    with session_factory.create_session() as session, session.begin():
+        session.execute(
+            delete(AccountAppUsage).where(
+                AccountAppUsage.tenant_id == tenant_id,
+                AccountAppUsage.app_id == app_id,
+            )
+        )
 
 
 def _delete_app_model_configs(tenant_id: str, app_id: str):

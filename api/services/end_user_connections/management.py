@@ -20,7 +20,12 @@ from services.end_user_connections.contracts import (
     ListConnectionsInput,
     UpdateConnectionInput,
 )
-from services.end_user_connections.entities import ConnectionAccessRecord, ConnectionMutationGuard, WebConnectionContext
+from services.end_user_connections.entities import (
+    ConnectionAccessRecord,
+    ConnectionManagementContext,
+    ConnectionMutationGuard,
+    WebConnectionContext,
+)
 from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
@@ -58,7 +63,7 @@ class ConnectionStore(Protocol):
         self, context: WebConnectionContext, query: ListConnectionsInput, after_id: str | None
     ) -> ConnectionPage: ...
 
-    def find(self, context: WebConnectionContext, connection_id: str) -> StoredConnection | None: ...
+    def find(self, context: ConnectionManagementContext, connection_id: str) -> StoredConnection | None: ...
 
     def create_api_key(
         self,
@@ -74,12 +79,12 @@ class ConnectionStore(Protocol):
         ...
 
     def update(
-        self, context: WebConnectionContext, guard: ConnectionMutationGuard, changes: ConnectionChanges
+        self, context: ConnectionManagementContext, guard: ConnectionMutationGuard, changes: ConnectionChanges
     ) -> StoredConnection:
         """Revalidate identity and CAS; a no-change check still verifies the guard."""
         ...
 
-    def delete(self, context: WebConnectionContext, guard: ConnectionMutationGuard) -> None: ...
+    def delete(self, context: ConnectionManagementContext, guard: ConnectionMutationGuard) -> None: ...
 
 
 class ConnectionCipher(Protocol):
@@ -104,7 +109,7 @@ class ApiKeyCredentialGateway(Protocol):
 
     def check(
         self,
-        context: WebConnectionContext,
+        context: ConnectionManagementContext,
         provider: str,
         credentials: Mapping[str, Any],
         *,
@@ -117,7 +122,7 @@ class OAuthConnectionLifecycle(Protocol):
         self, context: WebConnectionContext, record: StoredConnection, *, plugin_unique_identifier: str
     ) -> ConnectionCheckOutcome: ...
 
-    def revoke_deleted(self, context: WebConnectionContext, record: StoredConnection) -> None:
+    def revoke_deleted(self, context: ConnectionManagementContext, record: StoredConnection) -> None:
         """Best effort after a successful conditional delete; never restore the record."""
         ...
 
@@ -148,10 +153,12 @@ class ConnectionService:
             raise ValueError("Invalid connection cursor.") from None
         return self._store.list(context, query, after_id)
 
-    def get_connection(self, context: WebConnectionContext, connection_id: str) -> ConnectionSummary:
+    def get_connection(self, context: ConnectionManagementContext, connection_id: str) -> ConnectionSummary:
         return self._load(context, connection_id).summary
 
-    def get_connection_revision(self, context: WebConnectionContext, connection_id: str) -> ConnectionRevisionView:
+    def get_connection_revision(
+        self, context: ConnectionManagementContext, connection_id: str
+    ) -> ConnectionRevisionView:
         record = self._load(context, connection_id)
         source = record.access.oauth_client.source if record.access.oauth_client is not None else None
         return ConnectionRevisionView(
@@ -160,6 +167,16 @@ class ConnectionService:
                 record.access.provider,
                 oauth_client_source=source,
             )
+        )
+
+    def get_owned_api_key_schema(
+        self, context: ConnectionManagementContext, connection_id: str, *, connection_revision: str
+    ) -> tuple[ProviderConfig, ...]:
+        record = self._load(context, connection_id)
+        self._require_api_key(record)
+        admitted = self._revisions.require(context, record.access.provider, connection_revision)
+        return self._credentials.get_schema(
+            context.tenant_id, record.access.provider, plugin_unique_identifier=admitted.plugin_unique_identifier
         )
 
     def create_api_key(self, context: WebConnectionContext, command: CreateApiKeyConnectionInput) -> ConnectionSummary:
@@ -216,7 +233,7 @@ class ConnectionService:
         )
 
     def update_connection(
-        self, context: WebConnectionContext, connection_id: str, command: UpdateConnectionInput
+        self, context: ConnectionManagementContext, connection_id: str, command: UpdateConnectionInput
     ) -> ConnectionSummary:
         record = self._load(context, connection_id)
         guard = connection_mutation_guard(context, record.access)
@@ -260,7 +277,7 @@ class ConnectionService:
         )
         return updated.summary
 
-    def delete_connection(self, context: WebConnectionContext, connection_id: str) -> None:
+    def delete_connection(self, context: ConnectionManagementContext, connection_id: str) -> None:
         record = self._load(context, connection_id)
         self._store.delete(context, connection_mutation_guard(context, record.access))
         if record.access.credential_type == ConnectionCredentialType.OAUTH2:
@@ -316,7 +333,7 @@ class ConnectionService:
             revision=current.access.revision,
         )
 
-    def _load(self, context: WebConnectionContext, connection_id: str) -> StoredConnection:
+    def _load(self, context: ConnectionManagementContext, connection_id: str) -> StoredConnection:
         require_personal_connection_access(context)
         record = self._store.find(context, connection_id)
         if record is None or record.access.id != connection_id:

@@ -1,12 +1,10 @@
 """Web management of personal API-key and OAuth Connections."""
 
 from datetime import datetime
-from typing import Any
 from uuid import UUID
 
 from flask import request
-from pydantic import ConfigDict, Field, JsonValue, RootModel, ValidationError, field_serializer
-from pydantic.json_schema import SkipJsonSchema
+from pydantic import Field, RootModel, ValidationError, field_serializer
 from werkzeug.exceptions import NotFound
 
 from controllers.common.end_user_connections import (
@@ -19,6 +17,7 @@ from controllers.common.end_user_connections import (
     ConnectionReauthorizationHTTPError,
     ConnectionRevisionChangedHTTPError,
     ConnectionSecretUnavailableHTTPError,
+    ConnectionUpdatePayload,
 )
 from controllers.common.end_user_connections import (
     raise_connection_error as _raise_error,
@@ -41,10 +40,8 @@ from services.end_user_connections.contracts import (
     ConnectionTargetInput,
     CreateApiKeyConnectionInput,
     ListConnectionsInput,
-    UpdateConnectionInput,
 )
 from services.end_user_connections.errors import ConnectionError
-from services.end_user_connections.revision import ConnectionRevision
 from services.end_user_connections.selections import SaveConnectionConfigurationInput
 from services.errors.conversation import ConversationNotExistsError
 
@@ -145,27 +142,8 @@ class EndUserConnectionCreatePayload(CreateApiKeyConnectionInput):
     pass
 
 
-def _omit_schema_default(schema: dict[str, Any]) -> None:
-    schema.pop("default", None)
-
-
-class EndUserConnectionUpdatePayload(UpdateConnectionInput):
-    model_config = ConfigDict(
-        json_schema_extra={"minProperties": 1, "dependentRequired": {"credentials": ["connection_revision"]}}
-    )
-
-    connection_revision: ConnectionRevision | SkipJsonSchema[None] = Field(
-        default=None,
-        json_schema_extra=_omit_schema_default,
-        description="Provider revision required when replacing credentials.",
-    )
-
-    name: str | SkipJsonSchema[None] = Field(
-        default=None, min_length=1, max_length=100, json_schema_extra=_omit_schema_default
-    )
-    credentials: dict[str, JsonValue] | SkipJsonSchema[None] = Field(
-        default=None, min_length=1, repr=False, json_schema_extra=_omit_schema_default
-    )
+class EndUserConnectionUpdatePayload(ConnectionUpdatePayload):
+    pass
 
 
 class EndUserConnectionRevisionResponse(ConnectionRevisionView, ResponseModel):

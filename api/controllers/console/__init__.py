@@ -143,6 +143,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         feature,
         human_input_form,
         init_validate,
+        me,  # noqa: F401
         notification,
         onboarding,
         resource_access_token,

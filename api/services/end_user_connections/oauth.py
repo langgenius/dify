@@ -16,7 +16,12 @@ from services.end_user_connections.contracts import (
     ConnectionTargetResolver,
     StartConnectionOAuthInput,
 )
-from services.end_user_connections.entities import ConnectionMutationGuard, ConnectionOAuthClient, WebConnectionContext
+from services.end_user_connections.entities import (
+    ConnectionManagementContext,
+    ConnectionMutationGuard,
+    ConnectionOAuthClient,
+    WebConnectionContext,
+)
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionConflictError,
@@ -61,7 +66,7 @@ class ResolvedOAuthClient:
 class ConnectionOAuthAttempt:
     """Continue the authenticated owner context without binding to a Site code."""
 
-    context: WebConnectionContext
+    context: ConnectionManagementContext
     callback_url: str
     provider: str
     client: ConnectionOAuthClient
@@ -98,15 +103,17 @@ class ConnectionOAuthGateway(Protocol):
 
     def resolve_client(self, tenant_id: str, provider: str, source: OAuthClientSource) -> ResolvedOAuthClient: ...
 
-    def authorization_url(self, context: WebConnectionContext, provider: str, client: ResolvedOAuthClient) -> str: ...
+    def authorization_url(
+        self, context: ConnectionManagementContext, provider: str, client: ResolvedOAuthClient
+    ) -> str: ...
 
     def exchange(
-        self, context: WebConnectionContext, provider: str, client: ResolvedOAuthClient, query_string: bytes
+        self, context: ConnectionManagementContext, provider: str, client: ResolvedOAuthClient, query_string: bytes
     ) -> ConnectionOAuthGrant: ...
 
 
 class ConnectionOAuthStore(Protocol):
-    def find(self, context: WebConnectionContext, connection_id: str) -> StoredConnection | None: ...
+    def find(self, context: ConnectionManagementContext, connection_id: str) -> StoredConnection | None: ...
 
     def validate_oauth_context(self, attempt: ConnectionOAuthAttempt) -> None: ...
 
@@ -169,7 +176,7 @@ class OAuthConnectionService:
         )
 
     def reauthorize_oauth(
-        self, context: WebConnectionContext, connection_id: str, *, callback_url: str, connection_revision: str
+        self, context: ConnectionManagementContext, connection_id: str, *, callback_url: str, connection_revision: str
     ) -> ConnectionOAuthStart:
         record = self._load(context, connection_id)
         reference = record.access.oauth_client
@@ -192,7 +199,7 @@ class OAuthConnectionService:
 
     def _start(
         self,
-        context: WebConnectionContext,
+        context: ConnectionManagementContext,
         provider: str,
         client: ResolvedOAuthClient,
         *,
@@ -267,7 +274,7 @@ class OAuthConnectionService:
             if connection_mutation_guard(context, record.access) != attempt.guard:
                 raise ConnectionConflictError()
         else:
-            if attempt.target is None:
+            if attempt.target is None or not isinstance(context, WebConnectionContext):
                 raise ConnectionOAuthError()
             target = self._targets.resolve(context, attempt.target)
             if target.provider != attempt.provider or target.oauth_client_source != attempt.client.source:
@@ -299,6 +306,8 @@ class OAuthConnectionService:
             context, attempt.provider, revision, oauth_client_source=attempt.client.source
         )
         if attempt.target is not None:
+            if not isinstance(context, WebConnectionContext):
+                raise ConnectionOAuthError()
             target = self._targets.resolve(context, attempt.target)
             attempt = replace(attempt, target_workflow_id=target.workflow_id)
         encrypted = self._cipher.encrypt(context.tenant_id, grant.credentials)
@@ -310,7 +319,7 @@ class OAuthConnectionService:
             revision_acceptance=self._revisions.acceptance(context, attempt.provider, revision, admitted),
         )
 
-    def _load(self, context: WebConnectionContext, connection_id: str) -> StoredConnection:
+    def _load(self, context: ConnectionManagementContext, connection_id: str) -> StoredConnection:
         require_personal_connection_access(context)
         record = self._store.find(context, connection_id)
         if record is None or record.access.id != connection_id:

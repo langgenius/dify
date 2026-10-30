@@ -7,24 +7,29 @@ existing use cases that still need attached models.
 
 from __future__ import annotations
 
+import base64
+import json
 import logging
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import datetime
 from typing import Any, cast, override
+from uuid import UUID
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
 from sqlalchemy import ColumnElement, delete, select
+from sqlalchemy.engine import Row
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
+from core.app.public_runtime import published_app_filter
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from libs.datetime_utils import naive_utc_now
 from libs.pagination import PaginatedResult, paginate_query
 from machinery.context import AppRequestContext, RequestContext
-from models.account import Account, Tenant
+from models.account import Account, AccountStatus, Tenant
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
@@ -35,8 +40,9 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
+from models.consumer import AccountAppUsage
 from models.enums import AppStatus
-from models.model import App, AppMode, AppModelConfig, AppStar, IconType
+from models.model import App, AppMode, AppModelConfig, AppStar, IconType, Site
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
 from repositories.app.response import app_record, app_summary
@@ -50,6 +56,7 @@ from services.app.console_service import ConsoleAppNotFoundError, ConsoleApps
 from services.app.query_service import AppDescription, DiscoveryApps, RelatedApps
 from services.app_creation_records import create_installed_app_record, create_site_record
 from services.app_tracing_config_service import AppTraceSettings
+from services.consumer_service import ConsumerApp, ConsumerAppNotFoundError, ConsumerAppsQuery, ConsumerIdentity
 from services.entities.app_entities import (
     RECENT_APP_MODES,
     AppAgentBinding,
@@ -77,6 +84,8 @@ from services.errors.base import NoPermissionError
 from services.openapi.visibility import apply_openapi_gate
 
 logger = logging.getLogger(__name__)
+
+type ConsumerAppRow = tuple[App, str, str | None, datetime | None, datetime | None]
 
 _app_trace_settings_adapter = TypeAdapter(AppTraceSettings)
 
@@ -120,6 +129,199 @@ def console_app_actor(session: Session, context: RequestContext) -> Account:
 class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    @staticmethod
+    def _consumer_query(identity: ConsumerIdentity) -> sa.Select[ConsumerAppRow]:
+        stmt = (
+            select(App, Site.code, AppStar.id, AccountAppUsage.last_used_at, AppStar.created_at)
+            .join(Site, Site.app_id == App.id)
+            .outerjoin(
+                AppStar,
+                sa.and_(
+                    AppStar.tenant_id == App.tenant_id,
+                    AppStar.app_id == App.id,
+                    AppStar.account_id == identity.account_id,
+                ),
+            )
+            .outerjoin(
+                AccountAppUsage,
+                sa.and_(
+                    AccountAppUsage.tenant_id == App.tenant_id,
+                    AccountAppUsage.app_id == App.id,
+                    AccountAppUsage.account_id == identity.account_id,
+                ),
+            )
+            .where(
+                App.status == AppStatus.NORMAL,
+                App.enable_site.is_(True),
+                Site.status == AppStatus.NORMAL,
+                Site.code.is_not(None),
+                Site.code != "",
+                published_app_filter(),
+            )
+        )
+        # SQLAlchemy does not infer outer-join nullability or the Site code predicate.
+        return cast(sa.Select[ConsumerAppRow], stmt)
+
+    @staticmethod
+    def _consumer_app(identity: ConsumerIdentity, row: Row[ConsumerAppRow], view: str) -> ConsumerApp:
+        app, code, star_id, last_used, starred_at = row
+        timestamp = last_used if view == "recent" else starred_at if view == "favorites" else None
+        continuation = base64.urlsafe_b64encode(
+            json.dumps(
+                [
+                    identity.account_id,
+                    view,
+                    timestamp.isoformat() if timestamp is not None else None,
+                    app.id,
+                ]
+            ).encode()
+        ).decode()
+        return ConsumerApp(
+            id=app.id,
+            name=app.name,
+            description=app.description,
+            mode=app.mode,
+            icon_type=app.icon_type,
+            icon=app.icon,
+            icon_background=app.icon_background,
+            app_code=code,
+            is_favorite=star_id is not None,
+            last_used_at=last_used,
+            continuation=continuation,
+        )
+
+    def candidates(
+        self,
+        identity: ConsumerIdentity,
+        query: ConsumerAppsQuery,
+        *,
+        after: str | None,
+        limit: int,
+        shared_ids: Sequence[str] | None,
+    ) -> tuple[ConsumerApp, ...]:
+        stmt = self._consumer_query(identity)
+        timestamp = None
+        if query.view == "recent":
+            stmt = stmt.where(AccountAppUsage.id.is_not(None))
+            timestamp = AccountAppUsage.last_used_at
+        elif query.view == "favorites":
+            stmt = stmt.where(AppStar.id.is_not(None))
+            timestamp = AppStar.created_at
+        else:
+            stmt = stmt.where(App.id.in_(shared_ids or ()))
+        if query.name:
+            stmt = stmt.where(App.name.icontains(query.name, autoescape=True))
+        if after is not None:
+            try:
+                owner, view, time_value, app_id = json.loads(base64.b64decode(after, altchars=b"-_", validate=True))
+                if owner != identity.account_id or view != query.view:
+                    raise ValueError
+                app_id = str(UUID(app_id))
+                if timestamp is None:
+                    stmt = stmt.where(App.id > app_id)
+                else:
+                    moment = datetime.fromisoformat(time_value)
+                    stmt = stmt.where(sa.or_(timestamp < moment, sa.and_(timestamp == moment, App.id > app_id)))
+            except (ValueError, TypeError, UnicodeError):
+                raise ValueError("Invalid consumer App cursor.") from None
+        if timestamp is not None:
+            stmt = stmt.order_by(timestamp.desc())
+        stmt = stmt.order_by(App.id).limit(limit)
+        with self._session_factory() as session:
+            return tuple(self._consumer_app(identity, row, query.view) for row in session.execute(stmt))
+
+    def by_ids(self, identity: ConsumerIdentity, app_ids: Sequence[str]) -> tuple[ConsumerApp, ...]:
+        if not app_ids:
+            return ()
+        with self._session_factory() as session:
+            return tuple(
+                self._consumer_app(identity, row, "shared")
+                for row in session.execute(self._consumer_query(identity).where(App.id.in_(app_ids)).order_by(App.id))
+            )
+
+    def favorite(self, identity: ConsumerIdentity, app_id: str, *, enabled: bool) -> None:
+        with self._session_factory.begin() as session:
+            account = session.scalar(
+                select(Account.id)
+                .where(
+                    Account.id == identity.account_id,
+                    Account.status.in_((AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED)),
+                )
+                .with_for_update()
+            )
+            if account is None:
+                raise ConsumerAppNotFoundError()
+            if not enabled:
+                star = session.scalar(
+                    select(AppStar)
+                    .where(
+                        AppStar.account_id == identity.account_id,
+                        AppStar.app_id == app_id,
+                    )
+                    .limit(1)
+                )
+                if star is not None:
+                    session.execute(
+                        delete(AppStar).where(
+                            AppStar.id == star.id,
+                            AppStar.account_id == identity.account_id,
+                            AppStar.tenant_id == star.tenant_id,
+                            AppStar.app_id == app_id,
+                        )
+                    )
+                return
+            row = session.execute(self._consumer_query(identity).where(App.id == app_id)).first()
+            if row is None:
+                raise ConsumerAppNotFoundError()
+            app, _, star_id, _, _ = row
+            if star_id is None:
+                try:
+                    with session.begin_nested():
+                        session.add(AppStar(tenant_id=app.tenant_id, account_id=identity.account_id, app_id=app.id))
+                        session.flush()
+                except IntegrityError:
+                    # Console writers share the unique key without taking the consumer lock.
+                    if (
+                        session.scalar(
+                            select(AppStar.id).where(
+                                AppStar.tenant_id == app.tenant_id,
+                                AppStar.account_id == identity.account_id,
+                                AppStar.app_id == app_id,
+                            )
+                        )
+                        is None
+                    ):
+                        raise
+
+    def record_consumer_usage(self, *, account_id: str, tenant_id: str, app_id: str, used_at: datetime) -> None:
+        """Serialize first use on the Account and keep the timestamp monotonic."""
+        with self._session_factory.begin() as session:
+            account = session.scalar(
+                select(Account.id)
+                .where(
+                    Account.id == account_id,
+                    Account.status.in_((AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED)),
+                )
+                .with_for_update()
+            )
+            if account is None:
+                return
+            if session.scalar(select(App.id).where(App.id == app_id, App.tenant_id == tenant_id)) is None:
+                return
+            usage = session.scalar(
+                select(AccountAppUsage).where(
+                    AccountAppUsage.account_id == account_id,
+                    AccountAppUsage.tenant_id == tenant_id,
+                    AccountAppUsage.app_id == app_id,
+                )
+            )
+            if usage is None:
+                session.add(
+                    AccountAppUsage(account_id=account_id, tenant_id=tenant_id, app_id=app_id, last_used_at=used_at)
+                )
+            elif usage.last_used_at < used_at:
+                usage.last_used_at = used_at
 
     def get_agent_binding(self, workspace_id: str, app_id: str) -> AppAgentBinding | None:
         with self._session_factory() as session:
