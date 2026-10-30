@@ -7,6 +7,7 @@ from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field, replace
 from datetime import datetime
+from functools import partial
 from io import BytesIO
 from typing import BinaryIO, Literal, cast, override
 from uuid import UUID, uuid4
@@ -64,6 +65,7 @@ from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     AppCreationSettings,
     AppDeletion,
+    AppEvent,
     AppExportOptions,
     AppListParams,
     AppPage,
@@ -482,8 +484,31 @@ class DenyingAccess(ImportAccess):
 
 
 @dataclass
+class RefusingAccess(ImportAccess):
+    """Admits the first ``refuse_at - 1`` import checks and refuses the next; admits created Apps' access."""
+
+    refuse_at: int = 1
+
+    @override
+    def require_import(self, context: RequestContext, kind: Literal["url", "dsl", "agent"]) -> None:
+        super().require_import(context, kind)
+        if sum(call[0] == "require_import" for call in self.calls) == self.refuse_at:
+            raise NoPermissionError("denied")
+
+    @override
+    def imported_permissions(self, context: RequestContext, app_id: str) -> list[str]:
+        del context, app_id
+        return []
+
+    @override
+    def initialize_import_access(self, app_id: str) -> None:
+        del app_id
+
+
+@dataclass
 class PackageTransfers(Transfers):
     package: FakeAppPackage | None = None
+    app_created: bool = False
 
     @override
     def read_app_package(
@@ -522,21 +547,24 @@ class PackageTransfers(Transfers):
     ) -> Import:
         del context, package
         self.calls.append(("import", params.yaml_content, preserve_agent_bindings))
-        return Import(id="import", status=ImportStatus.COMPLETED, app_id="app")
+        return Import(id="import", status=ImportStatus.COMPLETED, app_id="app", app_created=self.app_created)
 
 
 def _package_import(
-    package: FakeAppPackage | None, access: type[ImportAccess] = ImportAccess
+    package: FakeAppPackage | None,
+    access: Callable[..., ImportAccess] = ImportAccess,
+    *,
+    app_created: bool = False,
 ) -> tuple[ConsoleAppService, list[tuple[object, ...]]]:
     """A console service importing ``package`` (None: a Roster Agent package), and the log of its steps."""
     calls: list[tuple[object, ...]] = package.calls if package is not None else []
     service = ConsoleAppService(
         apps=cast(ConsoleApps, Apps()),
         access=access(calls=calls),
-        transfers=PackageTransfers(package=package, calls=calls),
+        transfers=PackageTransfers(package=package, calls=calls, app_created=app_created),
         creators=Creators(),
         tracing=Tracing(),
-        lifecycle=Lifecycle(),
+        lifecycle=PackageLifecycle(calls=calls),
     )
     return service, calls
 
@@ -554,7 +582,14 @@ def _refuse(dsl: str) -> str:
     raise DraftChangedError
 
 
-_TOOL_IMPORT_STEPS = [("plan",), ("import", _WORKFLOW_TOOL_DSL, False), ("create_tool", "app")]
+# Each Workflow Tool import and the root import check the import rights again, as the console always has.
+_TOOL_IMPORT_STEPS = [
+    ("plan",),
+    ("require_import", "dsl"),
+    ("import", _WORKFLOW_TOOL_DSL, False),
+    ("create_tool", "app"),
+    ("require_import", "dsl"),
+]
 
 
 @pytest.mark.parametrize(
@@ -566,6 +601,13 @@ _TOOL_IMPORT_STEPS = [("plan",), ("import", _WORKFLOW_TOOL_DSL, False), ("create
             [],
             [("read", False, False), ("require_import", "dsl"), ("import", _ROOT_DSL, False)],
             id="no-flags",
+        ),
+        pytest.param(
+            False,
+            False,
+            [_PACKAGED_TOOL],
+            [("read", False, False), ("require_import", "dsl"), *_TOOL_IMPORT_STEPS, ("import", _ROOT_DSL, False)],
+            id="workflow-tools",
         ),
         pytest.param(
             True,
@@ -589,7 +631,7 @@ _TOOL_IMPORT_STEPS = [("plan",), ("import", _WORKFLOW_TOOL_DSL, False), ("create
         ),
     ],
 )
-def test_package_import_passes_its_flags_and_checks_rights_once(
+def test_package_import_passes_its_flags_and_checks_rights_as_the_console_does(
     preserve_agent_bindings: bool,
     refuse_roster_references: bool,
     workflow_tools: list[PackagedWorkflowTool],
@@ -637,6 +679,44 @@ def test_package_import_is_denied_by_its_content_before_any_other_check(
             preserve_agent_bindings=True,
             prepare_dsl=_refuse,
         )
+    assert calls == expected
+
+
+_PARTIAL_TOOL_IMPORT = [
+    ("read", False, False),
+    ("require_import", "dsl"),
+    ("plan",),
+    ("require_import", "dsl"),
+]
+
+
+@pytest.mark.parametrize(
+    ("refuse_at", "expected"),
+    [
+        pytest.param(2, _PARTIAL_TOOL_IMPORT, id="before-the-tool"),
+        pytest.param(
+            3,
+            [
+                *_PARTIAL_TOOL_IMPORT,
+                ("import", _WORKFLOW_TOOL_DSL, False),
+                ("create_tool", "app"),
+                ("require_import", "dsl"),
+                ("delete", "app"),
+            ],
+            id="before-the-root",
+        ),
+    ],
+)
+def test_a_refused_recheck_discards_the_apps_the_package_created(
+    refuse_at: int, expected: list[tuple[object, ...]]
+) -> None:
+    service, calls = _package_import(
+        FakeAppPackage(dsl=_ROOT_DSL, workflow_tools=[_PACKAGED_TOOL]),
+        partial(RefusingAccess, refuse_at=refuse_at),
+        app_created=True,
+    )
+    with pytest.raises(NoPermissionError, match="denied"):
+        service.import_app(CONTEXT, AppImportParams(mode="yaml-content"), source=BytesIO(b"package"))
     assert calls == expected
 
 
@@ -807,6 +887,26 @@ class Lifecycle:
         del mask_credentials
         assert context is CONTEXT
         return app
+
+
+@dataclass
+class PackageLifecycle(Lifecycle):
+    """Logs the Apps a failed package import discards into the import's shared log."""
+
+    calls: list[tuple[object, ...]] = field(default_factory=list)
+
+    @override
+    def delete(self, context: RequestContext, app_id: str) -> AppDeletion:
+        assert context is CONTEXT
+        self.calls.append(("delete", app_id))
+        return AppDeletion(
+            app=AppEvent(id=app_id, tenant_id=CONTEXT.active_workspace_id, mode="workflow"),
+            workflow_agent_ids=set(),
+            workspace_ids=[],
+            binding_ids=[],
+            home_snapshot_ids=[],
+            backing_agent_id=None,
+        )
 
 
 @pytest.mark.parametrize(
