@@ -103,7 +103,12 @@ from services.errors.app import (
 )
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
-from services.workflow.tool_credentials import ToolCredentialConfig, check_tool_credentials
+from services.workflow.tool_credentials import (
+    ToolCredentialConfig,
+    WorkflowToolEndUserAuthError,
+    check_tool_credentials,
+    first_end_user_tool_node,
+)
 from services.workflow.workflow_converter import WorkflowConverter
 from services.workflow_node_variables import get_human_input_form_variable_mapping
 from services.workflow_ref_service import WorkflowRef
@@ -705,6 +710,22 @@ class WorkflowService:
         draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
+
+        if node_id := first_end_user_tool_node(draft_workflow.graph_dict):
+            # Conversion takes this same lock until its provider is committed.
+            session.scalar(
+                select(App.id).where(App.id == app_model.id, App.tenant_id == app_model.tenant_id).with_for_update()
+            )
+            tool_id = session.scalar(
+                select(WorkflowToolProvider.id)
+                .where(
+                    WorkflowToolProvider.tenant_id == app_model.tenant_id,
+                    WorkflowToolProvider.app_id == app_model.id,
+                )
+                .with_for_update()
+            )
+            if tool_id is not None:
+                raise WorkflowToolEndUserAuthError(node_id)
 
         validate_llm_environment_model_references(
             graph=draft_workflow.graph_dict,

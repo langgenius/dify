@@ -102,6 +102,7 @@ from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.workflow.tool_credentials import WorkflowToolEndUserAuthError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 from services.workflow_variable_reference_validator import advisory_variable_reference_warning
@@ -1354,13 +1355,16 @@ class PublishedWorkflowApi(Resource):
 
         workflow_service = WorkflowService()
         with sessionmaker(db.engine).begin() as session:
-            workflow = workflow_service.publish_workflow(
-                session=session,
-                app_model=app_model,
-                account=current_user,
-                marked_name=args.marked_name or "",
-                marked_comment=args.marked_comment or "",
-            )
+            try:
+                workflow = workflow_service.publish_workflow(
+                    session=session,
+                    app_model=app_model,
+                    account=current_user,
+                    marked_name=args.marked_name or "",
+                    marked_comment=args.marked_comment or "",
+                )
+            except WorkflowToolEndUserAuthError as exc:
+                raise BadRequest(str(exc)) from exc
 
             # Update app_model within the same session to ensure atomicity
             app_model_in_session = session.get(App, app_model.id)
