@@ -1,3 +1,6 @@
+import re
+
+
 def parse_config(content: str) -> dict[str, str]:
     config: dict[str, str] = {}
     if not content:
@@ -21,11 +24,30 @@ def parse_config(content: str) -> dict[str, str]:
         raw_value = cleaned_line[separator_index + 1 :].strip()
 
         try:
-            decoded_value = bytes(raw_value, "utf-8").decode("unicode_escape")
-            decoded_value = decoded_value.replace(r"\=", "=").replace(r"\:", ":")
+            decoded_value = _decode_escapes(raw_value)
         except UnicodeDecodeError:
             decoded_value = raw_value
 
         config[key] = decoded_value
 
     return config
+
+
+def _decode_escapes(value: str) -> str:
+    """Decode escape sequences while preserving literal Unicode text.
+
+    ``unicode_escape`` decodes the whole value as Latin-1, which corrupts
+    literal UTF-8 characters (e.g. Chinese text, accented letters, emoji).
+    Instead, only decode explicit escape tokens and leave non-ASCII text
+    untouched.
+    """
+    decoded = re.sub(
+        r"\\([nrt\\=:])",
+        lambda m: {"n": "\n", "r": "\r", "t": "\t", "\\": "\\", "=": "=", ":": ":"}[m.group(1)],
+        value,
+    )
+    return re.sub(
+        r"\\u([0-9a-fA-F]{4})|\\x([0-9a-fA-F]{2})",
+        lambda m: chr(int(m.group(1) or m.group(2), 16)),
+        decoded,
+    )
