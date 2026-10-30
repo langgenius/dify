@@ -224,6 +224,7 @@ type RenderOptions = {
   hasEditPermission?: boolean
   enableExploreBanner?: boolean
   enableLearnApp?: boolean
+  enableMarketplace?: boolean
   extra?: ReactNode
   deploymentEdition?: DeploymentEdition
   searchParams?: Record<string, string>
@@ -250,6 +251,7 @@ const renderHomeContent = ({
       deployment_edition: options.deploymentEdition ?? 'COMMUNITY',
       enable_explore_banner: options.enableExploreBanner ?? false,
       enable_learn_app: options.enableLearnApp ?? true,
+      enable_marketplace: options.enableMarketplace ?? false,
     },
   })
   queryClient.setQueryData(
@@ -539,6 +541,20 @@ describe('HomeContent', () => {
       expect(
         screen.queryByRole('link', { name: 'explore.learnDify.moreTemplates' }),
       ).not.toBeInTheDocument()
+    })
+
+    it('links more templates to Marketplace only when Marketplace is enabled', () => {
+      const { unmount } = renderHomeContent({ enableMarketplace: true })
+
+      expect(screen.getByRole('link', { name: 'explore.apps.viewMore' })).toHaveAttribute(
+        'href',
+        expect.stringContaining('/templates'),
+      )
+
+      unmount()
+      renderHomeContent({ enableMarketplace: false })
+
+      expect(screen.queryByRole('link', { name: 'explore.apps.viewMore' })).not.toBeInTheDocument()
     })
 
     it('should hide learn dify templates when learn app is disabled', () => {

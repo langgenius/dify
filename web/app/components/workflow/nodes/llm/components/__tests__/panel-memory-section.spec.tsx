@@ -1,39 +1,24 @@
 import type { LLMNodeType } from '../../types'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
+import { createNode, createStartNode } from '@/app/components/workflow/__tests__/fixtures'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { renderWorkflowEditor } from '@/test/workflow-editor'
 import PanelMemorySection from '../panel-memory-section'
-
-vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => ({
-  default: ({
-    value,
-    onChange,
-    readOnly,
-  }: {
-    value: string
-    onChange: (value: string) => void
-    readOnly?: boolean
-  }) => (
-    <textarea
-      aria-label="Memory prompt"
-      value={value}
-      readOnly={readOnly}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  ),
-}))
 
 const createInputs = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   title: 'LLM',
   desc: '',
-  type: 'llm' as LLMNodeType['type'],
+  type: BlockEnum.LLM,
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: 'chat' as const,
+    mode: 'chat',
     completion_params: {},
-  } as LLMNodeType['model'],
+  },
   prompt_template: [],
   context: {
     enabled: false,
@@ -52,60 +37,110 @@ const createInputs = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   ...overrides,
 })
 
-const baseProps = {
-  readOnly: false,
-  isChatflow: true,
-  isChatModel: true,
-  isCompletionModel: false,
-  inputs: createInputs(),
-  hasSetBlockStatus: {
-    history: false,
-    query: true,
-    context: false,
-  },
-  availableVars: [] as NodeOutPutVar[],
-  availableNodesWithParent: [] as Node[],
-  handleSyeQueryChange: vi.fn(),
-  handleMemoryChange: vi.fn(),
+type HarnessProps = {
+  availableNodesWithParent: Node[]
+  availableVars: NodeOutPutVar[]
+  initialMemory?: Memory
+  isChatflow?: boolean
+  readOnly?: boolean
+  resourceKind?: 'app' | 'snippet'
 }
+
+function MemoryHarness({
+  availableNodesWithParent,
+  availableVars,
+  initialMemory,
+  isChatflow = true,
+  readOnly = false,
+  resourceKind = 'app',
+}: HarnessProps) {
+  const [inputs, setInputs] = useState(() => createInputs({ memory: initialMemory }))
+  return (
+    <>
+      <PanelMemorySection
+        readOnly={readOnly}
+        isChatflow={isChatflow}
+        isChatModel
+        isCompletionModel={false}
+        inputs={inputs}
+        hasSetBlockStatus={{ history: false, query: true, context: false }}
+        availableVars={availableVars}
+        availableNodesWithParent={availableNodesWithParent}
+        resourceKind={resourceKind}
+        handleMemoryChange={(memory) => setInputs((current) => ({ ...current, memory }))}
+        handleSyeQueryChange={(query) =>
+          setInputs((current) => ({
+            ...current,
+            memory: { ...current.memory!, query_prompt_template: query },
+          }))
+        }
+      />
+      <output aria-label="Saved memory">
+        {inputs.memory ? JSON.stringify(inputs.memory) : 'unset'}
+      </output>
+    </>
+  )
+}
+
+const renderMemory = (props: Omit<HarnessProps, 'availableNodesWithParent' | 'availableVars'>) => {
+  const start = createStartNode({ id: 'start' })
+  const llm = createNode({ id: 'llm', data: createInputs({ memory: props.initialMemory }) })
+  return renderWorkflowEditor(
+    <MemoryHarness {...props} availableNodesWithParent={[start]} availableVars={[]} />,
+    {
+      nodes: [start, llm],
+      resource:
+        props.resourceKind === 'snippet'
+          ? { kind: 'snippet', snippetId: 'snippet-1' }
+          : { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
+    },
+  )
+}
+
+const savedMemory = () => screen.getByRole('status', { name: 'Saved memory' })
 
 it.each([
   { resourceKind: 'app' as const, expected: '{{#sys.query#}}\n\n{{#sys.files#}}' },
   { resourceKind: 'snippet' as const, expected: '' },
 ])(
-  'enables memory with the correct $resourceKind prompt and saves edits',
+  'enables memory with the correct $resourceKind prompt and saves real editor edits',
   async ({ resourceKind, expected }) => {
     const user = userEvent.setup()
-    const onChange = vi.fn()
-    function Harness() {
-      const [memory, setMemory] = useState<Memory>()
-      return (
-        <PanelMemorySection
-          {...baseProps}
-          resourceKind={resourceKind}
-          inputs={createInputs({ memory })}
-          handleMemoryChange={(next) => {
-            setMemory(next)
-            onChange(next)
-          }}
-          handleSyeQueryChange={(query) =>
-            setMemory((previous) => ({ ...previous!, query_prompt_template: query }))
-          }
-        />
-      )
-    }
-    render(<Harness />)
+    renderMemory({ resourceKind })
     await user.click(screen.getByRole('switch'))
-    expect(onChange).toHaveBeenCalledExactlyOnceWith({
-      window: { enabled: false, size: 50 },
-      query_prompt_template: expected,
-    })
-    expect(screen.getByRole('textbox', { name: 'Memory prompt' })).toHaveValue(expected)
-    const prompt = screen.getByRole('textbox', { name: 'Memory prompt' })
-    await user.clear(prompt)
-    expect(prompt).toHaveValue('')
-    await user.type(prompt, 'Custom prompt')
-    expect(screen.getByRole('textbox', { name: 'Memory prompt' })).toHaveValue('Custom prompt')
+    expect(savedMemory()).toHaveTextContent(
+      JSON.stringify({
+        window: { enabled: false, size: 50 },
+        query_prompt_template: expected,
+      }),
+    )
+
+    // This composition does not connect the visible "user" heading to the editor. The Lexical
+    // contenteditable is the sole editable textbox; MemoryConfig also exposes a disabled textbox.
+    const editableTextboxes = screen
+      .getAllByRole('textbox')
+      .filter((element) => element.getAttribute('contenteditable') === 'true')
+    expect(editableTextboxes).toHaveLength(1)
+    const prompt = editableTextboxes[0]!
+    await replacePromptEditorText(prompt, '')
+    await waitFor(() =>
+      expect(savedMemory()).toHaveTextContent(
+        JSON.stringify({
+          window: { enabled: false, size: 50 },
+          query_prompt_template: '',
+        }),
+      ),
+    )
+    await replacePromptEditorText(prompt, 'Custom prompt')
+    await waitFor(() =>
+      expect(savedMemory()).toHaveTextContent(
+        JSON.stringify({
+          window: { enabled: false, size: 50 },
+          query_prompt_template: 'Custom prompt',
+        }),
+      ),
+    )
+    expect(prompt).toHaveTextContent('Custom prompt')
     if (resourceKind === 'app')
       expect(screen.getByText('workflow.nodes.llm.sysQueryInUser')).toBeVisible()
     else expect(screen.queryByText('workflow.nodes.llm.sysQueryInUser')).not.toBeInTheDocument()
@@ -114,24 +149,21 @@ it.each([
 
 it('prevents memory activation when read-only', async () => {
   const user = userEvent.setup()
-  const onChange = vi.fn()
-  render(
-    <PanelMemorySection
-      {...baseProps}
-      readOnly
-      inputs={createInputs({ memory: undefined })}
-      handleMemoryChange={onChange}
-    />,
-  )
-  await user.click(screen.getByRole('switch'))
-  expect(onChange).not.toHaveBeenCalled()
-  expect(screen.queryByRole('textbox', { name: 'Memory prompt' })).not.toBeInTheDocument()
+  renderMemory({ readOnly: true })
+  const memorySwitch = screen.getByRole('switch')
+  expect(memorySwitch).toHaveAttribute('aria-disabled', 'true')
+  await user.click(memorySwitch)
+  expect(savedMemory()).toHaveTextContent('unset')
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
 })
 
 it('hides memory settings outside chatflow', () => {
-  render(
-    <PanelMemorySection {...baseProps} isChatflow={false} isChatModel={false} isCompletionModel />,
-  )
+  const memory: Memory = {
+    window: { enabled: false, size: 10 },
+    query_prompt_template: 'Existing prompt',
+  }
+  renderMemory({ initialMemory: memory, isChatflow: false })
   expect(screen.queryByRole('switch')).not.toBeInTheDocument()
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  expect(savedMemory()).toHaveTextContent(JSON.stringify(memory))
 })

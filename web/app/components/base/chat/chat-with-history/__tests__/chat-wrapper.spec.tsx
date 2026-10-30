@@ -347,6 +347,13 @@ it.each([
     disabled: false,
   },
   {
+    name: 'empty required file list',
+    type: InputVarType.multiFiles,
+    value: [],
+    required: true,
+    disabled: true,
+  },
+  {
     name: 'mixed uploads',
     type: InputVarType.multiFiles,
     value: [uploadedFile('1', 'uploaded-1'), uploadedFile('2')],

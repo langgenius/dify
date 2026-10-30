@@ -80,7 +80,7 @@ describe('Pagination primitive', () => {
     await expect.element(screen.getByRole('button', { name: 'Previous page' })).toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'Next page' })).toBeInTheDocument()
     await expect
-      .element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }))
+      .element(screen.getByRole('button', { name: '2/200: Edit page number' }))
       .toHaveTextContent('2/200')
     await expect
       .element(screen.getByRole('button', { name: 'Page 2, current page' }))
@@ -165,7 +165,7 @@ describe('Pagination primitive', () => {
   it('switches the page summary into a selected labelled number field', async () => {
     const { screen } = await renderPagination()
 
-    await screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).click()
+    await screen.getByRole('button', { name: '2/200: Edit page number' }).click()
 
     await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toBeInTheDocument()
     const input = asHTMLElement(
@@ -186,12 +186,12 @@ describe('Pagination primitive', () => {
   it('returns to the summary button when the page input loses focus', async () => {
     const { screen } = await renderPagination()
 
-    await screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).click()
+    await screen.getByRole('button', { name: '2/200: Edit page number' }).click()
     await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toBeInTheDocument()
     asHTMLElement(screen.getByRole('textbox', { name: 'Page number' }).element()).blur()
 
     await expect
-      .element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }))
+      .element(screen.getByRole('button', { name: '2/200: Edit page number' }))
       .toBeInTheDocument()
   })
 
@@ -199,13 +199,13 @@ describe('Pagination primitive', () => {
     {
       name: 'Enter and restores summary focus',
       key: 'Enter',
-      focusedButton: 'Edit page number, current page 2 of 200',
+      focusedButton: '2/200: Edit page number',
     },
     { name: 'Tab and moves focus forward', key: 'Tab', focusedButton: 'Next page' },
   ])('commits the edited page with $name', async ({ key, focusedButton }) => {
     const { screen, onPageChange } = await renderPagination()
 
-    await screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).click()
+    await screen.getByRole('button', { name: '2/200: Edit page number' }).click()
     const input = screen.getByRole('textbox', { name: 'Page number' })
     await input.fill('7')
     await expect.element(input).toHaveFocus()
@@ -233,7 +233,7 @@ describe('Pagination primitive', () => {
       </React.Fragment>,
     )
 
-    await screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).click()
+    await screen.getByRole('button', { name: '2/200: Edit page number' }).click()
     const input = screen.getByRole('textbox', { name: 'Page number' })
     await input.fill('7')
     await expect.element(input).toHaveFocus()
@@ -247,14 +247,14 @@ describe('Pagination primitive', () => {
     expect(onClick).toHaveBeenCalledOnce()
     await expect.element(outsideButton).toHaveFocus()
     await expect
-      .element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }))
+      .element(screen.getByRole('button', { name: '2/200: Edit page number' }))
       .toBeInTheDocument()
   })
 
   it('cancels the page input editing mode with Escape', async () => {
     const { screen, onPageChange } = await renderPagination()
 
-    await screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).click()
+    await screen.getByRole('button', { name: '2/200: Edit page number' }).click()
     const input = screen.getByRole('textbox', { name: 'Page number' })
     await input.fill('7')
     await expect.element(input).toHaveFocus()
@@ -262,7 +262,7 @@ describe('Pagination primitive', () => {
     await userEvent.keyboard('{Escape}')
 
     const summaryButton = screen.getByRole('button', {
-      name: 'Edit page number, current page 2 of 200',
+      name: '2/200: Edit page number',
     })
     await expect.element(summaryButton).toBeInTheDocument()
     await vi.waitFor(() => {
@@ -299,7 +299,7 @@ describe('Pagination primitive', () => {
     )
 
     await expect
-      .element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 10' }))
+      .element(screen.getByRole('button', { name: '2/10: Edit page number' }))
       .toBeInTheDocument()
     await expect
       .element(screen.getByRole('radiogroup', { name: 'Items per page' }))
@@ -313,14 +313,13 @@ describe('Pagination primitive', () => {
         totalPages={10}
         onPageChange={vi.fn()}
         labels={{
-          editPageNumber: (page, totalPages) =>
-            `Change page, current page ${page} of ${totalPages}`,
+          editPageNumber: (page, totalPages) => `${page}/${totalPages}: Change page`,
         }}
       />,
     )
 
     await expect
-      .element(screen.getByRole('button', { name: 'Change page, current page 2 of 10' }))
+      .element(screen.getByRole('button', { name: '2/10: Change page' }))
       .toBeInTheDocument()
   })
 

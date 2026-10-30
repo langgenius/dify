@@ -16,7 +16,7 @@ from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, 
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeBadRequestError
 from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from models.provider import ProviderType
-from tests.unit_tests.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_fixtures import make_model_config
 
 OPENAI_PROVIDER = "langgenius/openai/openai"
 ANTHROPIC_PROVIDER = "langgenius/anthropic/anthropic"

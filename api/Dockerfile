@@ -1,10 +1,13 @@
+# KnowledgeFS is released independently. Its release controller atomically mounts the tested
+# engine bundles and native dependencies at /app/knowledge-fs in the dedicated Celery workers.
+# Ordinary Dify API images do not rebuild or download a second copy of the private engine.
 # base image
 FROM python:3.13-slim-bookworm AS base
 
 WORKDIR /app/api
 
 # Install uv
-ENV UV_VERSION=0.8.9
+ENV UV_VERSION=0.13.4
 
 RUN pip install --no-cache-dir uv==${UV_VERSION}
 
@@ -89,6 +92,8 @@ RUN NODE_MAJOR="${NODE_PACKAGE_VERSION%%.*}" \
         media-types \
         # install libmagic to support the use of python-magic guess MIMETYPE
         libmagic1 \
+        # Bounded PDF metadata/rasterization invoked by the local KnowledgeFS worker engine.
+        poppler-utils \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 

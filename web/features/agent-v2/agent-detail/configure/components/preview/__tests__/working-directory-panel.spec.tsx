@@ -197,6 +197,11 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
+vi.mock('@/app/components/base/file-uploader/pdf-highlighter-adapter', () => ({
+  PdfLoader: ({ url }: { url: string }) => <div data-testid="pdf-loader" data-url={url} />,
+  PdfHighlighter: () => null,
+}))
+
 vi.mock('@/utils/download', () => ({
   downloadUrl: mocks.downloadUrl,
 }))
@@ -289,7 +294,7 @@ function mockFileReadAsBinary(source: AgentWorkingDirectorySource) {
   }))
 }
 
-function expectedImagePreviewRequest(source: AgentWorkingDirectorySource, path: string) {
+function expectedFileUrlRequest(source: AgentWorkingDirectorySource, path: string) {
   if (source.type === 'agent') {
     return {
       params: { agent_id: source.agentId },
@@ -361,6 +366,31 @@ describe('AgentWorkingDirectoryPanel', () => {
         }),
       }),
     )
+  })
+
+  it('loads files only while mounted and starts a fresh directory selection after reopening', async () => {
+    const user = userEvent.setup()
+    const view = renderWorkingDirectoryPanel({ open: false })
+    expect(mocks.sandboxFilesQueryOptions).not.toHaveBeenCalled()
+    view.rerenderPanel({ open: true, source: agentSource })
+    await user.click(
+      await screen.findByRole('tab', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.temporaryFiles',
+      }),
+    )
+    expect(
+      screen.getByRole('tab', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.temporaryFiles',
+      }),
+    ).toHaveAttribute('aria-selected', 'true')
+    view.rerenderPanel({ open: false, source: agentSource })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    view.rerenderPanel({ open: true, source: agentSource })
+    expect(
+      await screen.findByRole('tab', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.persistentFiles',
+      }),
+    ).toHaveAttribute('aria-selected', 'true')
   })
 
   it('lets keyboard users expand and enter a folder with separate controls', async () => {
@@ -645,7 +675,7 @@ describe('AgentWorkingDirectoryPanel', () => {
       })
       expect(previewClient).toHaveBeenNthCalledWith(
         2,
-        expectedImagePreviewRequest(identitySource, initialImagePath),
+        expectedFileUrlRequest(identitySource, initialImagePath),
       )
 
       await user.click(await screen.findByText(fileName(nextImagePath)))
@@ -656,7 +686,7 @@ describe('AgentWorkingDirectoryPanel', () => {
       })
       expect(previewClient).toHaveBeenNthCalledWith(
         3,
-        expectedImagePreviewRequest(identitySource, nextImagePath),
+        expectedFileUrlRequest(identitySource, nextImagePath),
       )
     },
   )
@@ -690,6 +720,48 @@ describe('AgentWorkingDirectoryPanel', () => {
       expect(previewClient).toHaveBeenCalledTimes(0)
     },
   )
+
+  it.each(previewSourceCases)(
+    'should preview $label PDFs from a download URL without reading the file text',
+    async ({ source, previewClient }) => {
+      const readQueryFn = vi.fn(async () => ({
+        binary: true,
+        path: '~/report.pdf',
+        text: null,
+        truncated: false,
+      }))
+      ;(source.type === 'agent'
+        ? mocks.sandboxFileReadQueryOptions
+        : mocks.workflowSandboxFileReadQueryOptions
+      ).mockImplementation(() => ({ queryFn: readQueryFn }))
+      mockFileListEntries(source, [{ name: 'report.pdf', type: 'file' }])
+      previewClient.mockResolvedValueOnce({ url: 'https://example.com/report.pdf' })
+      renderWorkingDirectoryPanel({ source })
+
+      expect(await screen.findByTestId('pdf-loader')).toHaveAttribute(
+        'data-url',
+        'https://example.com/report.pdf',
+      )
+      expect(previewClient).toHaveBeenCalledWith(expectedFileUrlRequest(source, 'report.pdf'))
+      expect(readQueryFn).not.toHaveBeenCalled()
+    },
+  )
+
+  it('should note when a working directory file preview is truncated', async () => {
+    mocks.sandboxFileReadQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
+      queryFn: async () => ({
+        binary: false,
+        path: input.query?.path ?? '',
+        text: 'First 64 KiB',
+        truncated: true,
+      }),
+    }))
+    renderWorkingDirectoryPanel({ source: agentSource })
+
+    expect(
+      await screen.findByText('agentV2.agentDetail.configure.files.preview.truncated'),
+    ).toBeInTheDocument()
+  })
 
   it('should download workflow files from the exact node execution', async () => {
     const user = userEvent.setup()

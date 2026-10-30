@@ -1,0 +1,21 @@
+{
+  "command": ["node", "packages/contracts/scripts/export-compatibility-types.ts"],
+  "cwd": "../../..",
+  "inputs": [
+    "packages/contracts/api-documents.ts",
+    "packages/contracts/typescript-generation.ts",
+    "packages/contracts/scripts/export-compatibility-types.ts",
+    "packages/contracts/package.json",
+    "pnpm-lock.yaml",
+    "packages/contracts/generated/api/**/types.gen.ts",
+    "api/**/*.py",
+    "dify-agent/src/**/*.py",
+    "dify-agent/pyproject.toml",
+    "api/pyproject.toml",
+    "api/uv.lock"
+  ],
+  "env": ["UV_PROJECT_ENVIRONMENT"],
+  "exclude": ["api/tests/**"],
+  "optionalInputs": [".env"],
+  "timeoutMs": 120000
+}
