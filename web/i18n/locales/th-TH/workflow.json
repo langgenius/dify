@@ -260,6 +260,7 @@
   "errorMsg.authRequired": "ต้องได้รับอนุญาต",
   "errorMsg.configureModel": "กำหนดค่าโมเดล",
   "errorMsg.duplicateOutputVariable": "ตัวแปรของโหนดเอาต์พุต \"{{variable}}\" ซ้ำกัน ชื่อตัวแปรของโหนดเอาต์พุตต้องไม่ซ้ำกัน",
+  "errorMsg.endUserAuthWithTrigger": "เวิร์กโฟลว์ที่มีทริกเกอร์ไม่รองรับการให้สิทธิ์ผู้ใช้แอป",
   "errorMsg.fieldRequired": "{{field}} เป็นสิ่งจําเป็น",
   "errorMsg.fields.code": "รหัส",
   "errorMsg.fields.model": "แบบ",

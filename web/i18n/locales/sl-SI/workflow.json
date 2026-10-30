@@ -260,6 +260,7 @@
   "errorMsg.authRequired": "Zahtevana je avtorizacija",
   "errorMsg.configureModel": "Konfiguriraj model",
   "errorMsg.duplicateOutputVariable": "Podvojena spremenljivka izhodnega vozlišča \"{{variable}}\". Imena spremenljivk izhodnega vozlišča morajo biti enolična.",
+  "errorMsg.endUserAuthWithTrigger": "Avtorizacija uporabnikov aplikacije ni podprta v potekih dela s sprožilci.",
   "errorMsg.fieldRequired": "{{field}} je obvezno",
   "errorMsg.fields.code": "Koda",
   "errorMsg.fields.model": "Model",

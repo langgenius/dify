@@ -260,6 +260,7 @@
   "errorMsg.authRequired": "Требуется авторизация",
   "errorMsg.configureModel": "Настройте модель",
   "errorMsg.duplicateOutputVariable": "Повторяющаяся переменная узла вывода \"{{variable}}\". Имена переменных узла вывода должны быть уникальными.",
+  "errorMsg.endUserAuthWithTrigger": "Авторизация пользователей приложения не поддерживается в рабочих процессах с триггерами.",
   "errorMsg.fieldRequired": "{{field}} обязательно для заполнения",
   "errorMsg.fields.code": "Код",
   "errorMsg.fields.model": "Модель",

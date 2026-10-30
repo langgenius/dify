@@ -260,6 +260,7 @@
   "errorMsg.authRequired": "È richiesta l'autorizzazione",
   "errorMsg.configureModel": "Configura un modello",
   "errorMsg.duplicateOutputVariable": "Variabile del nodo di output duplicata \"{{variable}}\". I nomi delle variabili del nodo di output devono essere univoci.",
+  "errorMsg.endUserAuthWithTrigger": "L'autorizzazione degli utenti dell'app non è supportata nei flussi di lavoro con trigger.",
   "errorMsg.fieldRequired": "{{field}} è richiesto",
   "errorMsg.fields.code": "Codice",
   "errorMsg.fields.model": "Modello",

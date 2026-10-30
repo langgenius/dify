@@ -32,6 +32,7 @@ import {
   createEdge,
   createNode,
   createStartNode,
+  createTriggerNode,
   resetFixtureCounters,
 } from '../../__tests__/fixtures'
 import { createTestWorkflowStore } from '../../__tests__/workflow-test-env'
@@ -43,6 +44,7 @@ import { createHooksStore } from '../../hooks-store/store'
 import { useWorkflowNodeCatalog } from '../../node-catalog'
 import { CodeLanguage } from '../../nodes/code/types'
 import llmDefault from '../../nodes/llm/default'
+import { CUSTOM_NOTE_NODE } from '../../note-node/constants'
 import { useStore } from '../../store'
 import { BlockEnum, PromptRole, VarType } from '../../types'
 import { useChecklist, useChecklistBeforePublish, useWorkflowRunValidation } from '../use-checklist'
@@ -398,6 +400,80 @@ function buildReusableToolGraph(requiredForm?: 'llm' | 'form') {
 }
 
 describe('useChecklist', () => {
+  it.each([BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
+    'reports the App user authorization conflict on its Tool node with a %s trigger',
+    (triggerType) => {
+      const { nodes, edges, options } = buildUnauthorizedToolGraph()
+      const { result, graph } = renderChecklist(
+        [...nodes, createTriggerNode(triggerType)],
+        edges,
+        options,
+      )
+      act(() => setNodeAuthorization(graph, 'tool', validAppUserAuth))
+      expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+        'workflow.errorMsg.endUserAuthWithTrigger',
+      ])
+    },
+  )
+
+  it('reports the trigger conflict alongside incomplete App user authorization', () => {
+    const { nodes, edges, options } = buildUnauthorizedToolGraph()
+    const { result, graph } = renderChecklist([...nodes, createTriggerNode()], edges, options)
+    act(() =>
+      setNodeAuthorization(graph, 'tool', {
+        credential_source: 'end_user',
+        end_user_auth: { allowed_credential_types: ['oauth2'], purpose: '' },
+      }),
+    )
+    expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual(
+      expect.arrayContaining([
+        'workflow.errorMsg.endUserAuthWithTrigger',
+        'plugin.auth.appUser.clientRequired',
+        'plugin.auth.appUser.descriptionRequired',
+      ]),
+    )
+  })
+
+  it('attributes the trigger conflict to the App user source instead of its Reuse consumer', () => {
+    const { nodes, edges, options } = buildReusableToolGraph()
+    const { result } = renderChecklist([...nodes, createTriggerNode()], edges, options)
+    expect(result.current.find((item) => item.id === 'auth-source')?.errorMessages).toEqual([
+      'workflow.errorMsg.endUserAuthWithTrigger',
+    ])
+    expect(result.current.find((item) => item.id === 'tool')).toBeUndefined()
+  })
+
+  it('clears the conflict when authorization changes to Workspace or the trigger is removed', () => {
+    const { nodes, edges, options } = buildUnauthorizedToolGraph()
+    const { result, graph } = renderChecklist(
+      [...nodes, createTriggerNode(BlockEnum.TriggerWebhook, { id: 'trigger' })],
+      edges,
+      options,
+    )
+    act(() => setNodeAuthorization(graph, 'tool', validAppUserAuth))
+    expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toContain(
+      'workflow.errorMsg.endUserAuthWithTrigger',
+    )
+    act(() => setNodeAuthorization(graph, 'tool', { credential_source: 'workspace' }))
+    expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+      'workflow.errorMsg.authRequired',
+    ])
+    act(() => setNodeAuthorization(graph, 'tool', validAppUserAuth))
+    expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toContain(
+      'workflow.errorMsg.endUserAuthWithTrigger',
+    )
+    act(() => graph.current?.setNodes((current) => current.filter((node) => node.id !== 'trigger')))
+    expect(result.current).toEqual([])
+  })
+
+  it('ignores trigger-shaped data on a non-execution note', () => {
+    const { nodes, edges, options } = buildUnauthorizedToolGraph()
+    const note = createTriggerNode(BlockEnum.TriggerWebhook, { type: CUSTOM_NOTE_NODE })
+    const { result, graph } = renderChecklist([...nodes, note], edges, options)
+    act(() => setNodeAuthorization(graph, 'tool', validAppUserAuth))
+    expect(result.current).toEqual([])
+  })
+
   it('reports live authorization errors only on the Reuse source', () => {
     const { nodes, edges, options } = buildReusableToolGraph()
     const { result, graph } = renderChecklist(nodes, edges, options)
@@ -894,6 +970,31 @@ describe('useChecklist', () => {
 })
 
 describe('useChecklistBeforePublish', () => {
+  it('blocks publishing with the trigger conflict on the App user authorization source', async () => {
+    const { nodes, edges, options } = buildReusableToolGraph()
+    const { wrapper } = createChecklistWrapper(
+      {
+        nodes: [
+          ...nodes,
+          createTriggerNode(BlockEnum.TriggerWebhook, {
+            id: 'trigger',
+            data: { webhook_url: 'https://example.com/webhook' },
+          }),
+        ],
+        edges: [...edges, createEdge({ source: 'trigger', target: 'auth-source' })],
+      },
+      options,
+    )
+    const { result } = renderHook(() => useChecklistBeforePublish(), { wrapper })
+    await act(async () => expect(await result.current.handleCheckBeforePublish()).toBe(false))
+    expect(
+      screen.getByText('[Authorization source] workflow.errorMsg.endUserAuthWithTrigger'),
+    ).toBeVisible()
+    expect(
+      screen.queryByText('[Reuse consumer] workflow.errorMsg.endUserAuthWithTrigger'),
+    ).not.toBeInTheDocument()
+  })
+
   it('rejects a deleted Reuse source using the current graph and shows a Reuse error', async () => {
     const { nodes, edges, options } = buildUnauthorizedToolGraph()
     const { wrapper, graph } = createChecklistWrapper({ nodes, edges }, options)

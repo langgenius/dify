@@ -260,6 +260,7 @@
   "errorMsg.authRequired": "ຈຳເປັນຕ້ອງມີການຢືນຢັນຕົວຕົນ",
   "errorMsg.configureModel": "ກະລຸນາຕັ້ງຄ່າຕົວແບບ (Model)",
   "errorMsg.duplicateOutputVariable": "ຊື່ຕົວປ່ຽນຜົນອອກ \"{{variable}}\" ຊ້ຳກັນ. ຊື່ຕົວປ່ຽນຜົນອອກຕ້ອງບໍ່ຊ້ຳກັນ.",
+  "errorMsg.endUserAuthWithTrigger": "ຂັ້ນຕອນການເຮັດວຽກທີ່ມີຕົວກະຕຸ້ນບໍ່ຮອງຮັບການໃຫ້ສິດຜູ້ໃຊ້ແອັບ.",
   "errorMsg.fieldRequired": "ຕ້ອງລະບຸ {{field}}",
   "errorMsg.fields.code": "ໂຄ້ດ",
   "errorMsg.fields.model": "ຕົວແບບ",

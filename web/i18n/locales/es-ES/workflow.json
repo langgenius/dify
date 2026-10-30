@@ -260,6 +260,7 @@
   "errorMsg.authRequired": "Se requiere autorización",
   "errorMsg.configureModel": "Configura un modelo",
   "errorMsg.duplicateOutputVariable": "Variable duplicada del nodo de salida \"{{variable}}\". Los nombres de las variables del nodo de salida deben ser únicos.",
+  "errorMsg.endUserAuthWithTrigger": "La autorización de usuarios de la aplicación no es compatible con los flujos de trabajo con activadores.",
   "errorMsg.fieldRequired": "Se requiere {{field}}",
   "errorMsg.fields.code": "Código",
   "errorMsg.fields.model": "Modelo",

@@ -5792,6 +5792,7 @@ export default interface Resources {
     'errorMsg.authRequired': 'Authorization is required'
     'errorMsg.configureModel': 'Configure a model'
     'errorMsg.duplicateOutputVariable': 'Duplicate Output node variable "{{variable}}". Output node variable names must be unique.'
+    'errorMsg.endUserAuthWithTrigger': 'App user authorization is not supported in workflows with triggers.'
     'errorMsg.fieldRequired': '{{field}} is required'
     'errorMsg.fields.code': 'Code'
     'errorMsg.fields.model': 'Model'

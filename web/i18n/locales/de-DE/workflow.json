@@ -260,6 +260,7 @@
   "errorMsg.authRequired": "Autorisierung ist erforderlich",
   "errorMsg.configureModel": "Modell konfigurieren",
   "errorMsg.duplicateOutputVariable": "Doppelte Variable des Output-Knotens \"{{variable}}\". Variablennamen von Output-Knoten müssen eindeutig sein.",
+  "errorMsg.endUserAuthWithTrigger": "Die Autorisierung von App-Benutzern wird in Workflows mit Triggern nicht unterstützt.",
   "errorMsg.fieldRequired": "{{field}} ist erforderlich",
   "errorMsg.fields.code": "Code",
   "errorMsg.fields.model": "Modell",

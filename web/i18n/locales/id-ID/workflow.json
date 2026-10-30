@@ -260,6 +260,7 @@
   "errorMsg.authRequired": "Otorisasi diperlukan",
   "errorMsg.configureModel": "Konfigurasikan model",
   "errorMsg.duplicateOutputVariable": "Variabel node output duplikat \"{{variable}}\". Nama variabel node output harus unik.",
+  "errorMsg.endUserAuthWithTrigger": "Otorisasi pengguna aplikasi tidak didukung dalam alur kerja dengan pemicu.",
   "errorMsg.fieldRequired": "{{field}} wajib diisi",
   "errorMsg.fields.code": "Kode",
   "errorMsg.fields.model": "Model",

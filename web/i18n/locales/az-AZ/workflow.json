@@ -260,6 +260,7 @@
   "errorMsg.authRequired": "Avtorizasiya tələb olunur",
   "errorMsg.configureModel": "Model konfiqurasiya et",
   "errorMsg.duplicateOutputVariable": "Output düyünündə \"{{variable}}\" adlı dəyişən təkrarlanır. Output düyününün dəyişən adları unikal olmalıdır.",
+  "errorMsg.endUserAuthWithTrigger": "Tətikləyiciləri olan iş axınlarında tətbiq istifadəçisinin avtorizasiyası dəstəklənmir.",
   "errorMsg.fieldRequired": "{{field}} tələb olunur",
   "errorMsg.fields.code": "Kod",
   "errorMsg.fields.model": "Model",
