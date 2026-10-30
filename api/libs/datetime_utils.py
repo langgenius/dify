@@ -93,7 +93,9 @@ def parse_time_range(
         #     first existing time, which `fold=0` resolves to deterministically.
         dt0 = dt.replace(tzinfo=tz, fold=0)
         dt1 = dt.replace(tzinfo=tz, fold=1)
-        if dt0.utcoffset() != dt1.utcoffset() and dt0.utcoffset() > dt1.utcoffset():
+        offset0 = dt0.utcoffset()
+        offset1 = dt1.utcoffset()
+        if offset0 is not None and offset1 is not None and offset0 > offset1:
             # Fall-back ambiguity: the earlier offset is DST, prefer standard time.
             return dt1.astimezone(utc)
         return dt0.astimezone(utc)

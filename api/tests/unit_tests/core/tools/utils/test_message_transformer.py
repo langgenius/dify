@@ -183,7 +183,7 @@ class TestToolEngineSerializationCases:
         def test_datetime_conversion(self):
             """Test datetime conversion with timezone handling"""
             # Test datetime with UTC timezone
-            dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
+            dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.UTC)
             result = safe_json_value(dt)
             assert isinstance(result, str)
             assert "2024-01-01T12:00:00+00:00" in result
@@ -276,7 +276,7 @@ class TestToolEngineSerializationCases:
                 True,
                 [1, 2, 3],
                 {"key": "value"},
-                datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+                datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.UTC),
                 Decimal("123.456"),
                 uuid4(),
             ]
@@ -319,8 +319,8 @@ class TestToolEngineSerializationCases:
             complex_data = {
                 "dates": [date(2024, 1, 1), date(2024, 1, 2)],
                 "timestamps": [
-                    datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
-                    datetime(2024, 1, 2, 12, 0, 0, tzinfo=datetime.timezone.utc),
+                    datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.UTC),
+                    datetime(2024, 1, 2, 12, 0, 0, tzinfo=datetime.UTC),
                 ],
                 "numbers": [Decimal("123.456"), Decimal("789.012")],
                 "identifiers": [uuid4(), uuid4()],
@@ -355,7 +355,7 @@ class TestToolEngineSerializationCases:
             test_dict = {
                 "string": "value",
                 "number": 42,
-                "datetime": datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+                "datetime": datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.UTC),
                 "decimal": Decimal("123.456"),
             }
             result = safe_json_dict(test_dict)
@@ -386,7 +386,7 @@ class TestToolEngineSerializationCases:
             test_dict = {
                 "level1": {
                     "level2": {
-                        "datetime": datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+                        "datetime": datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.UTC),
                         "decimal": Decimal("123.456"),
                     }
                 }
@@ -401,7 +401,7 @@ class TestToolEngineSerializationCases:
         def test_json_message_serialization(self):
             """Test JSON message serialization with complex data"""
             complex_data = {
-                "timestamp": datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+                "timestamp": datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.UTC),
                 "amount": Decimal("123.45"),
                 "id": uuid4(),
                 "binary": b"test data",
@@ -438,7 +438,7 @@ class TestToolEngineSerializationCases:
                     "level2": {
                         "level3": {
                             "dates": [date(2024, 1, 1), date(2024, 1, 2)],
-                            "timestamps": [datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)],
+                            "timestamps": [datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.UTC)],
                             "numbers": [Decimal("1.1"), Decimal("2.2")],
                             "arrays": [np.array([1, 2]), np.array([3, 4])],
                         }
@@ -471,7 +471,7 @@ class TestToolEngineSerializationCases:
             """Test integration with ToolFileMessageTransformer for JSON messages"""
             complex_data = {
                 "metadata": {
-                    "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
+                    "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.UTC),
                     "version": Decimal("1.0"),
                     "tags": ["tag1", "tag2"],
                 },
@@ -560,8 +560,8 @@ class TestToolEngineSerializationCases:
                     "id": uuid4(),
                     "name": "John Doe",
                     "email": "john@example.com",
-                    "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc),
-                    "last_login": datetime(2024, 1, 15, 14, 30, 0, tzinfo=datetime.timezone.utc),
+                    "created_at": datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.UTC),
+                    "last_login": datetime(2024, 1, 15, 14, 30, 0, tzinfo=datetime.UTC),
                     "preferences": {"theme": "dark", "language": "en", "timezone": "UTC"},
                 },
                 "analytics": {
@@ -570,12 +570,12 @@ class TestToolEngineSerializationCases:
                     "metrics": np.array([1.1, 2.2, 3.3, 4.4, 5.5]),
                     "events": [
                         {
-                            "timestamp": datetime(2024, 1, 1, 10, 0, 0, tzinfo=datetime.timezone.utc),
+                            "timestamp": datetime(2024, 1, 1, 10, 0, 0, tzinfo=datetime.UTC),
                             "action": "login",
                             "duration": Decimal("5.67"),
                         },
                         {
-                            "timestamp": datetime(2024, 1, 1, 11, 0, 0, tzinfo=datetime.timezone.utc),
+                            "timestamp": datetime(2024, 1, 1, 11, 0, 0, tzinfo=datetime.UTC),
                             "action": "logout",
                             "duration": Decimal("3600.0"),
                         },
@@ -586,7 +586,7 @@ class TestToolEngineSerializationCases:
                         "id": uuid4(),
                         "name": "document.pdf",
                         "size": 1024,
-                        "uploaded_at": datetime(2024, 1, 1, 9, 0, 0, tzinfo=datetime.timezone.utc),
+                        "uploaded_at": datetime(2024, 1, 1, 9, 0, 0, tzinfo=datetime.UTC),
                         "checksum": b"abc123def456",
                     }
                 ],
