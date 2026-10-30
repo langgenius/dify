@@ -1,23 +1,71 @@
 """HTTP transport shared by the generated billing and saas operations.
 
-Reuses the pooled client, auth header, and connection retry of `services.billing_service`.
+This is the only module that reads the billing URLs and secret, and only the generated modules
+call `request`; ruff's banned-api rule (TID251) rejects both anywhere else.
 Network failures, timeouts, throttling, and 5xx raise `BillingUpstreamUnavailableError`;
-any other non-200 status or a body that fails model validation raises
-`BillingUpstreamInvalidResponseError`.
+any other non-200 status or an enforced response that fails model validation raises
+`BillingUpstreamInvalidResponseError`. For a non-200 status, the error carries the status
+code and the parsed Kratos error body, so callers can branch on its `reason`.
+
+Response validation is observed before it is enforced. For a path not in
+`ENFORCED_RESPONSE_PATHS`, a body that fails validation is logged with `logger.exception`
+(reported to Sentry) and rebuilt from the raw payload: fields that validate are coerced,
+the rest keep their raw value, and missing fields read as `None`. Migrated single-response
+reads and quota operations are enforced before their results reach business decisions.
+Batch subscription plans remain observed here; `BillingService.get_plan_bulk` validates
+each item before returning it.
 """
 
-import os
+import json
+import logging
+import types
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Literal
+from functools import cache
+from typing import Any, Literal, Union, get_args, get_origin
 from urllib.parse import quote
 
 import httpx
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 
+from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
-from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
+from services.errors.billing import (
+    BillingUpstreamInvalidResponseError,
+    BillingUpstreamUnavailableError,
+    UpstreamErrorBody,
+)
+
+logger = logging.getLogger(__name__)
+
+ENFORCED_RESPONSE_PATHS: frozenset[str] = frozenset(
+    {
+        "/subscription/info",
+        "/subscription/vector-space",
+        "/subscription/knowledge-rate-limit",
+        "/subscription/payment-link",
+        "/subscription/cleanup/whitelist",
+        "/model-provider/payment-link",
+        "/invoices",
+        "/compliance/download",
+        "/quota/info",
+        "/quota/reserve",
+        "/quota/commit",
+        "/quota/release",
+        "/quota/balance",
+        "/quota/consume-capped",
+        # A salvaged `status` or `expire_at` would misreport eligibility or break the expiry timestamp.
+        "/education/verify",
+        "/education/status",
+        # Network access replies already required validation and gate access control.
+        "/tenants/{tenant_id}/network-access-groups",
+        "/tenants/{tenant_id}/network-access-groups/{group_id}",
+        "/tenants/{tenant_id}/apps/{app_id}/network-access-group",
+        "/tenants/{tenant_id}/apps/{app_id}/network-access-group/status",
+        "/tenants/{tenant_id}/apps/{app_id}/network-access-group-binding",
+    }
+)
 
 type HTTPMethod = Literal["GET", "POST", "PUT", "DELETE"]
 type QueryValue = str | int | float | bool | list[str]
@@ -37,6 +85,7 @@ class Upstream(StrEnum):
     BILLING = "billing"
     BILLING_QUOTA = "billing_quota"
     SAAS = "saas"
+    NETWORK_ACCESS = "network_access"
 
 
 class BillingModel(BaseModel):
@@ -46,9 +95,11 @@ class BillingModel(BaseModel):
 
 
 def _base_url(upstream: Upstream) -> str:
-    billing_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
+    billing_url = dify_config.BILLING_API_URL
     if upstream == Upstream.BILLING_QUOTA:
-        return os.environ.get("BILLING_QUOTA_API_URL") or billing_url
+        return dify_config.BILLING_QUOTA_API_URL or billing_url
+    if upstream == Upstream.NETWORK_ACCESS:
+        return (dify_config.NETWORK_ACCESS_API_URL.strip() or billing_url).rstrip("/")
     return billing_url
 
 
@@ -61,7 +112,7 @@ def _base_url(upstream: Upstream) -> str:
 def _send(method: HTTPMethod, url: str, *, params: Mapping[str, QueryValue], json: object | None) -> httpx.Response:
     headers = {
         "Content-Type": "application/json",
-        "Billing-Api-Secret-Key": os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY"),
+        "Billing-Api-Secret-Key": dify_config.BILLING_API_SECRET_KEY,
     }
     return _http_client.request(method, url, params=params, json=json, headers=headers, follow_redirects=True)
 
@@ -78,19 +129,70 @@ def request[ResponseT: BillingModel](
 ) -> ResponseT:
     resolved_path = path.format_map({name: quote(value, safe="") for name, value in path_params.items()})
     url = f"{_base_url(upstream)}{resolved_path}"
-    json = body.model_dump(mode="json") if body is not None else None
+    request_json = body.model_dump(mode="json") if body is not None else None
     try:
-        response = _send(method, url, params=params, json=json)
+        response = _send(method, url, params=params, json=request_json)
     except httpx.RequestError as error:
         raise BillingUpstreamUnavailableError(f"{method} {path} failed") from error
 
     if response.status_code != httpx.codes.OK:
         message = f"{method} {path} returned {response.status_code}"
-        if response.status_code in _UNAVAILABLE_STATUSES or response.status_code >= 500:
-            raise BillingUpstreamUnavailableError(message)
-        raise BillingUpstreamInvalidResponseError(message)
+        status_code, error_body = response.status_code, _error_body(response)
+        if status_code in _UNAVAILABLE_STATUSES or status_code >= 500:
+            raise BillingUpstreamUnavailableError(message, status_code=status_code, body=error_body)
+        raise BillingUpstreamInvalidResponseError(message, status_code=status_code, body=error_body)
 
+    invalid_body = f"{method} {path} returned an invalid body"
     try:
-        return response_model.model_validate_json(response.content)
+        payload = json.loads(response.content)
+    except ValueError as error:
+        raise BillingUpstreamInvalidResponseError(invalid_body) from error
+    try:
+        return response_model.model_validate(payload)
     except ValidationError as error:
-        raise BillingUpstreamInvalidResponseError(f"{method} {path} returned an invalid body") from error
+        if path in ENFORCED_RESPONSE_PATHS or not isinstance(payload, dict):
+            raise BillingUpstreamInvalidResponseError(invalid_body) from error
+        logger.exception("Billing response failed validation: %s %s", method, path)
+        return _salvage_model(response_model, payload)
+
+
+def _error_body(response: httpx.Response) -> UpstreamErrorBody | None:
+    try:
+        return UpstreamErrorBody.model_validate_json(response.content)
+    except ValidationError:
+        return None
+
+
+def _salvage_model[ModelT: BillingModel](model: type[ModelT], payload: Mapping[str, Any]) -> ModelT:
+    values: dict[str, Any] = {}
+    for name, field in model.model_fields.items():
+        wire_name = field.alias or name
+        raw = payload.get(wire_name, payload.get(name))
+        values[name] = _salvage_value(field.annotation, raw)
+    return model.model_construct(**values)
+
+
+def _salvage_value(annotation: Any, raw: object) -> object:
+    if raw is None:
+        return None
+    origin = get_origin(annotation)
+    if origin in (Union, types.UnionType):
+        annotation = next(arg for arg in get_args(annotation) if arg is not type(None))
+        origin = get_origin(annotation)
+    if isinstance(annotation, type) and issubclass(annotation, BillingModel) and isinstance(raw, Mapping):
+        return _salvage_model(annotation, raw)
+    if origin is dict and isinstance(raw, Mapping):
+        value_type = get_args(annotation)[1]
+        return {key: _salvage_value(value_type, value) for key, value in raw.items()}
+    if origin is list and isinstance(raw, list):
+        item_type = get_args(annotation)[0]
+        return [_salvage_value(item_type, item) for item in raw]
+    try:
+        return _adapter(annotation).validate_python(raw)
+    except ValidationError:
+        return raw
+
+
+@cache
+def _adapter(annotation: Any) -> TypeAdapter[Any]:
+    return TypeAdapter(annotation)

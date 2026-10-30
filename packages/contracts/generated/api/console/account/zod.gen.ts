@@ -265,10 +265,10 @@ export const zEmailCodeAccountDeletionRateLimitExceededError = zErrorResponse.an
  * EducationStatusResponse
  */
 export const zEducationStatusResponse = z.object({
-  allow_refresh: z.boolean().nullish(),
-  expire_at: z.int().nullish(),
-  is_student: z.boolean().nullish(),
-  result: z.boolean().nullish(),
+  allow_refresh: z.boolean(),
+  expire_at: z.int().nullable(),
+  is_student: z.boolean(),
+  result: z.boolean(),
 })
 
 /**
@@ -303,16 +303,9 @@ export const zEducationActivateLimitError = zErrorResponse.and(
  * EducationAutocompleteResponse
  */
 export const zEducationAutocompleteResponse = z.object({
-  curr_page: z.int().nullish(),
-  data: z.array(z.string()).optional(),
-  has_next: z.boolean().nullish(),
-})
-
-/**
- * EducationVerifyResponse
- */
-export const zEducationVerifyResponse = z.object({
-  token: z.string().nullish(),
+  curr_page: z.int(),
+  data: z.array(z.string()),
+  has_next: z.boolean(),
 })
 
 /**
@@ -417,6 +410,31 @@ export const zAccountProfilePatchPayload = z
     timezone: z.string().optional(),
   })
   .strict()
+
+/**
+ * EducationVerifyEligibleResponse
+ */
+export const zEducationVerifyEligibleResponse = z.object({
+  status: z.literal('eligible'),
+  token: z.string(),
+})
+
+/**
+ * EducationVerifyNotEligibleResponse
+ */
+export const zEducationVerifyNotEligibleResponse = z.object({
+  status: z.literal('not_eligible'),
+})
+
+/**
+ * EducationVerifyResponse
+ *
+ * Education verification result: a token for an eligible account, none for an ineligible one.
+ */
+export const zEducationVerifyResponse = z.discriminatedUnion('status', [
+  zEducationVerifyEligibleResponse,
+  zEducationVerifyNotEligibleResponse,
+])
 
 /**
  * AccountIntegrateResponse

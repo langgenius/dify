@@ -99,6 +99,8 @@
 /api/tests/**/tasks/test_async_workflow_tasks.py @Mairuis
 /api/tests/**/services/test_billing_service.py @zyssyz123
 /api/tests/**/controllers/console/billing/ @zyssyz123
+/api/tests/**/services/billing_client/ @zyssyz123
+/api/tests/**/dev/test_generate_billing_client.py @zyssyz123
 /api/tests/**/configs/enterprise/ @GareArc
 /api/tests/**/services/enterprise/ @GareArc
 /api/tests/**/services/test_feature_service.py @GareArc
@@ -188,6 +190,8 @@
 # Backend - Billing
 /api/services/billing_service.py @zyssyz123
 /api/controllers/console/billing/ @zyssyz123
+/api/services/billing_client/ @zyssyz123
+/api/dev/generate_billing_client.py @zyssyz123
 
 # Backend - Enterprise
 /api/configs/enterprise/ @GareArc

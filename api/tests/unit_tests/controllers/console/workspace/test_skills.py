@@ -619,7 +619,7 @@ def test_export_skill_maps_service_error(app: Flask, request_context: RequestCon
 
 def test_inner_api_pulls_published_skill_archive(app: Flask) -> None:
     api = PublishedSkillPullApi()
-    method = unwrap(api.get)
+    method = unwrap(PublishedSkillPullApi.get)
     service, pull_published_archive = _recording_service(
         "pull_published_archive",
         result=PublishedSkillArchive(
@@ -646,7 +646,7 @@ def test_inner_api_pulls_published_skill_archive(app: Flask) -> None:
 
 def test_inner_api_pull_maps_missing_tenant_to_invalid_request(app: Flask) -> None:
     api = PublishedSkillPullApi()
-    method = unwrap(api.get)
+    method = unwrap(PublishedSkillPullApi.get)
 
     with app.test_request_context("/", method="GET"):
         payload, status = method(api, "skill-1")

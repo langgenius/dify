@@ -25393,9 +25393,9 @@ Rate limit exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| curr_page | integer |  | No |
-| data | [ string ] |  | No |
-| has_next | boolean |  | No |
+| curr_page | integer |  | Yes |
+| data | [ string ] |  | Yes |
+| has_next | boolean |  | Yes |
 
 #### EducationModel
 
@@ -25408,10 +25408,17 @@ Rate limit exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| allow_refresh | boolean |  | No |
-| expire_at | integer |  | No |
-| is_student | boolean |  | No |
-| result | boolean |  | No |
+| allow_refresh | boolean |  | Yes |
+| expire_at | integer |  | Yes |
+| is_student | boolean |  | Yes |
+| result | boolean |  | Yes |
+
+#### EducationVerifyEligibleResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | string |  | Yes |
+| token | string |  | Yes |
 
 #### EducationVerifyLimitError
 
@@ -25421,11 +25428,19 @@ Rate limit exceeded
 | ---- | ---- | ----------- | -------- |
 | EducationVerifyLimitError |  | Rate limit exceeded |  |
 
-#### EducationVerifyResponse
+#### EducationVerifyNotEligibleResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| token | string |  | No |
+| status | string |  | Yes |
+
+#### EducationVerifyResponse
+
+Education verification result: a token for an eligible account, none for an ineligible one.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EducationVerifyResponse | [EducationVerifyEligibleResponse](#educationverifyeligibleresponse)<br>[EducationVerifyNotEligibleResponse](#educationverifynoteligibleresponse) | Education verification result: a token for an eligible account, none for an ineligible one. |  |
 
 #### EmailAlreadyInUseError
 
@@ -31540,9 +31555,9 @@ Only support workflow app.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | body | string |  | Yes |
-| frequency | string |  | No |
+| frequency | string, <br>**Available values:** "every_page_load", "once" | *Enum:* `"every_page_load"`, `"once"` | Yes |
 | lang | string |  | Yes |
-| notification_id | string |  | No |
+| notification_id | string |  | Yes |
 | subtitle | string |  | Yes |
 | title | string |  | Yes |
 | title_pic_url | string |  | Yes |
@@ -35173,7 +35188,7 @@ The subscription constructor of the trigger provider
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| interval | string |  | Yes |
+| interval | string, <br>**Available values:** "", "month", "year" | *Enum:* `""`, `"month"`, `"year"` | Yes |
 | plan | [CloudPlan](#cloudplan) |  | Yes |
 
 #### SubscriptionQuery

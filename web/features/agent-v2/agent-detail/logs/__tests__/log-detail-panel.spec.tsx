@@ -194,9 +194,7 @@ describe('AgentLogDetailPanel', () => {
 
     await user.click(await screen.findByRole('button', { name: 'submit-feedback' }))
 
-    await waitFor(() =>
-      expect(mocks.toastError).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully'),
-    )
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('feedback request failed'))
     expect(invalidateQueries).not.toHaveBeenCalled()
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
   })

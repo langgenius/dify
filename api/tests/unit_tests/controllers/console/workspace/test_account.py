@@ -84,6 +84,9 @@ from services.account_errors import (
 )
 from services.entities.account_entities import (
     AccountEducationActivation,
+    AccountEducationEligible,
+    AccountEducationNotEligible,
+    AccountEducationVerification,
     AccountIntegrationStatus,
     AccountProfileChanges,
     ChangeEmailVerification,
@@ -224,6 +227,43 @@ class TestWorkspaceAccountCases:
                 institution="Dify University",
                 role="Student",
             )
+
+        @pytest.mark.parametrize(
+            ("verification", "expected"),
+            [
+                (
+                    AccountEducationEligible(token="education-token"),
+                    {"status": "eligible", "token": "education-token"},
+                ),
+                (AccountEducationNotEligible(), {"status": "not_eligible"}),
+            ],
+        )
+        def test_verify_returns_status_discriminated_result(
+            self,
+            app: Flask,
+            account_application_services: ApplicationServices,
+            verification: AccountEducationVerification,
+            expected: dict[str, str],
+        ) -> None:
+            request_context = RequestContext(
+                request_id="request-1",
+                trace_id=None,
+                account_id="account-1",
+                active_workspace_id="workspace-1",
+            )
+
+            with (
+                app.test_request_context("/account/education/verify", method="GET"),
+                patch(
+                    "controllers.console.workspace.account.application_services",
+                    return_value=account_application_services,
+                ),
+                patch.object(account_application_services.accounts.education, "verify", lambda _context: verification),
+            ):
+                api = EducationVerifyApi()
+                result = inspect.unwrap(api.get)(api, request_context)
+
+            assert result == expected
 
         def test_verify_maps_rate_limit_error(self, app: Flask) -> None:
             education = MagicMock()

@@ -5854,9 +5854,6 @@
     }
   },
   "web/app/components/workflow/panel/env-panel/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    },
     "dify/require-disable-directive-description": {
       "count": 1
     }
@@ -6849,9 +6846,6 @@
     "@tanstack/query/prefer-query-options": {
       "count": 2
     },
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    },
     "eslint-react/set-state-in-effect": {
       "count": 14
     }
@@ -7121,9 +7115,6 @@
     }
   },
   "web/service/log.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-deprecated": {
       "count": 2
     }

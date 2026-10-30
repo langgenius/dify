@@ -5,6 +5,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from enums import CloudPlan, DeploymentEdition
+from services.billing_client import billing
 from services.entities.feature_entities import (
     FeatureModel,
     KnowledgeRateLimitModel,
@@ -15,6 +16,7 @@ from services.entities.feature_entities import (
 )
 from services.feature_service import FeatureService
 from services.system_feature_service import SystemFeatureService
+from tests.helpers import billing_builders as builders
 
 
 class TestFeatureService:
@@ -29,21 +31,20 @@ class TestFeatureService:
             patch("services.system_feature_service.EnterpriseService", new=mock_enterprise_service),
         ):
             # Setup default mock returns for BillingService
-            mock_billing_service.get_info.return_value = {
-                "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly", "education": True},
-                "members": {"size": 5, "limit": 10},
-                "apps": {"size": 3, "limit": 20},
-                "vector_space": {"size": 2, "limit": 10},
-                "documents_upload_quota": {"size": 15, "limit": 100},
-                "annotation_quota_limit": {"size": 8, "limit": 50},
-                "can_replace_logo": True,
-                "model_load_balancing_enabled": True,
-            }
+            mock_billing_service.get_info.return_value = builders.subscription_info(
+                subscription=builders.subscription_plan("professional", interval="month", education=True),
+                members=billing.SubscriptionQuota(size=5, limit=10),
+                apps=billing.SubscriptionQuota(size=3, limit=20),
+                vector_space=builders.vector_space(size=2, limit=10),
+                documents_upload_quota=billing.SubscriptionQuota(size=15, limit=100),
+                annotation_quota_limit=billing.SubscriptionQuota(size=8, limit=50),
+                can_replace_logo=True,
+                model_load_balancing_enabled=True,
+            )
 
-            mock_billing_service.get_knowledge_rate_limit.return_value = {
-                "limit": 100,
-                "subscription_plan": CloudPlan.PROFESSIONAL,
-            }
+            mock_billing_service.get_knowledge_rate_limit.return_value = billing.GetKnowledgeRateLimitReply(
+                subscription_plan="professional", limit=100
+            )
 
             # Setup default mock returns for EnterpriseService
             mock_enterprise_service.get_workspace_info.return_value = {
@@ -115,7 +116,7 @@ class TestFeatureService:
 
             # Verify billing features
             assert result.billing.subscription.plan == CloudPlan.PROFESSIONAL
-            assert result.billing.subscription.interval == "monthly"
+            assert result.billing.subscription.interval == "month"
             assert result.education.activated is True
 
             # Verify member limitations
@@ -175,16 +176,16 @@ class TestFeatureService:
             mock_config.EDUCATION_ENABLED = False
 
             # Set mock return value inside the patch context
-            mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "subscription": {"plan": CloudPlan.SANDBOX, "interval": "monthly", "education": False},
-                "members": {"size": 1, "limit": 3},
-                "apps": {"size": 1, "limit": 5},
-                "vector_space": {"size": 1, "limit": 2},
-                "documents_upload_quota": {"size": 5, "limit": 20},
-                "annotation_quota_limit": {"size": 2, "limit": 10},
-                "can_replace_logo": False,
-                "model_load_balancing_enabled": False,
-            }
+            mock_external_service_dependencies["billing_service"].get_info.return_value = builders.subscription_info(
+                subscription=builders.subscription_plan("sandbox", interval="month", education=False),
+                members=billing.SubscriptionQuota(size=1, limit=3),
+                apps=billing.SubscriptionQuota(size=1, limit=5),
+                vector_space=builders.vector_space(size=1, limit=2),
+                documents_upload_quota=billing.SubscriptionQuota(size=5, limit=20),
+                annotation_quota_limit=billing.SubscriptionQuota(size=2, limit=10),
+                can_replace_logo=False,
+                model_load_balancing_enabled=False,
+            )
 
             # Act: Execute the method under test
             result = FeatureService.get_features(tenant_id)
@@ -701,62 +702,6 @@ class TestFeatureService:
             # Verify no billing service calls
             mock_external_service_dependencies["billing_service"].get_info.assert_not_called()
 
-    def test_get_features_partial_billing_info(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test feature retrieval with partial billing information.
-
-        This test verifies:
-        - Proper handling of partial billing data
-        - Correct fallback to default values
-        - Proper billing service integration
-        - Return value correctness and structure
-        """
-        # Arrange: Setup partial billing info mock with proper config
-        tenant_id = self._create_test_tenant_id()
-
-        with patch("services.feature_service.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
-            mock_config.CAN_REPLACE_LOGO = True
-            mock_config.MODEL_LB_ENABLED = False
-            mock_config.EDUCATION_ENABLED = False
-
-            mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "yearly"},
-                # Missing members, apps, vector_space, etc.
-            }
-
-            # Act: Execute the method under test
-            result = FeatureService.get_features(tenant_id)
-
-        # Assert: Verify the expected outcomes
-        assert result is not None
-        assert isinstance(result, FeatureModel)
-
-        # Verify billing features
-        assert result.billing.subscription.plan == CloudPlan.PROFESSIONAL
-        assert result.billing.subscription.interval == "yearly"
-
-        # Verify default values for missing billing info
-        assert result.members.size == 0
-        assert result.members.limit == 1
-        assert result.apps.size == 0
-        assert result.apps.limit == 10
-        assert result.vector_space.size == 0
-        assert result.vector_space.limit == 5
-        assert result.documents_upload_quota.size == 0
-        assert result.documents_upload_quota.limit == 50
-        assert result.annotation_quota_limit.size == 0
-        assert result.annotation_quota_limit.limit == 10
-
-        # Verify paid plan behavior.
-        assert result.webapp_copyright_enabled is True
-        assert result.is_allow_transfer_workspace is True
-
-        # Verify mock interactions
-        mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
-
     def test_get_features_edge_case_vector_space(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
@@ -778,11 +723,11 @@ class TestFeatureService:
             mock_config.MODEL_LB_ENABLED = False
             mock_config.EDUCATION_ENABLED = False
 
-            mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly"},
-                "vector_space": {"size": 0, "limit": 0},
-                "apps": {"size": 5, "limit": 10},
-            }
+            mock_external_service_dependencies["billing_service"].get_info.return_value = builders.subscription_info(
+                subscription=builders.subscription_plan("professional", interval="month"),
+                vector_space=builders.vector_space(size=0, limit=0),
+                apps=billing.SubscriptionQuota(size=5, limit=10),
+            )
 
             # Act: Execute the method under test
             result = FeatureService.get_features(tenant_id)
@@ -891,11 +836,11 @@ class TestFeatureService:
             mock_config.MODEL_LB_ENABLED = False
             mock_config.EDUCATION_ENABLED = False
 
-            mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "yearly"},
-                "members": {"size": 10, "limit": 10},
-                "vector_space": {"size": 3, "limit": 5},
-            }
+            mock_external_service_dependencies["billing_service"].get_info.return_value = builders.subscription_info(
+                subscription=builders.subscription_plan("professional", interval="year"),
+                members=billing.SubscriptionQuota(size=10, limit=10),
+                vector_space=builders.vector_space(size=3, limit=5),
+            )
 
             # Act: Execute the method under test
             result = FeatureService.get_features(tenant_id)
@@ -1207,14 +1152,14 @@ class TestFeatureService:
             mock_config.MODEL_LB_ENABLED = False
             mock_config.EDUCATION_ENABLED = False
 
-            mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "subscription": {"plan": CloudPlan.TEAM, "interval": "yearly"},
-                "members": {"size": 0, "limit": 0},
-                "apps": {"size": 0, "limit": -1},
-                "vector_space": {"size": 0, "limit": 999999},
-                "documents_upload_quota": {"size": 0, "limit": 0},
-                "annotation_quota_limit": {"size": 0, "limit": 1},
-            }
+            mock_external_service_dependencies["billing_service"].get_info.return_value = builders.subscription_info(
+                subscription=builders.subscription_plan("team", interval="year"),
+                members=billing.SubscriptionQuota(size=0, limit=0),
+                apps=billing.SubscriptionQuota(size=0, limit=-1),
+                vector_space=builders.vector_space(size=0, limit=999999),
+                documents_upload_quota=billing.SubscriptionQuota(size=0, limit=0),
+                annotation_quota_limit=billing.SubscriptionQuota(size=0, limit=1),
+            )
 
             # Act: Execute the method under test
             result = FeatureService.get_features(tenant_id)
@@ -1310,14 +1255,14 @@ class TestFeatureService:
         """
         # Arrange: Setup edge case education mock
         tenant_id = self._create_test_tenant_id()
-        mock_external_service_dependencies["billing_service"].get_info.return_value = {
-            "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "semester", "education": True},
-            "members": {"size": 100, "limit": 200},
-            "apps": {"size": 50, "limit": 100},
-            "vector_space": {"size": 20, "limit": 50},
-            "documents_upload_quota": {"size": 500, "limit": 1000},
-            "annotation_quota_limit": {"size": 200, "limit": 500},
-        }
+        mock_external_service_dependencies["billing_service"].get_info.return_value = builders.subscription_info(
+            subscription=builders.subscription_plan("professional", interval="year", education=True),
+            members=billing.SubscriptionQuota(size=100, limit=200),
+            apps=billing.SubscriptionQuota(size=50, limit=100),
+            vector_space=builders.vector_space(size=20, limit=50),
+            documents_upload_quota=billing.SubscriptionQuota(size=500, limit=1000),
+            annotation_quota_limit=billing.SubscriptionQuota(size=200, limit=500),
+        )
 
         with patch("services.feature_service.dify_config") as mock_config:
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
@@ -1523,10 +1468,10 @@ class TestFeatureService:
             mock_config.MODEL_LB_ENABLED = False
             mock_config.EDUCATION_ENABLED = False
 
-            mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "subscription": {"plan": CloudPlan.TEAM, "interval": "yearly"},
-                "annotation_quota_limit": {"size": 999, "limit": 1000},
-            }
+            mock_external_service_dependencies["billing_service"].get_info.return_value = builders.subscription_info(
+                subscription=builders.subscription_plan("team", interval="year"),
+                annotation_quota_limit=billing.SubscriptionQuota(size=999, limit=1000),
+            )
 
             # Act: Execute the method under test
             result = FeatureService.get_features(tenant_id)
@@ -1577,13 +1522,10 @@ class TestFeatureService:
             mock_config.MODEL_LB_ENABLED = False
             mock_config.EDUCATION_ENABLED = False
 
-            mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly"},
-                "documents_upload_quota": {
-                    "size": 0,  # Edge case: zero current size
-                    "limit": 0,  # Edge case: zero limit
-                },
-            }
+            mock_external_service_dependencies["billing_service"].get_info.return_value = builders.subscription_info(
+                subscription=builders.subscription_plan("professional", interval="month"),
+                documents_upload_quota=billing.SubscriptionQuota(size=0, limit=0),
+            )
 
             # Act: Execute the method under test
             result = FeatureService.get_features(tenant_id)
@@ -1685,13 +1627,9 @@ class TestFeatureService:
             mock_config.MODEL_LB_ENABLED = False
             mock_config.EDUCATION_ENABLED = False
 
-            mock_external_service_dependencies["billing_service"].get_info.return_value = {
-                "subscription": {
-                    "plan": CloudPlan.PROFESSIONAL,
-                    "interval": "monthly",
-                    "education": False,  # Education explicitly disabled
-                },
-            }
+            mock_external_service_dependencies["billing_service"].get_info.return_value = builders.subscription_info(
+                subscription=builders.subscription_plan("professional", interval="month", education=False)
+            )
 
             # Act: Execute the method under test
             result = FeatureService.get_features(tenant_id)

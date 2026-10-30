@@ -4,9 +4,9 @@ import logging
 import secrets
 import uuid
 from collections.abc import Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from hashlib import sha256
-from typing import override
+from typing import assert_never, override
 
 from pydantic import TypeAdapter, ValidationError
 from redis import RedisError
@@ -62,6 +62,8 @@ from services.entities.account_entities import (
     AccountDeletionChallenge,
     AccountEducationActivation,
     AccountEducationAutocomplete,
+    AccountEducationEligible,
+    AccountEducationNotEligible,
     AccountEducationStatus,
     AccountEducationVerification,
 )
@@ -268,8 +270,14 @@ class RBACWorkspaceMemberAccessSync(WorkspaceMemberAccessSync):
 class BillingAccountEducationGateway(AccountEducationGateway):
     @override
     def verify(self, *, account_id: str) -> AccountEducationVerification:
-        result = BillingService.EducationIdentity.verify(account_id=account_id) or {}
-        return AccountEducationVerification(token=result.get("token"))
+        result = BillingService.EducationIdentity.verify(account_id=account_id)
+        match result.status:
+            case "eligible":
+                return AccountEducationEligible(token=result.token)
+            case "not_eligible":
+                return AccountEducationNotEligible()
+            case _:
+                assert_never(result.status)
 
     @override
     def activate(
@@ -288,26 +296,25 @@ class BillingAccountEducationGateway(AccountEducationGateway):
             institution=institution,
             role=role,
         )
-        return AccountEducationActivation(message=result["message"])
+        return AccountEducationActivation(message=result.message)
 
     @override
     def status(self, account_id: str) -> AccountEducationStatus:
-        result = BillingService.EducationIdentity.status(account_id) or {}
-        expire_at = result.get("expire_at")
+        result = BillingService.EducationIdentity.status(account_id)
         return AccountEducationStatus(
-            result=result.get("result"),
-            is_student=result.get("is_student"),
-            expire_at=datetime.fromisoformat(expire_at).astimezone(UTC) if isinstance(expire_at, str) else expire_at,
-            allow_refresh=result.get("allow_refresh"),
+            result=result.result,
+            is_student=result.is_student,
+            expire_at=result.expire_at,
+            allow_refresh=result.allow_refresh,
         )
 
     @override
     def autocomplete(self, *, keywords: str, page: int, limit: int) -> AccountEducationAutocomplete:
-        result = BillingService.EducationIdentity.autocomplete(keywords, page, limit) or {}
+        result = BillingService.EducationIdentity.autocomplete(keywords, page, limit)
         return AccountEducationAutocomplete(
-            data=tuple(result.get("data") or ()),
-            curr_page=result.get("curr_page"),
-            has_next=result.get("has_next"),
+            data=tuple(result.data or ()),
+            curr_page=result.curr_page,
+            has_next=result.has_next,
         )
 
 

@@ -89,6 +89,19 @@ export function useWorkflowInlineAgentConfigureSync({
     consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
   )
 
+  const { mutateAsync: replaceAppComposer } = useMutation(
+    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions({
+      context: { silent: true },
+    }),
+  )
+  const { mutateAsync: replaceSnippetComposer } = useMutation(
+    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(
+      {
+        context: { silent: true },
+      },
+    ),
+  )
+
   useEffect(() => {
     baseConfigRef.current = baseConfig
     currentModelRef.current = currentModel
@@ -120,16 +133,19 @@ export function useWorkflowInlineAgentConfigureSync({
         agent_soul:
           fileUpdate === 'replace' ? configSnapshot : omit(configSnapshot, ['config_files']),
       }
+      // Full replacements report failures in the applying business flow; autosaves use request feedback.
+      const saveSnippet = fileUpdate === 'replace' ? replaceSnippetComposer : saveSnippetComposer
+      const saveApp = fileUpdate === 'replace' ? replaceAppComposer : saveAppComposer
       const composerState =
         resource.kind === 'snippet'
-          ? await saveSnippetComposer({
+          ? await saveSnippet({
               params: {
                 snippet_id: resource.snippetId,
                 node_id: nodeId,
               },
               body,
             })
-          : await saveAppComposer({
+          : await saveApp({
               params: {
                 app_id: resource.appId,
                 node_id: nodeId,

@@ -4,7 +4,7 @@
     "title": "",
     "version": "0.0.1"
   },
-  "x-dify-saas-commit": "a0b548cf3020d490a8b7fad21dfbb66b72fa0ed6",
+  "x-dify-saas-commit": "04f8d88cc15c5f62f14f8843a54f3e2e7e09ee5a",
   "paths": {
     "/v1/subscription/info": {
       "get": {
@@ -833,16 +833,21 @@
         "type": "object",
         "properties": {
           "result": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "True when the account has an education identity that has not expired yet. False when it has\n none or its latest identity has expired."
           },
           "is_student": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Always equal to `result`."
           },
           "expire_at": {
-            "type": "string"
+            "type": "string",
+            "description": "Expiry of the account's latest education identity, as an RFC 3339 UTC timestamp\n (for example `2027-10-30T08:00:00Z`). `1997-01-01T00:00:00Z` when the account has no education identity.",
+            "format": "date-time"
           },
           "allow_refresh": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "True when the latest education identity expires within the configured number of refresh days\n before or after now. False when the account has no education identity."
           }
         },
         "required": [
@@ -1408,11 +1413,21 @@
         "type": "object",
         "properties": {
           "token": {
-            "type": "string"
+            "type": "string",
+            "description": "Verification token to pass to CreateEducationIdentity. Empty when status is `not_eligible`."
+          },
+          "status": {
+            "enum": [
+              "eligible",
+              "not_eligible"
+            ],
+            "type": "string",
+            "description": "`eligible`: the account email matches an education institution domain and `token` is set.\n `not_eligible`: the account email matches no education institution domain and `token` is empty."
           }
         },
         "required": [
-          "token"
+          "token",
+          "status"
         ]
       }
     }

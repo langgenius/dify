@@ -1,17 +1,18 @@
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import cast
 from unittest.mock import Mock, patch
 
 import pytest
+from pytest_mock import MockerFixture
 
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
 from services import feature_service as feature_service_module
 from services.account_education_service import EDUCATION_EDITIONS
-from services.billing_service import BillingInfo
+from services.billing_client import billing
 from services.entities.feature_entities import FeatureModel, LimitationModel
 from services.feature_service import FeatureService
 from services.system_feature_service import SystemFeatureService
+from tests.helpers import billing_builders as builders
 
 
 def test_education_feature_is_disabled_by_default() -> None:
@@ -121,7 +122,7 @@ def test_get_vector_space_converts_billing_float_size(
     monkeypatch.setattr(
         feature_service_module.BillingService,
         "get_vector_space",
-        lambda _tenant_id: {"size": 5120.75, "limit": 20480},
+        lambda _tenant_id: builders.vector_space(size=5120.75, limit=20480),
     )
 
     result = FeatureService.get_vector_space("tenant-1")
@@ -138,7 +139,7 @@ def test_get_vector_space_preserves_unknown_usage(
     monkeypatch.setattr(
         feature_service_module.BillingService,
         "get_vector_space",
-        lambda _tenant_id: {"size": 0.0, "limit": 50, "usage_unknown": True},
+        lambda _tenant_id: builders.vector_space(size=0.0, limit=50, usage_unknown=True),
     )
 
     result = FeatureService.get_vector_space("tenant-1")
@@ -160,7 +161,7 @@ def test_get_vector_space_preserves_unknown_usage(
     ],
 )
 def test_get_knowledge_file_size_limit(
-    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
     config_overrides: Callable[..., None],
     deployment_edition: DeploymentEdition,
     tenant_id: str | None,
@@ -172,12 +173,9 @@ def test_get_knowledge_file_size_limit(
         UPLOAD_FILE_SIZE_LIMIT=15,
         KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN=50,
     )
-    get_info = Mock(
-        return_value={
-            "subscription": {"plan": plan},
-        }
+    get_info = mocker.patch.object(
+        feature_service_module.BillingService, "get_info", return_value=builders.subscription_info(plan)
     )
-    monkeypatch.setattr(feature_service_module.BillingService, "get_info", get_info)
 
     assert FeatureService.get_knowledge_file_size_limit(tenant_id) == expected
 
@@ -198,9 +196,7 @@ def test_paid_knowledge_file_size_limit_never_reduces_default(
     monkeypatch.setattr(
         feature_service_module.BillingService,
         "get_info",
-        lambda *_args, **_kwargs: {
-            "subscription": {"plan": CloudPlan.PROFESSIONAL},
-        },
+        lambda *_args, **_kwargs: builders.subscription_info("professional"),
     )
 
     assert FeatureService.get_knowledge_file_size_limit("tenant-1") == 100
@@ -321,16 +317,17 @@ def test_get_trial_models_filters_providers_by_workspace_plan(
 
 def test_get_features_exclude_vector_space_sets_vector_space_to_none(config_overrides: Callable[..., None]) -> None:
     tenant_id = "tenant-id"
-    billing_info = {
-        "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly", "education": False},
-        "members": {"size": 1, "limit": 10},
-        "apps": {"size": 2, "limit": 20},
-        "documents_upload_quota": {"size": 3, "limit": 100},
-        "annotation_quota_limit": {"size": 4, "limit": 50},
-        "can_replace_logo": True,
-        "model_load_balancing_enabled": True,
-        "knowledge_pipeline_publish_enabled": True,
-    }
+    billing_info = builders.subscription_info(
+        subscription=builders.subscription_plan("professional", interval="month", education=True),
+        members=billing.SubscriptionQuota(size=1, limit=10),
+        apps=billing.SubscriptionQuota(size=2, limit=20),
+        documents_upload_quota=billing.SubscriptionQuota(size=3, limit=100),
+        annotation_quota_limit=billing.SubscriptionQuota(size=4, limit=50),
+        can_replace_logo=True,
+        model_load_balancing_enabled=True,
+        knowledge_pipeline_publish_enabled=True,
+        next_credit_reset_date=1775001600,
+    )
 
     config_overrides(
         DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
@@ -340,11 +337,28 @@ def test_get_features_exclude_vector_space_sets_vector_space_to_none(config_over
     )
     with (
         patch("services.feature_service.BillingService.get_info", return_value=billing_info) as get_info,
-        patch("services.feature_service.BillingService.get_quota_info", return_value={}),
+        patch(
+            "services.feature_service.BillingService.get_quota_info",
+            return_value=billing.QuotaGetInfoReply(
+                trigger_event=billing.QuotaFeatureInfo(usage=1, limit=3000, reset_date=0),
+                api_rate_limit=billing.QuotaFeatureInfo(usage=2, limit=5000, reset_date=0),
+            ),
+        ),
     ):
         features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
 
     assert features.vector_space is None
+    assert features.billing.subscription.plan == CloudPlan.PROFESSIONAL
+    assert features.billing.subscription.interval == "month"
+    assert features.education.activated is True
+    assert (features.members.size, features.members.limit) == (1, 10)
+    assert (features.apps.size, features.apps.limit) == (2, 20)
+    assert (features.documents_upload_quota.size, features.documents_upload_quota.limit) == (3, 100)
+    assert (features.annotation_quota_limit.size, features.annotation_quota_limit.limit) == (4, 50)
+    assert features.can_replace_logo is True
+    assert features.model_load_balancing_enabled is True
+    assert features.knowledge_pipeline.publish_enabled is True
+    assert features.next_credit_reset_date == 1775001600
     get_info.assert_called_once_with(tenant_id, exclude_vector_space=True)
 
 
@@ -353,7 +367,7 @@ def test_full_features_keep_treating_unknown_vector_usage_as_zero() -> None:
 
     FeatureService._fulfill_vector_space_from_billing_info(
         vector_space,
-        cast(BillingInfo, {"vector_space": {"size": 0.0, "limit": 50, "usage_unknown": True}}),
+        builders.subscription_info(vector_space=builders.vector_space(size=0.0, limit=50, usage_unknown=True)),
     )
 
     assert vector_space.size == 0

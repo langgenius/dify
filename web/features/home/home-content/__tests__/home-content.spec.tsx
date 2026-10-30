@@ -777,9 +777,7 @@ describe('HomeContent', () => {
       await user.click(screen.getByRole('button', { name: 'Alpha' }))
       await user.click(await screen.findByRole('button', { name: /common.operation.create/ }))
 
-      await waitFor(() =>
-        expect(toastMocks.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'),
-      )
+      await waitFor(() => expect(toastMocks.error).toHaveBeenCalledWith('Unavailable'))
       expect(importDSL).not.toHaveBeenCalled()
     })
 

@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
 from werkzeug.exceptions import NotFound
 
@@ -203,8 +203,24 @@ class AccountIntegrateListResponse(ResponseModel):
     data: list[AccountIntegrateResponse]
 
 
-class EducationVerifyResponse(ResponseModel):
-    token: str | None = None
+class EducationVerifyEligibleResponse(ResponseModel):
+    status: Literal["eligible"]
+    token: str
+
+
+class EducationVerifyNotEligibleResponse(ResponseModel):
+    status: Literal["not_eligible"]
+
+
+class EducationVerifyResponse(
+    RootModel[
+        Annotated[
+            EducationVerifyEligibleResponse | EducationVerifyNotEligibleResponse,
+            Field(discriminator="status"),
+        ]
+    ]
+):
+    """Education verification result: a token for an eligible account, none for an ineligible one."""
 
 
 class EducationActivateResponse(ResponseModel):
@@ -212,10 +228,10 @@ class EducationActivateResponse(ResponseModel):
 
 
 class EducationStatusResponse(ResponseModel):
-    result: bool | None = None
-    is_student: bool | None = None
-    expire_at: int | None = None
-    allow_refresh: bool | None = None
+    result: bool
+    is_student: bool
+    expire_at: int | None
+    allow_refresh: bool
 
     @field_validator("expire_at", mode="before")
     @classmethod
@@ -224,9 +240,9 @@ class EducationStatusResponse(ResponseModel):
 
 
 class EducationAutocompleteResponse(ResponseModel):
-    data: list[str] = Field(default_factory=list)
-    curr_page: int | None = None
-    has_next: bool | None = None
+    data: list[str]
+    curr_page: int
+    has_next: bool
 
 
 register_response_schema_models(

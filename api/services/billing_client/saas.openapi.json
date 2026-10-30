@@ -4,7 +4,7 @@
     "title": "",
     "version": "0.0.1"
   },
-  "x-dify-saas-commit": "a0b548cf3020d490a8b7fad21dfbb66b72fa0ed6",
+  "x-dify-saas-commit": "04f8d88cc15c5f62f14f8843a54f3e2e7e09ee5a",
   "paths": {
     "/v1/account": {
       "delete": {
@@ -165,6 +165,428 @@
           }
         }
       }
+    },
+    "/v1/tenant_utms": {
+      "post": {
+        "tags": [
+          "Utm"
+        ],
+        "operationId": "Utm_RecordTenantUtm",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantUtmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantUtmReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tenants/{tenantId}/network-access-groups": {
+      "get": {
+        "tags": [
+          "SaasNetworkAccessPolicy"
+        ],
+        "operationId": "SaasNetworkAccessPolicy_ListNetworkAccessGroups",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actorAccountId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListNetworkAccessGroupsReply"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "SaasNetworkAccessPolicy"
+        ],
+        "operationId": "SaasNetworkAccessPolicy_CreateNetworkAccessGroup",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNetworkAccessGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkAccessGroupReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tenants/{tenantId}/network-access-groups/{groupId}": {
+      "get": {
+        "tags": [
+          "SaasNetworkAccessPolicy"
+        ],
+        "operationId": "SaasNetworkAccessPolicy_GetNetworkAccessGroup",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actorAccountId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkAccessGroupReply"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "SaasNetworkAccessPolicy"
+        ],
+        "operationId": "SaasNetworkAccessPolicy_UpdateNetworkAccessGroup",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNetworkAccessGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkAccessGroupReply"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "SaasNetworkAccessPolicy"
+        ],
+        "operationId": "SaasNetworkAccessPolicy_DeleteNetworkAccessGroup",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expectedVersion",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actorAccountId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteNetworkAccessGroupReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tenants/{tenantId}/apps/{appId}/network-access-group": {
+      "get": {
+        "tags": [
+          "SaasNetworkAccessPolicy"
+        ],
+        "operationId": "SaasNetworkAccessPolicy_GetAppNetworkAccessGroup",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actorAccountId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetAppNetworkAccessGroupReply"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "SaasNetworkAccessPolicy"
+        ],
+        "operationId": "SaasNetworkAccessPolicy_PutAppNetworkAccessGroup",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutAppNetworkAccessGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PutAppNetworkAccessGroupReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tenants/{tenantId}/apps/{appId}/network-access-group/status": {
+      "get": {
+        "tags": [
+          "SaasNetworkAccessPolicy"
+        ],
+        "description": "Entry status is available to normal members without exposing policy details.",
+        "operationId": "SaasNetworkAccessPolicy_GetAppNetworkAccessGroupStatus",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actorAccountId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetAppNetworkAccessGroupStatusReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tenants/{tenantId}/apps/{appId}/network-access-group-binding": {
+      "delete": {
+        "tags": [
+          "SaasNetworkAccessPolicy"
+        ],
+        "description": "CleanupAppNetworkAccessGroupBinding is an internal App lifecycle hook.\n It deliberately has no actor field: callers are authenticated by the\n internal HTTP secret and this operation must not be exposed as a member\n or account deletion side effect.",
+        "operationId": "SaasNetworkAccessPolicy_CleanupAppNetworkAccessGroupBinding",
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupAppNetworkAccessGroupBindingReply"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -196,6 +618,59 @@
           "feedback"
         ]
       },
+      "AppNetworkAccessGroupBinding": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "appId": {
+            "type": "string"
+          },
+          "groupId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "version": {
+            "type": "string",
+            "format": "int64"
+          },
+          "updatedByAccountId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "accessPoints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "appId",
+          "version",
+          "updatedByAccountId",
+          "createdAt",
+          "updatedAt",
+          "enabled",
+          "accessPoints"
+        ]
+      },
       "CheckAccountInFreezeReply": {
         "type": "object",
         "properties": {
@@ -217,6 +692,52 @@
           "freezeType"
         ]
       },
+      "CleanupAppNetworkAccessGroupBindingReply": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deleted"
+        ]
+      },
+      "CreateNetworkAccessGroupRequest": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "description": "Deprecated and ignored. Kept only for wire compatibility with clients\n built against the first reusable-group draft."
+          },
+          "allowedCidrs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "actorAccountId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantId",
+          "name",
+          "description",
+          "mode",
+          "allowedCidrs",
+          "actorAccountId"
+        ]
+      },
       "DeleteAccountReply": {
         "type": "object",
         "properties": {
@@ -226,6 +747,17 @@
         },
         "required": [
           "message"
+        ]
+      },
+      "DeleteNetworkAccessGroupReply": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deleted"
         ]
       },
       "DismissNotificationReply": {
@@ -274,6 +806,67 @@
           "notifications"
         ]
       },
+      "GetAppNetworkAccessGroupReply": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string"
+          },
+          "appId": {
+            "type": "string"
+          },
+          "entitled": {
+            "type": "boolean"
+          },
+          "binding": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AppNetworkAccessGroupBinding"
+              }
+            ],
+            "nullable": true
+          },
+          "effectiveEnabled": {
+            "type": "boolean",
+            "description": "Effective runtime state; does not replace the saved binding.enabled value."
+          }
+        },
+        "required": [
+          "tenantId",
+          "appId",
+          "entitled",
+          "binding",
+          "effectiveEnabled"
+        ]
+      },
+      "GetAppNetworkAccessGroupStatusReply": {
+        "type": "object",
+        "properties": {
+          "entitled": {
+            "type": "boolean"
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Preserve the saved switch independently of plan entitlement."
+          },
+          "accessPoints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The Console BFF filters these scopes against the app's current capabilities."
+          }
+        },
+        "required": [
+          "entitled",
+          "configured",
+          "enabled",
+          "accessPoints"
+        ]
+      },
       "LangContent": {
         "type": "object",
         "properties": {
@@ -301,6 +894,116 @@
           "subtitle",
           "body",
           "titlePicUrl"
+        ]
+      },
+      "ListNetworkAccessGroupsReply": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string"
+          },
+          "entitled": {
+            "type": "boolean"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NetworkAccessGroup"
+            }
+          }
+        },
+        "required": [
+          "tenantId",
+          "entitled",
+          "groups"
+        ]
+      },
+      "NetworkAccessGroup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "description": "Deprecated compatibility field. User-managed policies are always enforced;\n rollout shadow/off behavior belongs to Gateway configuration."
+          },
+          "allowedCidrs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "version": {
+            "type": "string",
+            "format": "int64"
+          },
+          "updatedByAccountId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "usedByCount": {
+            "type": "string",
+            "format": "int64"
+          },
+          "usedByAppIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "enforcingCount": {
+            "type": "string",
+            "description": "Number of saved references which are actively enforcing for an entitled\n tenant. Disabled bindings and bindings without access points remain in\n used_by_count but do not contribute here.",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "name",
+          "description",
+          "mode",
+          "allowedCidrs",
+          "version",
+          "updatedByAccountId",
+          "createdAt",
+          "updatedAt",
+          "usedByCount",
+          "usedByAppIds",
+          "enforcingCount"
+        ]
+      },
+      "NetworkAccessGroupReply": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NetworkAccessGroup"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "group"
         ]
       },
       "NotificationPayload": {
@@ -333,6 +1036,153 @@
           "contents",
           "frequency",
           "isGlobal"
+        ]
+      },
+      "PutAppNetworkAccessGroupReply": {
+        "type": "object",
+        "properties": {
+          "binding": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AppNetworkAccessGroupBinding"
+              }
+            ],
+            "nullable": true
+          },
+          "effectiveEnabled": {
+            "type": "boolean",
+            "description": "Effective runtime state; does not replace the saved binding.enabled value."
+          }
+        },
+        "required": [
+          "binding",
+          "effectiveEnabled"
+        ]
+      },
+      "PutAppNetworkAccessGroupRequest": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string"
+          },
+          "appId": {
+            "type": "string"
+          },
+          "groupId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "expectedVersion": {
+            "type": "string",
+            "format": "int64"
+          },
+          "actorAccountId": {
+            "type": "string"
+          },
+          "enabled": {
+            "nullable": true,
+            "type": "boolean",
+            "description": "Optional distinguishes an explicit disable from a legacy caller that\n predates per-app access-point settings."
+          },
+          "accessPoints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tenantId",
+          "appId",
+          "expectedVersion",
+          "actorAccountId",
+          "accessPoints"
+        ]
+      },
+      "TenantUtmReply": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ]
+      },
+      "TenantUtmRequest": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string"
+          },
+          "utmSource": {
+            "type": "string"
+          },
+          "utmMedium": {
+            "type": "string"
+          },
+          "utmCampaign": {
+            "type": "string"
+          },
+          "utmContent": {
+            "type": "string"
+          },
+          "utmTerm": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantId",
+          "utmSource",
+          "utmMedium",
+          "utmCampaign",
+          "utmContent",
+          "utmTerm"
+        ]
+      },
+      "UpdateNetworkAccessGroupRequest": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "description": "Deprecated and ignored. Kept only for wire compatibility."
+          },
+          "allowedCidrs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expectedVersion": {
+            "type": "string",
+            "format": "int64"
+          },
+          "actorAccountId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantId",
+          "groupId",
+          "name",
+          "description",
+          "mode",
+          "allowedCidrs",
+          "expectedVersion",
+          "actorAccountId"
         ]
       }
     }
