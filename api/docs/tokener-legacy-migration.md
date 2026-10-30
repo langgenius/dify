@@ -1,6 +1,6 @@
 # Legacy hosted credits migration
 
-This is an opt-in paid-tenant migration. Existing App, Workflow, Conversation and
+This is an opt-in migration for paid and eligible legacy-free tenants. Existing App, Workflow, Conversation and
 default-model identities are not rewritten. Only a server-resolved SYSTEM
 shared-credit-pool invocation redirects; BYOK, provider-owned FREE and unmetered
 invocations retain their previous execution and settlement owners.
@@ -88,6 +88,12 @@ flask tokener-migration prepare --tenant-id TENANT_UUID --batch-id BATCH_ID --ma
 # Explicit write: queues preparation through Billing, without trial/signup money.
 flask tokener-migration prepare --tenant-id TENANT_UUID --batch-id BATCH_ID --mapping-version MAPPING_VERSION --apply
 
+# Legacy-free batch: both commands are dry-run unless --apply is supplied.
+flask tokener-migration prepare-free --tenant-id TENANT_UUID --batch-id BATCH_ID --mapping-version MAPPING_VERSION
+flask tokener-migration prepare-free --tenant-id TENANT_UUID --batch-id BATCH_ID --mapping-version MAPPING_VERSION --apply
+flask tokener-migration claim-free --tenant-id TENANT_UUID
+flask tokener-migration claim-free --tenant-id TENANT_UUID --apply
+
 flask tokener-migration status --tenant-id TENANT_UUID
 flask tokener-migration resume --tenant-id TENANT_UUID
 # Explicit manual recovery; retains original IDs, payloads and claimed_at.
@@ -105,6 +111,22 @@ Preparation installs the target, stores its managed credential by explicit
 tenant/provider/id, validates the routing adapter and persists non-financial
 credential provenance. It never changes an existing BYOK selection or default
 model and never grants the new-user trial.
+
+Legacy-free migration uses explicit `free-legacy-v1` eligibility; paid migration
+uses `paid-legacy-v1` and retains the existing periodic cutover. Free preparation
+uses the same normal resource provisioning without a grant. Only `claim-free`
+claims the one-time signup-equivalent amount from Billing, using the original
+account creation time (`accountCreatedAt`) and the same tenant's `trial.v1.TENANT_UUID`
+grant identity. The workspace becomes active only after the grant's exact
+readback is verified. Replays must reuse that identity, not mint a second free
+grant or a new organization. The old legacy balance, source App/provider,
+default-model and explicit BYOK configuration are not rewritten or converted.
+
+A genuinely empty source inventory/ownership snapshot is allowed only under
+the admitted and persisted `free-legacy-v1` policy, including a legacy-free
+workspace with no hosted provider. Omitted, paid and unknown policies retain
+strict empty-inventory behavior. This does not exempt a present source from
+schema/mapping completeness or skip the managed-key and daemon readiness checks.
 
 ## Cutover and recovery
 
@@ -170,13 +192,13 @@ is not permission to use only that installation set forever. A later provider
 installation must not rewrite `source_ownership`, an existing App, the funding
 manifest, or the tenant's frozen mapping revision.
 
-The current Billing preparation contract admits unexpired Professional/Team
-subscriptions, not free/trial-only tenants. For a newly installed provider,
-finite mapped PAID availability precedes TRIAL availability; both settle against
-the same managed Tokener organization rather than an old credit balance. This is
-not an entitlement design for future free-user migration. Such an expansion
-requires an explicit tenant-level authorization rule, not inference from global
-hosting flags. Independent FREE/unlimited quotas retain their existing behavior.
+The Billing preparation contracts separately authorize unexpired paid tenants
+under `paid-legacy-v1` and eligible legacy-free tenants under `free-legacy-v1`.
+An additional provider's PAID/TRIAL selection must remain within the tenant's
+migration eligibility and exact mapped pools; global hosting flags alone do not
+grant paid entitlement or issue money. Both mapped pools settle against the same
+managed Tokener organization, not an old credit balance. Availability metadata
+is not a grant. Independent FREE/unlimited quotas retain their existing behavior.
 
 For an additional provider, the server admits SYSTEM shared-credit models only
 after checking enabled hosting policy, a verified Marketplace installation, the
@@ -251,3 +273,56 @@ do not fall back to legacy billing or an unrelated BYOK credential. Retirement
 therefore does not mean a successful model call, an alias substitution, or
 certified upstream availability. Regression reports must keep these expected
 error cases separate from successfully forwarded active models.
+
+## Operator-reviewed negative source capability evidence
+
+`TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON` defaults to `[]` and is separate from
+retirement. A declaration attests that one immutable source package cannot
+resolve particular typed identities; it neither retires a supported model nor
+authorizes a target. Each record contains `schema_version: 1`, exact
+`mapping_revision`, canonical `provider_id`, full `plugin_unique_identifier`,
+`catalog_digest`, original `original_configurate_methods`, all
+`supported_model_types`, and an `unavailable` array of exact `model_type`,
+`model`, `reason: source_schema_unsupported`, and content-hash `proof_id`.
+
+Generate the catalog digest with `source_catalog_digest` from the complete,
+nonempty installed provider schema, before hosting restrictions or retirement
+partitioning. The digest includes all typed schemas, original configuration
+methods and supported types. Use the original methods captured by provider
+configuration, not synthetic PREDEFINED metadata added for a dynamic provider.
+Evidence must be reviewed against the immutable archive and its exact SDK pin;
+the runtime does not fetch proof URLs, infer semantics from an error message,
+or treat RPC failures as proof of absence. Unknown/mismatching package, catalog
+or policy continues through ordinary strict discovery. Contradictory negative
+claims for declared source schemas, empty/duplicate/invalid catalogs and
+malformed policies fail closed.
+
+When this revision has source capability evidence, preparation also reads the
+daemon's fresh model-provider bindings once. The matching source must have one
+local, non-remote-debug binding with the same UID as its catalog and evidence.
+Missing/changed bindings preserve strict lookup; duplicate bindings and binding
+RPC failures stop preparation. The empty default adds no binding RPC.
+
+A historical LLM placeholder probes every supported type, so omission requires
+negative evidence for every possible type, not only LLM. Explicit non-LLM
+restrictions need their exact typed negative. Fine-tuned (`ft:`), deployment or
+base-model restrictions, explicit custom-model records and model-setting
+identities always retain strict lookup. Pure CUSTOMIZABLE providers never use
+this exclusion. Actual source schema resolution and target mapping/digest/mode/
+operation checks are unchanged for all remaining sources. A missing target
+cannot be excused with a negative-source declaration.
+
+Only finite shared PAID/TRIAL inventory is partitioned. Provider preferences,
+credentials, original quotas and ownership remain untouched. Removing all
+restricted unavailable identities removes the inventory-only quota instead
+of creating unrestricted access. Selected evidence digest and actual excluded
+typed identities/pools/proof IDs participate in `inventory_hash`; `[]` and
+other-revision evidence preserve old hashes. Publish only with a new reviewed
+revision; never rewrite a prepared/active revision. Runtime routing does not
+consult this evidence and retains its original errors and no-fallback behavior.
+
+This negative evidence does not fix the separate positive dynamic-source gap
+for newly installed additional providers: existing additional-provider gates
+require installed static schemas. Mixed providers may dynamically resolve a
+non-catalog SYSTEM model; that requires a separate exact-mapping/schema
+admission design and must not be reported as covered by this mechanism.

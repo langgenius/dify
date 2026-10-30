@@ -42,7 +42,9 @@ from services.model_billing_mapping_service import (
     migration_policy_allows_empty_sources,
     model_schema_digest,
     partition_hosted_migration_sources,
+    partition_known_unavailable_sources,
     provider_has_prepared_ownership,
+    resolve_source_capability_policy,
     retirement_policy_for_revision,
 )
 
@@ -498,6 +500,8 @@ def migration_inventory(
     Omitted policy preserves strict historical behavior. The free-legacy policy
     may freeze a genuinely empty inventory, not missing source schema evidence.
     """
+    from core.plugin.entities.plugin import PluginInstallationSource
+    from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
     from core.plugin.impl.model import PluginModelClient
     from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 
@@ -506,11 +510,34 @@ def migration_inventory(
         retirement_policy = retirement_policy_for_revision(
             dify_config.TOKENER_LEGACY_RETIRED_MODELS_JSON, mapping_version, registry
         )
+        source_capability_policy = resolve_source_capability_policy(
+            dify_config.TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON, mapping_version
+        )
     except ValueError:
         raise ModelRouteUnmapped from None
     client = PluginModelClient()
+    source_bindings: dict[str, str] = {}
+    if source_capability_policy.declarations:
+        evidence_providers = {item.provider_id for item in source_capability_policy.declarations}
+        seen_bindings: set[str] = set()
+        # A cached catalog is insufficient: require a fresh, unique immutable
+        # installation. Mutable remote-debug code cannot satisfy this proof.
+        for binding in client.fetch_model_provider_bindings(tenant_id):
+            binding_provider = str(
+                ModelProviderID(
+                    binding.provider if binding.provider.count("/") == 2 else f"{binding.plugin_id}/{binding.provider}"
+                )
+            )
+            if binding_provider not in evidence_providers:
+                continue
+            if binding_provider in seen_bindings:
+                raise ModelRouteUnavailable
+            seen_bindings.add(binding_provider)
+            if binding.source != PluginInstallationSource.Remote and binding.runtime_type == "local":
+                source_bindings[binding_provider] = binding.plugin_unique_identifier
     inventory = []
     retired_inventory = []
+    unavailable_inventory = []
     source_ownership = {}
     configurations = create_plugin_provider_manager(tenant_id=tenant_id).get_configurations(tenant_id)
     for provider_name, configuration in configurations:
@@ -543,8 +570,42 @@ def migration_inventory(
             )
 
         try:
+            preparation_system = system
+            if source_capability_policy.declarations:
+                source_uid = (
+                    configuration.provider.plugin_unique_identifier
+                    if isinstance(configuration.provider, PluginModelProviderDeclaration)
+                    else None
+                )
+                configured_models = frozenset(
+                    (item.model_type, item.model)
+                    for item in [*configuration.custom_configuration.models, *configuration.model_settings]
+                )
+                unavailable = partition_known_unavailable_sources(
+                    system,
+                    configuration.provider.models,
+                    configuration._get_original_provider_configurate_methods(),
+                    configuration.provider.supported_model_types,
+                    configured_models,
+                    source_capability_policy.for_package(str(source_id), source_uid)
+                    if source_bindings.get(str(source_id)) == source_uid
+                    else None,
+                )
+                preparation_system = unavailable.system
+                for (kind, model), (proof_id, pools) in sorted(unavailable.unavailable.items()):
+                    unavailable_inventory.append(
+                        {
+                            "provider": str(source_id),
+                            "plugin_unique_identifier": source_uid,
+                            "model_type": kind.value,
+                            "model": model,
+                            "pool_types": sorted(pool.value for pool in pools),
+                            "reason": "source_schema_unsupported",
+                            "proof_id": proof_id,
+                        }
+                    )
             partition = partition_hosted_migration_sources(
-                system, configuration.provider.models, retirement_policy.for_provider(str(source_id))
+                preparation_system, configuration.provider.models, retirement_policy.for_provider(str(source_id))
             )
             sources = hosted_migration_sources(
                 partition.system, partition.models, configuration.provider.supported_model_types, lookup
@@ -605,8 +666,13 @@ def migration_inventory(
         raise ModelRouteUnmapped
     inventory.sort(key=itemgetter("provider", "model_type", "model"))
     retired_inventory.sort(key=itemgetter("provider", "model_type", "model"))
+    unavailable_inventory.sort(key=itemgetter("provider", "model_type", "model"))
     result: dict[str, Any] = {
-        "inventory_hash": canonical_hash(retirement_policy.inventory_payload(inventory, retired_inventory)),
+        "inventory_hash": canonical_hash(
+            source_capability_policy.inventory_payload(
+                retirement_policy.inventory_payload(inventory, retired_inventory), unavailable_inventory
+            )
+        ),
         "model_mapping_version": mapping_version,
         "model_count": len(inventory),
         "models": inventory,
@@ -615,6 +681,9 @@ def migration_inventory(
     if retirement_policy.identities:
         result["retired_sources"] = retired_inventory
         result["retirement_policy_digest"] = retirement_policy.digest
+    if source_capability_policy.declarations:
+        result["unavailable_sources"] = unavailable_inventory
+        result["source_capability_policy_digest"] = source_capability_policy.digest
     return result
 
 

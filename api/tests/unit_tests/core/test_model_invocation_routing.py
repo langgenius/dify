@@ -237,6 +237,155 @@ def credential_pin() -> dict[str, str]:
     }
 
 
+@pytest.mark.parametrize(
+    "case",
+    [
+        "matched",
+        "uid_mismatch",
+        "catalog_mismatch",
+        "partial_negative",
+        "custom_override",
+        "model_setting",
+        "target_missing",
+        "parameter_digest",
+        "ambiguous",
+        "binding_uid_mismatch",
+        "binding_missing",
+        "binding_duplicate",
+        "binding_remote",
+        "binding_rpc_error",
+    ],
+)
+def test_source_capability_inventory_uses_exact_complete_bound_catalog(
+    monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
+    from core.entities.provider_entities import CustomModelConfiguration, ModelSettings
+    from core.model_invocation_routing import migration_inventory
+    from core.plugin.entities.plugin import PluginInstallationSource
+    from core.plugin.entities.plugin_daemon import PluginModelProviderBinding, PluginModelProviderDeclaration
+    from services.model_billing_mapping_service import source_catalog_digest
+    from tests.unit_tests.services.test_model_billing_mapping_service import mapping, schema, system
+    from tests.unit_tests.services.test_model_billing_source_capability_policy import (
+        METHODS,
+        PROVIDER,
+        TYPES,
+        UID,
+        declaration,
+    )
+
+    models = [schema()]
+    restrictions = ["gpt-4o", "absent"]
+    if case == "target_missing":
+        models.append(schema("unmapped"))
+        restrictions.append("unmapped")
+    elif case == "ambiguous":
+        models.append(schema(model_type=ModelType.TEXT_EMBEDDING))
+    original_system = system([RestrictModel(model=name, model_type=ModelType.LLM) for name in restrictions])
+    provider = ProviderConfiguration(
+        tenant_id="source-capability-tenant",
+        provider=PluginModelProviderDeclaration(
+            provider=PROVIDER,
+            label=I18nObject(en_US="OpenAI"),
+            supported_model_types=TYPES,
+            configurate_methods=METHODS,
+            models=models,
+            plugin_unique_identifier=UID.replace("0.4.2", "0.4.3") if case == "uid_mismatch" else UID,
+            installation_source=PluginInstallationSource.Marketplace,
+        ),
+        preferred_provider_type=ProviderType.SYSTEM,
+        using_provider_type=ProviderType.SYSTEM,
+        system_configuration=original_system,
+        custom_configuration=CustomConfiguration(
+            provider=None,
+            models=[CustomModelConfiguration(model="absent", model_type=ModelType.LLM, credentials=None)]
+            if case == "custom_override"
+            else [],
+        ),
+        model_settings=[ModelSettings(model="absent", model_type=ModelType.LLM)] if case == "model_setting" else [],
+    )
+    configurations = ProviderConfigurations(tenant_id=provider.tenant_id)
+    configurations.configurations[PROVIDER] = provider
+    manager = InventoryProviderManager(configurations)
+
+    def discover(*, tenant_id: str) -> ProviderManager:
+        assert tenant_id == provider.tenant_id
+        return manager
+
+    record = declaration()
+    record["catalog_digest"] = source_catalog_digest(models, METHODS, TYPES)
+    if case == "catalog_mismatch":
+        record["catalog_digest"] = "sha256:" + "c" * 64
+    elif case == "partial_negative":
+        record["unavailable"] = [record["unavailable"][0]]
+    route = mapping(schema(), revision="new")
+    if case == "parameter_digest":
+        route["source_schema_digest"] = "sha256:" + "d" * 64
+    apply_config_overrides(
+        monkeypatch,
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps([route]),
+        TOKENER_LEGACY_RETIRED_MODELS_JSON="[]",
+        TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON=json.dumps([record]),
+    )
+    monkeypatch.setattr("core.plugin.impl.model_runtime_factory.create_plugin_provider_manager", discover)
+    lookups: list[str] = []
+
+    def lookup(_client: PluginModelClient, *args: object, **_kwargs: object) -> None:
+        lookups.append(str(args[5]))
+
+    monkeypatch.setattr(PluginModelClient, "get_model_schema", lookup)
+    binding = PluginModelProviderBinding(
+        provider="openai",
+        installation_id="installation",
+        plugin_id="langgenius/openai",
+        plugin_unique_identifier=UID.replace("0.4.2", "0.4.3") if case == "binding_uid_mismatch" else UID,
+        runtime_type="remote" if case == "binding_remote" else "local",
+        source=PluginInstallationSource.Remote if case == "binding_remote" else PluginInstallationSource.Marketplace,
+        version="0.4.2",
+        verified=True,
+    )
+
+    def bindings(_client: PluginModelClient, tenant_id: str) -> list[PluginModelProviderBinding]:
+        assert tenant_id == provider.tenant_id
+        if case == "binding_rpc_error":
+            raise RuntimeError("binding RPC failed")
+        return [] if case == "binding_missing" else [binding, binding] if case == "binding_duplicate" else [binding]
+
+    monkeypatch.setattr(PluginModelClient, "fetch_model_provider_bindings", bindings)
+    before = provider.model_dump()
+    if case in {"binding_rpc_error", "binding_duplicate"}:
+        with pytest.raises(RuntimeError if case == "binding_rpc_error" else ModelRouteUnavailable):
+            migration_inventory(provider.tenant_id, "new")
+        assert lookups == []
+        assert provider.model_dump() == before
+        return
+    if case == "matched":
+        result = migration_inventory(provider.tenant_id, "new")
+        assert result["model_count"] == 1
+        assert {item["model"] for item in result["models"]} == {"gpt-4o"}
+        assert {(item["model_type"], item["model"]) for item in result["unavailable_sources"]} == {
+            (kind.value, "absent") for kind in TYPES
+        }
+        assert result["inventory_hash"] != canonical_hash(result["models"])
+        assert result["source_capability_policy_digest"].startswith("sha256:")
+        assert result["source_ownership"][PROVIDER]["quotas"] == {"paid": {"unmetered": False}}
+        assert lookups == []
+    else:
+        with pytest.raises(ModelRouteUnmapped):
+            migration_inventory(provider.tenant_id, "new")
+        if case in {
+            "uid_mismatch",
+            "catalog_mismatch",
+            "partial_negative",
+            "custom_override",
+            "model_setting",
+            "binding_uid_mismatch",
+            "binding_missing",
+            "binding_remote",
+        }:
+            assert lookups == ["absent", "absent"]
+    assert provider.model_dump() == before
+
+
 def plan() -> FrozenModelInvocation:
     return replace(
         FrozenModelInvocation(

@@ -23,9 +23,14 @@ from core.entities.provider_entities import (
 )
 from core.hosting_configuration import HostingProvider, TrialHostingQuota
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ModelType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
 from models.provider_ids import ModelProviderID
 from services.entities.model_billing_mapping import ModelMapping
 from services.model_billing_retirement_policy import ModelRetirementPolicy, resolve_retirement_policy
+from services.model_billing_source_capability_policy import SourceCapabilityDeclaration
+from services.model_billing_source_capability_policy import (
+    resolve_source_capability_policy as resolve_source_capability_policy,  # noqa: PLC0414
+)
 
 type SourceIdentity = tuple[ModelType, str]
 type MappingIdentity = tuple[str, ModelType, str]
@@ -236,6 +241,106 @@ def mappings_for_revision(raw_registry: str, revision: str) -> dict[MappingIdent
 class HostedMigrationSource:
     schema: AIModelEntity
     pool_types: set[ProviderQuotaType] = field(default_factory=set)
+
+
+def source_catalog_digest(
+    models: Sequence[AIModelEntity],
+    original_methods: Sequence[ConfigurateMethod],
+    supported_model_types: Sequence[ModelType],
+) -> str:
+    """Bind evidence to the complete original catalog, never the restricted view."""
+    identities = {(schema.model_type, schema.model) for schema in models}
+    if not models or len(identities) != len(models):
+        raise ValueError("Source capability requires a nonempty unique catalog")
+    if not original_methods or len(set(original_methods)) != len(original_methods):
+        raise ValueError("Invalid original source configuration methods")
+    if not supported_model_types or len(set(supported_model_types)) != len(supported_model_types):
+        raise ValueError("Invalid supported source model types")
+    if any(schema.model_type not in supported_model_types for schema in models):
+        raise ValueError("Source catalog contains an unsupported type")
+    payload = {
+        "original_configurate_methods": sorted(method.value for method in original_methods),
+        "supported_model_types": sorted(kind.value for kind in supported_model_types),
+        "models": [
+            schema.model_dump(mode="json")
+            for schema in sorted(models, key=lambda schema: (schema.model_type.value, schema.model))
+        ],
+    }
+    return (
+        "sha256:"
+        + hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+        ).hexdigest()
+    )
+
+
+@dataclass(frozen=True)
+class SourceCapabilityPartition:
+    system: SystemConfiguration
+    unavailable: dict[SourceIdentity, tuple[str, set[ProviderQuotaType]]]
+
+
+def partition_known_unavailable_sources(
+    system: SystemConfiguration,
+    models: Sequence[AIModelEntity],
+    original_methods: Sequence[ConfigurateMethod],
+    supported_model_types: Sequence[ModelType],
+    configured_models: frozenset[SourceIdentity],
+    evidence: SourceCapabilityDeclaration | None,
+) -> SourceCapabilityPartition:
+    """Exclude only attested impossible sources; never catch discovery errors.
+
+    Unknown package/catalog evidence and dynamic overrides keep ordinary strict
+    lookup. A legacy LLM placeholder requires negative evidence for *all*
+    supported types; otherwise an existing dynamic non-LLM could be hidden.
+    """
+    unchanged = SourceCapabilityPartition(system, {})
+    if evidence is None or ConfigurateMethod.PREDEFINED_MODEL not in original_methods:
+        return unchanged
+    digest = source_catalog_digest(models, original_methods, supported_model_types)
+    if (
+        digest != evidence.catalog_digest
+        or set(original_methods) != set(evidence.original_configurate_methods)
+        or set(supported_model_types) != set(evidence.supported_model_types)
+    ):
+        return unchanged
+    negatives = {(item.model_type, item.model): item for item in evidence.unavailable}
+    if negatives.keys() & {(schema.model_type, schema.model) for schema in models}:
+        raise ValueError("Negative capability contradicts a declared source model")
+    unavailable: dict[SourceIdentity, tuple[str, set[ProviderQuotaType]]] = {}
+    quotas: list[QuotaConfiguration] = []
+    for quota in system.quota_configurations:
+        if (
+            quota.quota_type not in {ProviderQuotaType.PAID, ProviderQuotaType.TRIAL}
+            or quota.quota_limit == -1
+            or quota.quota_unit not in {QuotaUnit.TIMES, QuotaUnit.CREDITS}
+            or not quota.restrict_models
+        ):
+            quotas.append(quota)
+            continue
+        retained = []
+        for restricted in quota.restrict_models:
+            if (
+                restricted.base_model_name is not None
+                or restricted.model.startswith("ft:")
+                or any(model == restricted.model for _, model in configured_models)
+                or any(schema.model == restricted.model for schema in models)
+            ):
+                retained.append(restricted)
+                continue
+            types = [restricted.model_type] if restricted.model_type != ModelType.LLM else supported_model_types
+            required = {(kind, restricted.model) for kind in types}
+            if not required or not required <= negatives.keys():
+                retained.append(restricted)
+                continue
+            for identity in required:
+                _, pools = unavailable.setdefault(identity, (negatives[identity].proof_id, set()))
+                pools.add(quota.quota_type)
+        if retained:
+            quotas.append(quota.model_copy(update={"restrict_models": retained}))
+        # All restrictions proved absent: omit this inventory-only quota; an
+        # empty restriction list would incorrectly mean unrestricted access.
+    return SourceCapabilityPartition(system.model_copy(update={"quota_configurations": quotas}), unavailable)
 
 
 def retirement_policy_for_revision(
