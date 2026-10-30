@@ -12,7 +12,6 @@ from flask import Flask, request
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import RequestEntityTooLarge
 
-import controllers.console.workspace.skills as skills_module
 from configs import dify_config
 from controllers.console.workspace.skills import (
     _MULTIPART_ENVELOPE_BYTES,
@@ -24,6 +23,40 @@ from controllers.console.workspace.skills import (
 from machinery.context import RequestContext
 
 _UPLOAD_FILE_OK = {"id": "tool-file-1", "name": "policy.md", "mime_type": "text/markdown", "size": 1, "hash": "h"}
+
+# Fully populated so dump_response validates it; the tests are about the request
+# read, not about the response model.
+_IMPORTED_SKILL = {
+    "id": "skill-1",
+    "name": "finance-sop",
+    "display_name": "Finance SOP",
+    "icon": "📄",
+    "description": "",
+    "tags": [],
+    "name_manually_edited": False,
+    "visibility": "workspace",
+    "latest_published_version_id": None,
+    "reference_count": 0,
+    "created_by": "user-1",
+    "created_by_name": "Test User",
+    "updated_by": "user-1",
+    "updated_by_name": "Test User",
+    "created_at": 1,
+    "updated_at": 1,
+    "files": [
+        {
+            "id": "file-1",
+            "path": "SKILL.md",
+            "kind": "file",
+            "storage": "text",
+            "mime_type": "text/markdown",
+            "content": "# Body",
+            "tool_file_id": None,
+            "size": 32,
+            "hash": "hash",
+        }
+    ],
+}
 
 
 @pytest.fixture
@@ -81,7 +114,7 @@ def _run(
     ):
         service = service_cls.return_value
         service.upload_file.return_value = _UPLOAD_FILE_OK
-        service.import_skill.return_value = {"id": "skill-1"}
+        service.import_skill.return_value = _IMPORTED_SKILL
         outcome: object = None
         try:
             outcome = method(api, request_context)
@@ -133,13 +166,14 @@ def test_skill_import_request_over_the_cap_is_refused(
     app: Flask, request_context: RequestContext, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """An oversized archive must fail the read that crosses the cap."""
-    monkeypatch.setattr(dify_config, "UPLOAD_SKILL_FILE_SIZE_LIMIT", 1)
-    monkeypatch.setattr(skills_module, "_MULTIPART_ENVELOPE_BYTES", 1)
+    monkeypatch.setattr(dify_config, "UPLOAD_SKILL_FILE_SIZE_LIMIT", 0)
     api = WorkspaceSkillImportApi()
+    # The archive limit is now 0, so any body past the multipart envelope is
+    # over the cap.
     oversized = b"x" * (2 * 1024 * 1024)
 
     outcome, cap, service = _run(app, api, request_context, {"file": (io.BytesIO(oversized), "skill.zip")})
 
     assert isinstance(outcome, RequestEntityTooLarge)
-    assert cap == 1024 * 1024 + 1
+    assert cap == _MULTIPART_ENVELOPE_BYTES
     service.import_skill.assert_not_called()
