@@ -846,13 +846,15 @@ class TestEntitiesProviderConfigurationCases:
                 return None
             return _build_ai_model(model)
 
-        with caplog.at_level(logging.WARNING, logger="core.entities.provider_configuration"):
-            with patch.object(ProviderConfiguration, "get_model_schema", side_effect=_schema):
-                models = configuration._get_custom_provider_models(
-                    model_types=[ModelType.LLM],
-                    provider_schema=provider_schema,
-                    model_setting_map={},
-                )
+        with (
+            caplog.at_level(logging.WARNING, logger="core.entities.provider_configuration"),
+            patch.object(ProviderConfiguration, "get_model_schema", side_effect=_schema),
+        ):
+            models = configuration._get_custom_provider_models(
+                model_types=[ModelType.LLM],
+                provider_schema=provider_schema,
+                model_setting_map={},
+            )
 
         assert "get custom model schema failed, boom" in caplog.messages
         assert any(model.model == "ok-custom" for model in models)

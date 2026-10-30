@@ -239,9 +239,8 @@ def test_iris_vector_init_get_cursor_and_create(iris_module):
     cursor = MagicMock()
     conn.cursor.return_value = cursor
     vector.pool.get_connection.return_value = conn
-    with pytest.raises(RuntimeError, match="boom"):
-        with vector._get_cursor():
-            raise RuntimeError("boom")
+    with pytest.raises(RuntimeError, match="boom"), vector._get_cursor():
+        raise RuntimeError("boom")
     conn.rollback.assert_called_once()
 
     vector._create_collection = MagicMock()

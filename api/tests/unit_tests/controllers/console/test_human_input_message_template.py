@@ -121,11 +121,13 @@ def test_send_failures_have_explicit_http_errors(
     account = Account(name="Editor", email="editor@example.com")
     account.id = "editor-id"
     app_model = App(id="app-id", tenant_id="tenant-id")
-    with Flask(__name__).test_request_context(json={"channel": "slack"}):
-        with pytest.raises(controller.BaseHTTPException) as raised:
-            unwrap(controller.WorkflowDraftMessageTemplateTestApi.post)(
-                controller.WorkflowDraftMessageTemplateTestApi(), account, app_model, "approval"
-            )
+    with (
+        Flask(__name__).test_request_context(json={"channel": "slack"}),
+        pytest.raises(controller.BaseHTTPException) as raised,
+    ):
+        unwrap(controller.WorkflowDraftMessageTemplateTestApi.post)(
+            controller.WorkflowDraftMessageTemplateTestApi(), account, app_model, "approval"
+        )
     assert raised.value.code == status
     assert raised.value.error_code == code
 

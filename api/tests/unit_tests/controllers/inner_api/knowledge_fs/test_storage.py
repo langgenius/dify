@@ -90,9 +90,11 @@ def test_remote_image_endpoint_maps_safe_failure_statuses(
     load_remote_image.side_effect = error
     handler = KnowledgeFSRemoteImageApi()
 
-    with app.test_request_context("/?url=https%3A%2F%2Fcdn.example.test%2Fimage.png"):
-        with pytest.raises(KnowledgeFSObjectStorageHttpError) as exc_info:
-            inspect.unwrap(handler.get)(handler)
+    with (
+        app.test_request_context("/?url=https%3A%2F%2Fcdn.example.test%2Fimage.png"),
+        pytest.raises(KnowledgeFSObjectStorageHttpError) as exc_info,
+    ):
+        inspect.unwrap(handler.get)(handler)
 
     assert exc_info.value.code == expected_status
 
@@ -264,9 +266,11 @@ def test_missing_object_returns_404(service_cls: MagicMock, app: Flask) -> None:
     service_cls.return_value.head_object.return_value = None
     handler = KnowledgeFSObjectMetadataApi()
 
-    with app.test_request_context("/?key=tenant-1/missing"):
-        with pytest.raises(KnowledgeFSObjectStorageHttpError) as exc_info:
-            inspect.unwrap(handler.get)(handler)
+    with (
+        app.test_request_context("/?key=tenant-1/missing"),
+        pytest.raises(KnowledgeFSObjectStorageHttpError) as exc_info,
+    ):
+        inspect.unwrap(handler.get)(handler)
 
     assert exc_info.value.code == 404
 
@@ -288,13 +292,15 @@ def test_storage_errors_are_mapped_to_safe_http_statuses(
     service_cls.return_value.put_object.side_effect = error
     handler = KnowledgeFSObjectApi()
 
-    with app.test_request_context(
-        "/?key=tenant-1/file.txt",
-        method="PUT",
-        data=b"data",
-        headers={"X-Knowledge-FS-Metadata": _metadata_header({})},
+    with (
+        app.test_request_context(
+            "/?key=tenant-1/file.txt",
+            method="PUT",
+            data=b"data",
+            headers={"X-Knowledge-FS-Metadata": _metadata_header({})},
+        ),
+        pytest.raises(KnowledgeFSObjectStorageHttpError) as exc_info,
     ):
-        with pytest.raises(KnowledgeFSObjectStorageHttpError) as exc_info:
-            inspect.unwrap(handler.put)(handler)
+        inspect.unwrap(handler.put)(handler)
 
     assert exc_info.value.code == expected_status

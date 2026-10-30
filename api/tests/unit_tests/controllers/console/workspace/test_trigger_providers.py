@@ -249,16 +249,16 @@ class TestTriggerProviderApisCases:
                     "controllers.console.workspace.trigger_providers.TriggerSubscriptionBuilderService.update_and_verify_builder",
                     side_effect=Exception("err"),
                 ),
+                pytest.raises(ValueError, match="err"),
             ):
-                with pytest.raises(ValueError, match="err"):
-                    method(
-                        api,
-                        TriggerSubscriptionBuilderVerifyPayload(credentials={}),
-                        "t1",
-                        mock_user(),
-                        "github",
-                        "b1",
-                    )
+                method(
+                    api,
+                    TriggerSubscriptionBuilderVerifyPayload(credentials={}),
+                    "t1",
+                    mock_user(),
+                    "github",
+                    "b1",
+                )
 
         def test_update_builder(self, app: Flask) -> None:
             api = TriggerSubscriptionBuilderUpdateApi()
@@ -366,9 +366,9 @@ class TestTriggerProviderApisCases:
                     "controllers.console.workspace.trigger_providers.TriggerProviderService.get_subscription_by_id",
                     return_value=None,
                 ),
+                pytest.raises(NotFoundError),
             ):
-                with pytest.raises(NotFoundError):
-                    method(api, TriggerSubscriptionBuilderUpdatePayload(name="x"), "t1", "x")
+                method(api, TriggerSubscriptionBuilderUpdatePayload(name="x"), "t1", "x")
 
         def test_update_rebuild(self, app: Flask) -> None:
             api = TriggerSubscriptionUpdateApi()
@@ -427,9 +427,11 @@ class TestTriggerProviderApisCases:
 
             monkeypatch.setattr(controller_module.OAuthHandler, "get_credentials", unexpected_dispatch)
             api = TriggerOAuthCallbackApi()
-            with app.test_request_context("/", headers={"Cookie": "context_id=ctx"}):
-                with pytest.raises(Forbidden, match="Plugin changed"):
-                    unwrap(api.get)(api, "github")
+            with (
+                app.test_request_context("/", headers={"Cookie": "context_id=ctx"}),
+                pytest.raises(Forbidden, match="Plugin changed"),
+            ):
+                unwrap(api.get)(api, "github")
 
         def test_oauth_authorize_success(self, app: Flask) -> None:
             api = TriggerOAuthAuthorizeApi()
@@ -470,17 +472,16 @@ class TestTriggerProviderApisCases:
                     "controllers.console.workspace.trigger_providers.TriggerProviderService.get_oauth_client",
                     return_value=None,
                 ),
+                pytest.raises(NotFoundError),
             ):
-                with pytest.raises(NotFoundError):
-                    method(api, "t1", mock_user(), "github")
+                method(api, "t1", mock_user(), "github")
 
         def test_oauth_callback_forbidden(self, app: Flask) -> None:
             api = TriggerOAuthCallbackApi()
             method = unwrap(api.get)
 
-            with app.test_request_context("/"):
-                with pytest.raises(Forbidden):
-                    method(api, "github")
+            with app.test_request_context("/"), pytest.raises(Forbidden):
+                method(api, "github")
 
         def test_oauth_callback_success(self, app: Flask) -> None:
             api = TriggerOAuthCallbackApi()
@@ -545,9 +546,9 @@ class TestTriggerProviderApisCases:
                     "controllers.console.workspace.trigger_providers.TriggerProviderService.get_oauth_client",
                     return_value=None,
                 ),
+                pytest.raises(Forbidden),
             ):
-                with pytest.raises(Forbidden):
-                    method(api, "github")
+                method(api, "github")
 
         def test_oauth_callback_empty_credentials(self, app: Flask) -> None:
             api = TriggerOAuthCallbackApi()
@@ -576,9 +577,9 @@ class TestTriggerProviderApisCases:
                     "controllers.console.workspace.trigger_providers.OAuthHandler.get_credentials",
                     return_value=MagicMock(credentials=None, expires_at=None),
                 ),
+                pytest.raises(ValueError, match="Failed to get OAuth credentials from the provider\\."),
             ):
-                with pytest.raises(ValueError, match="Failed to get OAuth credentials from the provider\\."):
-                    method(api, "github")
+                method(api, "github")
 
     class TestTriggerOAuthClientManageApi:
         def test_get_client(self, app: Flask) -> None:
@@ -648,9 +649,9 @@ class TestTriggerProviderApisCases:
                     "controllers.console.workspace.trigger_providers.TriggerProviderService.save_custom_oauth_client_params",
                     side_effect=ValueError("bad"),
                 ),
+                pytest.raises(BadRequest),
             ):
-                with pytest.raises(BadRequest):
-                    method(api, TriggerOAuthClientPayload(enabled=True), "t1", "github")
+                method(api, TriggerOAuthClientPayload(enabled=True), "t1", "github")
 
     class TestTriggerSubscriptionVerifyApi:
         def test_verify_success(self, app: Flask) -> None:
@@ -684,16 +685,16 @@ class TestTriggerProviderApisCases:
                     "controllers.console.workspace.trigger_providers.TriggerProviderService.verify_subscription_credentials",
                     side_effect=raised_exception,
                 ),
+                pytest.raises(BadRequest),
             ):
-                with pytest.raises(BadRequest):
-                    method(
-                        api,
-                        TriggerSubscriptionBuilderVerifyPayload(credentials={}),
-                        "t1",
-                        mock_user(),
-                        "github",
-                        "s1",
-                    )
+                method(
+                    api,
+                    TriggerSubscriptionBuilderVerifyPayload(credentials={}),
+                    "t1",
+                    mock_user(),
+                    "github",
+                    "s1",
+                )
 
 
 """Unit tests for trigger-provider controller transaction boundaries."""

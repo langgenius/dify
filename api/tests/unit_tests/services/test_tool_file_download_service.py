@@ -51,9 +51,11 @@ def test_invalid_signature_does_not_load_file(
     service: ToolFileDownloadService, tool_files: ToolFileManager, mocker: MockerFixture
 ) -> None:
     load = mocker.spy(tool_files, "get_file_generator_by_tool_file_id")
-    with patch("services.tool_file_download_service.verify_tool_file_signature", return_value=False) as verify:
-        with pytest.raises(ToolFileDownloadAccessDeniedError):
-            service.get_signed_file(file_id="file-id", timestamp="1", nonce="nonce", sign="invalid")
+    with (
+        patch("services.tool_file_download_service.verify_tool_file_signature", return_value=False) as verify,
+        pytest.raises(ToolFileDownloadAccessDeniedError),
+    ):
+        service.get_signed_file(file_id="file-id", timestamp="1", nonce="nonce", sign="invalid")
 
     verify.assert_called_once_with(file_id="file-id", timestamp="1", nonce="nonce", sign="invalid")
     load.assert_not_called()
@@ -65,9 +67,11 @@ def test_missing_file_is_reported_after_signature_validation(
     mocker: MockerFixture,
 ) -> None:
     load = mocker.spy(tool_files, "get_file_generator_by_tool_file_id")
-    with patch("services.tool_file_download_service.verify_tool_file_signature", return_value=True):
-        with pytest.raises(ToolFileDownloadNotFoundError):
-            service.get_signed_file(file_id="missing", timestamp="1", nonce="nonce", sign="valid")
+    with (
+        patch("services.tool_file_download_service.verify_tool_file_signature", return_value=True),
+        pytest.raises(ToolFileDownloadNotFoundError),
+    ):
+        service.get_signed_file(file_id="missing", timestamp="1", nonce="nonce", sign="valid")
 
     load.assert_called_once_with(tool_file_id="missing")
 
@@ -100,8 +104,10 @@ def test_source_error_is_not_converted(
     else:
         mocker.patch("core.tools.tool_file_manager.session_factory.create_session", side_effect=source_error)
 
-    with patch("services.tool_file_download_service.verify_tool_file_signature", return_value=True):
-        with pytest.raises(type(source_error)) as error_info:
-            service.get_signed_file(file_id="file-id", timestamp="1", nonce="nonce", sign="valid")
+    with (
+        patch("services.tool_file_download_service.verify_tool_file_signature", return_value=True),
+        pytest.raises(type(source_error)) as error_info,
+    ):
+        service.get_signed_file(file_id="file-id", timestamp="1", nonce="nonce", sign="valid")
 
     assert error_info.value is source_error

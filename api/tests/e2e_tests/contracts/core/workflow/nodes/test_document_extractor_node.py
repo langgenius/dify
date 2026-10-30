@@ -531,16 +531,18 @@ def test_extract_text_from_file_routes_excel_inputs(document_extractor_node, ext
 def test_extract_text_from_file_rejects_missing_extension_and_mime_type(document_extractor_node):
     file = make_file(None, None)
 
-    with patch(
-        "graphon.nodes.document_extractor.node._download_file_content",
-        return_value=b"unknown",
+    with (
+        patch(
+            "graphon.nodes.document_extractor.node._download_file_content",
+            return_value=b"unknown",
+        ),
+        pytest.raises(UnsupportedFileTypeError, match="Unable to determine file type"),
     ):
-        with pytest.raises(UnsupportedFileTypeError, match="Unable to determine file type"):
-            _extract_text_from_file(
-                document_extractor_node.http_client,
-                file,
-                unstructured_api_config=document_extractor_node._unstructured_api_config,
-            )
+        _extract_text_from_file(
+            document_extractor_node.http_client,
+            file,
+            unstructured_api_config=document_extractor_node._unstructured_api_config,
+        )
 
 
 def test_run_list_file_extraction_error_returns_failed(document_extractor_node, mock_graph_runtime_state):

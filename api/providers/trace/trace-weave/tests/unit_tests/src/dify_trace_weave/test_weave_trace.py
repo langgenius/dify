@@ -1101,9 +1101,11 @@ class TestApiCheck:
         trace_instance.server.call_end.assert_not_called()
 
     def test_api_check_propagates_safe_failure(self, trace_instance):
-        with patch(
-            "dify_trace_weave.weave_trace.verify_configuration",
-            side_effect=WeaveConfigurationError("authentication_failed"),
+        with (
+            patch(
+                "dify_trace_weave.weave_trace.verify_configuration",
+                side_effect=WeaveConfigurationError("authentication_failed"),
+            ),
+            pytest.raises(WeaveConfigurationError, match="Weave authentication failed"),
         ):
-            with pytest.raises(WeaveConfigurationError, match="Weave authentication failed"):
-                trace_instance.api_check()
+            trace_instance.api_check()

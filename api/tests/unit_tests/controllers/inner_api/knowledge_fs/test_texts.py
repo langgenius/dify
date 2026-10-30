@@ -274,17 +274,16 @@ class TestTextsCases:
             ),
             patch("controllers.inner_api.knowledge_fs.texts.configured_text_client", stalled_client),
             patch("controllers.inner_api.knowledge_fs.texts.execute_text_request", execute),
+            pytest.raises(ServiceUnavailable),
         ):
-            with pytest.raises(ServiceUnavailable):
-                inspect.unwrap(handler.post)(handler)
+            inspect.unwrap(handler.post)(handler)
         assert cleaned_up
         assert time.monotonic() - started < 0.5
 
     @staticmethod
     def test_text_controller_rejects_unauthenticated_requests(app: Flask) -> None:
-        with app.test_request_context(json=_TEXTS_PAYLOAD):
-            with pytest.raises(NotFound):
-                KnowledgeFSTextApi().post()
+        with app.test_request_context(json=_TEXTS_PAYLOAD), pytest.raises(NotFound):
+            KnowledgeFSTextApi().post()
 
     @staticmethod
     def test_text_controller_validates_before_opening_backend(app: Flask) -> None:
@@ -339,9 +338,11 @@ class TestTextsCases:
             ),
         ):
             for key in [None, "wrong-key"]:
-                with app.test_request_context(json=_TEXTS_PAYLOAD, headers={"X-Inner-Api-Key": key} if key else {}):
-                    with pytest.raises(NotFound):
-                        KnowledgeFSTextApi().post()
+                with (
+                    app.test_request_context(json=_TEXTS_PAYLOAD, headers={"X-Inner-Api-Key": key} if key else {}),
+                    pytest.raises(NotFound),
+                ):
+                    KnowledgeFSTextApi().post()
             client.assert_not_called()
             with app.test_request_context(json=_TEXTS_PAYLOAD, headers={"X-Inner-Api-Key": "trusted-key"}):
                 assert KnowledgeFSTextApi().post() == {"points": [], "matches": []}

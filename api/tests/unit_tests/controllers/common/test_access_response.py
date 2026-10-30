@@ -177,9 +177,8 @@ def test_invalid_token_final_response_and_no_usage(token_client: TokenClient) ->
 def test_invalid_token_database_path_does_not_record_usage(http_app: Flask, mocker: MockerFixture) -> None:
     usage = mocker.patch.object(token_service, "record_token_usage")
     mocker.patch.object(token_service.ApiTokenCache, "set")
-    with http_app.app_context():
-        with pytest.raises(token_service.ApiTokenInvalidError, match="Access token is invalid"):
-            token_service.query_token_from_db("missing-token", "app")
+    with http_app.app_context(), pytest.raises(token_service.ApiTokenInvalidError, match="Access token is invalid"):
+        token_service.query_token_from_db("missing-token", "app")
     usage.assert_not_called()
 
 

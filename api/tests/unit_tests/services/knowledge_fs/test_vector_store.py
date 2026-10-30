@@ -566,10 +566,9 @@ class TestKnowledgeFsVectorBackendsCases:
             ELASTICSEARCH_CLOUD_URL="https://cloud:443",
             ELASTICSEARCH_API_KEY="secret",
         )
-        with patch("elasticsearch.Elasticsearch") as native:
-            with configured_vector_client(_KNOWLEDGE_FS_VECTOR_BACKENDS_A):
-                assert native.call_args.kwargs["api_key"] == "secret"
-                assert "basic_auth" not in native.call_args.kwargs
+        with patch("elasticsearch.Elasticsearch") as native, configured_vector_client(_KNOWLEDGE_FS_VECTOR_BACKENDS_A):
+            assert native.call_args.kwargs["api_key"] == "secret"
+            assert "basic_auth" not in native.call_args.kwargs
         config_overrides(ELASTICSEARCH_CLOUD_URL="")
         with pytest.raises(VectorStoreUnavailableError, match="endpoint"):
             ElasticsearchVectorStore.from_config()
@@ -1136,9 +1135,8 @@ class TestKnowledgeFsVectorStoreCases:
         payload = _knowledge_fs_vector_store_request(
             operation, ids=[_KNOWLEDGE_FS_VECTOR_STORE_A], **({"query_vector": [1, 0]} if operation == "search" else {})
         )
-        with patch.object(client, "get_collection", side_effect=get_collection):
-            with pytest.raises(UnexpectedResponse):
-                execute_vector_request(client, payload)
+        with patch.object(client, "get_collection", side_effect=get_collection), pytest.raises(UnexpectedResponse):
+            execute_vector_request(client, payload)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -1229,17 +1227,18 @@ class TestKnowledgeFsVectorStoreCases:
         from services.tidb_binding_service import TidbBindingUnavailableError
 
         config_overrides(VECTOR_STORE="tidb_on_qdrant")
-        with patch("services.tidb_binding_service._load_binding", return_value=None):
-            with pytest.raises(TidbBindingUnavailableError, match="no active"):
-                with configured_vector_client(TENANT):
-                    pytest.fail("unconfigured backend was opened")
+        with (
+            patch("services.tidb_binding_service._load_binding", return_value=None),
+            pytest.raises(TidbBindingUnavailableError, match="no active"),
+            configured_vector_client(TENANT),
+        ):
+            pytest.fail("unconfigured backend was opened")
 
     @staticmethod
     def test_unsupported_backend_fails_explicitly(config_overrides: Callable[..., None]) -> None:
         config_overrides(VECTOR_STORE="milvus")
-        with pytest.raises(VectorStoreUnavailableError, match="does not support"):
-            with configured_vector_client(TENANT):
-                pytest.fail("unsupported backend was opened")
+        with pytest.raises(VectorStoreUnavailableError, match="does not support"), configured_vector_client(TENANT):
+            pytest.fail("unsupported backend was opened")
 
     @staticmethod
     @pytest.mark.parametrize("allow_create", [True, False])
@@ -1265,9 +1264,9 @@ class TestKnowledgeFsVectorStoreCases:
         with (
             patch("services.tidb_binding_service.resolve_tidb_auth_binding", return_value=binding) as resolve,
             patch("qdrant_client.QdrantClient", side_effect=open_client),
+            configured_vector_client(TENANT, allow_create=allow_create) as configured,
         ):
-            with configured_vector_client(TENANT, allow_create=allow_create) as configured:
-                assert configured is client
+            assert configured is client
         resolve.assert_called_once_with(TENANT, allow_create=allow_create)
         assert client.close_count == 1
 
@@ -1277,39 +1276,39 @@ class TestKnowledgeFsVectorStoreCases:
     ) -> None:
         config_overrides(VECTOR_STORE="qdrant", QDRANT_URL="https://configured.invalid", QDRANT_API_KEY="private")
         with patch("qdrant_client.QdrantClient") as factory:
-            with pytest.raises(RuntimeError):
-                with configured_vector_client(TENANT):
-                    raise RuntimeError("operation failed")
+            with pytest.raises(RuntimeError), configured_vector_client(TENANT):
+                raise RuntimeError("operation failed")
             assert factory.call_args.kwargs["url"] == "https://configured.invalid"
             factory.return_value.close.assert_called_once()
         config_overrides(QDRANT_URL="")
-        with pytest.raises(VectorStoreUnavailableError, match="endpoint"):
-            with configured_vector_client(TENANT):
-                pytest.fail("missing endpoint accepted")
+        with pytest.raises(VectorStoreUnavailableError, match="endpoint"), configured_vector_client(TENANT):
+            pytest.fail("missing endpoint accepted")
 
     @staticmethod
     def test_cloud_quota_is_enforced_before_any_vector_mutation() -> None:
         from services.vector_space_admission_service import VectorSpaceAdmissionError
 
         client = FakeQdrant()
-        with patch(
-            "services.vector_space_admission_service.VectorSpaceAdmissionService.ensure_external_points_can_be_indexed",
-            side_effect=VectorSpaceAdmissionError("limit reached"),
+        with (
+            patch(
+                "services.vector_space_admission_service.VectorSpaceAdmissionService.ensure_external_points_can_be_indexed",
+                side_effect=VectorSpaceAdmissionError("limit reached"),
+            ),
+            pytest.raises(VectorSpaceAdmissionError),
         ):
-            with pytest.raises(VectorSpaceAdmissionError):
-                client.execute(
-                    _knowledge_fs_vector_store_request(
-                        "upsert",
-                        points=[
-                            {
-                                "id": _KNOWLEDGE_FS_VECTOR_STORE_A,
-                                "generation_id": _KNOWLEDGE_FS_VECTOR_STORE_GENERATION,
-                                "content_hash": "a" * 64,
-                                "vector": [1, 0],
-                            }
-                        ],
-                    ),
-                )
+            client.execute(
+                _knowledge_fs_vector_store_request(
+                    "upsert",
+                    points=[
+                        {
+                            "id": _KNOWLEDGE_FS_VECTOR_STORE_A,
+                            "generation_id": _KNOWLEDGE_FS_VECTOR_STORE_GENERATION,
+                            "content_hash": "a" * 64,
+                            "vector": [1, 0],
+                        }
+                    ],
+                ),
+            )
         assert client.get_collection_calls == []
         assert client.upsert_calls == []
 
@@ -1455,11 +1454,10 @@ class TestKnowledgeFsVectorStoreCases:
                 ],
             ),
         )
-        with patch.object(client, "delete"):
-            with pytest.raises(VectorStoreUnavailableError, match="not yet visible"):
-                execute_vector_request(
-                    client, _knowledge_fs_vector_store_request("delete", ids=[_KNOWLEDGE_FS_VECTOR_STORE_A])
-                )
+        with patch.object(client, "delete"), pytest.raises(VectorStoreUnavailableError, match="not yet visible"):
+            execute_vector_request(
+                client, _knowledge_fs_vector_store_request("delete", ids=[_KNOWLEDGE_FS_VECTOR_STORE_A])
+            )
         execute_vector_request(client, _knowledge_fs_vector_store_request("delete", ids=[_KNOWLEDGE_FS_VECTOR_STORE_A]))
         assert (
             execute_vector_request(

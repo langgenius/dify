@@ -267,11 +267,13 @@ class TestDatasetsDocumentCases:
         app, documents, resource, verb, operation, kwargs
     ):
         operation(documents).side_effect = DocumentNotFoundError("Document not found.")
-        with app.test_request_context(
-            "/?document_id=" + str(DOC), json={"indexing_technique": "economy", "document_ids": [str(DOC)]}
+        with (
+            app.test_request_context(
+                "/?document_id=" + str(DOC), json={"indexing_technique": "economy", "document_ids": [str(DOC)]}
+            ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                unwrap(verb)(resource(), request_context=_DATASETS_DOCUMENT_CONTEXT, **kwargs)
+            unwrap(verb)(resource(), request_context=_DATASETS_DOCUMENT_CONTEXT, **kwargs)
         called = operation(documents)
         assert called.call_count == 1
         assert called.call_args.args == (_DATASETS_DOCUMENT_CONTEXT,)
@@ -518,12 +520,14 @@ class TestDatasetsDocumentCases:
             context = RequestContext("request-1", None, "account-1", "workspace-1")
             registry = self._registry("estimate_document", error)
 
-            with patch(
-                "controllers.console.datasets.datasets_document.application_services",
-                return_value=registry,
+            with (
+                patch(
+                    "controllers.console.datasets.datasets_document.application_services",
+                    return_value=registry,
+                ),
+                pytest.raises(expected_http_error),
             ):
-                with pytest.raises(expected_http_error):
-                    method(api, context, UUID(int=1), UUID(int=2))
+                method(api, context, UUID(int=1), UUID(int=2))
 
         @pytest.mark.parametrize(
             ("error", "expected_http_error"),
@@ -549,12 +553,14 @@ class TestDatasetsDocumentCases:
             context = RequestContext("request-1", None, "account-1", "workspace-1")
             registry = self._registry("estimate_batch", error)
 
-            with patch(
-                "controllers.console.datasets.datasets_document.application_services",
-                return_value=registry,
+            with (
+                patch(
+                    "controllers.console.datasets.datasets_document.application_services",
+                    return_value=registry,
+                ),
+                pytest.raises(expected_http_error),
             ):
-                with pytest.raises(expected_http_error):
-                    method(api, context, UUID(int=1), "unknown-batch")
+                method(api, context, UUID(int=1), "unknown-batch")
 
     @staticmethod
     @pytest.mark.parametrize(
