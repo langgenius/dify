@@ -2,9 +2,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
+from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from enums import CloudPlan, DeploymentEdition
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
@@ -862,6 +863,56 @@ class TestDuplicateDocumentIndexingTasks:
                 select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1)
             )
             assert restored_segment is not None
+        for document_id in document_ids:
+            updated_document = db_session_with_containers.scalar(
+                select(Document).where(Document.id == document_id).limit(1)
+            )
+            assert updated_document is not None
+            assert updated_document.indexing_status == IndexingStatus.ERROR
+            assert updated_document.error == error_message
+            assert updated_document.stopped_at is not None
+
+    def test_duplicate_document_indexing_segment_delete_error_after_vector_cleanup(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test a failed segment DELETE after a successful vector cleanup leaves documents retryable.
+
+        This is the #44910 scenario: ``clean()`` has already removed the vectors, then the
+        ``DELETE FROM document_segments`` statement fails and rolls back. The segment rows
+        survive and the documents must move to ``error`` instead of staying in ``waiting``.
+        """
+        dataset, documents, segments = self._create_test_dataset_with_segments(
+            db_session_with_containers, mock_external_service_dependencies, document_count=2, segments_per_doc=2
+        )
+        document_ids = [document.id for document in documents]
+        segment_ids = [segment.id for segment in segments]
+        error_message = "Segment delete failed"
+        engine = session_factory.get_session_maker().kw["bind"]
+        failed_deletes: list[str] = []
+
+        def fail_first_segment_delete(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
+            if not failed_deletes and statement.lstrip().upper().startswith("DELETE FROM DOCUMENT_SEGMENTS"):
+                failed_deletes.append(statement)
+                raise Exception(error_message)
+
+        event.listen(engine, "before_cursor_execute", fail_first_segment_delete)
+        try:
+            _duplicate_document_indexing_task(dataset.id, document_ids)
+        finally:
+            event.remove(engine, "before_cursor_execute", fail_first_segment_delete)
+
+        # Vector cleanup ran before the segment delete failed.
+        assert len(failed_deletes) == 1
+        mock_external_service_dependencies["index_processor"].clean.assert_called_once()
+        mock_external_service_dependencies["indexing_runner_instance"].run.assert_not_called()
+
+        db_session_with_containers.expire_all()
+        remaining_segment_ids = set(
+            db_session_with_containers.scalars(
+                select(DocumentSegment.id).where(DocumentSegment.id.in_(segment_ids))
+            ).all()
+        )
+        assert remaining_segment_ids == set(segment_ids)
         for document_id in document_ids:
             updated_document = db_session_with_containers.scalar(
                 select(Document).where(Document.id == document_id).limit(1)
