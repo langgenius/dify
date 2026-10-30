@@ -35,6 +35,7 @@ type Props = ConnectionActions & {
   labelledBy: string
   describedBy: string
   disabled?: boolean
+  showMissingConnectionWarning?: boolean
   onConnect: (
     serviceId: string,
     method: RequiredConnectionService['methods'][number],
@@ -146,6 +147,7 @@ function AccountActions({
 
 export default function ServiceConnectionSelector({
   service,
+  showMissingConnectionWarning = false,
   labelledBy,
   describedBy,
   disabled = false,
@@ -176,7 +178,8 @@ export default function ServiceConnectionSelector({
   )
   const selectedStatus = getServiceConnectionStatus(service, selectedConnection)
   const isApiKey = selectedConnection?.method === 'api-key'
-  const hasWarning = Boolean(selectedConnection && selectedStatus !== 'connected')
+  const hasWarning =
+    selectedStatus !== 'connected' && Boolean(selectedConnection || showMissingConnectionWarning)
   const requestReplacement = (connection: Connection) => {
     if (disabled || !onReplace) return
     skipReturnFocusRef.current = true

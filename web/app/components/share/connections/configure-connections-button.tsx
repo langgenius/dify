@@ -17,7 +17,6 @@ export default function ConfigureConnectionsButton({ services, ...props }: Props
     const selectedConnection = service.availableConnections.find(
       (connection) => connection.id === service.selectedConnectionId,
     )
-    if (!selectedConnection) return false
     const status = getServiceConnectionStatus(service, selectedConnection)
     return status !== 'connected'
   }).length

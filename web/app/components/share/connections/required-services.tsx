@@ -49,6 +49,7 @@ type Props = ConnectionActions & {
   onConnectionChange: (serviceId: string, connectionId: string) => void
   disabled?: boolean
   isMutating?: boolean
+  showMissingConnectionWarning?: boolean
   className?: string
 }
 
@@ -62,6 +63,7 @@ function ServiceItem({
   onRequestReplace,
   onRequestAddApiKey,
   onRemove,
+  showMissingConnectionWarning,
 }: {
   service: RequiredConnectionService
 } & Pick<
@@ -74,6 +76,7 @@ function ServiceItem({
   | 'onRequestReplace'
   | 'onRequestAddApiKey'
   | 'onRemove'
+  | 'showMissingConnectionWarning'
 >) {
   const { t } = useTranslation(['share', 'common'])
   const { theme } = useTheme()
@@ -95,7 +98,9 @@ function ServiceItem({
   const connectionStatus = getServiceConnectionStatus(service, selectedConnection)
   const isExpired = connectionStatus === 'reconnect_required'
   const isInvalid = connectionStatus === 'invalid'
-  const isDisconnected = Boolean(selectedConnection && connectionStatus === 'disconnected')
+  const isDisconnected =
+    connectionStatus === 'disconnected' &&
+    Boolean(selectedConnection || showMissingConnectionWarning)
   const checkUnavailable = connectionStatus === null
   const hasWarning = isExpired || isInvalid || isDisconnected || checkUnavailable
 
@@ -147,6 +152,7 @@ function ServiceItem({
         {service.availableConnections.length > 0 ? (
           <ServiceConnectionSelector
             service={service}
+            showMissingConnectionWarning={showMissingConnectionWarning}
             labelledBy={nameId}
             describedBy={hasWarning ? `${descriptionId} ${warningId}` : descriptionId}
             disabled={disabled}
@@ -249,6 +255,7 @@ export default function RequiredServices({
   onRemove,
   className,
   isMutating = false,
+  showMissingConnectionWarning = false,
 }: Props) {
   const actionsDisabled = disabled || isMutating
   if (services.length === 0) return null
@@ -259,6 +266,7 @@ export default function RequiredServices({
         <ServiceItem
           key={service.id}
           service={service}
+          showMissingConnectionWarning={showMissingConnectionWarning}
           onConnect={onConnect}
           onConnectionChange={onConnectionChange}
           disabled={actionsDisabled}
