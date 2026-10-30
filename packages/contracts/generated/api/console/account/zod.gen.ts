@@ -309,13 +309,6 @@ export const zEducationAutocompleteResponse = z.object({
 })
 
 /**
- * EducationVerifyResponse
- */
-export const zEducationVerifyResponse = z.object({
-  token: z.string(),
-})
-
-/**
  * EducationVerifyLimitError
  *
  * Rate limit exceeded
@@ -417,6 +410,31 @@ export const zAccountProfilePatchPayload = z
     timezone: z.string().optional(),
   })
   .strict()
+
+/**
+ * EducationVerifyEligibleResponse
+ */
+export const zEducationVerifyEligibleResponse = z.object({
+  status: z.literal('eligible'),
+  token: z.string(),
+})
+
+/**
+ * EducationVerifyNotEligibleResponse
+ */
+export const zEducationVerifyNotEligibleResponse = z.object({
+  status: z.literal('not_eligible'),
+})
+
+/**
+ * EducationVerifyResponse
+ *
+ * Education verification result: a token for an eligible account, none for an ineligible one.
+ */
+export const zEducationVerifyResponse = z.discriminatedUnion('status', [
+  zEducationVerifyEligibleResponse,
+  zEducationVerifyNotEligibleResponse,
+])
 
 /**
  * AccountIntegrateResponse

@@ -25413,6 +25413,13 @@ Rate limit exceeded
 | is_student | boolean |  | Yes |
 | result | boolean |  | Yes |
 
+#### EducationVerifyEligibleResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | string |  | Yes |
+| token | string |  | Yes |
+
 #### EducationVerifyLimitError
 
 Rate limit exceeded
@@ -25421,11 +25428,19 @@ Rate limit exceeded
 | ---- | ---- | ----------- | -------- |
 | EducationVerifyLimitError |  | Rate limit exceeded |  |
 
-#### EducationVerifyResponse
+#### EducationVerifyNotEligibleResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| token | string |  | Yes |
+| status | string |  | Yes |
+
+#### EducationVerifyResponse
+
+Education verification result: a token for an eligible account, none for an ineligible one.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EducationVerifyResponse | [EducationVerifyEligibleResponse](#educationverifyeligibleresponse)<br>[EducationVerifyNotEligibleResponse](#educationverifynoteligibleresponse) | Education verification result: a token for an eligible account, none for an ineligible one. |  |
 
 #### EmailAlreadyInUseError
 

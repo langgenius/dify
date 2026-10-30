@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
 from werkzeug.exceptions import NotFound
 
@@ -203,8 +203,24 @@ class AccountIntegrateListResponse(ResponseModel):
     data: list[AccountIntegrateResponse]
 
 
-class EducationVerifyResponse(ResponseModel):
+class EducationVerifyEligibleResponse(ResponseModel):
+    status: Literal["eligible"]
     token: str
+
+
+class EducationVerifyNotEligibleResponse(ResponseModel):
+    status: Literal["not_eligible"]
+
+
+class EducationVerifyResponse(
+    RootModel[
+        Annotated[
+            EducationVerifyEligibleResponse | EducationVerifyNotEligibleResponse,
+            Field(discriminator="status"),
+        ]
+    ]
+):
+    """Education verification result: a token for an eligible account, none for an ineligible one."""
 
 
 class EducationActivateResponse(ResponseModel):

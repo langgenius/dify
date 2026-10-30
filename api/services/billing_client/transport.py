@@ -55,6 +55,9 @@ ENFORCED_RESPONSE_PATHS: frozenset[str] = frozenset(
         "/quota/release",
         "/quota/balance",
         "/quota/consume-capped",
+        # A salvaged `status` or `expire_at` would misreport eligibility or break the expiry timestamp.
+        "/education/verify",
+        "/education/status",
         # Network access replies already required validation and gate access control.
         "/tenants/{tenant_id}/network-access-groups",
         "/tenants/{tenant_id}/network-access-groups/{group_id}",
