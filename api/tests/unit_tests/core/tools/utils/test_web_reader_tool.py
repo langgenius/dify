@@ -207,6 +207,39 @@ def test_get_url_head_non_200_returns_status(monkeypatch: pytest.MonkeyPatch, st
     assert out == "URL returned status code 500."
 
 
+@pytest.mark.parametrize("head_status", [405, 501])
+def test_get_url_head_method_not_supported_falls_back_to_get(
+    monkeypatch: pytest.MonkeyPatch, stub_support_types, head_status
+):
+    """HEAD 405/501 → use GET so servers without HEAD support remain readable."""
+
+    calls = []
+
+    def fake_head(url, headers=None, follow_redirects=True, timeout=None):
+        calls.append("HEAD")
+        return FakeResponse(status_code=head_status)
+
+    def fake_get(url, headers=None, follow_redirects=True, timeout=None):
+        calls.append("GET")
+        return FakeResponse(status_code=200, headers={"Content-Type": "text/html"}, content=b"<html/>")
+
+    import core.tools.utils.web_reader_tool as mod
+
+    _patch_remote_fetcher(monkeypatch, mod, head=fake_head, get=fake_get)
+    monkeypatch.setattr(mod.charset_normalizer, "from_bytes", lambda _: SimpleNamespace(best=lambda: None))
+    monkeypatch.setattr(
+        mod,
+        "simple_json_from_html_string",
+        lambda html, use_readability=True: {"title": "T", "byline": "A", "plain_text": [{"text": "X"}]},
+    )
+
+    out = get_url("https://x.test/no-head")
+
+    assert calls == ["HEAD", "GET"]
+    assert "TITLE: T" in out
+    assert "X" in out
+
+
 def test_get_url_content_disposition_filename_detection(monkeypatch: pytest.MonkeyPatch, stub_support_types):
     """
     If HEAD 200 with no Content-Type but Content-Disposition filename suggests a supported type,
