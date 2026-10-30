@@ -73,11 +73,12 @@ describe('ContextBlockComponent', () => {
   })
 
   it('updates an initially empty block from dataset events', async () => {
+    const user = userEvent.setup()
     const { emit } = renderContext()
     expect(getTrigger()).toHaveTextContent('0')
     act(() => emit({ type: UPDATE_DATASETS_EVENT_EMITTER, payload: datasets }))
     expect(getTrigger()).toHaveTextContent('2')
-    await userEvent.setup().click(getTrigger())
+    await user.click(getTrigger())
     expect(await screen.findByText('Dataset A')).toBeInTheDocument()
     act(() => emit({ type: UPDATE_DATASETS_EVENT_EMITTER, payload: [] }))
     expect(getTrigger()).toHaveTextContent('0')
@@ -89,10 +90,11 @@ describe('ContextBlockComponent', () => {
     { type: 'other-event', payload: [] },
     { type: UPDATE_DATASETS_EVENT_EMITTER, payload: null },
   ])('ignores unrelated or malformed events: %j', async (event) => {
+    const user = userEvent.setup()
     const { emit } = renderContext({ datasets })
     act(() => emit(event))
     expect(getTrigger()).toHaveTextContent('2')
-    await userEvent.setup().click(getTrigger())
+    await user.click(getTrigger())
     expect(await screen.findByText('Dataset A')).toBeInTheDocument()
     expect(screen.getByText('Dataset B')).toBeInTheDocument()
   })

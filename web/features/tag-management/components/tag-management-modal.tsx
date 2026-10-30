@@ -3,9 +3,9 @@ import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -82,7 +82,7 @@ export const TagManagementModal = ({
       <DialogContent className="w-150">
         <DialogHeader>
           <DialogTitle>{t(($) => $['tag.manageTags'], { ns: 'common' })}</DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody className="flex flex-wrap gap-2">
           <input

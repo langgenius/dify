@@ -1,21 +1,25 @@
 import type { ConversationVariable, EnvironmentVariable } from '../../types'
 import { act, waitFor } from '@testing-library/react'
 import { useNodes, useStoreApi } from 'reactflow'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowHook, renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '../../types'
 import { useWorkflowVariables, useWorkflowVariableType } from '../use-workflow-variables'
 
-// Provider catalogs are external input; variable discovery and type inference remain real.
-vi.mock('@tanstack/react-query', async (importOriginal) =>
-  (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
-    await importOriginal(),
-    (await import('../../__tests__/service-mock-factory')).createToolOperationRoutes(),
-  ),
-)
-vi.mock('../../nodes/_base/components/variable/use-match-schema-type', () => ({
-  default: () => ({ schemaTypeDefinitions: [] }),
-}))
+const createVariableQueryClient = () => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  return queryClient
+}
 
 const environmentVariables: EnvironmentVariable[] = [
   { id: 'env-1', name: 'limit', value_type: VarType.number, value: 5, description: '' },
@@ -36,6 +40,7 @@ const codeNode = createNode({
 
 it('discovers real node, environment and conversation variables and applies visibility/filtering', () => {
   const { result } = renderWorkflowHook(() => useWorkflowVariables(), {
+    queryClient: createVariableQueryClient(),
     initialStoreState: { environmentVariables, conversationVariables },
   })
   const options = { beforeNodes: [codeNode], isChatflow: true, filterVar: () => true }
@@ -81,6 +86,7 @@ it('discovers real node, environment and conversation variables and applies visi
 
 it('derives variable types from actual outputs and reads updated store values', () => {
   const { result, store } = renderWorkflowHook(() => useWorkflowVariables(), {
+    queryClient: createVariableQueryClient(),
     initialStoreState: { environmentVariables, conversationVariables },
   })
   const typeOf = (valueSelector: string[]) =>
@@ -111,7 +117,7 @@ it('reads live graph output types and resolves iteration index from its actual p
   const child = createNode({ id: 'child', parentId: 'iteration', data: { isInIteration: true } })
   const { result } = renderWorkflowFlowHook(
     () => ({ nodes: useNodes(), typeOf: useWorkflowVariableType(), flow: useStoreApi() }),
-    { nodes: [codeNode, iteration, child] },
+    { nodes: [codeNode, iteration, child], queryClient: createVariableQueryClient() },
   )
   expect(result.current.typeOf({ nodeId: 'code', valueSelector: ['code', 'count'] })).toBe(
     VarType.number,

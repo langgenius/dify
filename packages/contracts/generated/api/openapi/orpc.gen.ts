@@ -41,6 +41,9 @@ import {
   zGetAppsByAppIdReleaseCheckPath,
   zGetAppsByAppIdReleaseCheckResponse,
   zGetAppsByAppIdResponse,
+  zGetAppsByAppIdRunsByRunIdEventsPath,
+  zGetAppsByAppIdRunsByRunIdEventsQuery,
+  zGetAppsByAppIdRunsByRunIdEventsResponse,
   zGetAppsByAppIdRunsByRunIdNodesPath,
   zGetAppsByAppIdRunsByRunIdNodesResponse,
   zGetAppsByAppIdRunsByRunIdPath,
@@ -52,9 +55,6 @@ import {
   zGetAppsByAppIdServiceApiAgentResponse,
   zGetAppsByAppIdServiceApiPath,
   zGetAppsByAppIdServiceApiResponse,
-  zGetAppsByAppIdTasksByTaskIdEventsPath,
-  zGetAppsByAppIdTasksByTaskIdEventsQuery,
-  zGetAppsByAppIdTasksByTaskIdEventsResponse,
   zGetAppsByAppIdVersionsPath,
   zGetAppsByAppIdVersionsQuery,
   zGetAppsByAppIdVersionsResponse,
@@ -92,6 +92,24 @@ import {
   zGetWorkspacesByWorkspaceIdKnowledgeBasesPath,
   zGetWorkspacesByWorkspaceIdKnowledgeBasesQuery,
   zGetWorkspacesByWorkspaceIdKnowledgeBasesResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatPath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatResponse,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreePath,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeQuery,
+  zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeResponse,
   zGetWorkspacesByWorkspaceIdMarketplacePluginsPath,
   zGetWorkspacesByWorkspaceIdMarketplacePluginsQuery,
   zGetWorkspacesByWorkspaceIdMarketplacePluginsResponse,
@@ -201,6 +219,8 @@ import {
   zPostAppsByAppIdPublishBody,
   zPostAppsByAppIdPublishPath,
   zPostAppsByAppIdPublishResponse,
+  zPostAppsByAppIdRunsByRunIdStopPath,
+  zPostAppsByAppIdRunsByRunIdStopResponse,
   zPostAppsByAppIdTasksByTaskIdStopPath,
   zPostAppsByAppIdTasksByTaskIdStopResponse,
   zPostAppsByAppIdVersionsByVersionIdRestorePath,
@@ -234,6 +254,9 @@ import {
   zPostWorkspacesByWorkspaceIdAppsWorkflowBody,
   zPostWorkspacesByWorkspaceIdAppsWorkflowPath,
   zPostWorkspacesByWorkspaceIdAppsWorkflowResponse,
+  zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffBody,
+  zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffPath,
+  zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffResponse,
   zPostWorkspacesByWorkspaceIdMembersBody,
   zPostWorkspacesByWorkspaceIdMembersPath,
   zPostWorkspacesByWorkspaceIdMembersResponse,
@@ -903,6 +926,26 @@ export const get17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
+    operationId: 'getAppsByAppIdRunsByRunIdEvents',
+    path: '/apps/{app_id}/runs/{run_id}/events',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetAppsByAppIdRunsByRunIdEventsPath,
+      query: zGetAppsByAppIdRunsByRunIdEventsQuery.optional(),
+    }),
+  )
+  .output(zGetAppsByAppIdRunsByRunIdEventsResponse)
+
+export const events = {
+  get: get17,
+}
+
+export const get18 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
     operationId: 'getAppsByAppIdRunsByRunIdNodes',
     path: '/apps/{app_id}/runs/{run_id}/nodes',
     tags: ['openapi'],
@@ -911,10 +954,25 @@ export const get17 = oc
   .output(zGetAppsByAppIdRunsByRunIdNodesResponse)
 
 export const nodes3 = {
-  get: get17,
+  get: get18,
 }
 
-export const get18 = oc
+export const post10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsByAppIdRunsByRunIdStop',
+    path: '/apps/{app_id}/runs/{run_id}:stop',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zPostAppsByAppIdRunsByRunIdStopPath }))
+  .output(zPostAppsByAppIdRunsByRunIdStopResponse)
+
+export const stop = {
+  post: post10,
+}
+
+export const get19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -926,11 +984,13 @@ export const get18 = oc
   .output(zGetAppsByAppIdRunsByRunIdResponse)
 
 export const byRunId = {
-  get: get18,
+  get: get19,
+  events,
   nodes: nodes3,
+  stop,
 }
 
-export const get19 = oc
+export const get20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -942,11 +1002,11 @@ export const get19 = oc
   .output(zGetAppsByAppIdRunsResponse)
 
 export const runs = {
-  get: get19,
+  get: get20,
   byRunId,
 }
 
-export const get20 = oc
+export const get21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -974,11 +1034,11 @@ export const patch7 = oc
   .output(zPatchAppsByAppIdServiceApiAgentResponse)
 
 export const agent2 = {
-  get: get20,
+  get: get21,
   patch: patch7,
 }
 
-export const get21 = oc
+export const get22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1003,32 +1063,12 @@ export const patch8 = oc
   .output(zPatchAppsByAppIdServiceApiResponse)
 
 export const serviceApi = {
-  get: get21,
+  get: get22,
   patch: patch8,
   agent: agent2,
 }
 
-export const get22 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getAppsByAppIdTasksByTaskIdEvents',
-    path: '/apps/{app_id}/tasks/{task_id}/events',
-    tags: ['openapi'],
-  })
-  .input(
-    z.object({
-      params: zGetAppsByAppIdTasksByTaskIdEventsPath,
-      query: zGetAppsByAppIdTasksByTaskIdEventsQuery.optional(),
-    }),
-  )
-  .output(zGetAppsByAppIdTasksByTaskIdEventsResponse)
-
-export const events = {
-  get: get22,
-}
-
-export const post10 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1039,20 +1079,19 @@ export const post10 = oc
   .input(z.object({ params: zPostAppsByAppIdTasksByTaskIdStopPath }))
   .output(zPostAppsByAppIdTasksByTaskIdStopResponse)
 
-export const stop = {
-  post: post10,
+export const stop2 = {
+  post: post11,
 }
 
 export const byTaskId = {
-  events,
-  stop,
+  stop: stop2,
 }
 
 export const tasks = {
   byTaskId,
 }
 
-export const post11 = oc
+export const post12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1064,7 +1103,7 @@ export const post11 = oc
   .output(zPostAppsByAppIdVersionsByVersionIdRestoreResponse)
 
 export const restore = {
-  post: post11,
+  post: post12,
 }
 
 export const byVersionId = {
@@ -1186,7 +1225,7 @@ export const advancedChat4 = {
   patch: patch9,
 }
 
-export const post12 = oc
+export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1198,7 +1237,7 @@ export const post12 = oc
   .output(zPostAppsByAppIdWebappAgentResetResponse)
 
 export const reset = {
-  post: post12,
+  post: post13,
 }
 
 export const get27 = oc
@@ -1356,7 +1395,7 @@ export const workflow3 = {
   patch: patch14,
 }
 
-export const post13 = oc
+export const post14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1368,7 +1407,7 @@ export const post13 = oc
   .output(zPostAppsByAppIdWebappResetResponse)
 
 export const reset2 = {
-  post: post13,
+  post: post14,
 }
 
 export const webapp = {
@@ -1381,7 +1420,7 @@ export const webapp = {
   reset: reset2,
 }
 
-export const post14 = oc
+export const post15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1395,14 +1434,14 @@ export const post14 = oc
   .output(zPostAppsByAppIdWorkflowRunResponse)
 
 export const run8 = {
-  post: post14,
+  post: post15,
 }
 
 export const workflow4 = {
   run: run8,
 }
 
-export const post15 = oc
+export const post16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1414,7 +1453,7 @@ export const post15 = oc
   .output(zPostAppsByAppIdPublishResponse)
 
 export const publish = {
-  post: post15,
+  post: post16,
 }
 
 export const get32 = oc
@@ -1497,7 +1536,7 @@ export const nodeTypes = {
   byNodeType,
 }
 
-export const post16 = oc
+export const post17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1509,10 +1548,10 @@ export const post16 = oc
   .output(zPostOauthDeviceApproveResponse)
 
 export const approve = {
-  post: post16,
+  post: post17,
 }
 
-export const post17 = oc
+export const post18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1524,10 +1563,10 @@ export const post17 = oc
   .output(zPostOauthDeviceCodeResponse)
 
 export const code = {
-  post: post17,
+  post: post18,
 }
 
-export const post18 = oc
+export const post19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1539,7 +1578,7 @@ export const post18 = oc
   .output(zPostOauthDeviceDenyResponse)
 
 export const deny = {
-  post: post18,
+  post: post19,
 }
 
 export const get36 = oc
@@ -1557,7 +1596,7 @@ export const lookup = {
   get: get36,
 }
 
-export const post19 = oc
+export const post20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1569,7 +1608,7 @@ export const post19 = oc
   .output(zPostOauthDeviceTokenResponse)
 
 export const token = {
-  post: post19,
+  post: post20,
 }
 
 export const device = {
@@ -1620,7 +1659,7 @@ export const permittedExternalApps = {
   byAppId: byAppId2,
 }
 
-export const post20 = oc
+export const post21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1638,10 +1677,10 @@ export const post20 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsAdvancedChatResponse)
 
 export const advancedChat5 = {
-  post: post20,
+  post: post21,
 }
 
-export const post21 = oc
+export const post22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1653,14 +1692,14 @@ export const post21 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse)
 
 export const confirm = {
-  post: post21,
+  post: post22,
 }
 
 export const byImportId = {
   confirm,
 }
 
-export const post22 = oc
+export const post23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1677,10 +1716,10 @@ export const post22 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsCheckResponse)
 
 export const check3 = {
-  post: post22,
+  post: post23,
 }
 
-export const post23 = oc
+export const post24 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1697,12 +1736,12 @@ export const post23 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsResponse)
 
 export const imports = {
-  post: post23,
+  post: post24,
   byImportId,
   check: check3,
 }
 
-export const post24 = oc
+export const post25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1720,7 +1759,7 @@ export const post24 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsWorkflowResponse)
 
 export const workflow5 = {
-  post: post24,
+  post: post25,
 }
 
 export const apps2 = {
@@ -1749,7 +1788,225 @@ export const knowledgeBases = {
   get: get39,
 }
 
+/**
+ * Read Agent Knowledge Base entry content (cat)
+ *
+ * Reads a bounded text portion of one entry, equivalent to difyctl fs cat. Content follows stable source order. When next_page_token is present, reuse it with the same path and consistency_class. total is not returned because this response is a bounded content stream, not a collection. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ */
 export const get40 = oc
+  .route({
+    description:
+      'Reads a bounded text portion of one entry, equivalent to difyctl fs cat. Content follows stable source order. When next_page_token is present, reuse it with the same path and consistency_class. total is not returned because this response is a bounded content stream, not a collection. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCat',
+    path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:cat',
+    summary: 'Read Agent Knowledge Base entry content (cat)',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatQuery,
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsCatResponse)
+
+export const cat = {
+  get: get40,
+}
+
+/**
+ * Compare two Agent Knowledge Base entries (diff)
+ *
+ * Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ */
+export const post26 = oc
+  .route({
+    description:
+      'Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiff',
+    path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:diff',
+    summary: 'Compare two Agent Knowledge Base entries (diff)',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffBody,
+      params: zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffPath,
+    }),
+  )
+  .output(zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffResponse)
+
+export const diff = {
+  post: post26,
+}
+
+/**
+ * Find Agent Knowledge Base entries (find)
+ *
+ * Searches entries beneath path by name, resource type, or an exact metadata key/value pair, equivalent to difyctl fs find. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ */
+export const get41 = oc
+  .route({
+    description:
+      'Searches entries beneath path by name, resource type, or an exact metadata key/value pair, equivalent to difyctl fs find. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFind',
+    path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:find',
+    summary: 'Find Agent Knowledge Base entries (find)',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindQuery,
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsFindResponse)
+
+export const find = {
+  get: get41,
+}
+
+/**
+ * Search Agent Knowledge Base content (grep)
+ *
+ * Searches readable content beneath path, equivalent to difyctl fs grep. Matches follow canonical entry traversal order and source-offset order within each entry. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ */
+export const get42 = oc
+  .route({
+    description:
+      'Searches readable content beneath path, equivalent to difyctl fs grep. Matches follow canonical entry traversal order and source-offset order within each entry. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrep',
+    path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:grep',
+    summary: 'Search Agent Knowledge Base content (grep)',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepQuery,
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsGrepResponse)
+
+export const grep = {
+  get: get42,
+}
+
+/**
+ * List an Agent Knowledge Base directory (ls)
+ *
+ * Lists direct child entries under path, equivalent to difyctl fs ls. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ */
+export const get43 = oc
+  .route({
+    description:
+      'Lists direct child entries under path, equivalent to difyctl fs ls. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLs',
+    path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:ls',
+    summary: 'List an Agent Knowledge Base directory (ls)',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsQuery,
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsLsResponse)
+
+export const ls = {
+  get: get43,
+}
+
+/**
+ * Inspect an Agent Knowledge Base entry (stat)
+ *
+ * Returns stable metadata for one entry selected by canonical virtual path without reading content, equivalent to difyctl fs stat. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ */
+export const get44 = oc
+  .route({
+    description:
+      'Returns stable metadata for one entry selected by canonical virtual path without reading content, equivalent to difyctl fs stat. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStat',
+    path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:stat',
+    summary: 'Inspect an Agent Knowledge Base entry (stat)',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatPath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatQuery,
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsStatResponse)
+
+export const stat = {
+  get: get44,
+}
+
+/**
+ * Traverse an Agent Knowledge Base directory (tree)
+ *
+ * Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyctl fs tree. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
+ */
+export const get45 = oc
+  .route({
+    description:
+      'Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyctl fs tree. Results use the canonical, stable Agent Knowledge Base traversal order. The opaque next_page_token captures that order; reuse it with unchanged filters and consistency_class. total is intentionally omitted because tenant-aware visibility scans are bounded and an exact count can require an unbounded scan. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTree',
+    path: '/workspaces/{workspace_id}/knowledge-fs/knowledge-spaces/{knowledge_space_id}/fs:tree',
+    summary: 'Traverse an Agent Knowledge Base directory (tree)',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreePath,
+      query: zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeQuery,
+    }),
+  )
+  .output(zGetWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsTreeResponse)
+
+export const tree = {
+  get: get45,
+}
+
+export const fs = {
+  cat,
+  diff,
+  find,
+  grep,
+  ls,
+  stat,
+  tree,
+}
+
+export const byKnowledgeSpaceId = {
+  fs,
+}
+
+export const knowledgeSpaces = {
+  byKnowledgeSpaceId,
+}
+
+export const knowledgeFs = {
+  knowledgeSpaces,
+}
+
+export const get46 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1766,7 +2023,7 @@ export const get40 = oc
   .output(zGetWorkspacesByWorkspaceIdMarketplacePluginsResponse)
 
 export const plugins = {
-  get: get40,
+  get: get46,
 }
 
 export const marketplace = {
@@ -1805,7 +2062,7 @@ export const byMemberId = {
   patch: patch15,
 }
 
-export const get41 = oc
+export const get47 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1821,7 +2078,7 @@ export const get41 = oc
   )
   .output(zGetWorkspacesByWorkspaceIdMembersResponse)
 
-export const post25 = oc
+export const post27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1839,8 +2096,8 @@ export const post25 = oc
   .output(zPostWorkspacesByWorkspaceIdMembersResponse)
 
 export const members = {
-  get: get41,
-  post: post25,
+  get: get47,
+  post: post27,
   byMemberId,
 }
 
@@ -1864,7 +2121,7 @@ export const byCredentialId = {
   patch: patch16,
 }
 
-export const post26 = oc
+export const post28 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1882,7 +2139,7 @@ export const post26 = oc
   .output(zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponse)
 
 export const credentials = {
-  post: post26,
+  post: post28,
   byCredentialId,
 }
 
@@ -1910,7 +2167,7 @@ export const byCredentialId2 = {
   patch: patch17,
 }
 
-export const post27 = oc
+export const post29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1928,7 +2185,7 @@ export const post27 = oc
   .output(zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse)
 
 export const credentials2 = {
-  post: post27,
+  post: post29,
   byCredentialId: byCredentialId2,
 }
 
@@ -1936,7 +2193,7 @@ export const models = {
   credentials: credentials2,
 }
 
-export const get42 = oc
+export const get48 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1948,7 +2205,7 @@ export const get42 = oc
   .output(zGetWorkspacesByWorkspaceIdModelProvidersByProviderResponse)
 
 export const byProvider = {
-  get: get42,
+  get: get48,
   credentials,
   models,
 }
@@ -1957,7 +2214,7 @@ export const modelProviders = {
   byProvider,
 }
 
-export const get43 = oc
+export const get49 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1974,10 +2231,10 @@ export const get43 = oc
   .output(zGetWorkspacesByWorkspaceIdModelsResponse)
 
 export const models2 = {
-  get: get43,
+  get: get49,
 }
 
-export const get44 = oc
+export const get50 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1989,7 +2246,7 @@ export const get44 = oc
   .output(zGetWorkspacesByWorkspaceIdPluginTasksByTaskIdResponse)
 
 export const byTaskId2 = {
-  get: get44,
+  get: get50,
 }
 
 export const pluginTasks = {
@@ -2011,7 +2268,7 @@ export const byPluginId = {
   delete: delete5,
 }
 
-export const post28 = oc
+export const post30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2028,10 +2285,10 @@ export const post28 = oc
   .output(zPostWorkspacesByWorkspaceIdPluginsInstallResponse)
 
 export const install = {
-  post: post28,
+  post: post30,
 }
 
-export const get45 = oc
+export const get51 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2048,7 +2305,7 @@ export const get45 = oc
   .output(zGetWorkspacesByWorkspaceIdPluginsResponse)
 
 export const plugins2 = {
-  get: get45,
+  get: get51,
   byPluginId,
   install,
 }
@@ -2073,7 +2330,7 @@ export const byCredentialId3 = {
   patch: patch18,
 }
 
-export const post29 = oc
+export const post31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2091,11 +2348,11 @@ export const post29 = oc
   .output(zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse)
 
 export const credentials3 = {
-  post: post29,
+  post: post31,
   byCredentialId: byCredentialId3,
 }
 
-export const get46 = oc
+export const get52 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2107,7 +2364,7 @@ export const get46 = oc
   .output(zGetWorkspacesByWorkspaceIdToolProvidersByProviderResponse)
 
 export const byProvider2 = {
-  get: get46,
+  get: get52,
   credentials: credentials3,
 }
 
@@ -2115,7 +2372,7 @@ export const toolProviders = {
   byProvider: byProvider2,
 }
 
-export const get47 = oc
+export const get53 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2132,10 +2389,10 @@ export const get47 = oc
   .output(zGetWorkspacesByWorkspaceIdToolsResponse)
 
 export const tools = {
-  get: get47,
+  get: get53,
 }
 
-export const get48 = oc
+export const get54 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2147,9 +2404,10 @@ export const get48 = oc
   .output(zGetWorkspacesByWorkspaceIdResponse)
 
 export const byWorkspaceId = {
-  get: get48,
+  get: get54,
   apps: apps2,
   knowledgeBases,
+  knowledgeFs,
   marketplace,
   members,
   modelProviders,
@@ -2160,7 +2418,7 @@ export const byWorkspaceId = {
   tools,
 }
 
-export const get49 = oc
+export const get55 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2172,7 +2430,7 @@ export const get49 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get49,
+  get: get55,
   byWorkspaceId,
 }
 

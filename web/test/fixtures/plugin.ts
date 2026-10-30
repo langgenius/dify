@@ -1,6 +1,9 @@
 import type { PluginEntity } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { PluginDeclaration } from '@/app/components/plugins/types'
-import { zPostWorkspacesCurrentPluginListInstallationsIdsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import type { Plugin, PluginDeclaration } from '@/app/components/plugins/types'
+import {
+  zGetWorkspacesCurrentPluginListResponse,
+  zPostWorkspacesCurrentPluginListInstallationsIdsResponse,
+} from '@dify/contracts/api/console/workspaces/zod.gen'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 
 export const createPluginEntity = (overrides: Partial<PluginEntity> = {}) =>
@@ -40,6 +43,14 @@ export const createPluginEntity = (overrides: Partial<PluginEntity> = {}) =>
     ],
   }).plugins[0]!
 
+export const createInstalledPluginFixture = (overrides: Partial<PluginEntity> = {}) => {
+  const entity = createPluginEntity(overrides)
+  return zGetWorkspacesCurrentPluginListResponse.parse({
+    plugins: [{ ...entity, installation_id: entity.id, name: entity.declaration.name }],
+    total: 1,
+  }).plugins[0]!
+}
+
 export const createPluginDeclarationFixture = (
   overrides: Partial<PluginDeclaration> = {},
 ): PluginDeclaration => ({
@@ -61,5 +72,30 @@ export const createPluginDeclarationFixture = (
   agent_strategy: null,
   meta: { version: '1.0.0', minimum_dify_version: '0.8.0' },
   trigger: {} as PluginDeclaration['trigger'],
+  ...overrides,
+})
+
+export const createMarketplacePluginFixture = (overrides: Partial<Plugin> = {}): Plugin => ({
+  type: 'plugin',
+  org: 'dify',
+  name: 'plugin-a',
+  plugin_id: 'plugin-a',
+  version: '1.0.0',
+  latest_version: '1.0.0',
+  latest_package_identifier: 'pkg',
+  icon: 'icon.png',
+  verified: true,
+  label: { 'en-US': 'Plugin A' },
+  brief: { 'en-US': 'Brief' },
+  description: { 'en-US': 'Description' },
+  introduction: 'Intro',
+  repository: 'https://github.com/dify/plugin-a',
+  category: PluginCategoryEnum.tool,
+  install_count: 42,
+  endpoint: { settings: [] },
+  tags: [{ name: 'search' }, { name: 'agent' }],
+  badges: [],
+  verification: { authorized_category: 'community' },
+  from: 'marketplace',
   ...overrides,
 })

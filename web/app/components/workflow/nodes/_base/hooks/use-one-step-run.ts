@@ -31,9 +31,11 @@ import Assigner from '@/app/components/workflow/nodes/assigner/default'
 import CodeDefault from '@/app/components/workflow/nodes/code/default'
 import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
 import HTTPDefault from '@/app/components/workflow/nodes/http/default'
+import HumanInputV2Default from '@/app/components/workflow/nodes/human-input-v2/default'
 import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import IfElseDefault from '@/app/components/workflow/nodes/if-else/default'
 import IterationDefault from '@/app/components/workflow/nodes/iteration/default'
+import KnowledgeRetrievalV2Default from '@/app/components/workflow/nodes/knowledge-retrieval-v2/default'
 import KnowledgeRetrievalDefault from '@/app/components/workflow/nodes/knowledge-retrieval/default'
 import LLMDefault from '@/app/components/workflow/nodes/llm/default'
 import LoopDefault from '@/app/components/workflow/nodes/loop/default'
@@ -50,6 +52,7 @@ import {
   VarType,
   WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
+import { getNodeCatalogType } from '@/app/components/workflow/utils'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -80,6 +83,7 @@ function getContainerNodeRunUrl(
 
 const { checkValid: checkLLMValid } = LLMDefault
 const { checkValid: checkKnowledgeRetrievalValid } = KnowledgeRetrievalDefault
+const { checkValid: checkKnowledgeRetrievalV2Valid } = KnowledgeRetrievalV2Default
 const { checkValid: checkIfElseValid } = IfElseDefault
 const { checkValid: checkCodeValid } = CodeDefault
 const { checkValid: checkTemplateTransformValid } = TemplateTransformDefault
@@ -98,6 +102,7 @@ const { checkValid: checkHumanInputValid } = HumanInputDefault
 const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.LLM]: checkLLMValid,
   [BlockEnum.KnowledgeRetrieval]: checkKnowledgeRetrievalValid,
+  [BlockEnum.KnowledgeRetrievalV2]: checkKnowledgeRetrievalV2Valid,
   [BlockEnum.IfElse]: checkIfElseValid,
   [BlockEnum.Code]: checkCodeValid,
   [BlockEnum.TemplateTransform]: checkTemplateTransformValid,
@@ -111,6 +116,7 @@ const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
   [BlockEnum.Loop]: checkLoopValid,
   [BlockEnum.HumanInput]: checkHumanInputValid,
+  [BlockEnum.HumanInputV2]: HumanInputV2Default.checkValid,
 }
 
 export type Params<T> = {
@@ -243,7 +249,7 @@ const useOneStepRun = <T>({
     return undefined
   }
 
-  const checkValid = checkValidFns[data.type]
+  const checkValid = checkValidFns[getNodeCatalogType(data)]
 
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
   const runInputDataRef = useRef(runInputData)

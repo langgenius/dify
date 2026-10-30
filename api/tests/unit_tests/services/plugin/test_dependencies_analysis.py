@@ -26,7 +26,7 @@ class TestAnalyzeToolDependency:
         assert result == "langgenius/websearch"
 
     def test_invalid_format_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Invalid plugin id bad/format"):
             DependenciesAnalysisService.analyze_tool_dependency("bad/format")
 
     def test_plugin_id_reference_is_preserved(self) -> None:

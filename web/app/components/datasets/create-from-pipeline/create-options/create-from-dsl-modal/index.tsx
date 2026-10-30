@@ -3,10 +3,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -63,7 +63,9 @@ const CreateFromDSLModal = ({
         <DialogContent className="w-120">
           <DialogHeader>
             <DialogTitle>{t(($) => $.importFromDSL, { ns: 'app' })}</DialogTitle>
-            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
           </DialogHeader>
           <form
             className="contents"

@@ -35,13 +35,14 @@ describe('TagInput', () => {
 
   describe('Rendering', () => {
     it('should expose the current input text for CSS sizing', async () => {
+      const user = userEvent.setup()
       renderTagInput({ placeholder: 'Tag' })
       const input = screen.getByRole('textbox')
       const inputContainer = input.parentElement
 
       expect(inputContainer).toHaveAttribute('data-input-value', 'Tag')
 
-      await userEvent.type(input, 'longer')
+      await user.type(input, 'longer')
 
       expect(inputContainer).toHaveAttribute('data-input-value', 'longer')
     })
@@ -80,21 +81,23 @@ describe('TagInput', () => {
 
   describe('User Interactions', () => {
     it('should remove item when remove control is clicked', async () => {
+      const user = userEvent.setup()
       const { onChange } = renderTagInput({ items: ['alpha', 'beta'] })
 
       const removeControl = screen.getByRole('button', { name: 'common.operation.remove alpha' })
 
-      await userEvent.click(removeControl)
+      await user.click(removeControl)
 
       expect(onChange).toHaveBeenCalledWith(['beta'])
     })
 
     it('should add trimmed tag on Enter and clear input', async () => {
+      const user = userEvent.setup()
       const { onChange } = renderTagInput()
       const input = screen.getByRole('textbox')
 
-      await userEvent.type(input, '  new-tag  ')
-      await userEvent.type(input, '{Enter}')
+      await user.type(input, '  new-tag  ')
+      await user.type(input, '{Enter}')
 
       expect(onChange).toHaveBeenCalledWith(['new-tag'])
       await waitFor(() => {
@@ -103,11 +106,12 @@ describe('TagInput', () => {
     })
 
     it('should add tag on blur when input has valid value', async () => {
+      const user = userEvent.setup()
       const { onChange } = renderTagInput()
       const input = screen.getByRole('textbox')
 
-      await userEvent.type(input, 'blur-tag')
-      await userEvent.click(document.body)
+      await user.type(input, 'blur-tag')
+      await user.click(document.body)
 
       expect(onChange).toHaveBeenCalledWith(['blur-tag'])
     })
@@ -132,11 +136,12 @@ describe('TagInput', () => {
 
   describe('Validation', () => {
     it('should notify duplicate error when tag already exists', async () => {
+      const user = userEvent.setup()
       const { onChange } = renderTagInput({ items: ['dup-tag'] })
       const input = screen.getByRole('textbox')
 
-      await userEvent.type(input, 'dup-tag')
-      await userEvent.keyboard('{Enter}')
+      await user.type(input, 'dup-tag')
+      await user.keyboard('{Enter}')
 
       expect(onChange).not.toHaveBeenCalled()
       expect(mockNotify).toHaveBeenCalledWith({
@@ -146,11 +151,12 @@ describe('TagInput', () => {
     })
 
     it('should notify length error when tag is longer than 20 chars', async () => {
+      const user = userEvent.setup()
       const { onChange } = renderTagInput()
       const input = screen.getByRole('textbox')
 
-      await userEvent.type(input, 'a'.repeat(21))
-      await userEvent.keyboard('{Enter}')
+      await user.type(input, 'a'.repeat(21))
+      await user.keyboard('{Enter}')
 
       expect(onChange).not.toHaveBeenCalled()
       expect(mockNotify).toHaveBeenCalledWith({
@@ -160,11 +166,12 @@ describe('TagInput', () => {
     })
 
     it('should notify required error when value is empty and required is true', async () => {
+      const user = userEvent.setup()
       const { onChange } = renderTagInput({ required: true })
       const input = screen.getByRole('textbox')
 
-      await userEvent.type(input, '   ')
-      await userEvent.click(document.body)
+      await user.type(input, '   ')
+      await user.click(document.body)
 
       expect(onChange).not.toHaveBeenCalled()
       expect(mockNotify).toHaveBeenCalledWith({
@@ -174,11 +181,12 @@ describe('TagInput', () => {
     })
 
     it('should ignore empty value when required is false', async () => {
+      const user = userEvent.setup()
       const { onChange } = renderTagInput({ required: false })
       const input = screen.getByRole('textbox')
 
-      await userEvent.type(input, '   ')
-      await userEvent.click(document.body)
+      await user.type(input, '   ')
+      await user.click(document.body)
 
       expect(onChange).not.toHaveBeenCalled()
       expect(mockNotify).not.toHaveBeenCalled()

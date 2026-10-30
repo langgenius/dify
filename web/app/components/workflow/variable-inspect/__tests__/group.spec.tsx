@@ -52,6 +52,7 @@ describe('VariableInspect Group', () => {
   })
 
   it('should mask secret environment variables before selecting them', async () => {
+    const user = userEvent.setup()
     const handleSelect = vi.fn()
 
     render(
@@ -70,7 +71,7 @@ describe('VariableInspect Group', () => {
       />,
     )
 
-    await userEvent.setup().click(screen.getByRole('button', { name: /API_KEY/ }))
+    await user.click(screen.getByRole('button', { name: /API_KEY/ }))
 
     expect(screen.getByText('workflowDebug.debug.variableInspect.envNode')).toBeInTheDocument()
     expect(handleSelect).toHaveBeenCalledWith({
@@ -86,6 +87,7 @@ describe('VariableInspect Group', () => {
   })
 
   it('keeps invisible variables hidden when collapsing and reopening the group', async () => {
+    const user = userEvent.setup()
     render(
       <Group
         nodeData={createNodeData()}
@@ -101,15 +103,16 @@ describe('VariableInspect Group', () => {
     expect(screen.getByText('visible_var')).toBeInTheDocument()
     expect(screen.queryByText('hidden_var')).not.toBeInTheDocument()
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Code' }))
+    await user.click(screen.getByRole('button', { name: 'Code' }))
 
     expect(screen.queryByText('visible_var')).not.toBeInTheDocument()
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Code' }))
+    await user.click(screen.getByRole('button', { name: 'Code' }))
     expect(screen.getByText('visible_var')).toBeInTheDocument()
     expect(screen.queryByText('hidden_var')).not.toBeInTheDocument()
   })
 
   it('should expose node view and clear actions for node groups', async () => {
+    const user = userEvent.setup()
     const handleView = vi.fn()
     const handleClear = vi.fn()
 
@@ -124,12 +127,12 @@ describe('VariableInspect Group', () => {
       />,
     )
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.view' }))
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.clearNode' }))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.view' }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.clearNode' }),
+    )
 
     expect(handleView).toHaveBeenCalledTimes(1)
     expect(handleClear).toHaveBeenCalledTimes(1)

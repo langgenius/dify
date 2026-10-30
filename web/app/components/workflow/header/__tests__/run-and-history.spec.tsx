@@ -4,10 +4,6 @@ import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { fullWorkflowAccessControl } from '../../hooks-store/store'
 import RunAndHistory from '../run-and-history'
 
-const startPreview = vi.hoisted(() => vi.fn())
-vi.mock('../../hooks/use-workflow-start-run', () => ({
-  useWorkflowStartRun: () => ({ handleWorkflowStartRunInChatflow: startPreview }),
-}))
 vi.mock('../view-history', () => ({ default: () => null }))
 vi.mock('../checklist', () => ({ default: () => null }))
 
@@ -38,8 +34,12 @@ it('passes denied run permission to a custom run control', async () => {
 
 it('keeps preview visible but prevents starting it when run permission is denied', async () => {
   const user = userEvent.setup()
+  const startPreview = vi.fn()
   renderWorkflowComponent(<RunAndHistory showPreviewButton />, {
-    hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canRun: false } },
+    hooksStoreProps: {
+      accessControl: { ...fullWorkflowAccessControl, canRun: false },
+      handleWorkflowStartRunInChatflow: startPreview,
+    },
   })
 
   const preview = screen.getByRole('button', { name: 'workflow.common.debugAndPreview' })

@@ -112,10 +112,11 @@ describe('CreateFromDSLModal', () => {
 
   describe('Props', () => {
     it('should call onClose when cancel button is clicked', async () => {
+      const user = userEvent.setup()
       const onClose = vi.fn()
       render(<CreateFromDSLModal show={true} onClose={onClose} />, { wrapper: createWrapper() })
 
-      await userEvent.setup().click(screen.getByText('app.newApp.Cancel'))
+      await user.click(screen.getByText('app.newApp.Cancel'))
       expect(onClose).toHaveBeenCalled()
     })
   })
@@ -186,7 +187,7 @@ describe('CreateFromDSLModal', () => {
       await user.type(input, 'https://example.com/test.pipeline')
 
       const importButton = screen.getByText('app.newApp.import').closest('button')!
-      await userEvent.setup().click(importButton)
+      await user.click(importButton)
 
       await waitFor(() => {
         expect(mockImportDSL).toHaveBeenCalledExactlyOnceWith({
@@ -208,6 +209,7 @@ describe('CreateFromDSLModal', () => {
     })
 
     it('should handle API error', async () => {
+      const user = userEvent.setup()
       mockImportDSL.mockResolvedValue(null)
 
       render(
@@ -223,7 +225,7 @@ describe('CreateFromDSLModal', () => {
       fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
 
       const importButton = screen.getByText('app.newApp.import').closest('button')!
-      await userEvent.setup().click(importButton)
+      await user.click(importButton)
 
       await waitFor(() => {
         expect(toastMocks.record).toHaveBeenCalledWith(
@@ -235,6 +237,7 @@ describe('CreateFromDSLModal', () => {
     })
 
     it('should handle FAILED status', async () => {
+      const user = userEvent.setup()
       mockImportDSL.mockResolvedValue(createImportDSLResponse({ status: 'failed' }))
 
       render(
@@ -250,7 +253,7 @@ describe('CreateFromDSLModal', () => {
       fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
 
       const importButton = screen.getByText('app.newApp.import').closest('button')!
-      await userEvent.setup().click(importButton)
+      await user.click(importButton)
 
       await waitFor(() => {
         expect(toastMocks.record).toHaveBeenCalledWith(
@@ -265,10 +268,11 @@ describe('CreateFromDSLModal', () => {
   // Event Handler Tests
   describe('Event Handlers', () => {
     it('should call onClose when header close button is clicked', async () => {
+      const user = userEvent.setup()
       const onClose = vi.fn()
       render(<CreateFromDSLModal show={true} onClose={onClose} />, { wrapper: createWrapper() })
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.close' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(onClose).toHaveBeenCalled()
     })
@@ -299,16 +303,18 @@ describe('CreateFromDSLModal', () => {
     })
 
     it('should close modal on ESC key press', async () => {
+      const user = userEvent.setup()
       const onClose = vi.fn()
       render(<CreateFromDSLModal show={true} onClose={onClose} />, { wrapper: createWrapper() })
 
-      await userEvent.setup().keyboard('{Escape}')
+      await user.keyboard('{Escape}')
 
       expect(onClose).toHaveBeenCalled()
     })
 
     it('should not close on ESC when error modal is shown', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
+      const user = userEvent.setup()
       const onClose = vi.fn()
       mockImportDSL.mockResolvedValue(createImportDSLResponse({ status: 'pending' }))
 
@@ -325,7 +331,7 @@ describe('CreateFromDSLModal', () => {
       fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
 
       const importButton = screen.getByText('app.newApp.import').closest('button')!
-      await userEvent.setup().click(importButton)
+      await user.click(importButton)
 
       await waitFor(() => {
         expect(onClose).toHaveBeenCalled()
@@ -340,7 +346,7 @@ describe('CreateFromDSLModal', () => {
       })
 
       // Now ESC should not close main modal because error modal is shown
-      await userEvent.setup().keyboard('{Escape}')
+      await user.keyboard('{Escape}')
 
       // onClose should not be called again when error modal is shown
       expect(onClose).not.toHaveBeenCalled()
@@ -349,6 +355,7 @@ describe('CreateFromDSLModal', () => {
     })
 
     it('should prevent duplicate submissions', async () => {
+      const user = userEvent.setup()
       let resolve!: (value: ReturnType<typeof createImportDSLResponse>) => void
       mockImportDSL.mockImplementationOnce(
         () =>
@@ -371,9 +378,9 @@ describe('CreateFromDSLModal', () => {
 
       const importButton = screen.getByText('app.newApp.import').closest('button')!
 
-      await userEvent.setup().click(importButton)
-      await userEvent.setup().click(importButton)
-      await userEvent.setup().click(importButton)
+      await user.click(importButton)
+      await user.click(importButton)
+      await user.click(importButton)
 
       // Should only be called once due to isCreatingRef
       await waitFor(() => {
@@ -386,6 +393,7 @@ describe('CreateFromDSLModal', () => {
   // File Import Tests (covers readFile, handleFile, file mode import)
   describe('File Import', () => {
     it('should read file content when file is selected', async () => {
+      const user = userEvent.setup()
       mockImportDSL.mockResolvedValue(createImportDSLResponse())
       mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
 
@@ -406,7 +414,7 @@ describe('CreateFromDSLModal', () => {
 
       // Get the file input and simulate file selection
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-      await userEvent.setup().upload(fileInput, mockFile)
+      await user.upload(fileInput, mockFile)
 
       // Wait for FileReader to complete
       await waitFor(() => {
@@ -415,7 +423,7 @@ describe('CreateFromDSLModal', () => {
       })
 
       const importButton = screen.getByText('app.newApp.import').closest('button')!
-      await userEvent.setup().click(importButton)
+      await user.click(importButton)
 
       // Verify API was called with file content
       await waitFor(() => {
@@ -429,6 +437,7 @@ describe('CreateFromDSLModal', () => {
     })
 
     it('should clear file content when file is removed', async () => {
+      const user = userEvent.setup()
       render(
         <CreateFromDSLModal
           show={true}
@@ -441,14 +450,14 @@ describe('CreateFromDSLModal', () => {
       // First add a file
       const mockFile = new File(['content'], 'test.pipeline', { type: 'application/octet-stream' })
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-      await userEvent.setup().upload(fileInput, mockFile)
+      await user.upload(fileInput, mockFile)
 
       // Wait for file to be displayed
       await waitFor(() => {
         expect(screen.getByText('test.pipeline'))!.toBeInTheDocument()
       })
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.remove' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
       expect(screen.queryByText('test.pipeline')).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'app.newApp.import' })).toBeDisabled()
       expect(mockImportDSL).not.toHaveBeenCalled()
@@ -459,6 +468,7 @@ describe('CreateFromDSLModal', () => {
   describe('DSL Confirm Flow', () => {
     it('should handle DSL confirm success', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
+      const user = userEvent.setup()
       const onSuccess = vi.fn()
       const onClose = vi.fn()
 
@@ -494,7 +504,7 @@ describe('CreateFromDSLModal', () => {
       fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
 
       const importButton = screen.getByText('app.newApp.import').closest('button')!
-      await userEvent.setup().click(importButton)
+      await user.click(importButton)
 
       // Wait for pending status handling
       await waitFor(() => {
@@ -512,7 +522,7 @@ describe('CreateFromDSLModal', () => {
 
       expect(screen.getByText('0.9.0')).toBeInTheDocument()
       expect(screen.getByText('1.0.0')).toBeInTheDocument()
-      await userEvent.setup().click(screen.getByText('app.newApp.Confirm'))
+      await user.click(screen.getByText('app.newApp.Confirm'))
 
       // Verify confirm was called
       await waitFor(() => {
@@ -530,6 +540,7 @@ describe('CreateFromDSLModal', () => {
 
     it('should handle DSL confirm with FAILED status', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
+      const user = userEvent.setup()
 
       mockImportDSL.mockResolvedValue(
         createImportDSLResponse({
@@ -556,7 +567,7 @@ describe('CreateFromDSLModal', () => {
       const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
       fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
 
-      await userEvent.setup().click(screen.getByText('app.newApp.import').closest('button')!)
+      await user.click(screen.getByText('app.newApp.import').closest('button')!)
 
       await act(async () => {
         vi.advanceTimersByTime(400)
@@ -566,7 +577,7 @@ describe('CreateFromDSLModal', () => {
         expect(screen.getByText('app.newApp.Confirm'))!.toBeInTheDocument()
       })
 
-      await userEvent.setup().click(screen.getByText('app.newApp.Confirm'))
+      await user.click(screen.getByText('app.newApp.Confirm'))
 
       await waitFor(() => {
         expect(toastMocks.record).toHaveBeenCalledWith(
@@ -581,6 +592,7 @@ describe('CreateFromDSLModal', () => {
 
     it('should close error modal when cancel is clicked', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
+      const user = userEvent.setup()
 
       mockImportDSL.mockResolvedValue(
         createImportDSLResponse({
@@ -600,7 +612,7 @@ describe('CreateFromDSLModal', () => {
       const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
       fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
 
-      await userEvent.setup().click(screen.getByText('app.newApp.import').closest('button')!)
+      await user.click(screen.getByText('app.newApp.import').closest('button')!)
 
       await act(async () => {
         vi.advanceTimersByTime(400)
@@ -614,7 +626,7 @@ describe('CreateFromDSLModal', () => {
       // There are two Cancel buttons now (one in main modal footer, one in error modal)
       // Find the Cancel button in the error modal context
       const cancelButtons = screen.getAllByText('app.newApp.Cancel')
-      await userEvent.setup().click(cancelButtons[cancelButtons.length - 1]!)
+      await user.click(cancelButtons[cancelButtons.length - 1]!)
 
       await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
       expect(mockImportDSLConfirm).not.toHaveBeenCalled()

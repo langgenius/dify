@@ -1,0 +1,525 @@
+'use client'
+
+import type { NewKnowledgeSourceDraft } from '../sources/setup/source-draft'
+import type { CrawlPreviewPage } from '../sources/source-models'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { useAtom } from 'jotai'
+import { useEffect, useId, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { buildIntegrationPath } from '@/app/components/integrations/routes'
+import { consoleClient } from '@/service/console'
+import { ConnectedSourceConfiguration } from '../sources/setup/connected-source-configuration'
+import { CrawlPreviewPageSelection } from '../sources/setup/crawl-selection'
+import { WebsiteDatasourceParameterForm } from '../sources/setup/datasource-parameter-form'
+import {
+  SourceNameField,
+  SourceProviderCredentialRequiredCard,
+  SourceProviderEmptyState,
+  SourceProviderIcon,
+  SourceProviderRadioGroup,
+  SourceSyncPolicyField,
+  SourceTypeSelector,
+} from '../sources/setup/fields'
+import { sourceDraftForProviderOption } from '../sources/setup/provider-options'
+import {
+  createSourceSelectionAtom,
+  providerIntegrationPath,
+  useSourceSetupInputs,
+} from './source-state'
+
+const CRAWL_PREVIEW_SKELETONS = [
+  { id: 'short', sourceWidth: 'w-22.5', titleWidth: 'w-37.5' },
+  { id: 'medium', sourceWidth: 'w-26', titleWidth: 'w-42.5' },
+  { id: 'long', sourceWidth: 'w-29.5', titleWidth: 'w-47.5' },
+  { id: 'longest', sourceWidth: 'w-33', titleWidth: 'w-52.5' },
+] as const
+const CRAWL_POLL_INTERVAL_MS = 1500
+
+type LocalCrawlState = 'error' | 'idle' | 'running' | 'stopped' | 'success'
+type CreateSourceSetupProps = {
+  disabled: boolean
+  draft: NewKnowledgeSourceDraft
+  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
+  onSourceTypeChange: (sourceType: NewKnowledgeSourceDraft['sourceType']) => void
+  shouldPreservePreviewOnUnmount: () => boolean
+}
+
+export function CreateSourceSetup(props: CreateSourceSetupProps) {
+  const { disabled, draft, onDraftChange, onSourceTypeChange } = props
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { datasourcePluginsQuery, providerOptions, providerOption, providerDraft, sessionKey } =
+    useSourceSetupInputs(draft)
+  const selectProvider = (providerKey: string) => {
+    const nextProvider = providerOptions.find((option) => option.key === providerKey)
+    if (!nextProvider) return
+    onDraftChange(sourceDraftForProviderOption(providerDraft, nextProvider))
+  }
+
+  return (
+    <div className="mx-4 -mt-1 mb-3.75 flex flex-col gap-4">
+      <SourceTypeSelector
+        appearance="embedded"
+        disabled={disabled}
+        value={draft.sourceType}
+        onChange={onSourceTypeChange}
+      />
+
+      <Fieldset disabled={disabled}>
+        <FieldsetLegend className="sr-only">{t(($) => $.providerLabel)}</FieldsetLegend>
+        <div className="mb-1.5 flex items-center justify-between gap-3">
+          <span className="system-sm-medium text-text-secondary">{t(($) => $.providerLabel)}</span>
+          <Button
+            type="button"
+            variant="ghost-accent"
+            size="small"
+            disabled={disabled}
+            className="gap-0.5 px-2.75"
+            onClick={() =>
+              globalThis.open(buildIntegrationPath('data-source'), '_blank', 'noopener,noreferrer')
+            }
+          >
+            {t(($) => $.moreProviders)}
+            <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
+          </Button>
+        </div>
+        {providerOptions.length > 0 ? (
+          <SourceProviderRadioGroup
+            value={providerOption?.key ?? ''}
+            disabled={disabled}
+            layout={draft.sourceType === 'websiteCrawl' ? 'grid-four' : 'grid-three'}
+            options={providerOptions.map((option) => ({
+              icon: (
+                <SourceProviderIcon
+                  fallbackIcon={option.fallbackIcon}
+                  icon={option.datasource.identity.icon || option.plugin.declaration.identity.icon}
+                />
+              ),
+              label: option.label,
+              value: option.key,
+            }))}
+            surface="default"
+            onChange={selectProvider}
+          />
+        ) : !datasourcePluginsQuery.isPending && !datasourcePluginsQuery.error ? (
+          <SourceProviderEmptyState className="min-h-16" />
+        ) : null}
+      </Fieldset>
+
+      <CreateSourceSetupSession key={sessionKey} {...props} />
+    </div>
+  )
+}
+
+function CreateSourceSetupSession({
+  disabled,
+  draft,
+  onDraftChange,
+  shouldPreservePreviewOnUnmount,
+}: CreateSourceSetupProps) {
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeCreate'])
+  const {
+    datasourcePluginsQuery,
+    datasourceAuthQuery,
+    providerOption: installedProviderOption,
+    providerDraft,
+    credential,
+    sessionKey,
+    parameterSchemas,
+    parameters,
+    parametersValid,
+    sourceUri,
+  } = useSourceSetupInputs(draft)
+  const [selection, setSelection] = useAtom(createSourceSelectionAtom)
+  const currentSelection = selection?.sessionKey === sessionKey ? selection : undefined
+  const [crawlState, setCrawlState] = useState<LocalCrawlState>('idle')
+  const crawlActionLabelId = useId()
+  const [stoppingPreview, setStoppingPreview] = useState(false)
+  const [previewPages, setPreviewPages] = useState<CrawlPreviewPage[]>([])
+  const selectedPageIds = new Set(
+    currentSelection?.kind === 'website' ? currentSelection.pages.map((page) => page.pageId) : [],
+  )
+  const crawlAttemptRef = useRef(0)
+  const previewJobIdRef = useRef<string | undefined>(undefined)
+  const previewFingerprintRef = useRef<string | undefined>(undefined)
+  const selectionPages = previewPages
+  const previewReady = Boolean(
+    providerDraft.sourceType === 'websiteCrawl' &&
+    credential &&
+    installedProviderOption &&
+    parametersValid &&
+    providerDraft.sourceName.trim(),
+  )
+  const selectionRootUrl =
+    typeof parameters.url === 'string' && sourceUri.startsWith('http') ? sourceUri : undefined
+  const cancelPreviewBestEffort = () => {
+    crawlAttemptRef.current += 1
+    const jobId = previewJobIdRef.current
+    previewJobIdRef.current = undefined
+    previewFingerprintRef.current = undefined
+    if (jobId)
+      void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
+        .delete({
+          params: { job_id: jobId },
+        })
+        .catch(() => {})
+  }
+  const stopPreview = async () => {
+    if (stoppingPreview) return
+    crawlAttemptRef.current += 1
+    const jobId = previewJobIdRef.current
+    if (!jobId) {
+      setCrawlState('stopped')
+      return
+    }
+    setStoppingPreview(true)
+    try {
+      const response = await consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId.delete({
+        params: { job_id: jobId },
+      })
+      if (response.status === 'completed' && response.result) {
+        setPreviewPages(
+          (response.result.pages ?? []).map((page) => ({
+            description: page.description ?? undefined,
+            pageId: page.page_id ?? page.source_url,
+            sourceUrl: page.source_url,
+            title: page.title ?? page.source_url,
+          })),
+        )
+        previewFingerprintRef.current = response.result.configuration_fingerprint ?? undefined
+        setCrawlState('success')
+      } else if (response.status === 'canceled') {
+        if (previewJobIdRef.current === jobId) previewJobIdRef.current = undefined
+        setCrawlState('stopped')
+      } else if (response.status === 'failed') {
+        if (previewJobIdRef.current === jobId) previewJobIdRef.current = undefined
+        setCrawlState('error')
+      } else {
+        setCrawlState('running')
+      }
+    } catch {
+      // Keep the job handle and running state so Stop can be retried and unmount
+      // cleanup can still revoke a task whose cancellation response was lost.
+      setCrawlState('running')
+    } finally {
+      setStoppingPreview(false)
+    }
+  }
+  const resetPreview = () => {
+    cancelPreviewBestEffort()
+    setCrawlState('idle')
+    setPreviewPages([])
+    setSelection(undefined)
+  }
+  const updateDraft = (nextDraft: NewKnowledgeSourceDraft) => {
+    onDraftChange(nextDraft)
+    resetPreview()
+  }
+  const updateDraftWithoutReset = (nextDraft: NewKnowledgeSourceDraft) => {
+    onDraftChange(nextDraft)
+  }
+  useEffect(
+    () => () => {
+      crawlAttemptRef.current += 1
+      const jobId = previewJobIdRef.current
+      if (jobId && !shouldPreservePreviewOnUnmount())
+        void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
+          .delete({
+            params: { job_id: jobId },
+          })
+          .catch(() => {})
+      setSelection(undefined)
+    },
+    [setSelection, shouldPreservePreviewOnUnmount],
+  )
+
+  const startPreview = async () => {
+    if (
+      providerDraft.sourceType !== 'websiteCrawl' ||
+      !previewReady ||
+      !credential ||
+      !installedProviderOption
+    )
+      return
+    const attempt = crawlAttemptRef.current + 1
+    crawlAttemptRef.current = attempt
+    setPreviewPages([])
+    setSelection(undefined)
+    setCrawlState('running')
+    try {
+      const job = await consoleClient.knowledgeFs.sourceProviderPreview.jobs.post({
+        body: {
+          credentialId: credential.id,
+          datasource: installedProviderOption.datasource.identity.name,
+          kind: 'website_crawl',
+          parameters,
+          pluginId: installedProviderOption.plugin.plugin_id,
+          provider: installedProviderOption.plugin.provider,
+          providerDisplayName: installedProviderOption.label,
+        },
+      })
+      if (crawlAttemptRef.current !== attempt) {
+        void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
+          .delete({
+            params: { job_id: job.job_id },
+          })
+          .catch(() => {})
+        return
+      }
+      previewJobIdRef.current = job.job_id
+      let response = await consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId.get({
+        params: { job_id: job.job_id },
+      })
+      while (
+        crawlAttemptRef.current === attempt &&
+        !['completed', 'failed', 'canceled'].includes(response.status)
+      ) {
+        await new Promise((resolve) => globalThis.setTimeout(resolve, CRAWL_POLL_INTERVAL_MS))
+        if (crawlAttemptRef.current !== attempt) return
+        response = await consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId.get({
+          params: { job_id: job.job_id },
+        })
+      }
+      if (crawlAttemptRef.current !== attempt) return
+      if (response.status !== 'completed' || !response.result) {
+        previewJobIdRef.current = undefined
+        setCrawlState(response.status === 'canceled' ? 'stopped' : 'error')
+        return
+      }
+      setPreviewPages(
+        (response.result.pages ?? []).map((page) => ({
+          description: page.description ?? undefined,
+          pageId: page.page_id ?? page.source_url,
+          sourceUrl: page.source_url,
+          title: page.title ?? page.source_url,
+        })),
+      )
+      previewFingerprintRef.current = response.result.configuration_fingerprint ?? undefined
+      setCrawlState('success')
+    } catch {
+      if (crawlAttemptRef.current === attempt) {
+        const jobId = previewJobIdRef.current
+        previewJobIdRef.current = undefined
+        previewFingerprintRef.current = undefined
+        if (jobId)
+          void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
+            .delete({
+              params: { job_id: jobId },
+            })
+            .catch(() => {})
+        setCrawlState('error')
+      }
+    }
+  }
+
+  const updateSelectedPageIds = (pageIds: Set<string>) => {
+    setSelection({
+      sessionKey,
+      kind: 'website',
+      pages: selectionPages.filter((page) => pageIds.has(page.pageId)),
+      previewJobId: previewJobIdRef.current,
+      previewConfigurationFingerprint: previewFingerprintRef.current,
+    })
+  }
+
+  return (
+    <>
+      {datasourcePluginsQuery.isPending || datasourceAuthQuery.isPending ? (
+        <div className="flex min-h-44 items-center justify-center">
+          <span aria-hidden className="i-ri-loader-4-line size-5 animate-spin text-text-tertiary" />
+        </div>
+      ) : datasourcePluginsQuery.error || datasourceAuthQuery.error ? (
+        <div className="rounded-xl bg-background-section p-4">
+          <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
+          <Button
+            className="mt-3"
+            onClick={() =>
+              void Promise.all([datasourcePluginsQuery.refetch(), datasourceAuthQuery.refetch()])
+            }
+          >
+            {t(($) => $.retryProviderLoad)}
+          </Button>
+        </div>
+      ) : installedProviderOption && !credential ? (
+        <SourceProviderCredentialRequiredCard
+          disabled={disabled}
+          icon={
+            <SourceProviderIcon
+              fallbackIcon={installedProviderOption.fallbackIcon}
+              icon={
+                installedProviderOption.datasource.identity.icon ||
+                installedProviderOption.plugin.declaration.identity.icon
+              }
+            />
+          }
+          provider={installedProviderOption.label}
+          onConnect={() =>
+            globalThis.open(
+              providerIntegrationPath(installedProviderOption.packageId),
+              '_blank',
+              'noopener,noreferrer',
+            )
+          }
+        />
+      ) : providerDraft.sourceType === 'websiteCrawl' && installedProviderOption && credential ? (
+        <div className="space-y-4">
+          <WebsiteDatasourceParameterForm
+            additionalPrimaryField={
+              <SourceNameField
+                disabled={disabled}
+                draft={providerDraft}
+                preventSubmitOnEnter
+                onDraftChange={updateDraft}
+              />
+            }
+            disabled={disabled || crawlState === 'running'}
+            parameters={parameters}
+            schemas={parameterSchemas}
+            onChange={(nextParameters) =>
+              updateDraft({
+                ...providerDraft,
+                parameters: nextParameters,
+                rootUrl: typeof nextParameters.url === 'string' ? nextParameters.url : '',
+              })
+            }
+          />
+          {crawlState !== 'success' && (
+            <Button
+              type="button"
+              variant="primary"
+              className="w-full"
+              disabled={disabled || !previewReady}
+              loading={crawlState === 'running'}
+              aria-labelledby={crawlActionLabelId}
+              onClick={() => void startPreview()}
+            >
+              <span id={crawlActionLabelId}>
+                {crawlState === 'running' ? t(($) => $.crawling) : t(($) => $.crawlAndPreview)}
+              </span>
+            </Button>
+          )}
+          <section
+            aria-label={t(($) => $.crawlPreview, { ns: 'knowledgeCreate' })}
+            className={cn(
+              crawlState === 'running'
+                ? 'flex h-60 flex-col gap-3.5 overflow-hidden rounded-xl border border-divider-deep bg-background-default-subtle p-4'
+                : crawlState === 'success'
+                  ? ''
+                  : 'min-h-40 rounded-lg border border-dashed border-divider-regular px-4 py-4',
+            )}
+          >
+            {crawlState === 'idle' && (
+              <div className="flex min-h-32 flex-col items-center justify-center text-center">
+                <span className="flex size-10 items-center justify-center rounded-lg bg-background-section">
+                  <span aria-hidden className="i-ri-global-line size-5 text-text-tertiary" />
+                </span>
+                <p className="mt-2 system-xs-semibold text-text-primary">
+                  {t(($) => $.pagesAppearTitle)}
+                </p>
+                <p className="mt-2 system-xs-regular text-text-tertiary">
+                  {t(($) => $.pagesAppearDescription)}
+                </p>
+              </div>
+            )}
+            {crawlState === 'running' && (
+              <div className="flex h-6 shrink-0 items-center gap-2">
+                <span
+                  aria-hidden
+                  className="i-ri-loader-4-line size-4 animate-spin text-text-accent"
+                />
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="min-w-0 flex-1 truncate system-xs-medium text-text-primary"
+                >
+                  {t(($) => $.crawlingPages, {
+                    count: previewPages.length,
+                    host: installedProviderOption.label,
+                  })}
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost-accent"
+                  size="small"
+                  className="ml-auto shrink-0"
+                  loading={stoppingPreview}
+                  onClick={() => void stopPreview()}
+                >
+                  {t(($) => $.stopCrawl)}
+                </Button>
+              </div>
+            )}
+            {crawlState === 'running' &&
+              CRAWL_PREVIEW_SKELETONS.map(({ id, sourceWidth, titleWidth }) => (
+                <div key={id} aria-hidden className="flex h-8 shrink-0 items-center gap-2.5 py-1">
+                  <span className="size-4 animate-pulse rounded bg-util-colors-gray-gray-200 motion-reduce:animate-none" />
+                  <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <span
+                      className={cn(
+                        'block h-2.5 animate-pulse rounded bg-util-colors-gray-gray-200 motion-reduce:animate-none',
+                        titleWidth,
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        'block h-2 animate-pulse rounded bg-background-section-burn motion-reduce:animate-none',
+                        sourceWidth,
+                      )}
+                    />
+                  </span>
+                </div>
+              ))}
+            {crawlState === 'error' && (
+              <p role="alert" className="system-xs-regular text-text-destructive">
+                {t(($) => $.crawlStartFailed)}
+              </p>
+            )}
+            {crawlState === 'stopped' && (
+              <p role="status" className="system-xs-regular text-text-secondary">
+                {t(($) => $.crawlStopped)}
+              </p>
+            )}
+            {crawlState === 'success' && (
+              <CrawlPreviewPageSelection
+                disabled={disabled}
+                onRecrawl={() => void startPreview()}
+                onSelectionChange={updateSelectedPageIds}
+                pages={selectionPages}
+                rootUrl={selectionRootUrl}
+                selectedPageIds={selectedPageIds}
+                sourceLabel={installedProviderOption.label}
+              />
+            )}
+          </section>
+          <SourceSyncPolicyField
+            className="w-full sm:w-75.25"
+            disabled={disabled}
+            draft={providerDraft}
+            onDraftChange={updateDraftWithoutReset}
+            size="medium"
+          />
+        </div>
+      ) : providerDraft.sourceType !== 'websiteCrawl' && installedProviderOption && credential ? (
+        <ConnectedSourceConfiguration
+          key={`${providerDraft.sourceType}:${installedProviderOption.key}:${credential.id}`}
+          disabled={disabled}
+          draft={providerDraft}
+          previewBinding={{
+            credentialId: credential.id,
+            datasource: installedProviderOption.datasource.identity.name,
+            pluginId: installedProviderOption.plugin.plugin_id,
+            provider: installedProviderOption.plugin.provider,
+            providerDisplayName: installedProviderOption.label,
+          }}
+          providerOption={installedProviderOption}
+          onDraftChange={updateDraftWithoutReset}
+          selection={currentSelection?.kind === 'connected' ? currentSelection.resources : []}
+          onSelectionChange={(resources) =>
+            setSelection({ sessionKey, kind: 'connected', resources })
+          }
+        />
+      ) : null}
+    </>
+  )
+}

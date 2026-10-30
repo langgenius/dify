@@ -24,8 +24,8 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
-from controllers.openapi._contract import Example, Kind, endpoint
-from controllers.openapi._errors import AppModeMismatch
+from controllers.openapi._contract import Effect, Example, Kind, endpoint
+from controllers.openapi._errors import AppModeMismatch, RunNotFound, RunNotStoppable
 from controllers.openapi._files import end_read_transaction, materialize, merge_files
 from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi._models import (
@@ -38,6 +38,7 @@ from controllers.openapi._models import (
     TaskStopResponse,
     WorkflowRunPayload,
 )
+from controllers.openapi.app_workflow import require_uuid
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     EDITOR_ROLES,
@@ -62,7 +63,6 @@ from controllers.service_api.app.error import (
     TriggerWorkflowServiceModeUnavailableError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import MessageEndStreamResponse, StreamEvent
 from core.errors.error import (
@@ -71,12 +71,12 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from extensions.ext_redis import redis_client
-from graphon.graph_engine.manager import GraphEngineManager
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import WorkflowStopOutcome
 from services.errors.app import (
     IsDraftWorkflowError,
     WorkflowIdFormatError,
@@ -86,6 +86,7 @@ from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
 from services.errors.llm import InvokeRateLimitError
+from services.workflow.graph_check import GRAPH_MODES, MESSAGE_MODES
 
 logger = logging.getLogger(__name__)
 
@@ -99,41 +100,41 @@ def _translate_service_errors() -> Generator[None]:
     try:
         yield
     except WorkflowNotFoundError as ex:
-        raise NotFound(str(ex))
+        raise NotFound(str(ex)) from ex
     except (IsDraftWorkflowError, WorkflowIdFormatError) as ex:
-        raise BadRequest(str(ex))
-    except TriggerWorkflowServiceModeUnavailableServiceError:
-        raise TriggerWorkflowServiceModeUnavailableError()
-    except services.errors.conversation.ConversationNotExistsError:
-        raise NotFound("Conversation Not Exists.")
-    except services.errors.conversation.ConversationCompletedError:
-        raise ConversationCompletedError()
-    except services.errors.app_model_config.AppModelConfigBrokenError:
+        raise BadRequest(str(ex)) from ex
+    except TriggerWorkflowServiceModeUnavailableServiceError as caught_error:
+        raise TriggerWorkflowServiceModeUnavailableError() from caught_error
+    except services.errors.conversation.ConversationNotExistsError as caught_error:
+        raise NotFound("Conversation Not Exists.") from caught_error
+    except services.errors.conversation.ConversationCompletedError as caught_error:
+        raise ConversationCompletedError() from caught_error
+    except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
         logger.exception("App model config broken.")
-        raise AppUnavailableError()
+        raise AppUnavailableError() from caught_error
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
-    except QuotaExceededError:
-        raise ProviderQuotaExceededError()
-    except ModelCurrentlyNotSupportError:
-        raise ProviderModelCurrentlyNotSupportError()
-    except AppInvokeQuotaExceededError:
+        raise ProviderNotInitializeError(ex.description) from ex
+    except QuotaExceededError as caught_error:
+        raise ProviderQuotaExceededError() from caught_error
+    except ModelCurrentlyNotSupportError as caught_error:
+        raise ProviderModelCurrentlyNotSupportError() from caught_error
+    except AppInvokeQuotaExceededError as caught_error:
         # App concurrency limit. Without this it falls through to the bare `except Exception`
         # below and surfaces as a 500. Render as the canonical 429 (code "too_many_requests");
         # the source message is dropped since it carries internal detail (client_id / limits).
-        raise TooManyRequests()
+        raise TooManyRequests() from caught_error
     except InvokeRateLimitError as ex:
-        raise InvokeRateLimitHttpError(ex.description)
+        raise InvokeRateLimitHttpError(ex.description) from ex
     except InvokeError as e:
-        raise CompletionRequestError(e.description)
-    except ValueError:
+        raise CompletionRequestError(e.description) from e
+    except ValueError as caught_error:
         logger.warning("run input refused by the service.", exc_info=True)
-        raise BadRequest(_INVALID_RUN_INPUT)
+        raise BadRequest(_INVALID_RUN_INPUT) from caught_error
     except HTTPException:
         raise
-    except Exception:
+    except Exception as caught_error:
         logger.exception("internal server error.")
-        raise InternalServerError()
+        raise InternalServerError() from caught_error
 
 
 _RUN_GUARDS: Final = (
@@ -442,21 +443,52 @@ def _run_api(route: _RunRoute) -> type[Resource]:
 ) = (_run_api(route) for route in _RUN_ROUTES)
 
 
-@openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>:stop")
-class AppRunTaskStopApi(Resource):
+@openapi_ns.route("/apps/<string:app_id>/runs/<string:run_id>:stop")
+class AppRunStopApi(Resource):
     @endpoint(
         op="stop.run",
         kind=Kind.OBJECT,
-        summary="Stop a running task",
-        examples=(Example(title="Stop a running task", input={"app_id": "<app_id>", "task_id": "<task_id>"}),),
+        effect=Effect.DESTRUCTIVE,
+        summary="Stop a running or paused run of a workflow or advanced-chat app",
+        examples=(Example(title="Stop a run", input={"app_id": "<app_id>", "run_id": "<run_id>"}),),
+        requirements=_RUN_GUARDS,
+        returns=(200, TaskStopResponse, "Run stopped"),
+    )
+    def post(self, ctx: Context, app_id: str, run_id: str):
+        _require_mode(ctx.app, *GRAPH_MODES)
+        outcome = application_services().app_tasks.stop_workflow_run(
+            tenant_id=ctx.app.tenant_id,
+            app_id=ctx.app.id,
+            run_id=require_uuid(run_id, not_found=RunNotFound),
+            app_mode=AppMode.value_of(ctx.app.mode),
+            caller_role=ctx.subject.caller_role,
+            caller_id=ctx.caller.id,
+        )
+        if outcome == WorkflowStopOutcome.NOT_FOUND:
+            raise RunNotFound()
+        if outcome == WorkflowStopOutcome.NOT_STOPPABLE:
+            raise RunNotStoppable()
+        return TaskStopResponse(result="success")
+
+
+@openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>:stop")
+class AppTaskStopApi(Resource):
+    @endpoint(
+        op="stop.task",
+        kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
+        summary=(
+            "Stop a streaming reply of a chat, agent-chat or completion app; "
+            "`task_id` is the stream's task_id. An unknown task id is accepted"
+        ),
+        examples=(Example(title="Stop a streaming reply", input={"app_id": "<app_id>", "task_id": "<task_id>"}),),
         requirements=_RUN_GUARDS,
         returns=(200, TaskStopResponse, "Task stopped"),
     )
     def post(self, ctx: Context, app_id: str, task_id: str):
-        if isinstance(ctx.subject, ResourceAccessSubject):
-            owner = redis_client.get(AppQueueManager._generate_task_belong_cache_key(task_id))
-            if owner != f"end-user-{ctx.end_user.id}".encode():
-                raise NotFound("Task not found")
-        AppQueueManager.set_stop_flag_no_user_check(task_id)
-        GraphEngineManager(redis_client).send_stop_command(task_id)
+        _require_mode(ctx.app, *MESSAGE_MODES)
+        if not application_services().app_tasks.stop_message_task(
+            task_id=task_id, caller_role=ctx.subject.caller_role, caller_id=ctx.caller.id
+        ):
+            raise NotFound("Task not found")
         return TaskStopResponse(result="success")

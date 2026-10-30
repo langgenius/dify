@@ -10,22 +10,138 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
-from core.workflow.nodes.human_input.enums import FormInputType
+from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities.pause_reason import HitlRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import Message
-from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.api_workflow_run_repository import AppWorkflowRunStats
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
     WorkflowRunMessageRef,
+    WorkflowRunNotPausedError,
     WorkflowRunPauseRecord,
+    WorkflowTaskOwnerMismatchError,
     _build_human_input_required_reason,
-    _PrivateWorkflowPauseEntity,
 )
+
+
+@pytest.fixture
+def workflow_run(sqlite_session_factory: sessionmaker[Session]) -> WorkflowRun:
+    run = WorkflowRun(
+        id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        app_id=str(uuid4()),
+        workflow_id=str(uuid4()),
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="draft",
+        graph="{}",
+        inputs="{}",
+        status=WorkflowExecutionStatus.PAUSED,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=str(uuid4()),
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add(run)
+    return run
+
+
+@pytest.mark.parametrize("owner_scope", ["matching", "other_tenant", "other_app", "missing_run"])
+def test_locked_workflow_run_read_requires_complete_owner_scope(
+    sqlite_session_factory: sessionmaker[Session], workflow_run: WorkflowRun, owner_scope: str
+) -> None:
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        run = repository.get_workflow_run_by_id_for_update(
+            session,
+            tenant_id=str(uuid4()) if owner_scope == "other_tenant" else workflow_run.tenant_id,
+            app_id=str(uuid4()) if owner_scope == "other_app" else workflow_run.app_id,
+            run_id=str(uuid4()) if owner_scope == "missing_run" else workflow_run.id,
+        )
+        if owner_scope != "matching":
+            assert run is None
+            return
+        assert run is not None
+        assert run.id == workflow_run.id
+        assert run.status == WorkflowExecutionStatus.PAUSED
+
+
+def test_locked_workflow_run_changes_follow_the_callers_rollback(
+    sqlite_session_factory: sessionmaker[Session], workflow_run: WorkflowRun
+) -> None:
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
+    with sqlite_session_factory() as session:
+        session.begin()
+        run = repository.get_workflow_run_by_id_for_update(
+            session,
+            tenant_id=workflow_run.tenant_id,
+            app_id=workflow_run.app_id,
+            run_id=workflow_run.id,
+        )
+        assert run is not None
+        run.status = WorkflowExecutionStatus.STOPPED
+        session.flush()
+        session.rollback()
+
+    with sqlite_session_factory() as session:
+        persisted_run = session.get(WorkflowRun, workflow_run.id)
+        assert persisted_run is not None
+        assert persisted_run.status == WorkflowExecutionStatus.PAUSED
+
+
+@pytest.mark.parametrize(
+    ("pause_state", "owner_scope", "expected"),
+    [
+        ("active", "matching", True),
+        ("resumed", "matching", False),
+        ("missing", "matching", False),
+        ("active", "other_tenant", False),
+        ("active", "other_app", False),
+        ("active", "missing_run", False),
+    ],
+)
+def test_active_workflow_pause_requires_unresumed_pause_in_complete_owner_scope(
+    sqlite_session_factory: sessionmaker[Session],
+    workflow_run: WorkflowRun,
+    pause_state: str,
+    owner_scope: str,
+    expected: bool,
+) -> None:
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
+    with sqlite_session_factory() as session:
+        if pause_state != "missing":
+            session.add(
+                WorkflowPause(
+                    workflow_id=workflow_run.workflow_id,
+                    workflow_run_id=workflow_run.id,
+                    state_object_key="checkpoint.json",
+                    resumed_at=datetime(2024, 1, 1) if pause_state == "resumed" else None,
+                )
+            )
+            session.flush()
+        assert (
+            repository.has_active_workflow_pause(
+                session,
+                tenant_id=str(uuid4()) if owner_scope == "other_tenant" else workflow_run.tenant_id,
+                app_id=str(uuid4()) if owner_scope == "other_app" else workflow_run.app_id,
+                run_id=str(uuid4()) if owner_scope == "missing_run" else workflow_run.id,
+            )
+            is expected
+        )
+        session.rollback()
+
+    with sqlite_session_factory() as session:
+        assert not repository.has_active_workflow_pause(
+            session,
+            tenant_id=workflow_run.tenant_id,
+            app_id=workflow_run.app_id,
+            run_id=workflow_run.id,
+        )
 
 
 def _build_form_model() -> HumanInputForm:
@@ -90,8 +206,10 @@ def test_build_human_input_required_reason_prefers_standalone_web_app_token() ->
 
 
 def test_build_human_input_required_reason_falls_back_to_console_token() -> None:
+    reason_model = _build_reason_model()
+    reason_model.node_id = "workflow-tool-node"
     reason = _build_human_input_required_reason(
-        _build_reason_model(),
+        reason_model,
         _build_form_model(),
         [
             _recipient(RecipientType.BACKSTAGE, "btok"),
@@ -99,7 +217,7 @@ def test_build_human_input_required_reason_falls_back_to_console_token() -> None
         ],
     )
 
-    assert reason.node_id == "node-1"
+    assert reason.node_id == "workflow-tool-node"
     assert reason.actions[0].id == "approve"
     assert not hasattr(reason, "form_token")
 
@@ -138,33 +256,18 @@ def test_workflow_pause_reason_to_entity_restores_graphon_hitl_reason() -> None:
     assert reason.node_id == "node-1"
 
 
-def test_private_workflow_pause_entity_preserves_list_shaped_pause_reasons() -> None:
-    pause_reasons = [
+@pytest.mark.parametrize(
+    "reason",
+    [
+        HitlRequired(session_id="hitlv2:form-2", node_id="node-2", node_title="Approval"),
         HumanInputRequired(
-            form_id="form-1",
-            form_content="content",
-            inputs=[],
-            actions=[],
-            node_id="node-1",
-            node_title="Ask Name",
-        )
-    ]
-    pause_model = WorkflowPause(
-        workflow_id="workflow-1",
-        workflow_run_id="run-1",
-        state_object_key="pause-state",
-    )
-    pause_model.id = "pause-1"
-    entity = _PrivateWorkflowPauseEntity(
-        pause_model=pause_model,
-        reason_models=[],
-        pause_reasons=pause_reasons,
-    )
-
-    result = entity.get_pause_reasons()
-
-    assert isinstance(result, list)
-    assert result == pause_reasons
+            form_version="2", form_id="form-2", form_content="Approve", node_id="node-2", node_title="Approval"
+        ),
+    ],
+)
+def test_legacy_pause_reason_rejects_v2_references(reason) -> None:
+    with pytest.raises(ValueError, match="only accepts HITL v1"):
+        WorkflowPauseReason.from_entity(pause_id="pause-2", pause_reason=reason)
 
 
 def _message(*, message_id: str, app_id: str, workflow_run_id: str, conversation_id: str) -> Message:
@@ -191,7 +294,7 @@ def _workflow_run(*, run_id: str, tenant_id: str, status: WorkflowExecutionStatu
         tenant_id=tenant_id,
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.WORKFLOW,
+        type=ModelWorkflowType(WorkflowType.WORKFLOW),
         triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         version="1",
         graph="{}",
@@ -239,21 +342,21 @@ def test_get_pause_record_scopes_the_workflow_run_to_the_workspace(
     sqlite_session.commit()
     repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
 
-    assert repository.get_pause_record(workspace_id="tenant-2", workflow_run_id="run-1") is None
+    assert repository.get_pause_record(sqlite_session, workspace_id="tenant-2", workflow_run_id="run-1") is None
     assert repository.get_pause_record(
+        sqlite_session,
         workspace_id="tenant-1",
         workflow_run_id="run-1",
     ) == WorkflowRunPauseRecord(
         status=WorkflowExecutionStatus.SUCCEEDED,
-        paused_at=None,
-        reasons=(),
-        form_tokens={},
+        pause=None,
     )
 
 
-def test_get_pause_record_loads_reasons_and_tokens_in_one_repository_call(
+def test_get_pause_record_returns_run_bound_checkpoint(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     workflow_run = _workflow_run(
         run_id="run-1",
@@ -266,32 +369,20 @@ def test_get_pause_record_loads_reasons_and_tokens_in_one_repository_call(
         state_object_key="pause-state",
     )
     pause.id = "pause-1"
-    reason = WorkflowPauseReason(
-        pause_id=pause.id,
-        type_=PauseReasonType.HITL_REQUIRED,
-        form_id="form-1",
-        node_id="node-1",
-    )
-    recipient = HumanInputFormRecipient(
-        form_id="form-1",
-        delivery_id="delivery-1",
-        recipient_type=RecipientType.CONSOLE,
-        recipient_payload="{}",
-        access_token="form-token",
-    )
-    sqlite_session.add_all([workflow_run, pause, reason, recipient])
+    sqlite_session.add_all([workflow_run, pause])
     sqlite_session.commit()
     repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=sqlite_session_factory)
 
-    result = repository.get_pause_record(workspace_id="tenant-1", workflow_run_id="run-1")
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", lambda _key: b"checkpoint")
+    result = repository.get_pause_record(sqlite_session, workspace_id="tenant-1", workflow_run_id="run-1")
 
     assert result is not None
     assert result.status == WorkflowExecutionStatus.PAUSED
-    assert result.paused_at == pause.created_at
-    assert len(result.reasons) == 1
-    assert isinstance(result.reasons[0], HumanInputRequired)
-    assert result.reasons[0].form_id == "form-1"
-    assert result.form_tokens == {"form-1": "form-token"}
+    assert result.pause is not None
+    assert result.pause.id == pause.id
+    assert result.pause.workflow_execution_id == workflow_run.id
+    assert result.pause.paused_at == pause.created_at
+    assert result.pause.get_state() == b"checkpoint"
 
 
 def test_delete_pause_model_deletes_record_when_state_object_delete_fails(
@@ -392,3 +483,103 @@ def test_app_run_stats_scope_runs_by_app_tenant_source_and_window(
         "a-2": AppWorkflowRunStats(status_counts={}, last_created_at=datetime(2026, 1, 1)),
     }
     assert repository.get_stats_by_app_ids({}, sources, since) == {}
+
+
+@pytest.mark.parametrize(
+    ("tenant_id", "app_id", "owner", "stopped"),
+    [
+        ("tenant-1", "app-1", None, True),
+        ("tenant-1", "app-1", (CreatorUserRole.ACCOUNT, "account-1"), True),
+        ("tenant-2", "app-1", None, False),
+        ("tenant-1", "app-2", None, False),
+    ],
+)
+def test_stop_paused_task_is_scoped_and_invalidates_pause_and_forms(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    tenant_id: str,
+    app_id: str,
+    owner: tuple[CreatorUserRole, str] | None,
+    stopped: bool,
+) -> None:
+    run = _workflow_run(run_id="run-1", tenant_id="tenant-1", status=WorkflowExecutionStatus.PAUSED)
+    run.task_id = "task-1"
+    pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="state")
+    form = _build_form_model()
+    message = _message(message_id="message-1", app_id="app-1", workflow_run_id=run.id, conversation_id="conv-1")
+    foreign_message = _message(message_id="message-2", app_id="app-2", workflow_run_id=run.id, conversation_id="conv-2")
+    message.status = foreign_message.status = MessageStatus.PAUSED
+    sqlite_session.add_all([run, pause, form, message, foreign_message])
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
+    prior_pause = repository.get_workflow_pause(run.id)
+    assert prior_pause is not None
+    with patch("repositories.sqlalchemy_api_workflow_run_repository.storage.delete") as delete_state:
+        result = repository.stop_paused_workflow_task(tenant_id=tenant_id, app_id=app_id, task_id="task-1", owner=owner)
+    sqlite_session.expire_all()
+    assert (result is not None) is stopped
+    if stopped:
+        assert run.status == WorkflowExecutionStatus.STOPPED
+        assert run.finished_at is not None
+        assert form.status == HumanInputFormStatus.EXPIRED
+        assert message.status == MessageStatus.NORMAL
+        assert repository.get_workflow_pause(run.id) is None
+        delete_state.assert_called_once_with("state")
+        cancellation_resets: list[None] = []
+        with pytest.raises(WorkflowRunNotPausedError):
+            repository.resume_workflow_pause(
+                run.id, prior_pause, before_resume=lambda: cancellation_resets.append(None)
+            )
+        assert cancellation_resets == []
+        retried = repository.stop_paused_workflow_task(
+            tenant_id=tenant_id, app_id=app_id, task_id="task-1", owner=owner
+        )
+        assert retried is not None
+        assert retried.status == WorkflowExecutionStatus.STOPPED
+    else:
+        assert run.status == WorkflowExecutionStatus.PAUSED
+        assert form.status == HumanInputFormStatus.WAITING
+        assert message.status == MessageStatus.PAUSED
+        delete_state.assert_not_called()
+    assert foreign_message.status == MessageStatus.PAUSED
+
+
+@pytest.mark.parametrize("owner", [(CreatorUserRole.ACCOUNT, "other-user"), (CreatorUserRole.END_USER, "account-1")])
+def test_paused_task_cannot_be_stopped_by_another_user_or_role(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    owner: tuple[CreatorUserRole, str],
+) -> None:
+    run = _workflow_run(run_id="run-1", tenant_id="tenant-1", status=WorkflowExecutionStatus.PAUSED)
+    run.task_id = "task-1"
+    pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="state")
+    sqlite_session.add_all([run, pause])
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
+    with pytest.raises(WorkflowTaskOwnerMismatchError):
+        repository.stop_paused_workflow_task(tenant_id="tenant-1", app_id="app-1", task_id="task-1", owner=owner)
+    sqlite_session.expire_all()
+    assert run.status == WorkflowExecutionStatus.PAUSED
+
+
+def test_stop_after_resume_leaves_running_task_to_the_engine(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    run = _workflow_run(run_id="run-1", tenant_id="tenant-1", status=WorkflowExecutionStatus.PAUSED)
+    run.task_id = "task-1"
+    pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="state")
+    sqlite_session.add_all([run, pause])
+    sqlite_session.commit()
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
+    entity = repository.get_workflow_pause(run.id)
+    assert entity is not None
+    cancellation_resets: list[None] = []
+    repository.resume_workflow_pause(run.id, entity, before_resume=lambda: cancellation_resets.append(None))
+    with pytest.raises(WorkflowRunNotPausedError):
+        repository.resume_workflow_pause(run.id, entity, before_resume=lambda: cancellation_resets.append(None))
+    assert cancellation_resets == [None]
+    admitted = repository.stop_paused_workflow_task(tenant_id="tenant-1", app_id="app-1", task_id="task-1", owner=None)
+    assert admitted is not None
+    assert admitted.status == WorkflowExecutionStatus.RUNNING
+    sqlite_session.expire_all()
+    assert run.status == WorkflowExecutionStatus.RUNNING

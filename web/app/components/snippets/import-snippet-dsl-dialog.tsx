@@ -16,10 +16,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
@@ -240,7 +240,9 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
         <DialogContent className="w-120">
           <DialogHeader>
             <DialogTitle>{t(($) => $.importDialogTitle, { ns: 'snippet' })}</DialogTitle>
-            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
           </DialogHeader>
           <Tabs className="contents" value={currentTab} onValueChange={handleTabChange}>
             <TabsList

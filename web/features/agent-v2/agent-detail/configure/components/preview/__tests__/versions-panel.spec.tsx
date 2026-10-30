@@ -317,6 +317,7 @@ describe('AgentPreviewVersionsPanel', () => {
 
   describe('Version selection', () => {
     it('should notify the selected version when a version row is clicked', async () => {
+      const user = userEvent.setup()
       const handleSelectVersion = vi.fn()
 
       render(
@@ -329,12 +330,13 @@ describe('AgentPreviewVersionsPanel', () => {
         { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
       )
 
-      await userEvent.setup().click(screen.getByRole('button', { name: /^Initial release/i }))
+      await user.click(screen.getByRole('button', { name: /^Initial release/i }))
 
       expect(handleSelectVersion).toHaveBeenCalledWith('version-0')
     })
 
     it('should notify null when the current draft row is clicked', async () => {
+      const user = userEvent.setup()
       const handleSelectVersion = vi.fn()
 
       render(
@@ -347,7 +349,7 @@ describe('AgentPreviewVersionsPanel', () => {
         { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
       )
 
-      await userEvent.setup().click(screen.getByRole('button', { name: /currentDraft/i }))
+      await user.click(screen.getByRole('button', { name: /currentDraft/i }))
 
       expect(handleSelectVersion).toHaveBeenCalledWith(null)
     })
@@ -355,6 +357,7 @@ describe('AgentPreviewVersionsPanel', () => {
 
   describe('Version filter', () => {
     it('should only show current user versions when only yours is selected', async () => {
+      const user = userEvent.setup()
       render(
         <AgentPreviewVersionsPanel
           agentId="agent-1"
@@ -365,8 +368,8 @@ describe('AgentPreviewVersionsPanel', () => {
         { accountProfile: { id: 'user-1', name: 'Alice', email: 'alice@example.com' } },
       )
 
-      await userEvent.setup().click(screen.getByRole('button', { name: /filter/i }))
-      await userEvent.setup().click(screen.getByRole('button', { name: /onlyYours/i }))
+      await user.click(screen.getByRole('button', { name: /filter/i }))
+      await user.click(screen.getByRole('button', { name: /onlyYours/i }))
 
       expect(screen.getByRole('button', { name: /all/i })).toHaveAttribute('aria-pressed', 'false')
       expect(screen.getByRole('button', { name: /onlyYours/i })).toHaveAttribute(

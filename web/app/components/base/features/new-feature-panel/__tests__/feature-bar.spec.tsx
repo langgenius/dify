@@ -61,6 +61,7 @@ describe('FeatureBar', () => {
     })
 
     it('should call onFeatureBarClick when manage button is clicked', async () => {
+      const user = userEvent.setup()
       const onFeatureBarClick = vi.fn()
 
       renderWithProvider(
@@ -69,7 +70,7 @@ describe('FeatureBar', () => {
           moreLikeThis: { enabled: true },
         },
       )
-      await userEvent.click(screen.getByRole('button', { name: /feature\.bar\.manage/ }))
+      await user.click(screen.getByRole('button', { name: /feature\.bar\.manage/ }))
 
       expect(onFeatureBarClick).toHaveBeenCalledWith(true)
     })
@@ -125,13 +126,14 @@ describe('FeatureBar', () => {
 it.each([false, true])(
   'prevents opening feature management while disabled (enabled features: %s)',
   async (enabled) => {
+    const user = userEvent.setup()
     const onFeatureBarClick = vi.fn()
     renderWithProvider({ disabled: true, onFeatureBarClick }, { moreLikeThis: { enabled } })
     const action = screen.getByRole('button', {
       name: enabled ? /feature\.bar\.manage/ : /feature\.bar\.empty/,
     })
     expect(action).toBeDisabled()
-    await userEvent.click(action)
+    await user.click(action)
     expect(onFeatureBarClick).not.toHaveBeenCalled()
   },
 )

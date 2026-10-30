@@ -15,7 +15,7 @@ from core.agent.plugin_entities import AgentStrategyParameter
 from core.plugin.entities.plugin_daemon import PluginAgentProviderEntity
 from core.plugin.impl.exc import PluginNotFoundError
 from models.account import Account
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 
 
 def _account() -> Account:

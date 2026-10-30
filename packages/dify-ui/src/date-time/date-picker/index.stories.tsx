@@ -4,6 +4,8 @@ import * as React from 'react'
 import { expect, waitFor, within } from 'storybook/test'
 import { Button } from '../../button'
 import { DirectionProvider } from '../../direction-provider'
+import { Field, FieldDescription, FieldError } from '../../field'
+import { Form } from '../../form'
 import {
   DateTimePicker,
   DateTimePickerContent,
@@ -140,7 +142,7 @@ export const NativeForm: Story = {
   play: async ({ canvasElement, userEvent }) => {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
-    const trigger = canvas.getByRole('button', { name: 'Start date (required)' })
+    const trigger = canvas.getByRole('button', { name: 'Start date (required) Select date' })
     await userEvent.click(canvas.getByRole('button', { name: 'Save' }))
     await expect(canvas.queryByRole('status', { name: 'Submitted values' })).not.toBeInTheDocument()
     await expect(trigger).toHaveFocus()
@@ -149,7 +151,7 @@ export const NativeForm: Story = {
       /Choose a calendar date; no time zone is stored.*Choose a start date/,
     )
     for (const [label, name] of [
-      ['Start date (required)', 'Start date (required)'],
+      ['Start date (required)', 'Start date (required) Select date'],
       ['Start time', /^Start time\b/],
       ['Reminder (UTC)', /^Reminder \(UTC\)/],
     ] as const) {
@@ -177,7 +179,7 @@ export const NativeForm: Story = {
       reminder: '2025-01-15T13:30:00.000Z',
     })
     await userEvent.click(canvas.getByRole('button', { name: 'Reset' }))
-    await waitFor(() => expect(trigger).toHaveAccessibleName('Start date (required)'))
+    await waitFor(() => expect(trigger).toHaveAccessibleName('Start date (required) Select date'))
     await expect(trigger).not.toHaveAttribute('aria-invalid', 'true')
     await expect(canvas.queryByRole('status', { name: 'Submitted values' })).not.toBeInTheDocument()
   },
@@ -230,7 +232,7 @@ export const RTL: Story = {
     docs: {
       description: {
         story:
-          'DirectionProvider supplies interaction direction; dir sets the surrounding HTML direction. The picker carries direction into its portaled popup. Calendar dates use the Arabic locale; action labels retain the English defaults.',
+          'DirectionProvider supplies interaction direction; dir sets the surrounding HTML direction. For a local RTL region, set dir on the wrapper and on the portaled content; global direction is inherited from <html dir>. Calendar dates use the Arabic locale; action labels retain the English defaults.',
       },
     },
   },
@@ -240,7 +242,7 @@ export const RTL: Story = {
         <DatePicker locale={arTN} defaultValue="2025-01-15">
           <DatePickerLabel className="sr-only">Start date</DatePickerLabel>
           <DatePickerTrigger />
-          <DatePickerContent />
+          <DatePickerContent dir="rtl" />
         </DatePicker>
       </DirectionProvider>
     </div>
@@ -249,15 +251,14 @@ export const RTL: Story = {
     const body = within(canvasElement.ownerDocument.body)
     const trigger = within(canvasElement).getByRole('button', { name: /^Start date / })
     await userEvent.click(trigger)
-    const dialog = await body.findByRole('dialog', { name: 'Start date' })
-    await expect(dialog).toHaveAttribute('dir', 'rtl')
+    await body.findByRole('dialog', { name: 'Start date' })
     await waitFor(() =>
-      expect(body.getByRole('button', { name: /^الأربعاء، 15 جانفي 2025/ })).toHaveFocus(),
+      expect(body.getByRole('button', { name: /^15: الأربعاء، 15 جانفي 2025/ })).toHaveFocus(),
     )
     await userEvent.keyboard('{ArrowLeft}')
-    await expect(body.getByRole('button', { name: 'الخميس، 16 جانفي 2025' })).toHaveFocus()
+    await expect(body.getByRole('button', { name: '16: الخميس، 16 جانفي 2025' })).toHaveFocus()
     await userEvent.keyboard('{ArrowRight}')
-    await expect(body.getByRole('button', { name: /^الأربعاء، 15 جانفي 2025/ })).toHaveFocus()
+    await expect(body.getByRole('button', { name: /^15: الأربعاء، 15 جانفي 2025/ })).toHaveFocus()
     const heading = body.getByRole('button', { name: /Choose month and year:/ })
     await userEvent.click(heading)
     const months = await body.findByRole('listbox', { name: 'Month' })
@@ -275,5 +276,109 @@ export const RTL: Story = {
     await waitFor(() => expect(body.getByRole('grid')).toBeVisible())
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(trigger).toHaveFocus())
+  },
+}
+
+function FieldFormExample() {
+  const [submitted, setSubmitted] = React.useState('')
+  const [lastChange, setLastChange] = React.useState('No committed changes')
+  return (
+    <Form
+      className="grid w-80 gap-4"
+      onFormSubmit={(values) => setSubmitted(JSON.stringify(values))}
+      onReset={() => setSubmitted('')}
+    >
+      <Field name="departureDate">
+        <DatePicker
+          required
+          minDate="2025-01-01"
+          maxDate="2025-01-31"
+          onValueChange={(_value, details) => setLastChange(`Date: ${details.reason}`)}
+        >
+          <DatePickerLabel>Departure date</DatePickerLabel>
+          <div className="flex items-center gap-1">
+            <DatePickerTrigger />
+            <DatePickerClear aria-label="Clear departure date" />
+          </div>
+          <DatePickerContent />
+        </DatePicker>
+        <FieldDescription>Choose a date in January 2025.</FieldDescription>
+        <FieldError match="valueMissing">Choose a departure date.</FieldError>
+      </Field>
+      <Field name="departureTime">
+        <TimePicker
+          defaultValue="13:30"
+          onValueChange={(_value, details) => setLastChange(`Time: ${details.reason}`)}
+        >
+          <TimePickerLabel>Departure time</TimePickerLabel>
+          <TimePickerTrigger />
+          <TimePickerContent />
+        </TimePicker>
+        <FieldDescription>Changes are committed with OK.</FieldDescription>
+        <FieldError />
+      </Field>
+      <Field name="meetingInstant">
+        <DateTimePicker
+          timeZone="America/New_York"
+          defaultValue={new Date('2025-01-15T18:30:00Z')}
+          onValueChange={(_value, details) => setLastChange(`Meeting: ${details.reason}`)}
+        >
+          <DateTimePickerLabel>Meeting in New York</DateTimePickerLabel>
+          <DateTimePickerTrigger />
+          <DateTimePickerContent />
+        </DateTimePicker>
+        <FieldDescription>Submitted as a UTC instant.</FieldDescription>
+        <FieldError />
+      </Field>
+      <div className="flex gap-2">
+        <Button type="submit" variant="primary">
+          Submit booking
+        </Button>
+        <Button type="reset" variant="secondary">
+          Reset booking
+        </Button>
+      </div>
+      <output aria-label="Last change" className="system-xs-regular text-text-secondary">
+        {lastChange}
+      </output>
+      <output
+        aria-label="Submitted values"
+        className="system-xs-regular break-all text-text-secondary"
+      >
+        {submitted}
+      </output>
+    </Form>
+  )
+}
+
+export const FieldAndForm: Story = {
+  render: () => <FieldFormExample />,
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement)
+    const page = within(canvasElement.ownerDocument.body)
+    await userEvent.click(canvas.getByRole('button', { name: 'Submit booking' }))
+    await expect(canvas.getByText('Choose a departure date.')).toBeVisible()
+    const trigger = canvas.getByRole('button', { name: 'Departure date Select date' })
+    await expect(trigger).toHaveFocus()
+    await userEvent.click(trigger)
+    await userEvent.click(
+      await page.findByRole('button', { name: '15: Wednesday, January 15th, 2025' }),
+    )
+    await expect(canvas.getByLabelText('Last change')).toHaveTextContent('Date: item-press')
+    await userEvent.click(canvas.getByRole('button', { name: 'Departure time 1:30 PM' }))
+    await userEvent.click(
+      within(page.getByRole('listbox', { name: 'Hour' })).getByRole('option', {
+        name: '2',
+      }),
+    )
+    await userEvent.click(page.getByRole('button', { name: 'OK' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Submit booking' }))
+    await expect(canvas.getByLabelText('Submitted values')).toHaveTextContent(
+      '{"departureDate":"2025-01-15","departureTime":"14:30","meetingInstant":"2025-01-15T18:30:00.000Z"}',
+    )
+    await userEvent.click(canvas.getByRole('button', { name: 'Reset booking' }))
+    await expect(canvas.getByRole('button', { name: 'Departure date Select date' })).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Departure time 1:30 PM' })).toBeVisible()
+    await expect(canvas.queryByText('Choose a departure date.')).not.toBeInTheDocument()
   },
 }

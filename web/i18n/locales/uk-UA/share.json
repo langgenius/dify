@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Якщо потрібна допомога, зверніться до адміністратора застосунку.",
+  "appNotAccessible.documentTitle": "Застосунок недоступний · Dify",
+  "appNotAccessible.ipAddress": "Ваша IP-адреса — <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Цей застосунок не існує або недоступний із вашої мережі.",
   "chat.chatFormTip": "Налаштування чату не можуть бути змінені після початку чату.",
   "chat.chatSettingsTitle": "Нове налаштування чату",
   "chat.collapse": "Згорнути",
@@ -45,6 +49,7 @@
   "generation.tabs.saved": "Збережено",
   "generation.title": "Доповнення AI",
   "humanInput.completed": "Схоже, цей запит було оброблено в іншому місці.",
+  "humanInput.currentAccount": "Поточний обліковий запис: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "Ця дія закінчиться {{relativeTime}}.",
   "humanInput.expired": "Схоже, термін дії цього запиту закінчився.",
   "humanInput.expiredTip": "Термін дії цієї дії закінчився.",
@@ -53,6 +58,9 @@
   "humanInput.recorded": "Ваш ввід було записано.",
   "humanInput.sorry": "Вибачте!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "Змінити обліковий запис",
   "humanInput.thanks": "Дякуємо!",
+  "humanInput.unavailableDescription": "Можливо, посилання недоступне або не відповідає обліковому запису, у який ви ввійшли. Відкрийте форму з отриманого сповіщення або спробуйте змінити обліковий запис.",
+  "humanInput.unavailableTitle": "Не вдалося відкрити цю форму",
   "login.backToHome": "Повернутися на головну"
 }

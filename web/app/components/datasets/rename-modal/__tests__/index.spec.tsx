@@ -105,10 +105,10 @@ describe('RenameDatasetModal', () => {
     })
 
   const defaultProps = {
-    show: true,
+    open: true,
     dataset: createMockDataset(),
     onSuccess: vi.fn(),
-    onClose: vi.fn(),
+    onOpenChange: vi.fn(),
   }
 
   beforeEach(() => {
@@ -116,37 +116,32 @@ describe('RenameDatasetModal', () => {
     mockUpdateDatasetSetting.mockResolvedValue(createMockDataset())
   })
 
-  describe('Rendering', () => {
-    it('should render a named dialog when show is true', () => {
-      render(<RenameDatasetModal {...defaultProps} show={true} />)
-      expect(screen.getByRole('dialog', { name: 'datasetSettings.title' })).toBeInTheDocument()
-    })
-  })
-
   describe('User Interactions', () => {
-    it('should call onClose when cancel button is clicked', async () => {
-      const handleClose = vi.fn()
-      render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
-
-      const cancelButton = screen.getByText('common.operation.cancel')
-      await userEvent.setup().click(cancelButton)
-
-      expect(handleClose).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onClose when close icon is clicked', async () => {
-      const handleClose = vi.fn()
-      render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
-
-      await userEvent.setup().click(screen.getByRole('button', { name: /operation\.close$/ }))
-
-      expect(handleClose).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onClose when Escape is pressed', async () => {
+    it('should call onOpenChange when cancel button is clicked', async () => {
       const user = userEvent.setup()
       const handleClose = vi.fn()
-      render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
+      render(<RenameDatasetModal {...defaultProps} onOpenChange={handleClose} />)
+
+      const cancelButton = screen.getByText('common.operation.cancel')
+      await user.click(cancelButton)
+
+      expect(handleClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should call onOpenChange when close icon is clicked', async () => {
+      const user = userEvent.setup()
+      const handleClose = vi.fn()
+      render(<RenameDatasetModal {...defaultProps} onOpenChange={handleClose} />)
+
+      await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
+
+      expect(handleClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should call onOpenChange when Escape is pressed', async () => {
+      const user = userEvent.setup()
+      const handleClose = vi.fn()
+      render(<RenameDatasetModal {...defaultProps} onOpenChange={handleClose} />)
 
       await user.keyboard('{Escape}')
 
@@ -185,7 +180,7 @@ describe('RenameDatasetModal', () => {
 
       const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        await userEvent.setup().click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
@@ -204,16 +199,17 @@ describe('RenameDatasetModal', () => {
         })
       })
       expect(defaultProps.onSuccess).toHaveBeenCalledOnce()
-      expect(defaultProps.onClose).toHaveBeenCalledOnce()
+      expect(defaultProps.onOpenChange).toHaveBeenCalledOnce()
     })
 
     it('should include external knowledge IDs when present', async () => {
+      const user = userEvent.setup()
       const dataset = createMockExternalDataset()
       render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
 
       const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        await userEvent.setup().click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
@@ -228,12 +224,13 @@ describe('RenameDatasetModal', () => {
     })
 
     it('should handle image icon correctly in API call', async () => {
+      const user = userEvent.setup()
       const dataset = createMockDatasetWithImageIcon()
       render(<RenameDatasetModal {...defaultProps} dataset={dataset} />)
 
       const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        await userEvent.setup().click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
@@ -254,6 +251,7 @@ describe('RenameDatasetModal', () => {
 
   describe('Error Handling', () => {
     it('should show error toast when name is empty', async () => {
+      const user = userEvent.setup()
       render(<RenameDatasetModal {...defaultProps} />)
 
       const nameInput = screen.getByDisplayValue('Test Dataset')
@@ -261,7 +259,7 @@ describe('RenameDatasetModal', () => {
 
       const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        await userEvent.setup().click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
@@ -271,6 +269,7 @@ describe('RenameDatasetModal', () => {
     })
 
     it('should show error toast when name is only whitespace', async () => {
+      const user = userEvent.setup()
       render(<RenameDatasetModal {...defaultProps} />)
 
       const nameInput = screen.getByDisplayValue('Test Dataset')
@@ -278,7 +277,7 @@ describe('RenameDatasetModal', () => {
 
       const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        await userEvent.setup().click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
@@ -288,22 +287,23 @@ describe('RenameDatasetModal', () => {
     })
 
     it('should show error toast when API call fails', async () => {
+      const user = userEvent.setup()
       mockUpdateDatasetSetting.mockRejectedValueOnce(new Error('API Error'))
 
       render(<RenameDatasetModal {...defaultProps} />)
 
       const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        await userEvent.setup().click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
         expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
       })
-      expect(defaultProps.onClose).not.toHaveBeenCalled()
+      expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
       expect(defaultProps.onSuccess).not.toHaveBeenCalled()
       expect(screen.getByRole('dialog', { name: 'datasetSettings.title' })).toBeInTheDocument()
-      await userEvent.setup().click(saveButton)
+      await user.click(saveButton)
       await waitFor(() => expect(mockUpdateDatasetSetting).toHaveBeenCalledTimes(2))
       expect(defaultProps.onSuccess).toHaveBeenCalledOnce()
     })
@@ -332,7 +332,7 @@ describe('RenameDatasetModal', () => {
       // Save and verify new icon is used
       const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        await userEvent.setup().click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
@@ -351,15 +351,15 @@ describe('RenameDatasetModal', () => {
     })
 
     it('should restore previous icon when picker is closed (handleCloseAppIconPicker)', async () => {
+      const user = userEvent.setup()
       render(<RenameDatasetModal {...defaultProps} />)
 
       // Open picker
       const appIcon = screen.getByRole('button', { name: /form.nameAndIcon/ })
       await act(async () => {
-        await userEvent.setup().click(appIcon)
+        await user.click(appIcon)
       })
 
-      const user = userEvent.setup()
       await waitFor(() => {
         expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
@@ -372,7 +372,7 @@ describe('RenameDatasetModal', () => {
       // Save and verify original icon is preserved
       const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        await userEvent.setup().click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
@@ -393,6 +393,7 @@ describe('RenameDatasetModal', () => {
 
   describe('Edge Cases', () => {
     it('should handle image icon with empty icon_url', async () => {
+      const user = userEvent.setup()
       // Test the || '' fallback for icon_url in image icon
       const dataset = createMockDataset({
         icon_info: {
@@ -409,7 +410,7 @@ describe('RenameDatasetModal', () => {
       // Save and verify the icon_url is handled correctly
       const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await act(async () => {
-        await userEvent.setup().click(saveButton)
+        await user.click(saveButton)
       })
 
       await waitFor(() => {
@@ -427,6 +428,7 @@ describe('RenameDatasetModal', () => {
     })
 
     it('should handle double click on save button', async () => {
+      const user = userEvent.setup()
       // Use a promise we can control to ensure the first click is still "loading"
       let resolvePromise: (value: DatasetDetailWithPartialMembersResponse) => void
       mockUpdateDatasetSetting.mockImplementationOnce(
@@ -442,7 +444,7 @@ describe('RenameDatasetModal', () => {
 
       // First click
       await act(async () => {
-        await userEvent.setup().click(saveButton)
+        await user.click(saveButton)
       })
 
       // Button should be disabled now
@@ -451,7 +453,7 @@ describe('RenameDatasetModal', () => {
 
       // Second click should not trigger another API call because button is disabled
       await act(async () => {
-        await userEvent.setup().click(saveButton)
+        await user.click(saveButton)
       })
 
       // Only one API call should have been made
@@ -461,19 +463,6 @@ describe('RenameDatasetModal', () => {
       await act(async () => {
         resolvePromise!(createMockDataset())
       })
-    })
-  })
-
-  describe('Component Re-rendering', () => {
-    it('should handle show prop toggle', () => {
-      const { rerender } = render(<RenameDatasetModal {...defaultProps} show={true} />)
-
-      expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
-
-      rerender(<RenameDatasetModal {...defaultProps} show={false} />)
-
-      // Modal visibility is controlled by Modal component's isShow prop
-      // The modal content may still be in DOM but hidden
     })
   })
 })

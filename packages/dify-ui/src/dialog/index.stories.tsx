@@ -8,11 +8,11 @@ import {
   DialogBackdrop,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogPopup,
   DialogPortal,
   DialogTitle,
@@ -45,7 +45,7 @@ const meta = {
         component: [
           'Compound modal dialog built on Base UI Dialog. Use it for focused flows that interrupt the user, such as editing settings, collecting short-form input, or inspecting a record. `DialogContent` is the centered modal surface: compose `DialogHeader`, `DialogBody` and `DialogFooter` in it and the parts own the spacing, so a call site only arranges its content. `DialogBody` scrolls between the header and footer when the surface reaches the viewport.',
           '',
-          'Open state is uncontrolled by default; pass `open` and `onOpenChange` to close after an async action or to veto a close through `eventDetails.cancel()`. `DialogCloseButton` is the optional header close icon; `DialogClose` stays unstyled and composes a visible action such as Cancel. `DialogPopup` is the bare dialog element for a surface that places and dresses itself, composed with `DialogPortal`, `DialogBackdrop` and `DialogViewport`.',
+          'Open state is uncontrolled by default; pass `open` and `onOpenChange` to close after an async action or to veto a close through `eventDetails.cancel()`. `DialogHeaderCloseButton` belongs inside `DialogHeader`, which reserves space for the optional close icon; `DialogClose` stays unstyled and composes a visible action such as Cancel. `DialogPopup` is the bare dialog element for a surface that places and dresses itself, composed with `DialogPortal`, `DialogBackdrop` and `DialogViewport`.',
         ].join('\n'),
       },
     },
@@ -91,7 +91,7 @@ export const Default: Story = {
           <DialogDescription>
             Setup takes about a minute and prepares your default models, datasets and API keys.
           </DialogDescription>
-          <DialogCloseButton aria-label="Close dialog" />
+          <DialogHeaderCloseButton aria-label="Close dialog" />
         </DialogHeader>
         <DialogBody>
           <ol className="list-inside list-decimal space-y-1 system-sm-regular text-text-secondary">
@@ -130,12 +130,41 @@ type ApiExtensionFormValues = {
   endpoint: string
 }
 
+class ApiExtensionRequestError extends Error {
+  readonly code: string
+
+  constructor(code: string) {
+    super(code)
+    this.code = code
+  }
+}
+
+function saveApiExtension({ name, endpoint }: ApiExtensionFormValues) {
+  return new Promise<void>((resolve, reject) => {
+    setTimeout(() => {
+      if (name === 'Production API') reject(new ApiExtensionRequestError('name_taken'))
+      else if (endpoint.includes('unreachable')) reject(new ApiExtensionRequestError('unknown'))
+      else resolve()
+    }, 300)
+  })
+}
+
+// Stable so `Form` re-applies the error only when the code changes, not on every render.
+const NAME_TAKEN_ERRORS = { name: 'An extension with this name already exists.' }
+
 function FormDialogDemo() {
   const actionsRef = React.useRef<DialogActions>(null)
   const nameInputRef = React.useRef<HTMLInputElement>(null)
+  const [isPending, startTransition] = React.useTransition()
 
   return (
-    <Dialog actionsRef={actionsRef} disablePointerDismissal>
+    <Dialog
+      actionsRef={actionsRef}
+      disablePointerDismissal
+      onOpenChange={(open, details) => {
+        if (!open && isPending && details.reason !== 'imperative-action') details.cancel()
+      }}
+    >
       <DialogTrigger render={<Button />}>Add API extension</DialogTrigger>
       <DialogContent initialFocus={nameInputRef}>
         <DialogHeader>
@@ -143,34 +172,94 @@ function FormDialogDemo() {
           <DialogDescription>
             Save the endpoint this workspace calls for external data tools.
           </DialogDescription>
-          <DialogCloseButton aria-label="Close dialog" />
+          <DialogHeaderCloseButton aria-label="Close dialog" />
         </DialogHeader>
-        <Form<ApiExtensionFormValues>
-          className="contents"
-          onFormSubmit={() => actionsRef.current?.close()}
-        >
-          <DialogBody className="flex flex-col gap-4">
-            <Field name="name">
-              <FieldLabel>Name</FieldLabel>
-              <Input ref={nameInputRef} required placeholder="Production API" />
-              <FieldError match="valueMissing">Name is required.</FieldError>
-            </Field>
-            <Field name="endpoint">
-              <FieldLabel>Endpoint</FieldLabel>
-              <Input type="url" required placeholder="https://api.example.com" />
-              <FieldError match="valueMissing">Endpoint is required.</FieldError>
-              <FieldError match="typeMismatch">Enter a valid URL.</FieldError>
-            </Field>
-          </DialogBody>
-          <DialogFooter>
-            <DialogClose render={<Button />}>Cancel</DialogClose>
-            <Button type="submit" variant="primary">
-              Save
-            </Button>
-          </DialogFooter>
-        </Form>
+        <ApiExtensionForm
+          nameInputRef={nameInputRef}
+          isPending={isPending}
+          startTransition={startTransition}
+          onSaved={() => actionsRef.current?.close()}
+        />
       </DialogContent>
     </Dialog>
+  )
+}
+
+function ApiExtensionForm({
+  nameInputRef,
+  isPending,
+  startTransition,
+  onSaved,
+}: {
+  nameInputRef: React.RefObject<HTMLInputElement | null>
+  isPending: boolean
+  startTransition: React.TransitionStartFunction
+  onSaved: () => void
+}) {
+  const [errorCode, setErrorCode] = React.useState<string | null>(null)
+  const fieldErrors = errorCode === 'name_taken' ? NAME_TAKEN_ERRORS : undefined
+
+  const handleSubmit = (values: ApiExtensionFormValues) => {
+    setErrorCode(null)
+    startTransition(async () => {
+      try {
+        await saveApiExtension(values)
+        onSaved()
+      } catch (error) {
+        setErrorCode(error instanceof ApiExtensionRequestError ? error.code : 'unknown')
+      }
+    })
+  }
+
+  return (
+    <Form<ApiExtensionFormValues>
+      className="contents"
+      errors={fieldErrors}
+      onFormSubmit={handleSubmit}
+    >
+      <DialogBody className="flex flex-col gap-4">
+        <Field
+          name="name"
+          validate={(value) =>
+            typeof value === 'string' && value.trim() ? null : 'Name is required.'
+          }
+        >
+          <FieldLabel>Name</FieldLabel>
+          <Input
+            ref={nameInputRef}
+            aria-required
+            readOnly={isPending}
+            autoComplete="off"
+            placeholder="Production API"
+          />
+          <FieldError />
+        </Field>
+        <Field name="endpoint">
+          <FieldLabel>Endpoint</FieldLabel>
+          <Input
+            type="url"
+            required
+            readOnly={isPending}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="https://api.example.com"
+          />
+          <FieldError match="valueMissing">Endpoint is required.</FieldError>
+          <FieldError match="typeMismatch">Enter a valid URL.</FieldError>
+        </Field>
+        {errorCode && !fieldErrors && (
+          <p role="alert" className="body-xs-regular text-text-destructive">
+            Couldn’t save the extension. Try again.
+          </p>
+        )}
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose render={<Button />}>Cancel</DialogClose>
+        <Button type="submit" variant="primary" loading={isPending}>
+          Save
+        </Button>
+      </DialogFooter>
+    </Form>
   )
 }
 
@@ -179,32 +268,57 @@ export const FormDialog: Story = {
     docs: {
       description: {
         story:
-          '`initialFocus` lands on the first field, `disablePointerDismissal` keeps typed input safe from a stray outside click, and the confirming action is the form submit: Enter or the submit button runs `onFormSubmit`, which closes through `actionsRef`.',
+          '`initialFocus` lands on the first field and `disablePointerDismissal` keeps typed input safe from a stray outside click. Enter or the submit button runs `onFormSubmit`; while the save is pending the button shows `loading`, the fields are read-only, and `onOpenChange` cancels every close except the `actionsRef` close on success. A failed save maps its error code to a field through `Form` `errors`, which focuses that field and clears on edit; an unmapped code shows a form-level alert. The form and its error state live inside the popup, so they reset when it unmounts on close. Save "Production API" to see the field error, or an endpoint containing "unreachable" to see the alert.',
       },
     },
   },
   render: () => <FormDialogDemo />,
   play: async ({ canvas, canvasElement, userEvent }) => {
     const body = within(canvasElement.ownerDocument.body)
+    const trigger = canvas.getByRole('button', { name: 'Add API extension' })
 
-    await userEvent.click(canvas.getByRole('button', { name: 'Add API extension' }))
-    const nameInput = await body.findByRole('textbox', { name: 'Name' })
+    await userEvent.click(trigger)
+    const dialog = await body.findByRole('dialog', { name: 'Add API extension' })
+    const nameInput = within(dialog).getByRole('textbox', { name: 'Name' })
     await waitFor(async () => {
       await expect(nameInput).toHaveFocus()
     })
 
     await userEvent.type(nameInput, 'Production API')
     await userEvent.click(canvasElement.ownerDocument.body)
-    await expect(body.getByRole('dialog', { name: 'Add API extension' })).toHaveAttribute(
-      'data-open',
-    )
+    await expect(dialog).toHaveAttribute('data-open')
     await expect(nameInput).toHaveValue('Production API')
 
-    await userEvent.type(body.getByRole('textbox', { name: 'Endpoint' }), 'https://api.example.com')
+    await userEvent.type(
+      within(dialog).getByRole('textbox', { name: 'Endpoint' }),
+      'https://api.example.com',
+    )
+    await userEvent.keyboard('{Enter}')
+    const saveButton = within(dialog).getByRole('button', { name: 'Save' })
+    await expect(saveButton).toHaveAttribute('aria-disabled', 'true')
+    await userEvent.keyboard('{Escape}')
+    await expect(dialog).toHaveAttribute('data-open')
+
+    await expect(
+      await within(dialog).findByText('An extension with this name already exists.'),
+    ).toBeVisible()
+    await expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    await expect(nameInput).toHaveFocus()
+
+    await userEvent.keyboard('Staging API')
+    await expect(
+      within(dialog).queryByText('An extension with this name already exists.'),
+    ).not.toBeInTheDocument()
     await userEvent.keyboard('{Enter}')
     await waitFor(async () => {
       await expect(body.queryByRole('dialog')).not.toBeInTheDocument()
     })
+    await expect(trigger).toHaveFocus()
+
+    await userEvent.click(trigger)
+    const reopened = await body.findByRole('dialog', { name: 'Add API extension' })
+    await expect(within(reopened).getByRole('textbox', { name: 'Name' })).toHaveValue('')
+    await expect(within(reopened).queryByRole('alert')).not.toBeInTheDocument()
   },
 }
 
@@ -224,7 +338,7 @@ export const ScrollingBody: Story = {
         <DialogHeader>
           <DialogTitle>Release notes</DialogTitle>
           <DialogDescription>Highlights from the latest workspace update.</DialogDescription>
-          <DialogCloseButton aria-label="Close dialog" />
+          <DialogHeaderCloseButton aria-label="Close dialog" />
         </DialogHeader>
         <DialogBody role="region" aria-label="Release notes" tabIndex={0}>
           <ReleaseNoteList />
@@ -273,7 +387,7 @@ export const ViewportScrolling: Story = {
               <DialogDescription>
                 Every improvement shipped since the last release.
               </DialogDescription>
-              <DialogCloseButton aria-label="Close dialog" />
+              <DialogHeaderCloseButton aria-label="Close dialog" />
             </DialogHeader>
             <DialogBody>
               <ReleaseNoteList />
@@ -333,7 +447,7 @@ export const SidePanel: Story = {
           <DialogHeader>
             <DialogTitle>Run detail</DialogTitle>
             <DialogDescription>Node executions for the selected message.</DialogDescription>
-            <DialogCloseButton aria-label="Close panel" />
+            <DialogHeaderCloseButton aria-label="Close panel" />
           </DialogHeader>
           <DialogBody>
             <table className="w-full system-sm-regular text-text-secondary">
@@ -419,7 +533,7 @@ function DetachedTriggersDemo() {
             <DialogHeader>
               <DialogTitle>Edit {payload?.name} key</DialogTitle>
               <DialogDescription>Last used {payload?.lastUsed}.</DialogDescription>
-              <DialogCloseButton aria-label="Close dialog" />
+              <DialogHeaderCloseButton aria-label="Close dialog" />
             </DialogHeader>
             <DialogBody>
               <Field name="name">
@@ -491,7 +605,7 @@ function UnsavedChangesDemo() {
         <DialogHeader>
           <DialogTitle>Edit description</DialogTitle>
           <DialogDescription>Shown on the app card and in the explore page.</DialogDescription>
-          <DialogCloseButton aria-label="Close dialog" />
+          <DialogHeaderCloseButton aria-label="Close dialog" />
         </DialogHeader>
         <DialogBody>
           <Field name="description">

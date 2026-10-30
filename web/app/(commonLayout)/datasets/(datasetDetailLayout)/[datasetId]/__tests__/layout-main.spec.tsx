@@ -90,11 +90,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: [],
   }))
 })
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: undefined,
-  }),
-}))
 
 const mockUseRouter = mockNavigation.useRouter
 const mockUsePathname = mockNavigation.usePathname

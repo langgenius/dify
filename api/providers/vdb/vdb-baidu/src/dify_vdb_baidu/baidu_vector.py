@@ -2,7 +2,7 @@ import json
 import logging
 import time
 import uuid
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 import numpy as np
 from pydantic import BaseModel, model_validator
@@ -38,6 +38,9 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
+
+if TYPE_CHECKING:
+    from pymochow.model.schema import IndexField
 
 logger = logging.getLogger(__name__)
 
@@ -236,7 +239,7 @@ class BaiduVector(BaseVector):
 
     def _table_existed(self) -> bool:
         try:
-            table = self._db.table(self._collection_name)
+            self._db.table(self._collection_name)
         except ServerError as e:
             if e.code == ServerErrCode.TABLE_NOT_EXIST:
                 return False
@@ -290,7 +293,7 @@ class BaiduVector(BaseVector):
             )
 
             # Construct vector index params
-            indexes = []
+            indexes: list[IndexField] = []
             indexes.extend(
                 [
                     VectorIndex(

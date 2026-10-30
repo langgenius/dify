@@ -7,10 +7,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useCallback } from 'react'
@@ -77,7 +77,7 @@ export const OAuthClientSettingsModal = ({
       <DialogContent backdropProps={{ forceRender: true }}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           <div className="mb-2 system-sm-medium text-text-secondary">

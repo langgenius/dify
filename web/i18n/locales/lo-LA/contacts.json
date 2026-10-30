@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "ຜູ້ຕິດຕໍ່ທີ່ເລືອກຈະຖືກລຶບອອກຈາກພື້ນທີ່ເຮັດວຽກນີ້ຢ່າງຖາວອນ. ບໍ່ສາມາດຍົກເລີກການດຳເນີນການນີ້ໄດ້.",
+  "directory.removalTitle": "ລຶບຜູ້ຕິດຕໍ່ບໍ?",
+  "imPlatform.bindingDialog.clearSavedCredential": "ລ້າງຄ່າທີ່ບັນທຶກໄວ້",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "ຄ່າທີ່ບັນທຶກໄວ້ນີ້ຈະຖືກລ້າງເມື່ອທ່ານບັນທຶກ.",
+  "imPlatform.bindingDialog.replacementRequired": "ຂໍ້ມູນຢັ້ງຢືນເຫຼົ່ານີ້ເປັນຂອງບັນຊີອົງກອນ IM (tenant) ອື່ນ ແລະ ບໍ່ສາມາດບັນທຶກໂດຍກົງໄດ້. ການປ່ຽນ tenant ຈຳເປັນຕ້ອງແທນທີ່ຊ່ອງທາງ IM ປັດຈຸບັນ ເຊິ່ງຈະລຶບການເຊື່ອມໂຍງ IM ທັງໝົດ ທັງແບບອັດຕະໂນມັດ ແລະ ແບບກຳນົດເອງ. ຫຼັງຈາກແທນທີ່ແລ້ວ ໃຫ້ຊິງຄ໌ລາຍຊື່ຜູ້ຕິດຕໍ່ອີກຄັ້ງ.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "ບັນທຶກການຕັ້ງຄ່າແລ້ວ ແຕ່ບໍ່ສາມາດໂຫຼດລາຍລະອຽດໄດ້. ກະລຸນາປິດກ່ອງໂຕ້ຕອບນີ້ ແລ້ວເປີດຄືນ.",
+  "imPlatform.bindingDialog.undoClearCredential": "ຍົກເລີກການລ້າງ"
+}

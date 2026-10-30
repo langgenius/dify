@@ -1,4 +1,8 @@
 {
+  "appNotAccessible.description": "Entre em contato com o administrador do app se precisar de ajuda.",
+  "appNotAccessible.documentTitle": "App inacessível · Dify",
+  "appNotAccessible.ipAddress": "Seu endereço IP é <ip>{{ip}}</ip>.",
+  "appNotAccessible.title": "Este app não existe ou não pode ser acessado pela sua rede.",
   "chat.chatFormTip": "As configurações do chat não podem ser modificadas após o início do chat.",
   "chat.chatSettingsTitle": "Nova configuração de chat",
   "chat.collapse": "Contrair",
@@ -45,6 +49,7 @@
   "generation.tabs.saved": "Salvo",
   "generation.title": "Completar com IA",
   "humanInput.completed": "Parece que esta solicitação foi tratada em outro lugar.",
+  "humanInput.currentAccount": "Conta atual: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "Esta ação expirará {{relativeTime}}.",
   "humanInput.expired": "Parece que esta solicitação expirou.",
   "humanInput.expiredTip": "Esta ação expirou.",
@@ -53,6 +58,9 @@
   "humanInput.recorded": "Sua entrada foi registrada.",
   "humanInput.sorry": "Desculpe!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "Mudar de conta",
   "humanInput.thanks": "Obrigado!",
+  "humanInput.unavailableDescription": "O link pode estar indisponível ou não corresponder à conta com a qual você está conectado. Abra o formulário pela notificação que recebeu ou tente mudar de conta.",
+  "humanInput.unavailableTitle": "Não foi possível abrir este formulário",
   "login.backToHome": "Voltar para a página inicial"
 }

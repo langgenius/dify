@@ -12,6 +12,11 @@ import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
 import { renderWithConsoleQuery as renderWithoutUrlState } from '@/test/console/query-data'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
@@ -54,38 +59,14 @@ const mockOnCancel = vi.fn()
 const mockOnSave = vi.fn()
 
 const mockModelListQuery = vi.fn()
-const mockModelListQueryAndDefaultModel = vi.fn()
-const mockModelListQueryAndDefaultModelAndCurrentProviderAndModel = vi.fn()
-const mockUseCurrentProviderAndModel = vi.fn()
-
-vi.mock('@/app/components/datasets/create/step-two', () => ({
-  IndexingType: {
-    QUALIFIED: 'high_quality',
-    ECONOMICAL: 'economy',
-  },
-}))
 
 vi.mock('@/service/datasets', () => ({
   updateDatasetSetting: vi.fn(),
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('@/context/i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/context/i18n')>()),
   useDocLink: () => (path: string) => `https://docs${path}`,
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModel: (...args: unknown[]) => mockModelListQueryAndDefaultModel(...args),
-  useModelListAndDefaultModelAndCurrentProviderAndModel: (...args: unknown[]) =>
-    mockModelListQueryAndDefaultModelAndCurrentProviderAndModel(...args),
-  useCurrentProviderAndModel: (...args: unknown[]) => mockUseCurrentProviderAndModel(...args),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
-    <div data-testid="model-selector">
-      {value ? `${value.provider}/${value.model}` : 'no-model'}
-    </div>
-  ),
 }))
 
 const mockUpdateDatasetSetting = updateDatasetSetting as MockedFunction<typeof updateDatasetSetting>
@@ -182,14 +163,12 @@ const renderWithProviders = (dataset: DatasetDetailWithPartialMembersResponse) =
     consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }).queryKey,
     mockUseMembers().data,
   )
-  for (const modelType of [ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank]) {
-    queryClient.setQueryData(
-      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
-        input: { params: { model_type: modelType } },
-      }).queryKey,
-      mockModelListQuery(modelType),
-    )
-  }
+  seedModelProviderQueries(
+    queryClient,
+    [ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank].flatMap(
+      (type) => mockModelListQuery(type).data,
+    ),
+  )
   return render(
     <SettingsModal currentDataset={dataset} onCancel={mockOnCancel} onSave={mockOnSave} />,
     { queryClient },
@@ -231,25 +210,19 @@ describe('SettingsModal', () => {
         ],
       },
     } as ReturnType<typeof mockMembersQuery>)
-    mockModelListQuery.mockImplementation((type: ModelTypeEnum) => {
-      if (type === ModelTypeEnum.rerank) {
-        return {
-          data: [
-            {
-              provider: 'rerank-provider',
-              models: [{ model: 'rerank-model' }],
-            },
+    mockModelListQuery.mockImplementation((type: ModelTypeEnum) => ({
+      data: [
+        createModelCatalogFixture({
+          provider: type === ModelTypeEnum.rerank ? 'rerank-provider' : 'embed-provider',
+          models: [
+            createCatalogModelFixture({
+              model: type === ModelTypeEnum.rerank ? 'rerank-model' : 'embed-model',
+              model_type: type,
+            }),
           ],
-        }
-      }
-      return { data: [{ provider: 'embed-provider', models: [{ model: 'embed-model' }] }] }
-    })
-    mockModelListQueryAndDefaultModel.mockReturnValue({ modelList: [], defaultModel: null })
-    mockModelListQueryAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
-      defaultModel: null,
-      currentModel: null,
-    })
-    mockUseCurrentProviderAndModel.mockReturnValue({ currentProvider: null, currentModel: null })
+        }),
+      ],
+    }))
     mockUpdateDatasetSetting.mockResolvedValue(createDataset())
   })
 

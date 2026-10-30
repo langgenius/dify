@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "「{{name}}」現已成為 Agent 知識庫",
+  "upgrade.completeTitle": "升級完成",
+  "upgrade.contactSupport": "聯絡支援",
+  "upgrade.dialogAvailability": "升級完成後，<strong>經典知識庫和 Agent 知識庫皆可繼續使用</strong>",
+  "upgrade.dialogDescription": "此操作會將<legacy>經典知識庫</legacy>升級為 <new>Agent 知識庫</new>，並完整遷移文件、設定和應用連線。完成後會自動帶你前往 Agent 知識庫。",
+  "upgrade.dialogDuration": "依知識庫大小，升級可能需要幾分鐘到幾小時。進度會顯示在知識庫卡片上",
+  "upgrade.dialogLinkedApps": "升級期間，已連線的應用程式仍可繼續檢索",
+  "upgrade.dialogTitle": "升級為 Agent 知識庫？",
+  "upgrade.failedDescription": "升級失敗，未進行任何變更。經典知識庫仍可繼續使用。",
+  "upgrade.failedTitle": "升級失敗",
+  "upgrade.failedToastDescription": "「{{name}}」仍保留為經典知識庫，資料未發生變更",
+  "upgrade.justNow": "剛剛",
+  "upgrade.menuLabel": "升級為 Agent 知識庫",
+  "upgrade.migratingDocuments": "正在移轉文件…",
+  "upgrade.modelCostDescription": "升級會呼叫模型處理知識庫中的文件並消耗 token。文件內容越多，通常消耗越高，並可能產生較高費用。實際費用取決於所用模型的計費方式。",
+  "upgrade.start": "開始升級",
+  "upgrade.startFailed": "無法開始升級，請重試。",
+  "upgrade.statusFailed": "升級失敗",
+  "upgrade.statusUpgrading": "正在升級",
+  "upgrade.summary": "知識庫：{{name}}",
+  "upgrade.upgradedJustNow": "剛剛升級"
+}

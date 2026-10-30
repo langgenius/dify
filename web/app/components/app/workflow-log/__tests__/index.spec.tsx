@@ -70,12 +70,6 @@ vi.mock('@/app/components/base/amplitude/utils', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => {
-    return { theme: 'light' }
-  },
-}))
-
 const renderWithQueryClient = (ui: React.ReactElement) => {
   const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper()

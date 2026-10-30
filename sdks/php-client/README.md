@@ -36,6 +36,9 @@ $conversation_id = null; // Start a new conversation.
 
 $difyClient = new DifyClient($apiKey);
 
+// Self-hosted endpoints keep their full path with or without a trailing slash.
+$selfHostedClient = new DifyClient($apiKey, 'https://dify.example.com/dify/v1');
+
 // Create a completion client
 $completionClient = new CompletionClient($apiKey);
 $response = $completionClient->create_completion_message(array("query" => "Who are you?"), "blocking", "user_id");
@@ -121,18 +124,30 @@ while (!$body->eof()) {
 This controls client-side buffering. Whether the server produces audio incrementally
 depends on the TTS provider output.
 
-## Tests
+## Empty app inputs
 
-After installing the dependencies, run the streaming request regression test:
+Apps without custom input variables can be called with an empty PHP array:
 
-```sh
-composer install
-php tests/streaming_test.php
+```php
+$response = $chatClient->create_chat_message([], "Hello", "user_id", "blocking");
 ```
 
-The test uses the SDK's real Guzzle request preparation and replaces only the HTTP
-transport. It checks workflow and text-to-audio streaming and buffered options, endpoints, payloads, and authentication.
+The SDK sends the top-level `inputs` as `{}`, as required by the API, for chat,
+completion and workflow requests. Nonempty input maps and nested arrays retain
+their values and JSON types.
 
 ## License
 
 This SDK is released under the MIT License.
+
+## Tests
+
+After `composer install`, run these commands from this directory:
+
+```sh
+php tests/base_url_test.php
+php tests/input_object_test.php
+php tests/streaming_test.php
+```
+
+The regressions use Guzzle's mock transport and do not contact an API or model provider.

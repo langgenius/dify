@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "ImageNotFound",
+    "message": "sanitized-message",
+    "innerError": {
+      "date": "sanitized-date",
+      "request-id": "sanitized-request-id",
+      "client-request-id": "sanitized-client-request-id"
+    }
+  }
+}

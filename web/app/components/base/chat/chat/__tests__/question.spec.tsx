@@ -1,20 +1,11 @@
 import type { Theme } from '../../embedded-chatbot/theme/theme'
-import type { ChatConfig, ChatItem, OnRegenerate } from '../../types'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { ChatItem, OnRegenerate } from '../../types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
+import { createChatConfigFixture, createChatFileFixture } from '@/test/fixtures/chat'
 import { ChatContextProvider } from '../context-provider'
 import Question from '../question'
 
-const mockCopy = vi.fn()
-
-vi.mock('foxact/use-clipboard', () => ({
-  useClipboard: () => ({
-    copy: mockCopy,
-    copied: false,
-  }),
-}))
 type RenderProps = {
   theme?: Theme | null
   questionIcon?: React.ReactNode
@@ -24,26 +15,24 @@ type RenderProps = {
   answerIcon?: React.ReactNode
 }
 
-const makeItem = (overrides: Partial<ChatItem> = {}): ChatItem =>
-  ({
-    id: 'q-1',
-    content: 'This is the question content',
-    message_files: [],
-    siblingCount: 3,
-    siblingIndex: 0,
-    prevSibling: null,
-    nextSibling: 'q-2',
-    ...overrides,
-  }) as unknown as ChatItem
+const makeItem = (overrides: Partial<ChatItem> = {}): ChatItem => ({
+  id: 'q-1',
+  isAnswer: false,
+  content: 'This is the question content',
+  message_files: [],
+  siblingCount: 1,
+  siblingIndex: 0,
+  ...overrides,
+})
 
 const renderWithProvider = (
   item: ChatItem,
-  onRegenerate: OnRegenerate = vi.fn() as unknown as OnRegenerate,
+  onRegenerate: OnRegenerate = vi.fn<OnRegenerate>(),
   props: RenderProps = {},
 ) => {
   return render(
     <ChatContextProvider
-      config={{} as unknown as ChatConfig | undefined}
+      config={createChatConfigFixture()}
       isResponding={false}
       chatList={[]}
       questionIcon={props.questionIcon}
@@ -70,10 +59,6 @@ const renderWithProvider = (
 }
 
 describe('Question component', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it.each([false, true])('shows a supplied avatar unless hidden=%s', async (hideAvatar) => {
     renderWithProvider(makeItem(), vi.fn(), {
       questionIcon: <span aria-label="Your avatar" role="img" />,
@@ -93,11 +78,11 @@ describe('Question component', () => {
     const copyBtn = screen.getByRole('button', { name: 'common.operation.copy' })
     await user.click(copyBtn)
 
-    expect(mockCopy).toHaveBeenCalledWith('This is the question content')
+    expect(await navigator.clipboard.readText()).toBe('This is the question content')
   })
 
   it('should not show edit action when enableEdit is false', () => {
-    renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { enableEdit: false })
+    renderWithProvider(makeItem(), vi.fn<OnRegenerate>(), { enableEdit: false })
 
     expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
@@ -105,7 +90,7 @@ describe('Question component', () => {
 
   it('should enter edit mode when edit action clicked, allow editing and call onRegenerate on resend', async () => {
     const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn<OnRegenerate>()
 
     const item = makeItem()
     renderWithProvider(item, onRegenerate)
@@ -153,7 +138,7 @@ describe('Question component', () => {
 
   it('should confirm editing when Enter is pressed', async () => {
     const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn<OnRegenerate>()
 
     renderWithProvider(makeItem(), onRegenerate)
 
@@ -175,7 +160,7 @@ describe('Question component', () => {
 
   it('should insert a new line when Shift+Enter is pressed', async () => {
     const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn<OnRegenerate>()
 
     renderWithProvider(makeItem(), onRegenerate)
 
@@ -191,16 +176,17 @@ describe('Question component', () => {
   })
 
   it('should keep text unchanged and suppress Enter if a new composition starts before previous composition-end timer finishes', async () => {
+    const user = userEvent.setup()
+    const onRegenerate = vi.fn<OnRegenerate>()
+    renderWithProvider(makeItem(), onRegenerate)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+    const textbox = screen.getByRole('textbox')
+    await user.clear(textbox)
+    await user.type(textbox, 'IME guard text')
+
     vi.useFakeTimers()
-
     try {
-      const onRegenerate = vi.fn() as unknown as OnRegenerate
-      renderWithProvider(makeItem(), onRegenerate)
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
-      const textbox = screen.getByRole('textbox')
-      fireEvent.change(textbox, { target: { value: 'IME guard text' } })
-
       fireEvent.compositionStart(textbox)
       fireEvent.compositionEnd(textbox)
       fireEvent.compositionStart(textbox)
@@ -220,23 +206,28 @@ describe('Question component', () => {
 
       fireEvent.compositionEnd(textbox)
       act(() => vi.advanceTimersByTime(50))
-
-      fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
-      expect(onRegenerate).toHaveBeenCalledWith(makeItem(), {
-        message: 'IME guard text',
-        files: [],
-      })
     } finally {
       vi.useRealTimers()
     }
+
+    await user.keyboard('{Enter}')
+    expect(onRegenerate).toHaveBeenCalledWith(makeItem(), {
+      message: 'IME guard text',
+      files: [],
+    })
   })
 
   it('should switch siblings when prev/next buttons are clicked', async () => {
     const user = userEvent.setup()
     const switchSibling = vi.fn()
-    const item = makeItem({ prevSibling: 'q-prev', nextSibling: 'q-next', siblingIndex: 1 })
+    const item = makeItem({
+      prevSibling: 'q-prev',
+      nextSibling: 'q-next',
+      siblingIndex: 1,
+      siblingCount: 3,
+    })
 
-    renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling })
+    renderWithProvider(item, vi.fn<OnRegenerate>(), { switchSibling })
 
     const prevBtn = screen.getByRole('button', { name: /previous/i })
     const nextBtn = screen.getByRole('button', { name: /next/i })
@@ -251,21 +242,24 @@ describe('Question component', () => {
 
   it('should ignore enter when nativeEvent.isComposing is true', async () => {
     const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn<OnRegenerate>()
     renderWithProvider(makeItem(), onRegenerate)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
-    // Create an event with nativeEvent.isComposing = true
-    const event = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true })
-    Object.defineProperty(event, 'isComposing', { value: true, configurable: true })
+    const event = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      code: 'Enter',
+      bubbles: true,
+      isComposing: true,
+    })
 
     fireEvent(textbox, event)
     expect(onRegenerate).not.toHaveBeenCalled()
   })
 
-  it('should not call switchSibling when next button clicked but nextSibling is null', async () => {
+  it('should not call switchSibling when next button clicked but nextSibling is absent', async () => {
     const user = userEvent.setup()
     const switchSibling = vi.fn()
     const item = makeItem({
@@ -275,7 +269,7 @@ describe('Question component', () => {
       siblingCount: 3,
     })
 
-    renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling })
+    renderWithProvider(item, vi.fn<OnRegenerate>(), { switchSibling })
 
     const nextBtn = screen.getByRole('button', { name: /next/i })
     await user.click(nextBtn)
@@ -284,7 +278,7 @@ describe('Question component', () => {
     expect(nextBtn).toBeDisabled()
   })
 
-  it('should not call switchSibling when prev button clicked but prevSibling is null', async () => {
+  it('should not call switchSibling when prev button clicked but prevSibling is absent', async () => {
     const user = userEvent.setup()
     const switchSibling = vi.fn()
     const item = makeItem({
@@ -294,7 +288,7 @@ describe('Question component', () => {
       siblingCount: 3,
     })
 
-    renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling })
+    renderWithProvider(item, vi.fn<OnRegenerate>(), { switchSibling })
 
     const prevBtn = screen.getByRole('button', { name: /previous/i })
     await user.click(prevBtn)
@@ -303,14 +297,14 @@ describe('Question component', () => {
     expect(prevBtn).toBeDisabled()
   })
 
-  it('should handle both prev and next siblings being null (only one message)', () => {
+  it('should handle both prev and next siblings being absent (only one message)', () => {
     const item = makeItem({
       prevSibling: undefined,
       nextSibling: undefined,
       siblingIndex: 0,
       siblingCount: 1,
     })
-    renderWithProvider(item, vi.fn() as unknown as OnRegenerate)
+    renderWithProvider(item, vi.fn<OnRegenerate>())
 
     const prevBtn = screen.queryByRole('button', { name: /previous/i })
     const nextBtn = screen.queryByRole('button', { name: /next/i })
@@ -319,41 +313,11 @@ describe('Question component', () => {
     expect(nextBtn).not.toBeInTheDocument()
   })
 
-  it('should render with message_files having multiple files', () => {
-    const files = [
-      {
-        name: 'document.pdf',
-        url: 'https://example.com/doc.pdf',
-        type: 'application/pdf',
-        previewUrl: 'https://example.com/doc.pdf',
-        size: 5000,
-      } as unknown as FileEntity,
-      {
-        name: 'image.png',
-        url: 'https://example.com/img.png',
-        type: 'image/png',
-        previewUrl: 'https://example.com/img.png',
-        size: 3000,
-      } as unknown as FileEntity,
-    ]
-
-    renderWithProvider(makeItem({ message_files: files }))
-
-    expect(screen.getByText(/document.pdf/i)).toBeInTheDocument()
-    expect(screen.getByText(/image.png/i)).toBeInTheDocument()
-  })
-
   it('should trigger onRegenerate with actual message_files in item', async () => {
     const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn<OnRegenerate>()
     const files = [
-      {
-        name: 'edit-file.txt',
-        url: 'https://example.com/edit-file.txt',
-        type: 'text/plain',
-        previewUrl: 'https://example.com/edit-file.txt',
-        size: 200,
-      } as unknown as FileEntity,
+      createChatFileFixture({ name: 'edit-file.txt', url: 'https://example.com/edit-file.txt' }),
     ]
 
     const item = makeItem({ message_files: files })

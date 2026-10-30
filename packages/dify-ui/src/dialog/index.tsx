@@ -131,7 +131,7 @@ function DialogHeader({ className, ...props }: DialogHeaderProps) {
   return (
     <div
       className={cn(
-        'flex shrink-0 flex-col gap-1 px-6 pt-6 pb-3 has-data-dialog-close:pe-14',
+        'flex shrink-0 flex-col gap-1 px-6 pt-6 pb-3 has-data-dify-dialog-header-close:pe-14',
         className,
       )}
       {...props}
@@ -139,17 +139,20 @@ function DialogHeader({ className, ...props }: DialogHeaderProps) {
   )
 }
 
-type DialogCloseButtonProps = Omit<DialogCloseProps, 'render' | 'children' | 'className'> & {
+type DialogHeaderCloseButtonProps = Omit<DialogCloseProps, 'render' | 'children' | 'className'> & {
   'aria-label': string
 }
 
-function DialogCloseButton({ 'aria-label': ariaLabel, ...props }: DialogCloseButtonProps) {
+function DialogHeaderCloseButton({
+  'aria-label': ariaLabel,
+  ...props
+}: DialogHeaderCloseButtonProps) {
   return (
     <BaseDialog.Close
       {...props}
       render={
         <IconButton
-          data-dialog-close=""
+          data-dify-dialog-header-close=""
           aria-label={ariaLabel}
           size="lg"
           className="absolute inset-e-5 top-5"
@@ -192,11 +195,11 @@ export {
   DialogBackdrop,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogPopup,
   DialogPortal,
   DialogTitle,
@@ -210,12 +213,12 @@ export type {
   DialogBodyProps,
   DialogChangeEventDetails,
   DialogChangeEventReason,
-  DialogCloseButtonProps,
   DialogCloseProps,
   DialogContentProps,
   DialogDescriptionProps,
   DialogFooterProps,
   DialogHandle,
+  DialogHeaderCloseButtonProps,
   DialogHeaderProps,
   DialogPopupProps,
   DialogPortalProps,

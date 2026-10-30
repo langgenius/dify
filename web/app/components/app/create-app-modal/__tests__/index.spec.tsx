@@ -64,9 +64,6 @@ vi.mock('@/context/permission-state', async () => {
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => () => '/guides',
 }))
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: 'light' }),
-}))
 
 const mockUseRouter = vi.mocked(useRouter)
 const mockPush = vi.fn()
@@ -104,6 +101,18 @@ describe('CreateAppModal', () => {
     appQuota = { size: 0, limit: 1 }
     mockConsoleState.userProfile = { id: 'user-1' }
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
+  })
+
+  it('names the app input separately from its group and focuses the description from its visible label', async () => {
+    const user = userEvent.setup()
+    renderModal()
+
+    expect(screen.getByRole('group', { name: 'app.newApp.captionName' })).toContainElement(
+      screen.getByRole('textbox', { name: 'app.newApp.name' }),
+    )
+    const description = screen.getByRole('textbox', { name: 'app.newApp.captionDescription' })
+    await user.click(screen.getByText('app.newApp.captionDescription'))
+    expect(description).toHaveFocus()
   })
 
   it('creates an app and fires callbacks', async () => {

@@ -7,7 +7,6 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
-import { Theme } from '@/types/app'
 import CSVUploader from '../csv-uploader'
 
 // Mock upload service
@@ -19,9 +18,6 @@ vi.mock('@/service/base', () => ({
 // Mock useFileUploadConfig
 
 // Mock useTheme
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: Theme.light }),
-}))
 
 const toastMocks = vi.hoisted(() => {
   const call = vi.fn()
