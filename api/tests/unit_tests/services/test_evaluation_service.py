@@ -50,7 +50,7 @@ from models.workflow import (
 from services.errors.evaluation import EvaluationDatasetInvalidError
 from services.evaluation_service import EvaluationService
 from services.variable_truncator import VariableTruncator
-from tests.unit_tests.model_factories import make_upload_file
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 @pytest.fixture(autouse=True)
@@ -159,9 +159,7 @@ def test_selected_framework_is_saved_and_reused_for_file_only_runs(
 
 
 def test_metric_lists_follow_selected_framework(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        EvaluationManager, "get_configured_framework", MagicMock(return_value=EvaluationFrameworkEnum.RAGAS)
-    )
+    monkeypatch.setenv("EVALUATION_FRAMEWORK", "none")
     supported_metrics = MagicMock(
         side_effect=lambda _category, framework: (
             ["semantic_similarity"] if framework == EvaluationFrameworkEnum.RAGAS else ["answer_relevancy"]
@@ -1008,9 +1006,7 @@ def test_validate_config_requires_default_embedding_for_embedding_metrics(
 def test_validate_config_does_not_require_embeddings_for_deepeval_metrics(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(
-        EvaluationManager, "get_configured_framework", MagicMock(return_value=EvaluationFrameworkEnum.RAGAS)
-    )
+    monkeypatch.setenv("EVALUATION_FRAMEWORK", "none")
     session = MagicMock()
     session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
     workflow = SimpleNamespace(
@@ -2014,6 +2010,7 @@ def test_retry_failed_agent_run_restarts_an_incomplete_backend_row(
 
 
 def test_start_run_persists_and_dispatches_target_workflow_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EVALUATION_FRAMEWORK", "none")
     session = MagicMock()
     session.scalar.return_value = "tenant-1"
     session.query.return_value.filter_by.return_value.filter.return_value.count.return_value = 0
@@ -2023,10 +2020,6 @@ def test_start_run_persists_and_dispatches_target_workflow_snapshot(monkeypatch:
             model.id = "run-1"
 
     session.add.side_effect = assign_run_id
-    monkeypatch.setattr(
-        "services.evaluation_service.EvaluationManager.get_configured_framework",
-        MagicMock(return_value=EvaluationFrameworkEnum.RAGAS),
-    )
     get_evaluation_instance = MagicMock(return_value=MagicMock())
     monkeypatch.setattr(EvaluationManager, "get_evaluation_instance", get_evaluation_instance)
     monkeypatch.setattr(
@@ -2077,6 +2070,7 @@ def test_start_run_persists_and_dispatches_target_workflow_snapshot(monkeypatch:
 
 
 def test_start_agent_run_persists_and_dispatches_agent_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EVALUATION_FRAMEWORK", "none")
     session = MagicMock()
     session.scalar.return_value = "tenant-1"
     session.query.return_value.filter_by.return_value.filter.return_value.count.return_value = 0
@@ -2086,10 +2080,6 @@ def test_start_agent_run_persists_and_dispatches_agent_snapshot(monkeypatch: pyt
             model.id = "run-1"
 
     session.add.side_effect = assign_run_id
-    monkeypatch.setattr(
-        "services.evaluation_service.EvaluationManager.get_configured_framework",
-        MagicMock(return_value=EvaluationFrameworkEnum.DEEPEVAL),
-    )
     monkeypatch.setattr(
         "services.evaluation_service.EvaluationManager.get_evaluation_instance",
         MagicMock(return_value=MagicMock()),
@@ -2120,6 +2110,7 @@ def test_start_agent_run_persists_and_dispatches_agent_snapshot(monkeypatch: pyt
     dispatched_payload = apply_async.call_args.kwargs["args"][0]
     assert dispatched_payload["target_workflow_version_id"] is None
     assert dispatched_payload["target_agent_config_snapshot_id"] == "snapshot-7"
+    assert dispatched_payload["evaluation_framework"] == "ragas"
     assert dispatched_payload["input_list"][0]["inputs"] == {"query": "hello"}
 
 

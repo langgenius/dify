@@ -1770,10 +1770,6 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
 class EvaluationConfig(BaseSettings):
     """Configuration for the evaluation runtime."""
 
-    EVALUATION_FRAMEWORK: Literal["ragas", "deepeval", "none"] = Field(
-        description="Evaluation framework to use.",
-        default="none",
-    )
     EVALUATION_MAX_CONCURRENT_RUNS: PositiveInt = Field(
         description="Maximum active evaluation runs per tenant.",
         default=3,

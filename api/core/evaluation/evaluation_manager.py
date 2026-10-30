@@ -1,7 +1,6 @@
 import logging
 from typing import Any
 
-from configs import dify_config
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.evaluation_entity import EvaluationCategory
@@ -38,21 +37,14 @@ evaluation_framework_config_map = EvaluationFrameworkConfigMap()
 
 
 class EvaluationManager:
-    """Factory for evaluation instances based on global configuration."""
-
-    @staticmethod
-    def get_configured_framework() -> EvaluationFrameworkEnum:
-        """Return the globally configured evaluation framework."""
-        return EvaluationFrameworkEnum(dify_config.EVALUATION_FRAMEWORK)
+    """Factory for evaluation instances selected by an evaluation configuration."""
 
     @staticmethod
     def get_evaluation_instance(
         framework: str | EvaluationFrameworkEnum | None = None,
     ) -> BaseEvaluationInstance | None:
-        """Create an evaluator for an explicit framework or the global configuration."""
-        selected_framework = (
-            EvaluationManager.get_configured_framework() if framework is None else EvaluationFrameworkEnum(framework)
-        )
+        """Create an evaluator for the selected framework; legacy callers default to Ragas."""
+        selected_framework = EvaluationFrameworkEnum.RAGAS if framework is None else EvaluationFrameworkEnum(framework)
         if selected_framework == EvaluationFrameworkEnum.NONE:
             return None
 

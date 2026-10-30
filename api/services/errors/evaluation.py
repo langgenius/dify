@@ -3,7 +3,7 @@ from services.errors.base import BaseServiceError
 
 class EvaluationFrameworkNotConfiguredError(BaseServiceError):
     def __init__(self, description: str | None = None):
-        super().__init__(description or "Evaluation framework is not configured. Set EVALUATION_FRAMEWORK env var.")
+        super().__init__(description or "Selected evaluation framework is unavailable.")
 
 
 class EvaluationNotFoundError(BaseServiceError):
