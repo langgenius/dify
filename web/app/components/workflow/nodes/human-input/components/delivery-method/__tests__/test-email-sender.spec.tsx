@@ -1,10 +1,6 @@
 import type { ReactNode } from 'react'
-import type {
-  EmailConfig,
-  FormInputItem,
-  ParagraphFormInput,
-  SelectFormInput,
-} from '../../../types'
+import type { SelectFormInput } from '../../../shared/types'
+import type { EmailConfig, FormInputItem, ParagraphFormInput } from '../../../types'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'

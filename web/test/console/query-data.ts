@@ -157,7 +157,6 @@ export const seedKnowledgeFsFeatures = (
   overrides: Partial<KnowledgeFsFeaturesResponse> = {},
 ): KnowledgeFsFeaturesResponse => {
   const data: KnowledgeFsFeaturesResponse = {
-    enabled: false,
     upload_enabled: false,
     agent_enabled: false,
     ...overrides,
@@ -213,9 +212,10 @@ export type ConsoleQueryTestOptions = {
    */
   systemFeatures?: DeepPartial<GetSystemFeaturesResponse> | null
   /**
-   * Partial overrides for the signed-in KnowledgeFS availability query. When
-   * omitted, every KnowledgeFS surface is seeded as unavailable. Pass `null`
-   * to leave the query unseeded.
+   * Partial overrides for the signed-in KnowledgeFS capability query. When
+   * omitted, every KnowledgeFS capability is seeded as unavailable. Pass `null`
+   * to leave the query unseeded. Product availability is
+   * `features.enable_knowledge_fs`.
    */
   knowledgeFsFeatures?: Partial<KnowledgeFsFeaturesResponse> | null
   accountProfile?: Partial<GetAccountProfileResponse> | null

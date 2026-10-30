@@ -9,6 +9,8 @@ from uuid import uuid4
 
 import httpx
 
+from libs.http_headers import content_type_media_type
+
 try:
     import magic
 except ImportError:
@@ -67,7 +69,7 @@ def guess_file_info_from_response(response: httpx.Response) -> FileInfo:
         mimetype, _ = mimetypes.guess_type(url)
     if mimetype is None:
         # If guessing fails, use Content-Type from response headers
-        mimetype = response.headers.get("Content-Type", "application/octet-stream")
+        mimetype = content_type_media_type(response.headers.get("Content-Type", "application/octet-stream"))
 
     # Use python-magic to guess MIME type if still unknown or generic
     if mimetype == "application/octet-stream" and magic is not None:

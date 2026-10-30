@@ -181,6 +181,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         workflow_app_log,
         workflow_comment,
         workflow_draft_variable,
+        workflow_human_input_v2,
         workflow_node_output_inspector,
         workflow_run,
         workflow_statistic,
@@ -232,6 +233,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         saved_message,
         trial,
     )
+    from .human_input_v2 import channel as human_input_channel
+    from .human_input_v2 import contact as human_input_contact
+    from .human_input_v2 import form as human_input_v2_form
     from .knowledge_fs import features as knowledge_fs_features
     from .knowledge_fs import resources as knowledge_fs_resources
     from .snippets import snippet_workflow, snippet_workflow_draft_variable
@@ -264,6 +268,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         extension,
         feature,
         human_input_form,
+        human_input_channel,
+        human_input_v2_form,
         init_validate,
         notification,
         onboarding,
@@ -299,6 +305,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         workflow_app_log,
         workflow_comment,
         workflow_draft_variable,
+        workflow_human_input_v2,
         workflow_node_output_inspector,
         workflow_run,
         workflow_statistic,
@@ -343,6 +350,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         account,
         agent_providers,
         endpoint,
+        human_input_contact,
         load_balancing_config,
         members,
         model_providers,
@@ -363,6 +371,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     extension,
     feature,
     human_input_form,
+    human_input_channel,
+    human_input_v2_form,
     init_validate,
     notification,
     onboarding,
@@ -398,6 +408,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     workflow_app_log,
     workflow_comment,
     workflow_draft_variable,
+    workflow_human_input_v2,
     workflow_node_output_inspector,
     workflow_run,
     workflow_statistic,
@@ -442,6 +453,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     account,
     agent_providers,
     endpoint,
+    human_input_contact,
     load_balancing_config,
     members,
     model_providers,
@@ -501,7 +513,10 @@ __all__ = [
     "forgot_password",
     "generator",
     "hit_testing",
+    "human_input_channel",
+    "human_input_contact",
     "human_input_form",
+    "human_input_v2_form",
     "init_validate",
     "installed_app",
     "knowledge_fs_features",
@@ -551,6 +566,7 @@ __all__ = [
     "workflow_app_log",
     "workflow_comment",
     "workflow_draft_variable",
+    "workflow_human_input_v2",
     "workflow_node_output_inspector",
     "workflow_run",
     "workflow_run_archive",

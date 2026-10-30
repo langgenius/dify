@@ -37,6 +37,7 @@ from models.workflow import (
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.snippet_service import SnippetService
+from services.tag_application_service import TagApplicationService
 from tests.helpers.unit.model_factories import make_account
 
 
@@ -49,11 +50,11 @@ def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: d
         kind=WorkflowKind.SNIPPET.value,
         version=version,
         graph=json.dumps(graph),
-        features=json.dumps(features),
+        _features=json.dumps(features),
         created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
 
 
@@ -178,6 +179,53 @@ def test_get_snippets_applies_filters_and_paginates(
     assert total == 3
     assert has_more is False
     get_target_ids.assert_called_once_with(tag_type="snippet", tenant_id="tenant-1", tag_ids=["tag-1"], match_all=True)
+
+
+@pytest.mark.parametrize(
+    ("keyword", "expected_id"),
+    [
+        ("search%", "percent-literal"),
+        ("search_", "underscore-literal"),
+        ("C:\\p", "backslash-literal"),
+    ],
+    ids=["percent", "underscore", "backslash"],
+)
+def test_get_snippets_keyword_treats_like_wildcards_literally(
+    application_tags: TagApplicationService,
+    sqlite_session: Session,
+    keyword: str,
+    expected_id: str,
+) -> None:
+    snippet_names = {
+        "percent-literal": "search% term",
+        "percent-decoy": "search term",
+        "underscore-literal": "search_term",
+        "underscore-decoy": "searchXterm",
+        "backslash-literal": "C:\\path",
+        "backslash-decoy": "C:path",
+    }
+    for snippet_id, name in snippet_names.items():
+        sqlite_session.add(
+            CustomizedSnippet(
+                id=snippet_id,
+                tenant_id="tenant-1",
+                name=name,
+                description="",
+                type=SnippetType.NODE,
+                created_by="account-1",
+                is_published=True,
+            )
+        )
+    sqlite_session.flush()
+    service = SnippetService(session=sqlite_session)
+
+    result, total, has_more = service.get_snippets(
+        tenant_id="tenant-1", session=sqlite_session, keyword=keyword, tags=application_tags
+    )
+
+    assert {s.id for s in result} == {expected_id}
+    assert total == 1
+    assert has_more is False
 
 
 def test_update_snippet_allows_duplicate_names(sqlite_session: Session) -> None:
@@ -857,11 +905,11 @@ def test_delete_snippet_keeps_agent_with_persisted_external_owner(
         type=WorkflowType.WORKFLOW,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
     external_binding = WorkflowAgentNodeBinding(
         tenant_id=snippet.tenant_id,

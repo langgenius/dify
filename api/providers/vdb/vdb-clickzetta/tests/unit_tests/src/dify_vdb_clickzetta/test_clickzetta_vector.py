@@ -1,8 +1,10 @@
 import importlib
 import queue
 import sys
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
+from typing import Any, NoReturn, Self
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,33 +14,33 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
-def _build_fake_clickzetta_module():
+def _build_fake_clickzetta_module() -> FakeModule:
     clickzetta = FakeModule("clickzetta")
 
     class _FakeCursor:
-        def __init__(self):
+        def __init__(self) -> None:
             self.execute = MagicMock()
             self.executemany = MagicMock()
             self.fetchall = MagicMock(return_value=[])
             self.fetchone = MagicMock(return_value=(0,))
 
-        def __enter__(self):
+        def __enter__(self) -> Self:
             return self
 
-        def __exit__(self, exc_type, exc, tb):
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
             return False
 
     class _FakeConnection:
-        def __init__(self):
+        def __init__(self) -> None:
             self.cursor_obj = _FakeCursor()
 
-        def cursor(self):
+        def cursor(self) -> _FakeCursor:
             return self.cursor_obj
 
-        def close(self):
+        def close(self) -> None:
             return None
 
-    def connect(**_kwargs):
+    def connect(**_kwargs) -> _FakeConnection:
         return _FakeConnection()
 
     clickzetta.connect = connect
@@ -46,14 +48,14 @@ def _build_fake_clickzetta_module():
 
 
 @pytest.fixture
-def clickzetta_module(monkeypatch: pytest.MonkeyPatch):
+def clickzetta_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     monkeypatch.setitem(sys.modules, "clickzetta", _build_fake_clickzetta_module())
     import dify_vdb_clickzetta.clickzetta_vector as module
 
     return importlib.reload(module)
 
 
-def _config(module):
+def _config(module: ModuleType) -> Any:
     return module.ClickzettaConfig(
         username="username",
         password="password",
@@ -77,14 +79,14 @@ def _config(module):
         ("schema_name", "CLICKZETTA_SCHEMA"),
     ],
 )
-def test_clickzetta_config_validation(clickzetta_module, field, error_message):
+def test_clickzetta_config_validation(clickzetta_module: ModuleType, field: str, error_message: str) -> None:
     values = _config(clickzetta_module).model_dump()
     values[field] = ""
     with pytest.raises(ValueError, match=error_message):
         clickzetta_module.ClickzettaConfig.model_validate(values)
 
 
-def test_parse_metadata_handles_valid_double_encoded_and_invalid_json(clickzetta_module):
+def test_parse_metadata_handles_valid_double_encoded_and_invalid_json(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
 
     parsed = vector._parse_metadata('{"document_id":"doc-1"}', "row-1")
@@ -100,7 +102,7 @@ def test_parse_metadata_handles_valid_double_encoded_and_invalid_json(clickzetta
     assert parsed_fallback["document_id"] == "row-3"
 
 
-def test_safe_doc_id_and_vector_format_helpers(clickzetta_module):
+def test_safe_doc_id_and_vector_format_helpers(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
 
     assert vector._format_vector_simple([0.1, 0.2, 0.3]) == "0.1,0.2,0.3"
@@ -109,13 +111,13 @@ def test_safe_doc_id_and_vector_format_helpers(clickzetta_module):
     assert len(vector._safe_doc_id("a" * 300)) == 255
 
 
-def test_table_exists_returns_false_for_not_found_and_other_exceptions(clickzetta_module):
+def test_table_exists_returns_false_for_not_found_and_other_exceptions(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._table_name = "table_1"
 
     @contextmanager
-    def _ctx_not_found():
+    def _ctx_not_found() -> Generator[MagicMock]:
         connection = MagicMock()
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
@@ -128,7 +130,7 @@ def test_table_exists_returns_false_for_not_found_and_other_exceptions(clickzett
     assert vector._table_exists() is False
 
     @contextmanager
-    def _ctx_other_error():
+    def _ctx_other_error() -> Generator[MagicMock]:
         connection = MagicMock()
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
@@ -141,7 +143,7 @@ def test_table_exists_returns_false_for_not_found_and_other_exceptions(clickzett
     assert vector._table_exists() is False
 
 
-def test_text_exists_handles_missing_table_and_existing_rows(clickzetta_module):
+def test_text_exists_handles_missing_table_and_existing_rows(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._table_name = "table_1"
@@ -152,7 +154,7 @@ def test_text_exists_handles_missing_table_and_existing_rows(clickzetta_module):
     vector._table_exists = MagicMock(return_value=True)
 
     @contextmanager
-    def _ctx():
+    def _ctx() -> Generator[MagicMock]:
         connection = MagicMock()
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
@@ -165,7 +167,7 @@ def test_text_exists_handles_missing_table_and_existing_rows(clickzetta_module):
     assert vector.text_exists("doc-1") is True
 
 
-def test_delete_by_ids_and_delete_by_metadata_field_short_circuit(clickzetta_module):
+def test_delete_by_ids_and_delete_by_metadata_field_short_circuit(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._table_name = "table_1"
@@ -182,7 +184,7 @@ def test_delete_by_ids_and_delete_by_metadata_field_short_circuit(clickzetta_mod
     vector._execute_write.assert_not_called()
 
 
-def test_search_short_circuit_behaviors(clickzetta_module):
+def test_search_short_circuit_behaviors(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._table_name = "table_1"
@@ -194,7 +196,7 @@ def test_search_short_circuit_behaviors(clickzetta_module):
     assert vector.search_by_full_text("query", top_k=2) == []
 
 
-def test_search_by_like_returns_documents_with_default_score(clickzetta_module):
+def test_search_by_like_returns_documents_with_default_score(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._table_name = "table_1"
@@ -202,7 +204,7 @@ def test_search_by_like_returns_documents_with_default_score(clickzetta_module):
     vector._parse_metadata = MagicMock(return_value={"document_id": "doc-1", "doc_id": "seg-1"})
 
     @contextmanager
-    def _ctx():
+    def _ctx() -> Generator[MagicMock]:
         connection = MagicMock()
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
@@ -219,7 +221,7 @@ def test_search_by_like_returns_documents_with_default_score(clickzetta_module):
     assert docs[0].metadata["score"] == 0.5
 
 
-def test_factory_initializes_clickzetta_vector(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
+def test_factory_initializes_clickzetta_vector(clickzetta_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     factory = clickzetta_module.ClickzettaVectorFactory()
     dataset = Dataset(id="dataset-1")
 
@@ -244,7 +246,9 @@ def test_factory_initializes_clickzetta_vector(clickzetta_module, monkeypatch: p
     assert vector_cls.call_args.kwargs["collection_name"] == "collection"
 
 
-def test_connection_pool_singleton_and_config_key(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
+def test_connection_pool_singleton_and_config_key(
+    clickzetta_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     clickzetta_module.ClickzettaConnectionPool._instance = None
     monkeypatch.setattr(clickzetta_module.ClickzettaConnectionPool, "_start_cleanup_thread", MagicMock())
 
@@ -256,7 +260,9 @@ def test_connection_pool_singleton_and_config_key(clickzetta_module, monkeypatch
     assert "username:instance:service:workspace:cluster:dify" in key
 
 
-def test_connection_pool_create_connection_retries_and_configures(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
+def test_connection_pool_create_connection_retries_and_configures(
+    clickzetta_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(clickzetta_module.ClickzettaConnectionPool, "_start_cleanup_thread", MagicMock())
     pool = clickzetta_module.ClickzettaConnectionPool()
     config = _config(clickzetta_module)
@@ -275,7 +281,9 @@ def test_connection_pool_create_connection_retries_and_configures(clickzetta_mod
     pool._configure_connection.assert_called_once_with(connection)
 
 
-def test_connection_pool_create_connection_raises_after_retries(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
+def test_connection_pool_create_connection_raises_after_retries(
+    clickzetta_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(clickzetta_module.ClickzettaConnectionPool, "_start_cleanup_thread", MagicMock())
     pool = clickzetta_module.ClickzettaConnectionPool()
     config = _config(clickzetta_module)
@@ -287,7 +295,7 @@ def test_connection_pool_create_connection_raises_after_retries(clickzetta_modul
         pool._create_connection(config)
 
 
-def test_connection_pool_configure_and_validate_connection(clickzetta_module):
+def test_connection_pool_configure_and_validate_connection(clickzetta_module: ModuleType) -> None:
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(clickzetta_module.ClickzettaConnectionPool, "_start_cleanup_thread", MagicMock())
     pool = clickzetta_module.ClickzettaConnectionPool()
@@ -308,7 +316,7 @@ def test_connection_pool_configure_and_validate_connection(clickzetta_module):
     monkeypatch.undo()
 
 
-def test_connection_pool_configure_connection_swallows_errors(clickzetta_module):
+def test_connection_pool_configure_connection_swallows_errors(clickzetta_module: ModuleType) -> None:
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(clickzetta_module.ClickzettaConnectionPool, "_start_cleanup_thread", MagicMock())
     pool = clickzetta_module.ClickzettaConnectionPool()
@@ -319,7 +327,9 @@ def test_connection_pool_configure_connection_swallows_errors(clickzetta_module)
     monkeypatch.undo()
 
 
-def test_connection_pool_get_return_cleanup_and_shutdown(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
+def test_connection_pool_get_return_cleanup_and_shutdown(
+    clickzetta_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(clickzetta_module.ClickzettaConnectionPool, "_start_cleanup_thread", MagicMock())
     pool = clickzetta_module.ClickzettaConnectionPool()
     config = _config(clickzetta_module)
@@ -361,7 +371,9 @@ def test_connection_pool_get_return_cleanup_and_shutdown(clickzetta_module, monk
     assert pool._shutdown is True
 
 
-def test_connection_pool_start_cleanup_thread_runs_worker_once(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
+def test_connection_pool_start_cleanup_thread_runs_worker_once(
+    clickzetta_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     pool = clickzetta_module.ClickzettaConnectionPool.__new__(clickzetta_module.ClickzettaConnectionPool)
     pool._shutdown = False
     pool._cleanup_expired_connections = MagicMock(side_effect=lambda: setattr(pool, "_shutdown", True))
@@ -369,12 +381,12 @@ def test_connection_pool_start_cleanup_thread_runs_worker_once(clickzetta_module
     monkeypatch.setattr(clickzetta_module.time, "sleep", lambda _s: None)
 
     class _Thread:
-        def __init__(self, target, daemon):
+        def __init__(self, target: Callable[[], None], daemon: bool) -> None:
             self._target = target
             self.daemon = daemon
             self.started = False
 
-        def start(self):
+        def start(self) -> None:
             self.started = True
             self._target()
 
@@ -385,7 +397,9 @@ def test_connection_pool_start_cleanup_thread_runs_worker_once(clickzetta_module
     pool._cleanup_expired_connections.assert_called_once()
 
 
-def test_vector_init_connection_context_and_helpers(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
+def test_vector_init_connection_context_and_helpers(
+    clickzetta_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     pool = MagicMock()
     pool.get_connection.return_value = "conn"
     monkeypatch.setattr(clickzetta_module.ClickzettaConnectionPool, "get_instance", MagicMock(return_value=pool))
@@ -406,14 +420,16 @@ def test_vector_init_connection_context_and_helpers(clickzetta_module, monkeypat
     assert vector._ensure_connection() == "conn"
 
 
-def test_write_queue_initialization_worker_and_execute_write(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
+def test_write_queue_initialization_worker_and_execute_write(
+    clickzetta_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     class _Thread:
-        def __init__(self, target, daemon):
+        def __init__(self, target: Callable[[], None], daemon: bool) -> None:
             self.target = target
             self.daemon = daemon
             self.started = 0
 
-        def start(self):
+        def start(self) -> None:
             self.started += 1
 
     monkeypatch.setattr(clickzetta_module.threading, "Thread", _Thread)
@@ -448,7 +464,10 @@ def test_write_queue_initialization_worker_and_execute_write(clickzetta_module, 
         vector._execute_write(lambda: None)
 
     class _ImmediateSuccessQueue:
-        def put(self, task):
+        def put(
+            self,
+            task: tuple[Callable[..., object], tuple[object, ...], dict[str, object], queue.Queue[tuple[bool, object]]],
+        ) -> None:
             func, args, kwargs, result_q = task
             result_q.put((True, func(*args, **kwargs)))
 
@@ -456,7 +475,10 @@ def test_write_queue_initialization_worker_and_execute_write(clickzetta_module, 
     assert vector._execute_write(lambda x: x * 2, 3) == 6
 
     class _ImmediateFailQueue:
-        def put(self, task):
+        def put(
+            self,
+            task: tuple[Callable[..., object], tuple[object, ...], dict[str, object], queue.Queue[tuple[bool, object]]],
+        ) -> None:
             _, _, _, result_q = task
             result_q.put((False, ValueError("write failed")))
 
@@ -465,13 +487,13 @@ def test_write_queue_initialization_worker_and_execute_write(clickzetta_module, 
         vector._execute_write(lambda: None)
 
 
-def test_table_exists_true_and_create_invokes_write_and_add_texts(clickzetta_module):
+def test_table_exists_true_and_create_invokes_write_and_add_texts(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._table_name = "table_1"
 
     @contextmanager
-    def _ctx_exists():
+    def _ctx_exists() -> Generator[MagicMock]:
         connection = MagicMock()
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
@@ -490,7 +512,7 @@ def test_table_exists_true_and_create_invokes_write_and_add_texts(clickzetta_mod
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_create_table_and_indexes_paths(clickzetta_module):
+def test_create_table_and_indexes_paths(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._table_name = "table_1"
@@ -504,7 +526,7 @@ def test_create_table_and_indexes_paths(clickzetta_module):
     vector._table_exists = MagicMock(return_value=False)
 
     @contextmanager
-    def _ctx():
+    def _ctx() -> Generator[MagicMock]:
         connection = MagicMock()
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
@@ -525,7 +547,7 @@ def test_create_table_and_indexes_paths(clickzetta_module):
     vector._create_inverted_index.assert_not_called()
 
 
-def test_create_vector_index_branches(clickzetta_module):
+def test_create_vector_index_branches(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._table_name = "table_1"
@@ -542,17 +564,17 @@ def test_create_vector_index_branches(clickzetta_module):
 
     cursor.reset_mock()
     cursor.execute.side_effect = [None, RuntimeError("already exists")]
-    cursor.fetchall.return_value = []
+    cursor.fetchall.return_value = list[object]()
     vector._create_vector_index(cursor)
 
     cursor.reset_mock()
     cursor.execute.side_effect = [None, RuntimeError("unexpected")]
-    cursor.fetchall.return_value = []
+    cursor.fetchall.return_value = list[object]()
     with pytest.raises(RuntimeError, match="unexpected"):
         vector._create_vector_index(cursor)
 
 
-def test_create_inverted_index_branches(clickzetta_module):
+def test_create_inverted_index_branches(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._table_name = "table_1"
@@ -578,11 +600,13 @@ def test_create_inverted_index_branches(clickzetta_module):
 
     cursor.reset_mock()
     cursor.execute.side_effect = [None, RuntimeError("other create failure")]
-    cursor.fetchall.return_value = []
+    cursor.fetchall.return_value = list[object]()
     vector._create_inverted_index(cursor)
 
 
-def test_add_texts_batches_and_insert_batch_behaviors(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
+def test_add_texts_batches_and_insert_batch_behaviors(
+    clickzetta_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._config.batch_size = 2
@@ -629,7 +653,7 @@ def test_add_texts_batches_and_insert_batch_behaviors(clickzetta_module, monkeyp
     good_doc = Document(page_content="doc-good", metadata={"doc_id": "id-good"})
 
     @contextmanager
-    def _ctx():
+    def _ctx() -> Generator[MagicMock]:
         connection = MagicMock()
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
@@ -648,7 +672,7 @@ def test_add_texts_batches_and_insert_batch_behaviors(clickzetta_module, monkeyp
     )
 
     @contextmanager
-    def _ctx_error():
+    def _ctx_error() -> Generator[MagicMock]:
         connection = MagicMock()
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
@@ -667,7 +691,7 @@ def test_add_texts_batches_and_insert_batch_behaviors(clickzetta_module, monkeyp
     assert vector._safe_doc_id("!!!") == "generated-id"
 
 
-def test_delete_by_ids_and_metadata_impl_paths(clickzetta_module):
+def test_delete_by_ids_and_metadata_impl_paths(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._table_name = "table_1"
@@ -686,7 +710,7 @@ def test_delete_by_ids_and_metadata_impl_paths(clickzetta_module):
     vector._safe_doc_id = MagicMock(side_effect=lambda x: x)
 
     @contextmanager
-    def _ctx():
+    def _ctx() -> Generator[MagicMock]:
         connection = MagicMock()
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
@@ -699,7 +723,7 @@ def test_delete_by_ids_and_metadata_impl_paths(clickzetta_module):
     vector._delete_by_metadata_field_impl("document_id", "doc-1")
 
 
-def test_search_by_vector_covers_cosine_and_l2_paths(clickzetta_module):
+def test_search_by_vector_covers_cosine_and_l2_paths(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._config.vector_distance_function = "cosine_distance"
@@ -708,7 +732,7 @@ def test_search_by_vector_covers_cosine_and_l2_paths(clickzetta_module):
     vector._parse_metadata = MagicMock(return_value={"document_id": "doc-1", "doc_id": "seg-1"})
 
     @contextmanager
-    def _ctx():
+    def _ctx() -> Generator[MagicMock]:
         connection = MagicMock()
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
@@ -728,14 +752,14 @@ def test_search_by_vector_covers_cosine_and_l2_paths(clickzetta_module):
     assert l2_docs[0].metadata["score"] == pytest.approx(1 / 1.2)
 
 
-def test_search_by_full_text_success_and_fallback(clickzetta_module):
+def test_search_by_full_text_success_and_fallback(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._table_name = "table_1"
     vector._table_exists = MagicMock(return_value=True)
 
     @contextmanager
-    def _ctx_success():
+    def _ctx_success() -> Generator[MagicMock]:
         connection = MagicMock()
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
@@ -754,7 +778,7 @@ def test_search_by_full_text_success_and_fallback(clickzetta_module):
     assert docs[1].metadata["doc_id"] == "seg-2"
 
     @contextmanager
-    def _ctx_failure():
+    def _ctx_failure() -> Generator[MagicMock]:
         connection = MagicMock()
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
@@ -769,7 +793,7 @@ def test_search_by_full_text_success_and_fallback(clickzetta_module):
     assert fallback_docs == vector._search_by_like.return_value
 
 
-def test_search_by_like_missing_table_and_delete_table(clickzetta_module):
+def test_search_by_like_missing_table_and_delete_table(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._table_name = "table_1"
@@ -777,7 +801,7 @@ def test_search_by_like_missing_table_and_delete_table(clickzetta_module):
     assert vector._search_by_like("query", top_k=1) == []
 
     @contextmanager
-    def _ctx():
+    def _ctx() -> Generator[MagicMock]:
         connection = MagicMock()
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
@@ -789,10 +813,10 @@ def test_search_by_like_missing_table_and_delete_table(clickzetta_module):
     vector.delete()
 
 
-def test_clickzetta_pool_cleanup_and_shutdown_edge_paths(clickzetta_module):
+def test_clickzetta_pool_cleanup_and_shutdown_edge_paths(clickzetta_module: ModuleType) -> None:
     pool = clickzetta_module.ClickzettaConnectionPool.__new__(clickzetta_module.ClickzettaConnectionPool)
-    pool._pools = {}
-    pool._pool_locks = {}
+    pool._pools = dict[str, object]()
+    pool._pool_locks = dict[str, object]()
     pool._max_pool_size = 1
     pool._connection_timeout = 10
     pool._lock = clickzetta_module.threading.Lock()
@@ -814,11 +838,13 @@ def test_clickzetta_pool_cleanup_and_shutdown_edge_paths(clickzetta_module):
     assert pool._shutdown is True  # pyrefly: ignore[unnecessary-comparison]
 
 
-def test_clickzetta_pool_cleanup_thread_and_worker_exception_paths(clickzetta_module, monkeypatch: pytest.MonkeyPatch):
+def test_clickzetta_pool_cleanup_thread_and_worker_exception_paths(
+    clickzetta_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     pool = clickzetta_module.ClickzettaConnectionPool.__new__(clickzetta_module.ClickzettaConnectionPool)
     pool._shutdown = False
 
-    def _cleanup_then_fail():
+    def _cleanup_then_fail() -> NoReturn:
         pool._shutdown = True
         raise RuntimeError("cleanup failed")
 
@@ -826,11 +852,11 @@ def test_clickzetta_pool_cleanup_thread_and_worker_exception_paths(clickzetta_mo
     monkeypatch.setattr(clickzetta_module.time, "sleep", lambda _s: None)
 
     class _Thread:
-        def __init__(self, target, daemon):
+        def __init__(self, target: Callable[[], None], daemon: bool) -> None:
             self._target = target
             self.daemon = daemon
 
-        def start(self):
+        def start(self) -> None:
             self._target()
 
     monkeypatch.setattr(clickzetta_module.threading, "Thread", _Thread)
@@ -838,7 +864,7 @@ def test_clickzetta_pool_cleanup_thread_and_worker_exception_paths(clickzetta_mo
     pool._cleanup_expired_connections.assert_called_once()
 
 
-def test_clickzetta_parse_metadata_and_write_worker_additional_branches(clickzetta_module):
+def test_clickzetta_parse_metadata_and_write_worker_additional_branches(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
 
     parsed_non_dict = vector._parse_metadata("[1,2,3]", "row-1")
@@ -854,7 +880,7 @@ def test_clickzetta_parse_metadata_and_write_worker_additional_branches(clickzet
     clickzetta_module.ClickzettaVector._write_worker()
 
     class _BadQueue:
-        def get(self, timeout):
+        def get(self, timeout: float | None) -> NoReturn:
             clickzetta_module.ClickzettaVector._shutdown = True
             raise RuntimeError("queue failed")
 
@@ -863,7 +889,7 @@ def test_clickzetta_parse_metadata_and_write_worker_additional_branches(clickzet
     clickzetta_module.ClickzettaVector._write_worker()
 
 
-def test_clickzetta_inverted_index_existing_and_insert_non_dict_metadata(clickzetta_module):
+def test_clickzetta_inverted_index_existing_and_insert_non_dict_metadata(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._table_name = "table_1"
@@ -880,7 +906,7 @@ def test_clickzetta_inverted_index_existing_and_insert_non_dict_metadata(clickze
     vector._safe_doc_id = MagicMock(side_effect=lambda value: str(value))
 
     @contextmanager
-    def _ctx():
+    def _ctx() -> Generator[MagicMock]:
         connection = MagicMock()
         cursor_obj = MagicMock()
         cursor_obj.__enter__.return_value = cursor_obj
@@ -899,7 +925,7 @@ def test_clickzetta_inverted_index_existing_and_insert_non_dict_metadata(clickze
     )
 
 
-def test_clickzetta_full_text_table_missing_and_non_dict_metadata(clickzetta_module):
+def test_clickzetta_full_text_table_missing_and_non_dict_metadata(clickzetta_module: ModuleType) -> None:
     vector = clickzetta_module.ClickzettaVector.__new__(clickzetta_module.ClickzettaVector)
     vector._config = _config(clickzetta_module)
     vector._config.enable_inverted_index = True
@@ -911,7 +937,7 @@ def test_clickzetta_full_text_table_missing_and_non_dict_metadata(clickzetta_mod
     vector._table_exists = MagicMock(return_value=True)
 
     @contextmanager
-    def _ctx():
+    def _ctx() -> Generator[MagicMock]:
         connection = MagicMock()
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor

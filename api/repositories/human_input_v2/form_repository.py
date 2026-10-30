@@ -1,0 +1,206 @@
+"""Business persistence contract limited to HumanInputForm rows."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Protocol
+
+from pydantic import JsonValue, NaiveDatetime
+
+from core.human_input_v2.resolved_form import ResolvedForm
+from core.human_input_v2.shared.values import RecipientId, TenantId
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from graphon.variables.segments import Segment
+
+
+@dataclass(frozen=True, slots=True)
+class FormSubmission:
+    """Complete accepted submission; absent as a whole before submission."""
+
+    submitted_at: NaiveDatetime
+    submitted_by_recipient_id: RecipientId
+    submitted_by_delivery_id: str
+    selected_action_id: str
+    raw_submission_inputs: Mapping[str, JsonValue]
+    normalized_submission_data: Mapping[str, Segment]
+
+
+@dataclass(frozen=True, slots=True)
+class Form:
+    """Form snapshot independent of ORM lifetime, with decoded submission data."""
+
+    id: str
+    tenant_id: TenantId
+    app_id: str
+    workflow_run_id: str | None
+    node_execution_id: str | None
+    form_kind: HumanInputFormKind
+    resolved_form: ResolvedForm
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
+    expiration_time: NaiveDatetime
+    global_timeout_deadline: NaiveDatetime
+    submission: FormSubmission | None
+    # The source of truth for form status. Deadlines govern transitions out of
+    # WAITING, but never change an already persisted outcome.
+    status: HumanInputFormStatus
+
+
+@dataclass(frozen=True, slots=True)
+class FormCreateParams:
+    """Resolved creation values for the repository's bound tenant and app.
+
+    Runtime forms require both execution IDs. Delivery tests have neither.
+    Values, including naive UTC deadlines, are validated before this boundary.
+    """
+
+    workflow_run_id: str | None
+    node_execution_id: str | None
+    resolved_form: ResolvedForm
+    expiration_time: NaiveDatetime
+    global_timeout_deadline: NaiveDatetime
+    form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
+
+
+@dataclass(frozen=True, slots=True)
+class FormExpirationRun:
+    """Owner-scoped candidate with the earliest waiting form global deadline."""
+
+    tenant_id: TenantId
+    app_id: str
+    workflow_run_id: str
+    global_timeout_deadline: NaiveDatetime
+
+
+@dataclass(frozen=True, slots=True)
+class FormExpirationBatch:
+    """All waiting runtime forms in a locked run and the persistence clock."""
+
+    forms: tuple[Form, ...]
+    now: NaiveDatetime
+
+
+class FormSubmissionFailure(StrEnum):
+    """Expected rejection reasons that require distinct caller handling."""
+
+    NOT_FOUND = "not_found"
+    ALREADY_SUBMITTED = "already_submitted"
+    FORM_EXPIRED = "form_expired"
+    GLOBAL_TIMEOUT = "global_timeout"
+
+
+class FormRepository(Protocol):
+    """Form operations scoped to one constructor-bound tenant and app.
+
+    Every bound read and write includes both owner predicates. Bound operations
+    access HumanInputForm; owner-resolution factories may check its App.
+    Recipient authorization, file ownership, workflow
+    state, delivery, and audit orchestration belong to callers. Callers own the
+    transaction so form writes can participate in a larger business operation.
+
+    Implementations serialize submission mappings and use Pydantic to decode
+    stored JSON into concrete values, preserving Segment subtypes. Partial
+    stored submissions are invalid, not equivalent to an unsubmitted form.
+    All timestamps use naive UTC.
+    """
+
+    def get_form(self, workflow_run_id: str, node_execution_id: str) -> Form | None:
+        """Read the runtime form for this exact execution, including on resume."""
+        ...
+
+    def get_form_by_id(self, form_id: str) -> Form | None:
+        """Read a runtime or delivery-test form; missing or out of scope returns None."""
+        ...
+
+    def get_forms_by_ids(self, *, workflow_run_id: str, form_ids: Sequence[str]) -> tuple[Form, ...]:
+        """Read requested forms belonging to one run within the bound tenant and app.
+
+        Omit missing or out-of-scope IDs and return each matching form once.
+        Empty IDs return an empty tuple. Result order is unspecified.
+        """
+        ...
+
+    def create_form(self, params: FormCreateParams) -> Form:
+        """Create an unsubmitted form with generated ID and timestamps.
+
+        Runtime creation atomically reuses the form for the same execution,
+        including concurrent retries, without replacing its frozen content,
+        deadlines, or submission. Delivery-test creation always creates a form.
+        """
+        ...
+
+    def submit_form(
+        self,
+        form_id: str,
+        *,
+        submitted_by_recipient_id: RecipientId,
+        submitted_by_delivery_id: str,
+        selected_action_id: str,
+        raw_submission_inputs: Mapping[str, JsonValue],
+        normalized_submission_data: Mapping[str, Segment],
+    ) -> Form | FormSubmissionFailure:
+        """Atomically accept the first submission while both deadlines allow it.
+
+        The caller has already authorized this exact delivery and recipient for
+        the same tenant/form; never infer a delivery from the recipient. It has
+        validated the action, inputs, and file ownership. Preserve raw inputs
+        without sanitizing them; persist normalized inputs with their types.
+
+        Reject missing/out-of-scope forms first, then persisted terminal states.
+        Only WAITING forms may be submitted. Compare persistence time
+        against both deadlines: equality is expired. Set submitted_at from
+        that same time and persist SUBMITTED with all submission fields together,
+        returning the updated form. Global timeout takes precedence when both
+        deadlines are reached. A rejected write leaves the form unchanged, including
+        when another recipient wins a concurrent submission.
+        """
+        ...
+
+    def list_expired_forms(
+        self,
+        *,
+        now: NaiveDatetime,
+        limit: int,
+        after_form_id: str | None = None,
+    ) -> tuple[Form, ...]:
+        """Find WAITING runtime forms due for timeout handling.
+
+        Include forms where either deadline is <= now, within the bound owner.
+        Return at most the positive limit in ascending ID order, exclusively
+        after after_form_id when supplied. Keep now fixed across a scan's pages.
+        This is a read, not a claim or persisted timeout transition: callers
+        must coordinate workflow handling and tolerate repeated scan results.
+        """
+        ...
+
+    def expire_form(self, form_id: str) -> Form | None:
+        """Set a WAITING form to EXPIRED when its global deadline is reached.
+
+        Use persistence time after acquiring the form lock. Preserve terminal
+        states and forms whose global deadline is still in the future. Return
+        the current form, or None if missing/out of scope. The caller terminates
+        the workflow in the same transaction.
+        """
+        ...
+
+    def list_waiting_forms_for_run(self, workflow_run_id: str) -> FormExpirationBatch:
+        """Read all WAITING runtime forms in this run without locking form rows.
+
+        Scope reads to the bound owner and sample persistence time after the
+        read. The caller must first lock the run to serialize with submission.
+        Only subsequent state transitions lock individual forms. No pagination
+        may truncate the run's global-expiration decision.
+        """
+        ...
+
+    def timeout_form(self, form_id: str) -> Form | None:
+        """Set a WAITING form to TIMEOUT when only its node deadline is reached.
+
+        Use persistence time after acquiring the form lock. Preserve terminal
+        states. If the global deadline is reached, leave the form WAITING for
+        global expiration handling. Return the current form, or None if missing
+        or out of scope. The caller requests resume after committing.
+        """
+        ...

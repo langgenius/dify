@@ -54,7 +54,7 @@ def _place(body: dict[str, Any], name: str, parts: list[FileStorage], *, file_fi
     value: FileStorage | list[FileStorage] = parts if many else parts[0]
     target = body if key is None else body.setdefault(field, {})
     leaf = field if key is None else key
-    if leaf in target:
+    if not isinstance(target, dict) or leaf in target:
         raise InvalidFilePart(f"{name}: given more than once")
     target[leaf] = value
 

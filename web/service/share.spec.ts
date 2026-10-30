@@ -355,6 +355,27 @@ it.each([
   { source: AppSourceType.tryApp, prefix: 'trial-apps' },
 ])('loads $source parameters through the shared typed UI adapter', async ({ source, prefix }) => {
   const numberDefaults = [0, 42, -7.123456, '12.5']
+  const fileDefault = {
+    id: 'default-file',
+    name: 'default.txt',
+    size: 128,
+    type: 'text/plain',
+    progress: 100,
+    supportFileType: 'document',
+    transferMethod: 'local_file',
+    uploadedId: 'default-upload',
+  }
+  const fileListDefault = [
+    fileDefault,
+    {
+      ...fileDefault,
+      id: 'remote-file',
+      name: 'remote.txt',
+      transferMethod: 'remote_url',
+      uploadedId: '',
+      url: 'https://example.com/remote.txt',
+    },
+  ]
   const parameters: AppParameters = {
     opening_statement: null,
     suggested_questions: ['Next question'],
@@ -400,6 +421,17 @@ it.each([
           hide: true,
         },
       })),
+      {
+        file: { variable: 'attachment', label: 'Attachment', required: true, default: fileDefault },
+      },
+      {
+        'file-list': {
+          variable: 'attachments',
+          label: 'Attachments',
+          required: true,
+          default: fileListDefault,
+        },
+      },
     ],
   }
   request.mockReset().mockResolvedValueOnce(Response.json(parameters))
@@ -424,6 +456,8 @@ it.each([
           hide: true,
         },
       })),
+      { file: { variable: 'attachment', required: true, default: fileDefault } },
+      { 'file-list': { variable: 'attachments', required: true, default: fileListDefault } },
     ],
   })
   expect(
@@ -431,4 +465,9 @@ it.each([
       .filter((variable) => variable.type === 'number')
       .map((variable) => variable.default),
   ).toEqual(numberDefaults)
+  expect(
+    userInputsFormToPromptVariables(result.user_input_form)
+      .filter((variable) => variable.type === 'file' || variable.type === 'file-list')
+      .map((variable) => variable.default),
+  ).toEqual([fileDefault, fileListDefault])
 })

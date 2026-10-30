@@ -1,11 +1,6 @@
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useTranslation } from 'react-i18next'
 import { TONE_LIST } from '@/config'
 
@@ -58,8 +53,8 @@ function PresetsParameter({ onSelect, supportedParameterNames }: PresetsParamete
   if (!visiblePresetTones.length) return null
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <Button
             size="small"
@@ -70,16 +65,16 @@ function PresetsParameter({ onSelect, supportedParameterNames }: PresetsParamete
       >
         {t(($) => $['modelProvider.loadPresets'], { ns: 'modelProvider' })}
         <span className="i-ri-arrow-down-s-line size-3.5" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      </MenuTrigger>
+      <MenuContent>
         {visiblePresetTones.map((tone) => (
-          <DropdownMenuItem key={tone.id} onClick={() => onSelect(tone.id)}>
+          <MenuItem key={tone.id} onClick={() => onSelect(tone.id)}>
             {TONE_ICONS[tone.id]}
             {t(($) => $[toneI18nKeyMap[tone.name]], { ns: 'common' })}
-          </DropdownMenuItem>
+          </MenuItem>
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }
 

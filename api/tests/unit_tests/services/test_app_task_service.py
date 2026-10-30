@@ -20,7 +20,12 @@ import core.app.apps.base_app_queue_manager as queue_module
 import core.app.apps.execution_coordinator as coordinator_module
 import services.app_task_service as task_module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
 from core.app.layers.pause_state_persist_layer import (
     WorkflowResumptionContext,
     _AdvancedChatAppGenerateEntityWrapper,
@@ -41,9 +46,10 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from models.workflow import WorkflowType as _legacy_workflow_task_recovery_WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
-from services.app_task_service import AppTaskControlService, AppTaskService
+from services.app_task_service import AppTaskControlService, AppTaskService, WorkflowStopOutcome
 
 """Injected workflow cancellation preserves both transport mechanisms."""
 
@@ -248,7 +254,6 @@ class TestAppTaskServiceCases:
         assert redis.commands == {}
 
     @staticmethod
-    @pytest.mark.parametrize("app_mode", [AppMode.CHAT, AppMode.COMPLETION])
     @pytest.mark.parametrize(
         ("caller_role", "cached_owner", "admitted"),
         [
@@ -260,18 +265,13 @@ class TestAppTaskServiceCases:
             (CreatorUserRole.ACCOUNT, None, True),
         ],
     )
-    def test_stop_app_task_applies_legacy_caller_ownership(
-        app_mode: AppMode, caller_role: CreatorUserRole, cached_owner: bytes | None, admitted: bool
+    def test_stop_message_task_applies_legacy_caller_ownership(
+        caller_role: CreatorUserRole, cached_owner: bytes | None, admitted: bool
     ) -> None:
         redis = _AppTaskServiceStopredis(values={_OWNER_KEY: cached_owner} if cached_owner is not None else {})
 
-        result = AppTaskControlService(redis_client=redis).stop_app_task(
-            tenant_id="tenant-1",
-            app_id="app-1",
-            task_id=_TASK_ID,
-            app_mode=app_mode,
-            caller_role=caller_role,
-            caller_id=_USER_ID,
+        result = AppTaskControlService(redis_client=redis).stop_message_task(
+            task_id=_TASK_ID, caller_role=caller_role, caller_id=_USER_ID
         )
 
         assert result is admitted
@@ -292,7 +292,7 @@ class TestAppTaskServiceCases:
             app_id="app-1",
             workflow_id="workflow-1",
             task_id="11111111-1111-1111-1111-111111111111",
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="1",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             status=WorkflowExecutionStatus.RUNNING,
@@ -313,7 +313,7 @@ class TestAppTaskServiceCases:
             (CreatorUserRole.ACCOUNT, CreatorUserRole.ACCOUNT, "other-account"),
         ],
     )
-    def test_stop_app_task_signals_admitted_running_workflow(
+    def test_stop_workflow_run_signals_a_running_run(
         sqlite_session: Session,
         app_task_workflow_run: WorkflowRun,
         app_mode: AppMode,
@@ -331,16 +331,16 @@ class TestAppTaskServiceCases:
             read_error=AssertionError("Durable workflow ownership must not depend on Redis")
         )
 
-        admitted = AppTaskControlService(redis_client=redis).stop_app_task(
+        outcome = AppTaskControlService(redis_client=redis).stop_workflow_run(
             tenant_id=run.tenant_id,
             app_id=run.app_id,
-            task_id=task_id,
+            run_id=run.id,
             app_mode=app_mode,
             caller_role=caller_role,
             caller_id=_USER_ID,
         )
 
-        assert admitted is True
+        assert outcome is WorkflowStopOutcome.STOPPED
         sqlite_session.refresh(run)
         assert run.status == WorkflowExecutionStatus.RUNNING
         assert run.stop_requested_at is not None
@@ -367,7 +367,7 @@ class TestAppTaskServiceCases:
             (CreatorUserRole.ACCOUNT, "missing"),
         ],
     )
-    def test_stop_app_task_preserves_unadmitted_workflow_and_pause(
+    def test_stop_workflow_run_preserves_unadmitted_run_and_pause(
         sqlite_session: Session,
         app_task_workflow_run: WorkflowRun,
         app_mode: AppMode,
@@ -397,22 +397,20 @@ class TestAppTaskServiceCases:
             )
             sqlite_session.add_all([pause, form])
         sqlite_session.commit()
-        task_id = "22222222-2222-2222-2222-222222222222" if mismatch == "missing" else run.task_id
-        assert task_id is not None
         redis = _AppTaskServiceStopredis(
             read_error=AssertionError("Durable workflow ownership must not depend on Redis")
         )
 
-        admitted = AppTaskControlService(redis_client=redis).stop_app_task(
+        outcome = AppTaskControlService(redis_client=redis).stop_workflow_run(
             tenant_id="other-tenant" if mismatch == "tenant" else run.tenant_id,
             app_id="other-app" if mismatch == "app" else run.app_id,
-            task_id=task_id,
+            run_id="22222222-2222-2222-2222-222222222222" if mismatch == "missing" else run.id,
             app_mode=app_mode,
             caller_role=caller_role,
             caller_id=_USER_ID,
         )
 
-        assert admitted is (caller_role is CreatorUserRole.ACCOUNT)
+        assert outcome is WorkflowStopOutcome.NOT_FOUND
         assert redis.reads == []
         assert redis.operations == []
         assert redis.values == {}
@@ -427,6 +425,31 @@ class TestAppTaskServiceCases:
             assert pause.state_object_key == "state"
             assert form.status == HumanInputFormStatus.WAITING
             assert form.submitted_at is None
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "change", [{"status": WorkflowExecutionStatus.SUCCEEDED}, {"task_id": None}], ids=["finished", "no-task-id"]
+    )
+    def test_stop_workflow_run_refuses_a_run_it_cannot_stop(
+        sqlite_session: Session, app_task_workflow_run: WorkflowRun, change: dict[str, object]
+    ) -> None:
+        run = app_task_workflow_run
+        for name, value in change.items():
+            setattr(run, name, value)
+        sqlite_session.commit()
+        redis = _AppTaskServiceStopredis()
+
+        outcome = AppTaskControlService(redis_client=redis).stop_workflow_run(
+            tenant_id=run.tenant_id,
+            app_id=run.app_id,
+            run_id=run.id,
+            app_mode=AppMode.WORKFLOW,
+            caller_role=CreatorUserRole.ACCOUNT,
+            caller_id=_USER_ID,
+        )
+
+        assert outcome is WorkflowStopOutcome.NOT_STOPPABLE
+        assert redis.operations == []
 
     @staticmethod
     @pytest.mark.parametrize("owner", [None, b"account-another-user"])
@@ -592,7 +615,7 @@ class TestAppTaskServiceCases:
             app_id="app-1",
             workflow_id="workflow-1",
             task_id=task_id,
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="1",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             status=WorkflowExecutionStatus.RUNNING,
@@ -647,12 +670,12 @@ def _seed_pause(
         status=WorkflowExecutionStatus.PAUSED,
         created_by_role=CreatorUserRole.END_USER,
         created_by="user-1",
-        created_at=datetime(2026, 10, 10),
         elapsed_time=0,
         total_tokens=0,
         total_steps=1,
         exceptions_count=0,
     )
+    run.created_at = datetime(2026, 10, 10)
     pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key=f"pause/{run.id}")
     if pause_id is not None:
         pause.id = pause_id
@@ -662,6 +685,7 @@ def _seed_pause(
     if app_mode == AppMode.WORKFLOW:
         wrapper = _WorkflowGenerateEntityWrapper(
             entity=WorkflowAppGenerateEntity(
+                user_from=UserFrom.END_USER,
                 task_id=str(uuid4()),
                 app_config=config,
                 inputs={},
@@ -1110,12 +1134,12 @@ class TestPausedWorkflowStopCases:
             status=WorkflowExecutionStatus.PAUSED,
             created_by_role=CreatorUserRole.END_USER,
             created_by="user-1",
-            created_at=datetime(2026, 10, 10),
             elapsed_time=1,
             total_tokens=0,
             total_steps=2,
             exceptions_count=0,
         )
+        run.created_at = datetime(2026, 10, 10)
         run.task_id = "11111111-1111-1111-1111-111111111111"
         pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="state")
         sqlite_session.add_all([run, pause])

@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "ຊັບພະຍາກອນ",
   "resourceAccessToken.searchPlaceholder": "ຄົ້ນຫາໂທເຄັນ…",
   "resourceAccessToken.searchResourcesPlaceholder": "ຄົ້ນຫາແອັບ ຫຼືຖານຄວາມຮູ້…",
-  "resourceAccessToken.tabAll": "ທັງໝົດ",
+  "resourceAccessToken.tabAllTypes": "ທຸກປະເພດ",
   "resourceAccessToken.tabApps": "ແອັບ",
   "resourceAccessToken.tabKnowledgeBases": "ຖານຄວາມຮູ້",
   "resourceAccessToken.token": "ໂທເຄັນ",

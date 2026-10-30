@@ -2,7 +2,7 @@ import gzip
 from collections.abc import Callable, Iterator
 from contextlib import ExitStack
 from typing import TypedDict, Unpack
-from unittest.mock import ANY, call, patch
+from unittest.mock import ANY, Mock, call, patch
 
 import httpx
 import pytest
@@ -15,6 +15,7 @@ from core.helper.ssrf_proxy import (
     UnsupportedResponseEncodingError,
     _build_ssrf_client,
     _get_user_provided_host_header,
+    _SendScopedCookieJar,
     _to_graphon_http_response,
     buffer_response,
     graphon_ssrf_proxy,
@@ -31,10 +32,13 @@ class _SendOptions(TypedDict, total=False):
     auth: httpx.Auth | tuple[str, str] | Callable[[httpx.Request], httpx.Request] | None
 
 
+type _ClientFactory = Callable[[httpx.Response], tuple[httpx.Client, list[_SendOptions]]]
+
+
 @pytest.fixture
 def client_factory(
     monkeypatch: pytest.MonkeyPatch,
-) -> Iterator[Callable[[httpx.Response], tuple[httpx.Client, list[_SendOptions]]]]:
+) -> Iterator[_ClientFactory]:
     with ExitStack() as stack:
 
         def create_client(response: httpx.Response) -> tuple[httpx.Client, list[_SendOptions]]:
@@ -218,7 +222,78 @@ def test_build_ssrf_client_passes_ssl_verify_to_proxy_mount_transports(
         mounts={"http://": http_transport, "https://": https_transport},
         verify=False,
         limits=ANY,
+        cookies=ANY,
     )
+
+
+@pytest.mark.parametrize(
+    "proxy_config",
+    [
+        {"SSRF_PROXY_ALL_URL": "http://proxy.example.com:3128"},
+        {
+            "SSRF_PROXY_ALL_URL": None,
+            "SSRF_PROXY_HTTP_URL": "http://proxy.example.com:8080",
+            "SSRF_PROXY_HTTPS_URL": "http://proxy.example.com:8443",
+        },
+        {"SSRF_PROXY_ALL_URL": None, "SSRF_PROXY_HTTP_URL": None, "SSRF_PROXY_HTTPS_URL": None},
+    ],
+    ids=["all-proxy", "scheme-proxies", "direct"],
+)
+def test_build_ssrf_client_scopes_cookie_jar_to_one_send(
+    config_overrides: Callable[..., None],
+    proxy_config: dict[str, str | None],
+) -> None:
+    config_overrides(**proxy_config)
+
+    with _build_ssrf_client(verify=True) as client:
+        assert isinstance(client.cookies.jar, _SendScopedCookieJar)
+
+
+@pytest.fixture
+def vendor_requests(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[httpx.Request]]:
+    """Route requests to a vendor whose ``/login`` sets a session cookie and redirects to ``/home``."""
+    received: list[httpx.Request] = []
+
+    def vendor(request: httpx.Request) -> httpx.Response:
+        received.append(request)
+        if request.url.path == "/login":
+            return httpx.Response(302, headers={"Set-Cookie": "session=tenant-a; Path=/", "Location": "/home"})
+        return httpx.Response(200)
+
+    with httpx.Client(transport=httpx.MockTransport(vendor), cookies=_SendScopedCookieJar()) as client:
+        monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda _verify: client)
+        yield received
+
+
+def test_response_cookies_are_not_sent_on_later_requests(vendor_requests: list[httpx.Request]) -> None:
+    login = make_request("GET", "https://vendor.example.com/login", max_retries=0)
+    make_request("GET", "https://vendor.example.com/data", max_retries=0)
+
+    assert login.cookies["session"] == "tenant-a"
+    assert "cookie" not in vendor_requests[-1].headers
+
+
+def test_redirect_hops_send_cookies_set_by_earlier_hops_of_the_same_request(
+    vendor_requests: list[httpx.Request],
+) -> None:
+    response = make_request("GET", "https://vendor.example.com/login", max_retries=0, follow_redirects=True)
+    make_request("GET", "https://vendor.example.com/data", max_retries=0)
+
+    assert response.status_code == 200
+    assert [request.url.path for request in vendor_requests] == ["/login", "/home", "/data"]
+    assert vendor_requests[1].headers["cookie"] == "session=tenant-a"
+    assert "cookie" not in vendor_requests[2].headers
+
+
+def test_explicitly_passed_cookies_are_sent(vendor_requests: list[httpx.Request]) -> None:
+    make_request("GET", "https://vendor.example.com/login", max_retries=0)
+    make_request("GET", "https://vendor.example.com/data", max_retries=0, headers={"Cookie": "session=from-header"})
+    make_request("GET", "https://vendor.example.com/data", max_retries=0, cookies={"session": "from-argument"})
+
+    assert [request.headers["cookie"] for request in vendor_requests[1:]] == [
+        "session=from-header",
+        "session=from-argument",
+    ]
 
 
 class TestGetUserProvidedHostHeader:
@@ -402,13 +477,19 @@ def test_graphon_ssrf_proxy_wraps_module_requests(method_name: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Squid-blocked 403 regression tests (issue #38443)
+# Squid-blocked 403 regression tests (issues #38443, #44785)
 # ---------------------------------------------------------------------------
 # When the SSRF proxy denies a request to a private/internal network address,
-# Squid returns 401/403 with itself identified in the Server or Via header.
+# Squid returns 401/403 with explicit Server or X-Squid-Error denial headers.
 # The Python client must raise ToolSSRFError with a message that tells the
 # user exactly which env var to set, instead of just "blocked by SSRF
 # protection" (the pre-#38443 message gave no actionable guidance).
+#
+# The Via header alone is not proof of a denial: Squid appends it to every
+# proxied response, so Squid-based CDNs (e.g. Aliyun CDN) send
+# `Via: ... (squid/...)` on the upstream's own 401/403 responses too
+# (issue #44785). Server is optional, so Via alone remains ambiguous even
+# when the origin does not identify itself.
 
 
 def _build_squid_blocked_response(status_code: int = 403) -> httpx.Response:
@@ -439,11 +520,33 @@ def test_squid_block_raises_actionable_tool_ssrf_error(mock_get_client, client_f
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_squid_401_via_header_also_triggers_actionable_error(mock_get_client, client_factory) -> None:
-    """Squid can return 401 with only the Via header set (no Server header)
-    on some configurations. The detection must work for both."""
-    # Server header absent — only Via identifies Squid.
-    response = httpx.Response(401, headers={"server": "", "via": "1.1 squid (squid/4.10)"})
+@pytest.mark.parametrize("stream_response", [False, True])
+def test_squid_401_with_x_squid_error_triggers_actionable_error(
+    mock_get_client: Mock, client_factory: _ClientFactory, stream_response: bool
+) -> None:
+    """A Squid denial is identified by X-Squid-Error even when Squid does not
+    set a Server header. Closing a rejected streaming response is required too."""
+    response = httpx.Response(
+        401,
+        headers={"x-squid-error": "ERR_ACCESS_DENIED 0", "via": "1.1 squid (squid/4.10)"},
+        stream=httpx.ByteStream(b"Access denied"),
+    )
+    mock_client, _ = client_factory(response)
+    mock_get_client.return_value = mock_client
+
+    with pytest.raises(ToolSSRFError) as exc_info:
+        make_request("GET", "http://10.0.0.1/internal", stream_response=stream_response)
+
+    assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in str(exc_info.value)
+    assert response.is_closed
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_squid_401_server_header_also_triggers_actionable_error(
+    mock_get_client: Mock, client_factory: _ClientFactory
+) -> None:
+    """A Server header identifying Squid remains an explicit denial signal."""
+    response = httpx.Response(401, headers={"server": "squid/4.10", "via": "1.1 squid (squid/4.10)"})
     mock_client, _ = client_factory(response)
     mock_get_client.return_value = mock_client
 
@@ -451,6 +554,89 @@ def test_squid_401_via_header_also_triggers_actionable_error(mock_get_client, cl
         make_request("GET", "http://10.0.0.1/internal")
 
     assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in str(exc_info.value)
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_squid_403_with_x_squid_error_triggers_actionable_error(
+    mock_get_client: Mock, client_factory: _ClientFactory
+) -> None:
+    """A denial marker is recognized even when Server is absent."""
+    response = httpx.Response(403, headers={"Via": "squid", "X-Squid-Error": "ERR_ACCESS_DENIED 0"})
+    mock_client, _ = client_factory(response)
+    mock_get_client.return_value = mock_client
+
+    with pytest.raises(ToolSSRFError) as exc_info:
+        make_request("GET", "http://127.0.0.1/next")
+
+    assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("status_code", [401, 403])
+@pytest.mark.parametrize("server", [None, ""])
+@pytest.mark.parametrize("stream_response", [False, True])
+def test_forwarded_via_only_response_without_server_is_returned(
+    monkeypatch: pytest.MonkeyPatch,
+    client_factory: _ClientFactory,
+    status_code: int,
+    server: str | None,
+    stream_response: bool,
+) -> None:
+    headers = {"Via": "1.1 cdn (squid/6.13)", "WWW-Authenticate": 'Bearer error="invalid_token"'}
+    if server is not None:
+        headers["Server"] = server
+    body = b"Upstream authorization failed"
+    response = httpx.Response(status_code, headers=headers, stream=httpx.ByteStream(body))
+    client, _ = client_factory(response)
+    monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda _verify: client)
+
+    returned = make_request("GET", "https://api.example.com/private", stream_response=stream_response)
+
+    try:
+        assert returned is response
+        assert returned.headers["WWW-Authenticate"] == 'Bearer error="invalid_token"'
+        if stream_response:
+            assert not returned.is_closed
+        assert returned.read() == body
+    finally:
+        returned.close()
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_forwarded_403_through_squid_cdn_is_returned(mock_get_client, client_factory) -> None:
+    """A Squid-based CDN adds ``Via: ... (squid/...)`` to every response, so an
+    upstream 403 that kept its own Server header was forwarded by the proxy and
+    must be returned with its body intact instead of being reported as an SSRF
+    block (issue #44785)."""
+    response = httpx.Response(
+        403,
+        headers={
+            "server": "AliyunOSS",
+            "via": "1.1 cdn-node (squid/6.13)",
+            "x-oss-err": "<Code>AccessDenied</Code>",
+        },
+        content=b"Request has expired",
+    )
+    mock_client, _ = client_factory(response)
+    mock_get_client.return_value = mock_client
+
+    returned = make_request("GET", "http://bucket.oss-cn-hangzhou.aliyuncs.com/object?Expires=1")
+
+    assert returned.status_code == 403
+    assert returned.content == b"Request has expired"
+    assert returned.headers["x-oss-err"] == "<Code>AccessDenied</Code>"
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_forwarded_401_through_squid_cdn_is_returned(mock_get_client, client_factory) -> None:
+    """Same as above for a 401 from an origin that identifies itself: the proxy
+    forwarded the response, so the authorization error belongs to the caller."""
+    response = httpx.Response(401, headers={"server": "nginx/1.25", "via": "1.1 edge (squid/6.13)"})
+    mock_client, _ = client_factory(response)
+    mock_get_client.return_value = mock_client
+
+    returned = make_request("GET", "https://api.example.com/private")
+
+    assert returned.status_code == 401
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)

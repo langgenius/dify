@@ -26,15 +26,12 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useState } from 'react'
 import { useTranslation } from '#i18n'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import { getMarketplaceTemplateIconUrl } from '@/features/marketplace/api'
+import { getPluginDetailPath, getTemplateDetailPath } from '@/features/marketplace/links'
 import { renderI18nObject } from '@/i18n/metadata'
 import { marketplaceQuery } from '@/service/marketplace'
 import { markMarketplaceSiteSearch } from '@/utils/marketplace-site-track'
-import {
-  getPluginDetailLinkInMarketplace,
-  getPluginIconInMarketplace,
-  getTemplateDetailLinkInMarketplace,
-} from '../utils'
+import { getPluginIconInMarketplace } from '../utils'
 
 type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
 
@@ -79,9 +76,7 @@ const getPluginText = (
 
 const toTemplateSuggestion = (template: MarketplaceTemplate): MarketplaceSuggestion => ({
   description: template.overview,
-  iconUrl: template.icon_file_key
-    ? `${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`
-    : undefined,
+  iconUrl: template.icon_file_key ? getMarketplaceTemplateIconUrl(template.id) : undefined,
   id: `template:${template.id}`,
   kind: 'template',
   label: template.template_name,
@@ -204,8 +199,8 @@ export function MarketplaceSearchAutocomplete({
 
     window.location.assign(
       selection.kind === 'plugin'
-        ? getPluginDetailLinkInMarketplace(selection.plugin)
-        : getTemplateDetailLinkInMarketplace(selection.template),
+        ? getPluginDetailPath(selection.plugin)
+        : getTemplateDetailPath(selection.template),
     )
   }
   const debouncedSearch = useDebouncedValue(value.trim(), 300)

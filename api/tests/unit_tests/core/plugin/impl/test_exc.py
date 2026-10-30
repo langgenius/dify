@@ -7,13 +7,13 @@ from core.plugin.impl.exc import PluginDaemonError, PluginInvokeError
 
 
 class TestPluginImplExceptions:
-    def test_plugin_daemon_error_str_contains_request_id(self, mocker: MockerFixture):
+    def test_plugin_daemon_error_str_contains_request_id(self, mocker: MockerFixture) -> None:
         mocker.patch("core.plugin.impl.exc.get_request_id", return_value="req-123")
         error = PluginDaemonError("bad")
 
         assert str(error) == "req_id: req-123 PluginDaemonError: bad"
 
-    def test_plugin_invoke_error_with_json_payload(self):
+    def test_plugin_invoke_error_with_json_payload(self) -> None:
         err = PluginInvokeError(json.dumps({"error_type": "RateLimit", "message": "too many"}))
 
         assert err.get_error_type() == "RateLimit"
@@ -23,7 +23,7 @@ class TestPluginImplExceptions:
         assert "RateLimit" in friendly
         assert "too many" in friendly
 
-    def test_plugin_invoke_error_invalid_json_and_fallback(self, mocker: MockerFixture):
+    def test_plugin_invoke_error_invalid_json_and_fallback(self, mocker: MockerFixture) -> None:
         err = PluginInvokeError("plain text")
 
         assert err._get_error_object() == {}
@@ -34,7 +34,7 @@ class TestPluginImplExceptions:
         err2 = PluginInvokeError("plain text")
         assert err2.get_error_message() == "plain text"
 
-    def test_plugin_invoke_error_get_error_object_handles_adapter_exception(self, mocker: MockerFixture):
+    def test_plugin_invoke_error_get_error_object_handles_adapter_exception(self, mocker: MockerFixture) -> None:
         adapter = mocker.patch.object(exc_module, "TypeAdapter")
         adapter.return_value.validate_json.side_effect = RuntimeError("invalid")
 
