@@ -144,3 +144,56 @@ def test_model_selected_before_metadata_does_not_keep_revoked_admission(subject:
     policies.policy = CognitionPolicy(False, (), None, (), 1, "explicit")
     with pytest.raises(CognitionPolicyDeniedError, match="builder_disabled"):
         service.authorize_selected(ACTOR, selected)
+
+
+def test_native_recovery_continue_does_not_require_cognition_admission() -> None:
+    from services.dify_builder.application.cognition_policy import cognition_admission_required
+
+    assert not cognition_admission_required("recovery_continue")
+    assert cognition_admission_required("recovery_restart")
+    assert cognition_admission_required("send_edit_goal")
+
+
+def test_recovery_continue_reentering_cognition_still_checks_disabled_policy(subject: Subject) -> None:
+    from datetime import datetime
+    from typing import Never
+
+    from core.dify_builder.models import Action, DifyBuilderContext, EntryMode, Session, Turn
+    from core.dify_builder.state import PcState
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+    from services.dify_builder.application.handlers_edit import edit_registry
+    from services.dify_builder.application.runner import Env, Runner
+    from services.dify_builder.cognition_model_gateway import PolicyModelInstance
+    from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
+
+    policy, policies, models = subject
+    policies.policy = CognitionPolicy(False, (), None, (), 1, "explicit")
+    selections: list[str] = []
+
+    def resolve() -> Never:
+        selections.append("recovery-model-invocation")
+        policy.select(ACTOR, None)
+        raise AssertionError("disabled cognition policy admitted a model")
+
+    repo, dify = InMemoryRepository(), FakeDifyPort()
+    session = Session(
+        app_id="app",
+        tenant_id=ACTOR.tenant_id,
+        owner_account_id=ACTOR.account_id,
+        entry_mode=EntryMode.EDIT,
+        current_state=PcState.EDIT_CAPABILITY_CHECK,
+    )
+    context = DifyBuilderContext(goal_text="Make the response formal", last_snapshot_hash=dify.hash)
+    repo.create_session(session, context, [])
+    agent = LlmBuilderAgent(ACTOR.tenant_id, model_resolver_fn=lambda: PolicyModelInstance(resolve))
+    runner = Runner(Env(dify=dify, agent=agent, repo=repo, now=lambda: datetime.min), edit_registry())
+
+    # Recovery at the Edit entry synthesizes send_edit_goal and reaches the real
+    # cognition helper. The invocation proxy must refuse before any provider I/O.
+    with pytest.raises(CognitionPolicyDeniedError, match="builder_disabled"):
+        runner.advance(
+            session.id, Turn(actor=ACTOR, action=Action(kind="recovery_continue", base_version=session.version))
+        )
+    assert selections == ["recovery-model-invocation"]
+    assert models.inspections == []
+    assert dify.applied == []

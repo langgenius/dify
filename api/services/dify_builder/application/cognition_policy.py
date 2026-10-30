@@ -241,6 +241,7 @@ _NATIVE_CONTROL_ACTIONS = frozenset(
         "test_skip",
         "confirmed_tool_execution",
         "check_recovery",
+        "recovery_continue",
     }
 )
 
