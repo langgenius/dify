@@ -1,32 +1,33 @@
 # Contacts Management
 
-This frontend feature owns the `/contacts` directory, contact details,
-External contact creation, EE Add from Platform selection, removable-contact
-selection, the External-to-Workspace Contact confirmation composed into member
-invitations, and the narrow Contacts impact composed into active-member removal.
+This feature owns the `/contacts` directory, contact details, external-contact
+creation and editing, platform-directory imports, and removable-contact selection.
+Only workspace managers may access it. The runtime provider reads the current
+workspace permissions and the authoritative `im_centrally_managed` capability;
+it does not own a repository or synthetic API state.
 
-## Release Gate
+Components use generated `consoleQuery` query and mutation options directly.
+Shared mutation policies own cache invalidation. Contact and directory data keep
+the generated API shape, including nullable or omitted email and avatar fields.
+Tests stub the generated transport responses while preserving query keys,
+mutation policies, and production pagination behavior.
 
-`NEXT_PUBLIC_ENABLE_HITL_IM` defaults to `false`. Set it to `true` and restart
-Web to expose the Contacts navigation and route, workspace IM channel settings,
-and contact-aware member interactions. Reload the browser after restarting.
-This gate is independent of `NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW` and does not
-change `im_centrally_managed`, which determines where IM configuration is managed.
-When off, the editor creates legacy V1 Human Input nodes, hides migration UI,
-and blocks V2 insertion, contact selection, message templates and IM debug UI.
-Existing V2 nodes keep their original data and show an unavailable state; they
-are not converted to V1. V1 editing and forms remain available. New V2 approval
-routes and `/contacts` return not found while disabled.
+`NEXT_PUBLIC_ENABLE_HITL_IM` is the independent, default-off release gate. The
+`im_centrally_managed` capability determines whether platform imports and
+organization-managed bindings are available. In centrally managed mode contact
+details do not request workspace channel-management endpoints.
 
-Runtime data and mutations flow through `ContactsManagementRepository` and its
-Console API adapter, composed by `ContactsManagementRuntimeProvider`. The
-deterministic in-memory adapter in `__tests__/fixtures/` is used only by tests.
-Components use the repository rather than calling Contact APIs directly. Add
-from Platform selects available Platform contacts. The sibling
-`contacts/im-platform` feature keeps an independent repository and shares only
-workspace/deployment shell context.
+External-contact and platform-picker drafts, search, selection, and mutations
+live inside each dialog content session. They remain visible throughout closing
+transitions, reset after unmount, and survive failed submissions for correction.
+Server duplicate-email errors belong to the email field.
 
-When a member invitation or selected Platform contact exactly matches an
-External Contact email, the owning workflow pauses before mutation. Confirming
-the dialog upgrades the Contact type while preserving its Contact ID,
-workflow references, history, and remaining identity fields.
+Platform candidates are paginated by the backend and resolved against existing
+contacts through the generated batch operation. An already-imported page shows
+an explicit empty state and allows loading more; it does not silently launch an
+unbounded request waterfall. Only search and contact-type filters are shareable
+URL state; loaded page count is local query state.
+
+Member invitations and member removal use their existing generated workspace
+member operations. Contact-upgrade and contact-retention workflows are not
+exposed because no backend contract supports them.

@@ -1,25 +1,245 @@
 'use client'
 
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Dialog,
-  DialogBackdrop,
-  DialogClose,
+  DialogContent,
   DialogDescription,
-  DialogPopup,
-  DialogPortal,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
-  DialogViewport,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useState } from 'react'
+import { skipToken, useInfiniteQuery, useMutation, useQueries } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
-import { useContactsFeatureContext, useContactsManagementRepository } from './composition-context'
-import { useAddPlatformContacts, useAvailablePlatformContacts } from './hooks'
-import { PlatformContactUpgradeDialog } from './platform-contact-upgrade-dialog'
+import { consoleQuery } from '@/service/console'
+import { useContactsFeatureContext } from './composition-context'
+import { ContactAvatar } from './contact-avatar'
+
+function PlatformContactPickerContent({
+  onOpenChange,
+  onBusyChange,
+}: {
+  onOpenChange: (open: boolean) => void
+  onBusyChange: (busy: boolean) => void
+}) {
+  const { t } = useTranslation(['contacts'])
+  const context = useContactsFeatureContext()
+  const [search, setSearch] = useState('')
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const searchRef = useRef<HTMLInputElement>(null)
+  const canImport = Boolean(
+    context.workspaceId && context.imCentrallyManaged && context.permissions.canManageContacts,
+  )
+  const api = consoleQuery.workspaces.current.humanInput.v2
+  const candidates = useInfiniteQuery(
+    api.organizationCandidates.get.infiniteOptions({
+      input: (page: number) => ({
+        query: { keyword: search.trim() || undefined, page, limit: 100 },
+      }),
+      initialPageParam: 1,
+      getNextPageParam: (lastPage) =>
+        lastPage.page * lastPage.limit < lastPage.total ? lastPage.page + 1 : undefined,
+      enabled: canImport,
+      context: { silent: true },
+    }),
+  )
+  const candidatePages = candidates.data?.pages ?? []
+  const existing = useQueries({
+    queries: candidatePages.map((page) =>
+      api.contacts.batch.get.queryOptions({
+        input:
+          canImport && page.data.length
+            ? { query: { contact_ids: page.data.map((candidate) => candidate.id) } }
+            : skipToken,
+        context: { silent: true },
+      }),
+    ),
+  })
+  const existingIds = new Set(
+    existing.flatMap((query) => query.data?.data.map((contact) => contact.id) ?? []),
+  )
+  const contacts = candidatePages
+    .flatMap((page, index) => (existing[index]?.isSuccess ? page.data : []))
+    .filter((candidate) => !existingIds.has(candidate.id))
+  const pending =
+    candidates.isPending ||
+    (candidatePages.some((page) => page.data.length > 0) &&
+      existing.every((query) => query.isPending))
+  const error = candidates.error ?? existing.find((query) => query.isError)?.error
+  const add = useMutation(api.contacts.platform.post.mutationOptions({ context: { silent: true } }))
+  useEffect(() => {
+    onBusyChange(add.isPending)
+  }, [add.isPending, onBusyChange])
+
+  function toggleContact(id: string, checked: boolean) {
+    add.reset()
+    setSelectedIds((current) =>
+      checked ? [...new Set([...current, id])] : current.filter((candidate) => candidate !== id),
+    )
+  }
+  const errorKey =
+    add.error && 'status' in add.error && add.error.status === 403
+      ? 'platformPicker.addForbidden'
+      : add.error && 'status' in add.error && add.error.status === 409
+        ? 'platformPicker.addConflict'
+        : 'platformPicker.addFailed'
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{t(($) => $['platformPicker.title'])}</DialogTitle>
+        <DialogDescription className="sr-only">
+          {t(($) => $['platformPicker.description'])}
+        </DialogDescription>
+        <DialogHeaderCloseButton
+          aria-label={t(($) => $['action.close'])}
+          disabled={add.isPending}
+        />
+      </DialogHeader>
+      <div className="shrink-0 px-2 pt-2 pb-1">
+        <SearchInput
+          ref={searchRef}
+          aria-label={t(($) => $['platformPicker.search'])}
+          className="h-8 bg-components-input-bg-normal shadow-none"
+          disabled={add.isPending || !canImport}
+          placeholder={t(($) => $['platformPicker.search'])}
+          value={search}
+          onValueChange={setSearch}
+        />
+      </div>
+      <div className="flex h-7 shrink-0 items-center px-3 system-xs-regular text-text-tertiary">
+        {t(($) => $['platformPicker.allMembers'])}
+      </div>
+      <p role="status" aria-atomic="true" className="sr-only">
+        {selectedIds.length
+          ? t(($) => $['platformPicker.selected'], { count: selectedIds.length })
+          : !pending && !error
+            ? t(($) => $['directory.resultCount'], { count: contacts.length })
+            : ''}
+      </p>
+      <div className="min-h-0 flex-1 overflow-y-auto p-1" aria-busy={pending}>
+        {!canImport && (
+          <p role="alert" className="p-3 system-sm-regular">
+            {t(($) => $['platformPicker.addForbidden'])}
+          </p>
+        )}
+        {canImport && pending && (
+          <div className="space-y-2 p-3">
+            {[0, 1, 2].map((key) => (
+              <div
+                key={key}
+                className="h-12 animate-pulse rounded-lg bg-background-default-subtle"
+              />
+            ))}
+          </div>
+        )}
+        {error && !candidates.isFetchNextPageError && (
+          <div
+            role="alert"
+            className="flex min-h-40 flex-col items-center justify-center gap-3 text-center"
+          >
+            <p className="system-sm-regular text-text-secondary">
+              {t(($) => $['platformPicker.error'])}
+            </p>
+            <Button
+              size="small"
+              onClick={() => {
+                void candidates.refetch()
+                for (const query of existing) {
+                  if (query.isError) void query.refetch()
+                }
+              }}
+            >
+              {t(($) => $['action.retry'])}
+            </Button>
+          </div>
+        )}
+        {canImport && !pending && !error && contacts.length === 0 && (
+          <p className="flex min-h-24 items-center justify-center p-3 text-center system-sm-regular text-text-tertiary">
+            {t(($) => $['platformPicker.empty'])}
+          </p>
+        )}
+        {canImport &&
+          !pending &&
+          contacts.map((contact) => (
+            <label
+              key={contact.id}
+              className="group flex min-h-8 cursor-pointer items-center gap-2 rounded-lg py-1 ps-2 pe-3 focus-within:ring-2 focus-within:ring-state-accent-solid hover:bg-state-base-hover"
+            >
+              <Checkbox
+                aria-label={t(($) => $['platformPicker.selectContact'], { name: contact.name })}
+                checked={selectedIds.includes(contact.id)}
+                disabled={add.isPending}
+                onCheckedChange={(checked) => toggleContact(contact.id, checked)}
+              />
+              <ContactAvatar avatar={contact.avatar_url} name={contact.name} size="sm" />
+              <span className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
+                {contact.name}
+              </span>
+              <span className="max-w-[55%] shrink-0 truncate system-xs-regular text-text-quaternary group-hover:text-text-tertiary">
+                {contact.email}
+              </span>
+            </label>
+          ))}
+        {canImport && candidates.hasNextPage && (
+          <div className="p-2">
+            {candidates.isFetchNextPageError && (
+              <p role="alert" className="mb-2 system-xs-regular text-text-destructive">
+                {t(($) => $['platformPicker.error'])}
+              </p>
+            )}
+            <Button
+              disabled={add.isPending}
+              loading={candidates.isFetchingNextPage}
+              onClick={() => {
+                void candidates.fetchNextPage().then((result) => {
+                  if (!result.hasNextPage) searchRef.current?.focus()
+                })
+              }}
+            >
+              {candidates.isFetchNextPageError
+                ? t(($) => $['action.retry'])
+                : t(($) => $['action.loadMore'])}
+            </Button>
+          </div>
+        )}
+      </div>
+      <div className="shrink-0 border-t border-divider-subtle px-3 py-2">
+        {add.isError && (
+          <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+            {t(($) => $[errorKey])}
+          </p>
+        )}
+        <div className="flex items-center justify-between gap-3">
+          <span className="system-xs-regular text-text-tertiary">
+            {t(($) => $['platformPicker.selected'], { count: selectedIds.length })}
+          </span>
+          <div className="flex gap-2">
+            <Button disabled={add.isPending} onClick={() => onOpenChange(false)}>
+              {t(($) => $['action.cancel'])}
+            </Button>
+            <Button
+              variant="primary"
+              disabled={!canImport || !selectedIds.length}
+              loading={add.isPending}
+              onClick={() => {
+                if (canImport && selectedIds.length)
+                  add.mutate(
+                    { body: { candidate_ids: selectedIds } },
+                    { onSuccess: () => onOpenChange(false) },
+                  )
+              }}
+            >
+              {t(($) => $['platformPicker.add'])}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
 
 export function PlatformContactPickerDialog({
   onOpenChange,
@@ -28,279 +248,18 @@ export function PlatformContactPickerDialog({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const { t } = useTranslation(['contacts'])
-  const context = useContactsFeatureContext()
-  const repository = useContactsManagementRepository()
-  const [search, setSearch] = useState('')
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [mutationError, setMutationError] = useState<
-    | 'platformPicker.addFailed'
-    | 'platformPicker.addConflict'
-    | 'platformPicker.addForbidden'
-    | 'platformPicker.externalUpgradeUnsupported'
-    | null
-  >(null)
-  const [upgradeConflictCount, setUpgradeConflictCount] = useState<number | null>(null)
-  const availableContactsQuery = useAvailablePlatformContacts({ limit: 20, search }, open)
-  const addPlatformContacts = useAddPlatformContacts()
-  const resetMutation = addPlatformContacts.reset
-  const canImport = Boolean(
-    context.workspaceId &&
-    context.imCentrallyManaged &&
-    context.permissions.canManageContacts &&
-    repository.supportsPlatformImport !== false,
-  )
-
-  function resetDialog() {
-    setSearch('')
-    setSelectedIds([])
-    setMutationError(null)
-    setUpgradeConflictCount(null)
-    resetMutation()
-  }
-
-  function closeDialog() {
-    if (addPlatformContacts.isPending) return
-    onOpenChange(false)
-    resetDialog()
-  }
-
-  function toggleContact(contactId: string, checked: boolean) {
-    setMutationError(null)
-    setSelectedIds((current) =>
-      checked ? [...new Set([...current, contactId])] : current.filter((id) => id !== contactId),
-    )
-  }
-
-  async function handleAdd(upgradeExternalContacts: boolean) {
-    if (!canImport || !selectedIds.length || addPlatformContacts.isPending) return
-    setMutationError(null)
-    let result
-    try {
-      result = await addPlatformContacts.mutateAsync({
-        contactIds: selectedIds,
-        upgradeExternalContacts,
-      })
-    } catch {
-      setMutationError('platformPicker.addFailed')
-      return
-    }
-    if (result.kind === 'requires_external_contact_upgrade') {
-      if (repository.supportsExternalContactUpgrade === false) {
-        setMutationError('platformPicker.externalUpgradeUnsupported')
-        return
-      }
-      setUpgradeConflictCount(result.conflicts.length)
-      return
-    }
-    if (result.kind === 'added') {
-      onOpenChange(false)
-      resetDialog()
-      return
-    }
-    setUpgradeConflictCount(null)
-    setMutationError(
-      result.kind === 'forbidden'
-        ? 'platformPicker.addForbidden'
-        : result.kind === 'conflict'
-          ? 'platformPicker.addConflict'
-          : result.kind === 'external_upgrade_unsupported'
-            ? 'platformPicker.externalUpgradeUnsupported'
-            : 'platformPicker.addFailed',
-    )
-  }
-
-  function handleUpgradeDialogOpenChange(nextOpen: boolean) {
-    if (nextOpen || addPlatformContacts.isPending) return
-    setUpgradeConflictCount(null)
-  }
-
+  const [busy, setBusy] = useState(false)
   return (
     <Dialog
       open={open}
-      onOpenChange={(nextOpen) => !nextOpen && closeDialog()}
-      disablePointerDismissal={addPlatformContacts.isPending}
+      onOpenChange={(nextOpen) => {
+        if (!busy) onOpenChange(nextOpen)
+      }}
+      disablePointerDismissal={busy}
     >
-      <DialogPortal>
-        <DialogBackdrop />
-        <DialogViewport className="flex items-center justify-center p-4">
-          <DialogPopup className="flex h-[336px] max-h-[calc(100dvh-2rem)] w-[346px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border-0 bg-components-panel-bg-blur shadow-lg inset-ring-[0.5px] inset-ring-components-panel-border backdrop-blur-[5px]">
-            <DialogClose
-              render={
-                <IconButton
-                  aria-label={t(($) => $['action.close'])}
-                  className="sr-only"
-                  disabled={addPlatformContacts.isPending}
-                  size="lg"
-                >
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </IconButton>
-              }
-            />
-            <div className="shrink-0 bg-components-panel-bg-blur">
-              <DialogTitle className="sr-only">{t(($) => $['platformPicker.title'])}</DialogTitle>
-              <DialogDescription className="sr-only">
-                {t(($) => $['platformPicker.description'])}
-              </DialogDescription>
-              <div className="px-2 pt-2 pb-1">
-                <SearchInput
-                  aria-label={t(($) => $['platformPicker.search'])}
-                  className="h-8 bg-components-input-bg-normal shadow-none"
-                  disabled={addPlatformContacts.isPending || !canImport}
-                  placeholder={t(($) => $['platformPicker.search'])}
-                  value={search}
-                  onValueChange={setSearch}
-                />
-              </div>
-              <div className="flex h-7 items-center px-3 system-xs-regular text-text-tertiary">
-                {t(($) => $['platformPicker.allMembers'])}
-              </div>
-              {repository.supportsExternalContactUpgrade === false && (
-                <p className="px-3 pb-2 system-xs-regular text-text-tertiary">
-                  {t(($) => $['platformPicker.noExternalUpgrade'])}
-                </p>
-              )}
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-1">
-              {!canImport && (
-                <p role="alert" className="p-3 system-sm-regular">
-                  {t(($) => $['platformPicker.addForbidden'])}
-                </p>
-              )}
-              {canImport && availableContactsQuery.isPending && (
-                <div
-                  role="status"
-                  className="space-y-2 p-3"
-                  aria-label={t(($) => $['platformPicker.loading'])}
-                >
-                  {[0, 1, 2].map((key) => (
-                    <div
-                      key={key}
-                      className="h-12 animate-pulse rounded-lg bg-background-default-subtle"
-                    />
-                  ))}
-                </div>
-              )}
-              {availableContactsQuery.isError && !availableContactsQuery.isFetchNextPageError && (
-                <div
-                  role="alert"
-                  className="flex min-h-40 flex-col items-center justify-center gap-3 text-center"
-                >
-                  <p className="system-sm-regular text-text-secondary">
-                    {t(($) => $['platformPicker.error'])}
-                  </p>
-                  <Button size="small" onClick={() => availableContactsQuery.refetch()}>
-                    {t(($) => $['action.retry'])}
-                  </Button>
-                </div>
-              )}
-              {canImport &&
-                !availableContactsQuery.isPending &&
-                !availableContactsQuery.isError &&
-                !availableContactsQuery.hasNextPage &&
-                !availableContactsQuery.contacts.length && (
-                  <div className="flex min-h-40 items-center justify-center system-sm-regular text-text-tertiary">
-                    {t(($) => $['platformPicker.empty'])}
-                  </div>
-                )}
-              {canImport &&
-                availableContactsQuery.contacts.map((contact) => {
-                  const selected = selectedIds.includes(contact.id)
-                  return (
-                    <label
-                      key={contact.id}
-                      htmlFor={`platform-contact-${contact.id}`}
-                      className="group flex h-8 cursor-pointer items-center gap-2 rounded-lg py-1 ps-2 pe-3 focus-within:ring-2 focus-within:ring-state-accent-solid hover:bg-state-base-hover"
-                    >
-                      <Checkbox
-                        id={`platform-contact-${contact.id}`}
-                        aria-label={t(($) => $['platformPicker.selectContact'], {
-                          name: contact.name,
-                        })}
-                        checked={selected}
-                        className="sr-only"
-                        disabled={addPlatformContacts.isPending}
-                        onCheckedChange={(checked) => toggleContact(contact.id, checked)}
-                      />
-                      <Avatar
-                        className="inset-ring-[0.5px] inset-ring-divider-regular [&>span]:text-[13px] [&>span]:font-semibold"
-                        size="sm"
-                      >
-                        <AvatarImage src={contact.avatar_url ?? undefined} alt={contact.name} />
-                        <AvatarFallback>{contact.name?.[0]?.toLocaleUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <span className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
-                        {contact.name}
-                      </span>
-                      <span className="max-w-[55%] shrink-0 truncate system-xs-regular text-text-quaternary group-hover:text-text-tertiary">
-                        {contact.email}
-                      </span>
-                      {selected && (
-                        <span aria-hidden className="i-ri-check-line size-4 text-text-accent" />
-                      )}
-                    </label>
-                  )
-                })}
-              {canImport && availableContactsQuery.hasNextPage && (
-                <div className="p-2">
-                  {availableContactsQuery.isFetchNextPageError && (
-                    <p role="alert" className="mb-2 system-xs-regular text-text-destructive">
-                      {t(($) => $['platformPicker.error'])}
-                    </p>
-                  )}
-                  <Button
-                    disabled={addPlatformContacts.isPending}
-                    loading={availableContactsQuery.isFetchingNextPage}
-                    onClick={() => {
-                      void availableContactsQuery.fetchNextPage()
-                    }}
-                  >
-                    {availableContactsQuery.isFetchNextPageError
-                      ? t(($) => $['action.retry'])
-                      : t(($) => $['action.loadMore'])}
-                  </Button>
-                </div>
-              )}
-            </div>
-            {(selectedIds.length > 0 || mutationError) && (
-              <div className="shrink-0 border-t border-divider-subtle px-3 py-2">
-                {mutationError && (
-                  <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
-                    {t(($) => $[mutationError])}
-                  </p>
-                )}
-                <div className="flex items-center justify-between gap-3">
-                  <span aria-live="polite" className="system-xs-regular text-text-tertiary">
-                    {t(($) => $['platformPicker.selected'], { count: selectedIds.length })}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button disabled={addPlatformContacts.isPending} onClick={closeDialog}>
-                      {t(($) => $['action.cancel'])}
-                    </Button>
-                    <Button
-                      variant="primary"
-                      disabled={!canImport || !selectedIds.length}
-                      loading={addPlatformContacts.isPending}
-                      onClick={() => handleAdd(false)}
-                    >
-                      {addPlatformContacts.isPending
-                        ? t(($) => $['platformPicker.adding'])
-                        : t(($) => $['platformPicker.add'])}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </DialogPopup>
-        </DialogViewport>
-      </DialogPortal>
-      <PlatformContactUpgradeDialog
-        conflictCount={upgradeConflictCount ?? 0}
-        open={repository.supportsExternalContactUpgrade !== false && upgradeConflictCount !== null}
-        pending={addPlatformContacts.isPending}
-        onOpenChange={handleUpgradeDialogOpenChange}
-        onConfirm={() => handleAdd(true)}
-      />
+      <DialogContent className="h-84 w-86.5 overflow-hidden">
+        <PlatformContactPickerContent onOpenChange={onOpenChange} onBusyChange={setBusy} />
+      </DialogContent>
     </Dialog>
   )
 }

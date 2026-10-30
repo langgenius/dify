@@ -1,8 +1,9 @@
 'use client'
 
-import type { AvatarProps } from '@langgenius/dify-ui/avatar'
-import type { ContactIMBinding, ContactIMIdentity, ContactView } from './types'
-import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
+import type { ImBinding, ImIdentity } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { Ref } from 'react'
+import type { ContactView } from './types'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -25,69 +26,32 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { Field, FieldDescription, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useState } from 'react'
+import { ORPCError } from '@orpc/client'
+import { skipToken, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/console'
 import { ContactChannelIcon } from './channel-icon'
 import { getContactChannelLabel } from './channel-utils'
-import { useContactsFeatureContext, useContactsManagementRepository } from './composition-context'
-import {
-  useContactIMChannels,
-  useContactIMIdentities,
-  useRemoveContactIMBinding,
-  useSetContactIMBinding,
-  useUnbindContactIMBinding,
-} from './hooks'
+import { useContactsFeatureContext } from './composition-context'
+import { ContactAvatar } from './contact-avatar'
 import { formatContactRelativeTime } from './relative-time'
-import { ContactIMRequestError } from './repository'
-
-export function ContactAvatar({
-  avatar,
-  className,
-  name,
-  size = 'md',
-}: Pick<AvatarProps, 'size' | 'className'> & { avatar: string | null; name: string }) {
-  return (
-    <Avatar
-      size={size}
-      className={cn('data-loading:bg-background-section-burn', className)}
-      render={(props, { imageLoadingStatus }) => (
-        <span
-          {...props}
-          data-loading={
-            avatar && (imageLoadingStatus === 'idle' || imageLoadingStatus === 'loading')
-              ? ''
-              : undefined
-          }
-        />
-      )}
-    >
-      {avatar && (
-        <AvatarImage
-          key={avatar.split('?')[0]}
-          keepMounted
-          src={avatar}
-          alt={name}
-          className="data-error:invisible"
-        />
-      )}
-      <AvatarFallback
-        render={(props, { imageLoadingStatus }) => (
-          <span {...props}>
-            {(!avatar || imageLoadingStatus === 'error') && name?.[0]?.toLocaleUpperCase()}
-          </span>
-        )}
-      />
-    </Avatar>
-  )
-}
 
 function imErrorKey(error: unknown, loading = false) {
-  const code = error instanceof ContactIMRequestError ? error.code : undefined
+  const code =
+    error instanceof ORPCError &&
+    error.data &&
+    typeof error.data === 'object' &&
+    'code' in error.data
+      ? error.data.code
+      : undefined
   if (code === 'im_integration_not_configured') return 'imBinding.notConfigured'
   if (code === 'im_binding_conflict') return 'imBinding.conflict'
   if (
@@ -113,12 +77,9 @@ const imIdentityAvatarColors = [
   'bg-components-icon-bg-midnight-solid',
 ] as const
 
-type IMIdentityOption = Pick<
-  ContactIMIdentity,
-  'id' | 'display_name' | 'email' | 'provider_user_id'
->
+type IMIdentityOption = Pick<ImIdentity, 'id' | 'display_name' | 'email' | 'provider_user_id'>
 
-function getBoundIMIdentity(contact: ContactView, binding?: ContactIMBinding) {
+function getBoundIMIdentity(contact: ContactView, binding?: ImBinding) {
   if (!binding) return undefined
   return contact.im_binding_details?.find(
     (detail) =>
@@ -149,6 +110,7 @@ function IMIdentityAvatar({
       )}
     >
       <AvatarFallback
+        aria-hidden
         className={cn(
           'bg-linear-to-br from-components-avatar-bg-mask-stop-0 to-components-avatar-bg-mask-stop-100 leading-[1.2] font-semibold',
           size === 'sm' ? 'text-[13px]' : 'text-xs',
@@ -179,7 +141,7 @@ function IMIdentityDetails({ identity }: { identity: IMIdentityOption }) {
   )
 }
 
-function ContactIMBindingEditor({
+function ImBindingEditor({
   contact,
   provider,
   binding,
@@ -192,7 +154,7 @@ function ContactIMBindingEditor({
 }: {
   contact: ContactView
   provider: string
-  binding?: ContactIMBinding
+  binding?: ImBinding
   saving: boolean
   unbinding: boolean
   error: unknown
@@ -213,7 +175,17 @@ function ContactIMBindingEditor({
   const [identity, setIdentity] = useState<IMIdentityOption | null>(() =>
     !centrallyManaged || binding?.scope === 'workspace' ? (boundIdentity ?? null) : null,
   )
-  const identities = useContactIMIdentities(search)
+  const identityDescriptionId = useId()
+  const identities = useInfiniteQuery(
+    consoleQuery.workspaces.current.humanInput.v2.imIdentities.get.infiniteOptions({
+      input: (page: number) => ({
+        query: { keyword: search.trim() || undefined, page, limit: 20 },
+      }),
+      initialPageParam: 1,
+      getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
+      context: { silent: true },
+    }),
+  )
   const options = [
     ...new Map<string, IMIdentityOption>(
       [
@@ -266,48 +238,59 @@ function ContactIMBindingEditor({
       />
       <div className="px-6 pt-2">
         {centrallyManaged && (
-          <RadioGroup
-            aria-label={t(($) => $['imBinding.modeLabel'])}
-            className="flex-col items-stretch gap-5"
-            value={mode}
-            onValueChange={(value) => {
-              setMode(value)
-              setPickerOpen(false)
-            }}
-            disabled={saving}
-          >
-            <div className="space-y-1.5">
-              <label className="flex min-h-5 cursor-pointer items-center gap-2 system-sm-medium text-text-secondary">
-                <Radio value="organization" />
-                {t(($) => $['imBinding.organizationMode'])}
-              </label>
-              <div className="ms-6 flex h-9 items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2.5 system-xs-regular text-text-tertiary">
-                {organizationIdentity ? (
-                  <>
-                    <IMIdentityAvatar identity={organizationIdentity} size="xs" />
-                    <span className="truncate text-text-secondary">
-                      {organizationIdentity.display_name ||
-                        organizationIdentity.email ||
-                        organizationIdentity.provider_user_id}
-                    </span>
-                    {organizationIdentity.display_name && (
-                      <span className="truncate">{organizationIdentity.email}</span>
-                    )}
-                  </>
-                ) : binding ? (
-                  t(($) => $['imBinding.organizationUnavailable'])
-                ) : (
-                  t(($) => $['imBinding.noOrganizationBinding'])
-                )}
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="flex min-h-5 cursor-pointer items-center gap-2 system-sm-medium text-text-secondary">
-                <Radio value="workspace" />
-                {t(($) => $['imBinding.workspaceMode'])}
-              </label>
-            </div>
-          </RadioGroup>
+          <Field>
+            <Fieldset
+              render={
+                <RadioGroup
+                  className="flex-col items-stretch gap-5"
+                  value={mode}
+                  onValueChange={(value) => {
+                    setMode(value)
+                    setPickerOpen(false)
+                  }}
+                  disabled={saving}
+                />
+              }
+            >
+              <FieldsetLegend className="sr-only">
+                {t(($) => $['imBinding.modeLabel'])}
+              </FieldsetLegend>
+              <FieldItem className="space-y-1.5">
+                <FieldLabel className="flex min-h-5 cursor-pointer items-center gap-2 system-sm-medium text-text-secondary">
+                  <Radio value="organization" aria-describedby={identityDescriptionId} />
+                  {t(($) => $['imBinding.organizationMode'])}
+                </FieldLabel>
+                <FieldDescription
+                  id={identityDescriptionId}
+                  className="ms-6 flex h-9 items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2.5 system-xs-regular text-text-tertiary"
+                >
+                  {organizationIdentity ? (
+                    <>
+                      <IMIdentityAvatar identity={organizationIdentity} size="xs" />
+                      <span className="truncate text-text-secondary">
+                        {organizationIdentity.display_name ||
+                          organizationIdentity.email ||
+                          organizationIdentity.provider_user_id}
+                      </span>
+                      {organizationIdentity.display_name && (
+                        <span className="truncate">{organizationIdentity.email}</span>
+                      )}
+                    </>
+                  ) : binding ? (
+                    t(($) => $['imBinding.organizationUnavailable'])
+                  ) : (
+                    t(($) => $['imBinding.noOrganizationBinding'])
+                  )}
+                </FieldDescription>
+              </FieldItem>
+              <FieldItem className="space-y-1.5">
+                <FieldLabel className="flex min-h-5 cursor-pointer items-center gap-2 system-sm-medium text-text-secondary">
+                  <Radio value="workspace" />
+                  {t(($) => $['imBinding.workspaceMode'])}
+                </FieldLabel>
+              </FieldItem>
+            </Fieldset>
+          </Field>
         )}
         {(!centrallyManaged || mode === 'workspace') && (
           <div className={cn(centrallyManaged && 'ms-6 mt-1.5')}>
@@ -476,25 +459,39 @@ function ContactIMChannels({
 }) {
   const { t } = useTranslation(['contacts'])
   const context = useContactsFeatureContext()
-  const repository = useContactsManagementRepository()
   const [editingProvider, setEditingProvider] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
-  const save = useSetContactIMBinding()
-  const remove = useRemoveContactIMBinding()
-  const unbind = useUnbindContactIMBinding()
+  const api = consoleQuery.workspaces.current.humanInput.v2
+  const defaultSave = useMutation(
+    api.contacts.byContactId.imBindings.put.mutationOptions({ context: { silent: true } }),
+  )
+  const overrideSave = useMutation(
+    api.contacts.byContactId.imOverride.put.mutationOptions({ context: { silent: true } }),
+  )
+  const save = context.imCentrallyManaged ? overrideSave : defaultSave
+  const remove = useMutation(
+    api.contacts.byContactId.imOverride.delete.mutationOptions({ context: { silent: true } }),
+  )
+  const unbind = useMutation(
+    api.contacts.byContactId.imBindings.delete.mutationOptions({ context: { silent: true } }),
+  )
   const canBind =
-    canManage &&
-    context.imCentrallyManaged !== undefined &&
-    repository.supportsIMBindings === true &&
-    contact.type !== 'external'
-  const configured = useContactIMChannels(canBind)
+    canManage && context.imCentrallyManaged !== undefined && contact.type !== 'external'
+  const configured = useQuery(
+    api.channels.get.queryOptions({
+      input: canBind && context.imCentrallyManaged === false ? undefined : skipToken,
+      select: (response) => response.channels.filter((channel) => channel.kind === 'im'),
+      retry: false,
+      context: { silent: true },
+    }),
+  )
   const busy = save.isPending || remove.isPending || unbind.isPending || removing
-  const bindings = contact.type === 'external' ? [] : contact.im_bindings
+  const bindings = contact.type === 'external' ? [] : (contact.im_bindings ?? [])
   const providers = [
     ...new Set([
       'email',
       ...bindings.map((binding) => binding.provider),
-      ...(canBind ? configured.data.map((channel) => channel.provider) : []),
+      ...(canBind ? (configured.data ?? []).map((channel) => channel.provider) : []),
     ]),
   ]
   const editingBinding = bindings.find((binding) => binding.provider === editingProvider)
@@ -536,7 +533,12 @@ function ContactIMChannels({
                 <span className="flex size-5 shrink-0 items-center justify-center">
                   <ContactChannelIcon provider={provider} />
                 </span>
-                <span className="system-sm-medium text-text-secondary">{label}</span>
+                <span
+                  id={`contact-channel-${contact.id}-${provider}`}
+                  className="system-sm-medium text-text-secondary"
+                >
+                  {label}
+                </span>
               </div>
               <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
                 {provider === 'email' ? (
@@ -567,6 +569,7 @@ function ContactIMChannels({
                     <Button
                       variant="ghost-accent"
                       size="small"
+                      aria-describedby={`contact-channel-${contact.id}-${provider}`}
                       disabled={busy}
                       onClick={() => openEditor(provider)}
                     >
@@ -623,7 +626,7 @@ function ContactIMChannels({
       >
         <DialogContent className="w-140">
           {editingProvider && (
-            <ContactIMBindingEditor
+            <ImBindingEditor
               key={`${editingProvider}:${context.imCentrallyManaged}`}
               contact={contact}
               provider={editingProvider}
@@ -637,7 +640,10 @@ function ContactIMChannels({
                       if (!canBind || busy) return
                       save.reset()
                       remove.reset()
-                      unbind.mutate({ contactId: contact.id }, { onSuccess: () => setOpen(false) })
+                      unbind.mutate(
+                        { params: { contact_id: contact.id } },
+                        { onSuccess: () => setOpen(false) },
+                      )
                     }
                   : undefined
               }
@@ -646,15 +652,14 @@ function ContactIMChannels({
                 unbind.reset()
                 save.mutate(
                   {
-                    contactId: contact.id,
-                    identityId,
-                    override: context.imCentrallyManaged,
+                    params: { contact_id: contact.id },
+                    body: { identity_id: identityId },
                   },
                   {
                     onSuccess: () => {
                       if (!context.imCentrallyManaged && editingBinding?.scope === 'workspace') {
                         remove.mutate(
-                          { contactId: contact.id, binding: editingBinding },
+                          { params: { contact_id: contact.id } },
                           { onSuccess: () => setOpen(false) },
                         )
                       } else setOpen(false)
@@ -669,7 +674,7 @@ function ContactIMChannels({
                   editingBinding?.scope === 'workspace'
                 ) {
                   remove.mutate(
-                    { contactId: contact.id, binding: editingBinding },
+                    { params: { contact_id: contact.id } },
                     { onSuccess: () => setOpen(false) },
                   )
                 }
@@ -689,7 +694,11 @@ export function ContactDetailsPanel({
   onEdit,
   onClose,
   onRemove,
+  id,
+  headingRef,
 }: {
+  id?: string
+  headingRef?: Ref<HTMLHeadingElement>
   contact: ContactView
   canManage?: boolean
   removing?: boolean
@@ -698,10 +707,12 @@ export function ContactDetailsPanel({
   onRemove: () => void
 }) {
   const { i18n, t } = useTranslation(['contacts'])
+  const headingId = useId()
 
   return (
-    <aside
-      aria-label={t(($) => $['details.title'])}
+    <section
+      id={id}
+      aria-labelledby={headingId}
       className="relative z-20 flex h-full w-80 max-w-full shrink-0 flex-col overflow-hidden rounded-lg bg-components-panel-bg"
     >
       <div className="absolute inset-e-2 top-2 z-10 flex items-center gap-1">
@@ -744,7 +755,7 @@ export function ContactDetailsPanel({
             className="pointer-events-none absolute inset-x-1 top-1 h-25 overflow-hidden rounded-lg"
           >
             <ContactAvatar
-              avatar={contact.avatar_url || null}
+              avatar={contact.avatar_url}
               className="absolute -top-19 left-1/2 size-80 -translate-x-1/2 opacity-20 blur-[80px]"
               name={contact.name}
               size="3xl"
@@ -754,14 +765,19 @@ export function ContactDetailsPanel({
           </div>
           <div className="relative size-24 shrink-0 rounded-full border-2 border-components-panel-bg">
             <ContactAvatar
-              avatar={contact.avatar_url || null}
+              avatar={contact.avatar_url}
               className="size-full inset-ring-[0.5px] inset-ring-divider-regular"
               name={contact.name}
               size="3xl"
             />
           </div>
           <div className="relative flex w-full flex-col items-center gap-0.5">
-            <h2 className="max-w-full system-xl-medium wrap-anywhere text-text-primary">
+            <h2
+              id={headingId}
+              ref={headingRef}
+              tabIndex={-1}
+              className="max-w-full system-xl-medium wrap-anywhere text-text-primary outline-hidden"
+            >
               {contact.name}
             </h2>
             {contact.email && (
@@ -788,6 +804,6 @@ export function ContactDetailsPanel({
         {t(($) => $['details.joined'])}{' '}
         {formatContactRelativeTime(contact.created_at, i18n.resolvedLanguage ?? 'en')}
       </p>
-    </aside>
+    </section>
   )
 }

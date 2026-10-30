@@ -1,7 +1,6 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { ContactsManagementRepository } from './repository'
 import type { ContactsFeatureContextValue } from './types'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -10,25 +9,16 @@ import { currentWorkspaceIdAtom, isCurrentWorkspaceManagerAtom } from '@/context
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { selectIMCentrallyManaged } from '../im-capability'
-import { ContactsFeatureContext, ContactsManagementRepositoryContext } from './composition-context'
-import { createContactsApiRepository } from './repository'
+import { ContactsFeatureContext } from './composition-context'
 
 export function ContactsManagementProvider({
   children,
   context,
-  repository,
 }: {
   children: ReactNode
   context: ContactsFeatureContextValue
-  repository: ContactsManagementRepository
 }) {
-  return (
-    <ContactsFeatureContext value={context}>
-      <ContactsManagementRepositoryContext value={repository}>
-        {children}
-      </ContactsManagementRepositoryContext>
-    </ContactsFeatureContext>
-  )
+  return <ContactsFeatureContext value={context}>{children}</ContactsFeatureContext>
 }
 
 export function ContactsManagementRuntimeProvider({ children }: { children: ReactNode }) {
@@ -66,11 +56,5 @@ export function ContactsManagementRuntimeProvider({ children }: { children: Reac
     }),
     [canManage, capabilityError, refetchCapability, deployment, imCentrallyManaged, workspaceId],
   )
-  const repository = useMemo(() => createContactsApiRepository(undefined, context), [context])
-
-  return (
-    <ContactsManagementProvider context={context} repository={repository}>
-      {children}
-    </ContactsManagementProvider>
-  )
+  return <ContactsManagementProvider context={context}>{children}</ContactsManagementProvider>
 }

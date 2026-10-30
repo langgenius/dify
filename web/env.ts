@@ -259,8 +259,7 @@ export const env = createEnv({
       ? process.env.NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW
       : getRuntimeEnvFromBody('enableFeaturePreview'),
     NEXT_PUBLIC_ENABLE_HITL_IM: isServer
-      ? // Read at server startup rather than inlining a public env value at build time.
-        Reflect.get(process.env, 'NEXT_PUBLIC_ENABLE_HITL_IM')
+      ? process.env.NEXT_PUBLIC_ENABLE_HITL_IM
       : getRuntimeEnvFromBody('enableHitlIm'),
     NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX
