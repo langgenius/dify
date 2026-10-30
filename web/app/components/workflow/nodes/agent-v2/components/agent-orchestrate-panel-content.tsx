@@ -11,6 +11,7 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { AgentPreviewChatController } from '@/features/agent-v2/agent-detail/configure/components/preview/chat-conversation'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
@@ -732,13 +733,9 @@ function WorkflowInlineAgentConfigureMoreAction({
     <Menu modal={false}>
       <MenuTrigger
         render={
-          <button
-            type="button"
-            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-            aria-label={t(($) => $['operation.more'])}
-          >
+          <IconButton aria-label={t(($) => $['operation.more'])}>
             <span aria-hidden className="i-ri-more-fill size-4" />
-          </button>
+          </IconButton>
         }
       />
       <MenuContent align="end" className="w-max min-w-44">

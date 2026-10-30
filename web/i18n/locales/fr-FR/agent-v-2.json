@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "Fichier introuvable",
   "agentDetail.configure.files.preview.empty": "Aucun contenu d’aperçu.",
   "agentDetail.configure.files.preview.failed": "Échec du chargement de l’aperçu.",
+  "agentDetail.configure.files.preview.truncated": "Seul le début de ce fichier est affiché.",
   "agentDetail.configure.files.preview.unsupported": "Ce fichier ne prend pas en charge l’aperçu.",
   "agentDetail.configure.files.remove": "Supprimer {{name}}",
   "agentDetail.configure.files.richTip": "Pour les documents de référence trop longs à coller dans le Prompt : spécifications, modèles, consignes. <docLink>En savoir plus</docLink>\n\nEn mode Build, l'agent peut les configurer pour vous.",

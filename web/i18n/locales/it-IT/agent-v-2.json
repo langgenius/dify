@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "File non trovato",
   "agentDetail.configure.files.preview.empty": "Nessun contenuto in anteprima.",
   "agentDetail.configure.files.preview.failed": "Impossibile caricare l’anteprima.",
+  "agentDetail.configure.files.preview.truncated": "Viene mostrato solo l'inizio di questo file.",
   "agentDetail.configure.files.preview.unsupported": "Questo file non supporta l’anteprima.",
   "agentDetail.configure.files.remove": "Rimuovi {{name}}",
   "agentDetail.configure.files.richTip": "Per materiale di riferimento troppo lungo da incollare nel Prompt: specifiche, modelli, linee guida. <docLink>Scopri di più</docLink>\n\nIn modalità Build, l'agente può configurarli per te.",

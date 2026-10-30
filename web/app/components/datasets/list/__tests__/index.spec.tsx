@@ -84,6 +84,7 @@ function setup(
         'dataset.tag.manage',
       ],
       systemFeatures: { rbac_enabled: true },
+      features: {},
       ...options,
     },
   )
@@ -383,26 +384,31 @@ describe('KnowledgeFS view', () => {
   const agentView = { name: 'knowledgeSpace.view.agent knowledgeSpace.view.beta' }
 
   it('keeps the classic list without requesting KnowledgeFS when it is disabled', async () => {
-    setup({ knowledgeFsFeatures: { enabled: false } }, undefined, '?view=agent')
+    setup(
+      { features: { enable_knowledge_fs: false }, knowledgeFsFeatures: null },
+      undefined,
+      '?view=agent',
+    )
 
     expect(await screen.findByRole('link', { name: 'Test Dataset' })).toBeInTheDocument()
     expect(screen.queryByRole('radio', agentView)).not.toBeInTheDocument()
+    expect(api.knowledgeFsFeatures).not.toHaveBeenCalled()
     expect(api.knowledgeSpaces).not.toHaveBeenCalled()
   })
 
-  it('keeps the classic list when KnowledgeFS availability cannot be loaded', async () => {
-    api.knowledgeFsFeatures.mockRejectedValue(new Error('KnowledgeFS availability unavailable'))
-    setup({ knowledgeFsFeatures: null }, undefined, '?view=agent')
+  it('renders the view switcher before KnowledgeFS capabilities resolve', () => {
+    api.knowledgeFsFeatures.mockReturnValue(new Promise(() => {}))
+    setup({ features: { enable_knowledge_fs: true }, knowledgeFsFeatures: null })
 
-    expect(await screen.findByRole('link', { name: 'Test Dataset' })).toBeInTheDocument()
-    await waitFor(() => expect(api.knowledgeFsFeatures).toHaveBeenCalled())
-    expect(screen.queryByRole('radio', agentView)).not.toBeInTheDocument()
-    expect(api.knowledgeSpaces).not.toHaveBeenCalled()
+    expect(screen.getByRole('radio', { name: 'knowledgeSpace.view.classic' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
   })
 
   it('switches to the Agent view and back while keeping other URL filters', async () => {
     const { onUrlUpdate, user } = setup(
-      { knowledgeFsFeatures: { enabled: true } },
+      { features: { enable_knowledge_fs: true } },
       undefined,
       '?creator_ids=creator-1',
     )
@@ -427,7 +433,7 @@ describe('KnowledgeFS view', () => {
   })
 
   it('restores the Agent view from the URL', async () => {
-    setup({ knowledgeFsFeatures: { enabled: true } }, undefined, '?view=agent')
+    setup({ features: { enable_knowledge_fs: true } }, undefined, '?view=agent')
 
     expect(await screen.findByRole('region', { name: 'knowledgeSpace.new' })).toBeInTheDocument()
     expect(screen.getByRole('radio', agentView)).toHaveAttribute('aria-checked', 'true')
@@ -435,12 +441,12 @@ describe('KnowledgeFS view', () => {
   })
 
   it('shows the first-visit guide once and reopens it on request', async () => {
-    const first = setup({ knowledgeFsFeatures: { enabled: true } })
+    const first = setup({ features: { enable_knowledge_fs: true } })
     const guide = await screen.findByRole('dialog', { name: 'knowledgeSpace.guideTitle' })
     await first.user.click(within(guide).getByRole('button', { name: 'knowledgeSpace.gotIt' }))
     first.unmount()
 
-    const { user } = setup({ knowledgeFsFeatures: { enabled: true } })
+    const { user } = setup({ features: { enable_knowledge_fs: true } })
     expect(
       screen.queryByRole('dialog', { name: 'knowledgeSpace.guideTitle' }),
     ).not.toBeInTheDocument()
@@ -450,7 +456,7 @@ describe('KnowledgeFS view', () => {
     ).toBeInTheDocument()
   })
   it('keeps a dismissed guide closed after hydrating a full page reload', async () => {
-    const first = setup({ knowledgeFsFeatures: { enabled: true } })
+    const first = setup({ features: { enable_knowledge_fs: true } })
     const guide = await screen.findByRole('dialog', { name: 'knowledgeSpace.guideTitle' })
     await first.user.click(within(guide).getByRole('button', { name: 'knowledgeSpace.gotIt' }))
     first.unmount()
@@ -462,7 +468,7 @@ describe('KnowledgeFS view', () => {
     }
     const { queryClient, wrapper: QueryWrapper } = createConsoleQueryWrapper({
       currentWorkspace: { role: 'owner' },
-      knowledgeFsFeatures: { enabled: true },
+      features: { enable_knowledge_fs: true },
     })
     const store = createStore()
     store.set(queryClientAtom, queryClient)

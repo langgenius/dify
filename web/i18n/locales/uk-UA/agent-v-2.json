@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "Файл не знайдено",
   "agentDetail.configure.files.preview.empty": "Немає вмісту для перегляду.",
   "agentDetail.configure.files.preview.failed": "Не вдалося завантажити перегляд.",
+  "agentDetail.configure.files.preview.truncated": "Показано лише початок цього файлу.",
   "agentDetail.configure.files.preview.unsupported": "Попередній перегляд цього файлу не підтримується.",
   "agentDetail.configure.files.remove": "Видалити {{name}}",
   "agentDetail.configure.files.richTip": "Для довідкових матеріалів, які занадто довгі для вставлення в Prompt: специфікації, шаблони, інструкції. <docLink>Докладніше</docLink>\n\nУ режимі Build агент може налаштувати це за вас.",

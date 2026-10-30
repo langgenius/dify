@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "ファイルが見つかりません",
   "agentDetail.configure.files.preview.empty": "プレビュー内容はありません。",
   "agentDetail.configure.files.preview.failed": "プレビューの読み込みに失敗しました。",
+  "agentDetail.configure.files.preview.truncated": "このファイルの先頭部分のみ表示しています。",
   "agentDetail.configure.files.preview.unsupported": "ファイルはプレビューに対応していません。",
   "agentDetail.configure.files.remove": "{{name}} を削除",
   "agentDetail.configure.files.richTip": "Prompt に貼り付けるには長すぎる参考資料向けです: 仕様、テンプレート、ガイドライン。<docLink>詳細を見る</docLink>\n\nBuild モードでは、エージェントがこれらを設定できます。",

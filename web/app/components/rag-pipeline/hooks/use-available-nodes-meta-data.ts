@@ -1,5 +1,5 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
@@ -9,13 +9,17 @@ import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
+import { consoleQuery } from '@/service/console'
 
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation(['workflow'])
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()
-  const knowledgeFsEnabled = useAtomValue(knowledgeFsEnabledAtom)
+  const { data: knowledgeFsEnabled } = useSuspenseQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_knowledge_fs,
+    }),
+  )
 
   const mergedNodesMetaData = useMemo(
     () => [

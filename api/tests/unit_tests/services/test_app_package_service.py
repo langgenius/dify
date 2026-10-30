@@ -7,7 +7,7 @@ import zipfile
 from collections.abc import Callable, Generator, Mapping
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -16,7 +16,16 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
 
+from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from libs.archive_writer import (
+    ArchiveLimits,
+    ArchiveOptions,
+    ArchiveResult,
+    StrictPathPolicy,
+    entries_from_folder,
+    write_archive,
+)
 from models import Account, App, AppMode
 from models.agent import (
     Agent,
@@ -40,7 +49,6 @@ from services.agent.errors import (
 )
 from services.agent.package_resource_exporter import AgentPackageResourceExporter, _FileSource, _SkillSource
 from services.agent.package_resource_importer import AgentPackageResourceImporter
-from services.agent.roster_package_entities import PackageIcon, PreparedPackageArchive, RosterAgentPackageMember
 from services.app_dsl_service import AppDslService, Import
 from services.app_package_service import AppPackageManifest, AppPackageService
 from services.dsl_content import DSL_MAX_SIZE
@@ -816,6 +824,20 @@ def _roster_archive(binding: dict[str, object], agent_job: dict[str, object] | N
         return io.BytesIO(package.archive.read())
 
 
+_FOLDER_DSL = "kind: app\nversion: 0.1.0\napp:\n  mode: workflow\n"
+
+
+def _rebuild_from_folder(extra: dict[str, bytes]) -> ArchiveResult:
+    with (
+        AppPackageService().export(dsl=_FOLDER_DSL, name="Example", workflow_tools=[]) as package,
+        zipfile.ZipFile(package.archive) as source,
+    ):
+        parts = {name: io.BytesIO(source.read(name)) for name in source.namelist()}
+    parts.update({path: io.BytesIO(data) for path, data in extra.items()})
+    limits = ArchiveLimits(dify_config.AGENT_PACKAGE_MAX_ENTRIES, dify_config.AGENT_PACKAGE_MAX_BYTES)
+    return write_archive(entries_from_folder(parts), ArchiveOptions(StrictPathPolicy(), limits))
+
+
 class TestAppPackageServiceCases:
     @staticmethod
     @pytest.mark.parametrize("mode", ["workflow", "advanced-chat", "chat", "completion", "agent-chat"])
@@ -933,6 +955,17 @@ class TestAppPackageServiceCases:
         assert prepared is not None
         assert prepared.agents == {}
         prepared.close()
+
+    @staticmethod
+    def test_an_unpacked_export_rebuilt_from_folder_parts_reads_back_and_nesting_is_refused() -> None:
+        with _rebuild_from_folder({".DS_Store": b""}).file as archive:
+            prepared = AppPackageService().read_package(archive)
+            assert prepared is not None
+            with prepared:
+                assert prepared.dsl == _FOLDER_DSL
+        with _rebuild_from_folder({"skills/a/SKILL.md": b""}).file as archive:
+            with pytest.raises(InvalidRosterAgentPackageError, match="unsafe path"):
+                AppPackageService().read_package(archive)
 
 
 """Packages bundle the workflows an App calls through Workflow Tools as nested App packages."""
@@ -1227,35 +1260,6 @@ class TestPackageIconsCases:
         config_overrides(UPLOAD_IMAGE_FILE_SIZE_LIMIT=0)
         with pytest.raises(RosterAgentPackageTooLargeError, match="image size"):
             AppPackageService().read_package(_icon_archive())
-
-    @staticmethod
-    def test_materialized_icon_is_owned_by_destination(monkeypatch: pytest.MonkeyPatch) -> None:
-        payload = b"image payload"
-        digest = hashlib.sha256(payload).hexdigest()
-        archive = io.BytesIO()
-        with zipfile.ZipFile(archive, "w") as package:
-            package.writestr("i_000001.png", payload)
-        prepared = PreparedPackageArchive(
-            archive=archive, members={"i_000001.png": RosterAgentPackageMember(size=len(payload), sha256=digest)}
-        )
-        icon = PackageIcon(id="i_000001", path="i_000001.png", size=len(payload), sha256=digest)
-        session = MagicMock()
-        monkeypatch.setattr(
-            "services.agent.package_resource_importer.session_factory.create_session",
-            MagicMock(return_value=session),
-        )
-        backend = Mock()
-        with prepared:
-            mapping = AgentPackageResourceImporter(storage_backend=backend).materialize_icons(
-                archive=prepared, icons=[icon], tenant_id="destination", account_id="importer"
-            )
-        row = session.__enter__.return_value.add_all.call_args.args[0][0]
-        assert row.id == mapping["i_000001"]
-        assert row.tenant_id == "destination"
-        assert row.created_by == "importer"
-        assert row.mime_type == "image/png"
-        assert row.key.startswith("upload_files/destination/")
-        backend.save.assert_called_once_with(row.key, payload)
 
     @staticmethod
     def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch) -> None:

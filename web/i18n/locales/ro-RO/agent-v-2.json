@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "Fișierul nu a fost găsit",
   "agentDetail.configure.files.preview.empty": "Niciun conținut de previzualizat.",
   "agentDetail.configure.files.preview.failed": "Încărcarea previzualizării a eșuat.",
+  "agentDetail.configure.files.preview.truncated": "Este afișat doar începutul acestui fișier.",
   "agentDetail.configure.files.preview.unsupported": "Acest fișier nu acceptă previzualizarea.",
   "agentDetail.configure.files.remove": "Elimină {{name}}",
   "agentDetail.configure.files.richTip": "Pentru materiale de referință prea lungi pentru a fi lipite în Prompt: specificații, șabloane, ghiduri. <docLink>Aflați mai multe</docLink>\n\nÎn modul Build, agentul le poate configura pentru dvs.",

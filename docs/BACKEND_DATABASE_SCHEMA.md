@@ -2,7 +2,7 @@
 
 ## Scope
 - Covers: model/base inheritance, schema boundaries in model properties, tenant-aware schema design, index redundancy checks, dialect portability in models, and cross-database compatibility in migrations.
-- Does NOT cover: session lifecycle, transaction boundaries, and query execution patterns (handled by `sqlalchemy-rule.md`).
+- Does NOT cover: session lifecycle, transaction boundaries, and query execution patterns (handled by the [SQLAlchemy guide](BACKEND_SQLALCHEMY.md)).
 
 ## Rules
 

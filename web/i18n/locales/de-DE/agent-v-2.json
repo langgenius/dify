@@ -99,6 +99,7 @@
   "agentDetail.configure.files.missing": "Datei nicht gefunden",
   "agentDetail.configure.files.preview.empty": "Kein Vorschauinhalt.",
   "agentDetail.configure.files.preview.failed": "Vorschau konnte nicht geladen werden.",
+  "agentDetail.configure.files.preview.truncated": "Es wird nur der Anfang dieser Datei angezeigt.",
   "agentDetail.configure.files.preview.unsupported": "Für diese Datei wird keine Vorschau unterstützt.",
   "agentDetail.configure.files.remove": "{{name}} entfernen",
   "agentDetail.configure.files.richTip": "Für Referenzmaterial, das zu lang zum Einfügen in den Prompt ist: Spezifikationen, Vorlagen, Richtlinien. <docLink>Mehr erfahren</docLink>\n\nIm Build-Modus kann der Agent diese Einrichtung für Sie übernehmen.",
