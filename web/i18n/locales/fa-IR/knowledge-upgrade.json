@@ -3,7 +3,7 @@
   "upgrade.completeTitle": "ارتقا کامل شد",
   "upgrade.contactSupport": "تماس با پشتیبانی",
   "upgrade.dialogAvailability": "پس از ارتقا، <strong>هر دو پایگاه دانش کلاسیک و Agent همچنان قابل استفاده هستند</strong>",
-  "upgrade.dialogDescription": "این کار <legacy>پایگاه دانش کلاسیک</legacy> را به <new>پایگاه دانش Agent</new> ارتقا می‌دهد و همهٔ اسناد، تنظیمات و اتصال‌های برنامه را حفظ می‌کند. سپس به‌طور خودکار به پایگاه دانش Agent هدایت می‌شوید.",
+  "upgrade.dialogDescription": "این کار <legacy>پایگاه دانش کلاسیک</legacy> را به <new>پایگاه دانش Agent</new> ارتقا می‌دهد و همهٔ اسناد و تنظیمات را حفظ می‌کند. سپس به‌طور خودکار به پایگاه دانش Agent هدایت می‌شوید.",
   "upgrade.dialogDuration": "بسته به اندازه، از چند دقیقه تا چند ساعت طول می‌کشد. پیشرفت روی کارت پایگاه دانش نمایش داده می‌شود",
   "upgrade.dialogLinkedApps": "برنامه‌های متصل هنگام ارتقا به بازیابی ادامه می‌دهند",
   "upgrade.dialogTitle": "این پایگاه دانش به پایگاه دانش Agent ارتقا یابد؟",
