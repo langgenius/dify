@@ -149,7 +149,7 @@ _RUN_GUARDS: Final = (
     CheckAppAccess(),
 )
 _DRAFT_FORM_NOTE: Final = "A human-input pause in a draft run cannot be resumed over openapi."
-_STREAM_RESULT: Final = (200, EventStreamResponse, "Run result (SSE stream)")
+STREAM_RESULT: Final = (200, EventStreamResponse, "Run result (SSE stream)")
 
 
 def _generate(app: App, caller: Any, args: dict[str, Any], session: Session, invoke_from: InvokeFrom):
@@ -163,7 +163,7 @@ def _generate(app: App, caller: Any, args: dict[str, Any], session: Session, inv
     )
 
 
-def _generate_args(ctx: Context, payload: RunInputs, *, exclude: Collection[str] = ()) -> dict[str, Any]:
+def generate_args(ctx: Context, payload: RunInputs, *, exclude: Collection[str] = ()) -> dict[str, Any]:
     args = payload.model_dump(exclude={"files", "attachments", *exclude}, exclude_none=True)
     if payload.files or payload.attachments:
         end_read_transaction(ctx.session)
@@ -173,7 +173,7 @@ def _generate_args(ctx: Context, payload: RunInputs, *, exclude: Collection[str]
     return args
 
 
-def _stream(ctx: Context, args: dict[str, Any], invoke_from: InvokeFrom):
+def stream(ctx: Context, args: dict[str, Any], invoke_from: InvokeFrom):
     with _translate_service_errors():
         return _generate(ctx.app, ctx.caller, args, ctx.session, invoke_from)
 
@@ -184,7 +184,7 @@ def _require_mode(app: App, *modes: AppMode) -> None:
         raise AppModeMismatch()
 
 
-def _respond(ctx: Context, stream: Any):
+def respond(ctx: Context, stream: Any):
     app_model = ctx.app
     emit_app_run(
         app_id=app_model.id,
@@ -422,15 +422,15 @@ def _run_api(route: _RunRoute) -> type[Resource]:
         requirements=route.requirements,
         body=route.payload,
         examples=route.examples,
-        returns=_STREAM_RESULT,
+        returns=STREAM_RESULT,
     )
     def post(self: Resource, ctx: Context, app_id: str, *, body: RunPayloadBase):
         if not route.draft:
             _require_mode(ctx.app, *route.modes)
-        stream = _stream(ctx, _generate_args(ctx, body), route.invoke_from)
+        events = stream(ctx, generate_args(ctx, body), route.invoke_from)
         for layer in route.hints:
-            stream = layer(stream, route.op, ctx.app.id)
-        return _respond(ctx, stream)
+            events = layer(events, route.op, ctx.app.id)
+        return respond(ctx, events)
 
     resource = type(route.resource, (Resource,), {"post": post, "__module__": __name__})
     return openapi_ns.route(f"/apps/<string:app_id>/{route.segment}:run")(resource)

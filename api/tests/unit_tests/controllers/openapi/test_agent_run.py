@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Protocol, cast
@@ -8,6 +9,7 @@ from typing import Protocol, cast
 import pytest
 from flask import Flask, Response
 from sqlalchemy.orm import Session
+from werkzeug.test import TestResponse
 
 from constants.oauth_bearer import Scope
 from controllers.common.rbac import AgentId, RBACCheck, RBACPermission
@@ -22,7 +24,7 @@ from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
     CheckRBACPermission,
-    CheckScopeEarly,
+    CheckScope,
     CheckSubject,
     CheckWorkspaceMember,
     CheckWorkspaceRole,
@@ -191,8 +193,8 @@ def test_unpublished_agent_run_hints_the_draft(app: Flask, monkeypatch: pytest.M
 _ACCOUNT_ONLY = CheckSubject(allowed=(AccountSubject,))
 _SHARED_GUARDS = (
     CheckWorkspaceMember(),
-    CheckScopeEarly(Scope.APPS_RUN),
     CheckAppApiEnabled(),
+    CheckScope(Scope.APPS_RUN),
     CheckRBACPermission(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())),
 )
 
@@ -257,3 +259,53 @@ def test_an_agent_with_its_service_api_off_is_refused_and_runs_nothing(
         }
     ]
     assert stub.calls == []
+
+
+_UNDASHED_AGENT_ID = uuid.UUID(AGENT_ID).hex
+
+
+def _post_undashed(world: AdmittedWorld, sqlite_session: Session, op: str) -> TestResponse:
+    persist(
+        sqlite_session,
+        make_app(app_id=AGENT_APP_ID, tenant_id=world.workspace_id, mode=AppMode.AGENT),
+        make_agent(tenant_id=world.workspace_id),
+    )
+    return world.client.post(
+        f"/openapi/v1/workspaces/{world.workspace_id}/agents/{_UNDASHED_AGENT_ID}:{op}",
+        json={"query": "hi"},
+        headers=world.headers,
+    )
+
+
+@pytest.mark.parametrize("op", ["run", "test"])
+def test_an_undashed_agent_id_reaches_the_rbac_check_and_the_reply_hints_dashed(
+    admitted_bearer: AdmittedWorld,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    op: str,
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    seen: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        "controllers.openapi.auth.requirements.enforce_rbac_checks", lambda **kwargs: seen.append(kwargs["path_args"])
+    )
+    _stub_generate(monkeypatch, chunks=[f"data: {json.dumps(_MESSAGE_END)}\n\n"])
+
+    response = _post_undashed(admitted_bearer, sqlite_session, op)
+
+    [path_args] = seen
+    assert path_args["agent_id"] == AGENT_ID
+    [event] = response.get_data(as_text=True).split("\n\n")[:1]
+    assert json.loads(event[len("data: ") :])["hints"][0]["input"]["agent_id"] == AGENT_ID
+
+
+def test_an_undashed_agent_id_is_hinted_dashed_when_the_run_needs_the_draft(
+    admitted_bearer: AdmittedWorld, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _stub_generate(monkeypatch, error=AgentAppNotPublishedError("Agent has not been published"))
+
+    response = _post_undashed(admitted_bearer, sqlite_session, "run")
+
+    [hint] = response.get_json()["hints"]
+    assert (hint["op"], hint["input"]["agent_id"]) == ("test.agent", AGENT_ID)

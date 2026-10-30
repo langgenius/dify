@@ -46,7 +46,6 @@ from controllers.openapi.auth.requirements import (
     CheckPluginInstallSetting,
     CheckRBACPermission,
     CheckScope,
-    CheckScopeEarly,
     CheckSkillEnabled,
     CheckSubject,
     CheckWebAppAuthEnterprise,
@@ -419,8 +418,6 @@ class Case(StrEnum):
     UNKNOWN_APP = auto()
     NON_MEMBER_AND_APP_API_DISABLED = auto()
     NON_MEMBER_AND_UNKNOWN_APP = auto()
-    INSUFFICIENT_SCOPE_AND_APP_API_DISABLED = auto()
-    INSUFFICIENT_SCOPE_AND_UNKNOWN_APP = auto()
     FOREIGN_WORKSPACE_QUERY = auto()
     EDITION_NOT_ENTERPRISE = auto()
     LICENSE_INVALID = auto()
@@ -1131,8 +1128,6 @@ CASE_REQUIRES: dict[Case, frozenset[Trait]] = {
     Case.UNKNOWN_APP: frozenset({Trait.APP_SCOPED}),
     Case.NON_MEMBER_AND_APP_API_DISABLED: frozenset({Trait.AGENT_SCOPED}),
     Case.NON_MEMBER_AND_UNKNOWN_APP: frozenset({Trait.AGENT_SCOPED}),
-    Case.INSUFFICIENT_SCOPE_AND_APP_API_DISABLED: frozenset({Trait.AGENT_SCOPED}),
-    Case.INSUFFICIENT_SCOPE_AND_UNKNOWN_APP: frozenset({Trait.AGENT_SCOPED}),
     Case.FOREIGN_WORKSPACE_QUERY: frozenset({Trait.APP_SCOPED}),
     Case.EDITION_NOT_ENTERPRISE: frozenset({Trait.ENTERPRISE_ONLY}),
     Case.LICENSE_INVALID: frozenset(),
@@ -1167,10 +1162,6 @@ SCENARIOS: dict[Case, Scenario] = {
     Case.UNKNOWN_APP: Scenario(bearer=Bearer.PRIMARY, unknown_app=True),
     Case.NON_MEMBER_AND_APP_API_DISABLED: Scenario(bearer=Bearer.ACCOUNT_OUTSIDER, app_api_enabled=False),
     Case.NON_MEMBER_AND_UNKNOWN_APP: Scenario(bearer=Bearer.ACCOUNT_OUTSIDER, unknown_app=True),
-    Case.INSUFFICIENT_SCOPE_AND_APP_API_DISABLED: Scenario(
-        bearer=Bearer.PRIMARY, narrow_scopes=True, app_api_enabled=False
-    ),
-    Case.INSUFFICIENT_SCOPE_AND_UNKNOWN_APP: Scenario(bearer=Bearer.PRIMARY, narrow_scopes=True, unknown_app=True),
     Case.FOREIGN_WORKSPACE_QUERY: Scenario(bearer=Bearer.PRIMARY, foreign_workspace_query=True),
     Case.EDITION_NOT_ENTERPRISE: Scenario(bearer=Bearer.PRIMARY, edition=DeploymentEdition.COMMUNITY),
     Case.LICENSE_INVALID: Scenario(bearer=Bearer.PRIMARY, license_status=LicenseStatus.EXPIRED),
@@ -1367,11 +1358,9 @@ _AGENT_ROUTE_ANSWERS: dict[Case, Expect] = {
     Case.UNKNOWN_APP: DENY_UNKNOWN_AGENT,
     Case.NON_MEMBER_AND_APP_API_DISABLED: DENY_NON_MEMBER,
     Case.NON_MEMBER_AND_UNKNOWN_APP: DENY_NON_MEMBER,
-    Case.INSUFFICIENT_SCOPE_AND_APP_API_DISABLED: DENY_SCOPE,
-    Case.INSUFFICIENT_SCOPE_AND_UNKNOWN_APP: DENY_SCOPE,
 }
-"""On an agent route the workspace and the scope come from the request, so neither a
-non-member nor a token without the scope learns whether the Agent exists or has its Service API on."""
+"""On an agent route the workspace comes from the request, so a non-member
+learns neither whether the Agent exists nor whether it has its Service API on."""
 
 _ACCOUNT_READER_SETTINGS: dict[Case, Expect] = {**_ACCOUNT_READER_APP, Case.APP_API_DISABLED: ADMIT}
 _ACCOUNT_EDITOR_SETTINGS: dict[Case, Expect] = {**_ACCOUNT_EDITOR_APP, Case.APP_API_DISABLED: ADMIT}
@@ -1700,16 +1689,16 @@ def _settings_req(
 _REQ_AGENT_RUN = (
     CheckSubject(allowed=_ACCOUNT),
     CheckWorkspaceMember(),
-    CheckScopeEarly(Scope.APPS_RUN),
     CheckAppApiEnabled(),
+    CheckScope(Scope.APPS_RUN),
     CheckRBACPermission(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())),
     CheckAppAccess(),
 )
 _REQ_AGENT_DESCRIBE = (
     CheckSubject(allowed=_ACCOUNT),
     CheckWorkspaceMember(),
-    CheckScopeEarly(Scope.APPS_READ),
     CheckAppApiEnabled(),
+    CheckScope(Scope.APPS_READ),
     CheckRBACPermission(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())),
 )
 _REQ_AGENT_TEST = (*_REQ_AGENT_RUN[:-1], CheckWorkspaceRole(_EDITOR_UP))
