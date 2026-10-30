@@ -252,7 +252,7 @@ def test_recovery_restart_resets_to_entry_state_and_preserves_conversation() -> 
     )
     s = _seed(repo, EntryMode.BUILD, PcState.BUILD_REVIEW, fc)
     runner = Runner(
-        Env(dify=dify, agent=StubAgent(), repo=repo, now=lambda: datetime.min),
+        Env(dify=dify, agent=PlaceholderAgent(), repo=repo, now=lambda: datetime.min),
         build_registry(),
     )
 
