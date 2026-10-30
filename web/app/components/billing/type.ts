@@ -1,7 +1,7 @@
 type DocumentProcessingPriority = 'standard' | 'priority' | 'top-priority'
 type WorkflowExecutionSpeed = 'standard' | 'faster' | 'priority'
 
-export type PlanQuota = {
+type PlanQuota = {
   count: number
   perMonth: boolean
 }
