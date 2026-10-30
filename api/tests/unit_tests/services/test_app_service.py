@@ -68,6 +68,48 @@ def _persist_app(session: Session, *, tenant_id: str, name: str = "Visible App")
     return app
 
 
+def test_get_paginate_apps_includes_maintained_apps_outside_rbac_whitelist(sqlite_session: Session) -> None:
+    tenant_id = str(uuid4())
+    account_id = str(uuid4())
+    own_app = App(
+        id=str(uuid4()),
+        tenant_id=tenant_id,
+        name="Owned app",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="chat",
+        icon_background="#FFFFFF",
+        enable_site=False,
+        enable_api=False,
+        created_by=str(uuid4()),
+        maintainer=account_id,
+    )
+    hidden_app = App(
+        id=str(uuid4()),
+        tenant_id=tenant_id,
+        name="Other app",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="chat",
+        icon_background="#FFFFFF",
+        enable_site=False,
+        enable_api=False,
+        maintainer=str(uuid4()),
+    )
+    sqlite_session.add_all([own_app, hidden_app])
+    sqlite_session.commit()
+
+    result = AppService().get_paginate_apps(
+        account_id,
+        tenant_id,
+        AppListParams(accessible_app_ids=[], include_own_apps=True),
+        sqlite_session,
+    )
+
+    assert result is not None
+    assert [app.id for app in result.items] == [own_app.id]
+
+
 def _persist_agent_app(
     session: Session,
     *,
