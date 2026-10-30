@@ -8,7 +8,10 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from constants.model_template import default_app_templates
-from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
+from core.agent.publish_visibility import (
+    agent_has_workflow_callable_active_snapshot,
+    workflow_callable_active_snapshot_filter,
+)
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
@@ -961,7 +964,7 @@ class AgentRosterService:
             status=AppStatus.NORMAL,
             openapi_visible=True,
             name=name,
-            agent_is_published=published,
+            agent_is_runnable=published,
         )
         self.limit_to_accessible_agents(params, tenant_id=tenant_id, accessible_agent_ids=accessible_agent_ids)
 
@@ -972,11 +975,11 @@ class AgentRosterService:
         agents_by_app_id = self.load_app_backing_agents_by_app_id(
             tenant_id=tenant_id, app_ids=[str(app.id) for app in pagination.items]
         )
-        published_by_agent_id = self.load_active_config_is_published_by_agent_id(
-            tenant_id=tenant_id, agents=list(agents_by_app_id.values())
+        runnable_agent_ids = self._load_runnable_agent_ids(
+            tenant_id=tenant_id, agent_ids=[agent.id for agent in agents_by_app_id.values()]
         )
         entries = [
-            self._roster_entry(app, agent, published_by_agent_id[agent.id])
+            self._roster_entry(app, agent, agent.id in runnable_agent_ids)
             for app in pagination.items
             if (agent := agents_by_app_id.get(str(app.id))) is not None
         ]
@@ -989,18 +992,32 @@ class AgentRosterService:
         app cannot name it.
         """
         agent = self._get_app_backed_agent(tenant_id=tenant_id, agent_id=agent_id)
-        published = self.load_active_config_is_published_by_agent_id(tenant_id=tenant_id, agents=[agent])
-        return self._roster_entry(app, agent, published[agent.id])
+        runnable = agent_has_workflow_callable_active_snapshot(session=self._session, agent=agent)
+        return self._roster_entry(app, agent, runnable)
+
+    def _load_runnable_agent_ids(self, *, tenant_id: str, agent_ids: Sequence[str]) -> set[str]:
+        """The Agents among `agent_ids` that have a published version a run can use."""
+        if not agent_ids:
+            return set()
+        return set(
+            self._session.scalars(
+                select(Agent.id).where(
+                    Agent.tenant_id == tenant_id,
+                    Agent.id.in_(agent_ids),
+                    workflow_callable_active_snapshot_filter(),
+                )
+            )
+        )
 
     @staticmethod
-    def _roster_entry(app: App, agent: Agent, published: bool) -> RosterAgentEntry:
+    def _roster_entry(app: App, agent: Agent, runnable: bool) -> RosterAgentEntry:
         return RosterAgentEntry(
             agent_id=agent.id,
             app_id=str(app.id),
             name=app.name,
             description=app.description,
             role=agent.role,
-            published=published,
+            published=runnable,
             updated_at=app.updated_at,
             service_api_enabled=app.enable_api,
         )

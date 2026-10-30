@@ -7415,6 +7415,7 @@ def _openapi_agent_app(
     *,
     published: bool = False,
     edited_since_publish: bool = False,
+    seeded_only: bool = False,
     enable_api: bool = True,
     scope: AgentScope = AgentScope.ROSTER,
     maintainer: str | None = None,
@@ -7426,9 +7427,19 @@ def _openapi_agent_app(
         source=AgentSource.AGENT_APP,
         app_id=f"app-{key}",
     )
-    if published or edited_since_publish:
+    if published or edited_since_publish or seeded_only:
         agent.active_config_snapshot_id = f"snapshot-{key}"
         agent.active_config_is_published = published
+    if published or edited_since_publish:
+        session.add(
+            AgentConfigRevision(
+                tenant_id="tenant-1",
+                agent_id=agent.id,
+                current_snapshot_id=f"snapshot-{key}",
+                revision=1,
+                operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+            )
+        )
     session.add_all(
         [
             make_app(
@@ -7449,6 +7460,7 @@ def openapi_roster(sqlite_session: Session) -> Session:
     _openapi_agent_app(sqlite_session, "published", published=True)
     _openapi_agent_app(sqlite_session, "draft")
     _openapi_agent_app(sqlite_session, "edited", edited_since_publish=True)
+    _openapi_agent_app(sqlite_session, "seeded", seeded_only=True)
     _openapi_agent_app(sqlite_session, "api-off", published=True, enable_api=False)
     _openapi_agent_app(sqlite_session, "workflow-only", scope=AgentScope.WORKFLOW_ONLY)
     sqlite_session.commit()
@@ -7476,9 +7488,9 @@ def _list_openapi_agents(
 @pytest.mark.parametrize(
     ("published", "accessible_agent_ids", "expected"),
     [
-        (None, None, {"agent-published", "agent-draft", "agent-edited"}),
-        (True, None, {"agent-published"}),
-        (False, None, {"agent-draft", "agent-edited"}),
+        (None, None, {"agent-published", "agent-draft", "agent-edited", "agent-seeded"}),
+        (True, None, {"agent-published", "agent-edited"}),
+        (False, None, {"agent-draft", "agent-seeded"}),
         (None, {"agent-draft"}, {"agent-draft"}),
         (None, {"agent-draft", "agent-api-off", "agent-workflow-only"}, {"agent-draft"}),
         (True, {"agent-draft"}, set()),
@@ -7522,10 +7534,17 @@ def test_list_openapi_roster_agents_filter_and_row_agree(openapi_roster: Session
     assert {entry.published for entry in entries} == {published}
 
 
-def test_list_openapi_roster_agents_lists_an_edited_agent_as_unpublished(openapi_roster: Session) -> None:
-    entries, _ = _list_openapi_agents(openapi_roster, name="App edited")
+@pytest.mark.parametrize(
+    ("key", "published"),
+    [("published", True), ("edited", True), ("draft", False), ("seeded", False)],
+    ids=["clean", "edited-since-publish", "never-published", "seeded-only"],
+)
+def test_list_openapi_roster_agents_calls_published_what_a_run_can_use(
+    openapi_roster: Session, key: str, published: bool
+) -> None:
+    entries, _ = _list_openapi_agents(openapi_roster, name=f"App {key}")
 
-    assert [(entry.agent_id, entry.published) for entry in entries] == [("agent-edited", False)]
+    assert [(entry.agent_id, entry.published) for entry in entries] == [(f"agent-{key}", published)]
 
 
 def test_list_openapi_roster_agents_empty_access_still_lists_apps_the_caller_maintains(
@@ -7546,7 +7565,7 @@ def test_list_openapi_roster_agents_drops_an_app_without_a_roster_agent(
 
     entries, total = _list_openapi_agents(openapi_roster)
 
-    assert (entries, total) == ([], 3)
+    assert (entries, total) == ([], 4)
 
 
 def test_list_openapi_roster_agents_writes_nothing(openapi_roster: Session) -> None:
@@ -7561,7 +7580,9 @@ def test_list_openapi_roster_agents_writes_nothing(openapi_roster: Session) -> N
 
 
 @pytest.mark.parametrize(
-    ("key", "published"), [("published", True), ("edited", False), ("draft", False)], ids=["clean", "edited", "never"]
+    ("key", "published"),
+    [("published", True), ("edited", True), ("draft", False), ("seeded", False)],
+    ids=["clean", "edited", "never", "seeded-only"],
 )
 def test_describe_openapi_roster_agent_maps_the_entry(openapi_roster: Session, key: str, published: bool) -> None:
     app = openapi_roster.get(App, f"app-{key}")

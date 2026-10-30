@@ -16,7 +16,10 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from constants.model_template import default_app_templates
 from constants.resource_access_token import ResourceAccessTokenResourceType
-from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
+from core.agent.publish_visibility import (
+    agent_has_workflow_callable_active_snapshot,
+    workflow_callable_active_snapshot_filter,
+)
 from core.agent.tool_configuration import mask_agent_tool_parameters
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
@@ -202,7 +205,9 @@ class AppResponseView:
 
 class AppService:
     @staticmethod
-    def _agent_app_exists_filter(tenant_id: str, *, is_published: bool | None = None) -> sa.Exists:
+    def _agent_app_exists_filter(
+        tenant_id: str, *, is_published: bool | None = None, is_runnable: bool | None = None
+    ) -> sa.Exists:
         agent_filters = [
             Agent.tenant_id == tenant_id,
             Agent.app_id == App.id,
@@ -216,6 +221,9 @@ class AppService:
                 Agent.active_config_is_published.is_(True),
             )
             agent_filters.append(has_published_config if is_published else sa.not_(has_published_config))
+        if is_runnable is not None:
+            runnable = workflow_callable_active_snapshot_filter()
+            agent_filters.append(runnable if is_runnable else sa.not_(runnable))
 
         return sa.exists().where(*agent_filters).correlate(App)
 
@@ -238,7 +246,12 @@ class AppService:
         elif params.mode == "agent":
             filters.append(App.mode == AppMode.AGENT)
             publication_filter = params.agent_is_published if isinstance(params, AppListParams) else None
-            filters.append(AppService._agent_app_exists_filter(tenant_id, is_published=publication_filter))
+            runnable_filter = params.agent_is_runnable if isinstance(params, AppListParams) else None
+            filters.append(
+                AppService._agent_app_exists_filter(
+                    tenant_id, is_published=publication_filter, is_runnable=runnable_filter
+                )
+            )
         elif params.mode == "all":
             filters.append(App.mode != AppMode.AGENT)
 
