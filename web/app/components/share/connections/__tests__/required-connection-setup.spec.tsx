@@ -21,6 +21,64 @@ const services: readonly RequiredConnectionService[] = [
 ]
 
 describe('RequiredConnectionSetup', () => {
+  it.each([undefined, 'removed'])(
+    'keeps an unselected connection (%s) as a normal setup choice',
+    (selectedConnectionId) => {
+      render(
+        <RequiredConnectionSetup
+          services={[
+            {
+              ...services[0]!,
+              availableConnections: [{ id: 'personal', name: 'alex@example.com', method: 'oauth' }],
+              selectedConnectionId,
+            },
+          ]}
+          onConnect={vi.fn()}
+          onConnectionChange={vi.fn()}
+        />,
+      )
+
+      const row = screen.getByRole('listitem', { name: 'Gmail' })
+      const selector = within(row).getByRole('button', { name: 'Gmail' })
+      expect(selector).toHaveTextContent('share.connections.setup.selectConnection')
+      expect(within(row).getAllByText('share.connections.setup.selectConnection')).toHaveLength(1)
+      expect(selector).toHaveAccessibleDescription(
+        `${services[0]!.description} share.connections.setup.selectConnection`,
+      )
+    },
+  )
+
+  it.each(['invalid', 'expired'] as const)(
+    'still warns about a selected %s connection during setup',
+    (status) => {
+      render(
+        <RequiredConnectionSetup
+          services={[
+            {
+              ...services[0]!,
+              availableConnections: [
+                { id: 'personal', name: 'alex@example.com', method: 'oauth', status },
+              ],
+              selectedConnectionId: 'personal',
+            },
+          ]}
+          onConnect={vi.fn()}
+          onConnectionChange={vi.fn()}
+        />,
+      )
+
+      const row = screen.getByRole('listitem', { name: 'Gmail' })
+      const warning =
+        status === 'invalid'
+          ? 'share.connections.accounts.reconnectRequired'
+          : 'share.connections.accounts.expired'
+      expect(within(row).getByText(warning)).toBeVisible()
+      expect(within(row).getByRole('button', { name: 'Gmail' })).toHaveAccessibleDescription(
+        `${services[0]!.description} ${warning} alex@example.com`,
+      )
+    },
+  )
+
   it('keeps its title, required count, and composed service list in sync', () => {
     const { rerender } = render(
       <RequiredConnectionSetup
@@ -42,6 +100,9 @@ describe('RequiredConnectionSetup', () => {
     expect(within(list).getAllByRole('listitem')).toHaveLength(2)
     expect(within(list).getByRole('listitem', { name: 'Gmail' })).toBeVisible()
     expect(within(list).getByRole('listitem', { name: 'Notion' })).toBeVisible()
+    expect(
+      within(section).queryByText('share.connections.setup.selectConnection'),
+    ).not.toBeInTheDocument()
 
     rerender(
       <RequiredConnectionSetup

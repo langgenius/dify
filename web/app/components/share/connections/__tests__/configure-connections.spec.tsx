@@ -106,7 +106,7 @@ describe('ConfigureConnections', () => {
       )
     }
     render(<SharedConnections />)
-    const configure = screen.getByRole('button', { name: 'share.connections.configure.title 1' })
+    const configure = screen.getByRole('button', { name: 'share.connections.configure.title 2' })
     const manage = screen.getByRole('button', { name: 'Manage connection' })
     await user.click(manage)
     const managedDialog = await screen.findByRole('dialog', {
@@ -234,7 +234,7 @@ describe('ConfigureConnections', () => {
       )
     }
     render(<ConnectedConfiguration />)
-    await user.click(screen.getByRole('button', { name: 'share.connections.configure.title' }))
+    await user.click(screen.getByRole('button', { name: 'share.connections.configure.title 1' }))
     const configuration = await screen.findByRole('dialog', {
       name: 'share.connections.configure.title',
     })
@@ -454,7 +454,7 @@ describe('ConfigureConnections', () => {
     await waitFor(() => expect(trigger).toHaveFocus())
   })
 
-  it('counts only unhealthy selected services and removes the count after recovery or a healthy selection', () => {
+  it('counts unhealthy and missing selections once per service and removes resolved warnings', () => {
     const createService = (
       id: string,
       overrides: Partial<RequiredConnectionService>,
@@ -497,6 +497,8 @@ describe('ConfigureConnections', () => {
         ],
         selectedConnectionId: 'selected',
       }),
+    ]
+    const missingSelections = [
       createService('no-selection', {
         availableConnections: [{ id: 'expired', name: 'Expired account', status: 'expired' }],
       }),
@@ -508,11 +510,14 @@ describe('ConfigureConnections', () => {
     ]
     const callbacks = { onConnect: vi.fn(), onConnectionChange: vi.fn() }
     const { rerender } = render(
-      <ConfigureConnections services={[expired, invalid, ...unaffected]} {...callbacks} />,
+      <ConfigureConnections
+        services={[expired, invalid, ...missingSelections, ...unaffected]}
+        {...callbacks}
+      />,
     )
 
-    const trigger = screen.getByRole('button', { name: 'share.connections.configure.title 2' })
-    expect(within(trigger).getByText('2')).toBeVisible()
+    const trigger = screen.getByRole('button', { name: 'share.connections.configure.title 5' })
+    expect(within(trigger).getByText('5')).toBeVisible()
 
     const recovered = {
       ...expired,
@@ -520,20 +525,98 @@ describe('ConfigureConnections', () => {
         connection.id === 'selected' ? { ...connection, status: 'active' as const } : connection,
       ),
     }
-    rerender(<ConfigureConnections services={[recovered, invalid, ...unaffected]} {...callbacks} />)
-    const remainingWarning = screen.getByRole('button', {
-      name: 'share.connections.configure.title 1',
-    })
-    expect(within(remainingWarning).getByText('1')).toBeVisible()
-
     rerender(
       <ConfigureConnections
-        services={[recovered, { ...invalid, selectedConnectionId: 'backup' }, ...unaffected]}
+        services={[recovered, invalid, ...missingSelections, ...unaffected]}
         {...callbacks}
       />,
     )
+    const remainingWarning = screen.getByRole('button', {
+      name: 'share.connections.configure.title 4',
+    })
+    expect(within(remainingWarning).getByText('4')).toBeVisible()
+
+    rerender(
+      <ConfigureConnections
+        services={[
+          recovered,
+          { ...invalid, selectedConnectionId: 'backup' },
+          ...missingSelections,
+          ...unaffected,
+        ]}
+        {...callbacks}
+      />,
+    )
+    expect(trigger).toHaveAccessibleName('share.connections.configure.title 3')
+
+    rerender(<ConfigureConnections services={[recovered, ...unaffected]} {...callbacks} />)
     const healthyTrigger = screen.getByRole('button', { name: 'share.connections.configure.title' })
     expect(within(healthyTrigger).queryByText(/^\d+$/)).not.toBeInTheDocument()
+  })
+
+  it.each([undefined, 'removed'])(
+    'warns about a missing selection (%s) until an available connection is selected',
+    async (selectedConnectionId) => {
+      const user = userEvent.setup()
+      const onConnectionChange = vi.fn()
+      function ControlledConfiguration() {
+        const [selection, setSelection] = useState(selectedConnectionId)
+        return (
+          <ConfigureConnections
+            services={[{ ...services[0]!, selectedConnectionId: selection }]}
+            onConnect={vi.fn()}
+            onConnectionChange={(serviceId, connectionId) => {
+              onConnectionChange(serviceId, connectionId)
+              setSelection(connectionId)
+            }}
+          />
+        )
+      }
+      render(<ControlledConfiguration />)
+      const trigger = screen.getByRole('button', { name: 'share.connections.configure.title 1' })
+      await user.click(trigger)
+      const dialog = await screen.findByRole('dialog', {
+        name: 'share.connections.configure.title',
+      })
+      const row = within(dialog).getByRole('listitem', { name: 'Gmail' })
+      const selector = within(row).getByRole('button', { name: 'Gmail' })
+      expect(within(row).getAllByText('share.connections.setup.selectConnection')).toHaveLength(2)
+      expect(selector).toHaveAccessibleDescription(/share.connections.setup.selectConnection/)
+      await user.click(selector)
+      const picker = await screen.findByRole('dialog', {
+        name: 'share.connections.accounts.title:{"provider":"Gmail"}',
+      })
+      await user.click(within(picker).getByRole('button', { name: 'alex@example.com' }))
+      expect(onConnectionChange).toHaveBeenCalledExactlyOnceWith('gmail', 'gmail-personal')
+      expect(selector).toHaveTextContent('alex@example.com')
+      expect(selector).not.toHaveAccessibleDescription(/share.connections.setup.selectConnection/)
+      expect(
+        within(row).queryByText('share.connections.setup.selectConnection'),
+      ).not.toBeInTheDocument()
+      expect(trigger).toHaveAccessibleName('share.connections.configure.title')
+      expect(within(trigger).queryByText(/^\d+$/)).not.toBeInTheDocument()
+    },
+  )
+
+  it('warns about a service with no saved connections while offering its connection methods', async () => {
+    const user = userEvent.setup()
+    render(
+      <ConfigureConnections
+        services={[services[1]!]}
+        onConnect={vi.fn()}
+        onConnectionChange={vi.fn()}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'share.connections.configure.title 1' }))
+    const dialog = await screen.findByRole('dialog', { name: 'share.connections.configure.title' })
+    const row = within(dialog).getByRole('listitem', { name: 'Notion' })
+    expect(within(row).getByText('share.connections.setup.selectConnection')).toBeVisible()
+    expect(
+      within(row).getByRole('button', { name: 'share.connections.setup.connect' }),
+    ).toBeEnabled()
+    expect(
+      within(row).getByRole('button', { name: 'share.connections.setup.addApiKey' }),
+    ).toBeEnabled()
   })
 
   it('blocks all connection changes during a response and enables them when the response finishes', async () => {
@@ -549,7 +632,7 @@ describe('ConfigureConnections', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'share.connections.configure.title' }))
+    await user.click(screen.getByRole('button', { name: 'share.connections.configure.title 1' }))
     const dialog = await screen.findByRole('dialog', { name: 'share.connections.configure.title' })
     expect(dialog).toHaveAccessibleDescription('share.connections.configure.runningDescription')
     const select = within(dialog).getByRole('button', { name: 'Gmail' })
@@ -648,7 +731,7 @@ describe('ConfigureConnections', () => {
     }
     render(<ControlledConnections />)
 
-    const trigger = screen.getByRole('button', { name: 'share.connections.configure.title' })
+    const trigger = screen.getByRole('button', { name: 'share.connections.configure.title 1' })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await user.click(trigger)
     const dialog = await screen.findByRole('dialog', { name: 'share.connections.configure.title' })
@@ -689,7 +772,7 @@ describe('ConfigureConnections', () => {
       />,
     )
 
-    const trigger = screen.getByRole('button', { name: 'share.connections.configure.title' })
+    const trigger = screen.getByRole('button', { name: 'share.connections.configure.title 1' })
     await user.click(trigger)
     const dialog = await screen.findByRole('dialog', { name: 'share.connections.configure.title' })
     const accountTrigger = within(dialog).getByRole('button', { name: 'Gmail' })
@@ -726,7 +809,7 @@ describe('ConfigureConnections', () => {
     const props = { services, onConnect, onConnectionChange, onReconnect, onRemove }
     const { rerender } = render(<ConfigureConnections {...props} />)
 
-    await user.click(screen.getByRole('button', { name: 'share.connections.configure.title' }))
+    await user.click(screen.getByRole('button', { name: 'share.connections.configure.title 1' }))
     const dialog = await screen.findByRole('dialog', { name: 'share.connections.configure.title' })
     const accountTrigger = within(dialog).getByRole('button', { name: 'Gmail' })
     await user.click(accountTrigger)

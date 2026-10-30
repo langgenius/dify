@@ -18,7 +18,7 @@ export default function RequiredConnectionSetup({
   onRequestAddApiKey,
   isMutating,
   className,
-}: ComponentProps<typeof RequiredServices>) {
+}: Omit<ComponentProps<typeof RequiredServices>, 'showMissingConnectionWarning'>) {
   const { t } = useTranslation(['share'])
   const titleId = useId()
 

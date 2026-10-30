@@ -20,7 +20,11 @@ import RequiredServices from './required-services'
 
 type Props = Omit<
   ComponentProps<typeof RequiredServices>,
-  'disabled' | 'onRequestReplace' | 'onRequestAddApiKey' | 'className'
+  | 'disabled'
+  | 'onRequestReplace'
+  | 'onRequestAddApiKey'
+  | 'className'
+  | 'showMissingConnectionWarning'
 > & {
   handle: DialogHandle<unknown>
   isResponding?: boolean
@@ -104,6 +108,7 @@ export default function ConfigureConnectionsDialog({
           <div className="px-1 py-3">
             <RequiredServices
               services={services}
+              showMissingConnectionWarning
               onConnect={onConnect}
               onConnectionChange={onConnectionChange}
               disabled={isResponding || disabled}
