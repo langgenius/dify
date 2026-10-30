@@ -351,6 +351,13 @@ class PluginConfig(BaseSettings):
         description="Versioned hosted source to Tokener model mapping registry; empty registry cannot prepare",
         default="[]",
     )
+    TOKENER_LEGACY_RETIRED_MODELS_JSON: str = Field(
+        description=(
+            "Exact retired source identities by immutable mapping revision; only skips migration readiness, "
+            "never changes runtime routing or errors. Empty preserves existing inventory hashes."
+        ),
+        default="[]",
+    )
 
     TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED: bool = Field(
         description="Run event and worker processing for persisted Tokener tenant integrations",

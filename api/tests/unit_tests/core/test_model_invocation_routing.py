@@ -5,14 +5,21 @@ from contextlib import nullcontext
 from copy import deepcopy
 from dataclasses import replace
 from types import SimpleNamespace
-from typing import cast
+from typing import cast, override
 from unittest.mock import Mock
 
 import pytest
 from pytest_mock import MockerFixture
 
-from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
-from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
+from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations, ProviderModelBundle
+from core.entities.provider_entities import (
+    CustomConfiguration,
+    ProviderQuotaType,
+    QuotaConfiguration,
+    QuotaUnit,
+    RestrictModel,
+    SystemConfiguration,
+)
 from core.model_invocation_routing import (
     FrozenModelInvocation,
     LegacyModelBinding,
@@ -34,13 +41,129 @@ from core.model_invocation_routing import (
     validate_invocation_admission,
 )
 from core.plugin.impl.model import PluginModelClient
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
+from core.provider_manager import ProviderManager
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType, ParameterRule, ParameterType
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
 from models.provider import ProviderType
 from services.entities.model_billing_migration import canonical_hash
+from tests.helpers.unit.config_override import apply_config_overrides
 
 TEST_ENCRYPTED_CONFIG = '{"api_key":"encrypted","endpoint_url":"https://fixture.invalid"}'
+
+
+class InventoryProviderManager(ProviderManager):
+    """Use real provider configuration values at the external discovery boundary."""
+
+    def __init__(self, configurations: ProviderConfigurations) -> None:
+        super().__init__(model_runtime=create_plugin_model_runtime(tenant_id=configurations.tenant_id))
+        self.configurations = configurations
+
+    @override
+    def get_configurations(self, tenant_id: str) -> ProviderConfigurations:
+        assert tenant_id == self.configurations.tenant_id
+        return self.configurations
+
+
+@pytest.mark.parametrize("case", ["mixed", "retired_only", "unlisted_missing", "old_revision"])
+def test_retirement_inventory_contract_with_real_source_configuration(
+    monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
+    from core.model_invocation_routing import migration_inventory
+    from tests.unit_tests.services.test_model_billing_mapping_service import mapping, schema
+
+    source = schema()
+    names = ["retired"] if case == "retired_only" else ["gpt-4o", "retired"]
+    if case == "unlisted_missing":
+        names.append("unlisted")
+    if case == "old_revision":
+        names = ["gpt-4o"]
+    system = SystemConfiguration(
+        enabled=True,
+        current_quota_type=ProviderQuotaType.PAID,
+        quota_configurations=[
+            QuotaConfiguration(
+                quota_type=pool,
+                quota_unit=QuotaUnit.CREDITS,
+                quota_limit=200,
+                quota_used=7,
+                is_valid=True,
+                restrict_models=[RestrictModel(model=name, model_type=ModelType.LLM) for name in names],
+            )
+            for pool in (ProviderQuotaType.PAID, ProviderQuotaType.TRIAL)
+        ],
+    )
+    provider = ProviderConfiguration(
+        tenant_id="retirement-tenant",
+        provider=ProviderEntity(
+            provider="langgenius/openai/openai",
+            label=I18nObject(en_US="OpenAI"),
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[],
+            models=[] if case == "retired_only" else [source],
+        ),
+        preferred_provider_type=ProviderType.SYSTEM,
+        using_provider_type=ProviderType.SYSTEM,
+        system_configuration=system,
+        custom_configuration=CustomConfiguration(provider=None),
+        model_settings=[],
+    )
+    configurations = ProviderConfigurations(tenant_id=provider.tenant_id)
+    configurations.configurations[provider.provider.provider] = provider
+    manager = InventoryProviderManager(configurations)
+    before = provider.model_dump()
+    lookups: list[str] = []
+
+    def discover(*, tenant_id: str) -> ProviderManager:
+        assert tenant_id == provider.tenant_id
+        return manager
+
+    def lookup(_client: PluginModelClient, *args: object, **_kwargs: object) -> None:
+        lookups.append(str(args[5]))
+
+    monkeypatch.setattr("core.plugin.impl.model_runtime_factory.create_plugin_provider_manager", discover)
+    monkeypatch.setattr(PluginModelClient, "get_model_schema", lookup)
+    apply_config_overrides(
+        monkeypatch,
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps(
+            [mapping(source, revision="old"), mapping(source, revision="new")]
+        ),
+        TOKENER_LEGACY_RETIRED_MODELS_JSON=json.dumps(
+            [
+                {
+                    "schema_version": 1,
+                    "mapping_revision": "new",
+                    "provider_id": provider.provider.provider,
+                    "model_type": "llm",
+                    "model": "retired",
+                }
+            ]
+        ),
+    )
+    if case == "unlisted_missing":
+        with pytest.raises(ModelRouteUnmapped):
+            migration_inventory(provider.tenant_id, "new")
+        assert lookups == ["unlisted"]
+    else:
+        result = migration_inventory(provider.tenant_id, "old" if case == "old_revision" else "new")
+        assert lookups == []
+        if case == "old_revision":
+            assert result["inventory_hash"] == canonical_hash(result["models"])
+            assert "retired_sources" not in result
+            assert "retirement_policy_digest" not in result
+        else:
+            assert result["model_count"] == (0 if case == "retired_only" else 1)
+            assert result["retired_sources"] == [
+                {
+                    "provider": provider.provider.provider,
+                    "model_type": "llm",
+                    "model": "retired",
+                    "pool_types": ["paid", "trial"],
+                }
+            ]
+            assert result["inventory_hash"] != canonical_hash(result["models"])
+    assert provider.model_dump() == before
 
 
 def credential_pin() -> dict[str, str]:

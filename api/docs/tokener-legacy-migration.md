@@ -184,3 +184,40 @@ schema/token/invoke and streaming; BYOK/FREE controls; UI processing/usage and
 new-user signup regression. Stripe UI actions remain a separate manual test.
 Do not claim live transparent-migration E2E from a fixture that maps two different
 models, or from unit/contract tests alone.
+
+## Explicit retired sources in new migration revisions
+
+`TOKENER_LEGACY_RETIRED_MODELS_JSON` defaults to `[]`. Each declaration contains
+`schema_version: 1`, `mapping_revision`, canonical `provider_id`, exact
+`model_type` and exact `model`. There are no wildcard names, implicit latest
+revisions, model aliases or automatic retirements inferred from a missing schema.
+For example, a reviewed new revision may declare:
+
+```json
+[{"schema_version":1,"mapping_revision":"reviewed-new-revision","provider_id":"langgenius/openai/openai","model_type":"llm","model":"gpt-3.5-turbo"}]
+```
+
+Publish this policy only alongside a new reviewed mapping revision. Never edit
+the policy of an already prepared, claimed or active migration. A declaration
+cannot coexist with a route for the same source identity in that revision.
+Preparation partitions only the finite PAID/TRIAL shared-credit inventory:
+declared retired identities need no source/target schema completeness check;
+all other missing or ambiguous sources still fail closed. Independent provider
+FREE, unlimited pools, original provider preferences and ownership are unchanged.
+An empty post-partition restriction list is removed from preparation, never
+interpreted as an unrestricted pool. An unknown empty unrestricted inventory
+remains an error; a known all-retired inventory can migrate without active models.
+
+When a revision has retirements, its selected policy digest and actual retired
+source identities/pools participate in `inventory_hash`, so changing policy
+between preparation and activation fails the existing readiness comparison.
+An empty policy, or a policy scoped only to another revision, preserves the
+previous inventory shape and hash. No existing table is changed.
+
+This policy is not consulted by runtime routing and introduces no special
+retirement error handling. An old App still names its original provider/model;
+the existing schema/mapping/invocation error propagates normally. Missing routes
+do not fall back to legacy billing or an unrelated BYOK credential. Retirement
+therefore does not mean a successful model call, an alias substitution, or
+certified upstream availability. Regression reports must keep these expected
+error cases separate from successfully forwarded active models.

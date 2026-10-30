@@ -1288,3 +1288,20 @@ forbidden_modules =
     sqlalchemy
     tasks
     werkzeug
+
+[importlinter:contract:model-billing-retirement-policy-boundary]
+name = Revision-scoped model retirement policy has no infrastructure dependencies
+type = forbidden
+source_modules =
+    services.model_billing_retirement_policy
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug

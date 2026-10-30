@@ -25,6 +25,7 @@ from core.hosting_configuration import HostingProvider, TrialHostingQuota
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ModelType
 from models.provider_ids import ModelProviderID
 from services.entities.model_billing_mapping import ModelMapping
+from services.model_billing_retirement_policy import ModelRetirementPolicy, resolve_retirement_policy
 
 type SourceIdentity = tuple[ModelType, str]
 type MappingIdentity = tuple[str, ModelType, str]
@@ -225,6 +226,82 @@ def mappings_for_revision(raw_registry: str, revision: str) -> dict[MappingIdent
 class HostedMigrationSource:
     schema: AIModelEntity
     pool_types: set[ProviderQuotaType] = field(default_factory=set)
+
+
+def retirement_policy_for_revision(
+    raw_policy: str, revision: str, mappings: dict[MappingIdentity, ModelMapping]
+) -> ModelRetirementPolicy:
+    policy = resolve_retirement_policy(raw_policy, revision)
+    if policy.identities.intersection(mappings):
+        raise ValueError("A source cannot be both retired and routed in the same revision")
+    return policy
+
+
+@dataclass(frozen=True)
+class HostedMigrationPartition:
+    system: SystemConfiguration
+    models: list[AIModelEntity]
+    retired: dict[SourceIdentity, set[ProviderQuotaType]]
+
+
+def partition_hosted_migration_sources(
+    system: SystemConfiguration,
+    models: Sequence[AIModelEntity],
+    retired_sources: frozenset[SourceIdentity],
+) -> HostedMigrationPartition:
+    """Remove only declared retirements before preparation's schema lookup.
+
+    An exhausted restriction list removes that quota rather than becoming an
+    unrestricted pool. Original ownership and quota objects stay unchanged.
+    Ambiguous installed types retain strict rejection, not name-only retirement.
+    """
+    if not retired_sources:
+        return HostedMigrationPartition(system, list(models), {})
+    retired: dict[SourceIdentity, set[ProviderQuotaType]] = {}
+    active_quotas: list[QuotaConfiguration] = []
+    for quota in system.quota_configurations:
+        if (
+            quota.quota_type not in {ProviderQuotaType.PAID, ProviderQuotaType.TRIAL}
+            or quota.quota_limit == -1
+            or quota.quota_unit not in {QuotaUnit.TIMES, QuotaUnit.CREDITS}
+        ):
+            active_quotas.append(quota)
+            continue
+        if not quota.restrict_models:
+            for schema in models:
+                identity = (schema.model_type, schema.model)
+                if identity in retired_sources:
+                    retired.setdefault(identity, set()).add(quota.quota_type)
+            active_quotas.append(quota)
+            continue
+        restrictions: list[RestrictModel] = []
+        for restricted in quota.restrict_models:
+            candidates = _installed_restricted_schemas(restricted, models)
+            if len(candidates) > 1:
+                raise ValueError("Ambiguous source model schema")
+            kind = candidates[0].model_type if candidates else restricted.model_type
+            identity = (kind, restricted.model)
+            if identity in retired_sources:
+                retired.setdefault(identity, set()).add(quota.quota_type)
+            else:
+                restrictions.append(restricted)
+        if restrictions:
+            active_quotas.append(quota.model_copy(update={"restrict_models": restrictions}))
+    active_models = [schema for schema in models if (schema.model_type, schema.model) not in retired_sources]
+    if models and not active_models:
+        # A known all-retired unrestricted inventory is empty by policy. An
+        # unknown empty inventory still reaches the ordinary strict lookup.
+        active_quotas = [
+            quota
+            for quota in active_quotas
+            if quota.restrict_models
+            or quota.quota_type not in {ProviderQuotaType.PAID, ProviderQuotaType.TRIAL}
+            or quota.quota_limit == -1
+            or quota.quota_unit not in {QuotaUnit.TIMES, QuotaUnit.CREDITS}
+        ]
+    return HostedMigrationPartition(
+        system.model_copy(update={"quota_configurations": active_quotas}), active_models, retired
+    )
 
 
 def hosted_migration_sources(

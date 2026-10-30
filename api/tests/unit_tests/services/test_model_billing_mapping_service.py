@@ -27,7 +27,9 @@ from services.model_billing_mapping_service import (
     mapping_supports_installed_plugin,
     mappings_for_revision,
     model_schema_digest,
+    partition_hosted_migration_sources,
     provider_has_prepared_ownership,
+    retirement_policy_for_revision,
 )
 
 
@@ -89,6 +91,103 @@ def section(record: dict[str, object], key: str) -> dict[str, object]:
     value = record[key]
     assert isinstance(value, dict)
     return value
+
+
+def test_explicit_retirement_skips_only_missing_schema_and_preserves_source_ownership() -> None:
+    original = system(
+        [
+            RestrictModel(model="gpt-4o", model_type=ModelType.LLM),
+            RestrictModel(model="gpt-3.5-turbo", model_type=ModelType.LLM),
+        ]
+    )
+    before = original.model_dump()
+    partition = partition_hosted_migration_sources(original, [schema()], frozenset({(ModelType.LLM, "gpt-3.5-turbo")}))
+
+    def forbidden_lookup(*_args: object) -> None:
+        raise AssertionError("Retired schema must not be resolved")
+
+    active = hosted_migration_sources(partition.system, partition.models, [ModelType.LLM], forbidden_lookup)
+    assert set(active) == {(ModelType.LLM, "gpt-4o")}
+    assert partition.retired == {(ModelType.LLM, "gpt-3.5-turbo"): {ProviderQuotaType.PAID}}
+    assert original.model_dump() == before
+
+
+def test_retirement_does_not_turn_empty_restriction_into_unrestricted_inventory() -> None:
+    original = system([RestrictModel(model="retired", model_type=ModelType.LLM)])
+    partition = partition_hosted_migration_sources(original, [schema()], frozenset({(ModelType.LLM, "retired")}))
+    assert partition.system.quota_configurations == []
+    assert hosted_migration_sources(partition.system, partition.models, [ModelType.LLM], lambda *_args: None) == {}
+    assert len(partition.retired) == 1
+
+
+@pytest.mark.parametrize("retired_type", [ModelType.LLM, ModelType.TEXT_EMBEDDING])
+def test_an_unlisted_missing_source_still_fails(retired_type: ModelType) -> None:
+    original = system([RestrictModel(model="unlisted", model_type=ModelType.LLM)])
+    partition = partition_hosted_migration_sources(original, [], frozenset({(retired_type, "retired")}))
+    with pytest.raises(ValueError, match="Missing or ambiguous"):
+        hosted_migration_sources(partition.system, partition.models, [ModelType.LLM], lambda *_args: None)
+
+
+def test_unknown_unrestricted_inventory_is_not_excused_by_retirement_policy() -> None:
+    partition = partition_hosted_migration_sources(system(), [], frozenset({(ModelType.LLM, "retired")}))
+    with pytest.raises(ValueError, match="Unrestricted source inventory"):
+        hosted_migration_sources(partition.system, partition.models, [ModelType.LLM], lambda *_args: None)
+
+
+def test_known_all_retired_unrestricted_inventory_is_represented_explicitly() -> None:
+    partition = partition_hosted_migration_sources(
+        system(), [schema("retired")], frozenset({(ModelType.LLM, "retired")})
+    )
+    assert partition.models == []
+    assert partition.system.quota_configurations == []
+    assert partition.retired == {(ModelType.LLM, "retired"): {ProviderQuotaType.PAID}}
+
+
+def test_retirement_does_not_hide_ambiguous_installed_model_types() -> None:
+    original = system([RestrictModel(model="shared-name", model_type=ModelType.LLM)])
+    with pytest.raises(ValueError, match="Ambiguous"):
+        partition_hosted_migration_sources(
+            original,
+            [schema("shared-name"), schema("shared-name", ModelType.TEXT_EMBEDDING)],
+            frozenset({(ModelType.LLM, "shared-name")}),
+        )
+
+
+@pytest.mark.parametrize(
+    ("pool", "unit", "limit"),
+    [
+        (ProviderQuotaType.FREE, QuotaUnit.CREDITS, 100),
+        (ProviderQuotaType.TRIAL, QuotaUnit.CREDITS, -1),
+        (ProviderQuotaType.PAID, QuotaUnit.TOKENS, 100),
+    ],
+)
+def test_retirement_does_not_reclassify_independent_or_unmetered_pools(
+    pool: ProviderQuotaType, unit: QuotaUnit, limit: int
+) -> None:
+    original = system([RestrictModel(model="retired", model_type=ModelType.LLM)], pool=pool, unit=unit, limit=limit)
+    partition = partition_hosted_migration_sources(
+        original, [schema("retired")], frozenset({(ModelType.LLM, "retired")})
+    )
+    assert partition.retired == {}
+    assert partition.system.model_dump() == original.model_dump()
+
+
+def test_retired_source_cannot_also_have_a_route_in_same_revision() -> None:
+    policy = json.dumps(
+        [
+            {
+                "schema_version": 1,
+                "mapping_revision": "old",
+                "provider_id": "langgenius/openai/openai",
+                "model_type": "llm",
+                "model": "gpt-4o",
+            }
+        ]
+    )
+    registry = mappings_for_revision(json.dumps([mapping()]), "old")
+    with pytest.raises(ValueError, match="both retired and routed"):
+        retirement_policy_for_revision(policy, "old", registry)
+    assert not retirement_policy_for_revision(policy, "new", registry).identities
 
 
 def system(

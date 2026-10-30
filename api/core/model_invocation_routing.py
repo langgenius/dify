@@ -40,7 +40,9 @@ from services.model_billing_mapping_service import (
     mapping_supports_installed_plugin,
     mappings_for_revision,
     model_schema_digest,
+    partition_hosted_migration_sources,
     provider_has_prepared_ownership,
+    retirement_policy_for_revision,
 )
 
 if TYPE_CHECKING:
@@ -493,8 +495,15 @@ def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
     from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 
     registry = model_mappings(mapping_version)
+    try:
+        retirement_policy = retirement_policy_for_revision(
+            dify_config.TOKENER_LEGACY_RETIRED_MODELS_JSON, mapping_version, registry
+        )
+    except ValueError:
+        raise ModelRouteUnmapped from None
     client = PluginModelClient()
     inventory = []
+    retired_inventory = []
     source_ownership = {}
     configurations = create_plugin_provider_manager(tenant_id=tenant_id).get_configurations(tenant_id)
     for provider_name, configuration in configurations:
@@ -527,11 +536,23 @@ def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
             )
 
         try:
+            partition = partition_hosted_migration_sources(
+                system, configuration.provider.models, retirement_policy.for_provider(str(source_id))
+            )
             sources = hosted_migration_sources(
-                system, configuration.provider.models, configuration.provider.supported_model_types, lookup
+                partition.system, partition.models, configuration.provider.supported_model_types, lookup
             )
         except ValueError:
             raise ModelRouteUnmapped from None
+        for (model_type, model), pools in sorted(partition.retired.items()):
+            retired_inventory.append(
+                {
+                    "provider": str(source_id),
+                    "model_type": model_type.value,
+                    "model": model,
+                    "pool_types": sorted(pool.value for pool in pools),
+                }
+            )
         for model_type, model in sorted(sources, key=lambda pair: (pair[0].value, pair[1])):
             rule = registry.get((str(ModelProviderID(provider_name)), model_type, model))
             if rule is None or rule.mapping_revision != mapping_version:
@@ -569,16 +590,21 @@ def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
             if model_type == ModelType.TEXT_EMBEDDING:
                 item["embedding_dimensions"] = embedding_dimensions_contract(source_schema)
             inventory.append(item)
-    if not inventory:
+    if not inventory and not retired_inventory:
         raise ModelRouteUnmapped
     inventory.sort(key=itemgetter("provider", "model_type", "model"))
-    return {
-        "inventory_hash": canonical_hash(inventory),
+    retired_inventory.sort(key=itemgetter("provider", "model_type", "model"))
+    result: dict[str, Any] = {
+        "inventory_hash": canonical_hash(retirement_policy.inventory_payload(inventory, retired_inventory)),
         "model_mapping_version": mapping_version,
         "model_count": len(inventory),
         "models": inventory,
         "source_ownership": source_ownership,
     }
+    if retirement_policy.identities:
+        result["retired_sources"] = retired_inventory
+        result["retirement_policy_digest"] = retirement_policy.digest
+    return result
 
 
 def validate_migration_readiness(tenant_id: str, mapping_version: str) -> dict[str, Any]:
