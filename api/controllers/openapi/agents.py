@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from http import HTTPStatus
 
 from flask_restx import Resource
@@ -123,6 +124,8 @@ class AgentDescribeApi(Resource):
         returns=(HTTPStatus.OK, AgentDescribeResponse, "Agent description"),
     )
     def get(self, ctx: Context, workspace_id: str, agent_id: str, *, query: AppDescribeQuery):
+        # The loader accepted bare hex too; ids are stored dashed (CHAR(36) on MySQL).
+        agent_id = str(uuid.UUID(agent_id))
         entry = AgentRosterService(ctx.session).describe_openapi_roster_agent(
             tenant_id=ctx.workspace.id, agent_id=agent_id, app=ctx.app
         )
