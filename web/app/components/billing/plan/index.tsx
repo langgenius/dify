@@ -12,12 +12,10 @@ import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { getDaysUntilEndOfMonth } from '@/utils/time'
-import { NUM_INFINITE } from '../config'
 import { useEducationDiscount } from '../hooks/use-education-discount'
+import { getAppRunsQuota, getCountQuota, getTriggerEventsQuota } from '../quota'
 import UpgradeBtn from '../upgrade-btn'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
-import { getResetInDaysFromDate, parseLimit } from '../utils'
 import { Professional, Sandbox, Team } from './assets'
 
 type Props = Readonly<{
@@ -47,19 +45,7 @@ const PlanComp: FC<Props> = ({ loc }) => {
   )
   const { isAboutToExpire = false, isEducationAccount = false } = educationStatus ?? {}
   const type = features.billing.subscription.plan
-  const triggerEventsLimit = features.trigger_event.limit
-  const apiRateLimit = features.api_rate_limit.limit
-  const apiRateLimitReset = getResetInDaysFromDate(features.api_rate_limit.reset_date)
-  const triggerEventsResetInDays =
-    type === 'professional' && triggerEventsLimit !== NUM_INFINITE
-      ? (getResetInDaysFromDate(features.trigger_event.reset_date) ?? undefined)
-      : undefined
-  const apiRateLimitResetInDays = (() => {
-    if (apiRateLimit === NUM_INFINITE) return undefined
-    if (typeof apiRateLimitReset === 'number') return apiRateLimitReset
-    if (type === 'sandbox') return getDaysUntilEndOfMonth()
-    return undefined
-  })()
+  const appRunsQuota = getAppRunsQuota(features.api_rate_limit, type)
 
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
   return (
@@ -129,47 +115,39 @@ const PlanComp: FC<Props> = ({ loc }) => {
         <UsageInfo
           iconClassName="i-ri-apps-2-line"
           name={t(($) => $['usagePage.buildApps'], { ns: 'billing' })}
-          usage={features.apps.size}
-          total={parseLimit(features.apps.limit)}
+          quota={getCountQuota(features.apps)}
         />
         <UsageInfo
           iconClassName="i-ri-group-line"
           name={t(($) => $['usagePage.teamMembers'], { ns: 'billing' })}
-          usage={features.members.size}
-          total={parseLimit(features.members.limit)}
+          quota={getCountQuota(features.members)}
         />
         <UsageInfo
           iconClassName="i-ri-book-2-line"
           name={t(($) => $['usagePage.documentsUploadQuota'], { ns: 'billing' })}
-          usage={features.documents_upload_quota.size}
-          total={parseLimit(features.documents_upload_quota.limit)}
+          quota={getCountQuota(features.documents_upload_quota)}
         />
         <VectorSpaceInfo />
         <UsageInfo
           iconClassName="i-ri-file-edit-line"
           name={t(($) => $['usagePage.annotationQuota'], { ns: 'billing' })}
-          usage={features.annotation_quota_limit.size}
-          total={parseLimit(features.annotation_quota_limit.limit)}
+          quota={getCountQuota(features.annotation_quota_limit)}
         />
         <UsageInfo
           iconClassName={'i-custom-vender-workflow-trigger-all'}
           name={t(($) => $['usagePage.triggerEvents'], { ns: 'billing' })}
-          usage={features.trigger_event.usage}
-          total={triggerEventsLimit}
+          quota={getTriggerEventsQuota(features.trigger_event, type)}
           tooltip={t(($) => $['plansCommon.triggerEvents.tooltip'], { ns: 'billing' }) as string}
-          resetInDays={triggerEventsResetInDays}
         />
         <UsageInfo
           iconClassName={'i-custom-vender-workflow-api-aggregate'}
           name={t(($) => $['plansCommon.apiRateLimit'], { ns: 'billing' })}
-          usage={features.api_rate_limit.usage}
-          total={apiRateLimit}
+          quota={appRunsQuota}
           tooltip={
-            apiRateLimit === NUM_INFINITE
+            appRunsQuota.limit === 'unlimited'
               ? undefined
               : (t(($) => $['plansCommon.apiRateLimitTooltip'], { ns: 'billing' }) as string)
           }
-          resetInDays={apiRateLimitResetInDays}
         />
       </div>
     </div>

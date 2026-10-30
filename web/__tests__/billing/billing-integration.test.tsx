@@ -463,9 +463,7 @@ describe('Capacity Full Components Integration', () => {
         <TriggerEventsLimitModal
           show={true}
           onClose={vi.fn()}
-          usage={18000}
-          total={20000}
-          resetInDays={5}
+          quota={{ usage: 18000, limit: 20000, resetInDays: 5 }}
         />,
       )
 
@@ -484,7 +482,13 @@ describe('Capacity Full Components Integration', () => {
       const onClose = vi.fn()
       setupBilling({ billing: { subscription: { plan: 'professional' } } })
 
-      render(<TriggerEventsLimitModal show={true} onClose={onClose} usage={20000} total={20000} />)
+      render(
+        <TriggerEventsLimitModal
+          show={true}
+          onClose={onClose}
+          quota={{ usage: 20000, limit: 20000 }}
+        />,
+      )
 
       const upgradeBtn = screen.getByText(/triggerLimitModal\.upgrade/i)
       await user.click(upgradeBtn)
