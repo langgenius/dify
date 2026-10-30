@@ -8,7 +8,7 @@ from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
 import sqlalchemy as sa
 from pydantic import BaseModel, Field
-from sqlalchemy import ColumnElement, delete, select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -118,7 +118,8 @@ class AppListBaseParams(BaseModel):
     creator_ids: list[str] | None = None
     is_created_by_me: bool | None = None
     accessible_app_ids: list[str] | None = None
-    include_own_apps: bool = False
+    # Strict resource scope, independent of maintainer visibility; None is unrestricted.
+    resource_app_ids: list[str] | None = None
 
 
 class AppListParams(AppListBaseParams):
@@ -283,10 +284,9 @@ class AppService:
         if params.is_created_by_me:
             filters.append(App.created_by == user_id)
         elif params.accessible_app_ids is not None:
-            accessible_filter: ColumnElement[bool] = App.id.in_(params.accessible_app_ids)
-            if params.include_own_apps:
-                accessible_filter = sa.or_(App.maintainer == user_id, accessible_filter)
-            filters.append(accessible_filter)
+            filters.append(sa.or_(App.maintainer == user_id, App.id.in_(params.accessible_app_ids)))
+        if params.resource_app_ids is not None:
+            filters.append(App.id.in_(params.resource_app_ids))
         if params.creator_ids:
             filters.append(App.created_by.in_(params.creator_ids))
         if params.name:

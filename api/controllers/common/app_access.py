@@ -56,7 +56,6 @@ class AppAccessFilter:
         if self.accessible_app_ids is None:
             return
         params.accessible_app_ids = sorted(self.accessible_app_ids)
-        params.include_own_apps = True
 
 
 def resolve_app_access_filter(

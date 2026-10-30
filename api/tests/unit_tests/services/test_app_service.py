@@ -10,6 +10,7 @@ import pytest
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
+from controllers.common.agent_access import AgentAccessFilter
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant
@@ -68,7 +69,10 @@ def _persist_app(session: Session, *, tenant_id: str, name: str = "Visible App")
     return app
 
 
-def test_get_paginate_apps_includes_maintained_apps_outside_rbac_whitelist(sqlite_session: Session) -> None:
+@pytest.mark.parametrize("empty_whitelist", [True, False])
+def test_get_paginate_apps_includes_maintained_apps_outside_rbac_whitelist(
+    sqlite_session: Session, empty_whitelist: bool
+) -> None:
     tenant_id = str(uuid4())
     account_id = str(uuid4())
     own_app = App(
@@ -96,18 +100,54 @@ def test_get_paginate_apps_includes_maintained_apps_outside_rbac_whitelist(sqlit
         enable_api=False,
         maintainer=str(uuid4()),
     )
+    hidden_app.created_by = account_id
+    allowed_app = _persist_app(sqlite_session, tenant_id=tenant_id)
+    foreign_app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
+    foreign_app.maintainer = account_id
     sqlite_session.add_all([own_app, hidden_app])
     sqlite_session.commit()
 
     result = AppService().get_paginate_apps(
         account_id,
         tenant_id,
-        AppListParams(accessible_app_ids=[], include_own_apps=True),
+        AppListParams(accessible_app_ids=[] if empty_whitelist else [allowed_app.id]),
         sqlite_session,
     )
 
     assert result is not None
-    assert [app.id for app in result.items] == [own_app.id]
+    expected = {own_app.id} if empty_whitelist else {own_app.id, allowed_app.id}
+    assert {app.id for app in result.items} == expected
+    assert result.total == len(expected)
+
+
+@pytest.mark.parametrize("bound", [True, False])
+@pytest.mark.parametrize("created_by_me", [True, False])
+def test_app_resource_scope_cannot_be_bypassed_by_maintainer_or_creator(
+    sqlite_session: Session, bound: bool, created_by_me: bool
+) -> None:
+    tenant_id = str(uuid4())
+    account_id = str(uuid4())
+    allowed = _persist_app(sqlite_session, tenant_id=tenant_id)
+    hidden = _persist_app(sqlite_session, tenant_id=tenant_id)
+    for app in (allowed, hidden):
+        app.maintainer = account_id
+        app.created_by = account_id
+    sqlite_session.commit()
+
+    result = AppService().get_paginate_apps(
+        account_id,
+        tenant_id,
+        AppListParams(
+            accessible_app_ids=[],
+            resource_app_ids=[allowed.id] if bound else [],
+            is_created_by_me=created_by_me,
+        ),
+        sqlite_session,
+    )
+
+    assert result is not None
+    assert {app.id for app in result.items} == ({allowed.id} if bound else set())
+    assert result.total == int(bound)
 
 
 def _persist_agent_app(
@@ -154,6 +194,30 @@ def _persist_agent_app(
     session.add_all([app, agent])
     session.commit()
     return app, agent
+
+
+@pytest.mark.parametrize("empty_whitelist", [True, False])
+def test_agent_list_includes_maintainer_outside_whitelist(sqlite_session: Session, empty_whitelist: bool) -> None:
+    tenant_id = str(uuid4())
+    account_id = str(uuid4())
+    own, _ = _persist_agent_app(sqlite_session, tenant_id=tenant_id, creator_id=account_id)
+    own.maintainer = account_id
+    allowed, allowed_agent = _persist_agent_app(sqlite_session, tenant_id=tenant_id, agent_name="Allowed")
+    _persist_agent_app(sqlite_session, tenant_id=tenant_id, agent_name="Hidden")
+    foreign, _ = _persist_agent_app(sqlite_session, creator_id=account_id)
+    foreign.maintainer = account_id
+    sqlite_session.commit()
+
+    params = AppListParams(mode="agent")
+    AgentAccessFilter(set() if empty_whitelist else {allowed_agent.id}).apply_to_app_params(
+        params, tenant_id=tenant_id, session=sqlite_session
+    )
+    result = AppService().get_paginate_apps(account_id, tenant_id, params, sqlite_session)
+
+    assert result is not None
+    expected = {own.id} if empty_whitelist else {own.id, allowed.id}
+    assert {app.id for app in result.items} == expected
+    assert result.total == len(expected)
 
 
 class TestCreateAppTransactionBoundary:

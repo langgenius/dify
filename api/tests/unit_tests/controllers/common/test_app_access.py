@@ -69,22 +69,19 @@ class TestAppAccessFilterApplyToParams:
         params = AppListParams()
         AppAccessFilter.unrestricted().apply_to_params(params)
         assert params.accessible_app_ids is None
-        assert params.include_own_apps is False
         assert params.is_created_by_me is None
 
-    def test_whitelisted_ids_are_sorted_and_include_own_apps(self):
+    def test_whitelisted_ids_are_sorted(self):
         params = AppListParams()
         AppAccessFilter(accessible_app_ids={"b", "a"}).apply_to_params(params)
         assert params.accessible_app_ids == ["a", "b"]
-        assert params.include_own_apps is True
 
     def test_empty_set_keeps_maintainer_filter_separate_from_creator(self):
-        # Own-app fallback must use maintainer (include_own_apps), consistent
+        # Own-app fallback must use maintainer, consistent
         # with is_app_accessible — not created_by (is_created_by_me).
         params = AppListParams()
         AppAccessFilter(accessible_app_ids=set()).apply_to_params(params)
         assert params.accessible_app_ids == []
-        assert params.include_own_apps is True
         assert params.is_created_by_me is None
 
 
