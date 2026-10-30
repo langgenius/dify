@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import ANY, Mock
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import event, select
@@ -1071,7 +1071,7 @@ def test_workflow_run_queries_delegate_to_repositories(
         workflow_run_id="run-1",
     )
     mock_assemble.assert_called_once_with(
-        node_execution_repo.get_executions_by_workflow_run.return_value, node_execution_repo, session=ANY
+        node_execution_repo.get_executions_by_workflow_run.return_value, node_execution_repo, session=sqlite_session
     )
     node_execution_repo.get_node_last_execution.assert_called_once_with(
         tenant_id="tenant-1",
