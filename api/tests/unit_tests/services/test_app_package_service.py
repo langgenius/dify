@@ -942,7 +942,7 @@ def _export(app: App, *, preserve_agent_bindings: bool) -> bytes:
 
 
 class TestWorkspaceSkillLinkCases:
-    """``preserve_agent_bindings`` keeps an inline Agent's workspace Skills linked; without it each is a copy."""
+    """An export writes each workspace Skill as a link with a copy; the import's flag chooses which it uses."""
 
     @staticmethod
     @pytest.fixture
@@ -950,28 +950,17 @@ class TestWorkspaceSkillLinkCases:
         return _package_storage(monkeypatch, sqlite_engine)
 
     @staticmethod
-    @pytest.mark.parametrize(
-        ("preserve_agent_bindings", "linked", "notes", "config_skills"),
-        [
-            (True, ["workspace"], [("workspace", 0)], ["research"]),
-            (False, [], [], ["research", "workspace"]),
-        ],
-    )
-    def test_export_links_or_copies_workspace_skills(
-        sqlite_session: Session,
-        storage: _MemoryStorage,
-        preserve_agent_bindings: bool,
-        linked: list[str],
-        notes: list[tuple[str, int]],
-        config_skills: list[str],
+    @pytest.mark.parametrize("preserve_agent_bindings", [True, False])
+    def test_export_writes_workspace_skills_as_links_whatever_the_flag(
+        sqlite_session: Session, storage: _MemoryStorage, preserve_agent_bindings: bool
     ) -> None:
         content = _export(_source(sqlite_session, storage), preserve_agent_bindings=preserve_agent_bindings)
 
         linked_zips, exported_notes, exported_config_skills = _skill_section(content)
         assert ([name for name, _digest in linked_zips], exported_notes, exported_config_skills) == (
-            linked,
-            notes,
-            config_skills,
+            ["workspace"],
+            [("workspace", 0)],
+            ["research"],
         )
         prepared = AppPackageService().read_package(io.BytesIO(content))
         assert prepared is not None
