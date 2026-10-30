@@ -26,6 +26,14 @@ const zAgentNotPublishedError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zAgentVersionNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('agent_version_not_found_error'),
+      status: z.literal(404),
+    }),
+  ))()
+
 const zAppMoreLikeThisDisabledError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -71,6 +79,30 @@ const zCompletionRequestError = /* @__PURE__ */ (() =>
     z.object({
       code: z.literal('completion_request_error'),
       status: z.literal(400),
+    }),
+  ))()
+
+const zConversationCursorNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('conversation_cursor_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
+const zConversationFirstMessageNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('conversation_first_message_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
+const zConversationNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('conversation_not_found'),
+      status: z.literal(404),
     }),
   ))()
 
@@ -182,6 +214,14 @@ const zMalformedUploadTokenError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
       code: z.literal('malformed_upload_token'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zMessageFeedbackRatingRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('message_feedback_rating_required'),
       status: z.literal(400),
     }),
   ))()
@@ -423,15 +463,35 @@ export const post5Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const post6Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const post6Errors = {
+  conversation_first_message_not_found: {
+    status: 404,
+    data: zConversationFirstMessageNotFoundError,
+  },
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
-export const patchErrors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const patchErrors = {
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
-export const patch2Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const patch2Errors = {
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
-export const delete_Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const delete_Errors = {
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
-export const getErrors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const getErrors = {
+  conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
 export const post7Errors = {
   account_banned: { status: 400, data: zAccountBannedError },
@@ -516,8 +576,14 @@ export const post16Errors = {
   authentication_failed: { status: 401, data: zAuthenticationFailedError },
 }
 
+export const post18Errors = {
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+  message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+}
+
 export const get4Errors = {
   app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   not_completion_app: { status: 400, data: zNotCompletionAppError },
@@ -526,10 +592,12 @@ export const get4Errors = {
 }
 
 export const get5Errors = {
+  agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
   app_suggested_questions_after_answer_disabled: {
     status: 403,
     data: zAppSuggestedQuestionsAfterAnswerDisabledError,
   },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   not_chat_app: { status: 400, data: zNotChatAppError },
@@ -537,7 +605,10 @@ export const get5Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const get6Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const get6Errors = {
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
 export const get7Errors = { app_unavailable: { status: 400, data: zAppUnavailableError } }
 

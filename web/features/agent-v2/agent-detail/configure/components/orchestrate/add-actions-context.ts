@@ -15,7 +15,7 @@ export type AgentOrchestrateAddedItem =
   | AgentSkill
 
 export type AgentOrchestrateAddActionOptions = {
-  onAdded?: (item: AgentOrchestrateAddedItem) => void
+  onAdded?: (items: AgentOrchestrateAddedItem[]) => void
   skillSource?: 'library' | 'upload'
 }
 

@@ -229,6 +229,13 @@ export const zAgentConfigFileUploadPayload = z.object({
 })
 
 /**
+ * AgentConfigFilesUploadPayload
+ */
+export const zAgentConfigFilesUploadPayload = z.object({
+  upload_file_ids: z.array(z.uuid()).min(1),
+})
+
+/**
  * AgentConfigDeleteResponse
  */
 export const zAgentConfigDeleteResponse = z.object({
@@ -297,6 +304,18 @@ export const zAnnotationJobStatusDetailResponse = z.object({
 export const zAnnotationSettingUpdatePayload = z.object({
   score_threshold: z.number(),
 })
+
+/**
+ * BadRequestError
+ *
+ * annotation_ids are required if the parameter is provided.
+ */
+export const zBadRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('bad_request'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * CreateAnnotationPayload
@@ -618,6 +637,18 @@ export const zAppMessageFeedbackPayload = z.object({
   message_id: z.string(),
   rating: z.enum(['dislike', 'like']).nullish(),
 })
+
+/**
+ * MessageFeedbackRatingRequiredError
+ *
+ * A rating is required when there is no existing feedback to remove.
+ */
+export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('message_feedback_rating_required'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * AppNamePayload
@@ -1690,6 +1721,14 @@ export const zAgentConfigFileListResponse = z.object({
 export const zAgentConfigFileUploadResponse = z.object({
   config_version: zAgentConfigVersionResponse,
   file: zAgentConfigFileItemResponse,
+})
+
+/**
+ * AgentConfigFilesUploadResponse
+ */
+export const zAgentConfigFilesUploadResponse = z.object({
+  config_version: zAgentConfigVersionResponse,
+  files: z.array(zAgentConfigFileItemResponse),
 })
 
 /**
@@ -6652,6 +6691,23 @@ export const zPostAppsByAppIdAgentConfigFilesQuery = z.object({
  */
 export const zPostAppsByAppIdAgentConfigFilesResponse = zAgentConfigFileUploadResponse
 
+export const zPostAppsByAppIdAgentConfigFilesBatchBody = zAgentConfigFilesUploadPayload
+
+export const zPostAppsByAppIdAgentConfigFilesBatchPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zPostAppsByAppIdAgentConfigFilesBatchQuery = z.object({
+  draft_type: z.enum(['debug_build', 'draft']).optional(),
+  node_id: z.string().optional(),
+  version_id: z.string().optional(),
+})
+
+/**
+ * Bound config files
+ */
+export const zPostAppsByAppIdAgentConfigFilesBatchResponse = zAgentConfigFilesUploadResponse
+
 export const zDeleteAppsByAppIdAgentConfigFilesByNamePath = z.object({
   app_id: z.uuid(),
   name: z.string(),
@@ -6952,7 +7008,7 @@ export const zPostAppsByAppIdAnnotationsBatchImportPath = z.object({
 })
 
 /**
- * Batch import started successfully
+ * Import started, or CSV/subscription validation failed (error_msg)
  */
 export const zPostAppsByAppIdAnnotationsBatchImportResponse = zAnnotationBatchImportResponse
 

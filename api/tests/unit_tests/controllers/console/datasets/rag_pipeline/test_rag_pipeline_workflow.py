@@ -294,15 +294,15 @@ def _make_workflow(**overrides: object) -> Workflow:
         marked_name="Release 1",
         marked_comment="Initial release",
         graph=json.dumps({"nodes": [], "edges": []}),
-        features=json.dumps({"file_upload": {"enabled": False}}),
+        _features=json.dumps({"file_upload": {"enabled": False}}),
         created_by=_RAG_PIPELINE_WORKFLOW_DEFAULT_WORKFLOW_CREATED_BY,
-        created_at=datetime(2024, 1, 1, 12, 0, 0),
         updated_by=None,
-        updated_at=datetime(2024, 1, 1, 12, 1, 0),
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
+    workflow.created_at = datetime(2024, 1, 1, 12, 0, 0)
+    workflow.updated_at = datetime(2024, 1, 1, 12, 1, 0)
     for key, value in overrides.items():
         setattr(workflow, key, value)
     return workflow
@@ -870,10 +870,12 @@ def make_node_execution(**overrides: Unpack[NodeExecutionOverrides]) -> Workflow
         "finished_at": datetime(2026, 1, 1, 0, 0, 1),
     }
     payload.update(overrides)
+    created_at = payload.pop("created_at")
     execution = WorkflowNodeExecutionModel(
         triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
         **payload,
     )
+    execution.created_at = created_at
     execution.offload_data = []
     return execution
 
@@ -902,7 +904,25 @@ def default_workflow_payload() -> WorkflowFactoryPayload:
 def make_workflow(**overrides: Unpack[WorkflowFactoryOverrides]) -> Workflow:
     payload = default_workflow_payload()
     payload.update(overrides)
-    return Workflow(**payload)
+    workflow = Workflow(
+        id=payload["id"],
+        tenant_id=payload["tenant_id"],
+        app_id=payload["app_id"],
+        type=WorkflowType(payload["type"]),
+        version=payload["version"],
+        marked_name=payload["marked_name"],
+        marked_comment=payload["marked_comment"],
+        graph=payload["graph"],
+        _features=payload["features"],
+        created_by=payload["created_by"],
+        updated_by=payload["updated_by"],
+        _environment_variables=payload["environment_variables"],
+        _conversation_variables=payload["conversation_variables"],
+        _rag_pipeline_variables=payload["rag_pipeline_variables"],
+    )
+    workflow.created_at = payload["created_at"]
+    workflow.updated_at = payload["updated_at"]
+    return workflow
 
 
 def _rag_pipeline_workflow_apis_make_account(
@@ -1555,20 +1575,26 @@ class TestRagPipelineWorkflowApisCases:
                     method(api, pipeline, "node1")
 
     class TestRagPipelineWorkflowRunNodeExecutionListApi:
-        def test_get_node_executions_passes_current_user(self, app: Flask) -> None:
+        def test_get_node_executions_passes_current_user(self, app: Flask, sqlite_session: Session) -> None:
             api = RagPipelineWorkflowRunNodeExecutionListApi()
             method = unwrap(api.get)
 
             user = _rag_pipeline_workflow_apis_make_account()
             pipeline = make_pipeline()
             run_id = uuid4()
-            node_exec = make_node_execution(workflow_run_id=str(run_id))
 
-            session_stub = MagicMock()
-            session_stub.scalar.return_value = None
+            creator = Account(name="Creator", email=f"creator-{uuid4()}@example.com")
+            creator.id = str(uuid4())
+            decoy = Account(name="Decoy", email=f"decoy-{uuid4()}@example.com")
+            decoy.id = str(uuid4())
+            sqlite_session.add_all([creator, decoy])
+            sqlite_session.commit()
+
+            node_exec = make_node_execution(workflow_run_id=str(run_id), created_by=creator.id)
+
             service = MagicMock()
             service.get_rag_pipeline_workflow_run_node_executions.return_value = [
-                node_execution_response_source(node_exec, session=session_stub)
+                node_execution_response_source(node_exec, session=sqlite_session)
             ]
 
             with (
@@ -1588,6 +1614,8 @@ class TestRagPipelineWorkflowApisCases:
             assert result["data"][0]["id"] == "node-exec-1"
             assert result["data"][0]["inputs"] == {"query": "hello"}
             assert result["data"][0]["outputs"] == {"answer": "world"}
+            assert result["data"][0]["created_by_account"]["id"] == creator.id
+            assert result["data"][0]["created_by_account"]["name"] == "Creator"
 
     class TestRagPipelineDatasourceVariableApi:
         def test_set_datasource_variables_success(self, app: Flask) -> None:

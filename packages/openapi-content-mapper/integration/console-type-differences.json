@@ -495,6 +495,7 @@
   "console POST /agent/{agent_id}/api-keys": ["compatible", "parsed-vs-wire-output"],
   "console POST /agent/{agent_id}/build-draft/checkout": ["compatible", "parsed-vs-wire-output"],
   "console POST /agent/{agent_id}/config/files": ["compatible", "parsed-vs-wire-output"],
+  "console POST /agent/{agent_id}/config/files/batch": ["compatible", "parsed-vs-wire-output"],
   "console POST /agent/{agent_id}/config/skills/upload": ["compatible", "parsed-vs-wire-output"],
   "console POST /agent/{agent_id}/copy": ["compatible", "parsed-vs-wire-output"],
   "console POST /agent/{agent_id}/debug-conversation/refresh": [
@@ -507,6 +508,7 @@
     "parsed-vs-wire-output"
   ],
   "console POST /apps/{app_id}/agent/config/files": ["compatible", "parsed-vs-wire-output"],
+  "console POST /apps/{app_id}/agent/config/files/batch": ["compatible", "parsed-vs-wire-output"],
   "console POST /apps/{app_id}/agent/config/skills/upload": ["compatible", "parsed-vs-wire-output"],
   "console POST /apps/{app_id}/completion-messages": ["compatible", "undocumented-output"],
   "console POST /apps/{app_id}/copy": ["compatible", "parsed-vs-wire-output"],

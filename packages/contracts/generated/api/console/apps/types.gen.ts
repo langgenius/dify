@@ -256,6 +256,15 @@ export type AgentConfigFileUploadResponse = {
   file: AgentConfigFileItemResponse
 }
 
+export type AgentConfigFilesUploadPayload = {
+  upload_file_ids: Array<string>
+}
+
+export type AgentConfigFilesUploadResponse = {
+  config_version: AgentConfigVersionResponse
+  files: Array<AgentConfigFileItemResponse>
+}
+
 export type AgentConfigDeleteResponse = {
   removed_names?: Array<string>
   result: 'success'
@@ -349,6 +358,11 @@ export type AnnotationSettingResponse = {
 
 export type AnnotationSettingUpdatePayload = {
   score_threshold: number
+}
+
+export type BadRequestError = ErrorResponse & {
+  code: 'bad_request'
+  status: 400
 }
 
 export type AnnotationList = {
@@ -632,6 +646,11 @@ export type AppMessageFeedbackPayload = {
   content?: string | null
   message_id: string
   rating?: 'dislike' | 'like' | null
+}
+
+export type MessageFeedbackRatingRequiredError = ErrorResponse & {
+  code: 'message_feedback_rating_required'
+  status: 400
 }
 
 export type AppIconPayload = {
@@ -5232,6 +5251,35 @@ export type PostAppsByAppIdAgentConfigFilesResponses = {
 export type PostAppsByAppIdAgentConfigFilesResponse =
   PostAppsByAppIdAgentConfigFilesResponses[keyof PostAppsByAppIdAgentConfigFilesResponses]
 
+export type PostAppsByAppIdAgentConfigFilesBatchData = {
+  body: AgentConfigFilesUploadPayload
+  path: {
+    app_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    node_id?: string
+    version_id?: string
+  }
+  url: '/apps/{app_id}/agent/config/files/batch'
+}
+
+export type PostAppsByAppIdAgentConfigFilesBatchErrors = {
+  400: AgentNotBoundError | ErrorResponse
+  404: AgentNotFoundError | AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdAgentConfigFilesBatchError =
+  PostAppsByAppIdAgentConfigFilesBatchErrors[keyof PostAppsByAppIdAgentConfigFilesBatchErrors]
+
+export type PostAppsByAppIdAgentConfigFilesBatchResponses = {
+  201: AgentConfigFilesUploadResponse
+}
+
+export type PostAppsByAppIdAgentConfigFilesBatchResponse =
+  PostAppsByAppIdAgentConfigFilesBatchResponses[keyof PostAppsByAppIdAgentConfigFilesBatchResponses]
+
 export type DeleteAppsByAppIdAgentConfigFilesByNameData = {
   body?: never
   path: {
@@ -5630,7 +5678,10 @@ export type PostAppsByAppIdAnnotationReplyByActionData = {
 }
 
 export type PostAppsByAppIdAnnotationReplyByActionErrors = {
+  400: ErrorResponse
   403: ErrorResponse
+  404: ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -5656,7 +5707,9 @@ export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdData = {
 }
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdErrors = {
+  400: ErrorResponse
   403: ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -5731,6 +5784,7 @@ export type DeleteAppsByAppIdAnnotationsData = {
 }
 
 export type DeleteAppsByAppIdAnnotationsErrors = {
+  400: BadRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5808,8 +5862,10 @@ export type PostAppsByAppIdAnnotationsBatchImportData = {
 export type PostAppsByAppIdAnnotationsBatchImportErrors = {
   400: NoFileUploadedError | TooManyFilesError | ErrorResponse
   403: ErrorResponse
+  404: ErrorResponse
   413: ErrorResponse
   429: ErrorResponse
+  500: ErrorResponse
   default: ErrorResponse
 }
 
@@ -5835,6 +5891,8 @@ export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdData = {
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdErrors = {
   403: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
   default: ErrorResponse
 }
 
@@ -6135,6 +6193,7 @@ export type GetAppsByAppIdChatMessagesData = {
 }
 
 export type GetAppsByAppIdChatMessagesErrors = {
+  400: AppUnavailableError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -6169,7 +6228,7 @@ export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
     | ErrorResponse
   401: ErrorResponse
   403: AppSuggestedQuestionsAfterAnswerDisabledError | ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -6467,6 +6526,8 @@ export type PostAppsByAppIdFeedbacksData = {
 }
 
 export type PostAppsByAppIdFeedbacksErrors = {
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
+  403: ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -6515,6 +6576,7 @@ export type GetAppsByAppIdMessagesByMessageIdData = {
 }
 
 export type GetAppsByAppIdMessagesByMessageIdErrors = {
+  400: AppUnavailableError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }

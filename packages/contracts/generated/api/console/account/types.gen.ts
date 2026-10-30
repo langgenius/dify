@@ -18,30 +18,6 @@ export type ErrorResponse = {
   status: number
 }
 
-export type AccountAvatarPayload = {
-  avatar: string
-}
-
-export type AccountResponse = {
-  avatar?: string | null
-  readonly avatar_url: string | null
-  created_at?: number | null
-  email: string
-  id: string
-  interface_language?: string | null
-  interface_theme?: string | null
-  is_password_set: boolean
-  last_login_at?: number | null
-  last_login_ip?: string | null
-  name: string
-  timezone?: string | null
-}
-
-export type AccountNotFoundError = ErrorResponse & {
-  code: 'account_not_found'
-  status: 400
-}
-
 export type ChangeEmailSendPayload = {
   email: string
   language?: string | null
@@ -52,6 +28,11 @@ export type ChangeEmailSendPayload = {
 export type SimpleResultDataResponse = {
   data: string
   result: string
+}
+
+export type AccountNotFoundError = ErrorResponse & {
+  code: 'account_not_found'
+  status: 400
 }
 
 export type InvalidEmailError = ErrorResponse & {
@@ -100,6 +81,21 @@ export type EmailDomainSuspendedError = ErrorResponse & {
 export type ChangeEmailResetPayload = {
   new_email: string
   token: string
+}
+
+export type AccountResponse = {
+  avatar?: string | null
+  readonly avatar_url: string | null
+  created_at?: number | null
+  email: string
+  id: string
+  interface_language?: string | null
+  interface_theme?: string | null
+  is_password_set: boolean
+  last_login_at?: number | null
+  last_login_ip?: string | null
+  name: string
+  timezone?: string | null
 }
 
 export type ChangeEmailValidityPayload = {
@@ -206,18 +202,6 @@ export type AccountIntegrateListResponse = {
   data: Array<AccountIntegrateResponse>
 }
 
-export type AccountInterfaceLanguagePayload = {
-  interface_language: string
-}
-
-export type AccountInterfaceThemePayload = {
-  interface_theme: 'dark' | 'light'
-}
-
-export type AccountNamePayload = {
-  name: string
-}
-
 export type AccountPasswordPayload = {
   new_password: string
   password?: string | null
@@ -240,10 +224,6 @@ export type AccountProfilePatchPayload = {
   interface_theme?: 'dark' | 'light'
   name?: string
   timezone?: string
-}
-
-export type AccountTimezonePayload = {
-  timezone: string
 }
 
 export type AccountIntegrateResponse = {
@@ -287,26 +267,6 @@ export type GetAccountAvatarResponses = {
 }
 
 export type GetAccountAvatarResponse = GetAccountAvatarResponses[keyof GetAccountAvatarResponses]
-
-export type PostAccountAvatarData = {
-  body: AccountAvatarPayload
-  path?: never
-  query?: never
-  url: '/account/avatar'
-}
-
-export type PostAccountAvatarErrors = {
-  400: AccountNotFoundError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type PostAccountAvatarError = PostAccountAvatarErrors[keyof PostAccountAvatarErrors]
-
-export type PostAccountAvatarResponses = {
-  200: AccountResponse
-}
-
-export type PostAccountAvatarResponse = PostAccountAvatarResponses[keyof PostAccountAvatarResponses]
 
 export type PostAccountChangeEmailData = {
   body: ChangeEmailSendPayload
@@ -603,70 +563,6 @@ export type GetAccountIntegratesResponses = {
 export type GetAccountIntegratesResponse =
   GetAccountIntegratesResponses[keyof GetAccountIntegratesResponses]
 
-export type PostAccountInterfaceLanguageData = {
-  body: AccountInterfaceLanguagePayload
-  path?: never
-  query?: never
-  url: '/account/interface-language'
-}
-
-export type PostAccountInterfaceLanguageErrors = {
-  400: AccountNotFoundError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type PostAccountInterfaceLanguageError =
-  PostAccountInterfaceLanguageErrors[keyof PostAccountInterfaceLanguageErrors]
-
-export type PostAccountInterfaceLanguageResponses = {
-  200: AccountResponse
-}
-
-export type PostAccountInterfaceLanguageResponse =
-  PostAccountInterfaceLanguageResponses[keyof PostAccountInterfaceLanguageResponses]
-
-export type PostAccountInterfaceThemeData = {
-  body: AccountInterfaceThemePayload
-  path?: never
-  query?: never
-  url: '/account/interface-theme'
-}
-
-export type PostAccountInterfaceThemeErrors = {
-  400: AccountNotFoundError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type PostAccountInterfaceThemeError =
-  PostAccountInterfaceThemeErrors[keyof PostAccountInterfaceThemeErrors]
-
-export type PostAccountInterfaceThemeResponses = {
-  200: AccountResponse
-}
-
-export type PostAccountInterfaceThemeResponse =
-  PostAccountInterfaceThemeResponses[keyof PostAccountInterfaceThemeResponses]
-
-export type PostAccountNameData = {
-  body: AccountNamePayload
-  path?: never
-  query?: never
-  url: '/account/name'
-}
-
-export type PostAccountNameErrors = {
-  400: AccountNotFoundError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type PostAccountNameError = PostAccountNameErrors[keyof PostAccountNameErrors]
-
-export type PostAccountNameResponses = {
-  200: AccountResponse
-}
-
-export type PostAccountNameResponse = PostAccountNameResponses[keyof PostAccountNameResponses]
-
 export type PostAccountPasswordData = {
   body: AccountPasswordPayload
   path?: never
@@ -732,24 +628,3 @@ export type PatchAccountProfileResponses = {
 
 export type PatchAccountProfileResponse =
   PatchAccountProfileResponses[keyof PatchAccountProfileResponses]
-
-export type PostAccountTimezoneData = {
-  body: AccountTimezonePayload
-  path?: never
-  query?: never
-  url: '/account/timezone'
-}
-
-export type PostAccountTimezoneErrors = {
-  400: AccountNotFoundError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type PostAccountTimezoneError = PostAccountTimezoneErrors[keyof PostAccountTimezoneErrors]
-
-export type PostAccountTimezoneResponses = {
-  200: AccountResponse
-}
-
-export type PostAccountTimezoneResponse =
-  PostAccountTimezoneResponses[keyof PostAccountTimezoneResponses]

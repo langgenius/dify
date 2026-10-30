@@ -202,7 +202,7 @@ def test_unavailable_identity_is_canonical_404_before_authentication(
                     id=app_id,
                     tenant_id=app_id,
                     name="Private fixture",
-                    mode="chat",
+                    mode="chat",  # pyrefly: ignore[bad-argument-type]
                     enable_site=condition != "app-disabled",
                     enable_api=True,
                     app_model_config_id=config_id if condition != "unpublished" else None,

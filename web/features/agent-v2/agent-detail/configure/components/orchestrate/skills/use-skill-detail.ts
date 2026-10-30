@@ -10,7 +10,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
-import { getDriveFileIconType } from '@/features/agent-v2/file-icon'
+import { getDriveFileIconType, hasFileDataPreview } from '@/features/agent-v2/file-icon'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 
@@ -42,6 +42,7 @@ const getSkillFileContentQueryOptions = (url: string) =>
     queryKey: skillFileContentQueryKey(url),
     queryFn: () => fetchSkillFileContent(url),
     staleTime: 0,
+    refetchOnWindowFocus: false,
   })
 
 const isSkillFolder = (file: AgentConfigSkillFileResponse) => file.type === 'directory'
@@ -248,6 +249,9 @@ export function useAgentSkillDetail({
   const selectedPreviewPath = isSkillMdSelected
     ? undefined
     : (selectedFile?.configName ?? selectedFile?.id)
+  const isFileDataPreview = hasFileDataPreview(selectedFile?.icon)
+  const shouldLoadTextPreview = isOpen && !!selectedPreviewPath && !isFileDataPreview
+  const shouldLoadFileData = isOpen && !!selectedPreviewPath && isFileDataPreview
   const agentPreviewQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.skills.byName.files.preview.get.queryOptions({
       input: {
@@ -262,7 +266,7 @@ export function useAgentSkillDetail({
         },
       },
     }),
-    enabled: isOpen && !!selectedPreviewPath && !apiContext.workflow && !apiContext.trialAppId,
+    enabled: shouldLoadTextPreview && !apiContext.workflow && !apiContext.trialAppId,
   })
   const workflowPreviewQuery = useQuery({
     ...consoleQuery.apps.byAppId.agent.config.skills.byName.files.preview.get.queryOptions({
@@ -279,7 +283,7 @@ export function useAgentSkillDetail({
         },
       },
     }),
-    enabled: isOpen && !!selectedPreviewPath && !!apiContext.workflow,
+    enabled: shouldLoadTextPreview && !!apiContext.workflow,
   })
   const trialPreviewQuery = useQuery(
     consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.preview.get.queryOptions({
@@ -289,7 +293,7 @@ export function useAgentSkillDetail({
             query: { path: selectedPreviewPath ?? '', version_id: apiContext.versionId },
           }
         : skipToken,
-      enabled: !!apiContext.trialAppId && isOpen && !!selectedPreviewPath,
+      enabled: !!apiContext.trialAppId && shouldLoadTextPreview,
     }),
   )
   const previewQuery = apiContext.trialAppId
@@ -297,8 +301,6 @@ export function useAgentSkillDetail({
     : apiContext.workflow
       ? workflowPreviewQuery
       : agentPreviewQuery
-  const isImagePreviewFile = selectedFile?.icon === 'image'
-  const shouldLoadImagePreview = isOpen && !!selectedPreviewPath && isImagePreviewFile
   const agentDownloadQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
       input: {
@@ -314,7 +316,8 @@ export function useAgentSkillDetail({
       },
     }),
     staleTime: 0,
-    enabled: shouldLoadImagePreview && !apiContext.workflow && !apiContext.trialAppId,
+    refetchOnWindowFocus: false,
+    enabled: shouldLoadFileData && !apiContext.workflow && !apiContext.trialAppId,
   })
   const workflowDownloadQuery = useQuery({
     ...consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions({
@@ -332,7 +335,8 @@ export function useAgentSkillDetail({
       },
     }),
     staleTime: 0,
-    enabled: shouldLoadImagePreview && !!apiContext.workflow,
+    refetchOnWindowFocus: false,
+    enabled: shouldLoadFileData && !!apiContext.workflow,
   })
   const trialDownloadQuery = useQuery(
     consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.download.get.queryOptions({
@@ -342,8 +346,9 @@ export function useAgentSkillDetail({
             query: { path: selectedPreviewPath ?? '', version_id: apiContext.versionId },
           }
         : skipToken,
-      enabled: !!apiContext.trialAppId && shouldLoadImagePreview,
+      enabled: !!apiContext.trialAppId && shouldLoadFileData,
       staleTime: 0,
+      refetchOnWindowFocus: false,
     }),
   )
   const downloadQuery = apiContext.trialAppId
@@ -352,11 +357,11 @@ export function useAgentSkillDetail({
       ? workflowDownloadQuery
       : agentDownloadQuery
   const skillFileContentUrl = downloadQuery.data?.url
-  const imageContentQuery = useQuery(
+  const fileContentQuery = useQuery(
     skillFileContentUrl
       ? {
           ...getSkillFileContentQueryOptions(skillFileContentUrl),
-          enabled: shouldLoadImagePreview,
+          enabled: shouldLoadFileData,
         }
       : {
           queryKey: skillFileContentQueryKey(),
@@ -371,13 +376,22 @@ export function useAgentSkillDetail({
       const path = file.configName ?? file.id
       const isSkillMdFile = path === inspectQuery.data?.skill_md.path || file.name === 'SKILL.md'
 
-      if (isSkillMdFile && inspectQuery.data?.skill_md.text !== undefined) {
+      if (
+        isSkillMdFile &&
+        !inspectQuery.data?.skill_md.truncated &&
+        inspectQuery.data?.skill_md.text !== undefined
+      ) {
         downloadBlob({
           data: new Blob([inspectQuery.data.skill_md.text], {
             type: 'text/markdown;charset=utf-8',
           }),
           fileName: file.name,
         })
+        return
+      }
+
+      if (isFileDataPreview && fileContentQuery.isSuccess && !fileContentQuery.isFetching) {
+        downloadBlob({ data: fileContentQuery.data, fileName: file.name })
         return
       }
 
@@ -452,6 +466,11 @@ export function useAgentSkillDetail({
       apiContext,
       inspectQuery.data?.skill_md.path,
       inspectQuery.data?.skill_md.text,
+      inspectQuery.data?.skill_md.truncated,
+      fileContentQuery.data,
+      fileContentQuery.isFetching,
+      fileContentQuery.isSuccess,
+      isFileDataPreview,
       queryClient,
       selectedFile,
       skill.name,
@@ -469,19 +488,21 @@ export function useAgentSkillDetail({
         ? (inspectQuery.data?.skill_md.text ?? undefined)
         : (previewQuery.data?.text ?? undefined),
       downloadActionLoadingTarget,
+      fileData: fileContentQuery.isFetching ? undefined : fileContentQuery.data,
       fileName: selectedFile?.name,
-      imageData: imageContentQuery.isFetching ? undefined : imageContentQuery.data,
-      isDownloadError:
-        shouldLoadImagePreview && (downloadQuery.isError || imageContentQuery.isError),
+      fileType: selectedFile?.icon,
+      isDownloadError: shouldLoadFileData && (downloadQuery.isError || fileContentQuery.isError),
       isDownloadLoading:
-        shouldLoadImagePreview && (downloadQuery.isFetching || imageContentQuery.isFetching),
+        shouldLoadFileData && (downloadQuery.isFetching || fileContentQuery.isFetching),
       isError: isSkillMdSelected
         ? inspectQuery.isError
-        : !!selectedPreviewPath && previewQuery.isError,
-      isImage: isImagePreviewFile,
+        : shouldLoadTextPreview && previewQuery.isError,
       isLoading: isSkillMdSelected
         ? inspectQuery.isPending
-        : !!selectedPreviewPath && previewQuery.isPending,
+        : shouldLoadTextPreview && previewQuery.isPending,
+      truncated: isSkillMdSelected
+        ? inspectQuery.data?.skill_md.truncated
+        : previewQuery.data?.truncated,
     },
     onDownloadFile: canDownload ? handleDownloadFile : undefined,
     onSelectFile: (file) => setSelectedFileId(file.id),
