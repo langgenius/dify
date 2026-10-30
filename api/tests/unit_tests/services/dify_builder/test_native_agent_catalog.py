@@ -124,7 +124,7 @@ def test_agent_contract_reaches_planning_without_private_soul_values(
     candidate = project_published_agent(agent=case.agent, snapshot=case.snapshot)
     monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id, _account_id=None: [])
     monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
     payloads = []
     if phase.startswith("discovery"):
@@ -787,7 +787,7 @@ def test_catalog_public_version_matches_native_visible_history_with_hidden_revis
     assert candidate.resource_id == project_published_agent(agent=case.agent, snapshot=active).resource_id
     monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id, _account_id=None: [])
     monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
     ref = resources.list_tenant_resources(case.actor.tenant_id, account_id=case.actor.account_id).agents[0]
     assert f"Published version 2 (snapshot {active.id})" in ref.meta
@@ -815,7 +815,7 @@ def test_catalog_without_native_visible_version_labels_only_the_snapshot_revisio
     )
     monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id, _account_id=None: [])
     monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
 
     ref = resources.list_tenant_resources(case.actor.tenant_id, account_id=case.actor.account_id).agents[0]
@@ -850,7 +850,7 @@ def test_confirmed_agent_is_revalidated_directly_after_catalog_page_movement(
     sqlite_session.commit()
     monkeypatch.setattr(resources, "db", PortDatabase(sqlite_session.get_bind()))
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id: [])
+    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id, _account_id=None: [])
     monkeypatch.setattr(resources, "_list_tools", lambda _tenant_id: [])
     inventory = resources.list_tenant_resources(case.actor.tenant_id, account_id=case.actor.account_id)
     assert len(inventory.agents) == 100

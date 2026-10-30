@@ -6,6 +6,7 @@ from typing import override
 
 import pytest
 
+from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
 from core.dify_builder.state import PcState
 from services.dify_builder.agent import build
@@ -23,8 +24,8 @@ class PlanningAgent(PlaceholderAgent):
         self.plan = WorkflowPlan(
             title="为客服答复增加引用来源",
             input_summary="用户提交的问题和附件。",
-            output_summary="结合知识库生成并附带引用来源的答复。",
-            items=["Retrieve relevant knowledge", "Generate an answer with references"],
+            output_summary="结合用户提交的内容生成并附带输入来源的答复。",
+            items=["Read user-supplied content", "Generate an answer with input source references"],
         )
 
     @override
@@ -36,6 +37,19 @@ class PlanningAgent(PlaceholderAgent):
     @override
     def propose_edit_plan(self, edit_rules: object, graph: object, **_kwargs: object) -> WorkflowPlan:
         return self.plan
+
+    @override
+    def discover_resources(
+        self,
+        plan_items: list[str],
+        *,
+        goal_text: str,
+        requirements: dict[str, object],
+        reply_language: str | None = None,
+    ) -> list[ResourceOption]:
+        # These persistence cases use supplied input, not a workspace KB.
+        # Unsupported knowledge discovery/waiver is covered in its own tests.
+        return []
 
     @override
     def bind_resources(self, plan_items: list[str], resource_ids: list[str]) -> list[str]:

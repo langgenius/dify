@@ -23,7 +23,7 @@ def catalogue(models: list[ProviderWithModelsResponse]) -> AbstractContextManage
         resources,
         _list_models=lambda _tenant: models,
         _list_tools=lambda _tenant: [],
-        _list_datasets=lambda _tenant: [],
+        _list_datasets=lambda _tenant, _account_id=None: [],
     )
 
 
@@ -85,7 +85,7 @@ def test_partial_tool_catalogue_retains_verified_entries_and_source_failure(monk
     monkeypatch.setattr(resources, "build_tool_catalogue", partial)
     with (
         patch.object(resources, "_list_models", lambda _tenant: list[ProviderWithModelsResponse]()),
-        patch.object(resources, "_list_datasets", lambda _tenant: list[object]()),
+        patch.object(resources, "_list_datasets", lambda _tenant, _account_id=None: list[object]()),
     ):
         result = resources.list_tenant_resources("tenant")
     assert result.tools[0].id == "time/now"

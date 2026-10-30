@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from core.dify_builder.contract import PlanCard
+from core.dify_builder.contract import PlanCard, ResourceOption
 from core.dify_builder.models import DifyBuilderContext
 
 PLAN_PRESENTATION_INSTRUCTION = (
@@ -29,6 +29,29 @@ class WorkflowPlan:
     # Set only by resource reconciliation; unused selections must not force a
     # generated action. None retains the ordinary abstract/Edit plan contract.
     used_resource_ids: list[str] | None = None
+    # Server-owned, nonexecuting knowledge preferences; never graph bindings.
+    discovery_resource_ids: list[str] | None = None
+
+
+class ResourceDiscovery(list[ResourceOption]):  # noqa: FURB189 - preserve the existing list-valued agent port
+    """Server facts; model hints may ask a question, never waive a goal."""
+
+    def __init__(
+        self,
+        options: list[ResourceOption],
+        *,
+        knowledge_source_unavailable: bool = False,
+        knowledge_requires_clarification: bool = False,
+    ) -> None:
+        super().__init__(options)
+        self.knowledge_source_unavailable = knowledge_source_unavailable
+        self.knowledge_requires_clarification = knowledge_requires_clarification
+
+
+def has_knowledge_source_cue(goal: str, requirements: object) -> bool:
+    """Source cue triggers a question, never a required/optional verdict."""
+    text = (goal + " " + str(requirements)).casefold()
+    return any(cue in text for cue in ("知识库", "知识检索", "knowledge base", "knowledge_base", "knowledge retrieval"))
 
 
 class EditPlanNotActionableError(RuntimeError):
