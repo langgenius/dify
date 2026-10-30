@@ -337,7 +337,13 @@ def test_get_features_exclude_vector_space_sets_vector_space_to_none(config_over
     )
     with (
         patch("services.feature_service.BillingService.get_info", return_value=billing_info) as get_info,
-        patch("services.feature_service.BillingService.get_quota_info", return_value={}),
+        patch(
+            "services.feature_service.BillingService.get_quota_info",
+            return_value=billing.QuotaGetInfoReply(
+                trigger_event=billing.QuotaFeatureInfo(usage=1, limit=3000, reset_date=0),
+                api_rate_limit=billing.QuotaFeatureInfo(usage=2, limit=5000, reset_date=0),
+            ),
+        ),
     ):
         features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
 
