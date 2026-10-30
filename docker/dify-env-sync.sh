@@ -7,7 +7,7 @@
 # - Synchronize latest settings from .env.example to .env
 # - Preserve custom settings in existing .env
 # - Add new environment variables
-# - Detect removed environment variables
+# - Report additional local overrides
 # - Create backup files
 # ================================================================
 
@@ -107,8 +107,8 @@ detect_differences() {
     local temp_diff="$temp_dir/env_diff"
 
     # Store diff file path as global variable
-    declare -g DIFF_FILE="$temp_diff"
-    declare -g TEMP_DIR="$temp_dir"
+    DIFF_FILE="$temp_diff"
+    TEMP_DIR="$temp_dir"
 
     # Initialize difference file
     > "$temp_diff"
@@ -261,123 +261,50 @@ analyze_value_change() {
     fi
 }
 
-# Synchronize .env file with .env.example while preserving custom values
-# Creates a new .env file based on .env.example structure, preserving existing custom values
-# Global variables used: DIFF_FILE, TEMP_DIR
+# Append missing template inputs without rewriting existing overrides or comments.
 sync_env_file() {
-    log_info "Starting partial synchronization of .env file..."
+    log_info "Synchronizing new deployment inputs into .env..."
 
     local new_env_file=".env.new"
-    local preserved_count=0
-    local updated_count=0
-
-    # Pre-process diff file for efficient lookup
-    local lookup_file=""
-    if [[ -f "$DIFF_FILE" && -s "$DIFF_FILE" ]]; then
-        lookup_file="${DIFF_FILE}.lookup"
-        # Create sorted lookup file for fast search
-        sort "$DIFF_FILE" > "$lookup_file"
-        log_info "Created lookup file for $(wc -l < "$DIFF_FILE") preserved values"
-    fi
-
-    # Use AWK for efficient processing (much faster than bash loop for large files)
-    log_info "Processing $(wc -l < .env.example) lines with AWK..."
-
-    local preserved_keys_file="${TEMP_DIR}/preserved_keys"
-    local awk_preserved_count_file="${TEMP_DIR}/awk_preserved_count"
-    local awk_updated_count_file="${TEMP_DIR}/awk_updated_count"
-
-    awk -F'=' -v lookup_file="$lookup_file" -v preserved_file="$preserved_keys_file" \
-        -v preserved_count_file="$awk_preserved_count_file" -v updated_count_file="$awk_updated_count_file" '
-    BEGIN {
-        preserved_count = 0
-        updated_count = 0
-
-        # Load preserved values if lookup file exists
-        if (lookup_file != "") {
-            while ((getline line < lookup_file) > 0) {
-                split(line, parts, "\x01")
-                key = parts[1]
-                value = parts[2]
-                preserved_values[key] = value
-            }
-            close(lookup_file)
-        }
-    }
-
-    # Process each line
-    {
-        # Check if this is an environment variable line
+    cp .env "$new_env_file"
+    awk -F= '
+    FILENAME == ARGV[1] {
         if (/^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*[[:space:]]*=/) {
-            # Extract key
             key = $1
             gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
-
-            # Check if key should be preserved
-            if (key in preserved_values) {
-                print key "=" preserved_values[key]
-                print key > preserved_file
-                preserved_count++
-            } else {
-                print $0
-                updated_count++
-            }
-        } else {
-            # Not an env var line, preserve as-is
+            existing[key] = 1
+        }
+        next
+    }
+    /^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*[[:space:]]*=/ {
+        key = $1
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
+        if (!(key in existing)) {
+            if (!added++) print "\n# New deployment inputs from .env.example"
             print $0
+            existing[key] = 1
         }
     }
+    ' .env .env.example >> "$new_env_file"
 
-    END {
-        print preserved_count > preserved_count_file
-        print updated_count > updated_count_file
-    }
-    ' .env.example > "$new_env_file"
-
-    # Read counters and preserved keys
-    if [[ -f "$awk_preserved_count_file" ]]; then
-        preserved_count=$(cat "$awk_preserved_count_file")
-    fi
-    if [[ -f "$awk_updated_count_file" ]]; then
-        updated_count=$(cat "$awk_updated_count_file")
-    fi
-
-    # Show what was preserved
-    if [[ -f "$preserved_keys_file" ]]; then
-        while read -r key; do
-            [[ -n "$key" ]] && log_info "  Preserved: $key (.env value)"
-        done < "$preserved_keys_file"
-    fi
-
-    # Clean up lookup file
-    [[ -n "$lookup_file" ]] && rm -f "$lookup_file"
-
-    # Replace the original .env file
-    if mv "$new_env_file" ".env"; then
-        log_success "Successfully created new .env file"
-    else
+    if ! mv "$new_env_file" .env; then
         log_error "Failed to replace .env file"
         rm -f "$new_env_file"
         return 1
     fi
 
-    # Clean up difference file and temporary directory
     if [[ -n "${TEMP_DIR:-}" ]]; then
         rm -rf "${TEMP_DIR}"
         unset TEMP_DIR
     fi
-    if [[ -n "${DIFF_FILE:-}" ]]; then
-        unset DIFF_FILE
-    fi
+    unset DIFF_FILE
 
-    log_success "Partial synchronization of .env file completed"
-    log_info "  Preserved .env values: $preserved_count"
-    log_info "  Updated to .env.example values: $updated_count"
+    log_success "Synchronization completed; existing .env settings preserved"
 }
 
-# Detect removed environment variables
+# Report additional local overrides
 detect_removed_variables() {
-    log_info "Detecting removed environment variables..."
+    log_info "Checking for additional local overrides..."
 
     if [[ ! -f ".env" ]]; then
         return
@@ -410,13 +337,13 @@ detect_removed_variables() {
     fi
 
     if [[ ${#removed_vars[@]} -gt 0 ]]; then
-        log_warning "The following environment variables have been removed from .env.example:"
+        log_warning "The following local overrides are not listed in .env.example:"
         for var in "${removed_vars[@]}"; do
             log_warning "  - $var"
         done
-        log_warning "Consider manually removing these variables from .env"
+        log_warning "These overrides will be preserved in .env"
     else
-        log_success "No removed environment variables found"
+        log_success "No additional local overrides found"
     fi
 }
 
@@ -446,7 +373,7 @@ main() {
     # Detect differences
     detect_differences
 
-    # Detect removed variables (before sync)
+    # Report additional local overrides (before sync)
     detect_removed_variables
 
     # Synchronize environment file
