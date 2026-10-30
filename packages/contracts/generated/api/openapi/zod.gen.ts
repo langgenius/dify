@@ -1463,6 +1463,7 @@ export const zOpenApiErrorCode = z.enum([
   'recipient_surface_mismatch',
   'request_entity_too_large',
   'run_not_found',
+  'run_not_stoppable',
   'secret_mask_not_secret',
   'secret_mask_unknown_id',
   'service_api_disabled',
@@ -1897,8 +1898,8 @@ export const zPermittedExternalAppsListQuery = z.object({
 /**
  * TaskStopResponse
  *
- * 200 body for POST /apps/<id>/tasks/<task_id>:stop. The handler always returns
- * {"result": "success"}, so `result` is required (no default) — the generated contract
+ * 200 body for POST /apps/<id>/runs/<run_id>:stop and POST /apps/<id>/tasks/<task_id>:stop.
+ * The handlers always return {"result": "success"}, so `result` is required (no default) — the generated contract
  * types it as a required `'success'` rather than an optional field.
  */
 export const zTaskStopResponse = z.object({
@@ -2815,6 +2816,21 @@ export const zGetAppsByAppIdRunsByRunIdPath = z.object({
  */
 export const zGetAppsByAppIdRunsByRunIdResponse = zWorkflowRunDetailResponse
 
+export const zGetAppsByAppIdRunsByRunIdEventsPath = z.object({
+  app_id: z.string(),
+  run_id: z.string(),
+})
+
+export const zGetAppsByAppIdRunsByRunIdEventsQuery = z.object({
+  continue_on_pause: z.boolean().optional().default(false),
+  include_state_snapshot: z.boolean().optional().default(false),
+})
+
+/**
+ * SSE event stream
+ */
+export const zGetAppsByAppIdRunsByRunIdEventsResponse = zEventStreamResponse
+
 export const zGetAppsByAppIdRunsByRunIdNodesPath = z.object({
   app_id: z.string(),
   run_id: z.string(),
@@ -2824,6 +2840,16 @@ export const zGetAppsByAppIdRunsByRunIdNodesPath = z.object({
  * Node steps
  */
 export const zGetAppsByAppIdRunsByRunIdNodesResponse = zWorkflowRunNodeExecutionListResponse
+
+export const zPostAppsByAppIdRunsByRunIdStopPath = z.object({
+  app_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * Run stopped
+ */
+export const zPostAppsByAppIdRunsByRunIdStopResponse = zTaskStopResponse
 
 export const zGetAppsByAppIdServiceApiPath = z.object({
   app_id: z.string(),
@@ -2864,21 +2890,6 @@ export const zPatchAppsByAppIdServiceApiAgentPath = z.object({
  * Service API
  */
 export const zPatchAppsByAppIdServiceApiAgentResponse = zAgentServiceApi
-
-export const zGetAppsByAppIdTasksByTaskIdEventsPath = z.object({
-  app_id: z.string(),
-  task_id: z.string(),
-})
-
-export const zGetAppsByAppIdTasksByTaskIdEventsQuery = z.object({
-  continue_on_pause: z.boolean().optional().default(false),
-  include_state_snapshot: z.boolean().optional().default(false),
-})
-
-/**
- * SSE event stream
- */
-export const zGetAppsByAppIdTasksByTaskIdEventsResponse = zEventStreamResponse
 
 export const zPostAppsByAppIdTasksByTaskIdStopPath = z.object({
   app_id: z.string(),

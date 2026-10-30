@@ -278,7 +278,9 @@ def test_schedule_poll_dispatches_due_plan(
     assert plan.id in {schedule_id for schedule_id, _ in schedule_task.calls}
 
 
-def test_schedule_visual_debug_poll_generates_event(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_schedule_visual_debug_poll_generates_event(
+    flask_app_with_containers: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Visual mode schedule node should generate event in single-step debug."""
     base_now = naive_utc_now()
     monkeypatch.setattr(event_selectors, "naive_utc_now", lambda: base_now)

@@ -1,3 +1,4 @@
+import type { BlockDefaultValue } from '../../block-selector/types'
 import type { AvailableNodesMetaData } from '../../hooks-store'
 import type { Edge, Node } from '../../types'
 import type { consoleClient } from '@/service/console'
@@ -13,14 +14,23 @@ import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
 import { WORKFLOW_COMMON_NODES } from '../../constants/node'
 import { HooksStoreContext } from '../../hooks-store'
 import { useWorkflowNodeCatalog } from '../../node-catalog'
+import AgentV2Default from '../../nodes/agent-v2/default'
 import endDefault from '../../nodes/end/default'
-import { BlockEnum } from '../../types'
+import { createDefaultFormInputByType } from '../../nodes/human-input/types'
+import { BlockEnum, InputVarType } from '../../types'
 import { writeWorkflowClipboard } from '../../utils/clipboard'
 import { useNodesInteractions } from '../use-nodes-interactions'
 
 const createAgent = vi.hoisted(() =>
   vi.fn<typeof consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put>(),
 )
+const releaseGate = vi.hoisted(() => ({ enabled: true }))
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return releaseGate.enabled
+  },
+}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -107,8 +117,92 @@ async function paste(
   return test
 }
 beforeEach(async () => {
+  releaseGate.enabled = true
   createAgent.mockReset()
   await navigator.clipboard.writeText('')
+})
+
+it.each(['add', 'replace'] as const)(
+  'restores legacy approval %s without migration when the release gate is off',
+  (command) => {
+    releaseGate.enabled = false
+    const legacy = workflowNode(BlockEnum.HumanInput, 'legacy')
+    const { result } = setup({ nodes: [legacy, codeNode('target')] })
+
+    act(() => {
+      if (command === 'add')
+        result.current.handleNodeAdd({ nodeType: BlockEnum.HumanInput }, { prevNodeId: 'legacy' })
+      else result.current.handleNodeChange('target', BlockEnum.HumanInput, 'source')
+    })
+
+    const approvals = result.current.nodes.filter((node) => node.data.type === BlockEnum.HumanInput)
+    expect(approvals).toHaveLength(2)
+    expect(approvals.every((node) => !('version' in node.data))).toBe(true)
+    expect(
+      approvals.every(
+        (node) => 'delivery_methods' in node.data && Array.isArray(node.data.delivery_methods),
+      ),
+    ).toBe(true)
+  },
+)
+
+it.each(['paste', 'duplicate'] as const)(
+  'restores ordinary legacy approval %s when the release gate is off',
+  async (command) => {
+    releaseGate.enabled = false
+    const legacy = workflowNode(BlockEnum.HumanInput, 'legacy')
+    const test =
+      command === 'paste'
+        ? await paste([legacy], [], { nodes: [legacy] })
+        : setup({ nodes: [legacy] })
+    if (command === 'duplicate') {
+      await act(async () => test.result.current.handleNodesDuplicate('legacy'))
+      await waitFor(() => expect(test.result.current.nodes).toHaveLength(2))
+    }
+
+    expect(test.result.current.nodes).toHaveLength(2)
+    expect(test.result.current.nodes.every((node) => !('version' in node.data))).toBe(true)
+  },
+)
+
+it.each(['add', 'replace'] as const)(
+  'rejects %s overrides that smuggle V2 data through the legacy catalog when the release gate is off',
+  (command) => {
+    releaseGate.enabled = false
+    const { result, sync } = setup({ nodes: [codeNode('target')] })
+    const before = result.current.nodes
+    const override = {
+      ...AgentV2Default.defaultValue,
+      agent_binding: { binding_type: 'inline_agent' },
+      agent_node_kind: 'dify_agent',
+      version: '2',
+    } satisfies BlockDefaultValue
+
+    act(() => {
+      if (command === 'add')
+        result.current.handleNodeAdd(
+          { nodeType: BlockEnum.HumanInput, pluginDefaultValue: override },
+          {},
+        )
+      else result.current.handleNodeChange('target', BlockEnum.HumanInput, 'source', override)
+    })
+
+    expect(result.current.nodes).toEqual(before)
+    expect(sync).not.toHaveBeenCalled()
+  },
+)
+
+it('rejects pasted V2 approvals without changing existing wire data when the release gate is off', async () => {
+  releaseGate.enabled = false
+  const v2 = workflowNode(BlockEnum.HumanInputV2, 'v2', {
+    data: { type: BlockEnum.HumanInput, version: '2', recipients_spec: [{ type: 'initiator' }] },
+  })
+  const before = structuredClone(v2)
+  const { result, sync } = await paste([v2], [], { nodes: [codeNode('target')] })
+
+  expect(result.current.nodes.map((node) => node.id)).toEqual(['target'])
+  expect(v2).toEqual(before)
+  expect(sync).not.toHaveBeenCalled()
 })
 
 it('selects a different node for inspection and clears the inspector selection', () => {
@@ -390,6 +484,61 @@ it.each([BlockEnum.Iteration, BlockEnum.Loop])(
       nodeId: child.id,
       nodeType: BlockEnum.HumanInput,
     })
+  },
+)
+
+it.each([InputVarType.select, InputVarType.singleFile, InputVarType.multiFiles])(
+  'requires migration before duplicating a legacy approval with a supported %s field',
+  async (type) => {
+    const input = createDefaultFormInputByType(type, 'decision')
+    const legacy = workflowNode(BlockEnum.HumanInput, 'legacy', { data: { inputs: [input] } })
+    const { result } = setup({ nodes: [legacy] })
+
+    await act(async () => result.current.handleNodesDuplicate('legacy'))
+
+    expect(result.current.nodes).toHaveLength(1)
+    expect(result.current.nodes[0]?.data).toMatchObject({ inputs: [input] })
+  },
+)
+
+it('duplicates a legacy approval without changing its input when the release gate is off', async () => {
+  releaseGate.enabled = false
+  const input = createDefaultFormInputByType(InputVarType.select, 'decision')
+  const legacy = workflowNode(BlockEnum.HumanInput, 'legacy', { data: { inputs: [input] } })
+  const { result } = setup({ nodes: [legacy] })
+
+  await act(async () => result.current.handleNodesDuplicate('legacy'))
+  await waitFor(() => expect(result.current.nodes).toHaveLength(2))
+
+  expect(result.current.nodes.find((node) => node.id !== legacy.id)?.data).toMatchObject({
+    type: BlockEnum.HumanInput,
+    inputs: [input],
+  })
+})
+
+it.each(['add', 'replace'] as const)(
+  'allows legacy %s while blocking v2 when the release gate is off',
+  (command) => {
+    releaseGate.enabled = false
+    const legacy = workflowNode(BlockEnum.HumanInput, 'legacy', {
+      data: { inputs: [createDefaultFormInputByType(InputVarType.select, 'decision')] },
+    })
+    const { result } = setup({ nodes: [legacy, codeNode('target')] })
+
+    act(() => {
+      if (command === 'add') {
+        result.current.handleNodeAdd({ nodeType: BlockEnum.HumanInput }, { prevNodeId: 'legacy' })
+      } else {
+        result.current.handleNodeChange('target', BlockEnum.HumanInput, 'source')
+      }
+    })
+    expect(
+      result.current.nodes.filter((node) => node.data.type === BlockEnum.HumanInput),
+    ).toHaveLength(2)
+    const count = result.current.nodes.length
+
+    act(() => result.current.handleNodeAdd({ nodeType: BlockEnum.HumanInputV2 }, {}))
+    expect(result.current.nodes).toHaveLength(count)
   },
 )
 

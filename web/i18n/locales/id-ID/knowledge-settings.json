@@ -16,6 +16,8 @@
   "settings.membersRequired": "Pilih setidaknya satu anggota tim.",
   "settings.nameRequired": "Nama basis pengetahuan Agent wajib diisi.",
   "settings.pageDescription": "Kelola informasi dasar, akses API, dan pengambilan.",
+  "settings.reasoningChangeConfirm": "Konfirmasi perubahan",
+  "settings.reasoningChangeWarning": "Mengubah model penalaran sistem akan memproses ulang dokumen yang telah diindeks dan memperbarui indeks pengambilannya. Proses ini memerlukan waktu dan menimbulkan biaya penggunaan model tambahan.",
   "settings.reloadLatest": "Muat ulang pengaturan terbaru",
   "settings.rerankModelRequired": "Pilih model rerank.",
   "settings.retrievalDepth": "Kedalaman pengambilan",
