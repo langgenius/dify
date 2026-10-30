@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from http import HTTPStatus
 
 from flask_restx import Resource
@@ -31,7 +30,6 @@ from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckRBACPermission,
     CheckScope,
-    CheckScopeEarly,
     CheckSubject,
     CheckWorkspaceMember,
 )
@@ -116,31 +114,35 @@ class AgentDescribeApi(Resource):
         requirements=(
             CheckSubject(allowed=(AccountSubject,)),
             CheckWorkspaceMember(),
-            CheckScopeEarly(Scope.APPS_READ),
             CheckAppApiEnabled(),
+            CheckScope(Scope.APPS_READ),
             CheckRBACPermission(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())),
         ),
         query=AppDescribeQuery,
         returns=(HTTPStatus.OK, AgentDescribeResponse, "Agent description"),
     )
     def get(self, ctx: Context, workspace_id: str, agent_id: str, *, query: AppDescribeQuery):
-        # The loader accepted bare hex too; ids are stored dashed (CHAR(36) on MySQL).
-        agent_id = str(uuid.UUID(agent_id))
         entry = AgentRosterService(ctx.session).describe_openapi_roster_agent(
             tenant_id=ctx.workspace.id, agent_id=agent_id, app=ctx.app
         )
-        parameters = _published_parameters(ctx.app.id)
         target = agent_target(workspace_id, agent_id)
         response = AgentDescribeResponse()
         if wants_block(query.fields, "info"):
             response.info = _describe_info(entry)
-        if parameters is None:
+        if entry.published:
+            response.hints = [Hint(summary="Run this Agent", op=op_of(AgentRunApi.post), input=target)]
+        else:
             response.hints = [Hint(summary="Run this Agent's draft", op=op_of(AgentTestApi.post), input=target)]
+        want_parameters = wants_block(query.fields, "parameters")
+        want_input_schema = wants_block(query.fields, "input_schema")
+        if not any((want_parameters, want_input_schema)):
             return response
 
-        if wants_block(query.fields, "parameters"):
+        parameters = _published_parameters(ctx.app.id)
+        if parameters is None:
+            return response
+        if want_parameters:
             response.parameters = dump_response(Parameters, parameters)
-        if wants_block(query.fields, "input_schema"):
+        if want_input_schema:
             response.input_schema = build_input_schema(ctx.app.mode, parameters["user_input_form"])
-        response.hints = [Hint(summary="Run this Agent", op=op_of(AgentRunApi.post), input=target)]
         return response

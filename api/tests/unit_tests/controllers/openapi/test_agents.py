@@ -21,7 +21,7 @@ from controllers.openapi.agents import AgentDescribeApi
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckRBACPermission,
-    CheckScopeEarly,
+    CheckScope,
     CheckSubject,
     CheckWorkspaceMember,
 )
@@ -260,13 +260,9 @@ def _hints(world: AdmittedWorld, op: str) -> list[dict[str, object]]:
     return [{"op": op, "input": {"workspace_id": world.workspace_id, "agent_id": AGENT_ID}}]
 
 
-@pytest.mark.parametrize(
-    ("state", "published"),
-    [(PublishState.CLEAN, True), (PublishState.EDITED, False)],
-    ids=["clean", "edited-since-publish"],
-)
+@pytest.mark.parametrize("state", [PublishState.CLEAN, PublishState.EDITED], ids=["clean", "edited-since-publish"])
 def test_describe_agent_shows_the_inputs_of_its_published_version(
-    admitted_bearer: AdmittedWorld, sqlite_session: Session, state: PublishState, published: bool
+    admitted_bearer: AdmittedWorld, sqlite_session: Session, state: PublishState
 ) -> None:
     app_id = _persist_agent(admitted_bearer, sqlite_session, state)
 
@@ -274,7 +270,7 @@ def test_describe_agent_shows_the_inputs_of_its_published_version(
 
     body = response.get_json()
     assert response.status_code == 200
-    assert body["info"] == _info(app_id, published=published)
+    assert body["info"] == _info(app_id, published=True)
     assert [{key: hint[key] for key in ("op", "input")} for hint in body["hints"]] == _hints(
         admitted_bearer, "run.agent"
     )
@@ -334,6 +330,24 @@ def test_describe_agent_keeps_only_the_requested_blocks(
     assert body["input_schema"]["required"] == ["query", "inputs"]
 
 
+def test_describe_agent_info_only_does_not_load_the_definition(
+    admitted_bearer: AdmittedWorld, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app_id = _persist_agent(admitted_bearer, sqlite_session, PublishState.CLEAN)
+
+    def unavailable(_service: AppDefinitionQueryService, _app_id: str) -> AppParametersDict:
+        raise AppDefinitionUnavailableError
+
+    monkeypatch.setattr(AppDefinitionQueryService, "get_public_parameters", unavailable)
+
+    response = _describe(admitted_bearer, "?fields=info")
+
+    body = response.get_json()
+    assert response.status_code == 200
+    assert (body["info"], body["parameters"], body["input_schema"]) == (_info(app_id, published=True), None, None)
+    assert [hint["op"] for hint in body["hints"]] == ["run.agent"]
+
+
 def test_describe_agent_rejects_an_unknown_field(admitted_bearer: AdmittedWorld, sqlite_session: Session) -> None:
     _persist_agent(admitted_bearer, sqlite_session, PublishState.CLEAN)
 
@@ -384,8 +398,8 @@ def test_describe_agent_declares_its_guards() -> None:
     expected = (
         CheckSubject(allowed=(AccountSubject,)),
         CheckWorkspaceMember(),
-        CheckScopeEarly(Scope.APPS_READ),
         CheckAppApiEnabled(),
+        CheckScope(Scope.APPS_READ),
         CheckRBACPermission(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())),
     )
 
