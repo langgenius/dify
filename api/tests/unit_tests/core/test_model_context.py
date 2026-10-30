@@ -136,7 +136,7 @@ def test_credit_usage_created_by_decorator_restores_context_after_throw() -> Non
 
 def test_credit_usage_created_by_decorator_preserves_generator_return_value() -> None:
     @with_credit_usage_created_by(CreditUsageCreatedBy.AUDIO)
-    def generate() -> Generator[object]:
+    def generate() -> Generator[object, None, str]:
         yield "only"
         return "return-value"
 
