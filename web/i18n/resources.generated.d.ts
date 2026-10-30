@@ -3550,6 +3550,7 @@ export default interface Resources {
     'taskFailure.documentCountQuotaExceeded': 'The workspace document limit has been reached. Delete documents or upgrade the plan before adding more.'
     'taskFailure.documentCountQuotaUnavailable': 'The workspace document quota could not be verified. Try again later.'
     'taskFailure.documentProcessing': 'Document processing failed before a usable revision was created. Retry the task; if it still fails, contact an administrator.'
+    'taskFailure.documentSourceMissing': 'The original file is no longer available. Upload the document again.'
     'taskFailure.embeddingDimension': "The embedding model's vector size no longer matches this Agent Knowledge Base's index. Restore the previous embedding model, or rebuild the index for the new one."
     'taskFailure.failedAtStage': 'Failed while {{stage}}'
     'taskFailure.internal': 'An internal Agent Knowledge Base error stopped this task. Retry it; if it still fails, contact an administrator.'
@@ -3559,7 +3560,7 @@ export default interface Resources {
     'taskFailure.modelContextLimit': "The model context cannot fit this document element and the processing instructions. Check the model's context limit before retrying."
     'taskFailure.modelFailed': 'The selected model rejected the request. Check the model settings and remaining quota, then retry.'
     'taskFailure.modelOutputLimit': 'The model output reached its token limit after automatic budget adjustment and window splitting. Contact an administrator to check the output limit.'
-    'taskFailure.modelResponseInvalid': 'The selected model returned a response that could not be used, usually because it does not support structured output or truncated it. Switch to another model or retry later.'
+    'taskFailure.modelResponseInvalid': 'The model service returned a result that did not meet processing requirements. Retry processing the document.'
     'taskFailure.modelService': 'A selected model service failed or did not respond while processing the document. Check the model service, then try again.'
     'taskFailure.modelTimeout': 'The selected model did not respond in time. It will be retried automatically; if it keeps timing out, switch to a faster model.'
     'taskFailure.modelUnavailable': 'The selected model service could not be reached. Check that the model service is running, then retry.'
@@ -3574,6 +3575,7 @@ export default interface Resources {
     'taskFailure.pdfRender': 'The PDF pages could not be rendered to extract images. Make sure the file is not damaged or password-protected, then retry.'
     'taskFailure.reference': 'Reference: {{traceId}}'
     'taskFailure.research': 'The research retrieval task could not finish. Retry it; if it still fails, contact an administrator.'
+    'taskFailure.semanticGrounding': "Some extracted entities or relationships could not be matched to the document's source text. Retry processing the document."
     'taskFailure.source': 'The data source could not be read or synchronized. Check its connection and configuration, then try again.'
     'taskFailure.sourceConfigInvalid': 'The data source configuration is incomplete or invalid. Review the source settings.'
     'taskFailure.sourceConnection': 'The data source connection is missing or no longer usable. Reconnect the data source.'
@@ -3595,6 +3597,7 @@ export default interface Resources {
     'taskFailure.stage.parsing': 'parsing the document'
     'taskFailure.stage.publication': 'publishing'
     'taskFailure.stage.queued': 'queued'
+    'taskFailure.stage.semantic_chunking': 'creating semantic chunks'
     'taskFailure.stage.semantic_enrichment': 'semantic enrichment'
     'taskFailure.stage.upload': 'uploading'
     'taskFailure.storageTemporary': 'File storage or another required service is temporarily unavailable. It will be retried automatically.'
