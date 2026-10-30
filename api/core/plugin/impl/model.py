@@ -616,6 +616,20 @@ class PluginModelClient(BasePluginClient):
         """
         Invoke tts
         """
+        from core.model_invocation_routing import ModelRouteUnavailable, RoutedModelCredentials, normalize_tts_voice
+
+        if isinstance(credentials, RoutedModelCredentials) and (contract := credentials.plan.tts_voice_contract):
+            plan = credentials.plan
+            if (contract.source_provider, contract.source_model, plan.model_type) != (
+                plan.logical_provider,
+                plan.logical_model,
+                ModelType.TTS,
+            ) or plugin_unique_identifier != contract.source_plugin_unique_identifier:
+                raise ModelRouteUnavailable
+            # Only a newly versioned, source-verified mapping opts into this.
+            # Native/BYOK and older identity mappings keep their own defaults.
+            voice = normalize_tts_voice(contract, voice)
+
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/tts/invoke",

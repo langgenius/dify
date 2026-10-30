@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import io
 import json
+from dataclasses import replace
+from pathlib import Path
 from types import SimpleNamespace
 
 import httpx
 import pytest
 from pytest_mock import MockerFixture
+from typing_extensions import TypedDict
 
+from core.model_invocation_routing import FrozenModelInvocation
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import (
     PluginDaemonInnerError,
@@ -29,8 +33,9 @@ from graphon.model_runtime.entities.llm_entities import (
     LLMUsage,
 )
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from services.model_billing_tts_adapter import TTSVoiceContract
 
 PLUGIN_IDENTIFIER = "org/plugin:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
@@ -914,3 +919,240 @@ class TestModelDispatchBindingCases:
             provider=provider.provider, model_type=ModelType.LLM, model="model", credentials={}
         )
         assert first != second
+
+
+class _TTSContractArguments(TypedDict, closed=True):
+    adapter_id: str
+    adapter_revision: str
+    source_provider: str
+    source_model: str
+    source_plugin_unique_identifier: str
+    source_schema: AIModelEntity
+    expected_source_schema_digest: str
+
+
+class TestSourceTTSVoiceTransport:
+    """Real Core dispatch/HTTP encoding; only the key store and HTTP are fake."""
+
+    @staticmethod
+    def _contract() -> TTSVoiceContract:
+        from services.entities.model_billing_mapping import model_schema_digest
+        from services.model_billing_tts_adapter import (
+            REVIEWED_SOURCE_MODEL,
+            REVIEWED_SOURCE_PLUGIN_UID,
+            REVIEWED_SOURCE_PROVIDER,
+            build_tts_voice_contract,
+            tts_source_voice_rules_digest,
+        )
+
+        path = Path(__file__).parents[3] / "services/fixtures/model_billing_tts_adapter_sdk_source.json"
+        schema = AIModelEntity.model_validate_json(path.read_text())
+        args: _TTSContractArguments = {
+            "adapter_id": "tts_source_voice_v1",
+            "adapter_revision": "1",
+            "source_provider": REVIEWED_SOURCE_PROVIDER,
+            "source_model": REVIEWED_SOURCE_MODEL,
+            "source_plugin_unique_identifier": REVIEWED_SOURCE_PLUGIN_UID,
+            "source_schema": schema,
+            "expected_source_schema_digest": model_schema_digest(schema),
+        }
+        contract = build_tts_voice_contract(**args, expected_rules_digest=tts_source_voice_rules_digest(**args))
+        assert contract is not None
+        return contract
+
+    @classmethod
+    def _plan(cls) -> FrozenModelInvocation:
+        return FrozenModelInvocation(
+            tenant_id="tenant-a",
+            route_id="route-a",
+            logical_provider="langgenius/openai/openai",
+            logical_model="gpt-4o-mini-tts-2025-12-15",
+            model_type=ModelType.TTS,
+            route_epoch=2,
+            mapping_revision="new-tts-voice-v1",
+            credential_id="managed-id",
+            expected_credential_fingerprint="fingerprint",
+            plugin_unique_identifier="langgenius/tokener:0.4.3-dev4@" + "a" * 64,
+            target_model="gpt-4o-mini-tts-2025-12-15",
+            operations=("tts/invoke",),
+            tts_voice_contract=cls._contract(),
+        )
+
+    @pytest.mark.parametrize(
+        "voice",
+        [
+            "",
+            "invalid",
+            "alloy",
+            "ash",
+            "ballad",
+            "coral",
+            "echo",
+            "fable",
+            "onyx",
+            "nova",
+            "sage",
+            "shimmer",
+            "verse",
+            "marin",
+            "cedar",
+        ],
+    )
+    def test_prepared_redirect_keeps_logical_identity_and_source_voice(
+        self, monkeypatch: pytest.MonkeyPatch, voice: str
+    ) -> None:
+        from core import model_invocation_routing as routing
+
+        plan = self._plan()
+        contract = plan.tts_voice_contract
+        assert contract is not None
+        credentials = routing.RoutedModelCredentials(plan)
+        monkeypatch.setattr(routing, "managed_credentials", lambda _plan: {"api_key": "offline-managed-key"})
+        captured = []
+
+        def handle(request: httpx.Request) -> httpx.Response:
+            assert request.url.path == "/plugin/tenant-a/dispatch/redirect/v1/tts/invoke"
+            body = json.loads(request.content)
+            captured.append(body)
+            assert body["data"]["voice"] == (voice if voice in contract.voices else "alloy")
+            assert body["data"]["credentials"] == {}
+            assert body["data"]["provider"] == "openai"
+            assert body["data"]["model"] == plan.logical_model
+            assert body["redirect"]["target"]["model"] == plan.target_model
+            assert body["redirect"]["target"]["expected_unique_identifier"] == plan.plugin_unique_identifier
+            assert "tts_voice_contract" not in body
+            assert "parameter_adapter" not in body
+            return httpx.Response(
+                200, text='data: {"code":0,"message":"","data":{"result":"00ff","mime_type":"audio/mpeg"}}'
+            )
+
+        with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+            monkeypatch.setattr(client_module, "_httpx_client", client)
+            chunks = list(
+                PluginModelClient().invoke_tts(
+                    "tenant-a",
+                    None,
+                    "langgenius/openai",
+                    "openai",
+                    plan.logical_model,
+                    credentials,
+                    "Unchanged source text.",
+                    voice,
+                    plugin_unique_identifier=contract.source_plugin_unique_identifier,
+                )
+            )
+        assert len(captured) == 1
+        assert chunks[0] == b"\x00\xff"
+        assert credentials.plan is plan
+        assert dict(credentials) == {}
+
+    @pytest.mark.parametrize("kind", ["old-identity", "custom-byok", "native-tokener"])
+    def test_non_opted_in_paths_keep_empty_voice(self, monkeypatch: pytest.MonkeyPatch, kind: str) -> None:
+        from core import model_invocation_routing as routing
+
+        plan = replace(self._plan(), tts_voice_contract=None)
+        monkeypatch.setattr(routing, "managed_credentials", lambda _plan: {"api_key": "offline-managed-key"})
+        credentials = routing.RoutedModelCredentials(plan) if kind == "old-identity" else {"api_key": "offline-custom"}
+        provider = "tokener" if kind == "native-tokener" else "openai"
+        captured = []
+
+        def handle(request: httpx.Request) -> httpx.Response:
+            body = json.loads(request.content)
+            captured.append(body)
+            assert body["data"]["voice"] == ""
+            assert ("redirect" in body) == (kind == "old-identity")
+            return httpx.Response(200, text='data: {"code":0,"message":"","data":{"result":"00ff"}}')
+
+        with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+            monkeypatch.setattr(client_module, "_httpx_client", client)
+            list(
+                PluginModelClient().invoke_tts(
+                    "tenant-a",
+                    None,
+                    f"langgenius/{provider}",
+                    provider,
+                    plan.logical_model,
+                    credentials,
+                    "Unchanged text.",
+                    "",
+                )
+            )
+        assert len(captured) == 1
+
+    @pytest.mark.parametrize("voice", ["", "nova"])
+    def test_constructed_tts_wrapper_binds_source_uid_through_runtime(
+        self, monkeypatch: pytest.MonkeyPatch, voice: str
+    ) -> None:
+        from core import model_invocation_routing as routing
+        from graphon.model_runtime.model_providers.base.tts_model import TTSModel
+
+        plan = self._plan()
+        contract = plan.tts_voice_contract
+        assert contract is not None
+        provider = PluginModelProviderDeclaration(
+            provider=plan.logical_provider,
+            provider_name="openai",
+            label=I18nObject(en_US="OpenAI"),
+            supported_model_types=[ModelType.TTS],
+            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+            plugin_unique_identifier=contract.source_plugin_unique_identifier,
+            installation_source=PluginInstallationSource.Marketplace,
+        )
+        runtime = create_plugin_model_runtime(tenant_id="tenant-a")
+        model = create_model_type_instance(runtime=runtime, provider_schema=provider, model_type=ModelType.TTS)
+        assert isinstance(model, TTSModel)
+        monkeypatch.setattr(routing, "managed_credentials", lambda _plan: {"api_key": "offline-managed-key"})
+        requests: list[httpx.Request] = []
+
+        def handle(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            assert request.url.path == "/plugin/tenant-a/dispatch/redirect/v1/tts/invoke"
+            assert request.headers["X-Plugin-Unique-Identifier"] == contract.source_plugin_unique_identifier
+            body = json.loads(request.content)
+            assert body["data"]["voice"] == (voice or "alloy")
+            assert body["data"]["provider"] == "openai"
+            assert body["data"]["model"] == plan.logical_model
+            assert body["redirect"]["target"]["expected_unique_identifier"] == plan.plugin_unique_identifier
+            return httpx.Response(200, text='data: {"code":0,"message":"","data":{"result":"00ff"}}')
+
+        with httpx.Client(transport=httpx.MockTransport(handle)) as client:
+            monkeypatch.setattr(client_module, "_httpx_client", client)
+            # No source UID is supplied to invoke: normal factory/runtime binding
+            # must carry it through the real wrapper and client, or the hook fails.
+            chunks = list(model.invoke(plan.logical_model, routing.RoutedModelCredentials(plan), "Hello.", voice))
+        assert len(requests) == 1
+        assert chunks[0].data == b"\x00\xff"
+
+    @pytest.mark.parametrize(("wrong_source", "source_uid"), [(True, None), (False, None), (False, "wrong-source-uid")])
+    def test_wrong_source_binding_cannot_use_voice_contract(
+        self, monkeypatch: pytest.MonkeyPatch, wrong_source: bool, source_uid: str | None
+    ) -> None:
+        from core import model_invocation_routing as routing
+
+        plan = self._plan()
+        contract = plan.tts_voice_contract
+        assert contract is not None
+        if wrong_source:
+            plan = replace(plan, logical_model="tts-1")
+            source_uid = contract.source_plugin_unique_identifier
+        credentials = routing.RoutedModelCredentials(plan)
+
+        def unexpected(_request: httpx.Request) -> httpx.Response:
+            raise AssertionError("Invalid source contract must fail before any network request")
+
+        with httpx.Client(transport=httpx.MockTransport(unexpected)) as client:
+            monkeypatch.setattr(client_module, "_httpx_client", client)
+            with pytest.raises(routing.ModelRouteUnavailable):
+                list(
+                    PluginModelClient().invoke_tts(
+                        "tenant-a",
+                        None,
+                        "langgenius/openai",
+                        "openai",
+                        plan.logical_model,
+                        credentials,
+                        "Text.",
+                        "",
+                        plugin_unique_identifier=source_uid,
+                    )
+                )
