@@ -168,6 +168,22 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     _refine_app_name(env, fc)
 
     progress.activate("build-prepare-requirements")
+    if not fc.form_fields:
+        progress.add_steps([("build-draft-plan", copy_text(BuilderCopyId.PROGRESS_DRAFT_THE_WORKFLOW_PLAN))])
+        progress.activate("build-draft-plan")
+        plan = env.agent.propose_plan_v1(
+            fc.requirements, goal_text=fc.goal_text, reply_language=fc.reply_language or None
+        )
+        if not plan:
+            # No clarification is needed, so an empty form cannot recover
+            # planning. Settle honestly and offer the existing explicit restart.
+            return _planning_failed(env, s, fc, progress, "build-draft-plan", PcState.FAILED)
+        store_plan(fc, plan)
+        progress.finish()
+        # The runner commits the plan before automatic resource discovery;
+        # neither transition represents a user submission or approval.
+        return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc)
+
     form_items = append_card(
         fc,
         FormCard(
@@ -201,8 +217,8 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     plan v1, and go straight to resource discovery (build.resource_recommendation)
     via the shared ``_discover_and_offer_resources`` helper. The decision-free
     find_resources gate that used to sit at build.initial_plan (showing the
-    same plan a second time) is gone; that state is now reached only via the
-    retry_after_revert loop-back (handle_initial_plan). Continue adjusting
+    same plan a second time) is gone; that state serves complete goals with
+    no clarification and the retry_after_revert loop-back (handle_initial_plan). Continue adjusting
     first collects a fresh required change request in this existing form gate.
     If planning returns no usable plan, keep this waiting state and prior plan."""
     kind = action_kind(turn)
@@ -320,8 +336,8 @@ def _discover_and_offer_resources(
     Shared by the straight-through path (requirements submitted -- continues
     the caller's still-open ``progress`` reporter, so the whole step stays
     ONE operation with monotonically increasing revisions) and the
-    retry_after_revert path, which re-enters at BUILD_INITIAL_PLAN with no
-    reporter yet (``progress=None``, so one is created here). One
+    complete-goal and retry_after_revert paths, which enter BUILD_INITIAL_PLAN
+    with no reporter yet (``progress=None``, so one is created here). One
     implementation so the two entries cannot drift apart.
     """
     steps = [
@@ -380,10 +396,10 @@ def _discover_and_offer_resources(
 
 
 def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(working, auto) Discover the (canned, ready) resource and fall straight
-    through to build.resource_recommendation. Reachable only via the
-    retry_after_revert loop-back -- the straight-through
-    path no longer stops here (see handle_goal_analysis). Unconditional: this
+    """(working, auto) Discover resources for the prepared plan and fall straight
+    through to build.resource_recommendation. Entered after a complete goal
+    needs no clarification, or via the retry_after_revert loop-back.
+    Submitted requirements discover resources directly (see handle_goal_analysis). Unconditional: this
     is a working/pass-through state now (state.py), so the runner drives it
     on entry with no action to gate on -- it must NOT re-require find_resources,
     or the loop-back (which lands here with the action already consumed)
