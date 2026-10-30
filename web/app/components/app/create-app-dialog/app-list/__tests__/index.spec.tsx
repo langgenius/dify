@@ -288,7 +288,9 @@ it('does not import an Agent detail through the Studio App template picker', asy
   await openFirst(user)
   await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
 
-  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
+  await waitFor(() =>
+    expect(toast.error).toHaveBeenCalledWith('Template mode does not match this picker'),
+  )
   expect(request).toHaveBeenCalledOnce()
   expect(trackCreateApp).not.toHaveBeenCalled()
 })

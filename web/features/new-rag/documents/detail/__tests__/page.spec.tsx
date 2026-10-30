@@ -3176,9 +3176,7 @@ describe('DocumentDetailPage', () => {
 
       const nameInput = await openCreateForm(user)
       await user.type(nameInput, 'priority{Enter}')
-      await waitFor(() =>
-        expect(toastState.error).toHaveBeenCalledWith('knowledgeSpace.settings.saveFailed'),
-      )
+      await waitFor(() => expect(toastState.error).toHaveBeenCalledWith('update failed'))
       metadataFieldsQuery.data = [metadataField({ name: 'priority' })]
 
       await user.click(
