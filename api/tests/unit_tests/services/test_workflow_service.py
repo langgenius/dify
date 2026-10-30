@@ -1288,6 +1288,97 @@ class TestWorkflowServiceCases:
         # ==================== Publish Workflow Tests ====================
         # These tests verify creating published versions from draft workflows
 
+        def test_publish_rejects_incomplete_end_user_auth_before_creating_version(
+            self, workflow_service: WorkflowService, sqlite_session: Session
+        ) -> None:
+            app = TestWorkflowAssociatedDataFactory.create_app()
+            account = TestWorkflowAssociatedDataFactory.create_account()
+            graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
+            graph["nodes"].append({"id": "personal", "data": {"type": "tool", "credential_source": "end_user"}})
+            draft = TestWorkflowAssociatedDataFactory.create_workflow(version=Workflow.VERSION_DRAFT, graph=graph)
+            sqlite_session.add(draft)
+            sqlite_session.commit()
+
+            with patch("services.workflow_service.app_published_workflow_was_updated") as published:
+                with pytest.raises(ValueError, match="Node personal"):
+                    workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+
+            published.send.assert_not_called()
+            assert sqlite_session.scalar(select(func.count()).select_from(Workflow)) == 1
+
+        def test_publish_rejects_unsupported_end_user_authentication(self, workflow_service: WorkflowService) -> None:
+            workflow = MagicMock()
+            workflow.tenant_id = "tenant"
+            workflow.graph_dict = {
+                "nodes": [
+                    {
+                        "id": "personal",
+                        "data": {
+                            "type": "tool",
+                            "provider_id": "provider",
+                            "provider_type": "builtin",
+                            "tool_name": "send",
+                            "credential_source": "end_user",
+                            "end_user_auth": {
+                                "allowed_credential_types": ["oauth2"],
+                                "oauth_client_type": "default",
+                                "purpose": "Send",
+                            },
+                        },
+                    }
+                ]
+            }
+            provider = MagicMock()
+            provider.get_supported_credential_types.return_value = []
+            with patch(
+                "services.end_user_connection_adapters.PluginApiKeyCredentialGateway.provider", return_value=provider
+            ):
+                issues = workflow_service.check_publish_tool_credentials(workflow)
+            assert len(issues) == 1
+            assert issues[0].node_id == "personal"
+            assert issues[0].code == "tool_provider_auth_unsupported"
+
+        def test_publish_credential_check_returns_all_static_issues(self, workflow_service: WorkflowService) -> None:
+            workflow = MagicMock()
+            workflow.graph_dict = {
+                "nodes": [
+                    {"id": "first", "data": {"type": "tool", "credential_source": "invalid"}},
+                    {"id": "second", "data": {"type": "tool", "credential_source": "end_user"}},
+                ]
+            }
+            issues = workflow_service.check_publish_tool_credentials(workflow)
+            assert {issue.node_id for issue in issues} == {"first", "second"}
+            assert all(issue.code == "tool_credential_config_invalid" for issue in issues)
+
+        def test_publish_credential_check_propagates_provider_outage(self, workflow_service: WorkflowService) -> None:
+            from services.end_user_connections.errors import ConnectionCheckUnavailableError
+
+            workflow = MagicMock()
+            workflow.graph_dict = {
+                "nodes": [
+                    {
+                        "id": "personal",
+                        "data": {
+                            "type": "tool",
+                            "provider_id": "provider",
+                            "provider_type": "builtin",
+                            "tool_name": "send",
+                            "credential_source": "end_user",
+                            "end_user_auth": {
+                                "allowed_credential_types": ["api-key"],
+                                "purpose": "Send",
+                            },
+                        },
+                    }
+                ]
+            }
+            with patch(
+                "services.end_user_connection_adapters.PluginApiKeyCredentialGateway.provider",
+                side_effect=ConnectionCheckUnavailableError(),
+            ):
+                with pytest.raises(ConnectionCheckUnavailableError):
+                    workflow_service.check_publish_tool_credentials(workflow)
+
         def test_publish_workflow_success(self, workflow_service: WorkflowService, sqlite_session: Session):
             """
             Test publish_workflow creates new published version.

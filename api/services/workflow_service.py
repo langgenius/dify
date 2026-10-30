@@ -123,6 +123,15 @@ from .workflow_restore import apply_published_workflow_snapshot_to_draft
 
 
 @dataclass(frozen=True)
+class PublishCredentialIssue:
+    code: str
+    node_id: str
+    path: tuple[str | int, ...]
+    message: str
+    severity: str = "error"
+
+
+@dataclass(frozen=True)
 class _DebugHumanInputNode:
     node_id: str
     title: str
@@ -711,6 +720,11 @@ class WorkflowService:
             environment_variables=draft_workflow.environment_variables,
         )
 
+        if issues := self.check_publish_tool_credentials(draft_workflow):
+            issue = issues[0]
+            location = ".".join(str(part) for part in issue.path)
+            raise ValueError(f"Node {issue.node_id} ({location}): {issue.message}")
+
         # Validate credentials before publishing, for credential policy check
         if SystemFeatureService.is_plugin_manager_enabled():
             self._validate_workflow_credentials(draft_workflow, session=session)
@@ -783,6 +797,49 @@ class WorkflowService:
 
         # return new workflow
         return workflow
+
+    def check_publish_tool_credentials(self, workflow: Workflow) -> list[PublishCredentialIssue]:
+        """Return tool authentication issues for the saved graph, without resolving user credentials.
+
+        This check covers tool authentication only; other publication checks run separately.
+        """
+        from clients.plugin.auth import PluginCredentialAuthClient
+        from services.end_user_connection_adapters import (
+            PluginApiKeyCredentialGateway,
+            validate_provider_authentication,
+        )
+        from services.end_user_connections.errors import ConnectionConfigurationError
+
+        static_issues = check_tool_credentials(workflow.graph_dict, complete=True)
+        issues = [
+            PublishCredentialIssue("tool_credential_config_invalid", issue.node_id, issue.path, issue.message)
+            for issue in static_issues
+        ]
+        invalid_nodes = {issue.node_id for issue in static_issues}
+        providers = PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())
+        for node in workflow.graph_dict.get("nodes", []):
+            data = node.get("data", {})
+            node_id = node.get("id")
+            if node.get("type") == "custom-note" or data.get("type") != "tool" or node_id in invalid_nodes:
+                continue
+            config = ToolCredentialConfig.model_validate(data)
+            if config.credential_source != "end_user":
+                continue
+            assert config.end_user_auth is not None
+            try:
+                provider = providers.provider(workflow.tenant_id, data["provider_id"])
+                provider.get_tool(data["tool_name"])
+                validate_provider_authentication(provider, config.end_user_auth)
+            except (ConnectionConfigurationError, ValueError):
+                issues.append(
+                    PublishCredentialIssue(
+                        "tool_provider_auth_unsupported",
+                        node_id,
+                        ("end_user_auth",),
+                        "The provider or tool does not support this authentication configuration.",
+                    )
+                )
+        return issues
 
     def _validate_workflow_credentials(self, workflow: Workflow, *, session: Session) -> None:
         """
