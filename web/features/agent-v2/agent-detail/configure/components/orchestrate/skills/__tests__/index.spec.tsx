@@ -922,11 +922,25 @@ describe('AgentSkills', () => {
     })
   })
 
-  it('explains when an agent has reached the library skill limit', async () => {
+  it.each([
+    {
+      scenario: 'an agent has reached the library skill limit',
+      error: createHttpError(new Response(null, { status: 400 }), {
+        code: 'too_many_agent_skills',
+      }),
+      message: 'agentV2.agentDetail.configure.skills.workspaceSelector.limitReached',
+    },
+    {
+      scenario: 'a selected library skill was deleted before binding',
+      error: createHttpError(new Response(null, { status: 404 }), {
+        code: 'skill_not_found',
+        message: 'one or more skills were not found',
+      }),
+      message: 'one or more skills were not found',
+    },
+  ])('explains when $scenario', async ({ error, message }) => {
     const user = userEvent.setup()
-    mocks.replaceAgentSkillBindingsMutationFn.mockRejectedValueOnce(
-      createHttpError(new Response(null, { status: 400 }), { code: 'too_many_agent_skills' }),
-    )
+    mocks.replaceAgentSkillBindingsMutationFn.mockRejectedValueOnce(error)
     mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
       const { input, getNextPageParam, initialPageParam } = options as {
         input: (pageParam: number) => { query?: { limit?: number } }
@@ -952,9 +966,7 @@ describe('AgentSkills', () => {
     await user.click(await screen.findByRole('button', { name: /Refund approval/ }))
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(
-        'agentV2.agentDetail.configure.skills.workspaceSelector.limitReached',
-      )
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith(message)
     })
   })
 
