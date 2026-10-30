@@ -2,9 +2,16 @@
 # dify-saas commit: 04f8d88cc15c5f62f14f8843a54f3e2e7e09ee5a
 
 from datetime import datetime
-from typing import Literal
+from typing import Literal, TypeIs, get_args
 
-from services.billing_client.transport import BillingModel, Upstream, request
+from services.billing_client.transport import BillingModel, ServiceErrors, Upstream, request
+from services.errors.billing import (
+    BillingUpstreamError,
+    BillingUpstreamInvalidResponseError,
+    BillingUpstreamUnavailableError,
+    UnknownErrorReason,
+    UpstreamErrorBody,
+)
 
 
 class AutocompleteEducationInstitutionReply(BillingModel):
@@ -288,6 +295,37 @@ class VerifyEducationIdentityReply(BillingModel):
     status: Literal["eligible", "not_eligible"]
 
 
+def is_error_reason(value: str) -> TypeIs[ErrorReason]:
+    return value in get_args(ErrorReason.__value__)
+
+
+class UpstreamError(BillingUpstreamError):
+    """A failed billing call, with its reason typed by this module's `ErrorReason`."""
+
+    def __init__(
+        self,
+        *args: object,
+        status_code: int | None = None,
+        body: UpstreamErrorBody | None = None,
+        reason: ErrorReason | UnknownErrorReason | None = None,
+    ) -> None:
+        super().__init__(*args, status_code=status_code, body=body)
+        self.reason = reason
+
+
+class UpstreamUnavailableError(UpstreamError, BillingUpstreamUnavailableError):
+    pass
+
+
+class UpstreamInvalidResponseError(UpstreamError, BillingUpstreamInvalidResponseError):
+    pass
+
+
+ERRORS = ServiceErrors(
+    is_reason=is_error_reason, unavailable=UpstreamUnavailableError, invalid_response=UpstreamInvalidResponseError
+)
+
+
 def subscription_get_subscription_info(*, tenant_id: str, exclude_vector_space: bool) -> GetSubscriptionInfoReply:
     """GET /v1/subscription/info (BillingSubscription_GetSubscriptionInfo)."""
     return request(
@@ -295,7 +333,7 @@ def subscription_get_subscription_info(*, tenant_id: str, exclude_vector_space: 
         "GET",
         "/subscription/info",
         response_model=GetSubscriptionInfoReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={"tenant_id": tenant_id, "exclude_vector_space": exclude_vector_space},
         body=None,
@@ -309,7 +347,7 @@ def subscription_get_subscription_vector_space(*, tenant_id: str, bypass_cache: 
         "GET",
         "/subscription/vector-space",
         response_model=VectorSpaceQuota,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={"tenant_id": tenant_id, "bypass_cache": bypass_cache},
         body=None,
@@ -323,7 +361,7 @@ def subscription_get_knowledge_rate_limit(*, tenant_id: str) -> GetKnowledgeRate
         "GET",
         "/subscription/knowledge-rate-limit",
         response_model=GetKnowledgeRateLimitReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={"tenant_id": tenant_id},
         body=None,
@@ -339,7 +377,7 @@ def subscription_get_subscription_payment_link(
         "GET",
         "/subscription/payment-link",
         response_model=GetSubscriptionPaymentLinkReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={"plan": plan, "interval": interval, "prefilled_email": prefilled_email, "tenant_id": tenant_id},
         body=None,
@@ -353,7 +391,7 @@ def subscription_batch_get_subscription_plan(*, body: BatchGetSubscriptionPlanRe
         "POST",
         "/subscription/plan/batch",
         response_model=BatchGetSubscriptionPlanReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={},
         body=body,
@@ -367,7 +405,7 @@ def subscription_list_subscription_cleanup_whitelist() -> ListSubscriptionCleanu
         "GET",
         "/subscription/cleanup/whitelist",
         response_model=ListSubscriptionCleanupWhitelistReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={},
         body=None,
@@ -383,7 +421,7 @@ def model_provider_get_model_provider_payment_link(
         "GET",
         "/model-provider/payment-link",
         response_model=GetModelProviderPaymentLinkReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={
             "provider_name": provider_name,
@@ -402,7 +440,7 @@ def invoice_get_invoices(*, prefilled_email: str, tenant_id: str) -> GetInvoices
         "GET",
         "/invoices",
         response_model=GetInvoicesReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={"prefilled_email": prefilled_email, "tenant_id": tenant_id},
         body=None,
@@ -416,7 +454,7 @@ def education_verify_education_identity(*, account_id: str) -> VerifyEducationId
         "GET",
         "/education/verify",
         response_model=VerifyEducationIdentityReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={"account_id": account_id},
         body=None,
@@ -430,7 +468,7 @@ def education_get_education_identity_status(*, account_id: str) -> GetEducationI
         "GET",
         "/education/status",
         response_model=GetEducationIdentityStatusReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={"account_id": account_id},
         body=None,
@@ -444,7 +482,7 @@ def education_create_education_identity(*, body: CreateEducationIdentityReq) -> 
         "POST",
         "/education",
         response_model=CreateEducationIdentityReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={},
         body=body,
@@ -460,7 +498,7 @@ def education_autocomplete_education_institution(
         "GET",
         "/education/autocomplete",
         response_model=AutocompleteEducationInstitutionReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={"keywords": keywords, "page": page, "limit": limit},
         body=None,
@@ -474,7 +512,7 @@ def compliance_download_compliance_document(*, body: DownloadComplianceDocumentR
         "POST",
         "/compliance/download",
         response_model=DownloadComplianceDocumentReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={},
         body=body,
@@ -488,7 +526,7 @@ def quota_get_quota_info(*, tenant_id: str) -> QuotaGetInfoReply:
         "GET",
         "/quota/info",
         response_model=QuotaGetInfoReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={"tenant_id": tenant_id},
         body=None,
@@ -502,7 +540,7 @@ def quota_reserve(*, body: QuotaReserveReq) -> QuotaReserveReply:
         "POST",
         "/quota/reserve",
         response_model=QuotaReserveReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={},
         body=body,
@@ -516,7 +554,7 @@ def quota_commit(*, body: QuotaCommitReq) -> QuotaCommitReply:
         "POST",
         "/quota/commit",
         response_model=QuotaCommitReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={},
         body=body,
@@ -530,7 +568,7 @@ def quota_release(*, body: QuotaReleaseReq) -> QuotaReleaseReply:
         "POST",
         "/quota/release",
         response_model=QuotaReleaseReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={},
         body=body,
@@ -544,7 +582,7 @@ def quota_get_balance(*, tenant_id: str, feature_key: str, bucket: str) -> Quota
         "GET",
         "/quota/balance",
         response_model=QuotaGetBalanceReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={"tenant_id": tenant_id, "feature_key": feature_key, "bucket": bucket},
         body=None,
@@ -558,7 +596,7 @@ def quota_consume_capped(*, body: QuotaConsumeCappedReq) -> QuotaConsumeCappedRe
         "POST",
         "/quota/consume-capped",
         response_model=QuotaConsumeCappedReply,
-        error_reason=ErrorReason,
+        errors=ERRORS,
         path_params={},
         params={},
         body=body,

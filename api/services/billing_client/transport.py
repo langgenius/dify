@@ -2,13 +2,15 @@
 
 This is the only module that reads the billing URLs and secret, and only the generated modules
 call `request`; ruff's banned-api rule (TID251) rejects both anywhere else.
-Network failures, timeouts, throttling, and 5xx raise `BillingUpstreamUnavailableError`;
-any other non-200 status or an enforced response that fails model validation raises
-`BillingUpstreamInvalidResponseError`. For a non-200 status, the error carries the status
-code, the parsed Kratos error body, and its reason typed by the service's generated
-`ErrorReason`. A reason outside it is kept as `UnknownErrorReason` and logged with
-`logger.error` (reported to Sentry): the service shipped a reason before this client was
-regenerated. Callers map reasons to their own errors; this module branches on none.
+Network failures, timeouts, throttling, and 5xx raise the service's `UpstreamUnavailableError`
+(a `BillingUpstreamUnavailableError`); any other non-200 status or an enforced response that
+fails model validation raises its `UpstreamInvalidResponseError` (a
+`BillingUpstreamInvalidResponseError`). Each generated module passes its own error types in
+`ServiceErrors`. For a non-200 status, the error carries the status code, the parsed Kratos
+error body, and its reason typed by the service's generated `ErrorReason`. A reason outside it
+is kept as `UnknownErrorReason` and logged with `logger.error` (reported to Sentry): the service
+shipped a reason before this client was regenerated. Callers map reasons to their own errors;
+this module branches on none.
 
 Response validation is observed before it is enforced. For a path not in
 `ENFORCED_RESPONSE_PATHS`, a body that fails validation is logged with `logger.exception`
@@ -23,10 +25,11 @@ import json
 import logging
 import re
 import types
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from enum import StrEnum
 from functools import cache
-from typing import Any, Literal, TypeAliasType, Union, get_args, get_origin
+from typing import Any, Literal, Union, get_args, get_origin
 from urllib.parse import quote
 
 import httpx
@@ -94,6 +97,15 @@ class Upstream(StrEnum):
     NETWORK_ACCESS = "network_access"
 
 
+@dataclass(frozen=True)
+class ServiceErrors:
+    """The reason guard and error types of one generated service module, which raises through them."""
+
+    is_reason: Callable[[str], bool]
+    unavailable: Callable[..., BillingUpstreamUnavailableError]
+    invalid_response: Callable[..., BillingUpstreamInvalidResponseError]
+
+
 class BillingModel(BaseModel):
     """Base for generated models; unknown upstream fields are ignored and int64 strings coerce to int."""
 
@@ -129,7 +141,7 @@ def request[ResponseT: BillingModel](
     path: str,
     *,
     response_model: type[ResponseT],
-    error_reason: TypeAliasType,
+    errors: ServiceErrors,
     path_params: Mapping[str, str],
     params: Mapping[str, QueryValue],
     body: BillingModel | None,
@@ -140,32 +152,35 @@ def request[ResponseT: BillingModel](
     try:
         response = _send(method, url, params=params, json=request_json)
     except httpx.RequestError as error:
-        raise BillingUpstreamUnavailableError(f"{method} {path} failed") from error
+        raise errors.unavailable(f"{method} {path} failed") from error
 
     if response.status_code != httpx.codes.OK:
         message = f"{method} {path} returned {response.status_code}"
         status_code = response.status_code
-        error_body, reason = _error_details(response, error_reason, upstream, method, path)
-        if status_code in _UNAVAILABLE_STATUSES or status_code >= 500:
-            raise BillingUpstreamUnavailableError(message, status_code=status_code, body=error_body, reason=reason)
-        raise BillingUpstreamInvalidResponseError(message, status_code=status_code, body=error_body, reason=reason)
+        error_body, reason = _error_details(response, errors.is_reason, upstream, method, path)
+        error_type = (
+            errors.unavailable
+            if status_code in _UNAVAILABLE_STATUSES or status_code >= 500
+            else errors.invalid_response
+        )
+        raise error_type(message, status_code=status_code, body=error_body, reason=reason)
 
     invalid_body = f"{method} {path} returned an invalid body"
     try:
         payload = json.loads(response.content)
     except ValueError as error:
-        raise BillingUpstreamInvalidResponseError(invalid_body) from error
+        raise errors.invalid_response(invalid_body) from error
     try:
         return response_model.model_validate(payload)
     except ValidationError as error:
         if path in ENFORCED_RESPONSE_PATHS or not isinstance(payload, dict):
-            raise BillingUpstreamInvalidResponseError(invalid_body) from error
+            raise errors.invalid_response(invalid_body) from error
         logger.exception("Billing response failed validation: %s %s", method, path)
         return _salvage_model(response_model, payload)
 
 
 def _error_details(
-    response: httpx.Response, error_reason: TypeAliasType, upstream: Upstream, method: HTTPMethod, path: str
+    response: httpx.Response, is_reason: Callable[[str], bool], upstream: Upstream, method: HTTPMethod, path: str
 ) -> tuple[UpstreamErrorBody | None, str | UnknownErrorReason | None]:
     try:
         payload = json.loads(response.content)
@@ -176,7 +191,7 @@ def _error_details(
     body, reason = UpstreamErrorBody.model_validate(payload), payload.get("reason")
     if not isinstance(reason, str):
         return body, None
-    if reason in _known_reasons(error_reason):
+    if is_reason(reason):
         return body, reason
     logger.error(
         "Unknown %s error reason %s from %s %s; regenerate the billing client",
@@ -186,11 +201,6 @@ def _error_details(
         path,
     )
     return body, UnknownErrorReason(reason)
-
-
-@cache
-def _known_reasons(error_reason: TypeAliasType) -> frozenset[str]:
-    return frozenset(get_args(error_reason.__value__))
 
 
 def _salvage_model[ModelT: BillingModel](model: type[ModelT], payload: Mapping[str, Any]) -> ModelT:

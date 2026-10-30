@@ -108,7 +108,9 @@ def test_rendered_module_types_fields_and_operations() -> None:
     assert "def subscription_get_subscription_info() -> GetSubscriptionInfoReply:" in source
     assert '"/subscription/info",' in source
     assert 'type ErrorReason = Literal["", "CODEC", "REQUEST_IN_PROGRESS"]' in source
-    assert "error_reason=ErrorReason," in source
+    assert "errors=ERRORS," in source
+    assert "class UpstreamError(BillingUpstreamError):" in source
+    assert "reason: ErrorReason | UnknownErrorReason | None = None," in source
     assert "class Error(" not in source
 
 

@@ -42,30 +42,23 @@ class UnknownErrorReason:
     value: str
 
 
-class BillingUpstreamError[ReasonT: str](BillingError):
+class BillingUpstreamError(BillingError):
     """A billing or saas call failed.
 
-    `status_code` and `body` are set when the upstream answered with a non-200 status. `reason` is
-    one of the service's generated `ErrorReason` values, `UnknownErrorReason` for any other string,
-    and None when the reply carries no readable reason.
+    `status_code` and `body` are set when the upstream answered with a non-200 status. Each
+    generated service module subclasses this with a `reason` typed by its own `ErrorReason`;
+    catch that subclass to read the reason.
     """
 
-    def __init__(
-        self,
-        *args: object,
-        status_code: int | None = None,
-        body: UpstreamErrorBody | None = None,
-        reason: ReasonT | UnknownErrorReason | None = None,
-    ) -> None:
+    def __init__(self, *args: object, status_code: int | None = None, body: UpstreamErrorBody | None = None) -> None:
         super().__init__(*args)
         self.status_code = status_code
         self.body = body
-        self.reason = reason
 
 
-class BillingUpstreamInvalidResponseError[ReasonT: str](BillingUpstreamError[ReasonT]):
+class BillingUpstreamInvalidResponseError(BillingUpstreamError):
     pass
 
 
-class BillingUpstreamUnavailableError[ReasonT: str](BillingUpstreamError[ReasonT]):
+class BillingUpstreamUnavailableError(BillingUpstreamError):
     pass

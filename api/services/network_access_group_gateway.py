@@ -17,7 +17,6 @@ from services.entities.network_access_group_entities import (
 )
 from services.errors.billing import (
     BillingError,
-    BillingUpstreamError,
     BillingUpstreamUnavailableError,
     UnknownErrorReason,
 )
@@ -39,7 +38,7 @@ from services.network_access_group_service import (
 )
 
 
-def _control_plane_error(exc: BillingUpstreamError[saas.ErrorReason]) -> NetworkAccessGroupError:
+def _control_plane_error(exc: saas.UpstreamError) -> NetworkAccessGroupError:
     match exc.reason:
         case "VALIDATOR" | "INVALID_ARGUMENT" | "INVALID_NETWORK_ACCESS_INPUT":
             return NetworkAccessGroupInvalidInputError()
@@ -80,7 +79,7 @@ def _upstream_errors() -> Generator[None]:
     """Map saas failures to the service's errors by their Kratos reason."""
     try:
         yield
-    except BillingUpstreamError as exc:
+    except saas.UpstreamError as exc:
         if exc.status_code is None and not isinstance(exc, BillingUpstreamUnavailableError):
             raise NetworkAccessGroupInvalidResponseError from exc
         raise _control_plane_error(exc) from exc

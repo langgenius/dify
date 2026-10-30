@@ -438,7 +438,7 @@ def render_operation(service: Service, allowed: AllowedOperation, operation: Jso
         f"        {json.dumps(allowed.method)},",
         f"        {json.dumps(template)},",
         f"        response_model={response},",
-        "        error_reason=ErrorReason,",
+        "        errors=ERRORS,",
         f"        path_params={{{', '.join(path_params)}}},",
         f"        params={{{', '.join(query_params)}}},",
         f"        body={body},",
@@ -446,9 +446,42 @@ def render_operation(service: Service, allowed: AllowedOperation, operation: Jso
     ]
 
 
+def render_errors(service: Service) -> list[str]:
+    return f'''def is_error_reason(value: str) -> TypeIs[ErrorReason]:
+    return value in get_args(ErrorReason.__value__)
+
+
+class UpstreamError(BillingUpstreamError):
+    """A failed {service} call, with its reason typed by this module's `ErrorReason`."""
+
+    def __init__(
+        self,
+        *args: object,
+        status_code: int | None = None,
+        body: UpstreamErrorBody | None = None,
+        reason: ErrorReason | UnknownErrorReason | None = None,
+    ) -> None:
+        super().__init__(*args, status_code=status_code, body=body)
+        self.reason = reason
+
+
+class UpstreamUnavailableError(UpstreamError, BillingUpstreamUnavailableError):
+    pass
+
+
+class UpstreamInvalidResponseError(UpstreamError, BillingUpstreamInvalidResponseError):
+    pass
+
+
+ERRORS = ServiceErrors(
+    is_reason=is_error_reason, unavailable=UpstreamUnavailableError, invalid_response=UpstreamInvalidResponseError
+)'''.splitlines()
+
+
 def render_module(service: Service, snapshot: JsonObject) -> str:
     schemas: dict[str, JsonObject] = snapshot["components"]["schemas"]
     blocks = [block for name in model_order(schemas) if (block := render_schema(name, schemas[name]))]
+    blocks.append(render_errors(service))
     for allowed in ALLOWED_OPERATIONS[service]:
         operation = snapshot["paths"][allowed.path][allowed.method.lower()]
         blocks.append(render_operation(service, allowed, operation))
@@ -459,11 +492,18 @@ def render_module(service: Service, snapshot: JsonObject) -> str:
         f"# dify-saas commit: {snapshot[SNAPSHOT_COMMIT_KEY]}",
         "",
         "from datetime import datetime",
-        "from typing import Literal",
+        "from typing import Literal, TypeIs, get_args",
         "",
         "from pydantic import Field",
         "",
-        "from services.billing_client.transport import BillingModel, Upstream, request",
+        "from services.billing_client.transport import BillingModel, ServiceErrors, Upstream, request",
+        "from services.errors.billing import (",
+        "    BillingUpstreamError,",
+        "    BillingUpstreamInvalidResponseError,",
+        "    BillingUpstreamUnavailableError,",
+        "    UnknownErrorReason,",
+        "    UpstreamErrorBody,",
+        ")",
     ]
     return format_python("\n".join(header) + "\n\n\n" + body + "\n", module_path(service))
 

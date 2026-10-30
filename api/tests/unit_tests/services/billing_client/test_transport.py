@@ -1,7 +1,8 @@
 import inspect
 import logging
+import types
 from collections.abc import Callable
-from typing import Literal, get_args
+from typing import assert_type, get_args
 
 import httpx
 import pytest
@@ -23,9 +24,6 @@ class _Reply(BillingModel):
     ok: bool
 
 
-type _Reason = Literal["", "CONFLICT", "QUOTA_EXCEEDED"]
-
-
 class _VirtualClock:
     """Advance tenacity's clock instead of sleeping, keeping the production retry policy."""
 
@@ -43,7 +41,7 @@ class _VirtualClock:
 
 def _get(upstream: Upstream) -> _Reply:
     return transport.request(
-        upstream, "GET", "/probe", response_model=_Reply, error_reason=_Reason, path_params={}, params={}, body=None
+        upstream, "GET", "/probe", response_model=_Reply, errors=saas.ERRORS, path_params={}, params={}, body=None
     )
 
 
@@ -57,7 +55,9 @@ def _get(upstream: Upstream) -> _Reply:
     ],
 )
 def test_non_ok_status_maps_to_upstream_errors(respond_with: RespondWith, status: int, error: type[Exception]) -> None:
-    respond_with(httpx.Response(status, json={"code": status, "reason": "QUOTA_EXCEEDED", "message": "over"}))
+    respond_with(
+        httpx.Response(status, json={"code": status, "reason": "NETWORK_ACCESS_VERSION_CONFLICT", "message": "over"})
+    )
 
     with pytest.raises(error) as exc_info:
         _get(Upstream.BILLING)
@@ -65,7 +65,8 @@ def test_non_ok_status_maps_to_upstream_errors(respond_with: RespondWith, status
     assert isinstance(exc_info.value, BillingUpstreamError)
     assert exc_info.value.status_code == status
     assert exc_info.value.body == UpstreamErrorBody(code=status, message="over")
-    assert exc_info.value.reason == "QUOTA_EXCEEDED"
+    assert isinstance(exc_info.value, saas.UpstreamError)
+    assert exc_info.value.reason == "NETWORK_ACCESS_VERSION_CONFLICT"
 
 
 @pytest.mark.parametrize(
@@ -73,7 +74,11 @@ def test_non_ok_status_maps_to_upstream_errors(respond_with: RespondWith, status
     [
         (b"upstream crashed", None, None),
         (b"[]", None, None),
-        (b'{"code": "x", "reason": "CONFLICT", "metadata": {"k": 1}}', UpstreamErrorBody(), "CONFLICT"),
+        (
+            b'{"code": "x", "reason": "NETWORK_ACCESS_GROUP_NAME_CONFLICT", "metadata": {"k": 1}}',
+            UpstreamErrorBody(),
+            "NETWORK_ACCESS_GROUP_NAME_CONFLICT",
+        ),
         (b'{"code": 409, "reason": 409, "message": "taken"}', UpstreamErrorBody(code=409, message="taken"), None),
         (b'{"code": 409, "message": "taken"}', UpstreamErrorBody(code=409, message="taken"), None),
         (b'{"reason": ""}', UpstreamErrorBody(), ""),
@@ -84,7 +89,7 @@ def test_error_body_keeps_well_typed_fields(
 ) -> None:
     respond_with(httpx.Response(409, content=content))
 
-    with pytest.raises(BillingUpstreamInvalidResponseError) as exc_info:
+    with pytest.raises(saas.UpstreamInvalidResponseError) as exc_info:
         _get(Upstream.BILLING)
 
     assert exc_info.value.body == body
@@ -102,7 +107,7 @@ def test_unknown_reason_is_kept_apart_and_reported(
     with caplog.at_level(logging.ERROR, logger=transport.__name__), pytest.raises(error) as exc_info:
         _get(Upstream.SAAS)
 
-    assert isinstance(exc_info.value, BillingUpstreamError)
+    assert isinstance(exc_info.value, saas.UpstreamError)
     assert exc_info.value.reason == UnknownErrorReason("SHIPPED_LATER")
     assert exc_info.value.body == UpstreamErrorBody(code=status, message="new")
     [record] = caplog.records
@@ -118,13 +123,42 @@ def test_unknown_reason_is_logged_without_foreign_characters(
     reason = "SHIPPED_LATER\nERROR forged entry <script>" + "X" * 100
     respond_with(httpx.Response(409, json={"code": 409, "reason": reason}))
 
-    with caplog.at_level(logging.ERROR, logger=transport.__name__), pytest.raises(BillingUpstreamError) as exc_info:
+    with caplog.at_level(logging.ERROR, logger=transport.__name__), pytest.raises(saas.UpstreamError) as exc_info:
         _get(Upstream.SAAS)
 
     assert exc_info.value.reason == UnknownErrorReason(reason)
     [record] = caplog.records
     logged = record.getMessage().removeprefix("Unknown saas error reason ").partition(" ")[0]
     assert logged == ("SHIPPED_LATERERROR" + "X" * 100)[:64]
+
+
+@pytest.mark.parametrize(
+    ("call", "own", "other"),
+    [
+        (lambda: billing.subscription_get_subscription_info(tenant_id="t", exclude_vector_space=False), billing, saas),
+        (lambda: saas.account_check_account_in_freeze(email="a@example.com"), saas, billing),
+    ],
+)
+def test_generated_operation_raises_its_own_service_errors(
+    respond_with: RespondWith, call: Callable[[], object], own: types.ModuleType, other: types.ModuleType
+) -> None:
+    respond_with(httpx.Response(503, json={"code": 503, "reason": ""}))
+
+    with pytest.raises(BillingUpstreamUnavailableError) as exc_info:
+        call()
+
+    assert isinstance(exc_info.value, own.UpstreamUnavailableError)
+    assert not isinstance(exc_info.value, other.UpstreamError)
+    assert exc_info.value.reason == ""
+
+
+def test_service_errors_type_their_own_reason() -> None:
+    def read(saas_error: saas.UpstreamError, billing_error: billing.UpstreamError) -> None:
+        assert_type(saas_error.reason, saas.ErrorReason | UnknownErrorReason | None)
+        assert_type(billing_error.reason, billing.ErrorReason | UnknownErrorReason | None)
+
+    read(saas.UpstreamUnavailableError(reason="APP_NOT_FOUND"), billing.UpstreamInvalidResponseError(reason=""))
+    assert not hasattr(BillingUpstreamError(), "reason")
 
 
 def test_transport_branches_on_no_specific_reason() -> None:
@@ -232,7 +266,7 @@ def test_invalid_body_is_reported_and_kept_raw_while_observed(
             "GET",
             "/probe",
             response_model=billing.GetSubscriptionInfoReply,
-            error_reason=billing.ErrorReason,
+            errors=billing.ERRORS,
             path_params={},
             params={},
             body=None,
@@ -274,7 +308,7 @@ def test_migrated_reads_reject_missing_required_fields(
             "GET",
             path,
             response_model=response_model,
-            error_reason=billing.ErrorReason,
+            errors=billing.ERRORS,
             path_params={},
             params={},
             body=None,
@@ -303,7 +337,7 @@ def test_quota_responses_reject_missing_required_fields(
             method,
             path,
             response_model=response_model,
-            error_reason=billing.ErrorReason,
+            errors=billing.ERRORS,
             path_params={},
             params={},
             body=None,

@@ -48,7 +48,6 @@ from services.entities.account_entities import (
 from services.errors.billing import (
     BillingUpstreamError,
     BillingUpstreamInvalidResponseError,
-    BillingUpstreamUnavailableError,
     UnknownErrorReason,
 )
 from tests.helpers.unit.account_domain import AccountDomain
@@ -560,7 +559,7 @@ def test_identity_rejects_banned_and_missing_accounts(account_domain: AccountDom
     ],
 )
 def test_education_gateway_maps_billing_reason(reason: billing.ErrorReason, expected: type[Exception]) -> None:
-    error = BillingUpstreamInvalidResponseError(status_code=400, reason=reason)
+    error = billing.UpstreamInvalidResponseError(status_code=400, reason=reason)
 
     with (
         patch("services.account.adapters.BillingService.EducationIdentity.verify", side_effect=error),
@@ -574,15 +573,15 @@ def test_education_gateway_maps_billing_reason(reason: billing.ErrorReason, expe
 @pytest.mark.parametrize(
     "error",
     [
-        BillingUpstreamInvalidResponseError(status_code=400, reason="EDUCATION_STATUS_FAILED"),
-        BillingUpstreamUnavailableError(status_code=500, reason=""),
-        BillingUpstreamInvalidResponseError(status_code=400, reason=UnknownErrorReason("EDUCATION_SHIPPED_LATER")),
-        BillingUpstreamUnavailableError(status_code=502),
-        BillingUpstreamUnavailableError(),
+        billing.UpstreamInvalidResponseError(status_code=400, reason="EDUCATION_STATUS_FAILED"),
+        billing.UpstreamUnavailableError(status_code=500, reason=""),
+        billing.UpstreamInvalidResponseError(status_code=400, reason=UnknownErrorReason("EDUCATION_SHIPPED_LATER")),
+        billing.UpstreamUnavailableError(status_code=502),
+        billing.UpstreamUnavailableError(),
     ],
 )
 def test_education_gateway_leaves_generic_reasons_to_billing_errors(
-    error: BillingUpstreamError[billing.ErrorReason],
+    error: billing.UpstreamError,
 ) -> None:
     with (
         patch("services.account.adapters.BillingService.EducationIdentity.status", side_effect=error),

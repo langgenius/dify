@@ -33,7 +33,7 @@ from libs.external_api import error_responses
 from libs.helper import dump_response, extract_remote_ip
 from machinery.context import RequestContext
 from services.billing_client import billing
-from services.errors.billing import BillingUpstreamError, ComplianceRateLimitExceededError, UnknownErrorReason
+from services.errors.billing import ComplianceRateLimitExceededError, UnknownErrorReason
 
 
 class ComplianceDownloadQuery(BaseModel):
@@ -55,7 +55,7 @@ register_response_schema_models(
 )
 
 
-def _compliance_download_error(error: BillingUpstreamError[billing.ErrorReason]) -> BaseHTTPException:
+def _compliance_download_error(error: billing.UpstreamError) -> BaseHTTPException:
     match error.reason:
         case "COMPLIANCE_DOCUMENT_NOT_FOUND":
             return ComplianceDocumentNotFoundError()
@@ -189,6 +189,6 @@ class ComplianceApi(Resource):
             )
         except ComplianceRateLimitExceededError as error:
             raise ComplianceRateLimitError() from error
-        except BillingUpstreamError as error:
+        except billing.UpstreamError as error:
             raise _compliance_download_error(error) from error
         return dump_response(ComplianceDownloadResponse, data)

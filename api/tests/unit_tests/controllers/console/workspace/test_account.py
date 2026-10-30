@@ -85,6 +85,7 @@ from services.account_errors import (
     InvalidChangeEmailCodeError,
     MissingInvitationCodeError,
 )
+from services.billing_client import billing
 from services.entities.account_entities import (
     AccountEducationActivation,
     AccountEducationEligible,
@@ -103,8 +104,6 @@ from services.entities.auth_entities import (
     ChangeEmailTokenBase,
 )
 from services.errors.billing import (
-    BillingUpstreamInvalidResponseError,
-    BillingUpstreamUnavailableError,
     UnknownErrorReason,
 )
 from tests.helpers.unit.config_override import config_overrides_context
@@ -326,9 +325,9 @@ class TestWorkspaceAccountCases:
             [
                 (account_errors.EducationVerificationFailedError(), "education_verify_failed", 400),
                 (account_errors.EducationRequestInProgressError(), "billing_request_in_progress", 429),
-                (BillingUpstreamUnavailableError(status_code=500, reason=""), "billing_unavailable", 503),
+                (billing.UpstreamUnavailableError(status_code=500, reason=""), "billing_unavailable", 503),
                 (
-                    BillingUpstreamInvalidResponseError(status_code=400, reason=UnknownErrorReason("SHIPPED_LATER")),
+                    billing.UpstreamInvalidResponseError(status_code=400, reason=UnknownErrorReason("SHIPPED_LATER")),
                     "billing_operation_failed",
                     502,
                 ),

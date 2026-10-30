@@ -82,7 +82,7 @@ from services.entities.auth_entities import (
     ChangeEmailOldEmailVerifiedToken,
     ChangeEmailTokenData,
 )
-from services.errors.billing import BillingUpstreamError, UnknownErrorReason
+from services.errors.billing import UnknownErrorReason
 from services.telemetry_service import CommunityTelemetryService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
@@ -276,7 +276,7 @@ class RBACWorkspaceMemberAccessSync(WorkspaceMemberAccessSync):
         )
 
 
-def _education_error(error: BillingUpstreamError[billing.ErrorReason]) -> AccountApplicationError | None:
+def _education_error(error: billing.UpstreamError) -> AccountApplicationError | None:
     """The account error for a billing failure, or None to leave it to the generic billing errors."""
     match error.reason:
         case "EDUCATION_VERIFY_FAILED":
@@ -367,7 +367,7 @@ def _education_error(error: BillingUpstreamError[billing.ErrorReason]) -> Accoun
 def _education_errors() -> Generator[None]:
     try:
         yield
-    except BillingUpstreamError as error:
+    except billing.UpstreamError as error:
         mapped = _education_error(error)
         if mapped is None:
             raise

@@ -24,7 +24,7 @@ from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from services.billing_client import billing
-from services.errors.billing import BillingUpstreamError, UnknownErrorReason
+from services.errors.billing import UnknownErrorReason
 
 _BILLING_PORTAL_ALLOWED_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
 
@@ -53,7 +53,7 @@ register_response_schema_models(
 )
 
 
-def _billing_portal_error(error: BillingUpstreamError[billing.ErrorReason]) -> BaseHTTPException:
+def _billing_portal_error(error: billing.UpstreamError) -> BaseHTTPException:
     match error.reason:
         case (
             ""
@@ -169,7 +169,7 @@ class Subscription(Resource):
                 plan=req_data.plan,
                 interval=req_data.interval,
             )
-        except BillingUpstreamError as error:
+        except billing.UpstreamError as error:
             raise _billing_portal_error(error) from error
         return dump_response(BillingSubscriptionResponse, data)
 
@@ -196,6 +196,6 @@ class Invoices(Resource):
     def get(self, request_context: RequestContext):
         try:
             data = application_services().billing_portal.get_invoices(request_context)
-        except BillingUpstreamError as error:
+        except billing.UpstreamError as error:
             raise _billing_portal_error(error) from error
         return dump_response(BillingInvoiceResponse, data)

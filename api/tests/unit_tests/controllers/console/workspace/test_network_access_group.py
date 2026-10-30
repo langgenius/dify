@@ -36,6 +36,7 @@ from core.network_access.client_ip import NetworkAccessClientIPUnavailableError
 from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
 from extensions.ext_login import DifyLoginManager
+from libs.exception import BaseHTTPException
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus
@@ -467,6 +468,7 @@ def test_control_plane_error_maps_to_console_error_code(
 ) -> None:
     error = _translate_service_error(service_error)
 
+    assert isinstance(error, BaseHTTPException)
     assert error.error_code == expected_code
     assert error.code == expected_status
 
