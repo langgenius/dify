@@ -31,6 +31,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { getErrorMessage } from '@/utils/error-message'
 import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segmented-control'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
 import { formatQualityEvaluationCreatedAt, formatQualityReportCreatedAt } from './quality-model'
@@ -578,7 +579,10 @@ function RunEvaluationForm({
     } catch (error) {
       const status = getHttpErrorStatus(error)
       if (status !== undefined && status < 500) submissionRef.current = undefined
-      toast.error(t(($) => $['qualityPage.evaluation.startError'], { ns: 'knowledgeQuality' }))
+      toast.error(
+        getErrorMessage(error) ??
+          t(($) => $['qualityPage.evaluation.startError'], { ns: 'knowledgeQuality' }),
+      )
     }
   }
 
