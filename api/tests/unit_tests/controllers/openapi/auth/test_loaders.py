@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.openapi.auth import loaders
-from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.context import Context, RouteContractError
 from controllers.openapi.auth.loaders import (
     load_app,
     load_end_user,
@@ -19,6 +19,8 @@ from controllers.openapi.auth.loaders import (
 from controllers.openapi.auth.subjects import Subject
 from models import App
 from models.account import TenantAccountRole, TenantStatus
+from models.agent import Agent, AgentScope, AgentSource, AgentStatus
+from models.model import AppMode
 from services.app_service import AppService
 from tests.helpers.unit.controllers.openapi.auth._world import (
     ACCOUNT_ID,
@@ -58,6 +60,28 @@ def _archived_app() -> App:
     app = make_app()
     app.status = "archived"  # type: ignore[assignment]
     return app
+
+
+AGENT_ID = "00000000-0000-0000-0000-000000000007"
+AGENT_APP_ID = "00000000-0000-0000-0000-000000000008"
+
+
+def _agent(
+    *,
+    tenant_id: str = TENANT_ID,
+    scope: AgentScope = AgentScope.ROSTER,
+    source: AgentSource = AgentSource.AGENT_APP,
+    status: AgentStatus = AgentStatus.ACTIVE,
+) -> Agent:
+    return Agent(
+        id=AGENT_ID,
+        tenant_id=tenant_id,
+        name="Roster agent",
+        scope=scope,
+        source=source,
+        app_id=AGENT_APP_ID,
+        status=status,
+    )
 
 
 class TestLoadApp:
@@ -105,6 +129,46 @@ class TestLoadApp:
 
         with pytest.raises(Forbidden, match="workspace unavailable"):
             load_workspace(ctx)
+
+
+class TestLoadAppFromAgent:
+    def test_load_app_resolves_a_roster_agent_to_its_app(self, sqlite_session: Session) -> None:
+        persist(
+            sqlite_session,
+            make_tenant(),
+            make_app(app_id=AGENT_APP_ID, mode=AppMode.AGENT),
+            _agent(),
+        )
+        ctx = Context(_subject(), sqlite_session, {"workspace_id": TENANT_ID, "agent_id": AGENT_ID})
+
+        assert load_app(ctx).id == AGENT_APP_ID
+        assert ctx.app.id == AGENT_APP_ID
+
+    @pytest.mark.parametrize(
+        ("agent", "agent_id"),
+        [
+            (_agent(tenant_id=OTHER_TENANT_ID), AGENT_ID),
+            (_agent(scope=AgentScope.WORKFLOW_ONLY, source=AgentSource.WORKFLOW), AGENT_ID),
+            (_agent(status=AgentStatus.ARCHIVED), AGENT_ID),
+            (_agent(), "not-a-uuid"),
+        ],
+        ids=["other workspace", "workflow only", "inactive", "malformed uuid"],
+    )
+    def test_load_app_refuses_agents_outside_the_roster(
+        self, sqlite_session: Session, agent: Agent, agent_id: str
+    ) -> None:
+        persist(sqlite_session, make_tenant(), make_app(app_id=AGENT_APP_ID, mode=AppMode.AGENT), agent)
+        ctx = Context(_subject(), sqlite_session, {"workspace_id": TENANT_ID, "agent_id": agent_id})
+
+        with pytest.raises(NotFound, match="agent not found"):
+            load_app(ctx)
+
+    def test_load_app_keeps_app_id_routes(self, sqlite_session: Session) -> None:
+        persist(sqlite_session, make_app())
+
+        assert load_app(Context(_subject(), sqlite_session, {"app_id": APP_ID})).id == APP_ID
+        with pytest.raises(RouteContractError):
+            load_app(Context(_subject(), sqlite_session, {"workspace_id": TENANT_ID}))
 
 
 class TestWorkspaceFromRequest:
