@@ -842,15 +842,24 @@ def test_preparation_failure_identifies_only_the_observed_resource_nodes(harness
     assert run.per_node == []
 
 
+@pytest.mark.parametrize("reason", ["service_unavailable", "authentication", "permission_denied"])
 def test_failed_native_plugin_resource_uses_actual_historical_graph(
-    harness: FullRunCase, monkeypatch: pytest.MonkeyPatch
+    harness: FullRunCase, monkeypatch: pytest.MonkeyPatch, reason: str
 ) -> None:
     from services.dify_builder.dify_port import WorkflowServiceDifyPort
+    from tests.unit_tests.services.dify_builder.test_native_runtime_failure import native_auth_error
 
+    error = (
+        "Request to Plugin Daemon Service failed-500"
+        if reason == "service_unavailable"
+        else native_auth_error(
+            401 if reason == "authentication" else 403,
+            "authentication_error" if reason == "authentication" else "permission_denied",
+        )
+    )
     harness.finished.status = "failed"
-    harness.finished.per_node = [
-        NodeOutput(node_id="llm", status="failed", error="Request to Plugin Daemon Service failed-500")
-    ]
+    harness.finished.error = error
+    harness.finished.per_node = [NodeOutput(node_id="llm", status="failed", error=error)]
     historical = {
         "nodes": [
             {
@@ -872,6 +881,11 @@ def test_failed_native_plugin_resource_uses_actual_historical_graph(
     evidence = result.verification.execution_evidence
     assert evidence is not None
     assert evidence.failure_phase == "execution"
+    assert evidence.failure_reason == reason
+    if reason != "service_unavailable":
+        assert "PRIVATE" not in result.error
+        assert "PRIVATE" not in result.per_node[0].error
+        assert "PRIVATE" in harness.finished.error
     assert evidence.failure_resource == ("model", "langgenius/anthropic/anthropic", "actual-model")
     assert evidence.failure_node_ids == ("llm",)
     assert evidence.native_run_id == "native-1"

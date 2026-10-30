@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Never
+from typing import TYPE_CHECKING, Any, Literal, Never
 from uuid import UUID
 
 from core.tools.errors import ToolProviderCredentialValidationError
@@ -37,6 +38,39 @@ if TYPE_CHECKING:
     from models.workflow import Workflow, WorkflowRun
 
 INVENTORY_TOOL_PROVIDER_TYPES = frozenset({"builtin", "plugin"})
+
+
+ToolSetupReason = Literal["credential_unavailable", "authorization_lookup_failed"]
+
+
+@dataclass(frozen=True, slots=True)
+class ToolSetupFailure:
+    """Bounded public setup facts; never credential IDs or provider error bodies."""
+
+    reason: ToolSetupReason
+    node_id: str | None
+    provider: str
+    action: str
+
+
+class DraftToolSetupError(ToolProviderCredentialValidationError):
+    """Compatible native refusal carrying optional validated public attribution."""
+
+    def __init__(self, message: str, *, reason: ToolSetupReason, node: Mapping[str, Any]):
+        super().__init__(message)
+        provider, action = tool_key(node["data"])
+        node_id = node.get("id")
+        public = r"(?!.*://)[A-Za-z0-9][A-Za-z0-9_./:@+-]{0,127}"
+        self.setup_failure = (
+            ToolSetupFailure(
+                reason=reason,
+                node_id=node_id if isinstance(node_id, str) and re.fullmatch(public, node_id) else None,
+                provider=provider,
+                action=action,
+            )
+            if re.fullmatch(public, provider) and re.fullmatch(public, action)
+            else None
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -199,32 +233,52 @@ def validate_tool_setup(
         raise ToolProviderCredentialValidationError("Tool setup requires the acting workspace member.")
     by_key = {(tool.provider, tool.action): tool for tool in declarations.tools}
     for node in nodes:
-        declaration = by_key.get(tool_key(node["data"]))
-        if declaration is None:
-            _refuse_missing_declaration(declarations, *tool_key(node["data"]))
-        if not declaration.needs_credentials:
-            continue
-        # Imported here to keep the application's composition root out of this
-        # module's import graph; query sessions are short and metadata-only.
-        from extensions.ext_application_services import application_services
+        from services.dify_builder.native_launch_observation import observe_resource
 
-        try:
-            available = selected_credential_is_available(
-                query=application_services().credential_queries,
-                tenant_id=tenant_id,
-                actor_id=actor_id,
-                declaration=declaration,
-                credential_id=node["data"].get("credential_id"),
+        with observe_resource("tool", *tool_key(node["data"]), node_id=node.get("id")):
+            _validate_tool_node(
+                tenant_id=tenant_id, actor_id=actor_id, declarations=declarations, by_key=by_key, node=node
             )
-        except Exception:
-            raise ToolProviderCredentialValidationError(
-                "Tool credential setup could not be verified. "
-                "Configure or select credentials before testing or publishing."
-            ) from None
-        if not available:
-            raise ToolProviderCredentialValidationError(
-                "Configure or select an authorized Tool credential before testing or publishing."
-            )
+
+
+def _validate_tool_node(
+    *,
+    tenant_id: str,
+    actor_id: str,
+    declarations: DraftToolDeclarations,
+    by_key: Mapping[tuple[str, str], ToolDeclaration],
+    node: dict[str, Any],
+) -> None:
+    declaration = by_key.get(tool_key(node["data"]))
+    if declaration is None:
+        _refuse_missing_declaration(declarations, *tool_key(node["data"]))
+    if not declaration.needs_credentials:
+        return
+    # Imported here to keep the application's composition root out of this
+    # module's import graph; query sessions are short and metadata-only.
+    from extensions.ext_application_services import application_services
+
+    try:
+        available = selected_credential_is_available(
+            query=application_services().credential_queries,
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            declaration=declaration,
+            credential_id=node["data"].get("credential_id"),
+        )
+    except Exception:
+        raise DraftToolSetupError(
+            "Tool credential setup could not be verified. "
+            "Configure or select credentials before testing or publishing.",
+            reason="authorization_lookup_failed",
+            node=node,
+        ) from None
+    if not available:
+        raise DraftToolSetupError(
+            "Configure or select an authorized Tool credential before testing or publishing.",
+            reason="credential_unavailable",
+            node=node,
+        )
 
 
 def admit_draft_tool_setup(*, tenant_id: str, graph: Mapping[str, Any], actor_id: str) -> None:

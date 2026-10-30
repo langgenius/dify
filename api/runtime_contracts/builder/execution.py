@@ -398,7 +398,17 @@ class ExecutionEvidenceSummary(_TrustedModel):
     ]
     failure_phase: Literal["preparation", "execution"] | None = None
     failure_reason: (
-        Literal["connection_refused", "timeout", "authentication", "rate_limit", "service_unavailable", "unknown"]
+        Literal[
+            "connection_refused",
+            "timeout",
+            "authentication",
+            "permission_denied",
+            "credential_unavailable",
+            "authorization_lookup_failed",
+            "rate_limit",
+            "service_unavailable",
+            "unknown",
+        ]
         | None
     ) = None
     failure_resource: (
@@ -462,9 +472,9 @@ class ExecutionEvidenceSummary(_TrustedModel):
                     self.safety_outcome != "native_failed"
                     or not self.sealed
                     or self.native_run_id is None
-                    or self.failure_reason != "service_unavailable"
+                    or self.failure_reason not in {"service_unavailable", "authentication", "permission_denied"}
                     or self.failure_resource is None
-                    or not self.failure_node_ids
+                    or len(self.failure_node_ids) != 1
                 ):
                     raise ValueError("runtime service failure requires sealed native node evidence")
                 return self
