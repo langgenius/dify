@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import BrandingFooter from './branding-footer'
 
@@ -27,6 +28,10 @@ const FormStatusCard = ({
   legacy = false,
 }: FormStatusCardProps) => {
   const { t } = useTranslation(['share'])
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    if (!legacy) titleRef.current?.focus({ preventScroll: true })
+  }, [legacy])
 
   return (
     <div
@@ -42,7 +47,9 @@ const FormStatusCard = ({
             <span className={cn('size-8', iconClassName)} />
           </div>
           <div className="grow">
-            <h1 className="title-4xl-semi-bold text-text-primary">{title}</h1>
+            <h1 ref={titleRef} tabIndex={-1} className="title-4xl-semi-bold text-text-primary">
+              {title}
+            </h1>
             {!!subtitle && <div className="title-4xl-semi-bold text-text-primary">{subtitle}</div>}
             {description !== undefined && (
               <div className="mt-3 system-md-regular text-text-secondary">{description}</div>

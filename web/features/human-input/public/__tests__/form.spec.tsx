@@ -2,6 +2,7 @@ import type { HumanInputV2FormTransport } from '../types'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createDeferred } from '@/test/deferred'
+import { createHumanInputV2Error } from '../errors'
 import HumanInputV2Form from '../form'
 import {
   createHumanInputV2MockScenario,
@@ -61,7 +62,7 @@ it('keeps incomplete approval available, identifies the invalid OTP, and submits
       { signal: expect.any(AbortSignal) },
     ),
   )
-  expect(await screen.findByRole('heading', { name: 'share.humanInput.thanks' })).toBeVisible()
+  expect(await screen.findByRole('heading', { name: 'share.humanInput.thanks' })).toHaveFocus()
 })
 
 it('shows the clicked action as loading, preserves its focus, and prevents resend during submission', async () => {
@@ -106,6 +107,43 @@ it('lets the user correct invalid proof in the real OTP and actions composition'
   await user.click(screen.getByRole('button', { name: 'Reject' }))
   expect(await screen.findByRole('heading', { name: 'share.humanInput.thanks' })).toBeVisible()
   expect(requestAccess).toHaveBeenCalledTimes(1)
+})
+
+it('accepts a pasted verification code containing a separator and submits all six digits', async () => {
+  const user = userEvent.setup()
+  const transport = createTransport()
+  const submit = vi.spyOn(transport, 'submit')
+  render(<HumanInputV2Form token="pasted-code" transport={transport} />)
+  const otp = await screen.findByRole('textbox', { name: 'share.humanInputV2.otpLabel' })
+  await user.click(otp)
+  await user.paste(`${HUMAN_INPUT_V2_MOCK_OTP.slice(0, 3)} ${HUMAN_INPUT_V2_MOCK_OTP.slice(3)}`)
+  expect(otp).toHaveValue(HUMAN_INPUT_V2_MOCK_OTP)
+  await user.click(screen.getByRole('button', { name: 'Approve' }))
+  await waitFor(() =>
+    expect(submit).toHaveBeenCalledWith(
+      'pasted-code',
+      expect.objectContaining({ otp_code: HUMAN_INPUT_V2_MOCK_OTP }),
+      { signal: expect.any(AbortSignal) },
+    ),
+  )
+  expect(await screen.findByRole('heading', { name: 'share.humanInput.thanks' })).toBeVisible()
+})
+
+it('announces code delivery and keeps a network failure separate from invalid verification proof', async () => {
+  const user = userEvent.setup()
+  const transport = createTransport({
+    submit: vi
+      .fn<HumanInputV2FormTransport['submit']>()
+      .mockRejectedValue(createHumanInputV2Error('network')),
+  })
+  render(<HumanInputV2Form token="network-failure" transport={transport} />)
+  const otp = await screen.findByRole('textbox', { name: 'share.humanInputV2.otpLabel' })
+  expect(screen.getByRole('status')).toHaveTextContent('share.humanInputV2.codeSent')
+  await user.type(otp, HUMAN_INPUT_V2_MOCK_OTP)
+  await user.click(screen.getByRole('button', { name: 'Approve' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('share.humanInputV2.networkError')
+  expect(otp).not.toHaveAttribute('aria-invalid', 'true')
+  expect(otp).toHaveValue(HUMAN_INPUT_V2_MOCK_OTP)
 })
 
 it.each([
@@ -158,20 +196,27 @@ it('keeps Send code focused while loading and moves focus to the OTP input when 
   expect(await screen.findByRole('textbox', { name: 'share.humanInputV2.otpLabel' })).toHaveFocus()
 })
 
-it('keeps the retry action mounted while loading and restores focus to verification after recovery', async () => {
+it('keeps retry focus through another failure and restores focus to verification after recovery', async () => {
   const user = userEvent.setup()
   const base = createTransport()
   const definition = await base.getForm('retry-form')
+  const failedRetry = createDeferred<typeof definition>()
   const pending = createDeferred<typeof definition>()
   const getForm = vi
     .fn<HumanInputV2FormTransport['getForm']>()
     .mockRejectedValueOnce(new Error('offline'))
+    .mockReturnValueOnce(failedRetry.promise)
     .mockReturnValue(pending.promise)
   render(<HumanInputV2Form token="retry-form" transport={{ ...base, getForm }} />)
   const retry = await screen.findByRole('button', { name: 'share.humanInputV2.retry' })
   await user.click(retry)
   expect(retry).toHaveFocus()
   expect(retry).toHaveAttribute('aria-disabled', 'true')
+  await act(async () => failedRetry.reject(new Error('still offline')))
+  expect(retry).toHaveFocus()
+  expect(retry).not.toHaveAttribute('aria-disabled', 'true')
+  await user.click(retry)
+  expect(retry).toHaveFocus()
   await act(async () => pending.resolve(definition))
   expect(await screen.findByRole('textbox', { name: 'share.humanInputV2.otpLabel' })).toHaveFocus()
 })

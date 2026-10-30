@@ -151,7 +151,9 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
 
   if (!state.definition) return <LoadingPlaceholder className="h-full" />
 
-  const verificationError = state.error ? errorCopy(state.error) : undefined
+  const verificationError = state.error
+    ? { category: state.error, message: errorCopy(state.error) }
+    : undefined
 
   return (
     <FileUploadContext value={uploadContext}>

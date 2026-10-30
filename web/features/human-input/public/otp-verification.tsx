@@ -1,4 +1,4 @@
-import type { HumanInputV2Challenge } from './types'
+import type { HumanInputV2Challenge, HumanInputV2ErrorCategory } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
@@ -9,7 +9,7 @@ type OtpVerificationProps = {
   otpCode: string
   requesting: boolean
   submitting: boolean
-  error?: string
+  error?: { category: HumanInputV2ErrorCategory; message: string }
   challenge?: HumanInputV2Challenge
   now?: () => number
   focusOnMount?: boolean
@@ -59,12 +59,13 @@ const OtpVerification = ({
   const secondsUntilExpiry = challenge
     ? Math.max(0, Math.ceil((challenge.expiresAt - clock) / 1000))
     : 0
+  const invalidCode = error?.category === 'invalid-otp'
 
   return (
     <div className="my-3 rounded-xl border border-divider-subtle bg-background-section p-3">
-      <Field name="otp_code" invalid={Boolean(error)}>
+      <Field name="otp_code" invalid={invalidCode}>
         <FieldLabel>{t(($) => $['humanInputV2.otpLabel'], { ns: 'share' })}</FieldLabel>
-        <FieldDescription>
+        <FieldDescription role="status">
           {requesting
             ? t(($) => $['humanInputV2.requestingCode'], { ns: 'share' })
             : challenge
@@ -80,17 +81,21 @@ const OtpVerification = ({
             pattern="[0-9]{6}"
             required
             readOnly={submitting}
-            maxLength={6}
             placeholder={t(($) => $['humanInputV2.otpPlaceholder'], { ns: 'share' })}
             onChange={(event) => onOtpChange(event.target.value)}
           />
         )}
-        {error && (
+        {invalidCode && (
           <FieldError match role="alert">
-            {error}
+            {error.message}
           </FieldError>
         )}
       </Field>
+      {error && !invalidCode && (
+        <p role="alert" className="system-sm-regular text-text-destructive">
+          {error.message}
+        </p>
+      )}
       <div className="mt-3 flex items-center justify-between gap-3">
         {challenge ? (
           <>
