@@ -3,7 +3,7 @@
   "upgrade.completeTitle": "Aktualizacja zakończona",
   "upgrade.contactSupport": "Skontaktuj się z pomocą",
   "upgrade.dialogAvailability": "Po aktualizacji <strong>zarówno klasyczna baza wiedzy, jak i baza wiedzy Agent pozostają dostępne</strong>",
-  "upgrade.dialogDescription": "Zaktualizuj tę <legacy>klasyczną bazę wiedzy</legacy> do <new>bazy wiedzy Agent</new>, zachowując wszystkie dokumenty, ustawienia i połączenia aplikacji. Następnie nastąpi automatyczne przekierowanie do bazy wiedzy Agent.",
+  "upgrade.dialogDescription": "Zaktualizuj tę <legacy>klasyczną bazę wiedzy</legacy> do <new>bazy wiedzy Agent</new>, zachowując wszystkie dokumenty i ustawienia. Następnie nastąpi automatyczne przekierowanie do bazy wiedzy Agent.",
   "upgrade.dialogDuration": "Trwa od kilku minut do kilku godzin, zależnie od rozmiaru. Postęp jest widoczny na karcie bazy wiedzy",
   "upgrade.dialogLinkedApps": "Połączone aplikacje nadal pobierają dane podczas aktualizacji",
   "upgrade.dialogTitle": "Zaktualizować do bazy wiedzy Agent?",
