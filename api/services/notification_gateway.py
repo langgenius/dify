@@ -27,8 +27,11 @@ class BillingNotificationGateway(NotificationGateway):
 
     @classmethod
     def _map_notification(cls, payload: saas.NotificationPayload) -> AccountNotification:
+        """Accept observed upstream models; omit translations with no non-null fields to allow language fallback."""
         contents = {
-            language: cls._map_content(content) for language, content in (payload.contents or {}).items() if content
+            language: cls._map_content(content)
+            for language, content in (payload.contents or {}).items()
+            if content and content.model_dump(exclude_none=True, warnings=False)
         }
         return AccountNotification(
             notification_id=payload.notification_id,
