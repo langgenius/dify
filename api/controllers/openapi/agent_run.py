@@ -13,14 +13,14 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._errors import AgentNotPublished
 from controllers.openapi._models import AgentRunPayload, Hint
-from controllers.openapi.app_run import _STREAM_RESULT, _generate_args, _respond, _stream, with_reply_hints
+from controllers.openapi.app_run import STREAM_RESULT, generate_args, respond, stream, with_reply_hints
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     EDITOR_ROLES,
     CheckAppAccess,
     CheckAppApiEnabled,
     CheckRBACPermission,
-    CheckScopeEarly,
+    CheckScope,
     CheckSubject,
     CheckWorkspaceMember,
     CheckWorkspaceRole,
@@ -28,21 +28,21 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import AccountSubject
 from core.app.entities.app_invoke_entities import InvokeFrom
 
-# Membership and scope are asked before `CheckAppApiEnabled` loads the Agent, so a caller
+# Membership is asked before `CheckAppApiEnabled` loads the Agent, so a caller
 # who may not use the workspace learns nothing about which Agents it holds.
 _AGENT_RUN_GUARDS: Final = (
     CheckSubject(allowed=(AccountSubject,)),
     CheckWorkspaceMember(),
-    CheckScopeEarly(Scope.APPS_RUN),
     CheckAppApiEnabled(),
+    CheckScope(Scope.APPS_RUN),
     CheckRBACPermission(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())),
     CheckAppAccess(),
 )
 _AGENT_TEST_GUARDS: Final = (
     CheckSubject(allowed=(AccountSubject,)),
     CheckWorkspaceMember(),
-    CheckScopeEarly(Scope.APPS_RUN),
     CheckAppApiEnabled(),
+    CheckScope(Scope.APPS_RUN),
     CheckRBACPermission(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())),
     CheckWorkspaceRole(EDITOR_ROLES),
 )
@@ -58,11 +58,11 @@ def _run_agent(
 ) -> Response:
     target = agent_target(workspace_id, agent_id)
     try:
-        stream = _stream(ctx, _generate_args(ctx, body), invoke_from)
+        events = stream(ctx, generate_args(ctx, body), invoke_from)
     except AgentNotPublished as error:
         draft = Hint(summary="Run the draft instead", op=op_of(AgentTestApi.post), input=target)
         raise AgentNotPublished(hints=[draft]) from error
-    return _respond(ctx, with_reply_hints(stream, op=op, target=target))
+    return respond(ctx, with_reply_hints(events, op=op, target=target))
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/agents/<string:agent_id>:run")
@@ -87,7 +87,7 @@ class AgentRunApi(Resource):
                 },
             ),
         ),
-        returns=_STREAM_RESULT,
+        returns=STREAM_RESULT,
     )
     def post(self, ctx: Context, workspace_id: str, agent_id: str, *, body: AgentRunPayload):
         return _run_agent(ctx, workspace_id, agent_id, body, op=op_of(AgentRunApi.post), invoke_from=InvokeFrom.OPENAPI)
@@ -107,7 +107,7 @@ class AgentTestApi(Resource):
                 input={"agent_id": "<agent_id>", "query": "Summarise the latest release"},
             ),
         ),
-        returns=_STREAM_RESULT,
+        returns=STREAM_RESULT,
     )
     def post(self, ctx: Context, workspace_id: str, agent_id: str, *, body: AgentRunPayload):
         return _run_agent(
