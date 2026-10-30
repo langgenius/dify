@@ -15,8 +15,10 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunC
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
+from core.rag.rerank.entity.weight import observe_weighted_scores
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.file_reference import parse_file_reference
+from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
@@ -44,7 +46,7 @@ from .exc import (
     KnowledgeRetrievalNodeError,
     RateLimitExceededError,
 )
-from .retrieval import KnowledgeRetrievalRequest, Source
+from .retrieval import KnowledgeRetrievalRequest, Source, WeightedScoreTrace, WeightedScoreTraceRecorder
 
 if TYPE_CHECKING:
     from graphon.file import File
@@ -79,6 +81,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
         *,
         init_params: "InitParams",
         runtime_state: "RuntimeState",
+        weighted_score_trace_recorder: WeightedScoreTraceRecorder,
         session_maker=None,
     ) -> None:
         super().__init__(
@@ -90,6 +93,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
         # LLM file outputs, used for MultiModal outputs.
         self._file_outputs = []
         self._rag_retrieval = DatasetRetrieval()
+        self._weighted_score_trace_recorder = weighted_score_trace_recorder
         self._session_maker = session_maker or session_factory.get_session_maker()
 
     @classmethod
@@ -137,9 +141,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
 
         try:
             with self._session_maker() as session:
-                results, usage = self._fetch_dataset_retriever(
-                    session=session, node_data=self._node_data, variables=variables
-                )
+                results, usage = self._fetch_with_weighted_score_trace(session=session, variables=variables)
                 outputs = {"result": ArrayObjectSegment(value=[item.model_dump(by_alias=True) for item in results])}
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -181,6 +183,40 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
                 error_type=type(e).__name__,
                 llm_usage=usage,
             )
+
+    def _fetch_with_weighted_score_trace(
+        self, *, session: Session, variables: dict[str, Any]
+    ) -> tuple[list[Source], LLMUsage]:
+        """Retrieve, recording weighted-score candidate pools when the recorder accepts this execution.
+
+        Postconditions: the results equal an untraced retrieval; the trace is committed only after
+        retrieval returns, so a failed retrieval records nothing. Retrieval errors propagate unchanged.
+        """
+        trace = self._begin_weighted_score_trace()
+        if trace is None:
+            return self._fetch_dataset_retriever(session=session, node_data=self._node_data, variables=variables)
+        with observe_weighted_scores(trace):
+            fetched = self._fetch_dataset_retriever(session=session, node_data=self._node_data, variables=variables)
+        trace.commit()
+        return fetched
+
+    def _begin_weighted_score_trace(self) -> WeightedScoreTrace | None:
+        """Ask the recorder to trace this execution; None when the run has no workflow identity or is skipped."""
+        dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
+        variable_pool = self.runtime_state.variable_pool
+        workflow_id = get_system_text(variable_pool, SystemVariableKey.WORKFLOW_ID)
+        workflow_run_id = get_system_text(variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID)
+        if workflow_id is None or workflow_run_id is None:
+            return None
+        return self._weighted_score_trace_recorder.begin(
+            tenant_id=dify_ctx.tenant_id,
+            app_id=dify_ctx.app_id,
+            app_type=dify_ctx.app_type,
+            invoke_from=dify_ctx.invoke_from,
+            workflow_id=workflow_id,
+            workflow_run_id=workflow_run_id,
+            node_id=self.id,
+        )
 
     def _fetch_dataset_retriever(
         self, session: Session, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]

@@ -356,6 +356,12 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.clean_oauth_access_tokens_task.clean_oauth_access_tokens_task",
             "schedule": crontab(minute="0", hour="5", day_of_month=f"*/{day}"),
         }
+    # Unconditional so traces collected before tracing was disabled still expire.
+    imports.append("schedule.clean_retrieval_weight_traces_task")
+    beat_schedule["clean_retrieval_weight_traces_task"] = {
+        "task": "schedule.clean_retrieval_weight_traces_task.clean_retrieval_weight_traces_task",
+        "schedule": crontab(minute="30", hour="4"),
+    }
     if dify_config.ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK:
         imports.append("schedule.workflow_schedule_task")
         beat_schedule["workflow_schedule_task"] = {

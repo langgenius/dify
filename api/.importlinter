@@ -6,6 +6,7 @@ root_packages =
     context
     configs
     controllers
+    domain
     extensions
     factories
     fields
@@ -277,6 +278,8 @@ ignore_imports =
     repositories.knowledge.metadata_repository -> services.errors.metadata
     repositories.knowledge.metadata_repository -> services.knowledge.metadata.application
     repositories.knowledge.metadata_repository -> services.knowledge.resource_scope
+    repositories.knowledge.retrieval_weight_trace_repository -> services.knowledge.retrieval.weight_recommendations
+    repositories.knowledge.retrieval_weight_trace_repository -> services.knowledge.retrieval.weighted_score_traces
     repositories.knowledge.summary_repository -> services.knowledge.summaries.application
 
 [importlinter:contract:datasource-credential-repository-boundary]
@@ -1296,6 +1299,62 @@ forbidden_modules =
     flask
     models
     repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:weighted-score-trace-application-boundary]
+name = Weighted-score retrieval trace use cases are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.knowledge.retrieval.weighted_score_traces
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:retrieval-weight-recommendation-application-boundary]
+name = Retrieval weight recommendation use cases are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.knowledge.retrieval.weight_recommendations
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:domain-purity]
+name = Domain code has no application, persistence, framework, configuration, queue, transport, or legacy-kernel dependencies
+type = forbidden
+source_modules =
+    domain
+forbidden_modules =
+    celery
+    configs
+    context
+    controllers
+    core
+    extensions
+    factories
+    fields
+    flask
+    models
+    redis
+    repositories
+    services
     sqlalchemy
     tasks
     werkzeug

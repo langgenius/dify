@@ -49,6 +49,7 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
+from core.rag.rerank.entity.weight import CrossDatasetWeightedScoreStage, weighted_score_stage
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.rag.retrieval.router.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
@@ -1996,7 +1997,10 @@ class DatasetRetrieval:
                 # Skip second reranking when there is only one dataset
                 if reranking_enable and dataset_count > 1:
                     # do rerank for searched documents
-                    with session_factory.create_session() as session:
+                    with (
+                        session_factory.create_session() as session,
+                        weighted_score_stage(CrossDatasetWeightedScoreStage()),
+                    ):
                         data_post_processor = DataPostProcessor(
                             tenant_id,
                             reranking_mode,

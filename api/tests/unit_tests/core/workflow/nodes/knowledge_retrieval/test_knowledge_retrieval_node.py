@@ -6,6 +6,12 @@ import pytest
 from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.rag.rerank.entity.weight import (
+    CrossDatasetWeightedScoreStage,
+    WeightedScoreObservation,
+    report_weighted_score_observation,
+    weighted_score_stage,
+)
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.entities import (
     Condition,
@@ -25,7 +31,7 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import Source, SourceMeta
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables import ArrayObjectSegment, StringSegment
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -42,6 +48,11 @@ def _source() -> Source:
         title="Python",
         content="Python is a programming language",
     )
+
+
+class _NoTraceRecorder:
+    def begin(self, **_: object) -> None:
+        return None
 
 
 @pytest.fixture
@@ -138,6 +149,7 @@ class TestKnowledgeRetrievalNode:
             data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            weighted_score_trace_recorder=_NoTraceRecorder(),
         )
 
         # Act
@@ -195,6 +207,7 @@ class TestKnowledgeRetrievalNode:
             data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            weighted_score_trace_recorder=_NoTraceRecorder(),
         )
 
         # Act
@@ -237,6 +250,7 @@ class TestKnowledgeRetrievalNode:
             data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            weighted_score_trace_recorder=_NoTraceRecorder(),
         )
 
         # Act
@@ -273,6 +287,7 @@ class TestKnowledgeRetrievalNode:
             data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            weighted_score_trace_recorder=_NoTraceRecorder(),
         )
 
         # Act
@@ -308,6 +323,7 @@ class TestKnowledgeRetrievalNode:
             data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            weighted_score_trace_recorder=_NoTraceRecorder(),
         )
 
         # Act
@@ -348,6 +364,7 @@ class TestKnowledgeRetrievalNode:
             data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            weighted_score_trace_recorder=_NoTraceRecorder(),
         )
 
         # Act
@@ -386,6 +403,7 @@ class TestKnowledgeRetrievalNode:
             data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            weighted_score_trace_recorder=_NoTraceRecorder(),
         )
 
         # Act
@@ -466,6 +484,7 @@ class TestFetchDatasetRetriever:
             data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            weighted_score_trace_recorder=_NoTraceRecorder(),
         )
 
         # Act
@@ -502,6 +521,7 @@ class TestFetchDatasetRetriever:
             data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            weighted_score_trace_recorder=_NoTraceRecorder(),
         )
 
         # Act
@@ -556,6 +576,7 @@ class TestFetchDatasetRetriever:
             data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            weighted_score_trace_recorder=_NoTraceRecorder(),
         )
 
         # Act
@@ -596,6 +617,7 @@ class TestFetchDatasetRetriever:
             data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            weighted_score_trace_recorder=_NoTraceRecorder(),
         )
 
         conditions = MetadataFilteringCondition(
@@ -657,6 +679,7 @@ class TestFetchDatasetRetriever:
             data=KnowledgeRetrievalNodeData.model_validate(config["data"]),
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            weighted_score_trace_recorder=_NoTraceRecorder(),
         )
 
         mock_rag_retrieval.knowledge_retrieval.return_value = []
@@ -669,3 +692,88 @@ class TestFetchDatasetRetriever:
         request = call_args[1]["request"]
         assert request.metadata_filtering_conditions is not None
         assert request.metadata_filtering_conditions.conditions[0].value == "readme"
+
+
+class _RecordingTrace:
+    def __init__(self) -> None:
+        self.observations: list[WeightedScoreObservation] = []
+        self.commits = 0
+
+    def observe(self, observation: WeightedScoreObservation) -> None:
+        self.observations.append(observation)
+
+    def commit(self) -> None:
+        self.commits += 1
+
+
+class _RecordingTraceRecorder:
+    def __init__(self) -> None:
+        self.trace = _RecordingTrace()
+        self.begins: list[dict[str, object]] = []
+
+    def begin(self, **target: object) -> _RecordingTrace:
+        self.begins.append(target)
+        return self.trace
+
+
+class _ReportingRetrieval(DatasetRetrieval):
+    """Stands in for retrieval I/O by reporting one weighted-score observation, as WeightRerankRunner does."""
+
+    def __init__(self, *, fail: bool) -> None:
+        super().__init__()
+        self._fail = fail
+
+    def knowledge_retrieval(self, session, request):  # type: ignore[override]
+        with weighted_score_stage(CrossDatasetWeightedScoreStage()):
+            report_weighted_score_observation(
+                lambda stage: WeightedScoreObservation(
+                    stage=stage,
+                    vector_weight=0.7,
+                    keyword_weight=0.3,
+                    embedding_provider_name="provider",
+                    embedding_model_name="embedding",
+                    score_threshold=None,
+                    top_n=5,
+                    candidates=(),
+                )
+            )
+        if self._fail:
+            raise RuntimeError("vector store unavailable")
+        return [_source()]
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_run_traces_weighted_scores_and_commits_only_after_success(
+    mock_graph_init_params: InitParams, sample_node_data: KnowledgeRetrievalNodeData, fail: bool
+) -> None:
+    variable_pool = VariablePool.from_bootstrap(
+        system_variables=build_system_variables(workflow_id="workflow-1", workflow_run_id="run-1"),
+        user_inputs={},
+        environment_variables=[],
+        conversation_variables=[],
+    )
+    variable_pool.add(["start", "query"], StringSegment(value="What is Python?"))
+    sample_node_data.query_variable_selector = ["start", "query"]
+    recorder = _RecordingTraceRecorder()
+    node = KnowledgeRetrievalNode(
+        node_id="knowledge",
+        data=sample_node_data,
+        init_params=mock_graph_init_params,
+        runtime_state=RuntimeState(workflow_id="workflow-1", variable_pool=variable_pool, start_at=time.perf_counter()),
+        weighted_score_trace_recorder=recorder,
+    )
+    node._rag_retrieval = _ReportingRetrieval(fail=fail)
+
+    result = node._run()
+
+    expected_status = WorkflowNodeExecutionStatus.FAILED if fail else WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.status == expected_status
+    [target] = recorder.begins
+    assert (target["workflow_id"], target["workflow_run_id"], target["node_id"], target["invoke_from"]) == (
+        "workflow-1",
+        "run-1",
+        "knowledge",
+        InvokeFrom.DEBUGGER,
+    )
+    assert [observation.stage for observation in recorder.trace.observations] == [CrossDatasetWeightedScoreStage()]
+    assert recorder.trace.commits == (0 if fail else 1)

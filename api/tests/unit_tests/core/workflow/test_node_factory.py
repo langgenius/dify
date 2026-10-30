@@ -193,11 +193,15 @@ class TestNodeFactoryCases:
         def test_create_node_knowledge_retrieval_branch(self, monkeypatch: pytest.MonkeyPatch):
             factory = self._factory()
             self._stub_node_resolution(monkeypatch, DummyKnowledgeRetrievalNode)
+            monkeypatch.setattr(
+                "core.workflow.node_factory.build_weighted_score_trace_recorder",
+                lambda: sentinel.weighted_score_trace_recorder,
+            )
 
             node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}})
 
             assert isinstance(node, DummyKnowledgeRetrievalNode)
-            assert node.kwargs == {}
+            assert node.kwargs == {"weighted_score_trace_recorder": sentinel.weighted_score_trace_recorder}
 
         def test_create_node_document_extractor_branch(self, monkeypatch: pytest.MonkeyPatch):
             factory = self._factory()
@@ -822,6 +826,10 @@ class TestNodeFactoryCasesWorkflow:
 
             if constructor_name == "HumanInputNode":
                 factory._build_human_input_callback = MagicMock(return_value=sentinel.hitl_callback)
+            monkeypatch.setattr(
+                "core.workflow.node_factory.build_weighted_score_trace_recorder",
+                lambda: sentinel.weighted_score_trace_recorder,
+            )
 
             node_config = {"id": "node-id", "data": {"type": node_type}}
             result = factory.create_node(node_config)
@@ -853,6 +861,8 @@ class TestNodeFactoryCasesWorkflow:
                 assert kwargs["tool_file_manager"] is sentinel.tool_file_manager
                 assert kwargs["runtime"] is sentinel.tool_runtime
                 factory._bound_tool_file_manager_factory.assert_called_once_with()
+            elif constructor_name == "KnowledgeRetrievalNode":
+                assert kwargs["weighted_score_trace_recorder"] is sentinel.weighted_score_trace_recorder
             elif constructor_name == "DocumentExtractorNode":
                 assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
                 assert kwargs["http_client"] is sentinel.remote_file_http_client

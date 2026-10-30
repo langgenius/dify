@@ -39,6 +39,7 @@ from extensions.application_services.knowledge import (
 )
 from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.resource_access_token import build_resource_access_token_service
+from extensions.application_services.retrieval_weight_traces import build_weighted_score_trace_recorder
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
 from extensions.application_services.workspace import (
     WorkspaceServices,
@@ -869,6 +870,9 @@ def init_app(app: Flask) -> None:
     from extensions.ext_login import bind_account_loader
 
     app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
+    app.extensions["weighted_score_trace_recorder"] = build_weighted_score_trace_recorder(
+        database_client=get_session_maker()
+    )
     ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
     services = build_application_services(
         database_client=get_session_maker(),

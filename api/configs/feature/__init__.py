@@ -1395,6 +1395,24 @@ class DataSetConfig(BaseSettings):
         default=0,
     )
 
+    RETRIEVAL_WEIGHT_TRACE_ENABLED: bool = Field(
+        description="Record keyword/vector weighted-score candidate pools of published chatflow knowledge retrieval"
+        " for feedback-driven weight tuning",
+        default=False,
+    )
+
+    RETRIEVAL_WEIGHT_TRACE_SAMPLE_RATE: float = Field(
+        description="Fraction (0 to 1) of eligible knowledge-retrieval executions to trace",
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+    )
+
+    RETRIEVAL_WEIGHT_TRACE_RETENTION_DAYS: PositiveInt = Field(
+        description="Days to keep retrieval weight traces before the scheduled cleanup deletes them",
+        default=30,
+    )
+
 
 class SkillConfig(BaseSettings):
     ENABLE_SKILL: bool = Field(

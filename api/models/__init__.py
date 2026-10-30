@@ -190,6 +190,7 @@ from .resource_access_token import (
     ResourceAccessTokenRelation,
     ResourceAccessTokenResourceType,
 )
+from .retrieval_weight_trace import RetrievalWeightTrace
 from .skill import AgentSkillBinding, Skill, SkillDraftFile, SkillFileKind, SkillFileStorage, SkillVersion
 from .snippet import CustomizedSnippet, SnippetType
 from .source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
@@ -396,6 +397,7 @@ __all__ = [
     "ResourceAccessToken",
     "ResourceAccessTokenRelation",
     "ResourceAccessTokenResourceType",
+    "RetrievalWeightTrace",
     "SavedMessage",
     "Site",
     "Skill",

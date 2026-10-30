@@ -20,6 +20,7 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
+from core.rag.rerank.entity.weight import DatasetWeightedScoreStage, weighted_score_stage
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file_preview_url
@@ -902,7 +903,10 @@ class RetrievalService:
                     query_type = QueryType.IMAGE_QUERY
                 else:
                     return
-                with Session(db.engine) as rerank_session:
+                with (
+                    Session(db.engine) as rerank_session,
+                    weighted_score_stage(DatasetWeightedScoreStage(dataset_id=dataset.id)),
+                ):
                     data_post_processor = DataPostProcessor(
                         str(dataset.tenant_id),
                         reranking_mode,

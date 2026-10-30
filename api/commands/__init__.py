@@ -43,6 +43,7 @@ from .retention import (
     export_app_messages,
     restore_workflow_runs,
 )
+from .retrieval_weights import retrieval_weight_report
 from .storage import clear_orphaned_file_records, file_usage, migrate_oss, remove_orphaned_files_on_storage
 from .system import (
     convert_to_agent_apps,
@@ -101,6 +102,7 @@ __all__ = [
     "reset_encrypt_key_pair",
     "reset_password",
     "restore_workflow_runs",
+    "retrieval_weight_report",
     "setup_datasource_oauth_client",
     "setup_system_tool_oauth_client",
     "setup_system_trigger_oauth_client",

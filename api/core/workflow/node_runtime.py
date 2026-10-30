@@ -45,6 +45,7 @@ from core.workflow.nodes.human_input.entities import (
     FormInputConfig,
     HumanInputNodeData,
 )
+from core.workflow.nodes.knowledge_retrieval.retrieval import WeightedScoreTraceRecorder
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.file import File, FileTransferMethod, FileType
@@ -1073,6 +1074,12 @@ def build_dify_llm_file_saver(
         file_reference_factory=DifyFileReferenceFactory(run_context),
         http_client=http_client,
     )
+
+
+def build_weighted_score_trace_recorder() -> WeightedScoreTraceRecorder:
+    """Resolve the weighted-score trace recorder registered by the application composition root."""
+    recorder: WeightedScoreTraceRecorder = current_app.extensions["weighted_score_trace_recorder"]
+    return recorder
 
 
 def build_knowledge_fs_node_dependencies() -> dict[str, object]:

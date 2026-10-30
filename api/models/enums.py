@@ -163,6 +163,13 @@ class CustomizeTokenStrategy(StrEnum):
     UUID = "uuid"
 
 
+class RetrievalWeightTraceStage(StrEnum):
+    """Which weighted-score rerank a retrieval weight trace describes"""
+
+    DATASET = "dataset"
+    CROSS_DATASET = "cross_dataset"
+
+
 class FeedbackRating(StrEnum):
     """MessageFeedback rating"""
 

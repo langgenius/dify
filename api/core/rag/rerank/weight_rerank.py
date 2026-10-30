@@ -1,5 +1,6 @@
 import math
 from collections import Counter
+from dataclasses import dataclass
 from typing import override
 
 import numpy as np
@@ -12,7 +13,14 @@ from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
-from core.rag.rerank.entity.weight import VectorSetting, Weights
+from core.rag.rerank.entity.weight import (
+    VectorSetting,
+    WeightedScoreObservation,
+    WeightedScoreStage,
+    Weights,
+    build_weighted_score_observation,
+    report_weighted_score_observation,
+)
 from core.rag.rerank.rerank_base import BaseRerankRunner
 from graphon.model_runtime.entities.model_entities import ModelType
 
@@ -61,22 +69,58 @@ class WeightRerankRunner(BaseRerankRunner):
         query_scores = self._calculate_keyword_score(query, documents)
         query_vector_scores = self._calculate_cosine(self.tenant_id, query, documents, self.weights.vector_setting)
 
-        rerank_documents = []
-        for document, query_score, query_vector_score in zip(
-            documents, query_scores, query_vector_scores, strict=False
-        ):
-            score = (
-                self.weights.vector_setting.vector_weight * query_vector_score
-                + self.weights.keyword_setting.keyword_weight * query_score
+        scored = [
+            _ScoredCandidate(
+                document=document,
+                vector_score=query_vector_score,
+                keyword_score=query_score,
+                final_score=self.weights.vector_setting.vector_weight * query_vector_score
+                + self.weights.keyword_setting.keyword_weight * query_score,
             )
-            if score_threshold and score < score_threshold:
-                continue
-            if document.metadata is not None:
-                document.metadata["score"] = score
-                rerank_documents.append(document)
+            for document, query_score, query_vector_score in zip(
+                documents, query_scores, query_vector_scores, strict=False
+            )
+        ]
+
+        rerank_documents = []
+        for candidate in scored:
+            passes_threshold = not (score_threshold and candidate.final_score < score_threshold)
+            if passes_threshold and candidate.document.metadata is not None:
+                candidate.document.metadata["score"] = candidate.final_score
+                rerank_documents.append(candidate.document)
 
         rerank_documents.sort(key=lambda x: x.metadata["score"] if x.metadata else 0, reverse=True)
-        return rerank_documents[:top_n] if top_n else rerank_documents
+        result = rerank_documents[:top_n] if top_n else rerank_documents
+        if query_type == QueryType.TEXT_QUERY:
+            report_weighted_score_observation(
+                lambda stage: self._build_observation(
+                    stage=stage, scored=scored, result=result, score_threshold=score_threshold, top_n=top_n
+                )
+            )
+        return result
+
+    def _build_observation(
+        self,
+        *,
+        stage: WeightedScoreStage,
+        scored: list["_ScoredCandidate"],
+        result: list[Document],
+        score_threshold: float | None,
+        top_n: int | None,
+    ) -> WeightedScoreObservation:
+        """Describe every scored candidate, marking the ones returned in ``result`` with their rank."""
+        ranks = {id(document): rank for rank, document in enumerate(result)}
+        return build_weighted_score_observation(
+            stage=stage,
+            weights=self.weights,
+            score_threshold=score_threshold,
+            top_n=top_n,
+            candidate_metadata=[candidate.document.metadata for candidate in scored],
+            vector_scores=[candidate.vector_score for candidate in scored],
+            keyword_scores=[candidate.keyword_score for candidate in scored],
+            final_scores=[candidate.final_score for candidate in scored],
+            selected_ranks=[ranks.get(id(candidate.document)) for candidate in scored],
+        )
 
     def _calculate_keyword_score(self, query: str, documents: list[Document]) -> list[float]:
         """
@@ -203,3 +247,11 @@ class WeightRerankRunner(BaseRerankRunner):
                 query_vector_scores.append(cosine_sim)
 
         return query_vector_scores
+
+
+@dataclass(frozen=True, slots=True)
+class _ScoredCandidate:
+    document: Document
+    vector_score: float
+    keyword_score: float
+    final_score: float

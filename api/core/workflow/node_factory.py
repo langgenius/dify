@@ -41,6 +41,7 @@ from core.workflow.node_runtime import (
     DifyToolNodeRuntime,
     build_dify_llm_file_saver,
     build_knowledge_fs_node_dependencies,
+    build_weighted_score_trace_recorder,
 )
 from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from core.workflow.nodes.agent.plugin_strategy_adapter import (
@@ -550,6 +551,9 @@ class DifyNodeFactory(NodeFactory):
                 "runtime": self._tool_runtime,
             },
             BuiltinNodeTypes.AGENT: lambda: self._build_agent_node_init_kwargs(node_class=node_class),
+            BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: lambda: {
+                "weighted_score_trace_recorder": build_weighted_score_trace_recorder(),
+            },
             KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE: lambda: {
                 **build_knowledge_fs_node_dependencies(),
                 "metadata_filter_extractor": KnowledgeFSAutomaticMetadataFilterExtractor(

@@ -4,6 +4,7 @@ from typing import Any, Literal, Protocol
 from pydantic import BaseModel, Field
 
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
+from core.rag.rerank.entity.weight import WeightedScoreObserver
 from graphon.model_runtime.entities import LLMUsage
 from graphon.nodes.llm.entities import ModelConfig
 
@@ -90,3 +91,34 @@ class RAGRetrievalProtocol(Protocol):
     def set_request_metadata(self, request_metadata: Mapping[str, object] | None) -> None: ...
 
     def knowledge_retrieval(self, request: KnowledgeRetrievalRequest) -> list[Source]: ...
+
+
+class WeightedScoreTrace(WeightedScoreObserver, Protocol):
+    """Collects the weighted-score observations of one node execution."""
+
+    def commit(self) -> None:
+        """Persist the collected observations once retrieval succeeded.
+
+        Never raises: tracing must not change the node result. Calling it with no observations
+        persists nothing.
+        """
+        ...
+
+
+class WeightedScoreTraceRecorder(Protocol):
+    def begin(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        app_type: str | None,
+        invoke_from: str,
+        workflow_id: str,
+        workflow_run_id: str,
+        node_id: str,
+    ) -> WeightedScoreTrace | None:
+        """Start a trace for one knowledge-retrieval execution, or return None to skip tracing it.
+
+        ``app_type`` None means the run context did not state an app type; such runs are skipped.
+        """
+        ...

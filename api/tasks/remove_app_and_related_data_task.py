@@ -16,6 +16,7 @@ from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.db.session_factory import session_factory
 from enums import DeploymentEdition
 from extensions.application_services.resource_access_token import build_resource_access_token_cleanup_service
+from extensions.application_services.retrieval_weight_traces import build_weighted_score_trace_retention_service
 from extensions.ext_database import db
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from models import (
@@ -133,6 +134,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_app_workflows(tenant_id, app_id)
         _delete_app_workflow_node_executions(tenant_id, app_id)
         _delete_app_workflow_runs(tenant_id, app_id)
+        _delete_app_retrieval_weight_traces(tenant_id, app_id)
         _delete_app_workflow_app_logs(tenant_id, app_id)
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ARCHIVE_STORAGE_ENABLED:
             _delete_app_workflow_archive_logs(tenant_id, app_id)
@@ -367,6 +369,13 @@ def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
     )
 
     logger.info("Deleted %s workflow node executions for app %s", deleted_count, app_id)
+
+
+def _delete_app_retrieval_weight_traces(tenant_id: str, app_id: str) -> None:
+    deleted = build_weighted_score_trace_retention_service(
+        database_client=session_factory.get_session_maker()
+    ).purge_app(tenant_id=tenant_id, app_id=app_id)
+    logger.info(click.style(f"Deleted {deleted} retrieval weight traces of app {app_id}", fg="green"))
 
 
 def _delete_app_workflow_app_logs(tenant_id: str, app_id: str):
