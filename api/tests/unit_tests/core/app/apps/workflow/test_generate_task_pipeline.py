@@ -241,6 +241,7 @@ class TestGenerateTaskPipelineCoreCases:
             assert response.data.reasons == [
                 {
                     "TYPE": "human_input_required",
+                    "form_version": "1",
                     "form_id": "form-1",
                     "node_id": "node-1",
                     "node_title": "Human Input",

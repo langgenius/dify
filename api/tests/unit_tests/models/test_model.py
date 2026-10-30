@@ -20,7 +20,6 @@ from core.ops.entities.trace_entity import MessageTraceInfo
 from core.ops.ops_trace_manager import OpsTraceManager, TaskData
 from core.workflow.file_reference import build_file_reference
 from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod
-from models import model as model_module
 from models.account import Account, Tenant
 from models.base import Base, TypeBase
 from models.dataset import DatasetCollectionBinding
@@ -2260,8 +2259,7 @@ class TestModelCases:
         Patch file_helpers.get_signed_file_url to a deterministic stub.
         """
         monkeypatch.setattr(
-            model_module.file_helpers,
-            "get_signed_file_url",
+            "graphon.file.helpers.get_signed_file_url",
             lambda file_id: f"https://signed.example/{file_id}",
         )
 

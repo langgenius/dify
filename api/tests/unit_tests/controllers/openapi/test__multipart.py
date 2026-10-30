@@ -79,3 +79,14 @@ def test_folder_streams_rejects_a_path_given_more_than_once() -> None:
     parts: UploadParts = {"SKILL.md": [FileStorage(stream=BytesIO(b"a")), FileStorage(stream=BytesIO(b"b"))]}
     with pytest.raises(InvalidFilePart, match="SKILL.md"):
         folder_streams(parts)
+
+
+@pytest.mark.parametrize("direct", ["files", "files[]"])
+@pytest.mark.parametrize("mapped", ["files[doc]", "files[doc][]"])
+@pytest.mark.parametrize("mapped_first", [False, True], ids=["direct_first", "mapped_first"])
+def test_multipart_rejects_conflicting_file_shapes(app: Flask, direct: str, mapped: str, mapped_first: bool) -> None:
+    names = [mapped, direct] if mapped_first else [direct, mapped]
+    data = {name: _part() for name in names}
+    with _multipart(app, data), pytest.raises(InvalidFilePart, match="given more than once") as exc:
+        body_from_request(file_fields=_FILE_FIELDS)
+    assert exc.value.code == 422
