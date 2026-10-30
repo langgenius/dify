@@ -17,6 +17,8 @@ import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import WebAppConnectionControls from '@/app/components/share/connections/webapp-connection-controls'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { appDefaultIconBackground } from '@/config'
+import SignIn from '../sign-in'
+import { useWebAppEntry } from '../webapp-entry'
 import RunBatch from './run-batch'
 import RunOnce from './run-once'
 import TextGenerationMenu from './text-generation-menu'
@@ -80,11 +82,58 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
   visionConfig,
 }) => {
   const { t } = useTranslation(['share'])
+  const entry = useWebAppEntry()
+  const showWorkflowLayout = isWorkflow && !isInstalledApp && entry && 'account' in entry
   const [descExpanded, setDescExpanded] = useState(false)
   const [showDescToggle, setShowDescToggle] = useState(false)
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
     setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
   }, [])
+
+  const description = siteInfo.description && (
+    <div>
+      <div
+        ref={handleDescRef}
+        className={cn(
+          'relative system-xs-regular wrap-break-word whitespace-pre-wrap text-text-tertiary',
+          !descExpanded && 'line-clamp-3',
+          descExpanded && 'max-h-32 overflow-y-auto',
+        )}
+      >
+        {siteInfo.description}
+        {!descExpanded && showDescToggle && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
+        )}
+      </div>
+      {showDescToggle && (
+        <button
+          type="button"
+          className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
+          onClick={() => setDescExpanded((v) => !v)}
+        >
+          {descExpanded ? (
+            <>
+              <RiArrowUpSLine className="size-3" />
+              {t(($) => $['chat.collapse'], { ns: 'share' })}
+            </>
+          ) : (
+            <>
+              <RiArrowDownSLine className="size-3" />
+              {t(($) => $['chat.expand'], { ns: 'share' })}
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  )
+
+  const connectionSetup = isConfiguringConnections && onStartUsingApp && (
+    <WebAppConnectionSetup
+      onStart={onStartUsingApp}
+      previewSize={showWorkflowLayout ? 'medium' : 'small'}
+      className={showWorkflowLayout ? 'pt-8 pb-6' : 'py-6'}
+    />
+  )
 
   return (
     <Tabs
@@ -98,65 +147,58 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
     >
       <div
         className={cn(
-          'shrink-0 space-y-4 border-b border-divider-subtle',
-          isPC ? 'bg-components-panel-bg p-8 pb-0' : 'p-4 pb-0',
+          'shrink-0 border-b border-divider-subtle bg-components-panel-bg',
+          showWorkflowLayout ? 'relative flex flex-col gap-4 overflow-hidden' : 'space-y-4',
+          isPC ? 'p-8 pb-0' : 'p-4 pb-0',
         )}
       >
-        <div className="flex items-center gap-3">
-          <AppIcon
-            fallback={{ content: '🤖', background: appDefaultIconBackground }}
-            size={isPC ? 'large' : 'small'}
-            icon={siteInfo}
-          />
-          <div className="grow truncate system-md-semibold text-text-secondary">
-            {siteInfo.title}
-          </div>
-          <WebAppConnectionControls isResponding={isResponding} />
-          <TextGenerationMenu hideLogout={isInstalledApp} data={siteInfo} />
-        </div>
-        {siteInfo.description && (
-          <div>
-            <div
-              ref={handleDescRef}
-              className={cn(
-                'relative system-xs-regular wrap-break-word whitespace-pre-wrap text-text-tertiary',
-                !descExpanded && 'line-clamp-3',
-                descExpanded && 'max-h-32 overflow-y-auto',
-              )}
-            >
-              {siteInfo.description}
-              {!descExpanded && showDescToggle && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
-              )}
-            </div>
-            {showDescToggle && (
-              <button
-                type="button"
-                className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
-                onClick={() => setDescExpanded((v) => !v)}
-              >
-                {descExpanded ? (
-                  <>
-                    <RiArrowUpSLine className="size-3" />
-                    {t(($) => $['chat.collapse'], { ns: 'share' })}
-                  </>
-                ) : (
-                  <>
-                    <RiArrowDownSLine className="size-3" />
-                    {t(($) => $['chat.expand'], { ns: 'share' })}
-                  </>
+        {showWorkflowLayout ? (
+          <div className="flex flex-col gap-3">
+            <AppIcon
+              fallback={{ content: '🤖', background: appDefaultIconBackground }}
+              size={isPC ? 'large' : 'small'}
+              icon={siteInfo}
+            />
+            <div className="space-y-2">
+              <div className="flex items-start gap-3">
+                <h1 className="min-w-0 grow system-xl-semibold wrap-anywhere text-text-primary">
+                  {siteInfo.title}
+                </h1>
+                {!isConfiguringConnections && (
+                  <WebAppConnectionControls isResponding={isResponding} showSignIn={false} />
                 )}
-              </button>
-            )}
+              </div>
+              {description}
+            </div>
           </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-3">
+              <AppIcon
+                fallback={{ content: '🤖', background: appDefaultIconBackground }}
+                size={isPC ? 'large' : 'small'}
+                icon={siteInfo}
+              />
+              <div className="grow truncate system-md-semibold text-text-secondary">
+                {siteInfo.title}
+              </div>
+              <WebAppConnectionControls isResponding={isResponding} />
+              <TextGenerationMenu hideLogout={isInstalledApp} data={siteInfo} />
+            </div>
+            {description}
+          </>
         )}
-        {!isConfiguringConnections && (
-          <TabsList className="w-full">
+        {(!isConfiguringConnections || showWorkflowLayout) && (
+          <TabsList className={cn('w-full', showWorkflowLayout && 'relative gap-4')}>
             <TabsTab value="create">
-              <span className="ms-2">{t(($) => $['generation.tabs.create'], { ns: 'share' })}</span>
+              <span className={showWorkflowLayout ? 'uppercase' : 'ms-2'}>
+                {t(($) => $['generation.tabs.create'], { ns: 'share' })}
+              </span>
             </TabsTab>
             <TabsTab value="batch">
-              <span className="ms-2">{t(($) => $['generation.tabs.batch'], { ns: 'share' })}</span>
+              <span className={showWorkflowLayout ? 'uppercase' : 'ms-2'}>
+                {t(($) => $['generation.tabs.batch'], { ns: 'share' })}
+              </span>
             </TabsTab>
             {!isWorkflow && (
               <TabsTab value="saved" className="ms-auto">
@@ -180,8 +222,12 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             'rounded-b-2xl border-b-[0.5px] border-divider-regular',
         )}
       >
-        {isConfiguringConnections && onStartUsingApp ? (
-          <WebAppConnectionSetup onStart={onStartUsingApp} className="py-6" />
+        {connectionSetup ? (
+          showWorkflowLayout ? (
+            <TabsPanel value={currentTab}>{connectionSetup}</TabsPanel>
+          ) : (
+            connectionSetup
+          )
         ) : (
           <>
             <TabsPanel value="create" keepMounted>
@@ -220,27 +266,50 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
           </>
         )}
       </div>
-      {!customConfig?.remove_webapp_brand && (
+      {(showWorkflowLayout || !customConfig?.remove_webapp_brand) && (
         <div
           className={cn(
-            'flex shrink-0 items-center gap-1.5 bg-components-panel-bg py-3',
-            isPC ? 'px-8' : 'px-4',
+            'flex shrink-0 items-center bg-components-panel-bg py-3',
+            showWorkflowLayout
+              ? 'justify-between gap-3 px-6'
+              : isPC
+                ? 'gap-1.5 px-8'
+                : 'gap-1.5 px-4',
             !isPC && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
           )}
         >
-          <div className="system-2xs-medium-uppercase text-text-tertiary">
-            {t(($) => $['chat.poweredBy'], { ns: 'share' })}
-          </div>
-          {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo ? (
-            <img
-              src={systemFeatures.branding.workspace_logo}
-              alt="logo"
-              className="block h-5 w-auto"
-            />
-          ) : customConfig?.replace_webapp_logo ? (
-            <img src={customConfig.replace_webapp_logo} alt="logo" className="block h-5 w-auto" />
-          ) : (
-            <DifyLogo alt="Dify" size="small" />
+          {showWorkflowLayout &&
+            (entry.showSignIn ? (
+              <SignIn className="system-sm-medium" />
+            ) : (
+              <TextGenerationMenu
+                hideLogout={isInstalledApp}
+                data={siteInfo}
+                side="top"
+                align="start"
+              />
+            ))}
+          {!customConfig?.remove_webapp_brand && (
+            <div className={cn('flex items-center gap-1.5', showWorkflowLayout && 'px-2')}>
+              <div className="system-2xs-medium-uppercase text-text-tertiary">
+                {t(($) => $['chat.poweredBy'], { ns: 'share' })}
+              </div>
+              {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo ? (
+                <img
+                  src={systemFeatures.branding.workspace_logo}
+                  alt="logo"
+                  className="block h-5 w-auto"
+                />
+              ) : customConfig?.replace_webapp_logo ? (
+                <img
+                  src={customConfig.replace_webapp_logo}
+                  alt="logo"
+                  className="block h-5 w-auto"
+                />
+              ) : (
+                <DifyLogo alt="Dify" size="small" />
+              )}
+            </div>
           )}
         </div>
       )}

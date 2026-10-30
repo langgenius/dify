@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "{{account}}의 추가 작업",
   "connections.accounts.reconnect": "다시 연결",
   "connections.accounts.reconnectRequired": "다시 연결해야 합니다",
-  "connections.accounts.remove": "제거",
+  "connections.accounts.remove": "계정 제거",
   "connections.accounts.title": "{{provider}} 계정",
   "connections.apiKeys.invalid": "유효하지 않은 API 키",
   "connections.apiKeys.remove": "API 키 제거",

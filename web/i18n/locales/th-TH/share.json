@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "การดำเนินการเพิ่มเติมสำหรับ {{account}}",
   "connections.accounts.reconnect": "เชื่อมต่อใหม่",
   "connections.accounts.reconnectRequired": "ต้องเชื่อมต่อใหม่",
-  "connections.accounts.remove": "นำออก",
+  "connections.accounts.remove": "นำบัญชีออก",
   "connections.accounts.title": "บัญชี {{provider}}",
   "connections.apiKeys.invalid": "คีย์ API ไม่ถูกต้อง",
   "connections.apiKeys.remove": "นำคีย์ API ออก",

@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "Другие действия для {{account}}",
   "connections.accounts.reconnect": "Подключить заново",
   "connections.accounts.reconnectRequired": "Требуется повторное подключение",
-  "connections.accounts.remove": "Удалить",
+  "connections.accounts.remove": "Удалить аккаунт",
   "connections.accounts.title": "Аккаунты {{provider}}",
   "connections.apiKeys.invalid": "Недействительный ключ API",
   "connections.apiKeys.remove": "Удалить ключ API",

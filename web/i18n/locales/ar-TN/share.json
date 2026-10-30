@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "مزيد من الإجراءات للحساب {{account}}",
   "connections.accounts.reconnect": "إعادة الاتصال",
   "connections.accounts.reconnectRequired": "إعادة الاتصال مطلوبة",
-  "connections.accounts.remove": "إزالة",
+  "connections.accounts.remove": "إزالة الحساب",
   "connections.accounts.title": "حسابات {{provider}}",
   "connections.apiKeys.invalid": "مفتاح API غير صالح",
   "connections.apiKeys.remove": "إزالة مفتاح API",

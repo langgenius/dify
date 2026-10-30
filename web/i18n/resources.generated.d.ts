@@ -4987,7 +4987,7 @@ export default interface Resources {
     'connections.accounts.moreActions': 'More actions for {{account}}'
     'connections.accounts.reconnect': 'Reconnect'
     'connections.accounts.reconnectRequired': 'Reconnect required'
-    'connections.accounts.remove': 'Remove'
+    'connections.accounts.remove': 'Remove account'
     'connections.accounts.title': '{{provider}} accounts'
     'connections.apiKeys.invalid': 'Invalid API key'
     'connections.apiKeys.remove': 'Remove API Key'

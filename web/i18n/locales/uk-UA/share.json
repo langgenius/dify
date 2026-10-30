@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "Інші дії для {{account}}",
   "connections.accounts.reconnect": "Підключити знову",
   "connections.accounts.reconnectRequired": "Потрібне повторне підключення",
-  "connections.accounts.remove": "Видалити",
+  "connections.accounts.remove": "Видалити обліковий запис",
   "connections.accounts.title": "Облікові записи {{provider}}",
   "connections.apiKeys.invalid": "Недійсний ключ API",
   "connections.apiKeys.remove": "Видалити ключ API",

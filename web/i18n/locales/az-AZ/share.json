@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "{{account}} üçün daha çox əməliyyat",
   "connections.accounts.reconnect": "Yenidən qoşul",
   "connections.accounts.reconnectRequired": "Yenidən qoşulmaq tələb olunur",
-  "connections.accounts.remove": "Sil",
+  "connections.accounts.remove": "Hesabı sil",
   "connections.accounts.title": "{{provider}} hesabları",
   "connections.apiKeys.invalid": "Etibarsız API açarı",
   "connections.apiKeys.remove": "API açarını sil",

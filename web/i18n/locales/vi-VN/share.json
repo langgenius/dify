@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "Thao tác khác cho {{account}}",
   "connections.accounts.reconnect": "Kết nối lại",
   "connections.accounts.reconnectRequired": "Cần kết nối lại",
-  "connections.accounts.remove": "Xóa",
+  "connections.accounts.remove": "Xóa tài khoản",
   "connections.accounts.title": "Tài khoản {{provider}}",
   "connections.apiKeys.invalid": "Khóa API không hợp lệ",
   "connections.apiKeys.remove": "Xóa khóa API",

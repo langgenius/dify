@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "Mai multe acțiuni pentru {{account}}",
   "connections.accounts.reconnect": "Reconectează",
   "connections.accounts.reconnectRequired": "Este necesară reconectarea",
-  "connections.accounts.remove": "Elimină",
+  "connections.accounts.remove": "Elimină contul",
   "connections.accounts.title": "Conturi {{provider}}",
   "connections.apiKeys.invalid": "Cheie API nevalidă",
   "connections.apiKeys.remove": "Elimină cheia API",

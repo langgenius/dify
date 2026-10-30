@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "{{account}} のその他の操作",
   "connections.accounts.reconnect": "再接続",
   "connections.accounts.reconnectRequired": "再接続が必要です",
-  "connections.accounts.remove": "削除",
+  "connections.accounts.remove": "アカウントを削除",
   "connections.accounts.title": "{{provider}} のアカウント",
   "connections.apiKeys.invalid": "無効な API キー",
   "connections.apiKeys.remove": "API キーを削除",

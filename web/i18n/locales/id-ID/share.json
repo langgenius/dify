@@ -29,7 +29,7 @@
   "connections.accounts.moreActions": "Tindakan lainnya untuk {{account}}",
   "connections.accounts.reconnect": "Hubungkan ulang",
   "connections.accounts.reconnectRequired": "Perlu menghubungkan ulang",
-  "connections.accounts.remove": "Hapus",
+  "connections.accounts.remove": "Hapus akun",
   "connections.accounts.title": "Akun {{provider}}",
   "connections.apiKeys.invalid": "Kunci API tidak valid",
   "connections.apiKeys.remove": "Hapus kunci API",
