@@ -262,7 +262,7 @@ describe('Plugin model configuration', () => {
     await waitFor(() =>
       expect(setModel).toHaveBeenCalledWith({ ...selected, completion_params: {} }),
     )
-    expect(requests.error).toHaveBeenCalledExactlyOnceWith('common.error')
+    expect(requests.error).toHaveBeenCalledExactlyOnceWith('Rules unavailable')
   })
 
   it('selects a non-LLM model without fetching completion parameter rules', async () => {
