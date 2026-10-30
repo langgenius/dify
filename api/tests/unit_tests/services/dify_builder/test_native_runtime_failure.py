@@ -51,6 +51,63 @@ def test_runtime_service_failure_card_retains_native_run_and_specific_node() -> 
     assert "claude-opus-4-8" in english_text(card.failure_reason)
 
 
+@pytest.mark.parametrize(
+    ("reason", "phase"),
+    [
+        ("credential_unavailable", "preparation"),
+        ("authorization_lookup_failed", "preparation"),
+        ("permission_denied", "execution"),
+    ],
+)
+def test_resource_failure_card_survives_public_conversation_readback(reason: str, phase: str) -> None:
+    from dataclasses import asdict
+
+    from controllers.console.dify_builder_fields import DifyBuilderConversationPageResponse
+    from libs.helper import dump_response
+
+    native_id = "native" if phase == "execution" else None
+    evidence = ExecutionEvidenceSummary.model_validate(
+        {
+            "request_id": "request",
+            "policy_version": "builder-confirmed-run-v1",
+            "mode": "confirmed_run",
+            "sealed": True,
+            "safety_outcome": "native_failed" if native_id else "preparation_failed",
+            "sandbox_profile": "native",
+            "native_run_id": native_id,
+            "failure_phase": phase,
+            "failure_reason": reason,
+            "failure_resource": ["tool", "langgenius/google/google", "google_search"],
+            "failure_node_ids": ["search"],
+        }
+    )
+    run = Run(
+        status="failed",
+        dify_run_id=native_id or "",
+        verification=RunVerification(
+            execution_revision="revision",
+            executed_graph_revision="graph",
+            terminal_outputs=None,
+            output_findings=[],
+            executed_node_ids=[],
+            no_output_dead_branch=False,
+            execution_evidence=evidence,
+        ),
+    )
+    item = result_card(run).to_item(seq=12, at_version=8)
+    raw_item = asdict(item)
+    page = {"data": [raw_item], "has_more": False, "first_seq": 12, "last_seq": 12}
+    response = dump_response(DifyBuilderConversationPageResponse, page)
+    payload = response["data"][0]["payload"]
+    assert payload["failure_code"] == reason
+    assert payload["failure_phase"] == phase
+    assert payload["failure_node_ids"] == ["search"]
+    assert payload["failure_resource"] == "langgenius/google/google/google_search"
+    raw_item["payload"]["failure_code"] = "arbitrary_provider_error_body"
+    with pytest.raises(ValidationError):
+        dump_response(DifyBuilderConversationPageResponse, page)
+
+
 @pytest.mark.parametrize("variant", ["unsealed", "unknown", "no_native"])
 def test_runtime_failure_cannot_claim_unknown_or_missing_native_evidence(variant: str) -> None:
     value = {
