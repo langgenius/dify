@@ -33,7 +33,12 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
 )
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.workflow import app_generator as wf_app_gen_module
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
 from core.app.file_access import DatabaseFileAccessController
 from core.app.task_pipeline import message_cycle_manager
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
@@ -1967,6 +1972,7 @@ def _make_workflow_generate_entity() -> WorkflowAppGenerateEntity:
         inputs={},
         files=[],
         user_id="user",
+        user_from=UserFrom.END_USER,
         stream=False,
         invoke_from=InvokeFrom.SERVICE_API,
         workflow_execution_id="paused-run",

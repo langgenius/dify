@@ -1,7 +1,7 @@
 """keep one tracing configuration per app and provider
 
 Revision ID: 53c10126d551
-Revises: b9d3f7a5c102
+Revises: 0cc3158b50b0
 Create Date: 2026-10-23 12:00:00.000000
 
 Configuration writes lock the app row, but rows written before that lock existed can
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "53c10126d551"
-down_revision = "b9d3f7a5c102"
+down_revision = "0cc3158b50b0"
 branch_labels = None
 depends_on = None
 
