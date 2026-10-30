@@ -51,11 +51,14 @@ changes, and CI checks the PR against its target revision.
 
 - Start each design from explicit principles and domain invariants. An invariant is a condition that all valid states preserve.
 - Derive implementation rules and memory documents from these principles. Explain the invariant that each rule protects.
+- Document each invariant in the docstring of the module, class, or function that owns it. Use a comment for a local invariant.
 - Use abstract interpretation to reason about possible values and state transitions. Check that each operation preserves the relevant invariants.
 - Use dedicated types to distinguish domain values with different meanings. Use `NewType` for static distinctions between values with identical representations.
 - `NewType` does not validate values at runtime. Use validated value objects when an invariant requires runtime checks.
+- Model mutually exclusive alternatives (an OR relationship) with union types. Use a tagged union when variants need an explicit discriminator.
+- Give each tagged variant a distinct `Literal` tag. Include only the fields that are valid for that variant.
 - Prefer safe-by-construction functional idioms. Use immutable values, explicit result variants, and pure functions where practical.
-- Validate external values at boundaries. Construct trusted domain values only after validation succeeds.
+- Validate external values at boundaries with Pydantic v2 models or `TypeAdapter`. Construct trusted domain values only after validation succeeds.
 
 ## Control Flow And Contracts
 
