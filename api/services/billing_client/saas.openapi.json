@@ -1,0 +1,340 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "",
+    "version": "0.0.1"
+  },
+  "x-dify-saas-commit": "a0b548cf3020d490a8b7fad21dfbb66b72fa0ed6",
+  "paths": {
+    "/v1/account": {
+      "delete": {
+        "tags": [
+          "Account"
+        ],
+        "description": "删除账户",
+        "operationId": "Account_DeleteAccount",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteAccountReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/in-freeze": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "description": "检查邮箱是否在冻结期",
+        "operationId": "Account_CheckAccountInFreeze",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckAccountInFreezeReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/delete-feedback": {
+      "post": {
+        "tags": [
+          "Account"
+        ],
+        "description": "添加删除反馈",
+        "operationId": "Account_AddDeleteFeedback",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddDeleteFeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddDeleteFeedbackReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notifications/active": {
+      "get": {
+        "tags": [
+          "SaasNotification"
+        ],
+        "operationId": "SaasNotification_GetAccountNotification",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetAccountNotificationReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/notifications/{notificationId}/dismiss": {
+      "post": {
+        "tags": [
+          "SaasNotification"
+        ],
+        "operationId": "SaasNotification_DismissNotification",
+        "parameters": [
+          {
+            "name": "notificationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DismissNotificationReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DismissNotificationReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AddDeleteFeedbackReply": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "AddDeleteFeedbackRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "feedback": {
+            "type": "string"
+          }
+        },
+        "description": "AddDeleteFeedback",
+        "required": [
+          "email",
+          "feedback"
+        ]
+      },
+      "CheckAccountInFreezeReply": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "boolean",
+            "description": "Keep the boolean data field for compatibility with dify-api clients."
+          },
+          "freezeType": {
+            "enum": [
+              "",
+              "freeze",
+              "email_domain_suspended"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "freezeType"
+        ]
+      },
+      "DeleteAccountReply": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "DismissNotificationReply": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ]
+      },
+      "DismissNotificationReq": {
+        "type": "object",
+        "properties": {
+          "notificationId": {
+            "type": "string"
+          },
+          "accountId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "notificationId",
+          "accountId"
+        ]
+      },
+      "GetAccountNotificationReply": {
+        "type": "object",
+        "properties": {
+          "shouldShow": {
+            "type": "boolean",
+            "description": "true when at least one notification is present."
+          },
+          "notifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationPayload"
+            },
+            "description": "All eligible notifications for this account, ordered newest first."
+          }
+        },
+        "required": [
+          "shouldShow",
+          "notifications"
+        ]
+      },
+      "LangContent": {
+        "type": "object",
+        "properties": {
+          "lang": {
+            "type": "string",
+            "description": "Language tag: \"zh\" | \"en\" | \"jp\""
+          },
+          "title": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "titlePicUrl": {
+            "type": "string"
+          }
+        },
+        "description": "LangContent carries the notification content for a single language.\n The fields here mirror biz.LangContent; both must be kept in sync.",
+        "required": [
+          "lang",
+          "title",
+          "subtitle",
+          "body",
+          "titlePicUrl"
+        ]
+      },
+      "NotificationPayload": {
+        "type": "object",
+        "properties": {
+          "notificationId": {
+            "type": "string"
+          },
+          "contents": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/LangContent"
+            },
+            "description": "All available language variants keyed by lang tag (\"zh\", \"en\", \"jp\").\n Frontend picks the appropriate language from this map."
+          },
+          "frequency": {
+            "enum": [
+              "once",
+              "every_page_load"
+            ],
+            "type": "string",
+            "description": "\"once\" | \"every_page_load\" — frontend uses this to decide re-display logic."
+          },
+          "isGlobal": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "notificationId",
+          "contents",
+          "frequency",
+          "isGlobal"
+        ]
+      }
+    }
+  }
+}
