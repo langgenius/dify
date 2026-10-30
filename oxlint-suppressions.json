@@ -1078,9 +1078,6 @@
     }
   },
   "web/app/components/base/chat/chat/answer/workflow-process.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    },
     "eslint-react/set-state-in-effect": {
       "count": 1
     }
