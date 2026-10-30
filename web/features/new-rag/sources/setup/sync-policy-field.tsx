@@ -374,7 +374,7 @@ export function SyncPolicyField({
         }}
         onOpenChange={setCustomOpen}
       />
-      {customIntervalSelected && (
+      {value.mode !== 'manual' && (
         <p className="system-xs-regular text-text-tertiary">
           {t(($) => $.syncPolicyCustomDescription, {
             ns: 'knowledgeSources',

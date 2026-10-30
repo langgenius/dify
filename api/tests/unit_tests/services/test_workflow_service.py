@@ -4370,3 +4370,134 @@ class TestWorkflowAgentPreviewIdentityCases:
         prefill.assert_not_called()
         with sessions() as session:
             assert session.scalar(select(func.count()).select_from(WorkflowNodeExecutionModel)) == 0
+
+
+@pytest.mark.parametrize("source_mode", [AppMode.CHAT, AppMode.COMPLETION])
+@pytest.mark.parametrize(
+    ("access_mode", "outcome"),
+    [
+        ("public", "success"),
+        ("private", "success"),
+        ("private_all", "success"),
+        ("sso_verified", "success"),
+        ("private", "read_timeout"),
+        ("private", "write_error"),
+        ("private", "false_result"),
+        ("private", "disabled"),
+        ("private", "conversion_error"),
+    ],
+)
+def test_convert_to_workflow_inherits_webapp_access(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    source_mode: AppMode,
+    access_mode: str,
+    outcome: str,
+) -> None:
+    import httpx
+    from blinker import Signal
+
+    from events.event_handlers.create_installed_app_when_app_created import handle as create_installation
+    from events.event_handlers.create_site_record_when_app_created import handle as create_site
+    from models.model import AppModelConfig, InstalledApp, Site
+    from services.enterprise.enterprise_service import EnterpriseRequest
+    from services.errors.enterprise import EnterpriseServiceError
+    from services.workflow import workflow_converter as converter_module
+
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY if outcome == "disabled" else DeploymentEdition.ENTERPRISE,
+    )
+    created_signal = Signal()
+    created_signal.connect(create_site)
+    created_signal.connect(create_installation)
+    monkeypatch.setattr(converter_module, "app_was_created", created_signal)
+    source_id = str(uuid4())
+    calls: list[str] = []
+    written: dict[str, str] = {}
+    write_error = EnterpriseServiceError("write failed")
+
+    def build_graph(
+        _converter: converter_module.WorkflowConverter,
+        *,
+        app_model: App,
+        app_model_config: AppModelConfig,
+        account_id: str,
+        session: Session,
+    ) -> Workflow:
+        assert app_model_config.app_id == app_model.id
+        if outcome == "conversion_error":
+            raise ValueError("conversion failed")
+        workflow = Workflow(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            type=WorkflowType.CHAT if source_mode == AppMode.CHAT else WorkflowType.WORKFLOW,
+            version=Workflow.VERSION_DRAFT,
+            graph='{"nodes": [], "edges": []}',
+            _features="{}",
+            created_by=account_id,
+            _environment_variables=[],
+            _conversation_variables=[],
+        )
+        session.add(workflow)
+        session.commit()
+        return workflow
+
+    monkeypatch.setattr(converter_module.WorkflowConverter, "convert_app_model_config_to_workflow", build_graph)
+    with sqlite_session_factory(expire_on_commit=True) as session:
+        account = make_account(account_id=str(uuid4()), interface_language="en-US")
+        source = make_app(app_id=source_id, mode=source_mode, tenant_id=str(uuid4()))
+        config = AppModelConfig(app_id=source_id)
+        source.app_model_config_id = config.id
+        session.add_all([account, source, config])
+        session.commit()
+
+        def request(method: str, endpoint: str, **kwargs: Any) -> dict[str, Any]:
+            assert not session.in_transaction(), "Enterprise I/O must run after conversion commits"
+            calls.append(method)
+            if method == "GET":
+                assert endpoint == "/webapp/access-mode/id"
+                assert kwargs["params"] == {"appId": source_id}
+                if outcome == "read_timeout":
+                    raise httpx.ReadTimeout("source unavailable")
+                return {"accessMode": access_mode}
+            assert method == "POST"
+            assert endpoint == "/webapp/access-mode"
+            target_id = kwargs["json"]["appId"]
+            assert target_id != source_id
+            assert kwargs["json"]["accessMode"] == ("public" if outcome == "read_timeout" else access_mode)
+            if outcome == "write_error":
+                raise write_error
+            written[target_id] = kwargs["json"]["accessMode"]
+            return {"result": outcome != "false_result"}
+
+        monkeypatch.setattr(EnterpriseRequest, "send_request", request)
+        service = WorkflowService(session_maker=sqlite_session_factory)
+        if outcome == "conversion_error":
+            with pytest.raises(ValueError, match="conversion failed"):
+                service.convert_to_workflow(source, account, {"name": "Converted"}, session=session)
+            assert calls == []
+            return
+        if outcome == "write_error":
+            with pytest.raises(EnterpriseServiceError) as raised:
+                service.convert_to_workflow(source, account, {"name": "Converted"}, session=session)
+            assert raised.value is write_error
+            assert calls == ["GET", "POST"]
+        else:
+            target = service.convert_to_workflow(source, account, {"name": "Converted"}, session=session)
+            assert target.id != source_id
+            assert target.mode == (AppMode.ADVANCED_CHAT if source_mode == AppMode.CHAT else AppMode.WORKFLOW)
+            assert target.workflow_id is None
+            assert calls == ([] if outcome == "disabled" else ["GET", "POST"])
+            if outcome != "disabled":
+                assert written == {target.id: "public" if outcome == "read_timeout" else access_mode}
+
+    with sqlite_session_factory() as verification:
+        target = verification.scalar(select(App).where(App.name == "Converted"))
+        assert target is not None
+        assert verification.get(App, source_id) is not None
+        workflow = verification.scalar(select(Workflow).where(Workflow.app_id == target.id))
+        assert workflow is not None
+        assert workflow.version == Workflow.VERSION_DRAFT
+        assert verification.scalar(select(Site).where(Site.app_id == target.id)) is not None
+        assert verification.scalar(select(InstalledApp).where(InstalledApp.app_id == target.id)) is not None

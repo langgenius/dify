@@ -139,6 +139,48 @@ class TestNotionExtractorCases:
             with pytest.raises(ValueError, match="notion page type not supported"):
                 extractor._load_data_as_documents("obj", "unsupported")
 
+        @pytest.mark.parametrize(
+            ("page_type", "expected_path"),
+            [("page", "/v1/pages/obj"), ("database", "/v1/databases/obj")],
+        )
+        def test_last_edited_time_get_has_no_json_body(
+            self, monkeypatch: pytest.MonkeyPatch, page_type: str, expected_path: str
+        ) -> None:
+            requests: list[httpx.Request] = []
+
+            def respond(request: httpx.Request) -> httpx.Response:
+                requests.append(request)
+                return httpx.Response(200, json={"last_edited_time": "2024-01-01T00:00:00Z"})
+
+            transport = httpx.MockTransport(respond)
+
+            def send(
+                method: str,
+                url: str,
+                *,
+                headers: dict[str, str],
+                timeout: httpx.Timeout,
+                json: object | None = None,
+            ) -> httpx.Response:
+                with httpx.Client(transport=transport) as client:
+                    return client.request(method, url, headers=headers, timeout=timeout, json=json)
+
+            monkeypatch.setattr(notion_extractor.httpx, "request", send)
+            extractor = notion_extractor.NotionExtractor(
+                notion_workspace_id="ws",
+                notion_obj_id="obj",
+                notion_page_type=page_type,
+                tenant_id="tenant",
+                notion_access_token="token",
+                notion_token_loader=lambda: "token",
+            )
+
+            assert extractor.get_notion_last_edited_time() == "2024-01-01T00:00:00Z"
+            assert len(requests) == 1
+            assert requests[0].method == "GET"
+            assert requests[0].url.path == expected_path
+            assert requests[0].content == b""
+
     class TestNotionDatabase:
         def test_get_notion_database_data_parses_property_types_and_pagination(self, mocker: MockerFixture) -> None:
             extractor = notion_extractor.NotionExtractor(

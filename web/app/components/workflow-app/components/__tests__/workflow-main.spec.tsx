@@ -390,7 +390,7 @@ it('saves the trusted graph on a directed request and acknowledges the persisted
 })
 
 it('replaces the canvas from a workflow update and records its revision', async () => {
-  const { store } = await renderMain()
+  const { store } = await renderMain({ initialStoreState: { syncWorkflowDraftIsEmpty: true } })
   api.fetchDraft.mockResolvedValue(
     draft({
       hash: 'remote-hash',
@@ -409,6 +409,23 @@ it('replaces the canvas from a workflow update and records its revision', async 
   // happy-dom does not measure ReactFlow nodes; verify content in the real renderer.
   expect(await screen.findByText('Remote entry')).toBeInTheDocument()
   expect(store.getState().syncWorkflowDraftHash).toBe('remote-hash')
+  expect(store.getState().syncWorkflowDraftIsEmpty).toBe(false)
+})
+
+it('records an empty committed graph received from another collaborator', async () => {
+  const { store } = await renderMain({ initialStoreState: { syncWorkflowDraftIsEmpty: false } })
+  api.fetchDraft.mockResolvedValue(
+    draft({ hash: 'empty-remote-hash', graph: { nodes: [], edges: [] } }),
+  )
+
+  await act(async () => {
+    await updateWorkflow()
+  })
+
+  expect(store.getState()).toMatchObject({
+    syncWorkflowDraftHash: 'empty-remote-hash',
+    syncWorkflowDraftIsEmpty: true,
+  })
 })
 
 it('saves newly applied features when a follower requests synchronization', async () => {
@@ -841,7 +858,7 @@ it('imports a DSL file and replaces the graph through the real update event', as
   )
   const { store } = await renderMain({
     collaboration: false,
-    initialStoreState: { showImportDSLModal: true },
+    initialStoreState: { showImportDSLModal: true, syncWorkflowDraftIsEmpty: true },
   })
   const dialog = await screen.findByRole('dialog', { name: 'app.importApp' })
   // The native file picker is hidden behind the uploader's Browse action.
@@ -854,6 +871,7 @@ it('imports a DSL file and replaces the graph through the real update event', as
   expect(await screen.findByText('Imported entry')).toBeInTheDocument()
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(store.getState().syncWorkflowDraftHash).toBe('imported-hash')
+  expect(store.getState().syncWorkflowDraftIsEmpty).toBe(false)
   expect(api.importDSL).toHaveBeenCalledExactlyOnceWith({
     body: { mode: 'yaml-content', yaml_content: yaml, app_id: 'app-1' },
   })

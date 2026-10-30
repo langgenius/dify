@@ -94,11 +94,29 @@ $response = $difyClient->message_feedback($message_id, $rating, "user_id");
 
 Replace 'your-api-key-here' with your actual Dify API key.
 
+## Empty app inputs
+
+Apps without custom input variables can be called with an empty PHP array:
+
+```php
+$response = $chatClient->create_chat_message([], "Hello", "user_id", "blocking");
+```
+
+The SDK sends the top-level `inputs` as `{}`, as required by the API, for chat,
+completion and workflow requests. Nonempty input maps and nested arrays retain
+their values and JSON types.
+
 ## License
 
 This SDK is released under the MIT License.
 
 ## Tests
 
-After `composer install`, run `php tests/base_url_test.php` from this directory.
-The regression uses Guzzle's mock transport and does not contact an API or model provider.
+After `composer install`, run these commands from this directory:
+
+```sh
+php tests/base_url_test.php
+php tests/input_object_test.php
+```
+
+The regressions use Guzzle's mock transport and do not contact an API or model provider.

@@ -6,7 +6,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
@@ -137,6 +137,7 @@ def _build_generate_entity(
         workflow_id=workflow_id,
     )
     return WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id=str(uuid.uuid4()),
         app_config=app_config,
         inputs={},
