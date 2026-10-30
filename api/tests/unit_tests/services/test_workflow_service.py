@@ -1333,12 +1333,10 @@ class TestWorkflowServiceCases:
             with patch(
                 "services.end_user_connection_adapters.PluginApiKeyCredentialGateway.provider", return_value=provider
             ):
-                issues = workflow_service.check_publish_tool_credentials(workflow)
-            assert len(issues) == 1
-            assert issues[0].node_id == "personal"
-            assert issues[0].code == "tool_provider_auth_unsupported"
+                with pytest.raises(ValueError, match="Node personal: The provider or tool"):
+                    workflow_service._validate_publish_tool_credentials(workflow)
 
-        def test_publish_credential_check_returns_all_static_issues(self, workflow_service: WorkflowService) -> None:
+        def test_publish_credential_check_stops_at_first_static_issue(self, workflow_service: WorkflowService) -> None:
             workflow = MagicMock()
             workflow.graph_dict = {
                 "nodes": [
@@ -1346,9 +1344,11 @@ class TestWorkflowServiceCases:
                     {"id": "second", "data": {"type": "tool", "credential_source": "end_user"}},
                 ]
             }
-            issues = workflow_service.check_publish_tool_credentials(workflow)
-            assert {issue.node_id for issue in issues} == {"first", "second"}
-            assert all(issue.code == "tool_credential_config_invalid" for issue in issues)
+            with patch("services.end_user_connection_adapters.PluginApiKeyCredentialGateway.provider") as provider:
+                with pytest.raises(ValueError, match="Node first") as exc:
+                    workflow_service._validate_publish_tool_credentials(workflow)
+            assert "second" not in str(exc.value)
+            provider.assert_not_called()
 
         def test_publish_credential_check_propagates_provider_outage(self, workflow_service: WorkflowService) -> None:
             from services.end_user_connections.errors import ConnectionCheckUnavailableError
@@ -1377,7 +1377,46 @@ class TestWorkflowServiceCases:
                 side_effect=ConnectionCheckUnavailableError(),
             ):
                 with pytest.raises(ConnectionCheckUnavailableError):
-                    workflow_service.check_publish_tool_credentials(workflow)
+                    workflow_service._validate_publish_tool_credentials(workflow)
+
+        @pytest.mark.parametrize("trigger", ["trigger-schedule", "trigger-webhook", "trigger-plugin"])
+        def test_publish_rejects_end_user_auth_in_trigger_workflow(
+            self, workflow_service: WorkflowService, trigger: str
+        ) -> None:
+            workflow = MagicMock()
+            workflow.graph_dict = {
+                "nodes": [
+                    {"id": "trigger", "data": {"type": trigger}},
+                    {
+                        "id": "personal",
+                        "data": {
+                            "type": "tool",
+                            "provider_id": "provider",
+                            "provider_type": "builtin",
+                            "tool_name": "send",
+                            "credential_source": "end_user",
+                            "end_user_auth": {
+                                "allowed_credential_types": ["api-key"],
+                                "purpose": "Send",
+                            },
+                        },
+                    },
+                ]
+            }
+            with patch("services.end_user_connection_adapters.PluginApiKeyCredentialGateway.provider") as provider:
+                with pytest.raises(ValueError, match="Node personal: EndUser credentials.*trigger workflows"):
+                    workflow_service._validate_publish_tool_credentials(workflow)
+            provider.assert_not_called()
+
+        def test_publish_allows_trigger_with_workspace_credentials(self, workflow_service: WorkflowService) -> None:
+            workflow = MagicMock()
+            workflow.graph_dict = {
+                "nodes": [
+                    {"id": "trigger", "data": {"type": "trigger-schedule"}},
+                    {"id": "workspace", "data": {"type": "tool", "credential_source": "workspace"}},
+                ]
+            }
+            workflow_service._validate_publish_tool_credentials(workflow)
 
         def test_publish_workflow_success(self, workflow_service: WorkflowService, sqlite_session: Session):
             """
