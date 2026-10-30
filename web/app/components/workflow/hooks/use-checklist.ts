@@ -34,8 +34,9 @@ import {
 } from '@/app/components/workflow/editor-resource/state'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { toast } from '@/app/notifications'
-import { MAX_TREE_DEPTH } from '@/config'
+import { ENABLE_HITL_IM, MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
+import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import {
   createAgentToolProviderCatalog,
@@ -50,6 +51,8 @@ import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
 import { hasValidInlineAgentBinding, isAgentV2NodeData } from '../nodes/agent-v2/types'
 import AgentDefault from '../nodes/agent/default'
+import { getContactRecipientQueryOptions } from '../nodes/human-input-v2/contact-provider'
+import { isHumanInputV2NodeData } from '../nodes/human-input-v2/types'
 import { IndexMethodEnum } from '../nodes/knowledge-base/types'
 import {
   getLLMModelIssue,
@@ -97,6 +100,24 @@ type NodeValidator = NonNullable<
 >[BlockEnum]['checkValid']
 
 const EMPTY_ENVIRONMENT_VARIABLES: EnvironmentVariable[] = []
+
+const getHumanInputContactIds = (nodes: Node[]) => {
+  if (!ENABLE_HITL_IM) return []
+
+  return [
+    ...new Set(
+      nodes.flatMap((node) =>
+        node.type === CUSTOM_NODE && isHumanInputV2NodeData(node.data)
+          ? node.data.recipients_spec.flatMap((recipient) =>
+              recipient.type === 'contact' && recipient.contact_id.trim()
+                ? [recipient.contact_id]
+                : [],
+            )
+          : [],
+      ),
+    ),
+  ].sort()
+}
 
 const withResourceKind = (
   moreDataForCheckValid: CheckValidExtraData,
@@ -162,6 +183,14 @@ const getDuplicateEndOutputMessages = (
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation(['agentV2', 'common', 'workflow', 'modelProvider'])
   const language = useGetLanguage()
+  const workspaceId = useAtomValue(currentWorkspaceIdAtom)
+  const contactIds = useMemo(() => getHumanInputContactIds(nodes), [nodes])
+  const contactQuery = useQuery(getContactRecipientQueryOptions(workspaceId, contactIds))
+  const resolvedContactIds = useMemo(
+    () =>
+      new Set(contactQuery.isSuccess ? contactQuery.data.data.map((contact) => contact.id) : []),
+    [contactQuery.data, contactQuery.isSuccess],
+  )
   const { nodesMap: nodesExtraData } = useNodesMetaData()
   const { data: buildInTools } = useQuery(
     consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
@@ -430,6 +459,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         }
       }
 
+      if (isHumanInputV2NodeData(node!.data)) moreDataForCheckValid = { resolvedContactIds }
+
       if (node!.type === CUSTOM_NODE) {
         const checkData = getCheckData(node!.data)
         const validator = resolveNodeValidator(node!.data, nodesExtraData)
@@ -613,6 +644,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     inlineAgentConfigurationIssues,
     inlineAgentToolPresentation.toolDisplayNameById,
     resourceKind,
+    resolvedContactIds,
   ])
 
   useEffect(() => {
@@ -629,6 +661,7 @@ export const useChecklistBeforePublish = () => {
   const { t } = useTranslation(['common', 'workflow', 'modelProvider'])
   const language = useGetLanguage()
   const queryClient = useQueryClient()
+  const workspaceId = useAtomValue(currentWorkspaceIdAtom)
   const store = useStoreApi()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
   const { data: strategyProviders } = useQuery(
@@ -779,9 +812,25 @@ export const useChecklistBeforePublish = () => {
       return datasetsDetail || []
     }
 
-    const [embeddingProviderModelMap, datasets] = await Promise.all([
+    const fetchLatestContactIds = async () => {
+      const contactIds = getHumanInputContactIds(filteredNodes)
+      if (!contactIds.length || !workspaceId) return new Set<string>()
+
+      try {
+        const response = await queryClient.query(
+          getContactRecipientQueryOptions(workspaceId, contactIds),
+        )
+        return new Set(response.data.map((contact) => contact.id))
+      } catch {
+        // Unverified recipients must not pass publication using an older cached response.
+        return new Set<string>()
+      }
+    }
+
+    const [embeddingProviderModelMap, datasets, resolvedContactIds] = await Promise.all([
       fetchKnowledgeBaseProviderModelMap(),
       fetchLatestDatasets(),
+      fetchLatestContactIds(),
     ])
 
     if (datasets === null) return false
@@ -852,6 +901,8 @@ export const useChecklistBeforePublish = () => {
           return false
         }
       }
+
+      if (isHumanInputV2NodeData(node!.data)) moreDataForCheckValid = { resolvedContactIds }
 
       const checkData = getCheckData(node!.data, datasets, embeddingProviderModelMap)
       const validator = resolveNodeValidator(node!.data, nodesExtraData)
@@ -956,6 +1007,7 @@ export const useChecklistBeforePublish = () => {
     strategyProviders,
     modelProviders,
     resourceKind,
+    workspaceId,
   ])
 
   return {

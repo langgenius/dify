@@ -34,7 +34,12 @@ const nodeDefault: NodeDefault<HumanInputV2NodeType> = {
     timeout: 36,
     timeout_unit: 'hour',
   },
-  checkValid(payload, t: TFunction<['workflow']>) {
+  checkValid(
+    payload,
+    t: TFunction<['workflow']>,
+    moreDataForCheckValid?: { resolvedContactIds?: ReadonlySet<string> },
+  ) {
+    const resolvedContactIds = moreDataForCheckValid?.resolvedContactIds
     let errorMessage = ''
     if (!ENABLE_HITL_IM)
       errorMessage = t(($) => $['nodes.humanInputV2.disabled'], { ns: 'workflow' })
@@ -43,6 +48,14 @@ const nodeDefault: NodeDefault<HumanInputV2NodeType> = {
     else if (!payload.recipients_spec.length)
       errorMessage = t(($) => $['nodes.humanInputV2.error.recipientRequired'], { ns: 'workflow' })
     else if (payload.recipients_spec.some(getRecipientValidationError))
+      errorMessage = t(($) => $['nodes.humanInputV2.error.recipientInvalid'], { ns: 'workflow' })
+    else if (
+      resolvedContactIds &&
+      payload.recipients_spec.some(
+        (recipient) =>
+          recipient.type === 'contact' && !resolvedContactIds.has(recipient.contact_id),
+      )
+    )
       errorMessage = t(($) => $['nodes.humanInputV2.error.recipientInvalid'], { ns: 'workflow' })
     else if (hasDuplicateRecipients(payload.recipients_spec))
       errorMessage = t(($) => $['nodes.humanInputV2.error.recipientDuplicate'], { ns: 'workflow' })

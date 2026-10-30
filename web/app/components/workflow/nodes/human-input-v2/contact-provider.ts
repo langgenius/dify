@@ -1,6 +1,6 @@
 import type { ContactOption } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
-import { useQueryClient } from '@tanstack/react-query'
+import { skipToken, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
@@ -35,6 +35,24 @@ const toRecipientOption = (contact: ContactOption): ContactRecipientOption => ({
   source: contact.type === 'platform' ? 'organization' : contact.type,
 })
 
+export function getContactRecipientQueryOptions(
+  workspaceId: string,
+  contactIds: readonly string[],
+) {
+  const operation = consoleQuery.workspaces.current.humanInput.v2.contactOptions.batch.get
+  const input =
+    workspaceId && contactIds.length
+      ? { query: { contact_ids: [...new Set(contactIds)].sort() } }
+      : skipToken
+
+  return operation.queryOptions({
+    input,
+    queryKey: [...operation.queryKey({ input }), { workspaceId }],
+    staleTime: 0,
+    retry: false,
+  })
+}
+
 export function createContactRecipientOptionProvider(
   workspaceId: string,
   queryClient: QueryClient,
@@ -64,13 +82,8 @@ export function createContactRecipientOptionProvider(
     },
     async resolve({ contact_ids }) {
       if (!workspaceId || !contact_ids.length) return []
-      const input = { query: { contact_ids: [...new Set(contact_ids)].sort() } }
       const response = await queryClient.query(
-        contactOptions.batch.get.queryOptions({
-          input,
-          queryKey: [...contactOptions.batch.get.queryKey({ input }), { workspaceId }],
-          staleTime: 0,
-        }),
+        getContactRecipientQueryOptions(workspaceId, contact_ids),
       )
       return response.data.map(toRecipientOption)
     },
