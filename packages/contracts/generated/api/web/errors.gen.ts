@@ -9,7 +9,6 @@ const zConnectionClaimErrorResponse = /* @__PURE__ */ (() =>
       'connection_conflict',
       'end_user_busy',
       'end_user_login_required',
-      'migration_run_in_progress',
       'unauthorized',
       'web_app_access_denied',
     ]),

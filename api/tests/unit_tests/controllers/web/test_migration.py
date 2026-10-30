@@ -1329,43 +1329,112 @@ def test_full_claim_rejects_resource_selection(harness: ClaimHarness) -> None:
 
 @pytest.mark.parametrize("with_connections", [False, True])
 @pytest.mark.parametrize("state", ["running", "paused"])
-def test_guest_runs_wait_for_completion(harness: ClaimHarness, with_connections: bool, state: str) -> None:
+def test_claim_skips_only_unfinished_conversations_and_retry_transfers_them(
+    harness: ClaimHarness, with_connections: bool, state: str
+) -> None:
     from graphon.enums import WorkflowExecutionStatus
+    from models.model import MessageFeedback, UploadFile
+    from models.web import PinnedConversation, SavedMessage
     from models.workflow import WorkflowRun
 
     base = harness.oauth.base
     connection = base.service.create_api_key(base.context, base.command()) if with_connections else None
-    conversation_id, message_id, run_id, _ = persist_migration_history(harness, base.context)
+    active_id, active_message, run_id, active_file = persist_migration_history(harness, base.context)
+    idle_id, idle_message, _, idle_file = persist_migration_history(harness, base.context)
     with base.sessions.begin() as session:
         session.execute(
             sa.update(WorkflowRun)
             .where(WorkflowRun.id == run_id)
-            .values(status=WorkflowExecutionStatus(state), finished_at=None)
+            .values(
+                status=WorkflowExecutionStatus(state),
+                finished_at=None,
+            )
         )
     response = harness.claim()
-    assert response.status_code == 400
-    assert response.get_json()["details"]["failures"][0]["error"]["code"] == "migration_run_in_progress"
-    if connection is not None:
-        assert base.service.get_connection(base.context, connection.id).id == connection.id
-    with base.sessions.begin() as session:
+    assert response.status_code == 200
+    result = response.get_json()["data"][0]
+    assert result["status"] == "success"
+    assert (result["claimed_connections"], result["claimed_conversations"]) == (int(with_connections), 1)
+    assert result["skipped_conversation_count"] == 1
+    assert result["skipped_conversation_ids"] == [active_id]
+    assert result["active_run_count"] == 1
+    with base.sessions() as session:
         assert (
-            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == conversation_id))
+            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == active_id))
             == base.context.end_user_id
         )
+        assert (
+            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == idle_id))
+            == harness.account.end_user_id
+        )
+        for file_id in (active_file, idle_file):
+            assert (
+                session.scalar(sa.select(UploadFile.created_by).where(UploadFile.id == file_id))
+                == harness.account.end_user_id
+            )
+        for conversation_id, owner in ((active_id, base.context.end_user_id), (idle_id, harness.account.end_user_id)):
+            assert (
+                session.scalar(
+                    sa.select(PinnedConversation.created_by).where(
+                        PinnedConversation.conversation_id == conversation_id
+                    )
+                )
+                == owner
+            )
+        for message_id, owner in (
+            (active_message, base.context.end_user_id),
+            (idle_message, harness.account.end_user_id),
+        ):
+            assert (
+                session.scalar(sa.select(SavedMessage.created_by).where(SavedMessage.message_id == message_id)) == owner
+            )
+            assert (
+                session.scalar(
+                    sa.select(MessageFeedback.from_end_user_id).where(MessageFeedback.message_id == message_id)
+                )
+                == owner
+            )
+        assert (
+            session.scalar(sa.select(WorkflowRun.created_by).where(WorkflowRun.id == run_id))
+            == base.context.end_user_id
+        )
+    if connection is not None:
+        assert base.service.get_connection(harness.account, connection.id).id == connection.id
+    repeated = harness.claim().get_json()["data"][0]
+    assert repeated["skipped_conversation_ids"] == [active_id]
+    assert (
+        repeated["claimed_connections"],
+        repeated["claimed_conversations"],
+        repeated["skipped_conversation_count"],
+    ) == (0, 0, 1)
+    with base.sessions.begin() as session:
         session.execute(
             sa.update(WorkflowRun)
             .where(WorkflowRun.id == run_id)
-            .values(status=WorkflowExecutionStatus.SUCCEEDED, finished_at=datetime.now(UTC))
+            .values(
+                status=WorkflowExecutionStatus.SUCCEEDED,
+                finished_at=datetime.now(UTC),
+            )
         )
-    result = harness.claim().get_json()["data"][0]
-    assert (result["claimed_connections"], result["claimed_conversations"]) == (int(with_connections), 1)
+    retry = harness.claim().get_json()["data"][0]
+    assert (
+        retry["claimed_connections"],
+        retry["claimed_conversations"],
+        retry["skipped_conversation_count"],
+        retry["active_run_count"],
+    ) == (0, 1, 0, 0)
+    assert retry["skipped_conversation_ids"] == []
+    with base.sessions() as session:
+        assert (
+            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == active_id))
+            == harness.account.end_user_id
+        )
 
 
-def test_claim_rechecks_run_started_after_preflight(harness: ClaimHarness) -> None:
+def test_claim_skips_run_started_after_initial_source_check(harness: ClaimHarness) -> None:
     from graphon.enums import WorkflowExecutionStatus
     from models.model import UploadFile
     from models.workflow import WorkflowRun
-    from services.web_migration_service import MigrationRunInProgressError
 
     base = harness.oauth.base
     conversation_id, _, run_id, upload_id = persist_migration_history(harness, base.context)
@@ -1374,19 +1443,23 @@ def test_claim_rechecks_run_started_after_preflight(harness: ClaimHarness) -> No
         app_code=harness.oauth.app_code, app_id=base.context.app_id, end_user_id=base.context.end_user_id
     )
     assert source is not None
-    repository.preflight_guest(source)
     with base.sessions.begin() as session:
         session.execute(
             sa.update(WorkflowRun)
             .where(WorkflowRun.id == run_id)
-            .values(status=WorkflowExecutionStatus.RUNNING, finished_at=None)
+            .values(
+                status=WorkflowExecutionStatus.RUNNING,
+                finished_at=None,
+            )
         )
-    with pytest.raises(MigrationRunInProgressError):
-        repository.claim_guest(source, account_end_user_id=harness.account.end_user_id)
+    result = repository.claim_guest(source, account_end_user_id=harness.account.end_user_id)
+    assert result.conversations == 0
+    assert result.skipped_conversations == (conversation_id,)
+    assert result.active_runs == 1
     with base.sessions() as session:
         assert (
             session.scalar(sa.select(UploadFile.created_by).where(UploadFile.id == upload_id))
-            == base.context.end_user_id
+            == harness.account.end_user_id
         )
         assert (
             session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == conversation_id))
@@ -1553,3 +1626,147 @@ def test_preparation_without_an_admitted_run_does_not_block_claim(harness: Claim
     with base.sessions.begin() as session:
         session.execute(sa.delete(WorkflowRun).where(WorkflowRun.id == run_id))
     assert harness.claim().status_code == 200
+
+
+def test_best_effort_handles_more_than_one_conversation_chunk(harness: ClaimHarness) -> None:
+    from graphon.enums import WorkflowExecutionStatus
+    from models.workflow import WorkflowRun
+
+    base = harness.oauth.base
+    active_id, _, run_id, _ = persist_migration_history(harness, base.context)
+    with base.sessions.begin() as session:
+        session.execute(
+            sa.update(WorkflowRun)
+            .where(WorkflowRun.id == run_id)
+            .values(
+                status=WorkflowExecutionStatus.RUNNING,
+                finished_at=None,
+            )
+        )
+        session.add_all(
+            [
+                Conversation(
+                    app_id=base.context.app_id,
+                    mode=AppMode.ADVANCED_CHAT,
+                    name=f"Idle {index}",
+                    from_source=ConversationFromSource.API,
+                    from_end_user_id=base.context.end_user_id,
+                    invoke_from=InvokeFrom.WEB_APP,
+                    _inputs={},
+                )
+                for index in range(501)
+            ]
+        )
+    result = harness.claim().get_json()["data"][0]
+    assert result["claimed_conversations"] == 501
+    assert result["skipped_conversation_count"] == 1
+    assert result["skipped_conversation_ids"] == [active_id]
+    with base.sessions() as session:
+        assert (
+            session.scalar(
+                sa.select(sa.func.count())
+                .select_from(Conversation)
+                .where(
+                    Conversation.app_id == base.context.app_id,
+                    Conversation.from_end_user_id == harness.account.end_user_id,
+                )
+            )
+            == 501
+        )
+
+
+def test_batch_preflight_failure_still_prevents_all_transfers_with_an_active_run(harness: ClaimHarness) -> None:
+    from graphon.enums import WorkflowExecutionStatus
+    from models.model import UploadFile
+    from models.workflow import WorkflowRun
+
+    base = harness.oauth.base
+    connection = base.service.create_api_key(base.context, base.command())
+    conversation_id, _, run_id, file_id = persist_migration_history(harness, base.context)
+    with base.sessions.begin() as session:
+        session.execute(
+            sa.update(WorkflowRun)
+            .where(WorkflowRun.id == run_id)
+            .values(
+                status=WorkflowExecutionStatus.RUNNING,
+                finished_at=None,
+            )
+        )
+    response = harness.client.post(
+        "/api/migration/claim",
+        headers={"Authorization": f"Bearer {harness.proof}"},
+        json={"passports": [harness.guest_passport, "invalid"]},
+    )
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "connection_claim_preflight_failed"
+    assert base.service.get_connection(base.context, connection.id).id == connection.id
+    with base.sessions() as session:
+        assert (
+            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == conversation_id))
+            == base.context.end_user_id
+        )
+        assert (
+            session.scalar(sa.select(UploadFile.created_by).where(UploadFile.id == file_id)) == base.context.end_user_id
+        )
+
+
+def test_batch_continues_after_a_passport_with_an_active_conversation(harness: ClaimHarness) -> None:
+    from graphon.enums import WorkflowExecutionStatus
+    from models.workflow import WorkflowRun
+
+    base = harness.oauth.base
+    active_id, _, run_id, _ = persist_migration_history(harness, base.context)
+    with base.sessions.begin() as session:
+        session.execute(
+            sa.update(WorkflowRun)
+            .where(WorkflowRun.id == run_id)
+            .values(
+                status=WorkflowExecutionStatus.RUNNING,
+                finished_at=None,
+            )
+        )
+        second_guest = EndUser(
+            tenant_id=base.context.tenant_id,
+            app_id=base.context.app_id,
+            type=EndUserType.BROWSER,
+            session_id=str(uuid4()),
+        )
+        session.add(second_guest)
+        session.flush()
+        second_id = second_guest.id
+    second_context = replace(base.context, end_user_id=second_id)
+    second_conversation, _, _, _ = persist_migration_history(harness, second_context)
+    second_token = harness.signer.issue(
+        {
+            "sub": "Web API Passport",
+            "app_id": base.context.app_id,
+            "app_code": harness.oauth.app_code,
+            "end_user_id": second_id,
+        }
+    )
+    response = harness.client.post(
+        "/api/migration/claim",
+        headers={"Authorization": f"Bearer {harness.proof}"},
+        json={"passports": [harness.guest_passport, second_token]},
+    )
+    assert response.status_code == 200
+    first, second = response.get_json()["data"]
+    assert (first["status"], first["skipped_conversation_ids"], first["claimed_conversations"]) == (
+        "success",
+        [active_id],
+        0,
+    )
+    assert (second["status"], second["skipped_conversation_count"], second["claimed_conversations"]) == (
+        "success",
+        0,
+        1,
+    )
+    with base.sessions() as session:
+        assert (
+            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == active_id))
+            == base.context.end_user_id
+        )
+        assert (
+            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == second_conversation))
+            == harness.account.end_user_id
+        )

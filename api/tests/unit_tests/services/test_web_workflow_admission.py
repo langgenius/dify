@@ -22,7 +22,7 @@ from models.model import App, AppMode, EndUser, Site, UploadFile
 from models.workflow import Workflow, WorkflowRun, WorkflowType
 from repositories.entities.web_execution import WebExecutionResourcesChangedError
 from repositories.web_migration_repository import WebMigrationRepository
-from services.web_migration_service import MigrationRunInProgressError
+from services.web_migration_service import MigrationCounts
 from services.web_workflow_admission import web_workflow_launch, web_workflow_worker
 from tests.helpers.unit.model_factories import make_upload_file
 
@@ -38,12 +38,12 @@ class Admission:
     entity: WorkflowAppGenerateEntity
     migration: WebMigrationRepository
 
-    def claim(self) -> None:
+    def claim(self) -> MigrationCounts:
         source = self.migration.get_claim_source(
             app_code="admission", app_id=self.guest.app_id or "", end_user_id=self.guest.id
         )
         assert source is not None
-        self.migration.claim_guest(source, account_end_user_id=self.target.id)
+        return self.migration.claim_guest(source, account_end_user_id=self.target.id)
 
 
 @pytest.fixture
@@ -179,7 +179,7 @@ def test_prepared_guest_resources_are_rechecked_after_migration(admission: Admis
         )
 
 
-def test_committed_admission_blocks_migration_before_worker_start(admission: Admission) -> None:
+def test_running_standalone_workflow_does_not_block_other_resources(admission: Admission) -> None:
     with web_workflow_launch(
         admission.entity,
         workflow=admission.workflow,
@@ -192,8 +192,10 @@ def test_committed_admission_blocks_migration_before_worker_start(admission: Adm
             assert run is not None
             assert run.status == WorkflowExecutionStatus.RUNNING
             assert run.task_id == admission.entity.task_id
-        with pytest.raises(MigrationRunInProgressError):
-            admission.claim()
+        result = admission.claim()
+        assert result.active_runs == 1
+        assert result.connections == 1
+        assert result.skipped_conversations == ()
     with web_workflow_worker(admission.entity):
         with admission.sessions.begin() as session:
             session.execute(
@@ -201,7 +203,7 @@ def test_committed_admission_blocks_migration_before_worker_start(admission: Adm
                 .where(WorkflowRun.id == admission.entity.workflow_execution_id)
                 .values(status=WorkflowExecutionStatus.SUCCEEDED)
             )
-    admission.claim()
+    assert admission.claim().active_runs == 0
 
 
 @pytest.mark.parametrize("failure_stage", ["launch", "worker"])

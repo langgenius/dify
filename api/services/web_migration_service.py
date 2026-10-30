@@ -36,8 +36,6 @@ class GuestMigrationSource:
 class GuestMigrationStore(Protocol):
     def get_claim_source(self, *, app_code: str, app_id: str, end_user_id: str) -> GuestMigrationSource | None: ...
 
-    def preflight_guest(self, source: GuestMigrationSource) -> None: ...
-
     def claim_guest(self, source: GuestMigrationSource, *, account_end_user_id: str) -> MigrationCounts: ...
 
 
@@ -45,6 +43,8 @@ class GuestMigrationStore(Protocol):
 class MigrationCounts:
     connections: int
     conversations: int
+    skipped_conversations: tuple[str, ...]
+    active_runs: int
 
 
 @dataclass(frozen=True)
@@ -54,17 +54,13 @@ class ConnectionClaimResult:
     access_token: str
     claimed_connections: int
     claimed_conversations: int
+    skipped_conversations: tuple[str, ...]
+    active_runs: int
 
 
 class ConnectionClaimUnavailableError(ConnectionError):
     def __init__(self) -> None:
         super().__init__("Guest migration is temporarily unavailable. Please retry.")
-
-
-class MigrationRunInProgressError(ConnectionConflictError):
-    def __init__(self) -> None:
-        super().__init__()
-        self.args = ("Guest runs must finish or be cancelled before migration.",)
 
 
 @dataclass(frozen=True)
@@ -154,7 +150,6 @@ class WebMigrationService:
             try:
                 source = self._source(token)
                 self._passports.authorize_account(app_code=source.app_code, access_token=access_token)
-                self._store.preflight_guest(source)
             except (
                 EndUserBusyError,
                 ConnectionConflictError,
@@ -184,7 +179,13 @@ class WebMigrationService:
                 counts = self._store.claim_guest(source, account_end_user_id=target_id)
                 results.append(
                     ConnectionClaimResult(
-                        index, source.app_code, passport.access_token, counts.connections, counts.conversations
+                        index,
+                        source.app_code,
+                        passport.access_token,
+                        counts.connections,
+                        counts.conversations,
+                        counts.skipped_conversations,
+                        counts.active_runs,
                     )
                 )
             except (

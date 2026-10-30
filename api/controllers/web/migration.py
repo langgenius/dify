@@ -25,7 +25,6 @@ from services.web_migration_service import (
     ConnectionClaimFailure,
     ConnectionClaimPreflightError,
     ConnectionClaimUnavailableError,
-    MigrationRunInProgressError,
 )
 from services.web_passport_service import (
     WebPassportAccessDeniedError,
@@ -52,6 +51,13 @@ class ConnectionClaimSuccessResponse(ResponseModel):
     claimed_conversations: int = Field(
         ge=0, description="Chat conversations transferred for supported Workflow/Chatflow Apps"
     )
+    skipped_conversation_count: int = Field(
+        ge=0, description="Guest conversations retained because a Run is unfinished"
+    )
+    skipped_conversation_ids: list[str] = Field(
+        description="Guest conversation IDs retained at the migration snapshot; retry after their Runs finish"
+    )
+    active_run_count: int = Field(ge=0, description="Guest Runs still unfinished at the migration snapshot")
     claimed_connections: int = Field(
         ge=0, description="Number transferred by this item; zero when no Guest Connections remain"
     )
@@ -64,7 +70,6 @@ class ConnectionClaimErrorResponse(ResponseModel):
         "connection_conflict",
         "end_user_busy",
         "end_user_login_required",
-        "migration_run_in_progress",
         "unauthorized",
         "web_app_access_denied",
     ]
@@ -119,8 +124,6 @@ def claim_error_response(failure: ConnectionClaimFailure) -> ConnectionClaimErro
         return ConnectionClaimErrorResponse(
             code="web_app_access_denied", status=401, message=str(WebAppAuthAccessDeniedError.description)
         )
-    if isinstance(error, MigrationRunInProgressError):
-        return ConnectionClaimErrorResponse(code="migration_run_in_progress", status=409, message=str(error))
     if isinstance(error, ConnectionConflictError):
         return ConnectionClaimErrorResponse(
             code="connection_conflict", status=409, message=str(ConnectionConflictHTTPError.description)
@@ -151,10 +154,14 @@ class ConnectionClaimApi(Resource):
         "Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. "
         "An unavailable preflight dependency returns 503; neither failure starts a transfer. "
         "Items run in input order with independent transactions; every item returns its index and success or failure. "
-        "Every Passport transfers all Connections, files, conversations and personal state atomically. "
-        "All unfinished Guest runs must complete or be cancelled before migration. "
+        "Each Passport atomically transfers Connections, files and eligible conversations with their personal state. "
+        "Conversations with unfinished Guest runs stay with the Guest and are reported as skipped. "
+        "Existing Guest runs may fail if they later need a transferred Connection or file. "
         "Concurrent admission or migration for the same identity reports end_user_busy without waiting. "
-        "Success includes the App code, Account App Passport and both transferred resource counts. "
+        "Success includes the App code, Account App Passport, transferred counts, skipped count and active Run count. "
+        "Keep the Guest Passport and retry with the same Account after active runs finish "
+        "to transfer their remaining conversations or files. "
+        "The Guest Passport is not bound to the Account by migration. "
         "Retries transfer only resources still owned by the Guest; empty resource categories report zero. "
         "New Guest resources are included. "
         "Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. "
@@ -204,6 +211,9 @@ class ConnectionClaimApi(Resource):
                         access_token=result.access_token,
                         claimed_connections=result.claimed_connections,
                         claimed_conversations=result.claimed_conversations,
+                        skipped_conversation_count=len(result.skipped_conversations),
+                        skipped_conversation_ids=list(result.skipped_conversations),
+                        active_run_count=result.active_runs,
                     )
                 )
         return (

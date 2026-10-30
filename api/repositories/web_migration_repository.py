@@ -1,5 +1,7 @@
 """Guest migration with one transaction per authenticated App identity."""
 
+from itertools import batched
+
 import sqlalchemy as sa
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
@@ -24,7 +26,7 @@ from repositories.end_user_connection_repository import EndUserConnectionReposit
 from repositories.end_user_execution_lock import lock_end_user, translate_end_user_lock_errors
 from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionIdentityError
-from services.web_migration_service import GuestMigrationSource, MigrationCounts, MigrationRunInProgressError
+from services.web_migration_service import GuestMigrationSource, MigrationCounts
 
 _MIGRATION_APP_MODES = (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT)
 
@@ -88,41 +90,6 @@ class WebMigrationRepository:
             )
             return GuestMigrationSource(guest, app_code, identity.name, connections or 0, conversations or 0)
 
-    @staticmethod
-    def _require_idle_runs(session: Session, guest: WebConnectionContext) -> None:
-        active = sa.exists(
-            sa.select(WorkflowRun.id).where(
-                WorkflowRun.tenant_id == guest.tenant_id,
-                WorkflowRun.app_id == guest.app_id,
-                WorkflowRun.created_by_role == CreatorUserRole.END_USER,
-                WorkflowRun.created_by == guest.end_user_id,
-                WorkflowRun.status.not_in(
-                    (
-                        WorkflowExecutionStatus.SUCCEEDED,
-                        WorkflowExecutionStatus.FAILED,
-                        WorkflowExecutionStatus.STOPPED,
-                        WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
-                    )
-                ),
-            )
-        )
-        if session.scalar(sa.select(active)):
-            raise MigrationRunInProgressError()
-
-    @translate_end_user_lock_errors()
-    def preflight_guest(self, source: GuestMigrationSource) -> None:
-        with self._sessions.begin() as session:
-            original = lock_end_user(
-                session,
-                tenant_id=source.context.tenant_id,
-                app_id=source.context.app_id,
-                end_user_id=source.context.end_user_id,
-                exclusive=True,
-            )
-            if original is None or original.account_id is not None:
-                raise ConnectionIdentityError()
-            self._require_idle_runs(session, source.context)
-
     @translate_end_user_lock_errors()
     def claim_guest(self, source: GuestMigrationSource, *, account_end_user_id: str) -> MigrationCounts:
         guest = source.context
@@ -180,75 +147,141 @@ class WebMigrationRepository:
             ):
                 raise ConnectionIdentityError()
             account = WebConnectionContext(guest.tenant_id, app.id, target.id, target.account_id)
-            self._require_idle_runs(session, guest)
-            # Lock the roots before their personal state; accepted producers keep their original identities.
-            session.scalars(
-                sa.select(Conversation.id)
-                .where(*guest_history_roots(guest))
-                .order_by(Conversation.id)
-                .with_for_update()
-            ).all()
+            # Freeze the active Run IDs while the source identity is locked. A Run
+            # finishing during transfer is conservatively skipped until a later retry.
+            active_runs = tuple(
+                session.scalars(
+                    sa.select(WorkflowRun.id).where(
+                        WorkflowRun.tenant_id == guest.tenant_id,
+                        WorkflowRun.app_id == guest.app_id,
+                        WorkflowRun.created_by_role == CreatorUserRole.END_USER,
+                        WorkflowRun.created_by == guest.end_user_id,
+                        WorkflowRun.status.not_in(
+                            (
+                                WorkflowExecutionStatus.SUCCEEDED,
+                                WorkflowExecutionStatus.FAILED,
+                                WorkflowExecutionStatus.STOPPED,
+                                WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+                            )
+                        ),
+                    )
+                )
+            )
+            active_conversation_ids: set[str] = set()
+            for run_chunk in batched(active_runs, 500, strict=False):
+                active_conversation_ids.update(
+                    session.scalars(
+                        sa.select(Message.conversation_id).where(
+                            Message.app_id == guest.app_id,
+                            Message.workflow_run_id.in_(run_chunk),
+                        )
+                    )
+                )
+            # Do not lock a skipped conversation: its active producer may still use it.
+            candidates = (
+                session.execute(sa.select(Conversation.id).where(*guest_history_roots(guest)).order_by(Conversation.id))
+                .scalars()
+                .all()
+            )
+            skipped = tuple(
+                conversation_id for conversation_id in candidates if conversation_id in active_conversation_ids
+            )
+            eligible = tuple(
+                conversation_id for conversation_id in candidates if conversation_id not in active_conversation_ids
+            )
+            chat_count = 0
             connections = EndUserConnectionRepository.transfer_guest_connections(session, guest, account)
-            session.execute(
-                sa.update(UploadFile)
-                .where(
+            # Resolve IDs first and update by primary key. InnoDB otherwise scans
+            # and locks unrelated file rows while active producers are still running.
+            uploads = session.scalars(
+                sa.select(UploadFile.id).where(
                     UploadFile.tenant_id == guest.tenant_id,
                     UploadFile.created_by_role == CreatorUserRole.END_USER,
                     UploadFile.created_by == guest.end_user_id,
                 )
-                .values(created_by=target.id)
-                .execution_options(synchronize_session=False)
-            )
-            session.execute(
-                sa.update(ToolFile)
-                .where(ToolFile.tenant_id == guest.tenant_id, ToolFile.user_id == guest.end_user_id)
-                .values(user_id=target.id)
-                .execution_options(synchronize_session=False)
-            )
-            conversation_ids = sa.select(Conversation.id).where(*guest_history_roots(guest))
-            message_ids = sa.select(Message.id).where(
-                Message.app_id == app.id, Message.conversation_id.in_(conversation_ids)
-            )
-            for model, reference in (
-                (PinnedConversation, PinnedConversation.conversation_id),
-                (SavedMessage, SavedMessage.message_id),
-            ):
+            ).all()
+            for file_chunk in batched(uploads, 500, strict=False):
                 session.execute(
-                    sa.update(model)
+                    sa.update(UploadFile)
                     .where(
-                        model.app_id == app.id,
-                        model.created_by_role == CreatorUserRole.END_USER,
-                        model.created_by == guest.end_user_id,
-                        reference.in_(conversation_ids if model is PinnedConversation else message_ids),
+                        UploadFile.id.in_(file_chunk),
+                        UploadFile.tenant_id == guest.tenant_id,
+                        UploadFile.created_by_role == CreatorUserRole.END_USER,
+                        UploadFile.created_by == guest.end_user_id,
                     )
                     .values(created_by=target.id)
                     .execution_options(synchronize_session=False)
                 )
-            session.execute(
-                sa.update(MessageFeedback)
-                .where(
-                    MessageFeedback.app_id == app.id,
-                    MessageFeedback.message_id.in_(message_ids),
-                    MessageFeedback.from_end_user_id == guest.end_user_id,
-                    MessageFeedback.from_source == FeedbackFromSource.USER,
-                    MessageFeedback.from_account_id.is_(None),
+            tools = session.scalars(
+                sa.select(ToolFile.id).where(
+                    ToolFile.tenant_id == guest.tenant_id,
+                    ToolFile.user_id == guest.end_user_id,
                 )
-                .values(from_end_user_id=target.id)
-                .execution_options(synchronize_session=False)
-            )
-            chat_count = (
-                session.scalar(
-                    sa.select(sa.func.count()).select_from(Conversation).where(*guest_chat_conversations(guest))
+            ).all()
+            for file_chunk in batched(tools, 500, strict=False):
+                session.execute(
+                    sa.update(ToolFile)
+                    .where(
+                        ToolFile.id.in_(file_chunk),
+                        ToolFile.tenant_id == guest.tenant_id,
+                        ToolFile.user_id == guest.end_user_id,
+                    )
+                    .values(user_id=target.id)
+                    .execution_options(synchronize_session=False)
                 )
-                or 0
-            )
-            result = session.execute(
-                sa.update(Conversation)
-                .where(*guest_history_roots(guest))
-                .values(from_end_user_id=target.id)
-                .execution_options(synchronize_session=False)
-            )
-            assert isinstance(result, CursorResult)
+            for chunk in batched(eligible, 500, strict=False):
+                locked = session.execute(
+                    sa.select(Conversation.id, Conversation.mode)
+                    .where(*guest_history_roots(guest), Conversation.id.in_(chunk))
+                    .order_by(Conversation.id)
+                    .with_for_update(of=Conversation)
+                ).all()
+                locked_ids = tuple(row.id for row in locked)
+                if not locked_ids:
+                    continue
+                chat_count += sum(
+                    row.mode in (AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT) for row in locked
+                )
+                conversation_ids = sa.select(Conversation.id).where(
+                    *guest_history_roots(guest), Conversation.id.in_(locked_ids)
+                )
+                message_ids = sa.select(Message.id).where(
+                    Message.app_id == app.id, Message.conversation_id.in_(conversation_ids)
+                )
+                for model, reference in (
+                    (PinnedConversation, PinnedConversation.conversation_id),
+                    (SavedMessage, SavedMessage.message_id),
+                ):
+                    session.execute(
+                        sa.update(model)
+                        .where(
+                            model.app_id == app.id,
+                            model.created_by_role == CreatorUserRole.END_USER,
+                            model.created_by == guest.end_user_id,
+                            reference.in_(conversation_ids if model is PinnedConversation else message_ids),
+                        )
+                        .values(created_by=target.id)
+                        .execution_options(synchronize_session=False)
+                    )
+                session.execute(
+                    sa.update(MessageFeedback)
+                    .where(
+                        MessageFeedback.app_id == app.id,
+                        MessageFeedback.message_id.in_(message_ids),
+                        MessageFeedback.from_end_user_id == guest.end_user_id,
+                        MessageFeedback.from_source == FeedbackFromSource.USER,
+                        MessageFeedback.from_account_id.is_(None),
+                    )
+                    .values(from_end_user_id=target.id)
+                    .execution_options(synchronize_session=False)
+                )
+                result = session.execute(
+                    sa.update(Conversation)
+                    .where(*guest_history_roots(guest), Conversation.id.in_(locked_ids))
+                    .values(from_end_user_id=target.id)
+                    .execution_options(synchronize_session=False)
+                )
+                assert isinstance(result, CursorResult)
             # Only the small final default-set mutation needs the target identity's
             # exclusive lock. Keep it out of the potentially large history/file transfer.
             target = lock_end_user(
@@ -273,4 +306,4 @@ class WebMigrationRepository:
             ):
                 raise ConnectionIdentityError()
             EndUserConnectionRepository.transfer_guest_defaults(session, guest, account)
-            return MigrationCounts(connections, chat_count)
+            return MigrationCounts(connections, chat_count, skipped, len(active_runs))

@@ -406,3 +406,139 @@ def test_two_guests_migrating_to_one_account_preserve_a_whole_default_set(
             ).all()
             == initial_defaults
         )
+
+
+@pytest.mark.timeout(30)
+def test_active_conversation_is_not_locked_by_best_effort_claim(db_session_with_containers: Session) -> None:
+    from threading import Event
+
+    from sqlalchemy import event
+
+    from graphon.enums import WorkflowExecutionStatus
+    from models.enums import WorkflowRunTriggeredFrom
+    from models.model import Message
+    from models.workflow import Workflow, WorkflowRun, WorkflowType
+
+    sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+    harness = make_harness(sessions)
+    code = f"active-race-{uuid4()}"
+    with sessions.begin() as session:
+        guest = EndUser(
+            tenant_id=harness.context.tenant_id,
+            app_id=harness.context.app_id,
+            type=EndUserType.BROWSER,
+            session_id=str(uuid4()),
+        )
+        session.add(guest)
+        session.flush()
+        guest_id = guest.id
+        session.execute(sa.update(App).where(App.id == harness.context.app_id).values(mode=AppMode.ADVANCED_CHAT))
+        session.execute(sa.update(Workflow).where(Workflow.id == harness.workflow_id).values(type=WorkflowType.CHAT))
+        session.add(
+            Site(
+                app_id=harness.context.app_id,
+                code=code,
+                title="Active",
+                default_language="en-US",
+                customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+            )
+        )
+        active = Conversation(
+            app_id=harness.context.app_id,
+            mode=AppMode.ADVANCED_CHAT,
+            name="Active",
+            _inputs={},
+            from_source=ConversationFromSource.API,
+            from_end_user_id=guest_id,
+            invoke_from=InvokeFrom.WEB_APP,
+        )
+        idle = Conversation(
+            app_id=harness.context.app_id,
+            mode=AppMode.ADVANCED_CHAT,
+            name="Idle",
+            _inputs={},
+            from_source=ConversationFromSource.API,
+            from_end_user_id=guest_id,
+            invoke_from=InvokeFrom.WEB_APP,
+        )
+        run = WorkflowRun(
+            id=str(uuid4()),
+            tenant_id=harness.context.tenant_id,
+            app_id=harness.context.app_id,
+            workflow_id=harness.workflow_id,
+            type=WorkflowType.CHAT,
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+            version="published",
+            graph="{}",
+            inputs="{}",
+            outputs="{}",
+            status=WorkflowExecutionStatus.RUNNING,
+            created_by_role=CreatorUserRole.END_USER,
+            created_by=guest_id,
+        )
+        session.add_all([active, idle, run])
+        session.flush()
+        active_id, idle_id, run_id = active.id, idle.id, run.id
+        session.add(
+            Message(
+                app_id=harness.context.app_id,
+                conversation_id=active_id,
+                workflow_run_id=run_id,
+                query="hello",
+                message="",
+                answer="",
+                from_source=ConversationFromSource.API,
+                from_end_user_id=guest_id,
+                invoke_from=InvokeFrom.WEB_APP,
+            )
+        )
+        upload = make_upload_file(
+            tenant_id=harness.context.tenant_id,
+            created_by_role=CreatorUserRole.END_USER,
+            created_by=guest_id,
+        )
+        session.add(upload)
+    repository = WebMigrationRepository(session_factory=sessions)
+    source = repository.get_claim_source(app_code=code, app_id=harness.context.app_id, end_user_id=guest_id)
+    assert source is not None
+    transferring, writer_done = Event(), Event()
+
+    def pause_transfer(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
+        if statement.startswith("UPDATE upload_files SET"):
+            transferring.set()
+            if not writer_done.wait(timeout=10):
+                raise TimeoutError("Active conversation writer was blocked by migration")
+
+    def update_active() -> None:
+        with sessions.begin() as session:
+            session.execute(sa.update(Conversation).where(Conversation.id == active_id).values(name="Still active"))
+        writer_done.set()
+
+    engine = db_session_with_containers.get_bind()
+    event.listen(engine, "after_cursor_execute", pause_transfer)
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            claim = executor.submit(repository.claim_guest, source, account_end_user_id=harness.context.end_user_id)
+            assert transferring.wait(timeout=10)
+            writer = executor.submit(update_active)
+            result = claim.result(timeout=20)
+            writer.result(timeout=20)
+    finally:
+        event.remove(engine, "after_cursor_execute", pause_transfer)
+    assert result.skipped_conversations == (active_id,)
+    assert result.conversations == 1
+    assert result.active_runs == 1
+    with sessions() as session:
+        assert session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == active_id)) == guest_id
+        assert session.scalar(sa.select(Conversation.name).where(Conversation.id == active_id)) == "Still active"
+        assert (
+            session.scalar(sa.select(Conversation.from_end_user_id).where(Conversation.id == idle_id))
+            == harness.context.end_user_id
+        )
