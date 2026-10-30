@@ -11,6 +11,7 @@ from controllers.common.access_response import register_auth_error_response
 from controllers.common.fields import EventStreamResponse, SimpleResultResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.openapi._catalog import attach_catalog
+from controllers.openapi._challenge import attach_resource_metadata_challenge
 from controllers.openapi._errors import ErrorBody, OpenApiErrorCode, OpenApiErrorFormatter
 from controllers.openapi._models import (
     AccountPayload,
@@ -98,6 +99,16 @@ from controllers.openapi._models import (
     NodeTypeDetailResponse,
     NodeTypeListResponse,
     NodeTypeRow,
+    OAuthAuthorizeClientQuery,
+    OAuthAuthorizeClientResponse,
+    OAuthAuthorizeErrorResponse,
+    OAuthAuthorizeRedirectResponse,
+    OAuthAuthorizeRequest,
+    OAuthRegisterErrorResponse,
+    OAuthRegisterRequest,
+    OAuthRegisterResponse,
+    OAuthTokenErrorResponse,
+    OAuthTokenResponse,
     OpenApiFormSubmitPayload,
     PermittedExternalAppsListQuery,
     PermittedExternalAppsListResponse,
@@ -163,6 +174,7 @@ from services.entities.dsl_entities import CheckDependenciesResult, Import
 
 bp = Blueprint("openapi", __name__, url_prefix="/openapi/v1")
 attach_anti_framing(bp)
+attach_resource_metadata_challenge(bp)
 register_auth_error_response(bp)
 attach_catalog(bp)
 
@@ -220,6 +232,9 @@ register_schema_models(
     DevicePollRequest,
     DeviceLookupQuery,
     DeviceMutateRequest,
+    OAuthAuthorizeClientQuery,
+    OAuthAuthorizeRequest,
+    OAuthRegisterRequest,
     DraftWorkflowRunPayload,
     FileUploadPayload,
     MemberInvitePayload,
@@ -293,6 +308,13 @@ register_response_schema_models(
     DeviceLookupResponse,
     DeviceMutateResponse,
     DeviceFlowErrorResponse,
+    OAuthTokenResponse,
+    OAuthTokenErrorResponse,
+    OAuthAuthorizeClientResponse,
+    OAuthAuthorizeRedirectResponse,
+    OAuthAuthorizeErrorResponse,
+    OAuthRegisterResponse,
+    OAuthRegisterErrorResponse,
     FileResponse,
     ServerVersionResponse,
     HealthResponse,
@@ -372,8 +394,12 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         knowledge_fs,
         model_providers,
         node_types,
+        oauth_authorize,
         oauth_device,
         oauth_device_sso,
+        oauth_register,
+        oauth_revoke,
+        oauth_token,
         plugins,
         tool_providers,
         workflow_events,
@@ -398,8 +424,12 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         knowledge_fs,
         model_providers,
         node_types,
+        oauth_authorize,
         oauth_device,
         oauth_device_sso,
+        oauth_register,
+        oauth_revoke,
+        oauth_token,
         plugins,
         tool_providers,
         workflow_events,
@@ -425,8 +455,12 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     knowledge_fs,
     model_providers,
     node_types,
+    oauth_authorize,
     oauth_device,
     oauth_device_sso,
+    oauth_register,
+    oauth_revoke,
+    oauth_token,
     plugins,
     tool_providers,
     workflow_events,
@@ -453,8 +487,12 @@ __all__ = [
     "knowledge_fs",
     "model_providers",
     "node_types",
+    "oauth_authorize",
     "oauth_device",
     "oauth_device_sso",
+    "oauth_register",
+    "oauth_revoke",
+    "oauth_token",
     "plugins",
     "tool_providers",
     "workflow_events",

@@ -38,6 +38,18 @@ server {
       include proxy.conf;
     }
 
+    location /.well-known/oauth-authorization-server {
+      set $api_upstream api:5001;
+      proxy_pass http://$api_upstream;
+      include proxy.conf;
+    }
+
+    location /.well-known/oauth-protected-resource {
+      set $api_upstream api:5001;
+      proxy_pass http://$api_upstream;
+      include proxy.conf;
+    }
+
     location /files {
       set $api_upstream api:5001;
       proxy_pass http://$api_upstream;

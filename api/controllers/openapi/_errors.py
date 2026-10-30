@@ -31,6 +31,8 @@ from typing import Any
 from pydantic import BaseModel
 from werkzeug.exceptions import HTTPException
 
+from constants.oauth_bearer import OAuthScope
+from controllers.openapi._challenge import ERROR_PARAM, SCOPE_PARAM, bearer_params
 from controllers.openapi._models import Hint
 from libs.external_api import http_status_message
 
@@ -79,6 +81,7 @@ class OpenApiErrorCode(StrEnum):
     KNOWLEDGE_FS_RESOURCE_NOT_FOUND = "knowledge_fs_resource_not_found"
     KNOWLEDGE_FS_UNAVAILABLE = "knowledge_fs_unavailable"
     CATALOG_STALE = "catalog_stale"
+    INSUFFICIENT_SCOPE = "insufficient_scope"
     TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE = "trigger_workflow_service_mode_unavailable"
     RUN_NOT_FOUND = "run_not_found"
     RUN_NOT_STOPPABLE = "run_not_stoppable"
@@ -354,6 +357,20 @@ class CatalogStale(OpenApiError):  # noqa: N818
     error_code = OpenApiErrorCode.CATALOG_STALE
     description = "The request was built from a catalog that is not this server's current catalog."
     hint = "GET /openapi/v1/_catalog, rebuild the request from it, and send its sha256 in X-Dify-Catalog."
+
+
+class InsufficientScope(OpenApiError):  # noqa: N818
+    """RFC 6750 §3.1: the challenge names the scope the op needs."""
+
+    code = 403
+    error_code = OpenApiErrorCode.INSUFFICIENT_SCOPE
+    description = "This login was not granted the access this op needs."
+    hint = "Sign in again and allow the scope named in the WWW-Authenticate header."
+
+    def __init__(self, required: OAuthScope) -> None:
+        super().__init__()
+        challenge = bearer_params({ERROR_PARAM: self.error_code, SCOPE_PARAM: required})
+        self.headers = {"WWW-Authenticate": f"Bearer {challenge}"}
 
 
 class InvalidFilePart(OpenApiError):  # noqa: N818

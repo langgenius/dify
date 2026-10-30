@@ -79,7 +79,10 @@ from repositories.installation_state_repository import InstallationStateReposito
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.message_repository import MessageRepository
 from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
+from repositories.oauth_authorization_code_repository import RedisAuthorizationCodeRepository
+from repositories.oauth_client_repository import SQLAlchemyOAuthClientRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
+from repositories.oauth_refresh_token_repository import SQLAlchemyOAuthRefreshTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
@@ -177,6 +180,10 @@ from services.network_access_group_gateway import (
 from services.network_access_group_service import NetworkAccessGroupService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
+from services.oauth_authorize_service import OAuthAuthorizeService
+from services.oauth_cimd import CimdClientSource, fetch_client_metadata, resolve_host_addresses
+from services.oauth_client_registration import OAuthClientRegistrationService
+from services.oauth_clients import ClientSource, OAuthClientRegistry
 from services.oauth_device_adapters import (
     DifyConfigOAuthDeviceSettings,
     EnterpriseOAuthDeviceSSOGateway,
@@ -190,7 +197,11 @@ from services.oauth_device_application_service import (
     OAuthDeviceApplicationService,
 )
 from services.oauth_device_flow import DeviceFlowRedis
+from services.oauth_grant_revoker import GrantRevoker, OAuthRevocationService
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
+from services.oauth_token_adapters import DifyConfigOAuthTokenSettings, cimd_enabled
+from services.oauth_token_grants import build_grant_handlers
+from services.oauth_token_service import OAuthTokenService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.recommended_app_catalog_gateway import (
@@ -345,6 +356,11 @@ class ApplicationServices:
     upload_file_delivery: UploadFileDeliveryService
     oauth_server: OAuthServerService
     oauth_device: OAuthDeviceApplicationService
+    oauth_clients: OAuthClientRegistry
+    oauth_registration: OAuthClientRegistrationService
+    oauth_token: OAuthTokenService
+    oauth_authorize: OAuthAuthorizeService
+    oauth_revocation: OAuthRevocationService
     init_validation: InitValidationService
     installed_apps: InstalledAppServices
     notifications: NotificationService
@@ -380,22 +396,36 @@ def _build_oauth_server_service(
     )
 
 
-def _build_oauth_device_service(
+@dataclass(frozen=True, slots=True)
+class _OAuthServices:
+    device: OAuthDeviceApplicationService
+    clients: OAuthClientRegistry
+    registration: OAuthClientRegistrationService
+    token: OAuthTokenService
+    authorize: OAuthAuthorizeService
+    revocation: OAuthRevocationService
+
+
+def _build_oauth_services(
     *,
     database_client: sessionmaker[Session],
     redis: RedisClientWrapper,
     accounts: OAuthDeviceAccountQuery,
     workspaces: DeviceWorkspaceQuery,
-) -> OAuthDeviceApplicationService:
-    token_repository = SQLAlchemyOAuthDeviceTokenRepository(session_factory=database_client, redis=redis)
-    return OAuthDeviceApplicationService(
+) -> _OAuthServices:
+    token_repository = SQLAlchemyOAuthDeviceTokenRepository(
+        session_factory=database_client,
+        redis=redis,
+    )
+    tokens = OAuthDeviceTokenIssuanceGateway(
+        tokens=token_repository,
+        ttl_policy=EnvironmentOAuthDeviceTokenTTLPolicy(),
+    )
+    device = OAuthDeviceApplicationService(
         store=DeviceFlowRedis(redis),
         accounts=accounts,
         workspaces=workspaces,
-        tokens=OAuthDeviceTokenIssuanceGateway(
-            tokens=token_repository,
-            ttl_policy=EnvironmentOAuthDeviceTokenTTLPolicy(),
-        ),
+        tokens=tokens,
         sessions=token_repository,
         sso=EnterpriseOAuthDeviceSSOGateway(
             redis=redis,
@@ -403,6 +433,42 @@ def _build_oauth_device_service(
         ),
         external_approval_limiter=RedisExternalApprovalLimiter(redis=redis),
         settings=DifyConfigOAuthDeviceSettings(),
+    )
+    client_repository = SQLAlchemyOAuthClientRepository(session_factory=database_client)
+    client_sources: list[ClientSource] = [client_repository]
+    if cimd_enabled():
+        client_sources.append(
+            CimdClientSource(
+                cache=redis,
+                fetch=fetch_client_metadata,
+                resolve_host=resolve_host_addresses,
+                fetch_limit_per_minute=dify_config.OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
+            )
+        )
+    clients = OAuthClientRegistry(sources=client_sources)
+    codes = RedisAuthorizationCodeRepository(redis)
+    settings = DifyConfigOAuthTokenSettings()
+    refresh = SQLAlchemyOAuthRefreshTokenRepository(session_factory=database_client)
+    grants = GrantRevoker(session_factory=database_client, redis=redis, refresh=refresh)
+    handlers = build_grant_handlers(
+        device=device,
+        clients=clients,
+        codes=codes,
+        refresh=refresh,
+        accounts=accounts,
+        workspaces=workspaces,
+        tokens=tokens,
+        revoke=grants,
+        settings=settings,
+        usage=client_repository,
+    )
+    return _OAuthServices(
+        device=device,
+        clients=clients,
+        registration=OAuthClientRegistrationService(clients=client_repository),
+        token=OAuthTokenService(handlers=handlers),
+        authorize=OAuthAuthorizeService(clients=clients, codes=codes),
+        revocation=OAuthRevocationService(clients=clients, grants=grants),
     )
 
 
@@ -509,6 +575,12 @@ def build_application_services(
         providers=datasource_credentials.providers,
     )
     oauth_server = _build_oauth_server_service(database_client=database_client, redis=redis)
+    oauth = _build_oauth_services(
+        database_client=database_client,
+        redis=redis,
+        accounts=accounts,
+        workspaces=workspace_repository,
+    )
     console_apps = ConsoleAppRepository(session_factory=database_client)
     rbac = build_rbac_services(
         workspaces=workspace_repository,
@@ -777,12 +849,12 @@ def build_application_services(
             storage=storage,
         ),
         oauth_server=oauth_server,
-        oauth_device=_build_oauth_device_service(
-            database_client=database_client,
-            redis=redis,
-            accounts=accounts,
-            workspaces=workspace_repository,
-        ),
+        oauth_device=oauth.device,
+        oauth_clients=oauth.clients,
+        oauth_registration=oauth.registration,
+        oauth_token=oauth.token,
+        oauth_authorize=oauth.authorize,
+        oauth_revocation=oauth.revocation,
         init_validation=InitValidationService(
             state=installation_state,
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),

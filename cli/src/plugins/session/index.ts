@@ -22,6 +22,7 @@ const LOGIN_SCHEMA = z.object({
     .default(null),
   workspace_id: z.string().nullable().default(null),
   insecure: z.boolean().default(false),
+  session_id: z.string().nullable().default(null),
 })
 
 type LoginDoc = z.infer<typeof LOGIN_SCHEMA>
@@ -33,6 +34,7 @@ export type Login = Readonly<{
   workspaceId: string | null
   tokenStorage: StorageMode
   insecure: boolean
+  sessionId: string | null
 }>
 
 export type SessionService = {
@@ -52,6 +54,7 @@ function loginToDoc(login: Login): LoginDoc {
     workspace_id: login.workspaceId,
     token_storage: login.tokenStorage,
     insecure: login.insecure,
+    session_id: login.sessionId,
   }
 }
 
@@ -63,6 +66,7 @@ function docToLogin(doc: LoginDoc): Login {
     workspaceId: doc.workspace_id,
     tokenStorage: doc.token_storage,
     insecure: doc.insecure,
+    sessionId: doc.session_id,
   }
 }
 
@@ -70,9 +74,9 @@ export const session = definePlugin({
   name: 'session',
   needs: [env, io],
   build: async (ctx): Promise<SessionService> => {
-    const { server, token: envToken, workspaceId: envWorkspaceId, configDir } = await ctx.get(env)
+    const { server, readToken, workspaceId: envWorkspaceId, configDir } = await ctx.get(env)
     // An env login is the pair: a server on its own only says where to log in.
-    const fromEnv = server !== undefined && envToken !== undefined
+    const fromEnv = server !== undefined && readToken !== undefined
     const file = localFile(
       join(configDir, LOGIN_FILE_NAME),
       LOGIN_SCHEMA,
@@ -87,6 +91,7 @@ export const session = definePlugin({
           workspaceId: envWorkspaceId ?? null,
           tokenStorage: 'file',
           insecure: false,
+          sessionId: null,
         }
       : null
 
@@ -109,7 +114,8 @@ export const session = definePlugin({
         if (fromEnv) {
           throw new BaseError({
             code: ErrorCode.UsageInvalidFlag,
-            message: 'cannot save a login while DIFY_SERVER/DIFY_TOKEN are set',
+            message:
+              'cannot save a login while DIFY_SERVER with DIFY_TOKEN or DIFY_TOKEN_FILE is set',
           })
         }
         await file.update(() => loginToDoc(login))

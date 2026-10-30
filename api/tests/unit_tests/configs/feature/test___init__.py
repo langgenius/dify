@@ -24,6 +24,27 @@ def test_oauth_ttl_days_clamps_or_falls_back_instead_of_failing(configured: str,
     assert expected == config.OAUTH_TTL_DAYS
 
 
+@pytest.mark.parametrize(
+    ("setting", "configured", "expected"),
+    [
+        ("OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS", "999999", 8760),
+        ("OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS", "", 1),
+        ("OAUTH_REFRESH_TOKEN_TTL_DAYS", "1000", 365),
+        ("OAUTH_REFRESH_TOKEN_TTL_DAYS", "abc", 30),
+        ("OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE", "0", 0),
+        ("OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE", "20000", 10000),
+        ("OAUTH_DCR_RATE_LIMIT_PER_HOUR", "-5", 0),
+        ("OAUTH_DCR_RATE_LIMIT_PER_HOUR", "abc", 120),
+        ("OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN", "0", 0),
+        ("OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN", "", 300),
+    ],
+)
+def test_oauth_int_settings_clamp_or_fall_back_instead_of_failing(setting: str, configured: str, expected: int) -> None:
+    config = _IsolatedAuthConfig.model_validate({setting: configured})
+
+    assert config.model_dump()[setting] == expected
+
+
 class _IsolatedFileUploadConfig(InitSettingsOnly, FileUploadConfig):
     pass
 

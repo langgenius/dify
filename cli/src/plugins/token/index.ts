@@ -28,7 +28,7 @@ export const token = definePlugin({
   name: 'token',
   needs: [env, session, io],
   build: async (ctx): Promise<TokenService> => {
-    const { token: envToken, configDir } = await ctx.get(env)
+    const { readToken, configDir } = await ctx.get(env)
     const sessionService = await ctx.get(session)
     const file = localFile(
       join(configDir, TOKENS_FILE_NAME),
@@ -47,7 +47,7 @@ export const token = definePlugin({
 
     return {
       get: async () => {
-        if (envToken !== undefined) return envToken
+        if (readToken !== undefined) return readToken()
         if (cached === undefined) cached = await readFromStore()
         if (cached === '') throw notLoggedIn()
         return cached

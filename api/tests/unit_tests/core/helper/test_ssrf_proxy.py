@@ -7,9 +7,11 @@ from unittest.mock import ANY, Mock, call, patch
 import httpx
 import pytest
 
+import core.helper.ssrf_proxy as ssrf_proxy_module
 from core.helper.ssrf_proxy import (
     BACKOFF_FACTOR,
     SSRF_DEFAULT_MAX_RETRIES,
+    ResponseDeadlineError,
     ResponseTooLargeError,
     SSRFProxy,
     UnsupportedResponseEncodingError,
@@ -112,6 +114,30 @@ def test_buffer_response_rejects_identity_response_exceeding_byte_limit() -> Non
         response = client.send(client.build_request("GET", "http://example.com"), stream=True)
         with pytest.raises(ResponseTooLargeError, match="response exceeded 8 bytes"):
             buffer_response(response, max_response_bytes=8)
+
+
+def _slow_response(chunks: int) -> httpx.Response:
+    def body() -> Iterator[bytes]:
+        for _ in range(chunks):
+            yield b"x"
+
+    return httpx.Response(200, content=body(), request=httpx.Request("GET", "http://example.com"))
+
+
+def test_buffer_response_stops_a_read_that_outlives_its_deadline(monkeypatch: pytest.MonkeyPatch) -> None:
+    ticks = iter(float(second) for second in range(100))
+    monkeypatch.setattr(ssrf_proxy_module.time, "monotonic", lambda: next(ticks))
+
+    with pytest.raises(ResponseDeadlineError, match="within 3"):
+        buffer_response(_slow_response(10), max_response_bytes=1024, deadline_seconds=3)
+
+
+def test_buffer_response_within_its_deadline_returns_the_body(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(ssrf_proxy_module.time, "monotonic", lambda: 0.0)
+
+    response = buffer_response(_slow_response(3), max_response_bytes=1024, deadline_seconds=3)
+
+    assert response.content == b"xxx"
 
 
 def test_request_can_return_an_open_stream_the_caller_closes() -> None:

@@ -27,6 +27,7 @@ from controllers.openapi._models import (
     DevicePollRequest,
     DeviceTokenResponse,
 )
+from controllers.openapi._oauth_input import InvalidOAuthBodyError, read_oauth_body
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response, extract_remote_ip
 from libs.rate_limit import (
@@ -39,7 +40,6 @@ from machinery.context import RequestContext
 from services.oauth_device_contracts import (
     AccessDeniedError,
     AlreadyResolvedError,
-    ApprovalInProgressError,
     ApprovalOutcomeUnknownError,
     AuthorizationPendingError,
     DeviceStateLostError,
@@ -82,8 +82,6 @@ def _error_response(error: OAuthDeviceError) -> tuple[dict[str, str], int]:
             return {"error": "expired_or_unknown"}, HTTPStatus.NOT_FOUND
         case AlreadyResolvedError():
             return {"error": "already_resolved"}, HTTPStatus.CONFLICT
-        case ApprovalInProgressError():
-            return {"error": "approve_in_progress"}, HTTPStatus.CONFLICT
         case ApprovalOutcomeUnknownError():
             return {"error": "approval_outcome_unknown"}, HTTPStatus.SERVICE_UNAVAILABLE
         case DeviceStateLostError():
@@ -100,7 +98,10 @@ class OAuthDeviceCodeApi(Resource):
     )
     @rate_limit(LIMIT_DEVICE_CODE_PER_IP)
     def post(self):
-        payload = _validate_json(DeviceCodeRequest)
+        try:
+            payload = DeviceCodeRequest.model_validate(read_oauth_body())
+        except (ValidationError, InvalidOAuthBodyError) as error:
+            raise BadRequest(str(error)) from error
         try:
             authorization = application_services().oauth_device.start(
                 client_id=payload.client_id,

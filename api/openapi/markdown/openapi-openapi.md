@@ -1210,6 +1210,53 @@ Upload a file to use as an input variable when running the app
 | 200 | Node type | **application/json**: [NodeTypeDetailResponse](#nodetypedetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [POST] /oauth/authorize/approve
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OAuthAuthorizeRequest](#oauthauthorizerequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Client redirect with a code, or with an error for a bad PKCE or resource value | **application/json**: [OAuthAuthorizeRedirectResponse](#oauthauthorizeredirectresponse)<br> |
+| 400 | Request rejected | **application/json**: [OAuthAuthorizeErrorResponse](#oauthauthorizeerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /oauth/authorize/client
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| client_id | query |  | Yes | string |
+| redirect_uri | query |  | Yes | string |
+| scope | query |  | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Client to show | **application/json**: [OAuthAuthorizeClientResponse](#oauthauthorizeclientresponse)<br> |
+| 400 | Unknown client, bad redirect URI or missing parameter | **application/json**: [OAuthAuthorizeErrorResponse](#oauthauthorizeerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /oauth/authorize/deny
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OAuthAuthorizeRequest](#oauthauthorizerequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Client redirect with access_denied | **application/json**: [OAuthAuthorizeRedirectResponse](#oauthauthorizeredirectresponse)<br> |
+| 400 | Request rejected | **application/json**: [OAuthAuthorizeErrorResponse](#oauthauthorizeerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /oauth/device/approve
 #### Request Body
 
@@ -1286,6 +1333,41 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Device token | **application/json**: [DeviceTokenResponse](#devicetokenresponse)<br> |
 | 400 | Authorization pending, polling too fast, expired, or denied | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /oauth/register
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OAuthRegisterRequest](#oauthregisterrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Client registered | **application/json**: [OAuthRegisterResponse](#oauthregisterresponse)<br> |
+| 400 | Invalid client metadata | **application/json**: [OAuthRegisterErrorResponse](#oauthregistererrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /oauth/revoke
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Token revoked, or unknown to this client |  |
+| 400 | Missing token or malformed body | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 401 | Client authentication failed | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /oauth/token
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Access token | **application/json**: [OAuthTokenResponse](#oauthtokenresponse)<br> |
+| 400 | OAuth token error | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 401 | Client authentication failed | **application/json**: [OAuthTokenErrorResponse](#oauthtokenerrorresponse)<br>[ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /permitted-external-apps
@@ -2364,6 +2446,12 @@ mode is a closed enum of listable app types.
 | max_active_requests | integer |  | No |
 | name | string |  | Yes |
 
+#### AuthorizeErrorCode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AuthorizeErrorCode | string |  |  |
+
 #### ChatAppInfo
 
 | Name | Type | Description | Required |
@@ -2531,7 +2619,7 @@ Enum representing the deployment edition of the platform.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | client_id | string |  | Yes |
-| device_label | string |  | Yes |
+| device_label | string |  | No |
 
 #### DeviceCodeResponse
 
@@ -2542,6 +2630,7 @@ Enum representing the deployment edition of the platform.
 | interval | integer |  | Yes |
 | user_code | string |  | Yes |
 | verification_uri | string |  | Yes |
+| verification_uri_complete | string |  | Yes |
 
 #### DeviceFlowErrorResponse
 
@@ -2550,7 +2639,7 @@ instead of ``ErrorBody`` because device clients parse it.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| error | string, <br>**Available values:** "access_denied", "already_resolved", "approval_outcome_unknown", "approve_in_progress", "authorization_pending", "expired_or_unknown", "expired_token", "slow_down", "state_lost", "unsupported_client" | *Enum:* `"access_denied"`, `"already_resolved"`, `"approval_outcome_unknown"`, `"approve_in_progress"`, `"authorization_pending"`, `"expired_or_unknown"`, `"expired_token"`, `"slow_down"`, `"state_lost"`, `"unsupported_client"` | Yes |
+| error | string, <br>**Available values:** "access_denied", "already_resolved", "approval_outcome_unknown", "authorization_pending", "expired_or_unknown", "expired_token", "slow_down", "state_lost", "unsupported_client" | *Enum:* `"access_denied"`, `"already_resolved"`, `"approval_outcome_unknown"`, `"authorization_pending"`, `"expired_or_unknown"`, `"expired_token"`, `"slow_down"`, `"state_lost"`, `"unsupported_client"` | Yes |
 
 #### DeviceLookupQuery
 
@@ -3319,6 +3408,116 @@ Enum class for model type.
 | type | string |  | Yes |
 | version | string |  | Yes |
 
+#### OAuthAuthorizeClientQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+| redirect_uri | string |  | Yes |
+| scope | string |  | No |
+
+#### OAuthAuthorizeClientResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+| display_name | string |  | Yes |
+| localhost_only | boolean |  | Yes |
+| logo_uri | string |  | No |
+| redirect_host | string |  | Yes |
+| scopes | [ [OAuthScope](#oauthscope) ] |  | Yes |
+
+#### OAuthAuthorizeErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | [AuthorizeErrorCode](#authorizeerrorcode) |  | Yes |
+
+#### OAuthAuthorizeRedirectResponse
+
+Where the consent page navigates next; the server builds it.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| redirect_to | string |  | Yes |
+
+#### OAuthAuthorizeRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+| code_challenge | string |  | Yes |
+| code_challenge_method | string |  | Yes |
+| redirect_uri | string |  | Yes |
+| resource | string |  | No |
+| scope | string |  | No |
+| state | string |  | No |
+
+#### OAuthRegisterErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | [RegistrationErrorCode](#registrationerrorcode) |  | Yes |
+| error_description | string |  | Yes |
+
+#### OAuthRegisterRequest
+
+RFC 7591 client metadata; unknown fields are ignored.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_name | string |  | No |
+| grant_types | [ string, <br>**Available values:** "authorization_code", "refresh_token" ] |  | No |
+| logo_uri | string |  | No |
+| redirect_uris | [ string ] |  | Yes |
+| response_types | [ string ] |  | No |
+| token_endpoint_auth_method | [TokenEndpointAuthMethod](#tokenendpointauthmethod) |  | No |
+
+#### OAuthRegisterResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+| client_id_issued_at | integer |  | Yes |
+| client_name | string |  | Yes |
+| grant_types | [ string, <br>**Available values:** "authorization_code", "refresh_token" ] |  | Yes |
+| logo_uri | string |  | No |
+| redirect_uris | [ string ] |  | Yes |
+| response_types | [ string ] |  | Yes |
+| token_endpoint_auth_method | [TokenEndpointAuthMethod](#tokenendpointauthmethod) |  | Yes |
+
+#### OAuthScope
+
+OAuth scopes of a browser login (RFC 6749 §3.3). ``read`` runs the ops that only
+read; ``write`` also runs the ones that change or delete, and implies ``read``.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OAuthScope | string | OAuth scopes of a browser login (RFC 6749 §3.3). ``read`` runs the ops that only read; ``write`` also runs the ones that change or delete, and implies ``read``. |  |
+
+#### OAuthTokenErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | Yes |
+
+#### OAuthTokenResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | Yes |
+| account | [AccountPayload](#accountpayload) |  | No |
+| default_workspace_id | string |  | No |
+| expires_in | integer |  | Yes |
+| refresh_token | string |  | No |
+| scope | string |  | No |
+| subject_email | string |  | No |
+| subject_issuer | string |  | No |
+| subject_type | [SubjectType](#subjecttype) |  | Yes |
+| token_id | string |  | Yes |
+| token_type | string |  | Yes |
+| workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
+
 #### OpenApiErrorCode
 
 | Name | Type | Description | Required |
@@ -3507,6 +3706,14 @@ Strict (extra='forbid').
 | version_id | string |  | Yes |
 | warning | string | Variable references that may read a skipped branch | No |
 
+#### RegistrationErrorCode
+
+RFC 7591 client registration error codes.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RegistrationErrorCode | string | RFC 7591 client registration error codes. |  |
+
 #### ReleaseCheckName
 
 | Name | Type | Description | Required |
@@ -3620,6 +3827,7 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | client_id | string |  | Yes |
 | created_at | string |  | No |
+| current | boolean |  | Yes |
 | device_label | string |  | Yes |
 | expires_at | string |  | No |
 | id | string |  | Yes |
@@ -3682,6 +3890,12 @@ types it as a required `'success'` rather than an optional field.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
+
+#### TokenEndpointAuthMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TokenEndpointAuthMethod | string |  |  |
 
 #### ToolCredentialCreatePayload
 

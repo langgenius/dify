@@ -327,6 +327,28 @@ describe('dify-mock fixture server', () => {
     expect(body.error).toBe('slow_down')
   })
 
+  describe('standard token route', () => {
+    const poll = () =>
+      fetch(`${mock.url}/openapi/v1/oauth/token`, {
+        method: 'POST',
+        body: new URLSearchParams({
+          grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+          device_code: 'devcode-1',
+          client_id: 'difyctl',
+        }),
+      })
+
+    it.each([
+      ['legacy-token-route', 'application/json'],
+      ['legacy-token-route-html-404', 'text/html'],
+    ] as const)('scenario:%s answers a %s 404', async (scenario, type) => {
+      mock.setScenario(scenario)
+      const r = await poll()
+      expect(r.status).toBe(404)
+      expect(r.headers.get('content-type')).toContain(type)
+    })
+  })
+
   it('scenario:auth-expired returns 401 on bearer-protected endpoint', async () => {
     mock.setScenario('auth-expired')
     const r = await fetch(`${mock.url}/openapi/v1/workspaces`, { headers: AUTH_HEADERS })

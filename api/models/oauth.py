@@ -1,10 +1,12 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, override
 
 import sqlalchemy as sa
-from sqlalchemy import func
+from sqlalchemy import VARCHAR, TypeDecorator, func
+from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.orm import Mapped, mapped_column
 
+from constants.oauth_bearer import OAuthScope
 from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
@@ -91,7 +93,22 @@ class DatasourceOauthTenantParamConfig(TypeBase):
     )
 
 
-class OAuthAccessToken(TypeBase):
+class OAuthScopeSet(TypeDecorator[frozenset[OAuthScope] | None]):
+    """A browser login's granted scopes, space-separated. NULL means the token type's full access."""
+
+    impl = VARCHAR(255)
+    cache_ok = True
+
+    @override
+    def process_bind_param(self, value: frozenset[OAuthScope] | None, dialect: Dialect) -> str | None:
+        return None if value is None else OAuthScope.serialize(value)
+
+    @override
+    def process_result_value(self, value: str | None, dialect: Dialect) -> frozenset[OAuthScope] | None:
+        return None if value is None else OAuthScope.parse(value)
+
+
+class OpenAPIOAuthAccessToken(TypeBase):
     """Device-flow bearer. account_id NOT NULL ⇒ dfoa_ (Dify account,
     subject_issuer = "dify:account" sentinel); account_id NULL +
     subject_issuer = verified IdP issuer ⇒ dfoe_ (external SSO, EE-only).
@@ -101,7 +118,8 @@ class OAuthAccessToken(TypeBase):
     WHERE revoked_at IS NULL would otherwise fail to rotate in place.
     """
 
-    __tablename__ = "oauth_access_tokens"
+    __tablename__ = "openapi_oauth_access_tokens"
+    # The constraint name predates the table rename (migration e3a7c5d9f182).
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="oauth_access_tokens_pkey"),)
 
     id: Mapped[str] = mapped_column(
@@ -121,6 +139,69 @@ class OAuthAccessToken(TypeBase):
     token_hash: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None)
     last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
     revoked_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
+    scope: Mapped[frozenset[OAuthScope] | None] = mapped_column(OAuthScopeSet, nullable=True, default=None)
+
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False, server_default=func.now(), init=False
+    )
+
+
+class OpenAPIOAuthClient(TypeBase):
+    __tablename__ = "openapi_oauth_clients"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="openapi_oauth_clients_pkey"),
+        sa.Index("uq_openapi_oauth_clients_client_id", "client_id", unique=True),
+        sa.Index("idx_openapi_oauth_clients_unused", "last_token_at", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7()), init=False
+    )
+    client_id: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    display_name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    redirect_uris: Mapped[list[str]] = mapped_column(AdjustedJSON, nullable=False)
+    grant_types: Mapped[list[str]] = mapped_column(AdjustedJSON, nullable=False)
+    logo_uri: Mapped[str | None] = mapped_column(sa.String(1024), nullable=True, default=None)
+
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False, server_default=func.now(), init=False
+    )
+    last_token_at: Mapped[datetime | None] = mapped_column(
+        sa.DateTime(timezone=True), nullable=True, default=None, init=False
+    )
+
+
+class OpenAPIOAuthRefreshToken(TypeBase):
+    __tablename__ = "openapi_oauth_refresh_tokens"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="openapi_oauth_refresh_tokens_pkey"),
+        sa.Index("uq_openapi_oauth_refresh_tokens_token_hash", "token_hash", unique=True),
+        sa.Index(
+            "idx_openapi_oauth_refresh_tokens_grant",
+            "subject_email",
+            "subject_issuer",
+            "client_id",
+            "device_label",
+            mysql_length={"subject_email": 191, "subject_issuer": 191, "device_label": 191},
+        ),
+        sa.Index("idx_openapi_oauth_refresh_tokens_account_id", "account_id"),
+        sa.Index("idx_openapi_oauth_refresh_tokens_family_id", "family_id"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7()), init=False
+    )
+    family_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    token_hash: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    subject_email: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    subject_issuer: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    client_id: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    device_label: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
+    workspace_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    rotated_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
+    scope: Mapped[frozenset[OAuthScope] | None] = mapped_column(OAuthScopeSet, nullable=True, default=None)
 
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False, server_default=func.now(), init=False

@@ -106,7 +106,9 @@ def test_extract_remote_ip_preserves_trusted_rate_limit_buckets(
 
     @app.get("/")
     @rate_limit_module.rate_limit(
-        rate_limit_module.RateLimit(limit=1, window=timedelta(minutes=1), scopes=(rate_limit_module.RateLimitScope.IP,))
+        rate_limit_module.RateLimit(
+            name="test_ip", limit=1, window=timedelta(minutes=1), scopes=(rate_limit_module.RateLimitScope.IP,)
+        )
     )
     def remote_ip() -> str:
         return extract_remote_ip(request)

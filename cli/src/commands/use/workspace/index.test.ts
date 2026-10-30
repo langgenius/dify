@@ -41,7 +41,7 @@ it('refuses under an env login and without a login', async () => {
   worlds.push(a)
   await expect((await a.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'usage_invalid_flag',
-    message: 'the login comes from DIFY_TOKEN; set DIFY_WORKSPACE_ID instead',
+    message: 'the login comes from DIFY_TOKEN or DIFY_TOKEN_FILE; set DIFY_WORKSPACE_ID instead',
   })
   const b = await testContext({ login: false, argv: ['use', 'workspace', 'ws-9'] })
   worlds.push(b)

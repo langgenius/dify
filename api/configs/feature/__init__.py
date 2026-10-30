@@ -25,6 +25,42 @@ DEFAULT_OAUTH_TTL_DAYS: Final = 14
 MIN_OAUTH_TTL_DAYS: Final = 1
 MAX_OAUTH_TTL_DAYS: Final = 365
 
+DEFAULT_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: Final = 1
+MIN_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: Final = 1
+MAX_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: Final = 8760
+
+DEFAULT_OAUTH_REFRESH_TOKEN_TTL_DAYS: Final = 30
+MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS: Final = 1
+MAX_OAUTH_REFRESH_TOKEN_TTL_DAYS: Final = 365
+
+DEFAULT_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE: Final = 60
+MIN_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE: Final = 0
+MAX_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE: Final = 10000
+
+DEFAULT_OAUTH_DCR_RATE_LIMIT_PER_HOUR: Final = 120
+DEFAULT_OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN: Final = 300
+MIN_OAUTH_CLIENT_IP_RATE_LIMIT: Final = 0
+MAX_OAUTH_CLIENT_IP_RATE_LIMIT: Final = 10000
+CLIENT_IP_RATE_LIMIT_NOTE: Final = (
+    "Counted per client IP; behind a reverse proxy the IP is only the real client's when "
+    "RESPECT_XFORWARD_HEADERS_ENABLED is on and the proxy is trusted. 0 means no limit. "
+    f"Values outside {MIN_OAUTH_CLIENT_IP_RATE_LIMIT}-{MAX_OAUTH_CLIENT_IP_RATE_LIMIT} are clamped; "
+    "a non-integer falls back to the default."
+)
+
+
+def _clamp_int_setting(name: str, value: object, *, default: int, minimum: int, maximum: int) -> int:
+    # Clamp and warn instead of failing startup, so deployments with a bad value keep booting.
+    try:
+        parsed = int(str(value))
+    except ValueError:
+        logger.warning("%s=%r is not an int; falling back to %d", name, value, default)
+        return default
+    clamped = min(max(parsed, minimum), maximum)
+    if clamped != parsed:
+        logger.warning("%s=%d outside %d-%d; clamping to %d", name, parsed, minimum, maximum, clamped)
+    return clamped
+
 
 class SecurityConfig(BaseSettings):
     """
@@ -401,7 +437,8 @@ class EndpointConfig(BaseSettings):
 
     CONSOLE_API_URL: str = Field(
         description="Base URL for the console API,"
-        "used for login authentication callback or notion integration callbacks",
+        "used for login authentication callback or notion integration callbacks, "
+        "and as the OAuth issuer of /openapi/v1. OAuth discovery is off when it is empty.",
         default="",
     )
 
@@ -1121,22 +1158,131 @@ class AuthConfig(BaseSettings):
     @field_validator("OAUTH_TTL_DAYS", mode="before")
     @classmethod
     def _clamp_oauth_ttl_days(cls, v: object) -> int:
-        # Clamp and warn instead of failing startup, so deployments with a bad value keep booting.
-        try:
-            value = int(str(v))
-        except ValueError:
-            logger.warning("OAUTH_TTL_DAYS=%r is not an int; falling back to %d", v, DEFAULT_OAUTH_TTL_DAYS)
-            return DEFAULT_OAUTH_TTL_DAYS
-        clamped = min(max(value, MIN_OAUTH_TTL_DAYS), MAX_OAUTH_TTL_DAYS)
-        if clamped != value:
-            logger.warning(
-                "OAUTH_TTL_DAYS=%d outside %d-%d; clamping to %d",
-                value,
-                MIN_OAUTH_TTL_DAYS,
-                MAX_OAUTH_TTL_DAYS,
-                clamped,
-            )
-        return clamped
+        return _clamp_int_setting(
+            "OAUTH_TTL_DAYS",
+            v,
+            default=DEFAULT_OAUTH_TTL_DAYS,
+            minimum=MIN_OAUTH_TTL_DAYS,
+            maximum=MAX_OAUTH_TTL_DAYS,
+        )
+
+    ENABLE_OAUTH_AUTHORIZATION_CODE: bool = Field(
+        description="Enable the OAuth authorization code + PKCE flow: the /openapi/v1/oauth/authorize routes and the "
+        "authorization_code and refresh_token grants. Needs ENABLE_OAUTH_BEARER. /openapi/v1/oauth/token stays on "
+        "for the device grant.",
+        default=True,
+    )
+
+    ENABLE_OAUTH_DCR: bool = Field(
+        description="Let OAuth clients register themselves at /openapi/v1/oauth/register (RFC 7591). "
+        "Off: the route answers 404; clients already registered keep working.",
+        default=True,
+    )
+
+    ENABLE_OAUTH_CIMD: bool = Field(
+        description="Accept https:// client_id values whose metadata document Dify fetches "
+        "(OAuth Client ID Metadata Document). Off: such client ids are unknown.",
+        default=True,
+    )
+
+    OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: int = Field(
+        description="Lifetime in hours of access tokens issued by the authorization code flow. "
+        f"Values outside {MIN_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS}-{MAX_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS} "
+        "are clamped; a non-integer falls back to the default.",
+        ge=MIN_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS,
+        le=MAX_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS,
+        default=DEFAULT_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS,
+    )
+
+    @field_validator("OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS", mode="before")
+    @classmethod
+    def _clamp_oauth_auth_code_access_token_ttl_hours(cls, v: object) -> int:
+        return _clamp_int_setting(
+            "OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS",
+            v,
+            default=DEFAULT_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS,
+            minimum=MIN_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS,
+            maximum=MAX_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS,
+        )
+
+    OAUTH_REFRESH_TOKEN_TTL_DAYS: int = Field(
+        description="Days an authorization code flow login can keep refreshing, counted from the login; "
+        f"refreshing never extends it. Values outside {MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS}-"
+        f"{MAX_OAUTH_REFRESH_TOKEN_TTL_DAYS} are clamped; a non-integer falls back to the default.",
+        ge=MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS,
+        le=MAX_OAUTH_REFRESH_TOKEN_TTL_DAYS,
+        default=DEFAULT_OAUTH_REFRESH_TOKEN_TTL_DAYS,
+    )
+
+    @field_validator("OAUTH_REFRESH_TOKEN_TTL_DAYS", mode="before")
+    @classmethod
+    def _clamp_oauth_refresh_token_ttl_days(cls, v: object) -> int:
+        return _clamp_int_setting(
+            "OAUTH_REFRESH_TOKEN_TTL_DAYS",
+            v,
+            default=DEFAULT_OAUTH_REFRESH_TOKEN_TTL_DAYS,
+            minimum=MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS,
+            maximum=MAX_OAUTH_REFRESH_TOKEN_TTL_DAYS,
+        )
+
+    OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE: int = Field(
+        description="Max OAuth client metadata documents Dify fetches per minute, across the whole server. "
+        "Cached clients do not count; past the limit an uncached https:// client_id is unknown until the next "
+        f"minute. 0 means no limit. Values outside {MIN_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE}-"
+        f"{MAX_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE} are clamped; a non-integer falls back to the default.",
+        ge=MIN_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
+        le=MAX_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
+        default=DEFAULT_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
+    )
+
+    @field_validator("OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE", mode="before")
+    @classmethod
+    def _clamp_oauth_cimd_fetch_limit_per_minute(cls, v: object) -> int:
+        return _clamp_int_setting(
+            "OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE",
+            v,
+            default=DEFAULT_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
+            minimum=MIN_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
+            maximum=MAX_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
+        )
+
+    OAUTH_DCR_RATE_LIMIT_PER_HOUR: int = Field(
+        description="Max OAuth dynamic client registrations (/openapi/v1/oauth/register) per hour. "
+        + CLIENT_IP_RATE_LIMIT_NOTE,
+        ge=MIN_OAUTH_CLIENT_IP_RATE_LIMIT,
+        le=MAX_OAUTH_CLIENT_IP_RATE_LIMIT,
+        default=DEFAULT_OAUTH_DCR_RATE_LIMIT_PER_HOUR,
+    )
+
+    @field_validator("OAUTH_DCR_RATE_LIMIT_PER_HOUR", mode="before")
+    @classmethod
+    def _clamp_oauth_dcr_rate_limit_per_hour(cls, v: object) -> int:
+        return _clamp_int_setting(
+            "OAUTH_DCR_RATE_LIMIT_PER_HOUR",
+            v,
+            default=DEFAULT_OAUTH_DCR_RATE_LIMIT_PER_HOUR,
+            minimum=MIN_OAUTH_CLIENT_IP_RATE_LIMIT,
+            maximum=MAX_OAUTH_CLIENT_IP_RATE_LIMIT,
+        )
+
+    OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN: int = Field(
+        description="Max OAuth consent-page client lookups (/openapi/v1/oauth/authorize/client) per 5 minutes. "
+        + CLIENT_IP_RATE_LIMIT_NOTE,
+        ge=MIN_OAUTH_CLIENT_IP_RATE_LIMIT,
+        le=MAX_OAUTH_CLIENT_IP_RATE_LIMIT,
+        default=DEFAULT_OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN,
+    )
+
+    @field_validator("OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN", mode="before")
+    @classmethod
+    def _clamp_oauth_authorize_client_rate_limit_per_5_min(cls, v: object) -> int:
+        return _clamp_int_setting(
+            "OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN",
+            v,
+            default=DEFAULT_OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN,
+            minimum=MIN_OAUTH_CLIENT_IP_RATE_LIMIT,
+            maximum=MAX_OAUTH_CLIENT_IP_RATE_LIMIT,
+        )
 
     OPENAPI_RATE_LIMIT_PER_TOKEN: NonNegativeInt = Field(
         description="Per-token rate limit on /openapi/v1/* (requests per minute). "
@@ -1146,7 +1292,7 @@ class AuthConfig(BaseSettings):
     )
 
     DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
-        description="Max device-flow approve requests per session per hour on /openapi/oauth/device/approve.",
+        description="Max device-flow approve and deny requests per console account per hour.",
         default=10,
     )
 
@@ -1533,6 +1679,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
     OAUTH_ACCESS_TOKEN_RETENTION_DAYS: PositiveInt = Field(
         description="Days to retain revoked OAuth access-token rows before deletion.",
         default=30,
+    )
+    ENABLE_CLEAN_UNUSED_OAUTH_CLIENTS_TASK: bool = Field(
+        description="Enable scheduled deletion of dynamically registered OAuth clients that never got a token.",
+        default=True,
     )
     ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: bool = Field(
         description="Enable mail clean document notify task",

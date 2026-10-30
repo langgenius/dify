@@ -1,5 +1,6 @@
 import builtins
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from http.cookies import SimpleCookie
 from types import SimpleNamespace
@@ -27,7 +28,6 @@ from services.oauth_device_application_service import OAuthDeviceApplicationServ
 from services.oauth_device_contracts import (
     AccessDeniedError,
     AlreadyResolvedError,
-    ApprovalInProgressError,
     ApprovalOutcomeUnknownError,
     ApprovalSessionConsumedError,
     AuthorizationPendingError,
@@ -251,27 +251,36 @@ class TestOauthDeviceHttpCases:
         monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
         monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: account_with_tenant)
         monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: account_with_tenant)
+        monkeypatch.setattr("libs.login.current_account_with_tenant_optional", lambda: (account, "workspace-1"))
         monkeypatch.setattr(RateLimiter, "is_rate_limited", lambda *_args: False)
         monkeypatch.setattr(RateLimiter, "increment_rate_limit", lambda *_args: None)
         return service
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("body_kind", "body", "label"),
+        [
+            ("json", {"client_id": "difyctl", "device_label": "laptop"}, "laptop"),
+            ("data", {"client_id": "difyctl"}, None),
+        ],
+    )
     def test_device_code_serializes_authorization_and_passes_request_origin(
-        openapi_app: Flask, device_service: Mock
+        openapi_app: Flask, device_service: Mock, body_kind: str, body: dict[str, str], label: str | None
     ) -> None:
         device_service.start.return_value = DeviceAuthorization(
             device_code="opaque-code",
             user_code="ABCD-EFGH",
             verification_uri="https://console.example/device",
+            verification_uri_complete="https://console.example/device?user_code=ABCD-EFGH",
             expires_in=900,
             interval=5,
         )
 
         response = openapi_app.test_client().post(
             f"{_PREFIX}/code",
-            json={"client_id": "difyctl", "device_label": "laptop"},
             base_url="https://api.example",
             environ_overrides={"REMOTE_ADDR": "192.0.2.10"},
+            **{body_kind: body},
         )
 
         assert response.status_code == 200
@@ -279,15 +288,23 @@ class TestOauthDeviceHttpCases:
             "device_code": "opaque-code",
             "user_code": "ABCD-EFGH",
             "verification_uri": "https://console.example/device",
+            "verification_uri_complete": "https://console.example/device?user_code=ABCD-EFGH",
             "expires_in": 900,
             "interval": 5,
         }
         device_service.start.assert_called_once_with(
             client_id="difyctl",
-            device_label="laptop",
+            device_label=label,
             created_ip="192.0.2.10",
             request_origin="https://api.example/",
         )
+
+    @staticmethod
+    def test_device_code_non_string_label_is_rejected(openapi_app: Flask, device_service: Mock) -> None:
+        response = openapi_app.test_client().post(f"{_PREFIX}/code", json={"client_id": "difyctl", "device_label": 7})
+
+        assert response.status_code == 400
+        assert device_service.mock_calls == []
 
     @staticmethod
     @pytest.mark.parametrize("path", ["code", "token", "approve", "deny", "approve-external"])
@@ -328,7 +345,6 @@ class TestOauthDeviceHttpCases:
             ("token", "poll", AccessDeniedError(), 400, "access_denied"),
             ("approve", "approve", ExpiredOrUnknownError(), 404, "expired_or_unknown"),
             ("approve", "approve", AlreadyResolvedError(), 409, "already_resolved"),
-            ("approve", "approve", ApprovalInProgressError(), 409, "approve_in_progress"),
             ("approve", "approve", ApprovalOutcomeUnknownError(), 503, "approval_outcome_unknown"),
             ("deny", "deny", DeviceStateLostError(), 409, "state_lost"),
         ],
@@ -548,7 +564,6 @@ class TestOauthDeviceHttpCases:
             ("approve-external", "approve_external", ExternalUserCodeMismatchError(), 400, "user_code_mismatch"),
             ("approve-external", "approve_external", ExternalUserCodeNotFoundError(), 404, "user_code_not_pending"),
             ("approve-external", "approve_external", AlreadyResolvedError(), 409, "user_code_not_pending"),
-            ("approve-external", "approve_external", ApprovalInProgressError(), 409, "approve_in_progress"),
             ("approve-external", "approve_external", ApprovalOutcomeUnknownError(), 503, "approval_outcome_unknown"),
             (
                 "approve-external",
@@ -587,3 +602,102 @@ class TestOauthDeviceHttpCases:
         assert message in response.get_data(as_text=True)
         assert "Set-Cookie" not in response.headers
         assert "signed-grant" not in response.get_data(as_text=True)
+
+
+@dataclass
+class _FakeFeatureQueries:
+    def has_valid_enterprise_license(self) -> bool:
+        return True
+
+
+@dataclass
+class _FakeApplicationServices:
+    oauth_device: OAuthDeviceApplicationService
+    feature_queries: _FakeFeatureQueries = field(default_factory=_FakeFeatureQueries)
+
+
+@pytest.mark.usefixtures("device_service", "rate_limit_store")
+class TestDeviceDecisionRateLimitCases:
+    @staticmethod
+    @pytest.fixture
+    def current_account(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
+        holder = {"id": "account-1"}
+
+        def resolve() -> tuple[Account, str]:
+            account = Account(name="Ada", email="ada@example.com", status=AccountStatus.ACTIVE)
+            account.id = holder["id"]
+            return account, "workspace-1"
+
+        monkeypatch.setattr("libs.login.current_account_with_tenant_optional", resolve)
+        return holder
+
+    @staticmethod
+    @pytest.fixture
+    def rate_limit_store(monkeypatch: pytest.MonkeyPatch) -> dict[str, int]:
+        store: dict[str, int] = {}
+        monkeypatch.setattr(
+            RateLimiter,
+            "is_rate_limited",
+            lambda self, key: store.get(f"{self.prefix}:{key}", 0) >= self.max_attempts,
+        )
+
+        def record(self: RateLimiter, key: str) -> None:
+            store[f"{self.prefix}:{key}"] = store.get(f"{self.prefix}:{key}", 0) + 1
+
+        monkeypatch.setattr(RateLimiter, "increment_rate_limit", record)
+        return store
+
+    @staticmethod
+    @pytest.fixture
+    def device_service(
+        openapi_app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+        current_account: dict[str, str],
+    ) -> Mock:
+        service = create_autospec(OAuthDeviceApplicationService, instance=True)
+        service.approve.return_value = DeviceMutation(status="approved")
+        service.deny.return_value = DeviceMutation(status="denied")
+        openapi_app.extensions["application_services"] = _FakeApplicationServices(oauth_device=service)
+
+        def admitted() -> AccountWithTenant:
+            account = Account(name="Ada", email="ada@example.com", status=AccountStatus.ACTIVE)
+            account.id = current_account["id"]
+            return AccountWithTenant(account, "workspace-1")
+
+        config_overrides(
+            LOGIN_DISABLED=True,
+            ENABLE_OAUTH_BEARER=True,
+            CONSOLE_API_URL="https://api.example",
+            CONSOLE_WEB_URL="https://console.example",
+        )
+        monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
+        monkeypatch.setattr(wraps, "current_account_with_tenant", admitted)
+        monkeypatch.setattr(flask_admission, "current_account_with_tenant", admitted)
+        return service
+
+    @staticmethod
+    def _post(app: Flask, path: str, user_code: str = "ABCD-EFGH"):
+        return app.test_client().post(f"{_PREFIX}/{path}", json={"user_code": user_code})
+
+    @staticmethod
+    def test_approve_and_deny_share_a_per_account_bucket(openapi_app: Flask, current_account: dict[str, str]) -> None:
+        for _ in range(10):
+            assert TestDeviceDecisionRateLimitCases._post(openapi_app, "approve").status_code == 200
+
+        assert TestDeviceDecisionRateLimitCases._post(openapi_app, "approve").status_code == 429
+        assert TestDeviceDecisionRateLimitCases._post(openapi_app, "deny").status_code == 429
+
+        current_account["id"] = "account-2"
+        assert TestDeviceDecisionRateLimitCases._post(openapi_app, "deny").status_code == 200
+
+    @staticmethod
+    def test_failed_approve_still_counts(
+        openapi_app: Flask, device_service: Mock, rate_limit_store: dict[str, int]
+    ) -> None:
+        device_service.approve.side_effect = ExpiredOrUnknownError()
+
+        response = TestDeviceDecisionRateLimitCases._post(openapi_app, "approve", user_code="NOPE-NOPE")
+
+        assert response.status_code == 404
+        assert list(rate_limit_store.values()) == [1]

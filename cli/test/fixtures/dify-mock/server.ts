@@ -1,4 +1,4 @@
-import type { Context as HonoContext } from 'hono'
+import type { Context as HonoContext, HonoRequest } from 'hono'
 import type { ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import type { AppFixture, Scenario } from './scenarios.js'
@@ -44,6 +44,9 @@ export type DifyMock = {
   lastRequest: LastRequest | null
   /** Number of requests received, including GET _catalog */
   requestCount: number
+  /** Number of DELETE /account/sessions/self calls that passed the bearer check */
+  sessionRevokeCount: number
+  lastDeviceCodeBody: Record<string, unknown> | null
   /** Runs before each device-token poll is answered: lets a test act while a resume waits. */
   onDeviceTokenPoll: (hook: () => void) => void
 }
@@ -86,6 +89,51 @@ type MockErrorBody = { code: string; message: string; status: number; hint?: str
 
 function errorBody(code: string, message: string, status: number, hint?: string): MockErrorBody {
   return hint === undefined ? { code, message, status } : { code, message, status, hint }
+}
+
+const DEVICE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:device_code'
+const TOKEN_EXPIRES_IN = 7_776_000
+const LEGACY_HTML_404 =
+  '<html><head><title>404 Not Found</title></head><body><h1>404 Not Found</h1></body></html>'
+
+const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' }
+
+const DEVICE_POLL_ERRORS: Partial<Record<Scenario, { code: string; description: string }>> = {
+  denied: { code: 'access_denied', description: 'user rejected' },
+  expired: { code: 'expired_token', description: 'device_code expired' },
+  'slow-down': { code: 'slow_down', description: 'increase interval' },
+}
+
+function approvedDeviceGrant(scenario: Scenario) {
+  const workspaces = WORKSPACES.map((w) => ({ id: w.id, name: w.name, role: w.role }))
+  if (scenario === 'sso') {
+    return {
+      token: 'dfoe_test',
+      subject_type: 'external_sso',
+      subject_email: 'sso@dify.ai',
+      subject_issuer: 'https://issuer.example',
+      account: null,
+      workspaces: [],
+      default_workspace_id: null,
+      token_id: 'tok-sso-1',
+    }
+  }
+  const account = scenario === 'no-email' ? { id: ACCOUNT.id, email: '', name: '' } : ACCOUNT
+  return {
+    token: 'dfoa_test',
+    subject_type: 'account',
+    account,
+    workspaces,
+    default_workspace_id: ACCOUNT.current_workspace_id,
+    token_id: 'tok-1',
+  }
+}
+
+async function readTokenForm(req: HonoRequest): Promise<Record<string, string | undefined>> {
+  const contentType = req.header('Content-Type') ?? ''
+  if (contentType.includes('application/json'))
+    return (await req.json().catch(() => ({}))) as Record<string, string | undefined>
+  return (await req.parseBody()) as Record<string, string | undefined>
 }
 
 function errorResponse(code: string, message: string, status: number, hint?: string) {
@@ -265,6 +313,8 @@ export type MockState = {
   lastImportBody: Record<string, unknown> | null
   lastRequest: LastRequest | null
   requestCount: number
+  sessionRevokeCount: number
+  lastDeviceCodeBody: Record<string, unknown> | null
   beforeDeviceToken?: () => void
 }
 
@@ -535,9 +585,10 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     })
   })
 
-  app.delete('/openapi/v1/account/sessions/self', () =>
-    Response.json({ status: 'revoked' }, { status: 200 }),
-  )
+  app.delete('/openapi/v1/account/sessions/self', () => {
+    if (state !== undefined) state.sessionRevokeCount++
+    return Response.json({ status: 'revoked' }, { status: 200 })
+  })
 
   app.delete('/openapi/v1/account/sessions/:id', (c) => {
     const id = c.req.param('id')
@@ -642,6 +693,20 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
         : null,
       parameters: wantParams ? (app.parameters ?? null) : null,
       input_schema: wantInputSchema ? (app.input_schema ?? null) : null,
+    })
+  })
+
+  // External subjects have no workspace scope: every app is listed.
+  app.get('/openapi/v1/permitted-external-apps', (c) => {
+    const page = Number(c.req.query('page') ?? '1')
+    const limit = Number(c.req.query('limit') ?? '20')
+    const start = (page - 1) * limit
+    return c.json({
+      page,
+      limit,
+      total: APPS.length,
+      has_more: page * limit < APPS.length,
+      data: APPS.slice(start, start + limit),
     })
   })
 
@@ -780,7 +845,9 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
 
   app.get('/openapi/v1/apps/:id/runs/:run_id/events', (_c) => sseResponse(hitlResumedResponse()))
 
-  app.post('/openapi/v1/oauth/device/code', (c) => {
+  app.post('/openapi/v1/oauth/device/code', async (c) => {
+    if (state !== undefined)
+      state.lastDeviceCodeBody = (await c.req.json()) as Record<string, unknown>
     const scenario = getScenario()
     if (scenario === 'no-device-flow')
       return errorResponse(ServerErrorCode.NotFound, 'not found', 404)
@@ -793,11 +860,15 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
         expires_in: 600,
         interval: 1,
       })
+    const verificationUri = `${new URL(c.req.url).origin}/device`
     return c.json({
       device_code: 'devcode-1',
       user_code: 'ABCD-1234',
-      verification_uri: `${new URL(c.req.url).origin}/device`,
-      verification_uri_complete: `${new URL(c.req.url).origin}/device?user_code=ABCD-1234`,
+      verification_uri: verificationUri,
+      verification_uri_complete:
+        scenario === 'bad-verification-uri-complete'
+          ? BAD_VERIFICATION_URI
+          : `${verificationUri}?user_code=ABCD-1234`,
       expires_in: 600,
       interval: 1,
     })
@@ -806,45 +877,28 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
   app.post('/openapi/v1/oauth/device/token', async (c) => {
     state?.beforeDeviceToken?.()
     const scenario = getScenario()
-    if (scenario === 'denied')
-      return c.json({ error: 'access_denied', error_description: 'user rejected' }, { status: 400 })
-    if (scenario === 'expired')
-      return c.json(
-        { error: 'expired_token', error_description: 'device_code expired' },
-        { status: 400 },
-      )
-    if (scenario === 'slow-down')
-      return c.json({ error: 'slow_down', error_description: 'increase interval' }, { status: 400 })
-    if (scenario === 'sso') {
-      return c.json({
-        token: 'dfoe_test',
-        subject_type: 'external_sso',
-        subject_email: 'sso@dify.ai',
-        subject_issuer: 'https://issuer.example',
-        account: null,
-        workspaces: [],
-        default_workspace_id: null,
-        token_id: 'tok-sso-1',
-      })
-    }
-    if (scenario === 'no-email') {
-      return c.json({
-        token: 'dfoa_test',
-        subject_type: 'account',
-        account: { id: ACCOUNT.id, email: '', name: '' },
-        workspaces: WORKSPACES.map((w) => ({ id: w.id, name: w.name, role: w.role })),
-        default_workspace_id: ACCOUNT.current_workspace_id,
-        token_id: 'tok-1',
-      })
-    }
-    return c.json({
-      token: 'dfoa_test',
-      subject_type: 'account',
-      account: ACCOUNT,
-      workspaces: WORKSPACES.map((w) => ({ id: w.id, name: w.name, role: w.role })),
-      default_workspace_id: ACCOUNT.current_workspace_id,
-      token_id: 'tok-1',
-    })
+    const error = DEVICE_POLL_ERRORS[scenario]
+    if (error)
+      return c.json({ error: error.code, error_description: error.description }, { status: 400 })
+    return c.json(approvedDeviceGrant(scenario))
+  })
+
+  app.post('/openapi/v1/oauth/token', async (c) => {
+    state?.beforeDeviceToken?.()
+    const scenario = getScenario()
+    if (scenario === 'legacy-token-route')
+      return errorResponse(ServerErrorCode.NotFound, 'not found', 404)
+    if (scenario === 'legacy-token-route-html-404') return c.html(LEGACY_HTML_404, 404)
+    const form = await readTokenForm(c.req)
+    if (form.grant_type !== DEVICE_GRANT_TYPE)
+      return c.json({ error: 'unsupported_grant_type' }, { status: 400, headers: NO_STORE_HEADERS })
+    const error = DEVICE_POLL_ERRORS[scenario]
+    if (error) return c.json({ error: error.code }, { status: 400, headers: NO_STORE_HEADERS })
+    const { token, ...extras } = approvedDeviceGrant(scenario)
+    return c.json(
+      { access_token: token, token_type: 'Bearer', expires_in: TOKEN_EXPIRES_IN, ...extras },
+      { headers: NO_STORE_HEADERS },
+    )
   })
 
   return app
@@ -859,6 +913,8 @@ export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
     lastImportBody: null,
     lastRequest: null,
     requestCount: 0,
+    sessionRevokeCount: 0,
+    lastDeviceCodeBody: null,
   }
   const app = buildApp(() => scenario, state)
   return new Promise((resolve, reject) => {
@@ -899,6 +955,12 @@ export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
         },
         get requestCount() {
           return state.requestCount
+        },
+        get sessionRevokeCount() {
+          return state.sessionRevokeCount
+        },
+        get lastDeviceCodeBody() {
+          return state.lastDeviceCodeBody
         },
         onDeviceTokenPoll(hook) {
           state.beforeDeviceToken = hook

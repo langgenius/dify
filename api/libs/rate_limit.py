@@ -8,93 +8,150 @@ response shape isn't generic 429.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
 from functools import wraps
-from typing import ParamSpec, TypeVar
+from typing import Final, ParamSpec, TypeVar
 
-from flask import request, session
-from werkzeug.exceptions import TooManyRequests
+from flask import request
+from werkzeug.exceptions import TooManyRequests, Unauthorized
 
 from configs import dify_config
 from libs.helper import RateLimiter, extract_remote_ip
 
+RATE_LIMIT_IDENTITY_MISSING: Final = "rate_limit_identity_missing"
+
 
 class RateLimitScope(StrEnum):
     IP = "ip"
-    SESSION = "session"
+    CONSOLE_ACCOUNT = "console_account"
     ACCOUNT = "account"
     SUBJECT_EMAIL = "subject_email"
     TOKEN_ID = "token_id"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class RateLimit:
+    name: str
     limit: int
     window: timedelta
     scopes: tuple[RateLimitScope, ...]
 
+    @property
+    def disabled(self) -> bool:
+        """0 (or less) turns the limit off; a limiter built with no attempts would refuse everything."""
+        return self.limit <= 0
 
-LIMIT_DEVICE_CODE_PER_IP = RateLimit(60, timedelta(hours=1), (RateLimitScope.IP,))
-LIMIT_SSO_INITIATE_PER_IP = RateLimit(60, timedelta(hours=1), (RateLimitScope.IP,))
-LIMIT_APPROVE_EXT_PER_EMAIL = RateLimit(10, timedelta(hours=1), (RateLimitScope.SUBJECT_EMAIL,))
+
+LIMIT_DEVICE_CODE_PER_IP = RateLimit(
+    name="device_code_per_ip", limit=60, window=timedelta(hours=1), scopes=(RateLimitScope.IP,)
+)
+LIMIT_SSO_INITIATE_PER_IP = RateLimit(
+    name="sso_initiate_per_ip", limit=60, window=timedelta(hours=1), scopes=(RateLimitScope.IP,)
+)
+LIMIT_APPROVE_EXT_PER_EMAIL = RateLimit(
+    name="approve_ext_per_email", limit=10, window=timedelta(hours=1), scopes=(RateLimitScope.SUBJECT_EMAIL,)
+)
 LIMIT_DEVICE_FLOW_APPROVE = RateLimit(
+    name="device_flow_approve",
     limit=dify_config.DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR,
     window=timedelta(hours=1),
-    scopes=(RateLimitScope.SESSION,),
+    scopes=(RateLimitScope.CONSOLE_ACCOUNT,),
 )
-LIMIT_LOOKUP_PUBLIC = RateLimit(60, timedelta(minutes=5), (RateLimitScope.IP,))
-LIMIT_ME_PER_ACCOUNT = RateLimit(60, timedelta(minutes=1), (RateLimitScope.ACCOUNT,))
-LIMIT_ME_PER_EMAIL = RateLimit(60, timedelta(minutes=1), (RateLimitScope.SUBJECT_EMAIL,))
+LIMIT_LOOKUP_PUBLIC = RateLimit(
+    name="lookup_public", limit=60, window=timedelta(minutes=5), scopes=(RateLimitScope.IP,)
+)
+LIMIT_AUTHORIZE_CLIENT_PUBLIC = RateLimit(
+    name="authorize_client_public",
+    limit=dify_config.OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN,
+    window=timedelta(minutes=5),
+    scopes=(RateLimitScope.IP,),
+)
+LIMIT_DCR_PER_IP = RateLimit(
+    name="dcr_per_ip",
+    limit=dify_config.OAUTH_DCR_RATE_LIMIT_PER_HOUR,
+    window=timedelta(hours=1),
+    scopes=(RateLimitScope.IP,),
+)
+LIMIT_AUTHORIZE_APPROVE = RateLimit(
+    name="authorize_approve", limit=10, window=timedelta(hours=1), scopes=(RateLimitScope.CONSOLE_ACCOUNT,)
+)
+LIMIT_ME_PER_ACCOUNT = RateLimit(
+    name="me_per_account", limit=60, window=timedelta(minutes=1), scopes=(RateLimitScope.ACCOUNT,)
+)
 LIMIT_BEARER_PER_TOKEN = RateLimit(
+    name="bearer_per_token",
     limit=dify_config.OPENAPI_RATE_LIMIT_PER_TOKEN,
     window=timedelta(minutes=1),
     scopes=(RateLimitScope.TOKEN_ID,),  # bucket key composed by caller from sha256(token)
 )
 
 
-def _one_key(scope: RateLimitScope) -> str:
-    match scope:
-        case RateLimitScope.IP:
-            return f"ip:{extract_remote_ip(request) or 'unknown'}"
-        case RateLimitScope.SESSION:
-            return f"session:{session.get('_id', 'anon')}"
-        case RateLimitScope.ACCOUNT:
-            from libs.oauth_bearer import try_get_auth_ctx
+def _ip_key() -> str:
+    ip = extract_remote_ip(request)
+    if not ip:
+        raise Unauthorized(RATE_LIMIT_IDENTITY_MISSING)
+    return f"ip:{ip}"
 
-            ctx = try_get_auth_ctx()
-            if ctx and ctx.account_id:
-                return f"account:{ctx.account_id}"
-            return "account:anon"
-        case RateLimitScope.SUBJECT_EMAIL:
-            from libs.oauth_bearer import try_get_auth_ctx
 
-            ctx = try_get_auth_ctx()
-            if ctx and ctx.subject_email:
-                return f"subject:{ctx.subject_email}"
-            return "subject:anon"
-        case RateLimitScope.TOKEN_ID:
-            from libs.oauth_bearer import try_get_auth_ctx
+def _console_account_key() -> str:
+    from libs.login import current_account_with_tenant_optional
 
-            ctx = try_get_auth_ctx()
-            if ctx and ctx.token_id:
-                return f"token:{ctx.token_id}"
-            return "token:anon"
+    account, _ = current_account_with_tenant_optional()
+    if not account:
+        raise Unauthorized(RATE_LIMIT_IDENTITY_MISSING)
+    return f"console_account:{account.id}"
+
+
+def _account_key() -> str:
+    from libs.oauth_bearer import try_get_auth_ctx
+
+    ctx = try_get_auth_ctx()
+    if not ctx or not ctx.account_id:
+        raise Unauthorized(RATE_LIMIT_IDENTITY_MISSING)
+    return f"account:{ctx.account_id}"
+
+
+def _subject_email_key() -> str:
+    from libs.oauth_bearer import try_get_auth_ctx
+
+    ctx = try_get_auth_ctx()
+    if not ctx or not ctx.subject_email:
+        raise Unauthorized(RATE_LIMIT_IDENTITY_MISSING)
+    return f"subject:{ctx.subject_email}"
+
+
+def _token_id_key() -> str:
+    from libs.oauth_bearer import try_get_auth_ctx
+
+    ctx = try_get_auth_ctx()
+    if not ctx or not ctx.token_id:
+        raise Unauthorized(RATE_LIMIT_IDENTITY_MISSING)
+    return f"token:{ctx.token_id}"
+
+
+_SCOPE_KEYS: Mapping[RateLimitScope, Callable[[], str]] = {
+    RateLimitScope.IP: _ip_key,
+    RateLimitScope.CONSOLE_ACCOUNT: _console_account_key,
+    RateLimitScope.ACCOUNT: _account_key,
+    RateLimitScope.SUBJECT_EMAIL: _subject_email_key,
+    RateLimitScope.TOKEN_ID: _token_id_key,
+}
 
 
 def _composite_key(scopes: tuple[RateLimitScope, ...]) -> str:
-    return "|".join(_one_key(s) for s in scopes)
+    return "|".join(_SCOPE_KEYS[s]() for s in scopes)
 
 
-def _limiter_prefix(scopes: tuple[RateLimitScope, ...]) -> str:
-    return "rl:" + "+".join(s.value for s in scopes)
+def limiter_prefix(spec: RateLimit) -> str:
+    return f"rl:{spec.name}:" + "+".join(s.value for s in spec.scopes)
 
 
 def _build_limiter(spec: RateLimit) -> RateLimiter:
     return RateLimiter(
-        prefix=_limiter_prefix(spec.scopes),
+        prefix=limiter_prefix(spec),
         max_attempts=spec.limit,
         time_window=int(spec.window.total_seconds()),
     )
@@ -111,6 +168,8 @@ def rate_limit(spec: RateLimit) -> Callable[[Callable[_P, _R]], Callable[_P, _R]
     def wrap(fn: Callable[_P, _R]) -> Callable[_P, _R]:
         @wraps(fn)
         def inner(*args: _P.args, **kwargs: _P.kwargs) -> _R:
+            if spec.disabled:
+                return fn(*args, **kwargs)
             key = _composite_key(spec.scopes)
             if limiter.is_rate_limited(key):
                 raise TooManyRequests("rate_limited")
@@ -126,6 +185,8 @@ def enforce(spec: RateLimit, *, key: str) -> None:
     """Imperative form — caller composes the bucket key to match scope
     semantics (the key is opaque here).
     """
+    if spec.disabled:
+        return
     limiter = _build_limiter(spec)
     if limiter.is_rate_limited(key):
         raise TooManyRequests("rate_limited")
@@ -150,9 +211,7 @@ def enforce_bearer_rate_limit(token_hash: str) -> None:
     Bucket key = ``token:<sha256_hex>`` so the same token shares one
     bucket across api replicas (Redis-backed sliding window).
     """
-    # 0 (or less) disables the per-token limit. Short-circuit here: a limiter built with
-    # max_attempts=0 would otherwise treat every request as already over the limit.
-    if LIMIT_BEARER_PER_TOKEN.limit <= 0:
+    if LIMIT_BEARER_PER_TOKEN.disabled:
         return
     limiter = _build_limiter(LIMIT_BEARER_PER_TOKEN)
     key = f"token:{token_hash}"

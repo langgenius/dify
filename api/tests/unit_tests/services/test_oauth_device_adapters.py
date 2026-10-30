@@ -1,20 +1,27 @@
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from typing import override
 
 import pytest
 
 from extensions.ext_redis import RedisClientWrapper
 from libs import jws
-from libs.rate_limit import LIMIT_APPROVE_EXT_PER_EMAIL
+from libs.rate_limit import LIMIT_APPROVE_EXT_PER_EMAIL, limiter_prefix
 from services.oauth_device_adapters import (
     DifyConfigOAuthDeviceSettings,
     EnterpriseDeviceSSOService,
     EnterpriseOAuthDeviceSSOGateway,
     EnvironmentOAuthDeviceTokenTTLPolicy,
+    OAuthDeviceTokenIssuanceGateway,
     RedisExternalApprovalLimiter,
 )
-from services.oauth_device_contracts import OAuthDeviceSSOInitiationError
+from services.oauth_device_contracts import (
+    OAuthDeviceSSOInitiationError,
+    OAuthDeviceTokenRotation,
+    OAuthDeviceTokenWrite,
+)
+from tests.helpers.unit.model_factories import make_account_snapshot
 
 
 @dataclass
@@ -146,7 +153,7 @@ def test_settings_adapter_owns_oauth_device_configuration(config_overrides: Call
 def test_external_approval_limiter_owns_rate_limit_policy() -> None:
     limiter = RedisExternalApprovalLimiter(redis=RedisClientWrapper())
 
-    assert limiter._rate_limiter.prefix == "rl:subject_email"
+    assert limiter._rate_limiter.prefix == limiter_prefix(LIMIT_APPROVE_EXT_PER_EMAIL)
     assert limiter._rate_limiter.max_attempts == LIMIT_APPROVE_EXT_PER_EMAIL.limit
     assert limiter._rate_limiter.time_window == int(LIMIT_APPROVE_EXT_PER_EMAIL.window.total_seconds())
 
@@ -176,3 +183,40 @@ def test_token_ttl_policy_reads_the_configured_days(config_overrides: Callable[.
     config_overrides(OAUTH_TTL_DAYS=30)
 
     assert EnvironmentOAuthDeviceTokenTTLPolicy().ttl_days("workspace-1") == 30
+
+
+@dataclass
+class _RecordingTokenPersistence:
+    writes: list[OAuthDeviceTokenWrite] = field(default_factory=list)
+
+    def rotate_token(self, token: OAuthDeviceTokenWrite) -> OAuthDeviceTokenRotation:
+        self.writes.append(token)
+        return OAuthDeviceTokenRotation(token_id="token-1", replaced_token_id=None, replaced_token_hash=None)
+
+
+@pytest.mark.parametrize(
+    ("ttl_days", "lifetime", "expected"),
+    [
+        (14, None, timedelta(days=14)),
+        (14, timedelta(hours=24), timedelta(hours=24)),
+        (1, timedelta(days=30), timedelta(days=1)),
+    ],
+    ids=["default", "shorter", "capped"],
+)
+def test_issue_account_token_lifetime_never_exceeds_ttl_days(
+    config_overrides: Callable[..., None], ttl_days: int, lifetime: timedelta | None, expected: timedelta
+) -> None:
+    config_overrides(OAUTH_TTL_DAYS=ttl_days)
+    persistence = _RecordingTokenPersistence()
+    gateway = OAuthDeviceTokenIssuanceGateway(tokens=persistence, ttl_policy=EnvironmentOAuthDeviceTokenTTLPolicy())
+    before = datetime.now(UTC)
+
+    gateway.issue_account_token(
+        account=make_account_snapshot(),
+        workspace_id="ws-1",
+        client_id="difyctl",
+        device_label="laptop",
+        lifetime=lifetime,
+    )
+
+    assert abs(persistence.writes[0].expires_at - before - expected) < timedelta(seconds=5)

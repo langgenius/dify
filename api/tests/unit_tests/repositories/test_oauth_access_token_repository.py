@@ -3,10 +3,12 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.oauth import OAuthAccessToken
+from models.oauth import OpenAPIOAuthAccessToken, OpenAPIOAuthRefreshToken
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
+from tests.helpers.unit.repositories.oauth_lock_order import record_locks
 
 ACCOUNT_ID = "11111111-1111-1111-1111-111111111111"
 OTHER_ACCOUNT_ID = "22222222-2222-2222-2222-222222222222"
@@ -23,13 +25,14 @@ def _token(
     expires_at: datetime | None = None,
     revoked_at: datetime | None = None,
     created_at: datetime | None = None,
-) -> OAuthAccessToken:
-    token = OAuthAccessToken(
+    device_label: str = "test-device",
+) -> OpenAPIOAuthAccessToken:
+    token = OpenAPIOAuthAccessToken(
         subject_email="user@example.com",
         subject_issuer="dify:account" if account_id is not None else "https://idp.example.com",
         account_id=account_id,
         client_id="difyctl",
-        device_label="test-device",
+        device_label=device_label,
         prefix="dfoa_" if account_id is not None else "dfoe_",
         token_hash=token_hash,
         expires_at=expires_at or NOW + timedelta(days=1),
@@ -41,15 +44,15 @@ def _token(
     return token
 
 
-@pytest.mark.parametrize("sqlite_session", [(OAuthAccessToken,)], indirect=True)
-def test_list_active_is_account_scoped_and_database_paginated(
+@pytest.mark.parametrize("sqlite_session", [(OpenAPIOAuthAccessToken,)], indirect=True)
+def test_list_active_is_account_scoped_and_paginated(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     sqlite_session.add_all(
         [
             _token(token_id=TOKEN_ID, created_at=NOW - timedelta(minutes=1)),
-            _token(token_id=OTHER_TOKEN_ID, created_at=NOW - timedelta(minutes=2)),
+            _token(token_id=OTHER_TOKEN_ID, created_at=NOW - timedelta(minutes=2), device_label="other-device"),
             _token(
                 token_id="55555555-5555-5555-5555-555555555555",
                 expires_at=NOW - timedelta(seconds=1),
@@ -72,7 +75,7 @@ def test_list_active_is_account_scoped_and_database_paginated(
     assert [row.id for row in rows] == [OTHER_TOKEN_ID]
 
 
-@pytest.mark.parametrize("sqlite_session", [(OAuthAccessToken,)], indirect=True)
+@pytest.mark.parametrize("sqlite_session", [(OpenAPIOAuthAccessToken,)], indirect=True)
 def test_revoke_returns_hash_and_persists_revocation(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
@@ -84,15 +87,15 @@ def test_revoke_returns_hash_and_persists_revocation(
     result = repository.revoke(account_id=ACCOUNT_ID, token_id=TOKEN_ID, revoked_at=NOW)
 
     assert result.owned is True
-    assert result.token_hash == "live-hash"
+    assert result.token_hashes == ("live-hash",)
     sqlite_session.expire_all()
-    persisted = sqlite_session.get(OAuthAccessToken, TOKEN_ID)
+    persisted = sqlite_session.get(OpenAPIOAuthAccessToken, TOKEN_ID)
     assert persisted is not None
     assert persisted.token_hash is None
     assert persisted.revoked_at is not None
 
 
-@pytest.mark.parametrize("sqlite_session", [(OAuthAccessToken,)], indirect=True)
+@pytest.mark.parametrize("sqlite_session", [(OpenAPIOAuthAccessToken,)], indirect=True)
 def test_revoke_is_idempotent_for_an_owned_session(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
@@ -104,10 +107,10 @@ def test_revoke_is_idempotent_for_an_owned_session(
     result = repository.revoke(account_id=ACCOUNT_ID, token_id=TOKEN_ID, revoked_at=NOW)
 
     assert result.owned is True
-    assert result.token_hash is None
+    assert result.token_hashes == ()
 
 
-@pytest.mark.parametrize("sqlite_session", [(OAuthAccessToken,)], indirect=True)
+@pytest.mark.parametrize("sqlite_session", [(OpenAPIOAuthAccessToken,)], indirect=True)
 def test_revoke_does_not_disclose_another_accounts_session(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
@@ -119,8 +122,84 @@ def test_revoke_does_not_disclose_another_accounts_session(
     result = repository.revoke(account_id=ACCOUNT_ID, token_id=TOKEN_ID, revoked_at=NOW)
 
     assert result.owned is False
-    assert result.token_hash is None
+    assert result.token_hashes == ()
     sqlite_session.expire_all()
-    persisted = sqlite_session.get(OAuthAccessToken, TOKEN_ID)
+    persisted = sqlite_session.get(OpenAPIOAuthAccessToken, TOKEN_ID)
     assert persisted is not None
     assert persisted.token_hash == "live-hash"
+
+
+def _refresh(*, device_label: str = "test-device", account_id: str = ACCOUNT_ID) -> OpenAPIOAuthRefreshToken:
+    return OpenAPIOAuthRefreshToken(
+        family_id="99999999-9999-9999-9999-999999999999",
+        token_hash=f"refresh-{device_label}",
+        subject_email="user@example.com",
+        subject_issuer="dify:account",
+        account_id=account_id,
+        client_id="difyctl",
+        device_label=device_label,
+        expires_at=NOW + timedelta(days=30),
+    )
+
+
+def _refresh_labels(session: Session) -> set[str]:
+    session.expire_all()
+    return set(session.scalars(select(OpenAPIOAuthRefreshToken.device_label)).all())
+
+
+def test_revoke_deletes_the_grants_refresh_tokens_only(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    sqlite_session.add_all(
+        [
+            _token(),
+            _token(token_id=OTHER_TOKEN_ID, token_hash="kept-hash", device_label="other-device"),
+            _refresh(),
+            _refresh(device_label="other-device"),
+        ]
+    )
+    sqlite_session.commit()
+    repository = SQLAlchemyOAuthAccessTokenRepository(session_factory=sqlite_session_factory)
+
+    result = repository.revoke(account_id=ACCOUNT_ID, token_id=TOKEN_ID, revoked_at=NOW)
+
+    assert result.token_hashes == ("live-hash",)
+    assert _refresh_labels(sqlite_session) == {"other-device"}
+    kept = sqlite_session.get(OpenAPIOAuthAccessToken, OTHER_TOKEN_ID)
+    assert kept is not None
+    assert kept.revoked_at is None
+
+
+def test_revoke_by_refresh_token_id_revokes_the_grant_locking_the_account_first(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    refresh = _refresh()
+    sqlite_session.add_all([_token(), refresh])
+    sqlite_session.commit()
+    repository = SQLAlchemyOAuthAccessTokenRepository(session_factory=sqlite_session_factory)
+
+    with record_locks(sqlite_session_factory) as log:
+        result = repository.revoke(account_id=ACCOUNT_ID, token_id=refresh.id, revoked_at=NOW)
+
+    assert result.owned is True
+    assert result.token_hashes == ("live-hash",)
+    assert _refresh_labels(sqlite_session) == set()
+    assert log.tables[0] == "accounts"
+    assert log.follows_lock_order()
+
+
+def test_revoke_does_not_disclose_another_accounts_refresh_token(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    refresh = _refresh(account_id=OTHER_ACCOUNT_ID)
+    sqlite_session.add(refresh)
+    sqlite_session.commit()
+    repository = SQLAlchemyOAuthAccessTokenRepository(session_factory=sqlite_session_factory)
+
+    result = repository.revoke(account_id=ACCOUNT_ID, token_id=refresh.id, revoked_at=NOW)
+
+    assert result.owned is False
+    assert _refresh_labels(sqlite_session) == {"test-device"}

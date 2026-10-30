@@ -18,9 +18,9 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import ServiceUnavailable
 
 from configs import dify_config
-from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT, Scope, SubjectType, TokenType
+from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT, OAuthScope, Scope, SubjectType, TokenType
 from libs.rate_limit import enforce_bearer_rate_limit
-from models import OAuthAccessToken
+from models import OpenAPIOAuthAccessToken
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,8 @@ logger = logging.getLogger(__name__)
 class AuthContext:
     """Per-request identity published via :data:`_auth_ctx_var`. Subject and
     scopes derive from the token type, never from the row, so a corrupt row
-    cannot elevate scope.
+    cannot elevate scope. The row's `oauth_scopes` can only narrow them; None
+    leaves the token type's full access.
     """
 
     token_type: TokenType
@@ -44,6 +45,7 @@ class AuthContext:
     client_id: str | None
     token_id: uuid.UUID
     expires_at: datetime | None
+    oauth_scopes: frozenset[OAuthScope] | None = None
 
     @property
     def subject_type(self) -> SubjectType:
@@ -81,6 +83,7 @@ class ResolvedRow:
     client_id: str | None
     token_id: uuid.UUID
     expires_at: datetime | None
+    oauth_scopes: frozenset[OAuthScope] | None
 
     def to_cache(self) -> dict:
         return {
@@ -90,6 +93,7 @@ class ResolvedRow:
             "client_id": self.client_id,
             "token_id": str(self.token_id),
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "oauth_scopes": OAuthScope.ordered(self.oauth_scopes) if self.oauth_scopes is not None else None,
         }
 
     @classmethod
@@ -101,7 +105,15 @@ class ResolvedRow:
             client_id=data.get("client_id"),
             token_id=uuid.UUID(data["token_id"]),
             expires_at=datetime.fromisoformat(data["expires_at"]) if data["expires_at"] else None,
+            # Only entries cached before scopes existed lack the key, and those tokens are unrestricted.
+            oauth_scopes=_cached_oauth_scopes(data.get("oauth_scopes")),
         )
+
+
+def _cached_oauth_scopes(names: list[str] | None) -> frozenset[OAuthScope] | None:
+    if names is None:
+        return None
+    return frozenset(OAuthScope(name) for name in names)
 
 
 class Resolver(Protocol):
@@ -148,6 +160,7 @@ class BearerAuthenticator:
             client_id=row.client_id,
             token_id=row.token_id,
             expires_at=row.expires_at,
+            oauth_scopes=row.oauth_scopes,
         )
 
 
@@ -164,8 +177,10 @@ class _TokenCacheClient(Protocol):
     def delete(self, *names: str | bytes) -> object: ...
 
 
-def invalidate_oauth_token_cache(client: _TokenCacheClient, token_hash: str) -> None:
-    client.delete(TOKEN_CACHE_KEY_FMT.format(hash=token_hash))
+def invalidate_oauth_token_cache(client: _TokenCacheClient, *token_hashes: str | None) -> None:
+    keys = [TOKEN_CACHE_KEY_FMT.format(hash=token_hash) for token_hash in token_hashes if token_hash]
+    if keys:
+        client.delete(*keys)
 
 
 class OAuthAccessTokenResolver:
@@ -217,8 +232,8 @@ class OAuthAccessTokenResolver:
         replays are idempotent.
         """
         stmt = (
-            update(OAuthAccessToken)
-            .where(OAuthAccessToken.id == row_id, OAuthAccessToken.revoked_at.is_(None))
+            update(OpenAPIOAuthAccessToken)
+            .where(OpenAPIOAuthAccessToken.id == row_id, OpenAPIOAuthAccessToken.revoked_at.is_(None))
             .values(revoked_at=datetime.now(UTC), token_hash=None)
         )
         result = session.execute(stmt)
@@ -246,7 +261,10 @@ class _TokenTypeResolver:
         if cached is not None and not isinstance(cached, str):
             if not self._matches_subject(cached):
                 return None
-            return cached
+            if cached.expires_at is None:
+                return cached
+            if cached.expires_at > datetime.now(UTC):
+                return cached
 
         # Flask-SQLAlchemy's scoped_session is request-bound and not a
         # context manager; use it directly.
@@ -276,19 +294,20 @@ class _TokenTypeResolver:
             client_id=row.client_id,
             token_id=uuid.UUID(str(row.id)),
             expires_at=row.expires_at,
+            oauth_scopes=row.scope,
         )
         self._parent.cache_set_positive(token_hash, resolved)
         return resolved
 
-    def _matches_subject(self, row: ResolvedRow | OAuthAccessToken) -> bool:
+    def _matches_subject(self, row: ResolvedRow | OpenAPIOAuthAccessToken) -> bool:
         return (row.account_id is not None) == self._token_type.subject.bound_to_account
 
-    def _load_from_db(self, session: Session, token_hash: str) -> OAuthAccessToken | None:
+    def _load_from_db(self, session: Session, token_hash: str) -> OpenAPIOAuthAccessToken | None:
         return (
-            session.query(OAuthAccessToken)
+            session.query(OpenAPIOAuthAccessToken)
             .filter(
-                OAuthAccessToken.token_hash == token_hash,
-                OAuthAccessToken.revoked_at.is_(None),
+                OpenAPIOAuthAccessToken.token_hash == token_hash,
+                OpenAPIOAuthAccessToken.revoked_at.is_(None),
             )
             .one_or_none()
         )

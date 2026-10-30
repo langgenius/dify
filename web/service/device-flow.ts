@@ -59,7 +59,7 @@ function statusFallbackCode(status: number): string {
   return 'unknown'
 }
 
-function consoleCsrfHeader(): Record<string, string> {
+export function consoleCsrfHeader(): Record<string, string> {
   return { [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '' }
 }
 

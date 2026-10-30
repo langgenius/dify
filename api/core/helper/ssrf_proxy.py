@@ -65,6 +65,10 @@ class ResponseTooLargeError(ResponseLimitError):
     pass
 
 
+class ResponseDeadlineError(ResponseLimitError):
+    """The response body was not fully read within its total deadline."""
+
+
 class UnsupportedResponseEncodingError(ResponseLimitError):
     """Raised when response encoding prevents safe decoded-size enforcement."""
 
@@ -346,8 +350,13 @@ def make_request(
     raise error
 
 
-def buffer_response(response: httpx.Response, *, max_response_bytes: int) -> httpx.Response:
-    """Consume one open identity response under a decoded byte limit and close its stream."""
+def buffer_response(
+    response: httpx.Response, *, max_response_bytes: int, deadline_seconds: float | None = None
+) -> httpx.Response:
+    """Consume one open identity response under a decoded byte limit and close its stream.
+
+    ``deadline_seconds`` bounds the whole read, which per-read timeouts do not.
+    """
     if max_response_bytes <= 0:
         raise ValueError("max_response_bytes must be positive")
 
@@ -356,7 +365,10 @@ def buffer_response(response: httpx.Response, *, max_response_bytes: int) -> htt
         if content_encoding not in {"", "identity"}:
             raise UnsupportedResponseEncodingError(f"content encoding {content_encoding} cannot be safely bounded")
         content = bytearray()
+        deadline = None if deadline_seconds is None else time.monotonic() + deadline_seconds
         for chunk in response.iter_bytes():
+            if deadline is not None and time.monotonic() > deadline:
+                raise ResponseDeadlineError(f"response not complete within {deadline_seconds} seconds")
             if len(content) + len(chunk) > max_response_bytes:
                 raise ResponseTooLargeError(f"response exceeded {max_response_bytes} bytes")
             content.extend(chunk)

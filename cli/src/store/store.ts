@@ -43,6 +43,31 @@ function unlockAsync(path: string): Promise<void> {
   })
 }
 
+export type LockTiming = Readonly<{ staleMs: number; waitMs: number }>
+
+const FILE_LOCK_TIMING: LockTiming = { staleMs: LOCK_STALE_MS, waitMs: LOCK_WAIT_MS }
+
+/** Runs `body` while holding `${filePath}.lock`, shared with every difyctl process on this disk. */
+export async function withFileLock<R>(
+  filePath: string,
+  body: () => Promise<R>,
+  timing: LockTiming = FILE_LOCK_TIMING,
+): Promise<R> {
+  const lockPath = `${filePath}.lock`
+  await fsp.mkdir(dirname(filePath), { recursive: true, mode: DIR_PERM })
+  try {
+    await lockAsync(lockPath, { stale: timing.staleMs, wait: timing.waitMs })
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'EEXIST') throw new ConcurrentAccessError(filePath)
+    throw err
+  }
+  try {
+    return await body()
+  } finally {
+    await unlockAsync(lockPath)
+  }
+}
+
 export const STORAGE_MODES = ['keychain', 'file'] as const
 export type StorageMode = (typeof STORAGE_MODES)[number]
 
@@ -62,7 +87,7 @@ export class YamlStore {
   }
 
   async read(): Promise<string | undefined> {
-    return this.withLock(() => this.load())
+    return withFileLock(this.filePath, () => this.load())
   }
 
   /**
@@ -71,7 +96,7 @@ export class YamlStore {
    * lock past LOCK_STALE_MS, and another process would then take it.
    */
   async update<T>(change: (content: string | undefined) => Change<T>): Promise<void> {
-    await this.withLock(async () => {
+    await withFileLock(this.filePath, async () => {
       const content = await this.load()
       const next = change(content)
       if (next === undefined) return
@@ -79,29 +104,6 @@ export class YamlStore {
       const dumped = dump(next, { lineWidth: -1, noRefs: true })
       if (dumped !== content) await this.replace(dumped)
     })
-  }
-
-  private async withLock<R>(body: () => Promise<R>): Promise<R> {
-    await this.lock()
-    try {
-      return await body()
-    } finally {
-      await unlockAsync(`${this.filePath}.lock`)
-    }
-  }
-
-  private async lock(): Promise<void> {
-    await fsp.mkdir(dirname(this.filePath), { recursive: true, mode: DIR_PERM })
-    try {
-      await lockAsync(`${this.filePath}.lock`, {
-        stale: LOCK_STALE_MS,
-        wait: LOCK_WAIT_MS,
-      })
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === 'EEXIST')
-        throw new ConcurrentAccessError(this.filePath)
-      throw err
-    }
   }
 
   private async load(): Promise<string | undefined> {

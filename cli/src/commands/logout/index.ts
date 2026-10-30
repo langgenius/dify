@@ -7,7 +7,7 @@ import { session } from '@/plugins/session'
 
 const INPUT = z.object({})
 
-const ENV_LOGOUT_MESSAGE = 'nothing to log out: the login comes from DIFY_TOKEN'
+const ENV_LOGOUT_MESSAGE = 'nothing to log out: the login comes from DIFY_TOKEN or DIFY_TOKEN_FILE'
 
 export default class Logout extends Command<typeof INPUT> {
   static override summary = 'Log out of the current Dify session'
@@ -20,8 +20,7 @@ export default class Logout extends Command<typeof INPUT> {
     assertNotEnvLogin(sessionService.fromEnv, ENV_LOGOUT_MESSAGE)
     await (await pendingLoginStore(ctx)).clear()
     const login = await sessionService.require()
-    await revokeAndClearSession(ctx, login)
-
-    return { logged_out: true, server: login.server }
+    const outcome = await revokeAndClearSession(ctx, login)
+    return { logged_out: true, server: login.server, ...outcome }
   }
 }

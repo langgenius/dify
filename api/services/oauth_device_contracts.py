@@ -1,9 +1,12 @@
 """Framework-neutral contracts shared by the OAuth device-flow use cases."""
 
-from dataclasses import dataclass
+import secrets
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
-from typing import NotRequired, Protocol, TypedDict
+from typing import Literal, NotRequired, Protocol, TypedDict
+
+from constants.oauth_bearer import OAuthScope, SubjectType
 
 DEVICE_FLOW_TTL_SECONDS = 15 * 60
 DEFAULT_POLL_INTERVAL_SECONDS = 5
@@ -11,6 +14,21 @@ DEFAULT_POLL_INTERVAL_SECONDS = 5
 # PostgreSQL partial unique indexes treat NULLs as distinct. Account tokens use
 # a non-null issuer so the active-token uniqueness key remains stable.
 ACCOUNT_ISSUER_SENTINEL = "dify:account"
+
+DEVICE_LABEL_MAX_LENGTH = 255
+DEFAULT_LABEL_SUFFIX_BYTES = 3
+
+
+def default_device_label(client_name: str) -> str:
+    return f"{client_name} ({secrets.token_hex(DEFAULT_LABEL_SUFFIX_BYTES)})"[:DEVICE_LABEL_MAX_LENGTH]
+
+
+@dataclass(frozen=True, slots=True)
+class GrantKey:
+    subject_email: str
+    subject_issuer: str
+    client_id: str
+    device_label: str
 
 
 class DeviceFlowStatus(StrEnum):
@@ -44,11 +62,48 @@ class PollPayload(TypedDict):
     subject_issuer: NotRequired[str]
 
 
+class DeviceApprovalMinter(Protocol):
+    """Mints the token for each kind of approval record."""
+
+    def mint_account(self, state: "DeviceFlowStateView", approval: "AccountApprovalRecord") -> PollPayload: ...
+
+    def mint_external(self, state: "DeviceFlowStateView", approval: "ExternalApprovalRecord") -> PollPayload: ...
+
+
+@dataclass(frozen=True, slots=True)
+class AccountApprovalRecord:
+    account_id: str
+    workspace_id: str
+    subject_email: str
+    subject_issuer: str
+    subject_type: Literal[SubjectType.ACCOUNT] = field(default=SubjectType.ACCOUNT, init=False)
+
+    def mint(self, minter: DeviceApprovalMinter, state: "DeviceFlowStateView") -> PollPayload:
+        return minter.mint_account(state, self)
+
+
+@dataclass(frozen=True, slots=True)
+class ExternalApprovalRecord:
+    subject_email: str
+    subject_issuer: str
+    subject_type: Literal[SubjectType.EXTERNAL_SSO] = field(default=SubjectType.EXTERNAL_SSO, init=False)
+    account_id: None = field(default=None, init=False)
+    workspace_id: None = field(default=None, init=False)
+
+    def mint(self, minter: DeviceApprovalMinter, state: "DeviceFlowStateView") -> PollPayload:
+        return minter.mint_external(state, self)
+
+
+# Who approved a device code; the token is minted from it on the first successful poll.
+DeviceApprovalRecord = AccountApprovalRecord | ExternalApprovalRecord
+
+
 @dataclass(frozen=True, slots=True)
 class DeviceAuthorization:
     device_code: str
     user_code: str
     verification_uri: str
+    verification_uri_complete: str
     expires_in: int
     interval: int
 
@@ -85,10 +140,39 @@ class IssuedOAuthToken:
     token: str
     expires_at: str
     rotation: OAuthDeviceTokenRotation
+    refresh_token: str | None = None
 
     @property
     def token_id(self) -> str:
         return self.rotation.token_id
+
+
+@dataclass(frozen=True, slots=True)
+class PresentedRefreshToken:
+    """A refresh token being exchanged. ``rotate_token`` spends it under the account lock."""
+
+    id: str
+    family_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class RefreshTokenIssue:
+    """Asks for a refresh token with the access token: in a new family, or in the presented token's.
+
+    ``expires_at`` is the family's fixed end, set at login; rotation never moves it.
+    """
+
+    expires_at: datetime
+    presented: PresentedRefreshToken | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RefreshTokenWrite:
+    token_hash: str
+    family_id: str
+    workspace_id: str | None
+    expires_at: datetime
+    presented: PresentedRefreshToken | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +185,9 @@ class OAuthDeviceTokenWrite:
     prefix: str
     token_hash: str
     expires_at: datetime
+    refresh: RefreshTokenWrite | None = None
+    # A browser login's granted scopes, shared by its refresh token. None: the token type's full access.
+    scopes: frozenset[OAuthScope] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,12 +255,17 @@ class DeviceApprovalContext:
 
 
 class DeviceFlowStateView(Protocol):
+    user_code: str
     client_id: str
     device_label: str
     status: DeviceFlowStatus
     token_id: str | None
     created_ip: str
+    approval: DeviceApprovalRecord | None
+    # Read only from approved states written before approval records existed.
     poll_payload: PollPayload | None
+
+    def to_json(self) -> str: ...
 
 
 class OAuthDeviceError(Exception):
@@ -200,15 +292,15 @@ class AccessDeniedError(OAuthDeviceError):
     pass
 
 
+class ClientMismatchError(OAuthDeviceError):
+    pass
+
+
 class ExpiredOrUnknownError(OAuthDeviceError):
     pass
 
 
 class AlreadyResolvedError(OAuthDeviceError):
-    pass
-
-
-class ApprovalInProgressError(OAuthDeviceError):
     pass
 
 
@@ -266,6 +358,14 @@ class ExternalIdentityConflictError(OAuthDeviceError):
 
 class ApprovalSessionConsumedError(OAuthDeviceError):
     pass
+
+
+class RefreshTokenRejectedError(Exception):
+    """The presented refresh token is gone (its grant was revoked) or expired."""
+
+
+class RefreshTokenReusedError(RefreshTokenRejectedError):
+    """The presented refresh token was rotated and its successor already used."""
 
 
 class StateNotFoundError(Exception):

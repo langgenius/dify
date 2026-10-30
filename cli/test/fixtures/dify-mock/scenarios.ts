@@ -23,6 +23,9 @@ export type Scenario =
   | 'import-failed'
   | 'no-device-flow'
   | 'bad-verification-uri'
+  | 'bad-verification-uri-complete'
+  | 'legacy-token-route'
+  | 'legacy-token-route-html-404'
 
 export type AccountFixture = {
   id: string

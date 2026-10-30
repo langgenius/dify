@@ -15,6 +15,7 @@ const LOGIN: Login = {
   workspaceId: 'ws-1',
   tokenStorage: 'file',
   insecure: false,
+  sessionId: 'tok-1',
 }
 let dir: string
 beforeEach(() => {
@@ -22,7 +23,13 @@ beforeEach(() => {
   process.env.DIFY_CONFIG_DIR = dir
 })
 afterEach(() => {
-  for (const k of ['DIFY_CONFIG_DIR', 'DIFY_SERVER', 'DIFY_TOKEN', 'DIFY_WORKSPACE_ID'])
+  for (const k of [
+    'DIFY_CONFIG_DIR',
+    'DIFY_SERVER',
+    'DIFY_TOKEN',
+    'DIFY_TOKEN_FILE',
+    'DIFY_WORKSPACE_ID',
+  ])
     delete process.env[k]
 })
 
@@ -50,6 +57,15 @@ it('env login wins, never touches disk, and refuses save', async () => {
   expect(s.fromEnv).toBe(true)
   expect((await s.require()).server).toBe('https://env.example')
   expect(await s.workspaceId()).toBe('ws-env')
+  await expect(s.save(LOGIN)).rejects.toMatchObject({ code: 'usage_invalid_flag' })
+})
+
+it('a DIFY_TOKEN_FILE login is an env login with no account', async () => {
+  process.env.DIFY_SERVER = 'https://env.example'
+  process.env.DIFY_TOKEN_FILE = '/run/dify/token.json'
+  const s = await new Context().get(session)
+  expect(s.fromEnv).toBe(true)
+  expect(await s.require()).toMatchObject({ server: 'https://env.example', account: null })
   await expect(s.save(LOGIN)).rejects.toMatchObject({ code: 'usage_invalid_flag' })
 })
 
@@ -98,6 +114,7 @@ it('reads a login.yml with only its identity, defaulting the rest and ignoring u
     workspaceId: null,
     tokenStorage: 'file',
     insecure: false,
+    sessionId: null,
   })
   expect(streams.errBuf()).toMatch(/ignoring the invalid value of insecure\n$/)
 })

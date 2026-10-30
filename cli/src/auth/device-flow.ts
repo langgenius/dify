@@ -24,6 +24,9 @@ export type DeviceFlowApiSubset = {
 export type AwaitOptions = {
   clock: Clock
   clientId?: string
+  /** Wraps each poll request. The poll that collects an approval mints the token, so a
+   * caller that saves the token inside this wrapper saves in the order tokens were minted. */
+  around?: (poll: () => Promise<PollResult>) => Promise<PollResult>
 }
 
 export async function awaitAuthorization(
@@ -39,7 +42,7 @@ export async function awaitAuthorization(
 
   while (true) {
     if (opts.clock.isCancelled()) throw cancelledError()
-    const result = await pollWithRetry(api, req, opts.clock)
+    const result = await pollWithRetry(api, req, opts)
     const success = settle(result)
     if (success !== undefined) return success
     if (result.status === 'slow_down') interval = Math.min(interval * 2, MAX_INTERVAL_MS)
@@ -53,7 +56,7 @@ export async function pollAuthorization(
   deviceCode: string,
   opts: AwaitOptions,
 ): Promise<PollSuccess | undefined> {
-  return settle(await pollWithRetry(api, pollRequest(deviceCode, opts), opts.clock))
+  return settle(await pollWithRetry(api, pollRequest(deviceCode, opts), opts))
 }
 
 function pollRequest(deviceCode: string, opts: AwaitOptions): PollRequest {
@@ -85,12 +88,14 @@ function settle(result: PollResult): PollSuccess | undefined {
 async function pollWithRetry(
   api: DeviceFlowApiSubset,
   req: PollRequest,
-  clock: Clock,
+  opts: AwaitOptions,
 ): Promise<PollResult> {
+  const { clock } = opts
+  const poll = () => api.pollOnce(req)
   let backoff = POLL_RETRY_INITIAL_MS
   for (let attempt = 1; attempt <= POLL_RETRY_ATTEMPTS; attempt++) {
     if (clock.isCancelled()) throw cancelledError()
-    const result = await api.pollOnce(req)
+    const result = await (opts.around === undefined ? poll() : opts.around(poll))
     if (clock.isCancelled()) throw cancelledError()
     if (result.status !== 'retry_5xx') return result
     if (attempt === POLL_RETRY_ATTEMPTS) break

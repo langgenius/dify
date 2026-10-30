@@ -18,7 +18,7 @@ from controllers.openapi.account import (
     AccountSessionsSelfApi,
 )
 from models import Account
-from models.oauth import OAuthAccessToken
+from models.oauth import OpenAPIOAuthAccessToken
 from tests.e2e_tests.containers.controllers.openapi.conftest import context_for
 
 
@@ -35,7 +35,7 @@ def _mint_account_token(
     device_label: str = "Test Device",
 ) -> _MintResult:
     """Mint a real, persisted ``dfoa_`` access token for ``account``."""
-    record = OAuthAccessToken(
+    record = OpenAPIOAuthAccessToken(
         subject_email=account.email,
         subject_issuer="dify:account",
         account_id=str(account.id),

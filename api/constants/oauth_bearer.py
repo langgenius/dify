@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Final
 
 
 class Scope(StrEnum):
@@ -19,6 +20,39 @@ class Scope(StrEnum):
     APPS_RUN = "apps:run"
     WORKSPACE_READ = "workspace:read"
     WORKSPACE_WRITE = "workspace:write"
+
+
+OAUTH_SCOPE_SEPARATOR: Final = " "
+# Clients ask for a refresh token this way; a browser login always gets one, so it narrows nothing.
+IGNORED_OAUTH_SCOPES: Final = frozenset({"offline_access"})
+
+
+class OAuthScope(StrEnum):
+    """OAuth scopes of a browser login (RFC 6749 §3.3). ``read`` runs the ops that only
+    read; ``write`` also runs the ones that change or delete, and implies ``read``.
+    """
+
+    READ = "read"
+    WRITE = "write"
+
+    @classmethod
+    def parse(cls, value: str | None) -> frozenset[OAuthScope]:
+        """Absent or empty asks for every scope. Raises ValueError for an unknown name."""
+        names = {name for name in (value or "").split(OAUTH_SCOPE_SEPARATOR) if name} - IGNORED_OAUTH_SCOPES
+        if not names:
+            return frozenset(cls)
+        scopes = frozenset(cls(name) for name in names)
+        if cls.WRITE in scopes:
+            return scopes | {cls.READ}
+        return scopes
+
+    @classmethod
+    def ordered(cls, scopes: frozenset[OAuthScope]) -> tuple[OAuthScope, ...]:
+        return tuple(scope for scope in cls if scope in scopes)
+
+    @classmethod
+    def serialize(cls, scopes: frozenset[OAuthScope]) -> str:
+        return OAUTH_SCOPE_SEPARATOR.join(cls.ordered(scopes))
 
 
 class SubjectType(StrEnum):

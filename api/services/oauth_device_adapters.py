@@ -2,6 +2,7 @@
 
 import logging
 import secrets
+import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from typing import Protocol, override
@@ -9,7 +10,7 @@ from typing import Protocol, override
 from pydantic import BaseModel, Field, ValidationError
 
 from configs import dify_config
-from constants.oauth_bearer import TokenType
+from constants.oauth_bearer import OAuthScope, TokenType
 from extensions.ext_redis import RedisClientWrapper
 from libs import jws
 from libs.device_flow_security import (
@@ -21,7 +22,8 @@ from libs.device_flow_security import (
 )
 from libs.helper import RateLimiter
 from libs.oauth_bearer import sha256_hex
-from libs.rate_limit import LIMIT_APPROVE_EXT_PER_EMAIL
+from libs.rate_limit import LIMIT_APPROVE_EXT_PER_EMAIL, limiter_prefix
+from repositories.oauth_refresh_token_repository import new_refresh_token
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_application_service import (
     ExternalApprovalLimiter,
@@ -40,6 +42,8 @@ from services.oauth_device_contracts import (
     IssuedOAuthToken,
     OAuthDeviceSSOInitiationError,
     OAuthDeviceTokenWrite,
+    RefreshTokenIssue,
+    RefreshTokenWrite,
 )
 
 logger = logging.getLogger(__name__)
@@ -110,6 +114,9 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         workspace_id: str,
         client_id: str,
         device_label: str,
+        lifetime: timedelta | None = None,
+        refresh: RefreshTokenIssue | None = None,
+        scopes: frozenset[OAuthScope] | None = None,
     ) -> IssuedOAuthToken:
         return self._issue_token(
             token_type=TokenType.OAUTH_ACCOUNT,
@@ -119,6 +126,9 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
             client_id=client_id,
             device_label=device_label,
             workspace_id=workspace_id,
+            lifetime=lifetime,
+            refresh=refresh,
+            scopes=scopes,
         )
 
     @override
@@ -140,6 +150,9 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
             client_id=client_id,
             device_label=device_label,
             workspace_id=None,
+            lifetime=None,
+            refresh=None,
+            scopes=None,
         )
 
     def _issue_token(
@@ -152,9 +165,19 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         client_id: str,
         device_label: str,
         workspace_id: str | None,
+        lifetime: timedelta | None,
+        refresh: RefreshTokenIssue | None,
+        scopes: frozenset[OAuthScope] | None,
     ) -> IssuedOAuthToken:
         plaintext = token_type.prefix + secrets.token_urlsafe(_OAUTH_TOKEN_BODY_BYTES)
-        expires_at = datetime.now(UTC) + timedelta(days=self._ttl_policy.ttl_days(workspace_id))
+        now = datetime.now(UTC)
+        max_lifetime = timedelta(days=self._ttl_policy.ttl_days(workspace_id))
+        expires_at = now + (max_lifetime if lifetime is None else min(lifetime, max_lifetime))
+        refresh_token: str | None = None
+        refresh_write: RefreshTokenWrite | None = None
+        if refresh is not None:
+            refresh_token = new_refresh_token()
+            refresh_write = _refresh_write(refresh, refresh_token, workspace_id=workspace_id)
         rotation = self._tokens.rotate_token(
             OAuthDeviceTokenWrite(
                 subject_email=subject_email,
@@ -165,13 +188,32 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
                 prefix=token_type.prefix,
                 token_hash=sha256_hex(plaintext),
                 expires_at=expires_at,
+                refresh=refresh_write,
+                scopes=scopes,
             )
         )
-        return IssuedOAuthToken(token=plaintext, expires_at=expires_at.isoformat(), rotation=rotation)
+        return IssuedOAuthToken(
+            token=plaintext,
+            expires_at=expires_at.isoformat(),
+            rotation=rotation,
+            refresh_token=refresh_token,
+        )
 
-    @override
-    def rollback_token(self, token: IssuedOAuthToken) -> bool:
-        return self._tokens.rollback_rotation(token.rotation)
+
+def _refresh_write(
+    refresh: RefreshTokenIssue,
+    token: str,
+    *,
+    workspace_id: str | None,
+) -> RefreshTokenWrite:
+    presented = refresh.presented
+    return RefreshTokenWrite(
+        token_hash=sha256_hex(token),
+        family_id=str(uuid.uuid4()) if presented is None else presented.family_id,
+        workspace_id=workspace_id,
+        expires_at=refresh.expires_at,
+        presented=presented,
+    )
 
 
 class _ExternalSubjectAssertionPayload(BaseModel):
@@ -297,7 +339,7 @@ class EnterpriseOAuthDeviceSSOGateway(OAuthDeviceSSOGateway):
 class RedisExternalApprovalLimiter(ExternalApprovalLimiter):
     def __init__(self, *, redis: RedisClientWrapper) -> None:
         self._rate_limiter = RateLimiter(
-            prefix="rl:subject_email",
+            prefix=limiter_prefix(LIMIT_APPROVE_EXT_PER_EMAIL),
             max_attempts=LIMIT_APPROVE_EXT_PER_EMAIL.limit,
             time_window=int(LIMIT_APPROVE_EXT_PER_EMAIL.window.total_seconds()),
             redis_client=redis,

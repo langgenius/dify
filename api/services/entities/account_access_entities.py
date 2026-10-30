@@ -49,4 +49,4 @@ class AccountSessionPage:
 @dataclass(frozen=True, slots=True)
 class AccountSessionRevocation:
     owned: bool
-    token_hash: str | None = None
+    token_hashes: tuple[str, ...] = ()

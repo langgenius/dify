@@ -50,6 +50,7 @@ def init_app(app: DifyApp):
     from controllers.service_api import bp as service_api_bp
     from controllers.trigger import bp as trigger_bp
     from controllers.web import bp as web_bp
+    from controllers.well_known import bp as well_known_bp
 
     _apply_cors_once(
         service_api_bp,
@@ -75,6 +76,7 @@ def init_app(app: DifyApp):
             max_age=OPENAPI_MAX_AGE_SECONDS,
         )
         app.register_blueprint(openapi_bp)
+        app.register_blueprint(well_known_bp)
 
     _apply_cors_once(
         web_bp,

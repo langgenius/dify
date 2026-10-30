@@ -15,6 +15,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
+from constants.oauth_bearer import OAuthScope
 from controllers.openapi.auth.requirements import Requirement
 from enums import DeploymentEdition
 
@@ -35,19 +36,22 @@ class Effect(StrEnum):
     """What running an op does to the server. Frozen protocol names, published in the catalog.
 
     Each member owns the HTTP methods that imply it; an op overrides that default
-    through `endpoint(effect=...)` when its method understates what it does.
+    through `endpoint(effect=...)` when its method understates what it does. A
+    browser login's token runs the op only when it holds `oauth_scope`.
     """
 
     methods: frozenset[str]
+    oauth_scope: OAuthScope
 
-    READ = ("read", frozenset({"GET"}))
-    WRITE = ("write", frozenset({"POST", "PUT", "PATCH"}))
-    DESTRUCTIVE = ("destructive", frozenset({"DELETE"}))
+    READ = ("read", frozenset({"GET"}), OAuthScope.READ)
+    WRITE = ("write", frozenset({"POST", "PUT", "PATCH"}), OAuthScope.WRITE)
+    DESTRUCTIVE = ("destructive", frozenset({"DELETE"}), OAuthScope.WRITE)
 
-    def __new__(cls, value: str, methods: frozenset[str]) -> Effect:
+    def __new__(cls, value: str, methods: frozenset[str], oauth_scope: OAuthScope) -> Effect:
         obj = str.__new__(cls, value)
         obj._value_ = value
         obj.methods = methods
+        obj.oauth_scope = oauth_scope
         return obj
 
     @classmethod
@@ -86,6 +90,9 @@ class CatalogMeta:
     deprecated: bool = False
     effect: Effect | None = None
     examples: tuple[Example, ...] = ()
+
+    def effect_for(self, method: str) -> Effect:
+        return self.effect or Effect.for_method(method)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

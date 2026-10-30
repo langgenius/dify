@@ -28,6 +28,8 @@ export type TestWorldOptions = {
   readonly login: boolean
   readonly argv?: readonly string[]
   readonly env?: boolean
+  /** With `env`, log in through a DIFY_TOKEN_FILE at this path instead of DIFY_TOKEN. */
+  readonly tokenFile?: string
   readonly stdin?: string
   readonly tty?: boolean
   /** Share another world's temp dir and mock instead of making new ones. */
@@ -37,6 +39,7 @@ export type TestWorldOptions = {
 const TEMP_PREFIX = 'difyctl-world-'
 const FILE_EMAIL = 'me@x'
 const FILE_WORKSPACE_ID = 'ws-1'
+const FILE_SESSION_ID = 'tok-1'
 const FILE_LOGIN_TOKEN = 'dfoa_file'
 const ENV_LOGIN_TOKEN = 'dfoa_env'
 
@@ -68,6 +71,7 @@ async function writeFileLogin(server: string): Promise<void> {
     workspaceId: FILE_WORKSPACE_ID,
     tokenStorage: 'file',
     insecure: false,
+    sessionId: FILE_SESSION_ID,
   }
   await sessionService.save(login)
   await tokenService.write(login, FILE_LOGIN_TOKEN)
@@ -81,7 +85,8 @@ export async function testContext(opts: TestWorldOptions): Promise<TestWorld> {
   const restoreEnv = applyEnv({
     [ENV.ConfigDir]: dir,
     [ENV.Server]: opts.env === true ? mock.url : undefined,
-    [ENV.Token]: opts.env === true ? ENV_LOGIN_TOKEN : undefined,
+    [ENV.Token]: opts.env === true && opts.tokenFile === undefined ? ENV_LOGIN_TOKEN : undefined,
+    [ENV.TokenFile]: opts.env === true ? opts.tokenFile : undefined,
     [ENV.WorkspaceId]: undefined,
   })
 

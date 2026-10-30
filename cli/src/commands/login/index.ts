@@ -1,15 +1,19 @@
 import type { PollSuccess } from '@/auth/device-api'
+import type { AwaitOptions } from '@/auth/device-flow'
 import type { Pending, PendingLoginStore } from '@/auth/pending-login'
 import type { CommandContext } from '@/plugins/base'
 import type { Login as SavedLogin } from '@/plugins/session'
-import { hostname } from 'node:os'
 import { z } from 'zod'
 import { deviceApi } from '@/auth/device-api'
 import { awaitAuthorization, pollAuthorization, realClock } from '@/auth/device-flow'
+import { deviceLabel } from '@/auth/installation'
+import { savedLoginIsLive } from '@/auth/liveness'
+import { withLoginFlowLock } from '@/auth/login-flow-lock'
 import { assertNotEnvLogin, revokeAndClearSession } from '@/auth/logout'
 import { pendingLoginStore } from '@/auth/pending-login'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
+import { errorMessage } from '@/errors/message'
 import { Command } from '@/plugins/commands/command'
 import { io } from '@/plugins/io'
 import { session } from '@/plugins/session'
@@ -47,15 +51,22 @@ const INPUT = z.object({
     .describe(
       'Check a login started with --no-wait once. Prints status pending until the user approves. With no pending login, prints the saved login, or fails with not_logged_in',
     ),
+  force: z
+    .boolean()
+    .default(false)
+    .describe(
+      'Start a new login even when the saved login to this server still works. The new login replaces it on every machine that shares this config dir',
+    ),
 })
 
 const PENDING_STATUS = 'pending'
 const FINAL_POLL_ERRORS: readonly string[] = [ErrorCode.AuthExpired, ErrorCode.AccessDenied]
 
-const ENV_LOGIN_MESSAGE = 'unset DIFY_TOKEN to log in interactively'
+const ENV_LOGIN_MESSAGE = 'unset DIFY_TOKEN or DIFY_TOKEN_FILE to log in interactively'
 const NO_EMAIL_MESSAGE = 'login response carries no account or subject email'
 const NO_SERVER_MESSAGE = 'pass --server <url>: the Dify server to log in to'
 const NO_SERVER_HINT = 'ask the user which server; Dify Cloud is https://cloud.dify.ai'
+const PREVIOUS_CLEANUP_FAILED_PREFIX = 'could not clear the previous login: '
 
 // A present-but-empty email is the same as absent: neither account.email nor
 // subject_email is meaningful until it has a value.
@@ -103,22 +114,24 @@ export default class Login extends Command<typeof INPUT> {
 
     const server = resolveHost({ raw: input.server, insecure: input.insecure })
     const streams = await ctx.get(io)
-    const current = await sessionService.current()
-    if (current !== null) {
-      await revokeAndClearSession(ctx, current)
-      streams.notice(`logged out ${current.email} from ${current.server}`)
+    const saved = await sessionService.current()
+    // A new login would replace the saved one everywhere this config dir is shared.
+    if (!input.force && saved?.server === server && (await savedLoginIsLive(ctx, saved))) {
+      streams.notice(`already logged in as ${saved.email}; pass --force to log in again`)
+      return loginReport(saved)
     }
 
     const api = deviceApi(server, { insecure: input.insecure })
-    const code = await api.requestCode({ device_label: hostname() })
+    const code = await api.requestCode({ device_label: await deviceLabel(ctx) })
     // Checked before it is printed: a URI difyctl would refuse to open is one the
     // operator should not be invited to paste either.
-    validateVerificationURI(code.verification_uri, input.insecure)
-    streams.notice(`open ${code.verification_uri}`)
+    const verificationUri = code.verification_uri_complete ?? code.verification_uri
+    validateVerificationURI(verificationUri, input.insecure)
+    streams.notice(`open ${verificationUri}`)
     streams.notice(`code ${code.user_code}`)
 
     const decision = decideOpen(realEnv(), input.no_browser)
-    if (decision === OpenDecision.Auto) await openUrl(code.verification_uri)
+    if (decision === OpenDecision.Auto) await openUrl(verificationUri)
 
     const pending: Pending = {
       server,
@@ -130,15 +143,15 @@ export default class Login extends Command<typeof INPUT> {
       await pendingLogin.save(pending)
       return {
         status: PENDING_STATUS,
-        verification_uri: code.verification_uri,
+        verification_uri: verificationUri,
         user_code: code.user_code,
         expires_in: code.expires_in,
       }
     }
 
     await pendingLogin.clear()
-    const success = await awaitAuthorization(api, code, { clock: realClock() })
-    return finish(ctx, pending, success)
+    await awaitAuthorization(api, code, { clock: realClock(), around: savingPoll(ctx, pending) })
+    return loginReport(await sessionService.require())
   }
 }
 
@@ -149,6 +162,22 @@ function loginReport(login: SavedLogin) {
     account: login.account,
     workspace_id: login.workspaceId,
   }
+}
+
+// Runs only once the new token is in hand, so an abandoned login keeps the old session.
+// The server has already minted the new token, so a failed local cleanup only warns.
+async function replacePrevious(ctx: CommandContext): Promise<void> {
+  const previous = await (await ctx.get(session)).current()
+  if (previous === null) return
+  const streams = await ctx.get(io)
+  try {
+    const outcome = await revokeAndClearSession(ctx, previous)
+    if (!outcome.revoked) return
+  } catch (err) {
+    streams.notice(`${PREVIOUS_CLEANUP_FAILED_PREFIX}${errorMessage(err)}`)
+    return
+  }
+  streams.notice(`logged out ${previous.email} from ${previous.server}`)
 }
 
 // `get` throws not_logged_in when the saved login's token is gone from the store.
@@ -168,19 +197,33 @@ async function resume(ctx: CommandContext, pendingLogin: PendingLoginStore) {
   const api = deviceApi(pending.server, { insecure: pending.insecure })
   let success: PollSuccess | undefined
   try {
-    success = await pollAuthorization(api, pending.device_code, { clock: realClock() })
+    success = await pollAuthorization(api, pending.device_code, {
+      clock: realClock(),
+      around: savingPoll(ctx, pending),
+    })
   } catch (err) {
     if (err instanceof BaseError && FINAL_POLL_ERRORS.includes(err.code))
       await pendingLogin.clearIf(pending.device_code)
     throw err
   }
   if (success === undefined) return { status: PENDING_STATUS }
-  const result = await finish(ctx, pending, success)
   await pendingLogin.clearIf(pending.device_code)
-  return result
+  return loginReport(await sessionService.require())
 }
 
-async function finish(ctx: CommandContext, pending: Pending, success: PollSuccess) {
+// The poll that collects an approval mints the token and makes the previous token on this
+// device label stop working. Holding one lock from that poll until the save means logins
+// sharing this config dir save in the order the server minted, so the saved token is live.
+function savingPoll(ctx: CommandContext, pending: Pending): NonNullable<AwaitOptions['around']> {
+  return (poll) =>
+    withLoginFlowLock(ctx, async () => {
+      const result = await poll()
+      if (result.status === 'approved') await save(ctx, pending, result.success)
+      return result
+    })
+}
+
+async function save(ctx: CommandContext, pending: Pending, success: PollSuccess): Promise<void> {
   const sessionService = await ctx.get(session)
   const tokenService = await ctx.get(token)
   const tokenStorage = await tokenService.detect({ skipKeyring: pending.no_keyring })
@@ -196,9 +239,10 @@ async function finish(ctx: CommandContext, pending: Pending, success: PollSucces
     workspaceId: success.default_workspace_id ?? null,
     tokenStorage,
     insecure: pending.insecure,
+    sessionId: success.token_id ?? null,
   }
 
+  await replacePrevious(ctx)
   await sessionService.save(login)
   await tokenService.write(login, success.token)
-  return loginReport(login)
 }

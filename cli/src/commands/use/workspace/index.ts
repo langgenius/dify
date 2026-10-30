@@ -16,7 +16,8 @@ const WORKSPACE = z.object({ id: z.string(), name: z.string() })
 
 const WORKSPACE_DESCRIBE_OP = 'describe.workspace'
 const ENV_WORKSPACE_ID_MESSAGE = 'DIFY_WORKSPACE_ID is set; unset it to pin locally'
-const ENV_LOGIN_MESSAGE = 'the login comes from DIFY_TOKEN; set DIFY_WORKSPACE_ID instead'
+const ENV_LOGIN_MESSAGE =
+  'the login comes from DIFY_TOKEN or DIFY_TOKEN_FILE; set DIFY_WORKSPACE_ID instead'
 const MALFORMED_WORKSPACE_MESSAGE = 'describe workspace response has no id and name'
 
 export default class WorkspaceUse extends Command<typeof INPUT> {

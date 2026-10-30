@@ -202,22 +202,24 @@ def test_catalog_route_serves_canonical_bytes_and_every_response_carries_the_fin
     assert client.get("/openapi/v1/does-not-exist").headers[CATALOG_HEADER] == fingerprint
 
 
-def test_a_guarded_route_refuses_a_request_that_does_not_name_the_current_catalog(
+def test_a_guarded_route_refuses_a_request_built_from_another_catalog(
     admitted_bearer: AdmittedWorld,
 ) -> None:
     """The wire shape of the refusal: 412 with the canonical body, and the
     current fingerprint on the response so the client can refetch and retry.
-    The same bearer with the current fingerprint gets past the guard: the
-    unknown query answers 422 from `@accepts`, which sits inside it.
+    The same bearer with the current fingerprint, or with none, gets past the
+    guard: the unknown query answers 422 from `@accepts`, which sits inside it.
     """
     path = f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}/members?nope=1"
     current = admitted_bearer.headers[CATALOG_HEADER]
     without = {"Authorization": admitted_bearer.headers["Authorization"]}
 
-    refused = admitted_bearer.client.get(path, headers=without)
+    refused = admitted_bearer.client.get(path, headers={**without, CATALOG_HEADER: "stale"})
     admitted = admitted_bearer.client.get(path, headers=admitted_bearer.headers)
+    unnamed = admitted_bearer.client.get(path, headers=without)
 
     assert refused.status_code == 412
     assert refused.get_json()["code"] == OpenApiErrorCode.CATALOG_STALE
     assert refused.headers[CATALOG_HEADER] == current
     assert admitted.status_code == 422
+    assert unnamed.status_code == 422

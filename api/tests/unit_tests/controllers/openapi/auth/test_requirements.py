@@ -66,7 +66,7 @@ from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, Te
 from models.enums import EndUserType
 from models.model import App, EndUser
 from models.model import AppMode as _auth_matrix_AppMode
-from models.oauth import OAuthAccessToken
+from models.oauth import OpenAPIOAuthAccessToken
 from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
 from services.enterprise.enterprise_service import WebAppAccessMode as _requirements_WebAppAccessMode
 from services.entities.feature_entities import (
@@ -2205,6 +2205,14 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/oauth/device/deny"): frozenset({"200", "404", "409", "503", "default"}),
     ("get", "/oauth/device/lookup"): frozenset({"200", "default"}),
     ("post", "/oauth/device/token"): frozenset({"200", "400", "default"}),
+    ("post", "/oauth/token"): frozenset({"200", "400", "401", "default"}),
+    ("post", "/oauth/revoke"): frozenset({"200", "400", "401", "default"}),
+    # The consent-page backend: a public client lookup and two Console-session decisions,
+    # all with the OAuth-style `OAuthAuthorizeErrorResponse` for their 400s.
+    ("get", "/oauth/authorize/client"): frozenset({"200", "400", "default"}),
+    ("post", "/oauth/authorize/approve"): frozenset({"200", "400", "default"}),
+    ("post", "/oauth/authorize/deny"): frozenset({"200", "400", "default"}),
+    ("post", "/oauth/register"): frozenset({"201", "400", "default"}),
     ("get", "/node-types"): frozenset({"200", "default"}),
     ("get", "/node-types/{node_type}"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/draft/workflow/nodes/{node_id}:run"): frozenset({"200", "422", "default"}),
@@ -2285,9 +2293,10 @@ class TestAuthMatrixCases:
             rate_limit_module,
             "LIMIT_BEARER_PER_TOKEN",
             rate_limit_module.RateLimit(
-                0,
-                rate_limit_module.LIMIT_BEARER_PER_TOKEN.window,
-                rate_limit_module.LIMIT_BEARER_PER_TOKEN.scopes,
+                name=rate_limit_module.LIMIT_BEARER_PER_TOKEN.name,
+                limit=0,
+                window=rate_limit_module.LIMIT_BEARER_PER_TOKEN.window,
+                scopes=rate_limit_module.LIMIT_BEARER_PER_TOKEN.scopes,
             ),
         )
 
@@ -2366,8 +2375,9 @@ class TestAuthMatrixCases:
                 client_id="difyctl",
                 token_id=token_id,
                 expires_at=None,
+                oauth_scopes=None,
             )
-            row = OAuthAccessToken(
+            row = OpenAPIOAuthAccessToken(
                 token_hash=sha256_hex(raw),
                 prefix=prefix,
                 account_id=account_id,
@@ -2457,10 +2467,10 @@ class TestAuthMatrixCases:
 
         expected = {(route.method, _rule_path(route)) for route in ROUTES}
         assert guarded == expected
-        # The remainder is the device-flow, documentation and catalog surface. Its size is
+        # The remainder is the device-flow, token, revoke, authorize, documentation and catalog surface. Its size is
         # pinned rather than enumerated: a list of exemptions rots silently — the one this
         # replaced still named `swagger.json`, a route that is not registered at all.
-        assert len(unguarded) == 14
+        assert len(unguarded) == 20
 
     @staticmethod
     @pytest.mark.parametrize("route", ROUTES, ids=[route.id for route in ROUTES])

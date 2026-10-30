@@ -16,6 +16,7 @@ from controllers.openapi._errors import CatalogStale
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller
 from controllers.openapi.auth.requirements import (
+    OAUTH_SCOPE_CHECKS,
     Rank,
     Requirement,
     ResolveCaller,
@@ -53,8 +54,13 @@ class Pipeline:
         """Endpoint-declared requirements are merged ahead of the fixed ones,
         so a stable sort leaves them first at equal rank — which is what keeps
         `CheckSubject` ahead of `_RequiresEnterprise`.
+
+        Every op also gets the OAuth scope check for its effect, which only the
+        spec and the request method know. It sorts last at `Rank.FIRST`: after
+        the catalog check, before the workspace and permission checks.
         """
-        for requirement in sorted(spec.requirements + self.fixed, key=lambda item: item.rank):
+        scope_check = OAUTH_SCOPE_CHECKS[spec.catalog.effect_for(request.method).oauth_scope]
+        for requirement in sorted((*spec.requirements, *self.fixed, scope_check), key=lambda item: item.rank):
             requirement.run(subject, ctx, session)
         with mounted(subject, auth, ctx):
             # Bind handler arguments while the admission Session is still open.
@@ -83,19 +89,24 @@ def pipeline_for_subject(subject: Subject) -> Pipeline:
 
 
 class _RequiresCurrentCatalog(Requirement):
-    """The client names the catalog it built the request from, and a request
-    built from any other catalog - or from none - is refused before a handler
-    runs, so a tampered or stale local copy can never pick the route. Fixed on
-    every pipeline rather than declared per route, so no endpoint can leave it
-    out; `_catalog` and `_version` are unguarded and stay reachable to recover.
+    """A client that names the catalog it built the request from (difyctl) is
+    refused before a handler runs when that catalog is not the current one, so
+    a tampered or stale local copy can never pick the route. A client that
+    names none (an MCP or other OAuth client) builds from the published routes
+    and is not checked. Fixed on every pipeline rather than declared per route,
+    so no endpoint can leave it out; `_catalog` and `_version` are unguarded
+    and stay reachable to recover.
     """
 
     rank = Rank.FIRST
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        sent = request.headers.get(CATALOG_HEADER)
+        if sent is None:
+            return
         _, fingerprint = current_catalog()
-        if request.headers.get(CATALOG_HEADER) != fingerprint:
+        if sent != fingerprint:
             raise CatalogStale()
 
 
