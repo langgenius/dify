@@ -82,6 +82,7 @@ from services.workflow_service import (
     _rebuild_single_file,
     _setup_variable_pool,
 )
+from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app
 from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
@@ -1505,7 +1506,7 @@ class TestWorkflowServiceCases:
             with (
                 patch("services.workflow_service.BillingService") as mock_billing_service,
             ):
-                mock_billing_service.get_info.return_value = {"subscription": {"plan": "sandbox"}}
+                mock_billing_service.get_info.return_value = builders.subscription_info("sandbox")
 
                 with pytest.raises(TriggerNodeLimitExceededError):
                     workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)

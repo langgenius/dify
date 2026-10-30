@@ -35194,7 +35194,7 @@ The subscription constructor of the trigger provider
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| interval | string |  | Yes |
+| interval | string, <br>**Available values:** "", "month", "year" | *Enum:* `""`, `"month"`, `"year"` | Yes |
 | plan | [CloudPlan](#cloudplan) |  | Yes |
 
 #### SubscriptionQuery

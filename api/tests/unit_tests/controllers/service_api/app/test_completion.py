@@ -20,6 +20,7 @@ from unittest.mock import MagicMock, Mock, create_autospec, patch
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
@@ -58,6 +59,7 @@ from services.conversation_service import ConversationService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
+from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
@@ -551,9 +553,16 @@ class TestCompletionApiController:
             with pytest.raises(AppUnavailableError):
                 handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
-    def test_conversation_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
+    def test_conversation_not_found(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        orm_session: Session,
+        app_generation: AppGenerateService,
+    ) -> None:
+        """Map a missing conversation from the injected generation service to the public 404 contract."""
         monkeypatch.setattr(
-            AppGenerateService,
+            app_generation,
             "generate",
             lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
         )
@@ -611,9 +620,11 @@ class TestChatApiController:
         http_error: type[InvokeRateLimitHttpError | CompletionRequestError],
         status_code: int,
         error_code: str,
+        app_generation: AppGenerateService,
     ) -> None:
+        """Map injected provider/cloud throttles while retaining their distinct HTTP contracts."""
         generate = Mock(side_effect=source_error("rate limit reached"))
-        monkeypatch.setattr(AppGenerateService, "generate", generate)
+        monkeypatch.setattr(app_generation, "generate", generate)
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.ADVANCED_CHAT)
 
         api = ChatApi()
@@ -631,15 +642,22 @@ class TestChatApiController:
         assert exc_info.value.description == "rate limit reached"
 
     def test_rejects_sandbox_plan_workflow_version(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
+        orm_session: Session,
+        app_generation: AppGenerateService,
     ) -> None:
+        """Given a Cloud sandbox subscription and a version id, reject before invoking generation."""
         sys.modules["controllers.service_api.app.completion"]
         apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
-        billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
+        billing_get_info = mocker.patch.object(
+            BillingService, "get_info", return_value=builders.subscription_info("sandbox")
+        )
         generate = Mock()
-        monkeypatch.setattr(BillingService, "get_info", billing_get_info)
-        monkeypatch.setattr(AppGenerateService, "generate", generate)
+        monkeypatch.setattr(app_generation, "generate", generate)
 
         api = ChatApi()
         handler = unwrap(api.post)
@@ -673,18 +691,21 @@ class TestChatApiController:
         self,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
         orm_session: Session,
         deployment_edition: DeploymentEdition,
         plan: CloudPlan,
         workflow_id: str | None,
         app_generation: AppGenerateService,
     ) -> None:
+        """Allow entitled/default requests and invoke only the injected generation service once."""
         completion_module = sys.modules["controllers.service_api.app.completion"]
         apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=deployment_edition)
 
-        billing_get_info = Mock(return_value={"subscription": {"plan": plan}})
+        billing_get_info = mocker.patch.object(
+            BillingService, "get_info", return_value=builders.subscription_info(plan)
+        )
         generate = Mock(return_value={"result": "ok"})
-        monkeypatch.setattr(BillingService, "get_info", billing_get_info)
         monkeypatch.setattr(app_generation, "generate", generate)
         monkeypatch.setattr(completion_module.helper, "compact_generate_response", lambda response: response)
 
@@ -715,9 +736,16 @@ class TestChatApiController:
             with pytest.raises(NotChatAppError):
                 handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
-    def test_workflow_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
+    def test_workflow_not_found(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        orm_session: Session,
+        app_generation: AppGenerateService,
+    ) -> None:
+        """Map a missing workflow from the injected generation service to the public 404 contract."""
         monkeypatch.setattr(
-            AppGenerateService,
+            app_generation,
             "generate",
             lambda *_args, **_kwargs: (_ for _ in ()).throw(WorkflowNotFoundError("missing")),
         )
@@ -730,9 +758,16 @@ class TestChatApiController:
             with pytest.raises(NotFound):
                 handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
-    def test_draft_workflow(self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
+    def test_draft_workflow(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        orm_session: Session,
+        app_generation: AppGenerateService,
+    ) -> None:
+        """Map a draft-only workflow from the injected generation service to the public 400 contract."""
         monkeypatch.setattr(
-            AppGenerateService,
+            app_generation,
             "generate",
             lambda *_args, **_kwargs: (_ for _ in ()).throw(IsDraftWorkflowError("draft")),
         )
@@ -746,10 +781,15 @@ class TestChatApiController:
                 handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
     def test_agent_not_published_error_mapped(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        orm_session: Session,
+        app_generation: AppGenerateService,
     ) -> None:
+        """Map an unpublished agent from the injected generation service without starting a response."""
         monkeypatch.setattr(
-            AppGenerateService,
+            app_generation,
             "generate",
             lambda *_args, **_kwargs: (_ for _ in ()).throw(AgentAppNotPublishedError("Agent has not been published")),
         )
@@ -763,8 +803,13 @@ class TestChatApiController:
                 handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
     def test_invalid_conversation_id_fails_fast_as_not_found(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        orm_session: Session,
+        app_generation: AppGenerateService,
     ) -> None:
+        """Fail the pre-generation conversation lookup as 404 and leave generation uncalled."""
         # A well-formed but nonexistent conversation_id must fail fast as 404, before the
         # streaming generator is created. Previously the lookup only ran inside the generator,
         # so an invalid id surfaced as a hang instead of a clean error.
@@ -772,7 +817,7 @@ class TestChatApiController:
         monkeypatch.setattr(ConversationService, "get_conversation", get_conversation_mock)
 
         generate_mock = Mock(return_value={"text": "unused"})
-        monkeypatch.setattr(AppGenerateService, "generate", generate_mock)
+        monkeypatch.setattr(app_generation, "generate", generate_mock)
 
         api = ChatApi()
         handler = unwrap(api.post)

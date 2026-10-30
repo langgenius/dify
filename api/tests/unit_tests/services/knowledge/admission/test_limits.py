@@ -213,7 +213,7 @@ def test_disabled_rate_limit_does_not_touch_redis() -> None:
 
 def test_rate_limit_calls_atomic_script_with_unique_member_and_window() -> None:
     harness = LimitHarness()
-    harness.queries.rate_limit = KnowledgeRateLimitModel(enabled=True, limit=10, subscription_plan="pro")
+    harness.queries.rate_limit = KnowledgeRateLimitModel(enabled=True, limit=10, subscription_plan="professional")
 
     _check(harness.gateway(), rate_limit=True)
 
@@ -234,10 +234,10 @@ def test_rate_limit_calls_atomic_script_with_unique_member_and_window() -> None:
 
 def test_exceeded_rate_limit_is_logged_before_rejection() -> None:
     harness = LimitHarness()
-    harness.queries.rate_limit = KnowledgeRateLimitModel(enabled=True, limit=10, subscription_plan="pro")
+    harness.queries.rate_limit = KnowledgeRateLimitModel(enabled=True, limit=10, subscription_plan="professional")
     harness.redis.request_count = 11
 
     with pytest.raises(KnowledgeApiRateLimitExceededError, match="request rate limit"):
         _check(harness.gateway(), rate_limit=True)
 
-    assert harness.logs.events == [("workspace-1", "pro")]
+    assert harness.logs.events == [("workspace-1", "professional")]

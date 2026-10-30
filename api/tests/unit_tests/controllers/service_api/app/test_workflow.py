@@ -23,8 +23,10 @@ from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import httpx
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
@@ -58,6 +60,7 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
+from services.billing_client import transport
 from services.billing_service import BillingService
 from services.errors.app import (
     IsDraftWorkflowError,
@@ -66,8 +69,10 @@ from services.errors.app import (
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
+from services.errors.billing import BillingUpstreamInvalidResponseError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from tests.helpers import billing_builders as builders
 
 
 class _AppGenerationBoundary:
@@ -491,6 +496,7 @@ class TestWorkflowRunApi:
         self,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
         sqlite_session: Session,
         config_overrides: Callable[..., None],
         api_class: type[WorkflowRunApi | WorkflowRunByIdApi],
@@ -500,10 +506,9 @@ class TestWorkflowRunApi:
         error_code: str,
         app_generation: _AppGenerationBoundary,
     ) -> None:
+        """Map generated provider/cloud throttles while preserving their distinct HTTP contracts."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        monkeypatch.setattr(
-            BillingService, "get_info", Mock(return_value={"subscription": {"plan": CloudPlan.PROFESSIONAL}})
-        )
+        mocker.patch.object(BillingService, "get_info", return_value=builders.subscription_info("professional"))
         generate = Mock(side_effect=source_error("rate limit reached"))
         monkeypatch.setattr(app_generation, "generate", generate)
 
@@ -555,16 +560,19 @@ class TestWorkflowRunApi:
         self,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
         sqlite_session: Session,
         config_overrides: Callable[..., None],
         app_generation: _AppGenerationBoundary,
     ) -> None:
+        """Allow a default sandbox workflow run without billing I/O and invoke generation once."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         sys.modules["controllers.service_api.app.workflow"]
 
-        billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
+        billing_get_info = mocker.patch.object(
+            BillingService, "get_info", return_value=builders.subscription_info("sandbox")
+        )
         generate = Mock(return_value={"result": "ok"})
-        monkeypatch.setattr(BillingService, "get_info", billing_get_info)
         monkeypatch.setattr(app_generation, "generate", generate)
 
         api = WorkflowRunApi()
@@ -585,6 +593,40 @@ class TestWorkflowRunApi:
 
 
 class TestWorkflowRunByIdApi:
+    def test_missing_billing_plan_cannot_bypass_sandbox_restriction(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
+        app_generation: _AppGenerationBoundary,
+    ) -> None:
+        """Reject malformed Cloud billing data before the injected generation boundary is invoked."""
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        payload = builders.subscription_info().model_dump()
+        del payload["subscription"]["plan"]
+        monkeypatch.setenv("BILLING_API_URL", "http://billing/v1")
+
+        def unexpected_generation(**_kwargs: object) -> object:
+            """Fail if invalid billing data reaches execution; otherwise this callback has no side effects."""
+            pytest.fail("Invalid billing data must be rejected before workflow execution")
+
+        monkeypatch.setattr(app_generation, "generate", unexpected_generation)
+        api = WorkflowRunByIdApi()
+        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
+            monkeypatch.setattr(transport, "_http_client", client)
+            with (
+                app.test_request_context("/workflows/w1/run", method="POST", json={"inputs": {}}),
+                pytest.raises(BillingUpstreamInvalidResponseError),
+            ):
+                unwrap(api.post)(
+                    api,
+                    session=sqlite_session,
+                    app_model=_make_app_model(),
+                    end_user=_make_end_user(),
+                    workflow_id="w1",
+                )
+
     def test_trigger_workflow_version_returns_stable_unavailable_error(
         self,
         app: Flask,
@@ -617,16 +659,19 @@ class TestWorkflowRunByIdApi:
         self,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
         sqlite_session: Session,
         config_overrides: Callable[..., None],
         app_generation: _AppGenerationBoundary,
     ) -> None:
+        """Reject a versioned sandbox run before the injected generation boundary is invoked."""
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         sys.modules["controllers.service_api.app.workflow"]
 
-        billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
+        billing_get_info = mocker.patch.object(
+            BillingService, "get_info", return_value=builders.subscription_info("sandbox")
+        )
         generate = Mock()
-        monkeypatch.setattr(BillingService, "get_info", billing_get_info)
         monkeypatch.setattr(app_generation, "generate", generate)
 
         api = WorkflowRunByIdApi()
@@ -668,17 +713,20 @@ class TestWorkflowRunByIdApi:
         self,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        mocker: MockerFixture,
         deployment_edition: DeploymentEdition,
         plan: CloudPlan,
         sqlite_session: Session,
         config_overrides: Callable[..., None],
         app_generation: _AppGenerationBoundary,
     ) -> None:
+        """Execute once when deployment or typed billing data permits versioned workflows."""
         config_overrides(DEPLOYMENT_EDITION=deployment_edition)
 
-        billing_get_info = Mock(return_value={"subscription": {"plan": plan}})
+        billing_get_info = mocker.patch.object(
+            BillingService, "get_info", return_value=builders.subscription_info(plan)
+        )
         generate = Mock(return_value={"result": "ok"})
-        monkeypatch.setattr(BillingService, "get_info", billing_get_info)
         monkeypatch.setattr(app_generation, "generate", generate)
 
         api = WorkflowRunByIdApi()

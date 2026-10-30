@@ -36,7 +36,7 @@ def _gateway(
     clock: MutableClock,
     logs: RecordingRateLimitLogger,
 ) -> KnowledgeApiLimitsGateway:
-    rate_limit = KnowledgeRateLimitModel(enabled=True, limit=limit, subscription_plan="pro")
+    rate_limit = KnowledgeRateLimitModel(enabled=True, limit=limit, subscription_plan="professional")
     return KnowledgeApiLimitsGateway(
         redis=redis_client,
         get_features=lambda _workspace_id: FeatureModel(),
@@ -81,7 +81,7 @@ def test_same_millisecond_parallel_requests_are_counted_by_real_redis() -> None:
         assert sum(results) == 25
         assert redis_client.zcard(key) == 64
         assert 60_000 < redis_client.pttl(key) <= 120_000
-        assert logs.events == [(workspace_id, "pro")] * 39
+        assert logs.events == [(workspace_id, "professional")] * 39
     finally:
         redis_client.delete(key)
 
