@@ -31,7 +31,8 @@ from services.agent.errors import (
     InvalidRosterAgentPackageError,
     RosterAgentPackageTooLargeError,
     RosterReferenceNotAcceptedError,
-    WorkspaceSkillNotFoundError,
+    WorkspaceSkillProblem,
+    WorkspaceSkillUnavailableError,
 )
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.package_resource_importer import AgentPackageResourceImporter
@@ -122,16 +123,28 @@ class PreparedAppPackage(PreparedPackageArchive):
                 item.icon = mapping[item.icon]
 
     def require_workspace_skills(self, *, tenant_id: str) -> None:
-        """Refuse, before any write, an import that links Agents to workspace Skills the workspace lacks."""
+        """Refuse, before any write, an import that links Agents to workspace Skills the workspace cannot bind.
+
+        A Skill without a published version is refused too: the runtime resolves only published versions.
+        """
         names = {skill.name for agent in self.agents.values() for skill in agent.workspace_skills}
         if not names:
             return
         with session_factory.create_session() as session:
-            present = set(
-                session.scalars(select(Skill.name).where(Skill.tenant_id == tenant_id, Skill.name.in_(names)))
+            rows = session.execute(
+                select(Skill.name, Skill.latest_published_version_id).where(
+                    Skill.tenant_id == tenant_id, Skill.name.in_(names)
+                )
             )
-        if missing := sorted(names - present):
-            raise WorkspaceSkillNotFoundError(missing)
+            versions = dict(rows.tuples().all())
+        problems = dict.fromkeys(names - versions.keys(), WorkspaceSkillProblem.NOT_FOUND)
+        problems.update(
+            dict.fromkeys(
+                (name for name, version in versions.items() if version is None), WorkspaceSkillProblem.NOT_PUBLISHED
+            )
+        )
+        if problems:
+            raise WorkspaceSkillUnavailableError(problems)
 
     def materialize_agents(
         self, *, tenant_id: str, account_id: str, link_workspace_skills: bool = False
