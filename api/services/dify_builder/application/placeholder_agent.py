@@ -162,6 +162,20 @@ class PlaceholderAgent:
             "Emit the final report",
         ]
 
+    def reconcile_resource_plan(
+        self,
+        plan: WorkflowPlan,
+        resource_ids: list[str],
+        *,
+        goal_text: str,
+        requirements: dict[str, object],
+        reply_language: str | None = None,
+    ) -> WorkflowPlan | None:
+        del goal_text, requirements, reply_language
+        return WorkflowPlan(
+            plan.title, plan.input_summary, plan.output_summary, self.bind_resources(plan.items, resource_ids)
+        )
+
     def build_nodes(
         self,
         plan_items: list[str],

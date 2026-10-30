@@ -24,6 +24,7 @@ session version commits atomically with the reservation rows.
 
 import dataclasses
 from collections.abc import Callable, Iterable, Iterator
+from datetime import timedelta
 from itertools import islice
 from typing import cast
 
@@ -59,6 +60,7 @@ from models.dify_builder import (
     DifyBuilderSessionCommit,
     DifyBuilderSnapshot,
     DifyBuilderTestInput,
+    DifyBuilderWorkflowWriter,
 )
 from models.dify_builder_cognition_policy import DifyBuilderCognitionPolicy
 from services.dify_builder.application.cognition_policy import (
@@ -313,7 +315,84 @@ class SqlDifyBuilderRepository:
             domain.current_state = PcState(commit.state)
             return domain, context_from_dict(commit.context)
 
-    def is_task_active(self, session_id: str, expected_generation: int) -> bool:
+    def reserve_workflow_writer(self, session_id: str, token: str, generation: int, lease_seconds: int) -> bool:
+        """Reserve the shared workflow owner without external I/O under SQL locks.
+
+        A unique scope row serializes even the first two conversations. Expiry is
+        measured with the database clock, and ownership changes never lock a
+        session after the scope row (native writers lock session first).
+        """
+        with self._session_factory() as sql, sql.begin():
+            session = sql.get(DifyBuilderSession, session_id)
+            if session is None:
+                raise NotFoundError("session not found")
+            key = {"tenant_id": session.tenant_id, "app_id": session.app_id}
+            row = sql.get(DifyBuilderWorkflowWriter, key)
+            if row is None:
+                try:
+                    with sql.begin_nested():
+                        row = DifyBuilderWorkflowWriter(
+                            **key,
+                            session_id=session_id,
+                            token=token,
+                            generation=generation,
+                            expires_at=sql.scalar(select(func.current_timestamp())).replace(tzinfo=None)
+                            + timedelta(seconds=lease_seconds),
+                        )
+                        sql.add(row)
+                        sql.flush()
+                    return True
+                except IntegrityError:
+                    # A concurrent first writer inserted the unique scope row.
+                    pass
+            row = sql.scalar(
+                select(DifyBuilderWorkflowWriter)
+                .where(
+                    DifyBuilderWorkflowWriter.tenant_id == session.tenant_id,
+                    DifyBuilderWorkflowWriter.app_id == session.app_id,
+                )
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+            now = sql.scalar(select(func.current_timestamp())).replace(tzinfo=None)
+            if row.expires_at > now:
+                return False
+            row.session_id, row.token, row.generation = session_id, token, generation
+            row.expires_at = now + timedelta(seconds=lease_seconds)
+            return True
+
+    def activate_workflow_writer(self, session_id: str, token: str, lease_seconds: int) -> bool:
+        with self._session_factory() as sql, sql.begin():
+            row = sql.scalar(
+                select(DifyBuilderWorkflowWriter)
+                .where(
+                    DifyBuilderWorkflowWriter.session_id == session_id,
+                    DifyBuilderWorkflowWriter.token == token,
+                )
+                .with_for_update()
+            )
+            now = sql.scalar(select(func.current_timestamp())).replace(tzinfo=None)
+            if row is None or row.expires_at <= now:
+                return False
+            row.expires_at = now + timedelta(seconds=lease_seconds)
+            return True
+
+    def release_workflow_writer(
+        self, session_id: str, *, token: str | None = None, generation: int | None = None
+    ) -> None:
+        """Compare-release only this completion or the generation fenced by Stop."""
+        if token is None and generation is None:
+            raise ValueError("writer release requires an owner")
+        with self._session_factory() as sql, sql.begin():
+            query = update(DifyBuilderWorkflowWriter).where(DifyBuilderWorkflowWriter.session_id == session_id)
+            query = (
+                query.where(DifyBuilderWorkflowWriter.token == token)
+                if token is not None
+                else query.where(DifyBuilderWorkflowWriter.generation <= generation)
+            )
+            sql.execute(query.values(expires_at=func.current_timestamp()))
+
+    def is_task_active(self, session_id: str, expected_generation: int, writer_token: str | None = None) -> bool:
         with self._session_factory() as sql:
             result = sql.execute(
                 select(
@@ -327,7 +406,20 @@ class SqlDifyBuilderRepository:
                 )
                 .where(DifyBuilderSession.id == session_id)
             ).one_or_none()
-            return result is not None and not result[0] and int(result[1] or 0) == expected_generation
+            if result is None or result[0] or int(result[1] or 0) != expected_generation:
+                return False
+            if writer_token is None:
+                return True
+            return (
+                sql.scalar(
+                    select(DifyBuilderWorkflowWriter.token).where(
+                        DifyBuilderWorkflowWriter.session_id == session_id,
+                        DifyBuilderWorkflowWriter.token == writer_token,
+                        DifyBuilderWorkflowWriter.expires_at > func.current_timestamp(),
+                    )
+                )
+                is not None
+            )
 
     def find_task_control(self, session_id: str, client_action_id: str, *, sql=None):
         def find(session):
@@ -350,10 +442,15 @@ class SqlDifyBuilderRepository:
 
     def control_transaction(self, session_id: str, change: Callable) -> tuple[DomainSession, DifyBuilderContext]:
         """Serialize a bounded, I/O-free control writer with all draft writers."""
+        from services.dify_builder.task_controls import lock_execution
+
         with self._session_factory() as sql, sql.begin():
             row = sql.scalar(select(DifyBuilderSession).where(DifyBuilderSession.id == session_id).with_for_update())
             if row is None:
                 raise NotFoundError("session not found")
+            # Worker callbacks may lock the workflow while synchronizing DSL.
+            # Take the writer fence first to preserve Session→Writer→Workflow.
+            lock_execution(sql, session_id=session_id)
             commit = sql.scalar(
                 select(DifyBuilderSessionCommit).where(
                     DifyBuilderSessionCommit.session_id == session_id,
@@ -395,6 +492,11 @@ class SqlDifyBuilderRepository:
         atomically with the new session version (the consent launch
         reservation) owns the transaction, and its rollback undoes this too.
         """
+        from services.dify_builder.task_controls import lock_execution
+
+        # Advisory checks before cognition do not make a later CAS safe: a
+        # replacement can take ownership without changing this session's head.
+        lock_execution(db_session, session_id=session_id)
         new_version = base_version + 1
         result = cast(
             CursorResult,

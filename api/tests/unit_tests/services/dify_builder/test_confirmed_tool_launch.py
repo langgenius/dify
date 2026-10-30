@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Literal, Never, NoReturn, cast, override
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from core.dify_builder.contract import TestResultCard
 from core.dify_builder.errors import BadRequestError, BusyError
@@ -41,7 +41,7 @@ from core.dify_builder.real_call_consent import ConfirmedToolBinding, ConsentRec
 from core.dify_builder.state import PcState
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
-from models.dify_builder import DifyBuilderExecutionRequest
+from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderWorkflowWriter
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import (
     Workflow,
@@ -213,7 +213,12 @@ def reserve_directly(owner: Owner) -> tuple[ConsentReceipt, Action, str]:
         base_version=reserved.at_version,
         command_id=reserved.command_id,
     )
-    return reserved, action, str(uuid4())
+    token = str(uuid4())
+    # Match the dispatch owner's durable workflow reservation as well as consent.
+    repo = SqlDifyBuilderRepository(owner.factory)
+    _, context = repo.get_session(owner.session_id)
+    assert repo.reserve_workflow_writer(owner.session_id, token, int(context.task_control.get("generation", 0)), 600)
+    return reserved, action, token
 
 
 class ServiceGuardRecorder:
@@ -357,6 +362,7 @@ def test_refusal_and_nonwinning_replay_release_only_their_own_token(consent_owne
     won = execute(service, owner, receipt)
     # The worker finished and released its token; an identical replay now wins the
     # lease but not the reservation, so it releases and never enqueues.
+    SqlDifyBuilderRepository(owner.factory).release_workflow_writer(owner.session_id, token=enqueue.calls[0][3])
     lease.release(owner.session_id, enqueue.calls[0][3])
     replay = execute(service, owner, receipt)
     assert replay.command_id == won.command_id
@@ -1257,6 +1263,16 @@ def test_stale_sweep_settles_only_the_grant_it_observed_never_a_fresh_reservatio
     dispatcher = builder(owner, lease, enqueue)
     stranded = execute(dispatcher, owner, confirmed(owner))
     lease.release(owner.session_id, enqueue.calls[0][3])  # its dispatch lease expired; the delivery never ran
+    # Expiry covers both independently persisted leases. Redis loss alone must
+    # not permit the fixture's replacement command to steal a durable writer.
+    with owner.factory.begin() as sql:
+        sql.execute(
+            update(DifyBuilderWorkflowWriter)
+            .where(
+                DifyBuilderWorkflowWriter.session_id == owner.session_id,
+            )
+            .values(expires_at=naive_utc_now() - timedelta(days=1))
+        )
     fresh: list[ConsentReceipt] = []
     fresh_head: list[tuple[int, PcState, str, str]] = []
 

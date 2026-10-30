@@ -342,7 +342,8 @@ def test_analyze_goal_scrubs_invented_defaults_end_to_end(monkeypatch: pytest.Mo
     out = build.analyze_goal(object(), _S5B_GOAL)
 
     assert out["values"]["render_api_url"] == ""
-    assert out["values"]["api_auth_header"] == ""
+    assert "api_auth_header" not in out["values"]
+    assert all(field["key"] != "api_auth_header" for field in out["fields"])
     assert out["values"]["tone"] == "Professional"
     assert out["values"]["slide_count"] == 10
     assert out["values"]["include_speaker_notes"] is True
@@ -1412,10 +1413,8 @@ def test_analyze_goal_keeps_the_answer_the_model_gave_a_goal_restating_field() -
     assert out["values"]["requirement"] == "只看退款工单"
 
 
-def test_analyze_goal_leaves_a_deliberately_blanked_credential_blank() -> None:
-    """``_scrub_invented_defaults`` blanks an invented credential ON PURPOSE so
-    the user supplies it. Writing the goal sentence into an API-key box would be
-    worse than the bug being fixed."""
+def test_analyze_goal_never_asks_for_a_credential_in_a_text_field() -> None:
+    """Secrets belong to the existing resource setup, not a Builder form."""
     m = _FakeInstance(
         [
             json.dumps(
@@ -1429,7 +1428,125 @@ def test_analyze_goal_leaves_a_deliberately_blanked_credential_blank() -> None:
 
     out = build.analyze_goal(m, _PM_GOAL)
 
-    assert out["values"]["bocha_api_key"] == ""
+    assert not out["fields"]
+    assert "bocha_api_key" not in out["values"]
+
+
+def test_analyze_goal_keeps_business_fields_but_removes_secret_requests() -> None:
+    m = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [
+                        {"key": "search_api_key", "label": "搜索服务的 API Key", "type": "text"},
+                        {"key": "search_code", "label": "访问令牌", "type": "text"},
+                        {"key": "report_language", "label": "报告语言", "type": "select", "options": ["中文", "英文"]},
+                        {"key": "max_tokens", "label": "输出长度", "type": "number"},
+                        {"key": "credential_name", "label": "凭据名称", "type": "text"},
+                    ],
+                    "values": {
+                        "search_api_key": "synthetic-secret",
+                        "search_code": "synthetic-token",
+                        "report_language": "中文",
+                        "max_tokens": 1000,
+                        "credential_name": "team credential",
+                        "access_token": "another-secret",
+                    },
+                },
+                ensure_ascii=False,
+            )
+        ]
+    )
+
+    out = build.analyze_goal(m, "联网调研并输出中文报告")
+
+    assert {field["key"] for field in out["fields"]} == {"report_language", "max_tokens", "credential_name"}
+    assert out["values"] == {"report_language": "中文", "max_tokens": 1000, "credential_name": "team credential"}
+
+
+def test_analyze_goal_removes_nested_secret_values_without_losing_business_booleans() -> None:
+    m = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [
+                        {"key": "requires_password", "label": "是否要求密码", "type": "bool"},
+                        {"key": "search_code", "label": "访问令牌", "type": "text"},
+                    ],
+                    "values": {
+                        "requires_password": False,
+                        "search_code": "synthetic-secret",
+                        "metadata": {"access_token": 9876, "token_limit": 42, "search_code": "business category"},
+                    },
+                },
+                ensure_ascii=False,
+            )
+        ]
+    )
+
+    out = build.analyze_goal(m, "生成报告")
+
+    assert [field["key"] for field in out["fields"]] == ["requires_password"]
+    assert out["values"] == {
+        "requires_password": False,
+        "metadata": {"token_limit": 42, "search_code": "business category"},
+    }
+
+
+def test_analyze_goal_removes_a_secret_labeled_as_optional() -> None:
+    m = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [{"key": "provider_input", "label": "API Key（可选）", "type": "text"}],
+                    "values": {"provider_input": ""},
+                },
+                ensure_ascii=False,
+            )
+        ]
+    )
+
+    out = build.analyze_goal(m, "联网调研并输出报告")
+
+    assert not out["fields"]
+    assert "provider_input" not in out["values"]
+
+
+def test_analyze_goal_rejects_secret_text_mislabeled_as_boolean() -> None:
+    m = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [{"key": "provider_input", "label": "API Key", "type": "bool"}],
+                    "values": {"provider_input": "synthetic-credential-value"},
+                }
+            )
+        ]
+    )
+
+    out = build.analyze_goal(m, "联网调研")
+
+    assert not out["fields"]
+    assert "provider_input" not in out["values"]
+
+
+def test_analyze_goal_removes_secret_label_with_punctuation() -> None:
+    m = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [{"key": "provider_input", "label": "请输入 API Key（可选）：", "type": "text"}],
+                    "values": {"provider_input": "synthetic-credential-value"},
+                },
+                ensure_ascii=False,
+            )
+        ]
+    )
+
+    out = build.analyze_goal(m, "联网调研")
+
+    assert not out["fields"]
+    assert "provider_input" not in out["values"]
 
 
 def test_analyze_goal_does_not_answer_a_goal_restating_select() -> None:
@@ -1464,8 +1581,8 @@ def test_analyze_goal_explains_a_field_it_leaves_blank() -> None:
         [
             json.dumps(
                 {
-                    "fields": [{"key": "bocha_api_key", "label": "博查 API 密钥", "type": "text"}],
-                    "values": {"bocha_api_key": "YOUR_API_KEY"},
+                    "fields": [{"key": "industry", "label": "目标行业", "type": "text"}],
+                    "values": {"industry": ""},
                 }
             )
         ]
@@ -1473,7 +1590,7 @@ def test_analyze_goal_explains_a_field_it_leaves_blank() -> None:
 
     out = build.analyze_goal(m, _PM_GOAL)
 
-    assert out["values"]["bocha_api_key"] == ""
+    assert out["values"]["industry"] == ""
     assert out["fields"][0]["hint_copy"]
     assert out["fields"][0]["hint_copy"] == asdict(
         copy_text(BuilderCopyId.REPLIES_NOT_STATED_IN_YOUR_REQUEST_ADD_IT_IF_YOU_HAVE_ONE)
@@ -2188,3 +2305,285 @@ def test_planner_keeps_conditional_model_preference_separate_from_required_behav
     assert goal in source
     assert json.dumps(requirements, ensure_ascii=False) in source
     assert len(model.calls) == 1
+
+
+def test_business_clarification_hides_only_marked_internal_defaults_but_keeps_them_for_planning() -> None:
+    """ENG-1345-shaped defaults stay internal only after explicit presentation classification."""
+    from dataclasses import replace
+    from datetime import datetime
+
+    from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
+    from core.dify_builder.state import PcState
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+    from services.dify_builder.application.handlers_build import handle_capability_check, handle_goal_analysis
+    from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, FixtureEnv, InMemoryRepository
+
+    goal = "构建一个需求分析工作流，用户输入需求，工作流自动联网调研市场、竞品等关键信息，最终给出需求分析报告。"
+    values: Inputs = {
+        "report_language": "中文",
+        "report_sections": ["市场规模与趋势", "竞品分析", "目标用户分析", "机会与风险", "需求可行性建议"],
+        "report_layout": {"include_summary": True, "heading_levels": [1, 2]},
+        "target_market_region": "",
+    }
+    model = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [
+                        {
+                            "key": "report_language",
+                            "label": "报告输出语言",
+                            "type": "select",
+                            "options": ["中文", "英文"],
+                        },
+                        {
+                            "key": "report_sections",
+                            "label": "报告包含的分析模块",
+                            "type": "json",
+                            "presentation": "internal",
+                            "requires_user_decision": False,
+                        },
+                        {
+                            "key": "report_layout",
+                            "label": "报告格式",
+                            "type": "json_object",
+                            "presentation": "internal",
+                            "requires_user_decision": False,
+                        },
+                        {"key": "target_market_region", "label": "调研市场范围", "type": "text"},
+                    ],
+                    "values": values,
+                },
+                ensure_ascii=False,
+            ),
+            _plan_reply(["Research the requested market and return the specified report"]),
+        ]
+    )
+    agent = LlmBuilderAgent("tenant-1", {}, model_resolver_fn=lambda: model)
+    env = FixtureEnv(dify=FakeDifyPort(), agent=agent, repo=InMemoryRepository(), now=lambda: datetime.min)
+    actor = Actor(account_id="account-1", tenant_id="tenant-1")
+    session = Session(
+        app_id="app-1",
+        tenant_id="tenant-1",
+        owner_account_id=actor.account_id,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_CAPABILITY_CHECK,
+    )
+    context = DifyBuilderContext(goal_text=goal, reply_language="zh-Hans", app_name_auto=False)
+
+    result = handle_capability_check(env, Turn(actor=actor), session, context)
+
+    assert result.context is not None
+    assert result.context.requirements == values
+    assert [f["key"] for f in result.context.form_fields] == ["report_language", "target_market_region"]
+    form = next(item for item in result.items if item.kind == "form")
+    assert [f["key"] for f in form.payload["fields"]] == ["report_language", "target_market_region"]
+    assert form.payload["values"]["report_sections"] == values["report_sections"]
+    assert form.payload["values"]["report_layout"] == values["report_layout"]
+
+    submitted = handle_goal_analysis(
+        env,
+        Turn(actor=actor, action=Action(kind="submit_requirements", payload={"report_language": "英文"})),
+        replace(session, current_state=PcState.BUILD_GOAL_ANALYSIS),
+        result.context,
+    )
+
+    assert submitted.context is not None
+    assert submitted.context.requirements == {**values, "report_language": "英文"}
+    assert isinstance(submitted.context.requirements["report_sections"], list)
+    assert isinstance(submitted.context.requirements["report_layout"], dict)
+    assert json.dumps(submitted.context.requirements, ensure_ascii=False) in model.calls[1][0][1].get_text_content()
+
+
+@pytest.mark.parametrize("field_type", ["json", "json_object"])
+@pytest.mark.parametrize("default", [None, ""])
+def test_business_clarification_keeps_required_unanswered_structured_questions(
+    field_type: str, default: object
+) -> None:
+    model = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [
+                        {
+                            "key": "business_rules",
+                            "label": "Which rules are required?",
+                            "type": field_type,
+                            "required": True,
+                        }
+                    ],
+                    "values": {"business_rules": default},
+                }
+            )
+        ]
+    )
+
+    analysis = build.analyze_goal(model, "Apply the required business rules once the user supplies them.")
+
+    assert [f["key"] for f in analysis["fields"]] == ["business_rules"]
+    assert analysis["fields"][0]["required"] is True
+    assert analysis["values"] == {"business_rules": default}
+
+
+def test_business_clarification_preserves_explicit_required_technical_structure() -> None:
+    values = {"schema": {"type": "object", "properties": {"amount": {"type": "number"}}}}
+    model = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [{"key": "schema", "label": "JSON schema", "type": "json_object", "required": True}],
+                    "values": values,
+                }
+            )
+        ]
+    )
+
+    analysis = build.analyze_goal(
+        model, 'Use this explicit JSON schema: {"type":"object","properties":{"amount":{"type":"number"}}}.'
+    )
+
+    assert analysis["fields"][0]["type"] == "json_object"
+    assert analysis["values"] == values
+
+
+def test_business_clarification_prompt_uses_scalar_controls_for_necessary_questions() -> None:
+    model = _FakeInstance([json.dumps({"fields": [], "values": {}})])
+
+    build.analyze_goal(model, "Research a market and return an analysis report.")
+
+    system = model.calls[0][0][0].get_text_content()
+    assert "natural-language scalar controls" in system
+    assert "internal values" in system
+    assert "required unanswered" in system
+
+
+def test_business_clarification_keeps_explicit_optional_json_editable_through_real_handlers() -> None:
+    """Optional controls are still user-owned when the goal explicitly asks to edit them."""
+    from dataclasses import replace
+    from datetime import datetime
+
+    from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
+    from core.dify_builder.state import PcState
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+    from services.dify_builder.application.handlers_build import handle_capability_check, handle_goal_analysis
+    from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, FixtureEnv, InMemoryRepository
+
+    original_options = {"include_summary": True, "sections": ["market", "competitors"]}
+    edited_options = {"include_summary": False, "sections": ["competitors", "risks"]}
+    goal = (
+        "Build a report workflow. Keep a user-editable optional JSON configuration named report_options "
+        "with the default object supplied below; do not remove its JSON editor. Also ask for output language. "
+        f"DEFAULT: {json.dumps(original_options)}"
+    )
+    model = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [
+                        {
+                            "key": "report_options",
+                            "label": "Optional JSON configuration",
+                            "type": "json_object",
+                            "required": False,
+                        },
+                        {"key": "language", "label": "Output language", "type": "text"},
+                    ],
+                    "values": {"report_options": original_options, "language": "English"},
+                }
+            ),
+            _plan_reply(["Build the report using the accepted JSON configuration"]),
+        ]
+    )
+    agent = LlmBuilderAgent("tenant-1", {}, model_resolver_fn=lambda: model)
+    env = FixtureEnv(dify=FakeDifyPort(), agent=agent, repo=InMemoryRepository(), now=lambda: datetime.min)
+    actor = Actor(account_id="account-1", tenant_id="tenant-1")
+    session = Session(
+        app_id="app-1",
+        tenant_id="tenant-1",
+        owner_account_id=actor.account_id,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_CAPABILITY_CHECK,
+    )
+    context = DifyBuilderContext(goal_text=goal, app_name_auto=False)
+
+    analyzed = handle_capability_check(env, Turn(actor=actor), session, context)
+
+    assert analyzed.context is not None
+    form = next(item for item in analyzed.items if item.kind == "form")
+    assert [field["key"] for field in form.payload["fields"]] == ["report_options", "language"]
+    optional_json = next(field for field in form.payload["fields"] if field["key"] == "report_options")
+    assert optional_json["type"] == "json_object"
+    assert optional_json["required"] is False
+    assert form.payload["values"]["report_options"] == original_options
+
+    submitted = handle_goal_analysis(
+        env,
+        Turn(actor=actor, action=Action(kind="submit_requirements", payload={"report_options": edited_options})),
+        replace(session, current_state=PcState.BUILD_GOAL_ANALYSIS),
+        analyzed.context,
+    )
+
+    assert submitted.context is not None
+    assert submitted.context.requirements["report_options"] == edited_options
+    assert json.dumps(edited_options) in model.calls[1][0][1].get_text_content()
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        {},
+        {"presentation": "user_input", "requires_user_decision": False},
+        {"presentation": "unknown", "requires_user_decision": False},
+        {"presentation": "internal"},
+        {"presentation": "internal", "requires_user_decision": True},
+        {"presentation": "internal", "requires_user_decision": "false"},
+        {"presentation": "internal", "requires_user_decision": False, "required": True},
+    ],
+)
+def test_business_clarification_protects_unmarked_or_editable_complex_defaults(metadata: dict[str, object]) -> None:
+    values = {"sections": ["market", "competitors"], "options": {"summary": True}}
+    model = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [
+                        {"key": "sections", "label": "Sections", "type": "json", **metadata},
+                        {"key": "options", "label": "Options", "type": "json_object", **metadata},
+                    ],
+                    "values": values,
+                }
+            )
+        ]
+    )
+
+    analysis = build.analyze_goal(model, "Build a report workflow with editable report settings.")
+
+    assert [field["key"] for field in analysis["fields"]] == ["sections", "options"]
+    assert [field["type"] for field in analysis["fields"]] == ["json", "json_object"]
+    assert analysis["values"] == values
+
+
+def test_business_clarification_keeps_internal_marked_question_without_a_default() -> None:
+    model = _FakeInstance(
+        [
+            json.dumps(
+                {
+                    "fields": [
+                        {
+                            "key": "constraints",
+                            "label": "Business constraints",
+                            "type": "json_object",
+                            "presentation": "internal",
+                            "requires_user_decision": False,
+                        }
+                    ],
+                    "values": {},
+                }
+            )
+        ]
+    )
+
+    analysis = build.analyze_goal(model, "Ask for any missing report constraints.")
+
+    assert [field["key"] for field in analysis["fields"]] == ["constraints"]
+    assert analysis["values"] == {}

@@ -415,3 +415,39 @@ def test_fake_build_dify_port_run_draft_pass_and_fail() -> None:
     assert run2.per_node[0].status == "failed"
     assert run2.per_node[0].error
     assert any(isinstance(e, NodeEvent) for e in events)
+
+
+def test_workflow_writer_fake_preserves_scope_expiry_and_token_ownership(monkeypatch: pytest.MonkeyPatch) -> None:
+    from tests.unit_tests.core.dify_builder import fakes
+
+    monkeypatch.setattr(fakes, "monotonic", lambda: 100.0)
+    repo = InMemoryRepository()
+    first, replacement, independent = _session(), _session(), _session(app_id="other-app")
+    for session in (first, replacement, independent):
+        repo.create_session(session, DifyBuilderContext(), [])
+    assert repo.reserve_workflow_writer(first.id, "old-token", 0, 600)
+    assert not repo.reserve_workflow_writer(replacement.id, "new-token", 0, 600)
+    assert repo.reserve_workflow_writer(independent.id, "independent-token", 0, 600)
+    assert not repo.activate_workflow_writer(first.id, "wrong-token", 1200)
+    assert repo.activate_workflow_writer(first.id, "old-token", 1200)
+
+    monkeypatch.setattr(fakes, "monotonic", lambda: 1000.0)
+    assert repo.is_task_active(first.id, 0, "old-token")
+    monkeypatch.setattr(fakes, "monotonic", lambda: 1400.0)
+    assert not repo.is_task_active(first.id, 0, "old-token")
+    assert repo.reserve_workflow_writer(replacement.id, "new-token", 0, 600)
+    repo.release_workflow_writer(first.id, token="old-token")
+    assert repo.is_task_active(replacement.id, 0, "new-token")
+
+
+def test_workflow_writer_fake_stop_cannot_release_resumed_generation() -> None:
+    repo = InMemoryRepository()
+    session = _session()
+    repo.create_session(session, DifyBuilderContext(), [])
+    assert repo.reserve_workflow_writer(session.id, "old-token", 0, 600)
+    repo.release_workflow_writer(session.id, generation=0)
+    assert repo.reserve_workflow_writer(session.id, "resumed-token", 1, 600)
+    repo.release_workflow_writer(session.id, generation=0)
+    assert repo.activate_workflow_writer(session.id, "resumed-token", 600)
+    repo.release_workflow_writer(session.id, generation=1)
+    assert not repo.activate_workflow_writer(session.id, "resumed-token", 600)

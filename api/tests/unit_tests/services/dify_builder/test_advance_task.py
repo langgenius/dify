@@ -37,6 +37,7 @@ from core.dify_builder.models import (
     NodeEvent,
     Run,
     Session,
+    Turn,
 )
 from core.dify_builder.state import PcState
 from models.base import Base
@@ -168,6 +169,18 @@ def active_worker_lock(monkeypatch: pytest.MonkeyPatch) -> None:
     # The worker releases exactly the owner value its activation returned; these
     # engine-wiring tests use the dispatch token as that value.
     monkeypatch.setattr(mod.session_lock, "activate", lambda _session_id, token: token)
+    # These wiring cases invoke the worker directly; supply the command owner
+    # normally reserved by dispatch, while keeping its real SQL activation.
+    activate_writer = SqlDifyBuilderRepository.activate_workflow_writer
+
+    def admitted_writer(repo: SqlDifyBuilderRepository, session_id: str, token: str, lease_seconds: int) -> bool:
+        from services.dify_builder.task_controls import generation
+
+        _, context = repo.get_session(session_id)
+        repo.reserve_workflow_writer(session_id, token, generation(context), lease_seconds)
+        return activate_writer(repo, session_id, token, lease_seconds)
+
+    monkeypatch.setattr(SqlDifyBuilderRepository, "activate_workflow_writer", admitted_writer)
     monkeypatch.setattr(mod.progress_snapshot, "save", lambda *_args, **_kwargs: None)
 
 
@@ -1344,3 +1357,106 @@ def test_first_test_command_finished_contains_native_receipt_without_opt_in(
     assert projected.test_execution is not None
     assert projected.test_execution.request_id == "native-request"
     assert projected.run_status == "waiting_confirmation"
+
+
+@pytest.mark.usefixtures("wired")
+def test_replaced_same_session_owner_cannot_persist_generic_failure(
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository
+) -> None:
+    from datetime import datetime, timedelta
+
+    from sqlalchemy import update
+
+    from models.dify_builder import DifyBuilderWorkflowWriter
+
+    session = _seed_fix_session(repo)
+
+    def advance_then_lose_owner(_self: mod.Runner, session_id: str, _turn: Turn) -> NoReturn:
+        with repo._session_factory.begin() as sql:
+            sql.execute(
+                update(DifyBuilderWorkflowWriter)
+                .where(DifyBuilderWorkflowWriter.session_id == session_id)
+                .values(expires_at=datetime.now() - timedelta(days=1))
+            )
+        assert repo.reserve_workflow_writer(session_id, "replacement-token", 0, 600)
+        raise RuntimeError("late old owner generic failure")
+
+    monkeypatch.setattr(mod.Runner, "advance", advance_then_lose_owner)
+    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "old-owner")
+    stored, _ = repo.get_session(session.id)
+    assert repo.is_task_active(session.id, 0, "replacement-token")
+    assert stored.current_state == PcState.FIX_DIAGNOSE, (stored.version, stored.current_state)
+
+
+@pytest.mark.usefixtures("wired")
+def test_replaced_between_advisory_check_and_sql_cas_cannot_commit(
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository
+) -> None:
+    from datetime import datetime, timedelta
+
+    from sqlalchemy import update
+
+    from models.dify_builder import DifyBuilderWorkflowWriter
+
+    session = _seed_fix_session(repo)
+    original = repo.compare_and_advance
+
+    def replace_before_cas(
+        session_id: str,
+        base_version: int,
+        next_state: PcState,
+        context: DifyBuilderContext,
+        items: list[ConversationItem],
+    ) -> int:
+        with repo._session_factory.begin() as sql:
+            sql.execute(
+                update(DifyBuilderWorkflowWriter)
+                .where(DifyBuilderWorkflowWriter.session_id == session_id)
+                .values(expires_at=datetime.now() - timedelta(days=1))
+            )
+        assert repo.reserve_workflow_writer(session_id, "replacement-token", 0, 600)
+        return original(session_id, base_version, next_state, context, items)
+
+    monkeypatch.setattr(repo, "compare_and_advance", replace_before_cas)
+
+    def commit_after_advisory(_self: mod.Runner, session_id: str, _turn: Turn) -> None:
+        current, context = repo.get_session(session_id)
+        _self._commit(current, PcState.FIX_AWAIT_APPROVAL, context, [], settled=False)
+
+    monkeypatch.setattr(mod.Runner, "advance", commit_after_advisory)
+    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "old-owner")
+    stored, _ = repo.get_session(session.id)
+    assert repo.is_task_active(session.id, 0, "replacement-token")
+    assert stored.current_state == PcState.FIX_DIAGNOSE, (stored.version, stored.current_state)
+
+
+@pytest.mark.usefixtures("wired")
+def test_replaced_owner_cannot_persist_early_setup_failure(
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository
+) -> None:
+    from datetime import datetime, timedelta
+
+    from sqlalchemy import update
+
+    from models.dify_builder import DifyBuilderWorkflowWriter
+
+    session = _seed_fix_session(repo)
+
+    def fail_setup(**_kwargs: object) -> NoReturn:
+        with repo._session_factory.begin() as sql:
+            sql.execute(
+                update(DifyBuilderWorkflowWriter)
+                .where(
+                    DifyBuilderWorkflowWriter.session_id == session.id,
+                )
+                .values(expires_at=datetime.now() - timedelta(days=1))
+            )
+        assert repo.reserve_workflow_writer(session.id, "replacement-token", 0, 600)
+        raise RuntimeError("late owner setup failure")
+
+    monkeypatch.setattr(mod, "build_dify_builder_agent", fail_setup)
+    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "old-owner")
+    stored, _ = repo.get_session(session.id)
+    assert stored.current_state == PcState.FIX_DIAGNOSE
+    assert stored.version == session.version
+    assert repo.is_task_active(session.id, 0, "replacement-token")

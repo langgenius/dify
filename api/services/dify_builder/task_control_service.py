@@ -12,6 +12,7 @@ from core.dify_builder.errors import BadRequestError, ConflictError, NotFoundErr
 from core.dify_builder.models import Action, Actor
 from core.dify_builder.state import PcState, is_terminal
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderRun
+from services.dify_builder.errors import EnqueueAcknowledgementError
 from services.dify_builder.task_controls import generation
 
 
@@ -189,6 +190,7 @@ def control(
         from services.dify_builder.progress_bus import publish_native_change
 
         publish_native_change(session_id)
+        service._repo.release_workflow_writer(session_id, generation=expected_generation)
         # Release only the owner captured before the stop fence committed.
         if old_owner:
             service._session_lock.release(session_id, old_owner)
@@ -283,7 +285,7 @@ def _enqueue_resume(service, session_id, actor, receipt):
         context.paused
         or generation(context) != receipt["generation"]
         or latest.get("id") != receipt["id"]
-        or latest.get("enqueue") in {"running", "settled"}
+        or latest.get("enqueue") in {"running", "settled", "unknown"}
         or service._session_lock.exists(session_id)
     ):
         return
@@ -295,7 +297,7 @@ def _enqueue_resume(service, session_id, actor, receipt):
             fc.paused
             or generation(fc) != receipt["generation"]
             or command.get("id") != receipt["id"]
-            or command.get("enqueue") in {"running", "settled"}
+            or command.get("enqueue") in {"running", "settled", "unknown"}
         ):
             raise ConflictError("continuation already delivered or superseded")
         command["enqueue"] = "dispatching"
@@ -312,13 +314,14 @@ def _enqueue_resume(service, session_id, actor, receipt):
     )
     try:
         service.dispatch(session_id, action, actor)
-    except Exception:
+    except Exception as error:
+        outcome = "unknown" if isinstance(error, EnqueueAcknowledgementError) else "pending"
 
         def failed(_sql, session, fc):
             command = fc.task_control.get("receipt", {})
             if command.get("delivery_id") != delivery_id or command.get("enqueue") != "dispatching":
                 return False
-            command["enqueue"] = "pending"
+            command["enqueue"] = outcome
             return True
 
         service._repo.control_transaction(session_id, failed)
@@ -335,7 +338,7 @@ def claim_continuation(repo, session_id, actor, action):
             fc.paused
             or generation(fc) != action.execution_generation
             or receipt.get("id") != action.command_id
-            or receipt.get("enqueue") != "dispatching"
+            or receipt.get("enqueue") not in {"dispatching", "unknown"}
             or receipt.get("delivery_id") != action.payload.get("task_control_delivery")
         ):
             raise ConflictError("stale or duplicate task continuation")

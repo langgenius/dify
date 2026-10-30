@@ -347,6 +347,8 @@ def test_policy_revoked_after_queue_prevents_worker_cognition_without_failing_hi
     repo.put_policy(_actor(), CognitionPolicy(False, (), None, (), 0, "explicit"), 0)
     token = session_lock.acquire(session.id)
     assert token is not None
+    # The direct delivery represents a command already admitted by dispatch.
+    assert repo.reserve_workflow_writer(session.id, token, 0, 600)
     action = Action(kind="send_goal", payload={"text": "queued goal"}, base_version=1)
     task_mod.advance_session(session.id, dataclasses.asdict(action), dataclasses.asdict(_actor()), token)
     current, _ = repo.get_session(session.id)
@@ -408,6 +410,8 @@ def test_historical_empty_locale_native_verify_uses_real_guarded_agent_while_dis
     repo.put_policy(_actor(), CognitionPolicy(False, (), None, (), 0, "explicit"), 0)
     token = session_lock.acquire(session.id)
     assert token is not None
+    # The direct delivery represents a command already admitted by dispatch.
+    assert repo.reserve_workflow_writer(session.id, token, 0, 600)
     action = Action(kind=command, base_version=1)
     task_mod.advance_session(session.id, dataclasses.asdict(action), dataclasses.asdict(_actor()), token)
     current, context = repo.get_session(session.id)

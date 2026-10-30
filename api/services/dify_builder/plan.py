@@ -26,6 +26,9 @@ class WorkflowPlan:
     input_summary: str
     output_summary: str
     items: list[str]
+    # Set only by resource reconciliation; unused selections must not force a
+    # generated action. None retains the ordinary abstract/Edit plan contract.
+    used_resource_ids: list[str] | None = None
 
 
 class EditPlanNotActionableError(RuntimeError):
