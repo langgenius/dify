@@ -4,9 +4,9 @@ import logging
 import secrets
 import uuid
 from collections.abc import Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from hashlib import sha256
-from typing import override
+from typing import assert_never, override
 
 from pydantic import TypeAdapter, ValidationError
 from redis import RedisError
@@ -62,6 +62,8 @@ from services.entities.account_entities import (
     AccountDeletionChallenge,
     AccountEducationActivation,
     AccountEducationAutocomplete,
+    AccountEducationEligible,
+    AccountEducationNotEligible,
     AccountEducationStatus,
     AccountEducationVerification,
 )
@@ -269,7 +271,13 @@ class BillingAccountEducationGateway(AccountEducationGateway):
     @override
     def verify(self, *, account_id: str) -> AccountEducationVerification:
         result = BillingService.EducationIdentity.verify(account_id=account_id)
-        return AccountEducationVerification(token=result.token)
+        match result.status:
+            case "eligible":
+                return AccountEducationEligible(token=result.token)
+            case "not_eligible":
+                return AccountEducationNotEligible()
+            case _:
+                assert_never(result.status)
 
     @override
     def activate(
@@ -293,11 +301,10 @@ class BillingAccountEducationGateway(AccountEducationGateway):
     @override
     def status(self, account_id: str) -> AccountEducationStatus:
         result = BillingService.EducationIdentity.status(account_id)
-        expire_at = result.expire_at
         return AccountEducationStatus(
             result=result.result,
             is_student=result.is_student,
-            expire_at=datetime.fromisoformat(expire_at).astimezone(UTC) if expire_at else None,
+            expire_at=result.expire_at,
             allow_refresh=result.allow_refresh,
         )
 

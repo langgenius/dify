@@ -168,9 +168,13 @@ export type EducationAutocompleteResponse = {
   has_next: boolean
 }
 
-export type EducationVerifyResponse = {
-  token: string
-}
+export type EducationVerifyResponse =
+  | ({
+      status: 'eligible'
+    } & EducationVerifyEligibleResponse)
+  | ({
+      status: 'not_eligible'
+    } & EducationVerifyNotEligibleResponse)
 
 export type EducationVerifyLimitError = ErrorResponse & {
   code: 'education_verify_limit'
@@ -224,6 +228,15 @@ export type AccountProfilePatchPayload = {
   interface_theme?: 'dark' | 'light'
   name?: string
   timezone?: string
+}
+
+export type EducationVerifyEligibleResponse = {
+  status: 'eligible'
+  token: string
+}
+
+export type EducationVerifyNotEligibleResponse = {
+  status: 'not_eligible'
 }
 
 export type AccountIntegrateResponse = {

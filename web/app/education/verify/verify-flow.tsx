@@ -1,6 +1,9 @@
 'use client'
 
-import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
+import type {
+  EducationStatusResponse,
+  EducationVerifyResponse,
+} from '@dify/contracts/api/console/account/types.gen'
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactNode } from 'react'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -16,9 +19,7 @@ import { consoleClient, consoleQuery } from '@/service/console'
 import { EducationStatusCard } from '../status-card'
 import UserInfo from '../user-info'
 
-class EducationVerificationRejectedError extends Error {}
-
-type EducationVerificationRequest = () => Promise<{ token?: string | null }>
+type EducationVerificationRequest = () => Promise<EducationVerifyResponse>
 
 const selectEducationStatus = ({ allow_refresh, is_student }: EducationStatusResponse) => ({
   allowRefresh: allow_refresh,
@@ -29,15 +30,6 @@ const selectEducationPlanEnabled = ({ education }: GetFeaturesResponse) => educa
 
 const requestEducationVerification: EducationVerificationRequest = () =>
   consoleClient.account.education.verify.get({}, { context: { silent: true } })
-
-async function requestEducationVerificationToken(
-  requestVerification: EducationVerificationRequest,
-) {
-  const response = await requestVerification()
-  if (!response.token) throw new EducationVerificationRejectedError()
-
-  return response.token
-}
 
 export default function EducationVerifyPage() {
   return <EducationVerifyFlow />
@@ -67,13 +59,13 @@ export function EducationVerifyFlow({
     }),
   )
   const {
-    error: verificationError,
+    data: verification,
     isError: isVerificationError,
     mutate: verifyEducation,
     reset: resetVerification,
   } = useMutation({
-    mutationKey: ['education', 'verification-token'],
-    mutationFn: () => requestEducationVerificationToken(requestVerification),
+    mutationKey: ['education', 'verification'],
+    mutationFn: () => requestVerification(),
   })
 
   const startVerification = useCallback(() => {
@@ -81,8 +73,9 @@ export function EducationVerifyFlow({
 
     verificationStartedRef.current = true
     verifyEducation(undefined, {
-      onSuccess: (token) => {
-        router.replace(`/education/apply?token=${encodeURIComponent(token)}`)
+      onSuccess: (result) => {
+        if (result.status === 'eligible')
+          router.replace(`/education/apply?token=${encodeURIComponent(result.token)}`)
       },
     })
   }, [router, verifyEducation])
@@ -116,7 +109,7 @@ export function EducationVerifyFlow({
 
   if (isAlreadyVerified) return <EducationVerifiedContent />
 
-  if (verificationError instanceof EducationVerificationRejectedError) {
+  if (verification?.status === 'not_eligible') {
     return (
       <EducationVerifyContent>
         <EducationStatusCard

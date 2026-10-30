@@ -321,7 +321,7 @@ class TestBillingServiceAccountAndEducation:
         )
 
     def test_education_reads_return_the_generated_replies(self):
-        verify = billing.VerifyEducationIdentityReply(token="token")
+        verify = billing.VerifyEducationIdentityReply(token="token", status="eligible")
         status = billing.GetEducationIdentityStatusReply(
             result=True, is_student=True, expire_at="2027-01-01T00:00:00+00:00", allow_refresh=False
         )
