@@ -7,7 +7,7 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any, NotRequired, Protocol, TypedDict
 
 import orjson
-from flask import request
+from flask import g, has_request_context, request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -49,6 +49,10 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
+
+# Request-local cache of the trigger end user resolved for each (tenant_id, app_id), so the files a
+# webhook request uploads and the run it queues always share the same owner.
+_TRIGGER_END_USER_CACHE_KEY = "_webhook_trigger_end_users"
 
 
 class RawWebhookDataDict(TypedDict):
@@ -418,13 +422,28 @@ class WebhookService:
     def _resolve_trigger_end_user(
         webhook_trigger: WorkflowWebhookTrigger, end_users: WebhookEndUserProvisioner
     ) -> EndUser:
-        """Return the app's trigger end user, the identity that webhook workflow runs execute as."""
-        return end_users.get_or_create_end_user_by_type(
+        """Return the app's trigger end user, the identity that webhook workflow runs execute as.
+
+        Within a request, the end user is resolved once and reused from request-local context. A
+        second lookup could select another trigger end user that a concurrent request created in
+        the meantime, and the run would then not own the files this request uploaded.
+        """
+        cache: dict[tuple[str, str], EndUser] | None = (
+            g.setdefault(_TRIGGER_END_USER_CACHE_KEY, {}) if has_request_context() else None
+        )
+        key = (webhook_trigger.tenant_id, webhook_trigger.app_id)
+        if cache is not None and key in cache:
+            return cache[key]
+
+        end_user = end_users.get_or_create_end_user_by_type(
             type=EndUserType.TRIGGER,
             tenant_id=webhook_trigger.tenant_id,
             app_id=webhook_trigger.app_id,
             user_id=None,
         )
+        if cache is not None:
+            cache[key] = end_user
+        return end_user
 
     @classmethod
     def _process_file_uploads(

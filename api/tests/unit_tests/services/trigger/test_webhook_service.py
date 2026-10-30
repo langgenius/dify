@@ -53,6 +53,24 @@ class _EndUserServiceStub:
         return self._result
 
 
+class _EndUserSequenceStub:
+    """Returns the given end users one per lookup, then keeps returning the last one."""
+
+    def __init__(self, *results: EndUser) -> None:
+        self._results = results
+        self.calls: list[tuple[EndUserType, str, str, str | None]] = []
+
+    def get_or_create_end_user_by_type(
+        self,
+        type: EndUserType,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None = None,
+    ) -> EndUser:
+        self.calls.append((type, tenant_id, app_id, user_id))
+        return self._results[min(len(self.calls), len(self._results)) - 1]
+
+
 def _webhook_trigger(
     *,
     webhook_id: str = "webhook-123",
@@ -122,9 +140,9 @@ def _app_trigger(*, status: AppTriggerStatus = AppTriggerStatus.ENABLED) -> AppT
     )
 
 
-def _end_user() -> EndUser:
+def _end_user(end_user_id: str = "end-user-123") -> EndUser:
     return make_end_user(
-        end_user_id="end-user-123",
+        end_user_id=end_user_id,
         tenant_id="tenant-123",
         app_id="app-123",
         end_user_type=EndUserType.TRIGGER,
@@ -337,6 +355,54 @@ class TestWebhookServiceCases:
                     workflow,
                     end_users=_EndUserServiceStub(ValueError("Failed to create end user")),
                 )
+
+        def test_trigger_workflow_execution_reuses_the_end_user_that_owns_the_uploads(self) -> None:
+            # The request creates trigger end user B and uploads under it while a concurrent request
+            # commits trigger end user A, so a second lookup would select A. The run must stay with B,
+            # because only the file's owner can load it.
+            app = Flask(__name__)
+            webhook_trigger = _webhook_trigger()
+            upload_owner = _end_user("end-user-b")
+            concurrent_end_user = _end_user("end-user-a")
+            end_users = _EndUserSequenceStub(upload_owner, concurrent_end_user)
+
+            with (
+                app.test_request_context(
+                    "/webhook",
+                    method="POST",
+                    headers={"Content-Type": "application/octet-stream"},
+                    data=b"payload",
+                ),
+                patch.object(WebhookService, "_detect_binary_mimetype", return_value="text/plain", autospec=True),
+                patch.object(WebhookService, "_create_file_from_binary", autospec=True) as mock_create,
+                patch.object(webhook_service_module, "db"),
+                patch.object(webhook_service_module.QuotaService, "reserve"),
+                patch.object(webhook_service_module.AsyncWorkflowService, "trigger_workflow_async") as mock_trigger,
+            ):
+                mock_create.return_value.to_dict.return_value = {"file": "data"}
+                webhook_data = WebhookService.extract_webhook_data(webhook_trigger, end_users=end_users)
+                WebhookService.trigger_workflow_execution(
+                    webhook_trigger, webhook_data, _workflow(), end_users=end_users
+                )
+
+            assert mock_create.call_args[0][3] is upload_owner
+            assert mock_trigger.call_args[0][0] is upload_owner
+            assert end_users.calls == [(EndUserType.TRIGGER, "tenant-123", "app-123", None)]
+
+        def test_trigger_end_user_is_looked_up_again_in_the_next_request(self) -> None:
+            app = Flask(__name__)
+            webhook_trigger = _webhook_trigger()
+            first_end_user = _end_user("end-user-1")
+            second_end_user = _end_user("end-user-2")
+            end_users = _EndUserSequenceStub(first_end_user, second_end_user)
+
+            with app.test_request_context("/webhook", method="POST"):
+                assert WebhookService._resolve_trigger_end_user(webhook_trigger, end_users) is first_end_user
+                assert WebhookService._resolve_trigger_end_user(webhook_trigger, end_users) is first_end_user
+            with app.test_request_context("/webhook", method="POST"):
+                assert WebhookService._resolve_trigger_end_user(webhook_trigger, end_users) is second_end_user
+
+            assert len(end_users.calls) == 2
 
         def test_extract_webhook_data_json(self):
             """Test webhook data extraction from JSON request."""
