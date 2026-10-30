@@ -241,6 +241,34 @@ def test_openapi_json_endpoints_render():
     assert app.config["RESTX_INCLUDE_ALL_MODELS"] is True
 
 
+def test_console_node_data_migration_documents_canonical_delivery_method_union(
+    openapi_json: OpenAPIJSONLoader,
+) -> None:
+    from controllers.console import bp as console_bp
+
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
+    schemas = payload["components"]["schemas"]
+    operation = payload["paths"]["/workspaces/current/human-input/v2/node-data-migration"]["post"]
+    request_schema = operation["requestBody"]["content"]["application/json"]["schema"]
+
+    assert request_schema == {"$ref": "#/components/schemas/NodeDataMigrationPayload"}
+    payload_schema = schemas["NodeDataMigrationPayload"]
+    node_input_ref = payload_schema["properties"]["nodes"]["items"]["$ref"]
+    node_input_schema = schemas[node_input_ref.removeprefix("#/components/schemas/")]
+    node_data_ref = node_input_schema["properties"]["node_data"]["$ref"]
+    node_data_schema = schemas[node_data_ref.removeprefix("#/components/schemas/")]
+    method_items = node_data_schema["properties"]["delivery_methods"]["items"]
+
+    assert set(method_items["discriminator"]["mapping"]) == {"webapp", "email", "im"}
+    input_ref = node_data_schema["properties"]["inputs"]["items"]["$ref"]
+    input_schema = schemas[input_ref.removeprefix("#/components/schemas/")]
+    input_variants = input_schema["discriminator"]["mapping"]
+    assert set(input_variants) == {"paragraph", "select", "file", "file-list"}
+    action_ref = node_data_schema["properties"]["user_actions"]["items"]["$ref"]
+    action_schema = schemas[action_ref.removeprefix("#/components/schemas/")]
+    assert action_schema["properties"]["title"]["maxLength"] == 100
+
+
 def test_agent_tts_routes_document_voice_queries_and_binary_audio(openapi_json: OpenAPIJSONLoader):
     from controllers.console import bp as console_bp
     from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES

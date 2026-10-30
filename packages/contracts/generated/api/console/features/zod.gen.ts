@@ -118,6 +118,7 @@ export const zFeatureModel = z.object({
   enable_knowledge_fs: z.boolean().default(false),
   enable_skill: z.boolean().default(true),
   human_input_email_delivery_enabled: z.boolean().default(false),
+  im_centrally_managed: z.boolean().default(false),
   is_allow_transfer_workspace: z.boolean().default(true),
   knowledge_pipeline: zKnowledgePipeline.default({ publish_enabled: false }),
   members: zLimitationModel.default({ limit: 1, size: 0 }),

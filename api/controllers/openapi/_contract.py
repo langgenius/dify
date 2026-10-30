@@ -18,26 +18,32 @@ from __future__ import annotations
 import inspect
 from collections.abc import Callable, Sequence
 from functools import wraps
-from typing import Any, Final, cast
+from typing import Any, Final, cast, override
 
+from flask import request
 from flask_restx import abort
 from pydantic import BaseModel, ValidationError
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
-from controllers.openapi._errors import ErrorBody
+from controllers.openapi._errors import ErrorBody, RequestOverRouteLimits
 from controllers.openapi._hints import next_page_hint, page_after
 from controllers.openapi._models import PaginationEnvelope
 from controllers.openapi._multipart import body_from_request
 from controllers.openapi._upload import file_fields
+from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
 from controllers.openapi.auth.spec import AdmissionContext, CatalogMeta, Effect, EndpointSpec, Example, Kind
+from controllers.openapi.auth.subjects import Subject
 from enums import DeploymentEdition
 
-__all__ = ["Effect", "Example", "Kind", "accepts", "endpoint", "op_of", "paginated", "returns"]
+__all__ = ["CapRequestBody", "Effect", "Example", "Kind", "accepts", "endpoint", "op_of", "paginated", "returns"]
 
 _INJECTED_KWARGS: Final = frozenset({"ctx", "query", "body"})
+_BYTES_PER_MIB: Final = 1024 * 1024
 
 
 def paginated(op: str) -> Callable:
@@ -65,6 +71,30 @@ def paginated(op: str) -> Callable:
     return decorator
 
 
+class CapRequestBody(Requirement):
+    def __init__(self, *, max_bytes: Callable[[], int], max_parts: Callable[[], int]) -> None:
+        self.max_bytes = max_bytes
+        self.max_parts = max_parts
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        request.max_content_length = self.max_bytes()
+        request.max_form_parts = self.max_parts()
+
+
+def _read_body(body_file_fields: frozenset[str]) -> dict[str, Any]:
+    try:
+        return body_from_request(file_fields=body_file_fields)
+    except RequestEntityTooLarge as exc:
+        limit = request.max_content_length
+        if limit is None:
+            raise
+        raise RequestOverRouteLimits(
+            f"{RequestOverRouteLimits.description}: at most {request.max_form_parts} parts"
+            f" and {limit / _BYTES_PER_MIB:g} MiB"
+        ) from exc
+
+
 def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None) -> Callable:
     """Validate ``query``/``body`` against the models and inject them as keyword-only kwargs."""
 
@@ -77,7 +107,7 @@ def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | Non
                 if query is not None:
                     kwargs["query"] = query_params_from_request(query)
                 if body is not None:
-                    kwargs["body"] = body.model_validate(body_from_request(file_fields=body_file_fields))
+                    kwargs["body"] = body.model_validate(_read_body(body_file_fields))
             except ValidationError as exc:
                 # Sanitized 422 — no pydantic `url` (version) or `input` (user payload) leak.
                 abort(

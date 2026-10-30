@@ -8,6 +8,16 @@ from services.knowledge_fs.feature_service import get_knowledge_fs_features
 
 
 class FeatureService:
+    @staticmethod
+    def is_im_centrally_managed() -> bool:
+        """Enterprise centrally manages IM channels and default bindings."""
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
+
+    @staticmethod
+    def use_tenant_scoped_email_config() -> bool:
+        """Cloud uses tenant Email Channels instead of the global mail client."""
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+
     @classmethod
     def can_import_premium_site_settings(cls, tenant_id: str) -> bool:
         """Keep Cloud-only Web app customization out of free workspace imports."""
@@ -26,6 +36,7 @@ class FeatureService:
     @classmethod
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> feature_entities.FeatureModel:
         features = feature_entities.FeatureModel()
+        features.im_centrally_managed = cls.is_im_centrally_managed()
         if exclude_vector_space:
             features.vector_space = None
 

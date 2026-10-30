@@ -1,7 +1,4 @@
-import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
-import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import { useCallback, useState } from 'react'
-import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import { useSubmitHumanInputForm } from '@/service/use-share'
 
 export const useFormSubmit = (token: string) => {
@@ -9,16 +6,12 @@ export const useFormSubmit = (token: string) => {
   const { mutate: submitForm, isPending: isSubmitting } = useSubmitHumanInputForm()
 
   const submit = useCallback(
-    (
-      inputs: Record<string, HumanInputFieldValue>,
-      actionID: string,
-      formInputs: FormInputItem[],
-    ) => {
+    (inputs: Record<string, unknown> | undefined, actionID: string) => {
       submitForm(
         {
           token,
           data: {
-            inputs: getProcessedHumanInputFormInputs(formInputs, inputs) || {},
+            inputs: inputs || {},
             action: actionID,
           },
         },
