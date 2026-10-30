@@ -1166,21 +1166,34 @@ def _icon_archive(*, payload: bytes = b"image", digest: str | None = None, refer
 
 class TestPackageIconsCases:
     @staticmethod
-    def test_app_icon_export_deduplicates_uploads_and_restores_references(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_app_icon_export_deduplicates_uploads_and_restores_references(
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
         source_id = str(uuid4())
         payload = b"image payload"
-        backend = Mock()
-        backend.load_stream.side_effect = lambda _: iter([payload])
+        backend = _MemoryStorage()
+        backend.files["source/icon.png"] = payload
+        source = make_upload_file(
+            file_id=source_id,
+            tenant_id="source-tenant",
+            key="source/icon.png",
+            name="icon.png",
+            size=len(payload),
+            extension="png",
+            mime_type="image/png",
+        )
+        sqlite_session.add(source)
+        sqlite_session.commit()
         exporter = AgentPackageResourceExporter(storage_backend=backend)
-        upload_lookup = Mock(return_value={source_id: SimpleNamespace(key="source/icon.png", extension="png")})
-        monkeypatch.setattr(exporter, "_upload_files", upload_lookup)
+        monkeypatch.setattr(
+            "services.app_package_service.AgentPackageResourceImporter",
+            lambda: AgentPackageResourceImporter(storage_backend=backend),
+        )
         metadata = {"mode": "chat", "icon_type": "image", "icon": source_id}
         duplicate = dict(metadata)
-        exporter.collect_icon(session=Mock(), tenant_id="source-tenant", metadata=metadata)
-        exporter.collect_icon(session=Mock(), tenant_id="source-tenant", metadata=duplicate)
+        exporter.collect_icon(session=sqlite_session, tenant_id="source-tenant", metadata=metadata)
+        exporter.collect_icon(session=sqlite_session, tenant_id="source-tenant", metadata=duplicate)
         assert metadata["icon"] == duplicate["icon"] == "i_000001"
-        assert upload_lookup.call_args.kwargs["tenant_id"] == "source-tenant"
-        assert upload_lookup.call_count == 1
         dsl = yaml.safe_dump({"kind": "app", "app": metadata})
         with AppPackageService().export(dsl=dsl, name="Example", resources=exporter, workflow_tools=[]) as exported:
             with zipfile.ZipFile(exported.archive) as package:
@@ -1189,12 +1202,23 @@ class TestPackageIconsCases:
             prepared = AppPackageService().read_package(exported.archive)
             assert prepared is not None
             with prepared:
-                restore = Mock(return_value={"i_000001": "destination-id"})
-                monkeypatch.setattr(AgentPackageResourceImporter, "materialize_icons", restore)
+                assert len(prepared.icons) == 1
                 data = yaml.safe_load(prepared.dsl)
                 prepared.materialize_icons(data=data, tenant_id="destination", account_id="account")
-                assert data["app"]["icon"] == "destination-id"
-                assert restore.call_args.kwargs["tenant_id"] == "destination"
+                destination_id = data["app"]["icon"]
+                assert destination_id != source_id
+                restored = sqlite_session.get(UploadFile, destination_id)
+                assert restored is not None
+                assert restored.tenant_id == "destination"
+                assert restored.created_by == "account"
+                assert restored.mime_type == "image/png"
+                assert restored.size == len(payload)
+                assert backend.files[restored.key] == payload
+                assert sqlite_session.scalars(
+                    select(UploadFile).where(UploadFile.tenant_id == "destination")
+                ).all() == [restored]
+                assert source.tenant_id == "source-tenant"
+                assert backend.files[source.key] == payload
 
     @staticmethod
     def test_app_package_restores_independent_site_image_icon(monkeypatch: pytest.MonkeyPatch) -> None:
