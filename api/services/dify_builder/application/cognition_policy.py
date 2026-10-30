@@ -96,7 +96,7 @@ class CognitionPolicyRepository(Protocol):
     def require_member(self, actor: Actor, *, admin: bool) -> None: ...
 
     def get_policy(self, actor: Actor) -> CognitionPolicy | None:
-        """Read tenant current row; None is inherited Workspace default policy."""
+        """Read the tenant policy; None preserves native per-session selection."""
         ...
 
     def put_policy(self, actor: Actor, policy: CognitionPolicy, expected_revision: int) -> CognitionPolicy:
@@ -153,6 +153,22 @@ class CognitionPolicyService:
         return self._repository.put_policy(actor, policy, expected_revision)
 
     def select(self, actor: Actor, requested: dict[str, Any] | None) -> CognitionModel:
+        if requested:
+            self._repository.require_member(actor, admin=False)
+            if self._repository.get_policy(actor) is None:
+                # With no administrator policy, retain native session choices.
+                # A valid explicit choice must not depend on the current default.
+                try:
+                    if not isinstance(requested.get("completion_params", {}), dict):
+                        raise ValueError("invalid completion parameters")
+                    configuration: dict[str, Any] = {"completion_params": {}, **requested}
+                    selected = CognitionModel("session", **configuration)
+                except (TypeError, ValueError) as error:
+                    raise CognitionPolicyDeniedError("model_not_allowed") from error
+                if not self._models.available(actor, selected):
+                    raise CognitionPolicyDeniedError("model_unavailable")
+                self.authorize_selected(actor, selected)
+                return selected
         policy = self._current(actor)
         if not policy.enabled:
             raise CognitionPolicyDeniedError("builder_disabled")
@@ -167,22 +183,32 @@ class CognitionPolicyService:
         ]
         for model in choices:
             if self._models.available(actor, model):
+                self.authorize_selected(actor, model)
                 return model
         raise CognitionPolicyDeniedError("model_unavailable")
 
     def authorize_selected(self, actor: Actor, selected: CognitionModel) -> None:
         """Fresh policy check after external metadata and before dispatch.
 
-        This does not choose a fallback or perform an inference. A selected
-        fallback must still be an exact currently configured choice.
+        This does not choose a fallback, query the default or perform inference.
+        A stored policy requires an exact currently configured choice. Without
+        one, the preceding native availability/credential check is authoritative.
         """
-        policy = self._current(actor)
+        self._repository.require_member(actor, admin=False)
+        policy = self._repository.get_policy(actor)
+        if policy is None:
+            return
         if not policy.enabled:
             raise CognitionPolicyDeniedError("builder_disabled")
         if not any(model.config() == selected.config() for model in policy.models):
             raise CognitionPolicyDeniedError("model_not_allowed")
 
     def availability(self, actor: Actor, *, admin: bool = False) -> CognitionPolicyStatus:
+        """Report default/fallback readiness, not the entire native model catalogue.
+
+        In inherited mode, session choices still use native actor authorization;
+        the projected default metadata is not a per-session allowlist.
+        """
         self._repository.require_member(actor, admin=admin)
         try:
             policy = self._current(actor)
