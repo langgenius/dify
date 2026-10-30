@@ -34,8 +34,8 @@ const isSelectedWorkflow = (workflow: AvailableEvaluationWorkflow, value: string
   workflow.app_id === value
 
 const WorkflowSelector = ({ value, selectedWorkflowName, onSelect }: WorkflowSelectorProps) => {
-  const { t } = useTranslation('evaluation')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['evaluation'])
+  const { t: tCommon } = useTranslation(['common'])
   const [isOpen, setIsOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const deferredSearchText = useDeferredValue(searchText)
@@ -94,7 +94,7 @@ const WorkflowSelector = ({ value, selectedWorkflowName, onSelect }: WorkflowSel
         render={
           <button
             type="button"
-            className="group flex w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 text-left outline-hidden hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal"
+            className="group flex w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 text-start outline-hidden hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal"
             aria-label={t(($) => $['metrics.custom.workflowLabel'])}
           >
             <div className="flex min-w-0 grow items-center gap-2">
@@ -106,7 +106,7 @@ const WorkflowSelector = ({ value, selectedWorkflowName, onSelect }: WorkflowSel
                   />
                 </div>
               </div>
-              <div className="min-w-0 flex-1 px-1 py-1 text-left">
+              <div className="min-w-0 flex-1 px-1 py-1 text-start">
                 <div
                   className={cn(
                     'truncate system-sm-regular',
@@ -115,7 +115,8 @@ const WorkflowSelector = ({ value, selectedWorkflowName, onSelect }: WorkflowSel
                       : 'text-components-input-text-placeholder',
                   )}
                 >
-                  {currentWorkflowName ?? t(($) => $['metrics.custom.workflowPlaceholder'])}
+                  {currentWorkflowName ??
+                    (value ? null : t(($) => $['metrics.custom.workflowPlaceholder']))}
                 </div>
               </div>
             </div>
@@ -143,7 +144,7 @@ const WorkflowSelector = ({ value, selectedWorkflowName, onSelect }: WorkflowSel
             </div>
           ) : !workflows.length ? (
             <div className="flex h-[120px] items-center justify-center system-sm-regular text-text-tertiary">
-              {t(($) => $.noData, { ns: 'common' })}
+              {tCommon(($) => $.noData)}
             </div>
           ) : (
             <ScrollArea className="relative max-h-[240px] overflow-hidden">
@@ -159,7 +160,7 @@ const WorkflowSelector = ({ value, selectedWorkflowName, onSelect }: WorkflowSel
                       type="button"
                       role="option"
                       aria-selected={isSelectedWorkflow(workflow, value)}
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left hover:bg-state-base-hover"
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-start hover:bg-state-base-hover"
                       onClick={() => {
                         onSelect(workflow)
                         setIsOpen(false)

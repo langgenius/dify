@@ -91,8 +91,9 @@ const CustomMetricEditorCard = ({
   const updateCustomMetricMapping = useEvaluationStore((state) => state.updateCustomMetricMapping)
   const selectedWorkflowAppId =
     metric.customConfig?.workflowAppId ?? metric.customConfig?.workflowId ?? ''
-  const { data: selectedWorkflow } = useAppWorkflow(selectedWorkflowAppId)
-  const { data: selectedEvaluatorApp } = useQuery(
+  const { data: selectedWorkflow, isPending: isSelectedWorkflowPending } =
+    useAppWorkflow(selectedWorkflowAppId)
+  const { data: selectedEvaluatorApp, isPending: isSelectedEvaluatorAppPending } = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
       input: selectedWorkflowAppId ? { params: { app_id: selectedWorkflowAppId } } : skipToken,
     }),
@@ -222,8 +223,9 @@ const CustomMetricEditorCard = ({
         selectedWorkflowName={
           metric.customConfig.workflowName ||
           selectedWorkflow?.marked_name ||
-          selectedEvaluatorApp?.name ||
-          selectedWorkflowAppId
+          (isSelectedWorkflowPending || isSelectedEvaluatorAppPending
+            ? null
+            : selectedEvaluatorApp?.name || null)
         }
         onSelect={(workflow) =>
           setCustomMetricWorkflow(resourceType, resourceId, metric.id, {
