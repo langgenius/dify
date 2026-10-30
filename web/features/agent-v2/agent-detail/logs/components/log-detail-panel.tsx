@@ -4,11 +4,13 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, OnFeedback } from '@/app/components/base/chat/types'
+import { useState } from 'react'
 import { DrawerTitle } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import AgentLogModal from '@/app/components/base/agent-log-modal'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -30,6 +32,11 @@ export function AgentLogDetailPanel({
   const { t: tAgentV2 } = useTranslation(['agentV2', 'agentRoster'])
   const { formatTime } = useTimestamp()
   const queryClient = useQueryClient()
+  const agentQuery = useQuery(
+    consoleQuery.agent.byAgentId.get.queryOptions({ input: { params: { agent_id: agentId } } }),
+  )
+  const backingAppId = agentQuery.data?.backing_app_id
+  const [selectedLogItem, setSelectedLogItem] = useState<IChatItem | null>(null)
   const feedbackMutation = useMutation(
     consoleQuery.agent.byAgentId.feedbacks.post.mutationOptions(),
   )
@@ -161,10 +168,20 @@ export function AgentLogDetailPanel({
               hideProcessDetail
               chatContainerInnerClassName="px-3"
               onFeedback={handleFeedback}
+              onOpenLog={setSelectedLogItem}
             />
           </div>
         )}
       </div>
+      {selectedLogItem && backingAppId && (
+        <AgentLogModal
+          appId={backingAppId}
+          floating
+          width={1024}
+          currentLogItem={selectedLogItem}
+          onCancel={() => setSelectedLogItem(null)}
+        />
+      )}
     </div>
   )
 }
