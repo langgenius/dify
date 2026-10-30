@@ -25,6 +25,7 @@ promote them to ``libs`` if a second surface adopts ``ErrorBody``.
 
 import contextlib
 import logging
+from collections.abc import Callable
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
@@ -626,9 +627,9 @@ class SkillRequestRejected(OpenApiError):  # noqa: N818
         self.code = status_code
 
 
-def require_uuid(value: str, *, not_found: type[OpenApiError]) -> str:
-    """Parse a path id as a UUID or raise 404; an unparsed id would otherwise reach
-    a UUID-typed database column and fail as a 500."""
+def require_uuid(value: str, *, not_found: Callable[[], Exception]) -> str:
+    """Parse a path id as a UUID, in its canonical dashed form, or raise `not_found()`; an
+    unparsed id would otherwise reach a UUID-typed database column and fail as a 500."""
     try:
         return str(UUID(value))
     except ValueError as e:
