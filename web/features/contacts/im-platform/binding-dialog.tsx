@@ -144,7 +144,6 @@ export function ContactImBindingContent({
 
   const closeDialog = () => {
     if (isPending) return
-    clearSecrets()
     onOpenChange(false)
   }
 

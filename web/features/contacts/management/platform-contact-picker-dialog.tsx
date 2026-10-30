@@ -10,11 +10,12 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { skipToken, useInfiniteQuery, useMutation, useQueries } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { consoleQuery } from '@/service/console'
+import { availablePlatformCandidatesOptions } from './available-platform-candidates'
 import { useContactsFeatureContext } from './composition-context'
 import { ContactAvatar } from './contact-avatar'
 
@@ -34,41 +35,14 @@ function PlatformContactPickerContent({
     context.workspaceId && context.imCentrallyManaged && context.permissions.canManageContacts,
   )
   const api = consoleQuery.workspaces.current.humanInput.v2
-  const candidates = useInfiniteQuery(
-    api.organizationCandidates.get.infiniteOptions({
-      input: (page: number) => ({
-        query: { keyword: search.trim() || undefined, page, limit: 100 },
-      }),
-      initialPageParam: 1,
-      getNextPageParam: (lastPage) =>
-        lastPage.page * lastPage.limit < lastPage.total ? lastPage.page + 1 : undefined,
-      enabled: canImport,
-      context: { silent: true },
-    }),
-  )
-  const candidatePages = candidates.data?.pages ?? []
-  const existing = useQueries({
-    queries: candidatePages.map((page) =>
-      api.contacts.batch.get.queryOptions({
-        input:
-          canImport && page.data.length
-            ? { query: { contact_ids: page.data.map((candidate) => candidate.id) } }
-            : skipToken,
-        context: { silent: true },
-      }),
-    ),
+  const queryClient = useQueryClient()
+  const candidates = useInfiniteQuery({
+    ...availablePlatformCandidatesOptions(queryClient, context.workspaceId, search),
+    enabled: canImport,
   })
-  const existingIds = new Set(
-    existing.flatMap((query) => query.data?.data.map((contact) => contact.id) ?? []),
-  )
-  const contacts = candidatePages
-    .flatMap((page, index) => (existing[index]?.isSuccess ? page.data : []))
-    .filter((candidate) => !existingIds.has(candidate.id))
-  const pending =
-    candidates.isPending ||
-    (candidatePages.some((page) => page.data.length > 0) &&
-      existing.every((query) => query.isPending))
-  const error = candidates.error ?? existing.find((query) => query.isError)?.error
+  const contacts = candidates.data?.pages.flatMap((page) => page.data) ?? []
+  const pending = candidates.isPending
+  const error = candidates.error
   const add = useMutation(api.contacts.platform.post.mutationOptions({ context: { silent: true } }))
   useEffect(() => {
     onBusyChange(add.isPending)
@@ -147,9 +121,6 @@ function PlatformContactPickerContent({
               size="small"
               onClick={() => {
                 void candidates.refetch()
-                for (const query of existing) {
-                  if (query.isError) void query.refetch()
-                }
               }}
             >
               {t(($) => $['action.retry'])}

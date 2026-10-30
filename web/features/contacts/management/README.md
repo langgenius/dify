@@ -23,10 +23,12 @@ transitions, reset after unmount, and survive failed submissions for correction.
 Server duplicate-email errors belong to the email field.
 
 Platform candidates are paginated by the backend and resolved against existing
-contacts through the generated batch operation. An already-imported page shows
-an explicit empty state and allows loading more; it does not silently launch an
-unbounded request waterfall. Only search and contact-type filters are shareable
-URL state; loaded page count is local query state.
+contacts through the generated batch operation. The available-candidates query
+orchestrates those generated operations and skips fully imported pages until a
+selectable contact, terminal page, or request error is reached. It keeps underlying
+pages in their generated caches, isolates workspace/search identities, and stops
+on cancellation or non-progressing pagination. Only search and contact-type
+filters are shareable URL state; loaded page count is local query state.
 
 Member invitations and member removal use their existing generated workspace
 member operations. Contact-upgrade and contact-retention workflows are not

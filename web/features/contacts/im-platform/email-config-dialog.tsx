@@ -92,7 +92,6 @@ export function ContactEmailConfigContent({
 
   const closeDialog = () => {
     if (isPending) return
-    setApiKey('')
     onOpenChange(false)
   }
 
