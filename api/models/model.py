@@ -2422,7 +2422,7 @@ class UploadFile(TypeBase):
     size: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     extension: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(255), nullable=True)
-    # The `created_by` field stores the ID of the entity that created this upload file.
+    # The `created_by` field stores the current owner; Guest migration can update this ID.
     #
     # If `created_by_role` is `ACCOUNT`, it corresponds to `Account.id`.
     # `END_USER` corresponds to `EndUser.id`; `DATASET_API_KEY` corresponds to `ApiToken.id`.

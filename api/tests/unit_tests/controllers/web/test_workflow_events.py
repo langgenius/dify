@@ -7,6 +7,7 @@ from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common.errors import NotFoundError
 from controllers.web.workflow_events import WorkflowEventsApi
@@ -59,10 +60,14 @@ def _workflow_run(
 # WorkflowEventsApi
 # ---------------------------------------------------------------------------
 class TestWorkflowEventsApi:
+    @pytest.fixture(autouse=True)
+    def history_database(self, sqlite_session_factory: sessionmaker[Session]) -> None:
+        self.history_engine = sqlite_session_factory.kw["bind"]
+
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
     @patch("controllers.web.workflow_events.db")
     def test_workflow_run_not_found(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
-        mock_db.engine = "engine"
+        mock_db.engine = self.history_engine
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = None
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
@@ -74,7 +79,7 @@ class TestWorkflowEventsApi:
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
     @patch("controllers.web.workflow_events.db")
     def test_workflow_run_wrong_app(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
-        mock_db.engine = "engine"
+        mock_db.engine = self.history_engine
         run = _workflow_run(app_id="other-app")
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
@@ -89,7 +94,7 @@ class TestWorkflowEventsApi:
     def test_workflow_run_not_created_by_end_user(
         self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask
     ) -> None:
-        mock_db.engine = "engine"
+        mock_db.engine = self.history_engine
         run = _workflow_run(created_by_role=CreatorUserRole.ACCOUNT)
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
@@ -102,7 +107,7 @@ class TestWorkflowEventsApi:
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
     @patch("controllers.web.workflow_events.db")
     def test_workflow_run_wrong_end_user(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
-        mock_db.engine = "engine"
+        mock_db.engine = self.history_engine
         run = _workflow_run(created_by="other-user")
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
@@ -118,7 +123,7 @@ class TestWorkflowEventsApi:
     def test_finished_run_returns_sse_response(
         self, mock_db: MagicMock, mock_factory: MagicMock, mock_converter: MagicMock, app: Flask
     ) -> None:
-        mock_db.engine = "engine"
+        mock_db.engine = self.history_engine
         run = _workflow_run(finished_at=datetime(2024, 1, 1))
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
@@ -139,7 +144,7 @@ class TestWorkflowEventsApi:
     def test_snapshot_stream_can_continue_across_pauses(
         self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        mock_db.engine = "engine"
+        mock_db.engine = self.history_engine
         run = _workflow_run()
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run

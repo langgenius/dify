@@ -1,4 +1,4 @@
-"""Web entry points for Guest resource migration; currently transfers personal Connections."""
+"""Whole-Guest Web resource migration after Account login."""
 
 from typing import Annotated, Literal
 
@@ -19,12 +19,13 @@ from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.token import extract_webapp_access_token
-from services.end_user_connections.claim import (
+from repositories.entities.web_execution import EndUserBusyError
+from services.end_user_connections.errors import ConnectionConflictError, ConnectionIdentityError
+from services.web_migration_service import (
     ConnectionClaimFailure,
     ConnectionClaimPreflightError,
     ConnectionClaimUnavailableError,
 )
-from services.end_user_connections.errors import ConnectionConflictError, ConnectionIdentityError
 from services.web_passport_service import (
     WebPassportAccessDeniedError,
     WebPassportAccountExchangeDisabledError,
@@ -47,6 +48,16 @@ class ConnectionClaimSuccessResponse(ResponseModel):
     index: int = Field(ge=0)
     app_code: str
     access_token: str
+    claimed_conversations: int = Field(
+        ge=0, description="Chat conversations transferred for supported Workflow/Chatflow Apps"
+    )
+    skipped_conversation_count: int = Field(
+        ge=0, description="Guest conversations retained because a Run is unfinished"
+    )
+    skipped_conversation_ids: list[str] = Field(
+        description="Guest conversation IDs retained at the migration snapshot; retry after their Runs finish"
+    )
+    active_run_count: int = Field(ge=0, description="Guest Runs still unfinished at the migration snapshot")
     claimed_connections: int = Field(
         ge=0, description="Number transferred by this item; zero when no Guest Connections remain"
     )
@@ -57,6 +68,7 @@ class ConnectionClaimErrorResponse(ResponseModel):
         "app_not_found",
         "connection_claim_unavailable",
         "connection_conflict",
+        "end_user_busy",
         "end_user_login_required",
         "unauthorized",
         "web_app_access_denied",
@@ -78,14 +90,14 @@ class ConnectionClaimPreflightDetails(BaseModel):
 class ConnectionClaimPreflightHTTPError(BaseHTTPException):
     code = 400
     error_code = "connection_claim_preflight_failed"
-    description = "Connection claim preflight failed. No Connections were transferred."
+    description = "Guest migration preflight failed. No resources were transferred."
     details_model = ConnectionClaimPreflightDetails
 
 
 class ConnectionClaimUnavailableHTTPError(BaseHTTPException):
     code = 503
     error_code = "connection_claim_unavailable"
-    description = "Connection claim is temporarily unavailable. Please retry."
+    description = "Guest migration is temporarily unavailable. Please retry."
 
 
 class ConnectionClaimResponse(ResponseModel):
@@ -96,6 +108,8 @@ class ConnectionClaimResponse(ResponseModel):
 
 def claim_error_response(failure: ConnectionClaimFailure) -> ConnectionClaimErrorResponse:
     error = failure.error
+    if isinstance(error, EndUserBusyError):
+        return ConnectionClaimErrorResponse(code="end_user_busy", status=409, message=str(error))
     if isinstance(error, ConnectionIdentityError):
         return ConnectionClaimErrorResponse(code="unauthorized", status=401, message=str(error))
     if isinstance(error, WebPassportNotFoundError):
@@ -133,20 +147,29 @@ register_response_schema_models(
 class ConnectionClaimApi(Resource):
     @web_ns.doc(
         description="Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. "
-        "Submit Guest Passports in passports, with one Account Web login proof in Authorization. "
+        "Submit Guest Passports in passports, with one Account Web login proof "
+        "in its HttpOnly cookie or Authorization. "
         "Complete the login handoff through /api/passport before asking the user to confirm Claim. "
         "Validate every source Passport and Account App admission before any transfer or identity creation. "
         "Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. "
         "An unavailable preflight dependency returns 503; neither failure starts a transfer. "
         "Items run in input order with independent transactions; every item returns its index and success or failure. "
-        "Success includes the App code, Account App Passport and this item's transferred Connection count. "
-        "Retries skip transfers for Guests with no remaining Connections and report zero; "
-        "new Guest Connections are included. "
-        "Account defaults take precedence; Conversation choices and history are preserved. "
+        "Each Passport atomically transfers Connections, files and eligible conversations with their personal state. "
+        "Conversations with unfinished Guest runs stay with the Guest and are reported as skipped. "
+        "Existing Guest runs may fail if they later need a transferred Connection or file. "
+        "Concurrent migration or identity updates may report end_user_busy without waiting. "
+        "Run discovery is best effort and may miss concurrent starts. "
+        "Success includes the App code, Account App Passport, transferred counts, skipped count and active Run count. "
+        "Keep the Guest Passport and retry with the same Account after active runs finish "
+        "to transfer their remaining conversations or files. "
+        "The Guest Passport is not bound to the Account by migration. "
+        "Retries transfer only resources still owned by the Guest; empty resource categories report zero. "
+        "New Guest resources are included. "
+        "Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. "
         "Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided."
     )
     @web_ns.expect(web_ns.models[ConnectionClaimPayload.__name__])
-    @web_ns.response(200, "Guest Connection claim results", web_ns.models[ConnectionClaimResponse.__name__])
+    @web_ns.response(200, "Whole Guest migration results", web_ns.models[ConnectionClaimResponse.__name__])
     @error_responses(
         ConnectionLoginRequiredError, ConnectionClaimPreflightHTTPError, ConnectionClaimUnavailableHTTPError
     )
@@ -157,9 +180,7 @@ class ConnectionClaimApi(Resource):
                 raise WebPassportAccountExchangeDisabledError()
             login_token = extract_webapp_access_token(request) or ""
             try:
-                results = application_services().end_user_connection_claims.claim(
-                    payload.passports, access_token=login_token
-                )
+                results = application_services().web_migration.claim(payload.passports, access_token=login_token)
             except ConnectionClaimPreflightError as exc:
                 error = ConnectionClaimPreflightHTTPError()
                 assert error.data is not None
@@ -190,6 +211,10 @@ class ConnectionClaimApi(Resource):
                         app_code=result.app_code,
                         access_token=result.access_token,
                         claimed_connections=result.claimed_connections,
+                        claimed_conversations=result.claimed_conversations,
+                        skipped_conversation_count=len(result.skipped_conversations),
+                        skipped_conversation_ids=list(result.skipped_conversations),
+                        active_run_count=result.active_runs,
                     )
                 )
         return (
@@ -209,6 +234,7 @@ class ClaimablePassportResponse(ResponseModel):
     index: int = Field(ge=0, description="Index of the candidate in the request's passports list")
     app_code: str
     app_name: str
+    conversation_count: int = Field(ge=0, description="Remaining Chatflow conversations; Workflow normally has zero")
     connection_count: int = Field(
         ge=0, description="Current Guest Connection count; does not determine Passport eligibility"
     )
@@ -226,10 +252,12 @@ register_response_schema_models(web_ns, ClaimablePassportResponse, ClaimablePass
 class ClaimablePassportsApi(Resource):
     @web_ns.doc(
         description="Check anonymous Passports held by this browser across Web Apps without changing identity or data. "
-        "Submit local candidates; return their request indices, App names/codes and current Connection counts. "
+        "Submit local candidates; return request indices, App names/codes and current Connection/conversation counts. "
         "Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. "
         "Unavailable, disabled and unpublished Web Apps are filtered out. "
         "Zero-Connection Guest Passports are included. "
+        "Supports Workflow and Chatflow only; other App modes are omitted. "
+        "conversation_count counts Chatflow history; Workflow normally has none. "
         "connection_count counts all currently Guest-owned Connections, including ones needing reconnection. "
         "This is advisory: actual Claim rechecks ownership and Account App admission."
     )
@@ -240,7 +268,7 @@ class ClaimablePassportsApi(Resource):
         with web_login_errors():
             if not dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED:
                 raise WebPassportAccountExchangeDisabledError()
-            candidates = application_services().end_user_connection_claims.claimable_passports(payload.passports)
+            candidates = application_services().web_migration.claimable_passports(payload.passports)
         return (
             dump_response(
                 ClaimablePassportsResponse,
@@ -251,6 +279,7 @@ class ClaimablePassportsApi(Resource):
                             app_code=candidate.app_code,
                             app_name=candidate.app_name,
                             connection_count=candidate.connection_count,
+                            conversation_count=candidate.conversation_count,
                         )
                         for index, candidate in candidates
                     ]

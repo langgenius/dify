@@ -3,7 +3,7 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from sqlalchemy import asc, desc, func, or_, select
+from sqlalchemy import asc, desc, func, or_, select, true
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -15,7 +15,8 @@ from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, ConversationVariable
-from models.model import App, Conversation, EndUser, Message
+from models.model import App, AppMode, Conversation, EndUser, Message
+from repositories.conversation_access import conversation_owner_scope, message_owner_scope
 from repositories.conversation_lifecycle import retire_conversation
 from services.errors.conversation import (
     ConversationNotExistsError,
@@ -128,10 +129,16 @@ class ConversationService:
         conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
 
         if auto_generate:
-            return cls.auto_generate_name(app_model, conversation, session=session)
+            return cls.auto_generate_name(app_model, conversation, session=session, user=user)
         else:
             if name is None:
                 raise ValueError("name is required when auto_generate is false")
+            if (
+                dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+                and isinstance(user, EndUser)
+                and app_model.mode == AppMode.ADVANCED_CHAT
+            ):
+                conversation = cls.get_conversation(app_model, conversation_id, user, session=session, lock=True)
             conversation.name = name
             conversation.updated_at = naive_utc_now()
             session.commit()
@@ -139,11 +146,19 @@ class ConversationService:
         return conversation
 
     @classmethod
-    def auto_generate_name(cls, app_model: App, conversation: Conversation, *, session: Session) -> Conversation:
+    def auto_generate_name(
+        cls, app_model: App, conversation: Conversation, *, session: Session, user: Account | EndUser | None = None
+    ) -> Conversation:
+        # The caller's pending message must remain visible; do not end its transaction.
+        # Only take the ownership write lock after provider work has completed.
         # get conversation first message
         message = session.scalar(
             select(Message)
-            .where(Message.app_id == app_model.id, Message.conversation_id == conversation.id)
+            .where(
+                Message.app_id == app_model.id,
+                Message.conversation_id == conversation.id,
+                message_owner_scope(app_model.id, user) if user is not None else true(),
+            )
             .order_by(Message.created_at.asc())
             .limit(1)
         )
@@ -151,15 +166,24 @@ class ConversationService:
         if not message:
             raise MessageNotExistsError()
 
-        # generate conversation name
+        # Provider failures keep the existing name; ownership failures must still reach the caller.
+        generated_name = None
         with contextlib.suppress(Exception):
-            conversation.name = cls.generate_name(
+            generated_name = cls.generate_name(
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 conversation_id=conversation.id,
                 query=message.query,
                 app_mode=app_model.mode,
             )
+        if (
+            dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+            and isinstance(user, EndUser)
+            and app_model.mode == AppMode.ADVANCED_CHAT
+        ):
+            conversation = cls.get_conversation(app_model, conversation.id, user, session=session, lock=True)
+        if generated_name is not None:
+            conversation.name = generated_name
 
         session.commit()
 
@@ -173,20 +197,25 @@ class ConversationService:
 
     @classmethod
     def get_conversation(
-        cls, app_model: App, conversation_id: str, user: Account | EndUser | None, *, session: Session
+        cls,
+        app_model: App,
+        conversation_id: str,
+        user: Account | EndUser | None,
+        *,
+        session: Session,
+        lock: bool = False,
     ):
-        conversation = session.scalar(
-            select(Conversation)
-            .where(
-                Conversation.id == conversation_id,
-                Conversation.app_id == app_model.id,
-                Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
-                Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-                Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
-                Conversation.is_deleted.is_(False),
-            )
-            .limit(1)
+        query = select(Conversation).where(
+            Conversation.id == conversation_id, *conversation_owner_scope(app_model.id, user)
         )
+        if (
+            lock
+            and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+            and isinstance(user, EndUser)
+            and app_model.mode == AppMode.ADVANCED_CHAT
+        ):
+            query = query.with_for_update()
+        conversation = session.scalar(query.limit(1))
 
         if not conversation:
             raise ConversationNotExistsError()
@@ -204,7 +233,7 @@ class ConversationService:
         Raises:
             ConversationNotExistsError: When the conversation is not visible to the current user.
         """
-        conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
+        conversation = cls.get_conversation(app_model, conversation_id, user, session=session, lock=True)
         tenant_id = app_model.tenant_id
         try:
             retired_workspace_ids = retire_conversation(app_model=app_model, conversation=conversation, session=session)
@@ -332,7 +361,7 @@ class ConversationService:
             ConversationVariableTypeMismatchError: If the new value type doesn't match the variable's expected type
         """
         # Verify conversation exists and user has access
-        conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
+        conversation = cls.get_conversation(app_model, conversation_id, user, session=session, lock=True)
 
         # Get the existing conversation variable
         stmt = select(ConversationVariable).where(

@@ -38,7 +38,7 @@ from services.errors.audio import (
     UnsupportedAudioTypeServiceError,
 )
 from tests.helpers.unit.audio_runtime_fixtures import AudioRuntimeObservations
-from tests.helpers.unit.model_factories import make_message
+from tests.helpers.unit.model_factories import make_conversation, make_message
 
 """Validate plain audio uploads before calling the shared provider boundary."""
 
@@ -169,7 +169,7 @@ OTHER_ID = "77777777-7777-7777-7777-777777777777"
 
 
 def _message(*, answer: str = "Message answer") -> Message:
-    return make_message(
+    message = make_message(
         message_id=MESSAGE_ID,
         app_id=APP_ID,
         conversation_id=CONVERSATION_ID,
@@ -181,10 +181,20 @@ def _message(*, answer: str = "Message answer") -> Message:
         answer_unit_price=Decimal(0),
         currency="USD",
         status=MessageStatus.NORMAL,
-        from_source=ConversationFromSource.API,
-        from_end_user_id=END_USER_ID,
+        from_source=ConversationFromSource.CONSOLE,
         from_account_id=ACCOUNT_ID,
     )
+
+    conversation = make_conversation(
+        conversation_id=CONVERSATION_ID,
+        app_id=APP_ID,
+        mode=_audio_service_AppMode.CHAT,
+        inputs={},
+        from_source=ConversationFromSource.CONSOLE,
+        from_account_id=ACCOUNT_ID,
+    )
+    conversation.messages.append(message)
+    return message
 
 
 class AudioServiceTestDataFactory:
@@ -871,7 +881,6 @@ class TestAudioServiceCases:
             message_ref = MessageRef(
                 app=AppRef(tenant_id=TENANT_ID, app_id=APP_ID),
                 message_id=MESSAGE_ID,
-                end_user_id=END_USER_ID,
                 account_id=ACCOUNT_ID,
             )
             sqlite_session.add(_message())

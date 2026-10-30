@@ -7,6 +7,7 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.entities.app_invoke_entities import InvokeFrom, get_credit_usage_app_type
@@ -34,6 +35,7 @@ from models.model import (
     SuggestedQuestionsAfterAnswerConfig,
     load_annotation_reply_config,
 )
+from repositories.conversation_access import conversation_owner_scope, message_owner_scope
 from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
 from repositories.sqlalchemy_execution_extra_content_repository import (
     SQLAlchemyExecutionExtraContentRepository,
@@ -143,7 +145,13 @@ class MessageService:
 
         if first_id:
             first_message = session.scalar(
-                select(Message).where(Message.conversation_id == conversation.id, Message.id == first_id).limit(1)
+                select(Message)
+                .where(
+                    Message.conversation_id == conversation.id,
+                    Message.id == first_id,
+                    message_owner_scope(app_model.id, user),
+                )
+                .limit(1)
             )
 
             if not first_message:
@@ -153,6 +161,7 @@ class MessageService:
                 select(Message)
                 .where(
                     Message.conversation_id == conversation.id,
+                    message_owner_scope(app_model.id, user),
                     Message.created_at < first_message.created_at,
                     Message.id != first_message.id,
                 )
@@ -162,7 +171,7 @@ class MessageService:
         else:
             history_messages = session.scalars(
                 select(Message)
-                .where(Message.conversation_id == conversation.id)
+                .where(Message.conversation_id == conversation.id, message_owner_scope(app_model.id, user))
                 .order_by(Message.created_at.desc())
                 .limit(fetch_limit)
             ).all()
@@ -194,7 +203,7 @@ class MessageService:
         if not user:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
 
-        stmt = select(Message)
+        stmt = select(Message).where(Message.app_id == app_model.id, message_owner_scope(app_model.id, user))
 
         fetch_limit = limit + 1
 
@@ -203,7 +212,7 @@ class MessageService:
                 app_model=app_model, user=user, conversation_id=conversation_id, session=session
             )
 
-            stmt = stmt.where(Message.conversation_id == conversation.id)
+            stmt = stmt.where(Message.conversation_id == conversation.id, message_owner_scope(app_model.id, user))
 
         # Check if include_ids is not None and not empty to avoid WHERE false condition
         if include_ids is not None:
@@ -246,7 +255,7 @@ class MessageService:
         if not user:
             raise ValueError("user cannot be None")
 
-        message = cls.get_message(app_model=app_model, user=user, message_id=message_id, session=session)
+        message = cls.get_message(app_model=app_model, user=user, message_id=message_id, session=session, lock=True)
 
         feedback = (
             message.user_feedback_with_session(session=session)
@@ -334,18 +343,24 @@ class MessageService:
         return [record.to_dict() for record in feedbacks]
 
     @classmethod
-    def get_message(cls, app_model: App, user: Account | EndUser | None, message_id: str, *, session: Session):
-        message = session.scalar(
-            select(Message)
-            .where(
-                Message.id == message_id,
-                Message.app_id == app_model.id,
-                Message.from_source == ("api" if isinstance(user, EndUser) else "console"),
-                Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-                Message.from_account_id == (user.id if isinstance(user, Account) else None),
-            )
-            .limit(1)
+    def get_message(
+        cls, app_model: App, user: Account | EndUser | None, message_id: str, *, session: Session, lock: bool = False
+    ):
+        query = select(Message).where(
+            Message.id == message_id, Message.app_id == app_model.id, message_owner_scope(app_model.id, user)
         )
+        if (
+            lock
+            and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+            and isinstance(user, EndUser)
+            and app_model.mode == AppMode.ADVANCED_CHAT
+        ):
+            query = (
+                query.join(Conversation, Conversation.id == Message.conversation_id)
+                .where(*conversation_owner_scope(app_model.id, user))
+                .with_for_update(of=Conversation)
+            )
+        message = session.scalar(query.limit(1))
 
         if not message:
             raise MessageNotExistsError()

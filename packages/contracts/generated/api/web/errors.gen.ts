@@ -7,6 +7,7 @@ const zConnectionClaimErrorResponse = /* @__PURE__ */ (() =>
       'app_not_found',
       'connection_claim_unavailable',
       'connection_conflict',
+      'end_user_busy',
       'end_user_login_required',
       'unauthorized',
       'web_app_access_denied',
@@ -531,6 +532,14 @@ const zWebLoginUnavailableError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zWebappResourcesChangedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('webapp_resources_changed'),
+      status: z.literal(409),
+    }),
+  ))()
+
 export const postErrors = {
   app_unavailable: { status: 400, data: zAppUnavailableError },
   audio_too_large: { status: 413, data: zAudioTooLargeError },
@@ -568,6 +577,7 @@ export const post3Errors = {
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   rate_limit_error: { status: 429, data: zRateLimitError },
+  webapp_resources_changed: { status: 409, data: zWebappResourcesChangedError },
 }
 
 export const post4Errors = { not_completion_app: { status: 400, data: zNotCompletionAppError } }

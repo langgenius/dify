@@ -56,7 +56,7 @@ Create a chat message for conversational applications.
 | 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[WebappResourcesChangedError](#webappresourceschangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [ConnectionCredentialsUnavailableError](#connectioncredentialsunavailableerror)<br>[CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -922,7 +922,7 @@ Retrieve the metadata for a specific app.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /migration/claim
-Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Retries skip transfers for Guests with no remaining Connections and report zero; new Guest Connections are included. Account defaults take precedence; Conversation choices and history are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
+Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in its HttpOnly cookie or Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Each Passport atomically transfers Connections, files and eligible conversations with their personal state. Conversations with unfinished Guest runs stay with the Guest and are reported as skipped. Existing Guest runs may fail if they later need a transferred Connection or file. Concurrent migration or identity updates may report end_user_busy without waiting. Run discovery is best effort and may miss concurrent starts. Success includes the App code, Account App Passport, transferred counts, skipped count and active Run count. Keep the Guest Passport and retry with the same Account after active runs finish to transfer their remaining conversations or files. The Guest Passport is not bound to the Account by migration. Retries transfer only resources still owned by the Guest; empty resource categories report zero. New Guest resources are included. Account defaults take precedence; Conversation IDs, history and execution provenance are preserved. Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided.
 
 #### Request Body
 
@@ -934,14 +934,14 @@ Claim up to 50 anonymous browser Passports across Web Apps for one authenticated
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Guest Connection claim results | **application/json**: [ConnectionClaimResponse](#connectionclaimresponse)<br> |
+| 200 | Whole Guest migration results | **application/json**: [ConnectionClaimResponse](#connectionclaimresponse)<br> |
 | 400 | Bad Request | **application/json**: [ConnectionClaimPreflightFailedError](#connectionclaimpreflightfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [ConnectionClaimUnavailableError](#connectionclaimunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /migration/claimable-passports
-Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
+Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return request indices, App names/codes and current Connection/conversation counts. Invalid, expired, duplicate, Account and SSO candidates are omitted. No Account login is required. Unavailable, disabled and unpublished Web Apps are filtered out. Zero-Connection Guest Passports are included. Supports Workflow and Chatflow only; other App modes are omitted. conversation_count counts Chatflow history; Workflow normally has none. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
 
 #### Request Body
 
@@ -1523,6 +1523,7 @@ Button styles for user actions.
 | app_code | string |  | Yes |
 | app_name | string |  | Yes |
 | connection_count | integer | Current Guest Connection count; does not determine Passport eligibility | Yes |
+| conversation_count | integer | Remaining Chatflow conversations; Workflow normally has zero | Yes |
 | index | integer | Index of the candidate in the request's passports list | Yes |
 
 #### ClaimablePassportsPayload
@@ -1559,7 +1560,7 @@ Completion request failed.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code | string, <br>**Available values:** "app_not_found", "connection_claim_unavailable", "connection_conflict", "end_user_login_required", "unauthorized", "web_app_access_denied" | *Enum:* `"app_not_found"`, `"connection_claim_unavailable"`, `"connection_conflict"`, `"end_user_login_required"`, `"unauthorized"`, `"web_app_access_denied"` | Yes |
+| code | string, <br>**Available values:** "app_not_found", "connection_claim_unavailable", "connection_conflict", "end_user_busy", "end_user_login_required", "unauthorized", "web_app_access_denied" | *Enum:* `"app_not_found"`, `"connection_claim_unavailable"`, `"connection_conflict"`, `"end_user_busy"`, `"end_user_login_required"`, `"unauthorized"`, `"web_app_access_denied"` | Yes |
 | message | string |  | Yes |
 | status | integer |  | Yes |
 
@@ -1585,11 +1586,11 @@ Completion request failed.
 
 #### ConnectionClaimPreflightFailedError
 
-Connection claim preflight failed. No Connections were transferred.
+Guest migration preflight failed. No resources were transferred.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ConnectionClaimPreflightFailedError |  | Connection claim preflight failed. No Connections were transferred. |  |
+| ConnectionClaimPreflightFailedError |  | Guest migration preflight failed. No resources were transferred. |  |
 
 #### ConnectionClaimResponse
 
@@ -1602,18 +1603,22 @@ Connection claim preflight failed. No Connections were transferred.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_token | string |  | Yes |
+| active_run_count | integer | Guest Runs still unfinished at the migration snapshot | Yes |
 | app_code | string |  | Yes |
 | claimed_connections | integer | Number transferred by this item; zero when no Guest Connections remain | Yes |
+| claimed_conversations | integer | Chat conversations transferred for supported Workflow/Chatflow Apps | Yes |
 | index | integer |  | Yes |
+| skipped_conversation_count | integer | Guest conversations retained because a Run is unfinished | Yes |
+| skipped_conversation_ids | [ string ] | Guest conversation IDs retained at the migration snapshot; retry after their Runs finish | Yes |
 | status | string |  | Yes |
 
 #### ConnectionClaimUnavailableError
 
-Connection claim is temporarily unavailable. Please retry.
+Guest migration is temporarily unavailable. Please retry.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ConnectionClaimUnavailableError |  | Connection claim is temporarily unavailable. Please retry. |  |
+| ConnectionClaimUnavailableError |  | Guest migration is temporarily unavailable. Please retry. |  |
 
 #### ConnectionConfigurationInvalidError
 
@@ -3019,6 +3024,14 @@ Web App login is temporarily unavailable. Please retry.
 | show_workflow_steps | boolean |  | No |
 | title | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | No |
+
+#### WebappResourcesChangedError
+
+Web App resources changed before execution. Refresh and retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebappResourcesChangedError |  | Web App resources changed before execution. Refresh and retry. |  |
 
 #### WorkflowRunPayload
 

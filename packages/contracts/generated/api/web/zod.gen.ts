@@ -146,6 +146,7 @@ export const zClaimablePassportResponse = z.object({
   app_code: z.string(),
   app_name: z.string(),
   connection_count: z.int().gte(0),
+  conversation_count: z.int().gte(0),
   index: z.int().gte(0),
 })
 
@@ -182,6 +183,7 @@ export const zConnectionClaimErrorResponse = z.object({
     'app_not_found',
     'connection_claim_unavailable',
     'connection_conflict',
+    'end_user_busy',
     'end_user_login_required',
     'unauthorized',
     'web_app_access_denied',
@@ -218,9 +220,13 @@ export const zConnectionClaimPreflightDetails = z.object({
  */
 export const zConnectionClaimSuccessResponse = z.object({
   access_token: z.string(),
+  active_run_count: z.int().gte(0),
   app_code: z.string(),
   claimed_connections: z.int().gte(0),
+  claimed_conversations: z.int().gte(0),
   index: z.int().gte(0),
+  skipped_conversation_count: z.int().gte(0),
+  skipped_conversation_ids: z.array(z.string()),
   status: z.literal('success'),
 })
 
@@ -539,7 +545,7 @@ export const zCompletionRequestError = zErrorResponse.and(
 /**
  * ConnectionClaimPreflightFailedError
  *
- * Connection claim preflight failed. No Connections were transferred.
+ * Guest migration preflight failed. No resources were transferred.
  */
 export const zConnectionClaimPreflightFailedError = zErrorResponse.and(
   z.object({
@@ -552,7 +558,7 @@ export const zConnectionClaimPreflightFailedError = zErrorResponse.and(
 /**
  * ConnectionClaimUnavailableError
  *
- * Connection claim is temporarily unavailable. Please retry.
+ * Guest migration is temporarily unavailable. Please retry.
  */
 export const zConnectionClaimUnavailableError = zErrorResponse.and(
   z.object({
@@ -2403,6 +2409,18 @@ export const zHumanInputFormDefinitionResponse = z.object({
 })
 
 /**
+ * WebappResourcesChangedError
+ *
+ * Web App resources changed before execution. Refresh and retry.
+ */
+export const zWebappResourcesChangedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('webapp_resources_changed'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({
@@ -2892,7 +2910,7 @@ export const zGetMetaResponse = zAppMetaResponse
 export const zPostMigrationClaimBody = zConnectionClaimPayload
 
 /**
- * Guest Connection claim results
+ * Whole Guest migration results
  */
 export const zPostMigrationClaimResponse = zConnectionClaimResponse
 

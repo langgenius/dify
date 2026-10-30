@@ -138,6 +138,7 @@ export type ClaimablePassportResponse = {
   app_code: string
   app_name: string
   connection_count: number
+  conversation_count: number
   index: number
 }
 
@@ -171,6 +172,7 @@ export type ConnectionClaimErrorResponse = {
     | 'app_not_found'
     | 'connection_claim_unavailable'
     | 'connection_conflict'
+    | 'end_user_busy'
     | 'end_user_login_required'
     | 'unauthorized'
     | 'web_app_access_denied'
@@ -204,9 +206,13 @@ export type ConnectionClaimResponse = {
 
 export type ConnectionClaimSuccessResponse = {
   access_token: string
+  active_run_count: number
   app_code: string
   claimed_connections: number
+  claimed_conversations: number
   index: number
+  skipped_conversation_count: number
+  skipped_conversation_ids: Array<string>
   status: 'success'
 }
 
@@ -1575,6 +1581,11 @@ export type WebSiteResponse = {
   use_icon_as_answer_icon?: boolean | null
 }
 
+export type WebappResourcesChangedError = ErrorResponse & {
+  code: 'webapp_resources_changed'
+  status: 409
+}
+
 export type WorkflowRunPayload = {
   connection_revision?: string | null
   connections?: {
@@ -1740,6 +1751,7 @@ export type PostChatMessagesErrors = {
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
     | ConnectionRevisionChangedError
+    | WebappResourcesChangedError
     | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse

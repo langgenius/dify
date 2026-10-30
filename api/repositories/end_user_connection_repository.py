@@ -10,13 +10,13 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, load_only, sessionmaker
 
+from configs import dify_config
 from constants.end_user_connections import (
     ConnectionCredentialStatus,
     ConnectionCredentialType,
     OAuthClientSource,
 )
 from context.connection_execution import ConnectionExecutionContext
-from core.app.public_runtime import published_app_filter
 from core.helper.name_generator import generate_incremental_name
 from core.plugin.entities.plugin_daemon import CredentialType
 from libs.datetime_utils import naive_utc_now
@@ -29,11 +29,12 @@ from models.end_user_connection import (
     SessionConnection,
 )
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus, EndUserType, InvokeFrom
-from models.model import App, AppMode, Conversation, EndUser, Site
+from models.model import App, AppMode, Conversation, EndUser
 from models.provider_ids import ToolProviderID
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
-from services.end_user_connections.claim import ConnectionClaimSource
+from repositories.end_user_execution_lock import lock_end_user
+from repositories.entities.web_execution import EndUserBusyError
 from services.end_user_connections.contracts import ConnectionPage, ConnectionSummary, ListConnectionsInput
 from services.end_user_connections.entities import (
     ConnectionAccessRecord,
@@ -115,22 +116,21 @@ class EndUserConnectionRepository:
     ) -> None:
         """Continue a validated execution's consent without consulting a newer publication."""
         with self._sessions.begin() as session:
-            self._require_context(session, context, lock=True)
+            self._require_context(session, context, lock=True, shared=True)
             self._record_revision_acceptance(session, context, acceptance)
 
     @staticmethod
     def _record_revision_acceptance(
         session: Session, context: WebConnectionContext, acceptance: ConnectionRevisionAcceptance
     ) -> None:
-        """Write under the caller's EndUser lock and transaction, preserving first provenance."""
-        existing = session.scalar(
-            sa.select(EndUserConnectionRevisionAcceptance.id).where(
-                EndUserConnectionRevisionAcceptance.tenant_id == context.tenant_id,
-                EndUserConnectionRevisionAcceptance.app_id == context.app_id,
-                EndUserConnectionRevisionAcceptance.end_user_id == context.end_user_id,
-                EndUserConnectionRevisionAcceptance.revision_id == acceptance.revision_id,
-            )
+        """Preserve the first provenance when concurrent requests record acceptance."""
+        lookup = sa.select(EndUserConnectionRevisionAcceptance.id).where(
+            EndUserConnectionRevisionAcceptance.tenant_id == context.tenant_id,
+            EndUserConnectionRevisionAcceptance.app_id == context.app_id,
+            EndUserConnectionRevisionAcceptance.end_user_id == context.end_user_id,
+            EndUserConnectionRevisionAcceptance.revision_id == acceptance.revision_id,
         )
+        existing = session.scalar(lookup)
         if existing is not None:
             return
         revisions = {acceptance.revision_id}
@@ -147,17 +147,22 @@ class EndUserConnectionRepository:
         )
         if scoped != revisions:
             raise ConnectionRevisionChangedError()
-        session.add(
-            EndUserConnectionRevisionAcceptance(
-                tenant_id=context.tenant_id,
-                app_id=context.app_id,
-                end_user_id=context.end_user_id,
-                revision_id=acceptance.revision_id,
-                reason=acceptance.reason,
-                source_revision_id=acceptance.source_revision_id,
-            )
-        )
-        session.flush()
+        try:
+            with session.begin_nested():
+                session.add(
+                    EndUserConnectionRevisionAcceptance(
+                        tenant_id=context.tenant_id,
+                        app_id=context.app_id,
+                        end_user_id=context.end_user_id,
+                        revision_id=acceptance.revision_id,
+                        reason=acceptance.reason,
+                        source_revision_id=acceptance.source_revision_id,
+                    )
+                )
+                session.flush()
+        except IntegrityError:
+            if session.scalar(lookup.with_for_update(read=True)) is None:
+                raise
 
     @staticmethod
     def disconnect_oauth_client_connections(
@@ -246,7 +251,7 @@ class EndUserConnectionRepository:
         return generate_incremental_name(names, CredentialType(credential_type.value).get_name())
 
     @staticmethod
-    def _require_context(session: Session, context: WebConnectionContext, *, lock: bool) -> App:
+    def _require_context(session: Session, context: WebConnectionContext, *, lock: bool, shared: bool = False) -> App:
         stmt = (
             sa.select(App)
             .join(EndUser, sa.and_(EndUser.app_id == App.id, EndUser.tenant_id == App.tenant_id))
@@ -263,7 +268,23 @@ class EndUserConnectionRepository:
                 else EndUser.account_id.is_(None),
             )
         )
-        if lock:
+        coordinated = lock and not shared and dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+        if coordinated:
+            try:
+                actor = lock_end_user(
+                    session,
+                    tenant_id=context.tenant_id,
+                    app_id=context.app_id,
+                    end_user_id=context.end_user_id,
+                    exclusive=not shared,
+                )
+            except EndUserBusyError as error:
+                raise ConnectionConflictError() from error
+            if actor is None or actor.account_id != context.account_id:
+                raise ConnectionIdentityError()
+            if not shared:
+                stmt = stmt.with_for_update()
+        elif lock and (not shared or not dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED):
             stmt = stmt.with_for_update()
         app = session.scalar(stmt)
         if app is None:
@@ -273,97 +294,51 @@ class EndUserConnectionRepository:
                 Account.id == context.account_id,
                 Account.status.in_((AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED)),
             )
-            if lock:
+            if lock and (not shared or not dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED):
                 account = account.with_for_update()
             if session.scalar(account) is None:
                 raise ConnectionIdentityError()
         return app
 
-    def get_claim_source(self, *, app_code: str, app_id: str, end_user_id: str) -> ConnectionClaimSource | None:
-        with self._sessions() as session:
-            row = session.execute(
-                sa.select(App.tenant_id, App.name, sa.func.count(EndUserConnection.id))
-                .select_from(App)
-                .join(Site, Site.app_id == App.id)
-                .join(EndUser, sa.and_(EndUser.app_id == App.id, EndUser.tenant_id == App.tenant_id))
-                .outerjoin(
-                    EndUserConnection,
-                    sa.and_(
-                        EndUserConnection.tenant_id == App.tenant_id,
-                        EndUserConnection.end_user_id == EndUser.id,
-                        EndUserConnection.account_id.is_(None),
-                    ),
+    @classmethod
+    def transfer_guest_connections(
+        cls, session: Session, guest: WebConnectionContext, account: WebConnectionContext
+    ) -> int:
+        """Transfer credential owners inside the caller's validated identity transaction."""
+        transferred = cast(
+            CursorResult,
+            session.execute(
+                sa.update(EndUserConnection)
+                .where(EndUserConnection.tenant_id == guest.tenant_id, *cls._owner(guest.owner))
+                .values(
+                    {
+                        "account_id": account.account_id,
+                        "end_user_id": None,
+                        "revision": EndUserConnection.revision + 1,
+                        "updated_at": naive_utc_now(),
+                    }
                 )
-                .where(
-                    App.id == app_id,
-                    published_app_filter(),
-                    App.status == AppStatus.NORMAL,
-                    App.enable_site.is_(True),
-                    App.mode.in_((AppMode.WORKFLOW, AppMode.ADVANCED_CHAT)),
-                    Site.code == app_code,
-                    Site.status == AppStatus.NORMAL,
-                    EndUser.id == end_user_id,
-                    EndUser.type == EndUserType.BROWSER,
-                    EndUser.account_id.is_(None),
-                )
-                .group_by(App.id, App.tenant_id, App.name)
-            ).one_or_none()
-            if row is None:
-                return None
-            tenant_id, name, count = row
-            return ConnectionClaimSource(
-                context=WebConnectionContext(tenant_id, app_id, end_user_id, None),
-                app_code=app_code,
-                app_name=name,
-                connection_count=count,
-            )
+            ),
+        ).rowcount
+        return transferred
 
-    def claim_connections(self, guest: WebConnectionContext, *, account_end_user_id: str) -> int:
-        if guest.account_id is not None:
-            raise ConnectionIdentityError()
-        with self._sessions.begin() as session:
-            # Use the same stable App/EndUser lock as credential mutations and
-            # selection saves, including when either default set is empty.
-            self._require_context(session, guest, lock=True)
-            target = session.scalar(
-                sa.select(EndUser).where(
-                    EndUser.id == account_end_user_id,
-                    EndUser.tenant_id == guest.tenant_id,
-                    EndUser.app_id == guest.app_id,
-                    EndUser.type == EndUserType.BROWSER,
-                    EndUser.account_id.is_not(None),
-                )
+    @classmethod
+    def transfer_guest_defaults(
+        cls, session: Session, guest: WebConnectionContext, account: WebConnectionContext
+    ) -> None:
+        """Apply whole-set precedence while the caller exclusively locks the target EndUser."""
+        # A current locking read is required even under MySQL's repeatable-read isolation.
+        if session.scalar(
+            sa.select(AppConnection.id)
+            .where(*cls._app_selection_scope(account))
+            .limit(1)
+            .with_for_update(read=True, nowait=True)
+        ):
+            session.execute(sa.delete(AppConnection).where(*cls._app_selection_scope(guest)))
+        else:
+            session.execute(
+                sa.update(AppConnection).where(*cls._app_selection_scope(guest)).values(end_user_id=account.end_user_id)
             )
-            if target is None or target.account_id is None:
-                raise ConnectionIdentityError()
-            account = WebConnectionContext(guest.tenant_id, guest.app_id, target.id, target.account_id)
-            self._require_context(session, account, lock=True)
-            transferred = cast(
-                CursorResult,
-                session.execute(
-                    sa.update(EndUserConnection)
-                    .where(EndUserConnection.tenant_id == guest.tenant_id, *self._owner(guest.owner))
-                    .values(
-                        {
-                            "account_id": target.account_id,
-                            "end_user_id": None,
-                            "revision": EndUserConnection.revision + 1,
-                            "updated_at": naive_utc_now(),
-                        }
-                    )
-                ),
-            ).rowcount
-            if transferred == 0:
-                return 0
-            if session.scalar(sa.select(AppConnection.id).where(*self._app_selection_scope(account)).limit(1)):
-                session.execute(sa.delete(AppConnection).where(*self._app_selection_scope(guest)))
-            else:
-                session.execute(
-                    sa.update(AppConnection).where(*self._app_selection_scope(guest)).values(end_user_id=target.id)
-                )
-            # Session selections and immutable Run references keep their IDs.
-            # Their authoritative Conversation owner migrates independently.
-            return transferred
 
     def published_graph(self, context: WebConnectionContext) -> tuple[str, Mapping[str, Any]]:
         return self.preflight_graph(context, None, None)
@@ -446,7 +421,7 @@ class EndUserConnectionRepository:
     ) -> None:
         """Revalidate final identity and persist validated-contract acceptance atomically."""
         with self._sessions.begin() as session:
-            app = self._require_context(session, context, lock=revision_acceptance is not None)
+            app = self._require_context(session, context, lock=revision_acceptance is not None, shared=True)
             self._require_workflow_scope(session, context, app, workflow_id, conversation_id)
             if revision_acceptance is not None:
                 self._record_revision_acceptance(session, context, revision_acceptance)
@@ -466,7 +441,13 @@ class EndUserConnectionRepository:
 
     @classmethod
     def _access_records(
-        cls, session: Session, context: WebConnectionContext, connection_ids: frozenset[str], *, lock: bool
+        cls,
+        session: Session,
+        context: WebConnectionContext,
+        connection_ids: frozenset[str],
+        *,
+        lock: bool,
+        shared_lock: bool = False,
     ) -> Mapping[str, ConnectionAccessRecord]:
         if not connection_ids:
             return {}
@@ -496,7 +477,7 @@ class EndUserConnectionRepository:
             )
         )
         if lock:
-            query = query.with_for_update()
+            query = query.with_for_update(read=shared_lock)
         rows = session.scalars(query).all()
         return {row.id: cls._access(row) for row in rows}
 
@@ -658,12 +639,13 @@ class EndUserConnectionRepository:
         context = WebConnectionContext(
             execution.tenant_id, execution.app_id, execution.end_user_id, execution.account_id
         )
-        app = cls._require_context(session, context, lock=True)
+        app = cls._require_context(session, context, lock=True, shared=True)
         records = cls._access_records(
             session,
             context,
             frozenset(item.connection_id for item in execution.selections if item.connection_id is not None),
             lock=True,
+            shared_lock=dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
         )
         selections = []
         for item in execution.selections:
@@ -794,7 +776,7 @@ class EndUserConnectionRepository:
         self, context: WebConnectionContext, guard: ConnectionMutationGuard, changes: ConnectionChanges
     ) -> StoredConnection:
         with self._sessions.begin() as session:
-            self._require_context(session, context, lock=True)
+            self._require_context(session, context, lock=True, shared=True)
             predicates = self._guard(context, guard)
             values: dict[str, Any] = {}
             if changes.name is not None:
@@ -829,7 +811,7 @@ class EndUserConnectionRepository:
 
     def delete(self, context: WebConnectionContext, guard: ConnectionMutationGuard) -> None:
         with self._sessions.begin() as session:
-            self._require_context(session, context, lock=True)
+            self._require_context(session, context, lock=True, shared=True)
             result = cast(
                 CursorResult, session.execute(sa.delete(EndUserConnection).where(*self._guard(context, guard)))
             )
@@ -894,7 +876,7 @@ class EndUserConnectionRepository:
         ciphertext: str | None,
     ) -> StoredConnection:
         with self._sessions.begin() as session:
-            self._require_context(session, context, lock=True)
+            self._require_context(session, context, lock=True, shared=True)
             provider = session.scalar(
                 sa.select(EndUserConnection.provider).where(
                     *self._guard(context, guard),
