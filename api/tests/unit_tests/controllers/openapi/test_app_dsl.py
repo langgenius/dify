@@ -72,7 +72,7 @@ from services.agent.roster_package_entities import RosterAgentPackageExport
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app.export_service import AppExportService
 from services.app_dsl_service import AppDslService
-from services.app_package_service import AppPackageService
+from services.app_package_service import AppPackageManifest, AppPackageService
 from services.entities.app_entities import AppExportOptions
 from services.entities.dsl_entities import DraftGuardedImportParams, Import, ImportMode, ImportStatus
 from services.errors.app import (
@@ -94,6 +94,7 @@ from tests.unit_tests.services.test_app_package_service import (
     _bindings_by_node,
     _bundle_any_app,
     _package_storage,
+    _rewrite,
     _skill_section,
     _source,
 )
@@ -1249,6 +1250,58 @@ def test_package_import_round_trips_an_unpacked_export_onto_its_app(
     reexported, _folder = _export_folder(source)
     assert _skill_section(reexported) == _skill_section(exported)
     assert _skill_section(reexported)[2] == ["research"]
+
+
+@pytest.mark.usefixtures("app_query_services", "credentials")
+def test_confirming_a_pending_package_import_keeps_its_links(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_engine: Engine,
+) -> None:
+    """A package whose DSL version needs confirmation answers 202; the confirm keeps roster and skill links."""
+    storage = _package_storage(monkeypatch, sqlite_engine)
+    source = _source(sqlite_session, storage)
+    _add_roster_node(sqlite_session, source)
+    context = _owner_context(sqlite_session, source.tenant_id)
+    exported, _folder = _export_folder(source)
+
+    def needs_confirmation(_manifest: AppPackageManifest, data: dict[str, object], _members: dict[str, bytes]) -> None:
+        data["version"] = "99.0.0"
+
+    pending: dict[str, str] = {}
+    monkeypatch.setattr(
+        "services.app_dsl_service.redis_client.setex", lambda key, _ttl, value: pending.__setitem__(key, value)
+    )
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", pending.get)
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", pending.pop)
+
+    response, status = _import_package(
+        app,
+        AppPackageImportPayload(package=_part(_rewrite(exported, needs_confirmation)), preserve_agent_bindings=True),
+        context=context,
+    )
+    assert (status, response.status) == (202, ImportStatus.PENDING), response.error
+    [hint] = response.hints
+    assert hint.op == op_of(AppDslImportConfirmApi.post)
+
+    api = AppDslImportConfirmApi()
+    with app.test_request_context(f"/openapi/v1/workspaces/{context.active_workspace_id}/apps/imports", method="POST"):
+        confirmed, code = cast(_EndpointView, api.post).__handler__(
+            api, context, workspace_id=context.active_workspace_id, import_id=hint.input["import_id"]
+        )
+
+    assert (code, confirmed.status) == (200, ImportStatus.COMPLETED), confirmed.error
+    rows = _bindings_by_node(sqlite_session, confirmed.app_id)
+    assert (rows["node-3"].binding_type, rows["node-3"].agent_id) == (
+        WorkflowAgentBindingType.ROSTER_AGENT,
+        "roster-agent-1",
+    )
+    skill_links = sqlite_session.scalars(
+        select(AgentSkillBinding.skill_id).where(AgentSkillBinding.agent_id == rows["node-1"].agent_id)
+    ).all()
+    assert skill_links == ["source-workspace-skill"]
+    assert not pending
 
 
 @pytest.mark.usefixtures("app_query_services", "credentials")
