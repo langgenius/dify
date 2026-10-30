@@ -214,6 +214,122 @@ def test_capability_check_automatically_advances_to_goal_analysis() -> None:
     assert events == []
 
 
+@pytest.mark.parametrize("values", [{}, {"currency": "USD", "threshold": 100}])
+def test_complete_goal_automatically_reaches_resources_without_a_requirements_submission(values: Inputs) -> None:
+    from services.dify_builder.application.handlers_build import build_registry
+    from services.dify_builder.plan import WorkflowPlan
+
+    goal = "每天检查订单，金额超过 100 USD 时发出提醒，返回订单编号。"
+
+    class CompleteGoalAgent(PlaceholderAgent):
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        @override
+        def analyze_goal(self, goal_text: str, *, reply_language: str | None = None) -> dict[str, object]:
+            self.calls.append("analyze")
+            assert goal_text == goal
+            assert reply_language == "zh-Hans"
+            return {"fields": [], "values": values}
+
+        @override
+        def propose_plan_v1(
+            self, requirements: Inputs, *, goal_text: str, reply_language: str | None = None
+        ) -> WorkflowPlan:
+            self.calls.append("plan")
+            assert goal_text == goal
+            assert requirements == values
+            assert reply_language == "zh-Hans"
+            return super().propose_plan_v1(requirements, goal_text=goal_text, reply_language=reply_language)
+
+        @override
+        def discover_resources(
+            self,
+            plan_items: list[str],
+            *,
+            goal_text: str,
+            requirements: Inputs,
+            reply_language: str | None = None,
+        ) -> list[ResourceOption]:
+            self.calls.append("resources")
+            assert plan_items
+            assert goal_text == goal
+            assert requirements == values
+            assert reply_language == "zh-Hans"
+            return super().discover_resources(
+                plan_items, goal_text=goal_text, requirements=requirements, reply_language=reply_language
+            )
+
+    agent = CompleteGoalAgent()
+    dify = FakeBuildDifyPort()
+    events: list[dict[str, object]] = []
+    env, repo = _new_env(agent=agent, dify=dify, emit_canvas=events.append)
+    s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK, goal_text=goal, reply_language="zh-Hans")
+    runner = Runner(env, build_registry())
+
+    out = runner.advance(s.id, Turn(action=Action(kind="start_build", base_version=1), actor=_actor()))
+
+    assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    _, fc = repo.get_session(s.id)
+    assert fc.goal_text == goal
+    assert fc.requirements == values
+    assert fc.reply_language == "zh-Hans"
+    assert fc.plan_items
+    assert fc.resource_selection == {}
+    assert fc.built_node_ids == []
+    assert agent.calls == ["analyze", "plan", "resources"]
+    kinds = [item.kind for item in repo.list_conversation(s.id)]
+    assert "resource_select" in kinds
+    assert not {"form", "decision", "interaction_response", "plan", "test_result"}.intersection(kinds)
+    assert events == []
+    assert not dify.published
+    assert runner.advance(s.id, Turn(actor=_actor())).current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+
+
+def test_complete_goal_without_a_usable_plan_fails_explicitly_without_an_empty_form() -> None:
+    from core.dify_builder.contract import RunStatus
+    from services.dify_builder.application.handlers_build import build_registry
+    from services.dify_builder.service import _actions_for, _run_status
+
+    class UnavailablePlanAgent(StubAgent):
+        def __init__(self) -> None:
+            super().__init__()
+            self.plan_attempts = 0
+
+        @override
+        def analyze_goal(self, goal_text: str, *, reply_language: str | None = None) -> dict[str, object]:
+            return {"fields": [], "values": {"threshold": 100}}
+
+        @override
+        def propose_plan_v1(self, requirements: Inputs, *, goal_text: str, reply_language: str | None = None) -> None:
+            self.plan_attempts += 1
+
+    agent = UnavailablePlanAgent()
+    dify = FakeBuildDifyPort()
+    original_graph = dict(dify.graph)
+    env, repo = _new_env(agent=agent, dify=dify)
+    s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK, goal_text="Alert for orders above 100 USD")
+
+    out = Runner(env, build_registry()).advance(
+        s.id, Turn(action=Action(kind="start_build", base_version=1), actor=_actor())
+    )
+
+    assert out.current_state == PcState.FAILED
+    assert _run_status(out.current_state) == RunStatus.FAILED
+    _, fc = repo.get_session(s.id)
+    assert fc.goal_text == "Alert for orders above 100 USD"
+    assert fc.requirements == {"threshold": 100}
+    assert fc.plan_items == []
+    assert [action.id for action in _actions_for(out.current_state, fc)] == ["restart"]
+    items = repo.list_conversation(s.id)
+    assert not any(item.kind in {"form", "decision", "resource_select", "plan"} for item in items)
+    assistant = next(item for item in items if item.kind == "assistant_turn")
+    assert assistant.payload["execution"]["status"] == "error"
+    assert "couldn't produce a usable" in english_text(assistant.payload["reply_text"])
+    assert dify.graph == original_graph
+    assert agent.plan_attempts == 1
+
+
 def test_build_registry_maps_capability_check() -> None:
     from services.dify_builder.application.handlers_build import build_registry, handle_capability_check
 
