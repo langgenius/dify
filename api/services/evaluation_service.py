@@ -460,8 +460,6 @@ class EvaluationService:
         if data.default_metrics and (not data.evaluation_model_provider or not data.evaluation_model):
             raise ValueError("evaluation_model_provider and evaluation_model are required for default metrics.")
         if data.default_metrics:
-            if EvaluationManager.get_evaluation_instance() is None:
-                raise EvaluationFrameworkNotConfiguredError()
             evaluation_instance = EvaluationManager.get_evaluation_instance(data.evaluation_framework)
             if evaluation_instance is None:
                 raise EvaluationFrameworkNotConfiguredError()
@@ -908,10 +906,6 @@ class EvaluationService:
         before creating the run. A file-only request reuses the latest saved
         evaluation config, including its framework.
         """
-        # The deployment setting enables evaluation; each run selects its own framework.
-        if EvaluationManager.get_configured_framework() == EvaluationFrameworkEnum.NONE:
-            raise EvaluationFrameworkNotConfiguredError()
-
         resolved_run_request = cls.resolve_run_request_config(
             session=session,
             tenant_id=tenant_id,
@@ -1798,8 +1792,6 @@ class EvaluationService:
     def get_supported_metrics(
         cls, category: EvaluationCategory, framework: EvaluationFrameworkEnum | None = None
     ) -> list[str]:
-        if EvaluationManager.get_configured_framework() == EvaluationFrameworkEnum.NONE:
-            return []
         return EvaluationManager.get_supported_metrics(category, framework)
 
     @classmethod
