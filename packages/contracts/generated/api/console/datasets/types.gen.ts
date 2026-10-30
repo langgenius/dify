@@ -70,6 +70,7 @@ export type DatasetDetailWithPartialMembersResponse = {
   permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
+  reranking_available?: boolean | null
   retrieval_model_dict: DatasetRetrievalModelResponse
   runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
@@ -166,6 +167,7 @@ export type DatasetDetailResponse = {
   permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
+  reranking_available?: boolean | null
   retrieval_model_dict: DatasetRetrievalModelResponse
   runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
@@ -750,6 +752,7 @@ export type DatasetListItemResponse = {
   permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
+  reranking_available?: boolean | null
   retrieval_model_dict: DatasetRetrievalModelResponse
   runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
