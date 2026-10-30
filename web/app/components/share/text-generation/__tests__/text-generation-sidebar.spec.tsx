@@ -164,6 +164,43 @@ describe('TextGenerationSidebar', () => {
     vi.clearAllMocks()
   })
 
+  it.each([
+    { isWorkflow: true, isPC: true },
+    { isWorkflow: true, isPC: false },
+    { isWorkflow: false, isPC: true },
+    { isWorkflow: false, isPC: false },
+  ])(
+    'offers My apps before application information for the authenticated Webapp: %o',
+    (surface) => {
+      renderWorkflow(surface)
+
+      const myApps = screen.getByRole('link', { name: 'app.endUser.myApps' })
+      expect(myApps).toHaveAttribute('href', '/my-apps')
+      expect(
+        myApps.compareDocumentPosition(screen.getByText('Text Generation')) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+    },
+  )
+
+  it.each([false, true])(
+    'does not offer My apps for an anonymous Webapp, workflow=%s',
+    (isWorkflow) => {
+      renderWorkflow({ isWorkflow }, createAnonymousEntry())
+
+      expect(screen.queryByRole('link', { name: 'app.endUser.myApps' })).not.toBeInTheDocument()
+    },
+  )
+
+  it.each([false, true])(
+    'does not offer Webapp My apps navigation for an installed app, workflow=%s',
+    (isWorkflow) => {
+      renderWorkflow({ isWorkflow, isInstalledApp: true })
+
+      expect(screen.queryByRole('link', { name: 'app.endUser.myApps' })).not.toBeInTheDocument()
+    },
+  )
+
   it('should render create tab content and pass orchestration props to RunOnce', () => {
     renderSidebar()
 

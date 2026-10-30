@@ -17,6 +17,7 @@ import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import WebAppConnectionControls from '@/app/components/share/connections/webapp-connection-controls'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { appDefaultIconBackground } from '@/config'
+import MyAppsLink from '../my-apps-link'
 import SignIn from '../sign-in'
 import { useWebAppEntry } from '../webapp-entry'
 import RunBatch from './run-batch'
@@ -152,6 +153,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
           isPC ? 'p-8 pb-0' : 'p-4 pb-0',
         )}
       >
+        {!isInstalledApp && <MyAppsLink className="w-full shrink-0" />}
         {showWorkflowLayout ? (
           <div className="flex flex-col gap-3">
             <AppIcon
