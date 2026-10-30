@@ -54,8 +54,6 @@ def _place(body: dict[str, Any], name: str, parts: list[FileStorage], *, file_fi
         raise InvalidFilePart(f"{name}: one part expected; name it {name}{LIST_SUFFIX} for a list")
     value: FileStorage | list[FileStorage] = parts if many else parts[0]
     target = body if key is None else body.setdefault(field, {})
-    if not isinstance(target, dict):
-        raise InvalidFilePart(f"{name}: {field} is given as one file and as keyed files")
     leaf = field if key is None else key
     if not isinstance(target, dict) or leaf in target:
         raise InvalidFilePart(f"{name}: given more than once")
