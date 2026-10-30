@@ -260,6 +260,7 @@ jobs:
             api/tests/unit_tests/migrations/versions/test_2026_10_21_1500-b9d3f7a5c102_add_upgrade_reconciliation_lease.py
             api/tests/unit_tests/models/test_agent_config_entities.py
             api/tests/unit_tests/controllers/console/datasets/test_datasets.py
+            api/tests/unit_tests/controllers/console/test_apikey.py
             api/tests/unit_tests/controllers/console/test_wraps.py
             api/tests/unit_tests/controllers/console/workspace/rbac/test_roles.py
             api/tests/unit_tests/core/agent/test_base_agent_runner.py
