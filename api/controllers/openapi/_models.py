@@ -608,6 +608,13 @@ _IMPORT_DRAFT_HASH_DESCRIPTION: Final = (
 _DRAFT_HASH_NEEDS_APP_ID: Final = "draft_hash is only valid when app_id names the app to overwrite"
 
 
+def _require_app_id_for_draft_hash(*, draft_hash: str | None, app_id: str | None) -> None:
+    if draft_hash is None:
+        return
+    if not app_id:
+        raise ValueError(_DRAFT_HASH_NEEDS_APP_ID)
+
+
 class AppDslImportPayload(BaseModel):
     """Request body for POST /workspaces/<workspace_id>/apps/imports."""
 
@@ -627,8 +634,7 @@ class AppDslImportPayload(BaseModel):
 
     @model_validator(mode="after")
     def _validate_source_by_mode(self) -> AppDslImportPayload:
-        if self.draft_hash is not None and not self.app_id:
-            raise ValueError(_DRAFT_HASH_NEEDS_APP_ID)
+        _require_app_id_for_draft_hash(draft_hash=self.draft_hash, app_id=self.app_id)
         source = self.yaml_url if self.mode == ImportMode.YAML_URL else self.yaml_content
         if not source:
             raise ValueError(f"{self.mode.replace('-', '_')} is required when mode is '{self.mode}'")
@@ -668,8 +674,7 @@ class AppPackageImportPayload(BaseModel):
 
     @model_validator(mode="after")
     def _draft_hash_needs_app_id(self) -> Self:
-        if self.draft_hash is not None and not self.app_id:
-            raise ValueError(_DRAFT_HASH_NEEDS_APP_ID)
+        _require_app_id_for_draft_hash(draft_hash=self.draft_hash, app_id=self.app_id)
         return self
 
 
