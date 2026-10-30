@@ -711,22 +711,6 @@ class WorkflowService:
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
 
-        if node_id := first_end_user_tool_node(draft_workflow.graph_dict):
-            # Conversion takes this same lock until its provider is committed.
-            session.scalar(
-                select(App.id).where(App.id == app_model.id, App.tenant_id == app_model.tenant_id).with_for_update()
-            )
-            tool_id = session.scalar(
-                select(WorkflowToolProvider.id)
-                .where(
-                    WorkflowToolProvider.tenant_id == app_model.tenant_id,
-                    WorkflowToolProvider.app_id == app_model.id,
-                )
-                .with_for_update()
-            )
-            if tool_id is not None:
-                raise WorkflowToolEndUserAuthError(node_id)
-
         validate_llm_environment_model_references(
             graph=draft_workflow.graph_dict,
             environment_variables=draft_workflow.environment_variables,
@@ -771,6 +755,22 @@ class WorkflowService:
                 )
                 if trigger_node_count > 2:
                     raise TriggerNodeLimitExceededError(count=trigger_node_count, limit=2)
+
+        if node_id := first_end_user_tool_node(draft_workflow.graph_dict):
+            # Finish external validation before serializing publication with Tool conversion.
+            session.scalar(
+                select(App.id).where(App.id == app_model.id, App.tenant_id == app_model.tenant_id).with_for_update()
+            )
+            tool_id = session.scalar(
+                select(WorkflowToolProvider.id)
+                .where(
+                    WorkflowToolProvider.tenant_id == app_model.tenant_id,
+                    WorkflowToolProvider.app_id == app_model.id,
+                )
+                .with_for_update()
+            )
+            if tool_id is not None:
+                raise WorkflowToolEndUserAuthError(node_id)
 
         # create new workflow
         workflow = Workflow.new(

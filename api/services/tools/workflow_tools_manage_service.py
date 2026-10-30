@@ -8,7 +8,13 @@ from sqlalchemy.orm import sessionmaker
 
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
-from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration, emoji_icon_adapter
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import (
+    ToolProviderEntity,
+    ToolProviderIdentity,
+    WorkflowToolParameterConfiguration,
+    emoji_icon_adapter,
+)
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
@@ -21,6 +27,27 @@ from services.tools.tools_transform_service import ToolTransformService
 from services.workflow.tool_credentials import WorkflowToolEndUserAuthError, first_end_user_tool_node
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_workflow_tool(provider: WorkflowToolProvider, workflow: Workflow) -> WorkflowToolProviderController:
+    """Validate the loaded graph without opening another Session while holding the App lock."""
+    controller = WorkflowToolProviderController(
+        entity=ToolProviderEntity(
+            identity=ToolProviderIdentity(
+                author="",
+                name=provider.label,
+                label=I18nObject(en_US=provider.label, zh_Hans=provider.label),
+                description=I18nObject(en_US=provider.description, zh_Hans=provider.description),
+                icon=provider.icon,
+            ),
+            credentials_schema=[],
+            plugin_id=None,
+        ),
+        provider_id=provider.id,
+    )
+    # This controller is only used for validation and labels, which do not consume the author.
+    controller.tools = [WorkflowToolProviderController.build_tool(provider, workflow, author="")]
+    return controller
 
 
 class WorkflowToolManageService:
@@ -89,17 +116,14 @@ class WorkflowToolManageService:
             if import_id:
                 workflow_tool_provider.id = import_id
             try:
-                WorkflowToolProviderController.from_db(workflow_tool_provider)
+                controller = _validate_workflow_tool(workflow_tool_provider, workflow)
             except Exception as e:
                 logger.warning(e, exc_info=True)
                 raise ValueError(str(e)) from e
             _session.add(workflow_tool_provider)
 
-        # keep the session open to make orm instances in the same session
         if labels is not None:
-            ToolLabelManager.update_tool_labels(
-                ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
-            )
+            ToolLabelManager.update_tool_labels(controller, labels)
 
         return {"result": "success"}
 
@@ -188,13 +212,13 @@ class WorkflowToolManageService:
             workflow_tool_provider.updated_at = datetime.now()
 
             try:
-                WorkflowToolProviderController.from_db(workflow_tool_provider)
+                controller = _validate_workflow_tool(workflow_tool_provider, workflow)
             except Exception as e:
                 raise ValueError(str(e)) from e
 
             if labels is not None:
                 ToolLabelManager.update_tool_labels(
-                    ToolTransformService.workflow_provider_to_controller(workflow_tool_provider),
+                    controller,
                     labels,
                     session=_session,
                 )
