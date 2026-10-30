@@ -12,6 +12,16 @@ Bearer format: API_KEY
 ## web
 Web application API operations
 
+### [GET] /account/profile
+Get the authenticated WebApp user's profile
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account profile | **application/json**: [WebAccountProfileResponse](#webaccountprofileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /audio-to-text
 **Convert audio to text**
 
@@ -2842,6 +2852,14 @@ in form definition, or a variable while the workflow is running.
 | email | string |  | Yes |
 | is_valid | boolean |  | Yes |
 | token | string |  | Yes |
+
+#### WebAccountProfileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | Yes |
+| avatar_url | string |  | Yes |
+| name | string |  | Yes |
 
 #### WebAppAuthModel
 

@@ -1857,6 +1857,15 @@ export const zVerificationTokenResponse = z.object({
 })
 
 /**
+ * WebAccountProfileResponse
+ */
+export const zWebAccountProfileResponse = z.object({
+  avatar: z.string().nullable(),
+  avatar_url: z.string().nullable(),
+  name: z.string(),
+})
+
+/**
  * WebAppAuthSSOModel
  */
 export const zWebAppAuthSsoModel = z.object({
@@ -2455,6 +2464,14 @@ export const zGeneratedAppResponseWritable = zShallowJsonValue
 export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.unknown())
 
 /**
+ * WebAccountProfileResponse
+ */
+export const zWebAccountProfileResponseWritable = z.object({
+  avatar: z.string().nullable(),
+  name: z.string(),
+})
+
+/**
  * WebMessageListItem
  */
 export const zWebMessageListItemWritable = z.object({
@@ -2491,6 +2508,11 @@ export const zWebMessageInfiniteScrollPaginationWritable = z.object({
   has_more: z.boolean(),
   limit: z.int(),
 })
+
+/**
+ * Account profile
+ */
+export const zGetAccountProfileResponse = zWebAccountProfileResponse
 
 /**
  * Success
