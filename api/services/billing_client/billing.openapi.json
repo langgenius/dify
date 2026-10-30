@@ -4,7 +4,7 @@
     "title": "",
     "version": "0.0.1"
   },
-  "x-dify-saas-commit": "9070b28dc9da623d32a29a20f6d35ce43b1520dd",
+  "x-dify-saas-commit": "a0b548cf3020d490a8b7fad21dfbb66b72fa0ed6",
   "paths": {
     "/v1/subscription/info": {
       "get": {
@@ -896,34 +896,34 @@
         ]
       },
       "GetSubscriptionInfoReply": {
+        "required": [
+          "enabled",
+          "subscription",
+          "members",
+          "apps",
+          "vector_space",
+          "knowledge_rate_limit",
+          "documents_upload_quota",
+          "annotation_quota_limit",
+          "docs_processing",
+          "can_replace_logo",
+          "model_load_balancing_enabled",
+          "knowledge_pipeline_publish_enabled",
+          "next_credit_reset_date"
+        ],
         "type": "object",
         "properties": {
           "enabled": {
             "type": "boolean"
           },
           "subscription": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/BillingSubscriptionPlan"
-              }
-            ],
-            "nullable": true
+            "$ref": "#/components/schemas/BillingSubscriptionPlan"
           },
           "members": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/SubscriptionQuota"
-              }
-            ],
-            "nullable": true
+            "$ref": "#/components/schemas/SubscriptionQuota"
           },
           "apps": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/SubscriptionQuota"
-              }
-            ],
-            "nullable": true
+            "$ref": "#/components/schemas/SubscriptionQuota"
           },
           "vector_space": {
             "allOf": [
@@ -934,30 +934,20 @@
             "nullable": true
           },
           "knowledge_rate_limit": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/KnowledgeRateLimit"
-              }
-            ],
-            "nullable": true
+            "$ref": "#/components/schemas/KnowledgeRateLimit"
           },
           "documents_upload_quota": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/SubscriptionQuota"
-              }
-            ],
-            "nullable": true
+            "$ref": "#/components/schemas/SubscriptionQuota"
           },
           "annotation_quota_limit": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/SubscriptionQuota"
-              }
-            ],
-            "nullable": true
+            "$ref": "#/components/schemas/SubscriptionQuota"
           },
           "docs_processing": {
+            "enum": [
+              "standard",
+              "priority",
+              "top-priority"
+            ],
             "type": "string"
           },
           "can_replace_logo": {
@@ -974,22 +964,7 @@
             "format": "int64"
           }
         },
-        "description": "Get subscription info reply",
-        "required": [
-          "enabled",
-          "subscription",
-          "members",
-          "apps",
-          "vector_space",
-          "knowledge_rate_limit",
-          "documents_upload_quota",
-          "annotation_quota_limit",
-          "docs_processing",
-          "can_replace_logo",
-          "model_load_balancing_enabled",
-          "knowledge_pipeline_publish_enabled",
-          "next_credit_reset_date"
-        ]
+        "description": "Get subscription info reply"
       },
       "GetSubscriptionPaymentLinkReply": {
         "type": "object",
@@ -1216,29 +1191,19 @@
         ]
       },
       "QuotaGetInfoReply": {
-        "type": "object",
-        "properties": {
-          "trigger_event": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/QuotaFeatureInfo"
-              }
-            ],
-            "nullable": true
-          },
-          "api_rate_limit": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/QuotaFeatureInfo"
-              }
-            ],
-            "nullable": true
-          }
-        },
         "required": [
           "trigger_event",
           "api_rate_limit"
-        ]
+        ],
+        "type": "object",
+        "properties": {
+          "trigger_event": {
+            "$ref": "#/components/schemas/QuotaFeatureInfo"
+          },
+          "api_rate_limit": {
+            "$ref": "#/components/schemas/QuotaFeatureInfo"
+          }
+        }
       },
       "QuotaReleaseReply": {
         "type": "object",
