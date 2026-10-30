@@ -6,6 +6,7 @@ from collections.abc import Callable
 
 from services.dify_builder import trace_diagnostics
 from services.dify_builder.agent import llm
+from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,8 @@ class LanguageDetector:
             if model is None:
                 return self._fallback(text)
             raw = llm.invoke_text(model, system=_DETECT_SYSTEM, user=text[:2000]).strip()
+        except CognitionPolicyDeniedError:
+            raise
         except Exception:
             logger.exception("dify_builder: language detection failed; using conversation fallback")
             return self._fallback(text)

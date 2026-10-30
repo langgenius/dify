@@ -1,6 +1,9 @@
+from types import SimpleNamespace
+
 import pytest
 
 from core.dify_builder.models import Inputs
+from extensions.application_services import dify_builder_cognition_policy as policy
 from services.dify_builder.agent import ping
 
 MC = {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {"temperature": 0.0, "stop": ["x"]}}
@@ -9,11 +12,13 @@ MC = {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params
 def test_ping_success(monkeypatch: pytest.MonkeyPatch) -> None:
     captured = {}
 
-    def fake_resolve(tenant_id: str, model_config: Inputs | None) -> str:  # noqa: ARG001
-        return "INSTANCE"
+    instance = SimpleNamespace(provider="openai", model_name="gpt-4o")
 
-    def fake_names(tenant_id: str, model_config: Inputs | None) -> dict[str, str]:  # noqa: ARG001
-        return {"provider": "openai", "name": "gpt-4o"}
+    def fake_resolve(
+        tenant_id: str, model_config: Inputs | None, *, account_id: str, app_id: str | None
+    ) -> SimpleNamespace:
+        assert (tenant_id, model_config, account_id, app_id) == ("t1", MC, "account", None)
+        return instance
 
     def fake_invoke_text(
         instance: object,
@@ -28,29 +33,27 @@ def test_ping_success(monkeypatch: pytest.MonkeyPatch) -> None:
         captured["stop"] = stop
         return "OK"
 
-    monkeypatch.setattr(ping, "resolve_model_instance", fake_resolve)
-    monkeypatch.setattr(ping, "resolved_model_names", fake_names)
+    monkeypatch.setattr(policy, "guarded_cognition_model", fake_resolve)
     monkeypatch.setattr(ping, "invoke_text", fake_invoke_text)
 
-    result = ping.ping_model("t1", MC)
+    result = ping.ping_model("t1", MC, account_id="account")
     assert result == {"ok": True, "model": {"provider": "openai", "name": "gpt-4o"}, "reply": "OK"}
-    assert captured["instance"] == "INSTANCE"
+    assert captured["instance"] is instance
     assert captured["params"] == {"temperature": 0.0}  # stop split out
     assert captured["stop"] == ["x"]
 
 
 def test_ping_default_model_no_config(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(ping, "resolve_model_instance", lambda t, m: "INSTANCE")  # noqa: ARG005
-    monkeypatch.setattr(
-        ping,
-        "resolved_model_names",
-        lambda t, m: {"provider": "anthropic", "name": "claude-sonnet-5"},  # noqa: ARG005
-    )
+    def resolve(tenant_id: str, model_config: Inputs | None, *, account_id: str, app_id: str | None) -> SimpleNamespace:
+        assert (tenant_id, model_config, account_id, app_id) == ("t1", None, "account", None)
+        return SimpleNamespace(provider="anthropic", model_name="claude-sonnet-5")
+
+    monkeypatch.setattr(policy, "guarded_cognition_model", resolve)
     monkeypatch.setattr(
         ping,
         "invoke_text",
         lambda inst, *, system, user, model_parameters=None, stop=None: "OK",  # noqa: ARG005
     )
-    result = ping.ping_model("t1", None)
+    result = ping.ping_model("t1", None, account_id="account")
     assert result["ok"] is True
     assert result["model"]["provider"] == "anthropic"

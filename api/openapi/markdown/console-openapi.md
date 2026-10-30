@@ -3191,6 +3191,20 @@ Create a copy of an existing application
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /apps/{app_id}/dify-builder/availability
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [DifyBuilderAvailabilityResponse](#difybuilderavailabilityresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /apps/{app_id}/export
 Export application configuration as DSL
 
@@ -14877,6 +14891,29 @@ Increment snippet use count by 1
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /workspaces/current/dify-builder/policy
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [DifyBuilderPolicyResponse](#difybuilderpolicyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /workspaces/current/dify-builder/policy
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DifyBuilderPolicyPayload](#difybuilderpolicypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [DifyBuilderPolicyResponse](#difybuilderpolicyresponse)<br> |
+| 409 | Conflict | **application/json**: [BuilderPolicyConflictError](#builderpolicyconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /workspaces/current/endpoints
 Create a new plugin endpoint
 
@@ -22844,6 +22881,14 @@ Stable HTTP error codes returned by the Builder console routes.
 | ---- | ---- | ----------- | -------- |
 | BuilderErrorCode | string | Stable HTTP error codes returned by the Builder console routes. |  |
 
+#### BuilderPolicyConflictError
+
+Workspace Builder policy changed; reload before saving.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BuilderPolicyConflictError |  | Workspace Builder policy changed; reload before saving. |  |
+
 #### BuilderTextParts
 
 | Name | Type | Description | Required |
@@ -23165,6 +23210,27 @@ TEAM: Team collaboration paid plan
 | ---- | ---- | ----------- | -------- |
 | data | [ [CodeBasedExtensionItemResponse](#codebasedextensionitemresponse) ] | Non-builtin extensions of the module | Yes |
 | module | string | Module name | Yes |
+
+#### CognitionModelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | object |  | No |
+| id | string |  | Yes |
+| mode | string, <br>**Available values:** "chat", "completion" | *Enum:* `"chat"`, `"completion"` | Yes |
+| name | string |  | Yes |
+| provider | string |  | Yes |
+
+#### CognitionModelResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | object |  | Yes |
+| health | string, <br>**Available values:** "configured", "unavailable", "unknown" | *Enum:* `"configured"`, `"unavailable"`, `"unknown"` | Yes |
+| id | string |  | Yes |
+| mode | string |  | Yes |
+| name | string |  | Yes |
+| provider | string |  | Yes |
 
 #### CompletionConversationQuery
 
@@ -24741,6 +24807,41 @@ Enum representing the deployment edition of the platform.
 | payload | [AssistantTurnItem](#assistantturnitem) |  | Yes |
 | seq | integer |  | Yes |
 
+#### DifyBuilderAttachmentPayload
+
+An opaque native upload reference; authority is reconstructed server-side.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| upload_file_id | string (uuid) |  | Yes |
+
+#### DifyBuilderAttachmentStateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| digest | string |  | No |
+| extension | string |  | Yes |
+| name | string |  | Yes |
+| reason | string |  | No |
+| size | integer |  | Yes |
+| status | string, <br>**Available values:** "consumed", "pending", "rejected", "truncated" | *Enum:* `"consumed"`, `"pending"`, `"rejected"`, `"truncated"` | Yes |
+| upload_file_id | string (uuid) |  | Yes |
+
+#### DifyBuilderAvailabilityResponse
+
+The same safe availability projection after App-scoped admission.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available | boolean |  | Yes |
+| default_model_id | string |  | Yes |
+| enabled | boolean |  | Yes |
+| fallback_model_ids | [ string ] |  | Yes |
+| models | [ [CognitionModelResponse](#cognitionmodelresponse) ] |  | Yes |
+| reason_code | string, <br>**Available values:** "builder_disabled", "model_availability_unknown", "model_unavailable" |  | Yes |
+| revision | integer |  | Yes |
+| source | string, <br>**Available values:** "explicit", "workspace_default" | *Enum:* `"explicit"`, `"workspace_default"` | Yes |
+
 #### DifyBuilderCanvasEventResponse
 
 | Name | Type | Description | Required |
@@ -24766,6 +24867,7 @@ Enum representing the deployment edition of the platform.
 | actions | [ [DifyBuilderActionResponse](#difybuilderactionresponse) ] |  | No |
 | active_interaction | [DifyBuilderActiveInteractionResponse](#difybuilderactiveinteractionresponse) |  | No |
 | app_revision | [DifyBuilderAppRevisionResponse](#difybuilderapprevisionresponse) |  | No |
+| attachments | [ [DifyBuilderMaterialReceiptResponse](#difybuildermaterialreceiptresponse) ] |  | No |
 | canvas_read_only | boolean |  | Yes |
 | command_id | string |  | Yes |
 | conversation_last_seq | integer |  | Yes |
@@ -24862,8 +24964,9 @@ Console permission-guard denial as serialized by the shared console HTTP error h
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | Yes |
+| attachments | [ [DifyBuilderAttachmentPayload](#difybuilderattachmentpayload) ] |  | No |
 | derive_app_name | boolean |  | No |
-| goal_text | string |  | Yes |
+| goal_text | string |  | No |
 | model_config | [SessionModel](#sessionmodel) |  | No |
 | scenario | string |  | Yes |
 
@@ -24872,6 +24975,7 @@ Console permission-guard denial as serialized by the shared console HTTP error h
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | Yes |
+| attachments | [ [DifyBuilderAttachmentPayload](#difybuilderattachmentpayload) ] |  | No |
 | checklist_errors | [ [DifyBuilderChecklistErrorPayload](#difybuilderchecklisterrorpayload) ] |  | Yes |
 | failed_run_id | string |  | No |
 | model_config | [SessionModel](#sessionmodel) |  | No |
@@ -24882,7 +24986,8 @@ Console permission-guard denial as serialized by the shared console HTTP error h
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | Yes |
-| goal_text | string |  | Yes |
+| attachments | [ [DifyBuilderAttachmentPayload](#difybuilderattachmentpayload) ] |  | No |
+| goal_text | string |  | No |
 | model_config | [SessionModel](#sessionmodel) |  | No |
 | scenario | string |  | Yes |
 
@@ -24891,6 +24996,7 @@ Console permission-guard denial as serialized by the shared console HTTP error h
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | Yes |
+| attachments | [ [DifyBuilderAttachmentPayload](#difybuilderattachmentpayload) ] |  | No |
 | failed_run_id | string |  | Yes |
 | model_config | [SessionModel](#sessionmodel) |  | No |
 | scenario | string |  | Yes |
@@ -24930,6 +25036,8 @@ Create a Build, Edit, failed-run Fix, or checklist Fix session.
 | code | string |  | No |
 | command_id | string |  | No |
 | message | string |  | Yes |
+| reason_code | string |  | No |
+| recoverable | boolean |  | No |
 | session_id | string |  | No |
 
 #### DifyBuilderErrorEventResponse
@@ -25009,6 +25117,22 @@ Builder is not enabled for the workspace (the shared ``dify_builder_required`` g
 | payload | [InteractionResponseItem](#interactionresponseitem) |  | Yes |
 | seq | integer |  | Yes |
 
+#### DifyBuilderMaterialReceiptResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| attachments | [ [DifyBuilderAttachmentStateResponse](#difybuilderattachmentstateresponse) ] |  | Yes |
+| client_turn_id | string |  | Yes |
+| consumed_version | integer |  | Yes |
+| generation | integer |  | Yes |
+| id | string (uuid) |  | Yes |
+| seq | integer |  | Yes |
+| session_id | string |  | Yes |
+| status | string, <br>**Available values:** "consumed", "pending", "rejected", "superseded", "truncated" | *Enum:* `"consumed"`, `"pending"`, `"rejected"`, `"superseded"`, `"truncated"` | Yes |
+| task_id | string |  | Yes |
+| test_input_candidate | boolean |  | Yes |
+
 #### DifyBuilderNativeExecutionEventData
 
 | Name | Type | Description | Required |
@@ -25055,6 +25179,29 @@ Strict public native receipt; domain DTO also owns generated schemas.
 | kind | string |  | Yes |
 | payload | [PlanCard](#plancard) |  | Yes |
 | seq | integer |  | Yes |
+
+#### DifyBuilderPolicyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_model_id | string |  | Yes |
+| enabled | boolean |  | Yes |
+| expected_revision | integer |  | Yes |
+| fallback_model_ids | [ string ] |  | No |
+| models | [ [CognitionModelPayload](#cognitionmodelpayload) ] |  | Yes |
+
+#### DifyBuilderPolicyResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available | boolean |  | Yes |
+| default_model_id | string |  | Yes |
+| enabled | boolean |  | Yes |
+| fallback_model_ids | [ string ] |  | Yes |
+| models | [ [CognitionModelResponse](#cognitionmodelresponse) ] |  | Yes |
+| reason_code | string, <br>**Available values:** "builder_disabled", "model_availability_unknown", "model_unavailable" |  | Yes |
+| revision | integer |  | Yes |
+| source | string, <br>**Available values:** "explicit", "workspace_default" | *Enum:* `"explicit"`, `"workspace_default"` | Yes |
 
 #### DifyBuilderPreflightContextConversationItemResponse
 
@@ -25267,6 +25414,7 @@ Localized display only; submitted values remain in action.payload.
 | actions | [ [DifyBuilderActionResponse](#difybuilderactionresponse) ] |  | No |
 | active_interaction | [DifyBuilderActiveInteractionResponse](#difybuilderactiveinteractionresponse) |  | No |
 | app_revision | [DifyBuilderAppRevisionResponse](#difybuilderapprevisionresponse) |  | No |
+| attachments | [ [DifyBuilderMaterialReceiptResponse](#difybuildermaterialreceiptresponse) ] |  | No |
 | canvas_read_only | boolean |  | Yes |
 | conversation_last_seq | integer |  | Yes |
 | decision | [Decision](#decision) |  | No |
@@ -25305,9 +25453,10 @@ One JSON object carried by an SSE ``data:`` frame.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| attachments | [ [DifyBuilderAttachmentPayload](#difybuilderattachmentpayload) ] |  | No |
 | base_version | integer |  | Yes |
 | client_turn_id | string |  | Yes |
-| text | string |  | Yes |
+| text | string |  | No |
 
 #### DifyBuilderTaskControlPayload
 

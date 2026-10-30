@@ -6,7 +6,7 @@ from typing import Never
 import pytest
 from pydantic import JsonValue
 
-from core.dify_builder.models import Graph
+from core.dify_builder.models import Graph, Inputs
 from services.dify_builder.code_risk_assessment import CodeFacts
 
 
@@ -249,9 +249,9 @@ def test_code_upstream_confirmation_survives_canvas_title_and_node_order_only() 
 
 
 def test_selected_model_fenced_json_is_assessed_in_one_attempt(monkeypatch: pytest.MonkeyPatch) -> None:
+    from extensions.application_services import dify_builder_cognition_policy as cognition_policy_wiring
     from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
     from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
-    from services.dify_builder.agent import model_resolver
     from services.dify_builder.code_risk_assessment import assess_code, builder_code_reasoner
     from tests.helpers.unit.core.model_fixtures import make_model_instance
 
@@ -271,9 +271,12 @@ def test_selected_model_fenced_json_is_assessed_in_one_attempt(monkeypatch: pyte
 
     instance = make_model_instance(provider="openai", model="gpt-4o")
     monkeypatch.setattr(instance, "invoke_llm", invoke)
-    monkeypatch.setattr(model_resolver, "resolve_model_instance", lambda *_: instance)
+    monkeypatch.setattr(cognition_policy_wiring, "guarded_cognition_model", lambda *_, **__: instance)
     risk = assess_code(
-        prepare(), reason=builder_code_reasoner(tenant_id="owned-tenant", model_config={"name": "selected"})
+        prepare(),
+        reason=builder_code_reasoner(
+            tenant_id="owned-tenant", account_id="actor", app_id="app", model_config={"name": "selected"}
+        ),
     )
     assert (risk.status, risk.classification) == ("assessed", "pure")
     assert risk.risk_notice == "Parses the supplied JSON without external effects."
@@ -294,9 +297,9 @@ def test_selected_model_fenced_json_is_assessed_in_one_attempt(monkeypatch: pyte
 def test_selected_model_malformed_json_is_not_automatically_retried(
     monkeypatch: pytest.MonkeyPatch, response: str
 ) -> None:
+    from extensions.application_services import dify_builder_cognition_policy as cognition_policy_wiring
     from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
     from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
-    from services.dify_builder.agent import model_resolver
     from services.dify_builder.code_risk_assessment import assess_code, builder_code_reasoner
     from tests.helpers.unit.core.model_fixtures import make_model_instance
 
@@ -314,9 +317,12 @@ def test_selected_model_malformed_json_is_not_automatically_retried(
 
     instance = make_model_instance(provider="openai", model="gpt-4o")
     monkeypatch.setattr(instance, "invoke_llm", invoke)
-    monkeypatch.setattr(model_resolver, "resolve_model_instance", lambda *_: instance)
+    monkeypatch.setattr(cognition_policy_wiring, "guarded_cognition_model", lambda *_, **__: instance)
     risk = assess_code(
-        prepare(), reason=builder_code_reasoner(tenant_id="owned-tenant", model_config={"name": "selected"})
+        prepare(),
+        reason=builder_code_reasoner(
+            tenant_id="owned-tenant", account_id="actor", app_id="app", model_config={"name": "selected"}
+        ),
     )
     assert (risk.status, risk.classification) == ("unavailable", "unknown")
     assert len(calls) == 1
@@ -348,7 +354,8 @@ def test_code_risk_language_is_bound_to_snapshot_without_translating_source() ->
 
 
 def test_code_reasoner_uses_session_language_instead_of_old_goal_language(monkeypatch: pytest.MonkeyPatch) -> None:
-    from services.dify_builder.agent import llm, model_resolver
+    from extensions.application_services import dify_builder_cognition_policy as cognition_policy_wiring
+    from services.dify_builder.agent import llm
     from services.dify_builder.code_risk_assessment import assess_code, builder_code_reasoner
 
     captured: dict[str, object] = {}
@@ -357,14 +364,41 @@ def test_code_reasoner_uses_session_language_instead_of_old_goal_language(monkey
         captured.update(kwargs)
         return '{"classification":"pure","risk_notice":"仅在内存中整理文本。"}'
 
-    monkeypatch.setattr(model_resolver, "resolve_model_instance", lambda *_: object())
+    monkeypatch.setattr(cognition_policy_wiring, "guarded_cognition_model", lambda *_, **__: object())
     monkeypatch.setattr(llm, "invoke_text", invoke)
     result = assess_code(
         prepare(reply_language="zh-Hans"),
-        reason=builder_code_reasoner(tenant_id="tenant", model_config={"name": "selected"}),
+        reason=builder_code_reasoner(
+            tenant_id="tenant", account_id="actor", app_id="app", model_config={"name": "selected"}
+        ),
     )
     assert result.status == "assessed"
     assert isinstance(captured["system"], str)
     assert "Write risk_notice in zh-Hans" in captured["system"]
     assert isinstance(captured["user"], str)
     assert "Parse the supplied value" in captured["user"]
+
+
+def test_code_risk_policy_denial_is_not_downgraded_to_simulation(monkeypatch: pytest.MonkeyPatch) -> None:
+    from extensions.application_services import dify_builder_cognition_policy as cognition_policy_wiring
+    from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
+    from services.dify_builder.code_risk_assessment import assess_code, builder_code_reasoner
+
+    owners: list[tuple[str, str | None, str | None]] = []
+
+    def deny(tenant_id: str, _requested: Inputs | None, *, account_id: str | None, app_id: str | None) -> Never:
+        owners.append((tenant_id, account_id, app_id))
+        raise CognitionPolicyDeniedError("builder_disabled")
+
+    monkeypatch.setattr(cognition_policy_wiring, "guarded_cognition_model", deny)
+    with pytest.raises(CognitionPolicyDeniedError, match="builder_disabled"):
+        assess_code(
+            prepare(),
+            reason=builder_code_reasoner(
+                tenant_id="owned-tenant",
+                account_id="acting-account",
+                app_id="owned-app",
+                model_config={"name": "selected"},
+            ),
+        )
+    assert owners == [("owned-tenant", "acting-account", "owned-app")]

@@ -18,6 +18,7 @@ from core.dify_builder.models import (
     DifyBuilderContext,
     EntryMode,
     Graph,
+    Inputs,
     MutationIntent,
     Session,
     Turn,
@@ -291,7 +292,7 @@ def test_chatflow_mode_reaches_planning_capability_checks_and_generation(monkeyp
     monkeypatch.setattr(build, "assess_capability_gap", gap)
     monkeypatch.setattr(build, "build_nodes", generate)
     monkeypatch.setattr(build, "ready_tool_catalogue", lambda *_a, **_kw: [])
-    agent = LlmBuilderAgent("tenant", {}, app_mode="advanced-chat")
+    agent = LlmBuilderAgent("tenant", {}, app_mode="advanced-chat", model_resolver_fn=object)
     monkeypatch.setattr(agent, "model_or_none", lambda: None)
     agent.propose_plan_v1({}, goal_text="Reply")
     agent.assess_capability_gap(["Reply"], [], goal_text="Reply", requirements={})
@@ -350,6 +351,13 @@ def test_worker_resolves_the_persisted_app_mode_before_constructing_the_agent(
         current_state=PcState.BUILD_CAPABILITY_CHECK,
     )
     repo.create_session(session, DifyBuilderContext(goal_text="Build a chat assistant"), [])
+    from extensions.application_services import dify_builder_cognition_policy as policy
+
+    def select(actor_arg: Actor, requested: Inputs | None) -> Inputs:
+        assert actor_arg == actor
+        return requested or {}
+
+    monkeypatch.setattr(policy, "select_cognition_config", select)
     original_factory = task.build_dify_builder_agent
     factory_calls = []
 
@@ -367,6 +375,11 @@ def test_worker_resolves_the_persisted_app_mode_before_constructing_the_agent(
     monkeypatch.setattr(task, "WorkflowServiceDifyPort", lambda: port)
     monkeypatch.setattr(task, "build_dify_builder_agent", track_factory(original_factory))
     monkeypatch.setattr(LlmBuilderAgent, "model_or_none", lambda _self: None)
+    monkeypatch.setattr(
+        LlmBuilderAgent,
+        "analyze_goal",
+        lambda _self, _goal, **_: {"fields": [{"key": "audience", "label": "Audience", "type": "text"}]},
+    )
     monkeypatch.setattr(task.session_lock, "activate", lambda *_a: "worker")
     monkeypatch.setattr(task.session_lock, "release", lambda *_a: None)
     monkeypatch.setattr(task.progress_snapshot, "save", lambda *_a, **_kw: None)

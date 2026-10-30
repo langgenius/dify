@@ -17,6 +17,7 @@ from core.dify_builder.models import ChecklistError, DifyBuilderContext, Run
 from libs.json_in_md_parser import parse_json_markdown
 from runtime_contracts.builder.execution import canonical_digest, canonical_json
 from runtime_contracts.builder.native.contracts import FrozenDTO
+from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
 from services.dify_builder.diagnostic_context import redact_diagnostic_value
 from services.dify_builder.effect_disclosure import _has_upstream_reference, _referenced_start_inputs
 from services.dify_builder.revision import normalize_execution_graph
@@ -200,7 +201,7 @@ def unavailable(facts: CodeFacts) -> CodeRiskAssessment:
 
 
 def assess_code(facts: CodeFacts, *, reason: Callable[[dict[str, Any]], object]) -> CodeRiskAssessment:
-    """Single attempt, bounded facts/result; any failure means selectively Mock."""
+    """Single bounded attempt; model failures simulate, policy denial stops cognition."""
     try:
         if len(canonical_json(facts.model_facts)) > 32768:
             return unavailable(facts)
@@ -216,6 +217,8 @@ def assess_code(facts: CodeFacts, *, reason: Callable[[dict[str, Any]], object])
             risk_notice=notice[:4096],
             status="assessed",
         )
+    except CognitionPolicyDeniedError:
+        raise
     except Exception:
         return unavailable(facts)
 
@@ -235,16 +238,19 @@ def validated_assessments(value: object) -> dict[str, dict[str, Any]]:
     return result
 
 
-def builder_code_reasoner(*, tenant_id: str, model_config: dict[str, Any]) -> Callable[[dict[str, Any]], object]:
+def builder_code_reasoner(
+    *, tenant_id: str, account_id: str, app_id: str, model_config: dict[str, Any]
+) -> Callable[[dict[str, Any]], object]:
     """Existing selected Builder model transport, invoked only during preparation."""
 
     def reason(facts: dict[str, Any]) -> object:
+        from extensions.application_services.dify_builder_cognition_policy import guarded_cognition_model
         from services.dify_builder.agent.llm import invoke_text
-        from services.dify_builder.agent.model_resolver import normalize_completion_params, resolve_model_instance
+        from services.dify_builder.agent.model_resolver import normalize_completion_params
 
         if not model_config:
             raise ValueError("Code risk model unavailable")
-        model = resolve_model_instance(tenant_id, model_config)
+        model = guarded_cognition_model(tenant_id, model_config, account_id=account_id, app_id=app_id)
         params, stop = normalize_completion_params(model_config.get("completion_params", {}))
         locale = facts.get("reply_language")
         language_instruction = (

@@ -18,6 +18,14 @@ const zInvalidRequestError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zBuilderPolicyConflictError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('builder_policy_conflict'),
+      status: z.literal(409),
+    }),
+  ))()
+
 const zInvalidRoleError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -212,6 +220,10 @@ const zAccountNotLinkTenantError = /* @__PURE__ */ (() =>
 
 export const putErrors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
+export const put2Errors = {
+  builder_policy_conflict: { status: 409, data: zBuilderPolicyConflictError },
+}
+
 export const post12Errors = {
   invalid_role: { status: 400, data: zInvalidRoleError },
   limit_exceeded: { status: 400, data: zLimitExceededError },
@@ -239,7 +251,7 @@ export const post15Errors = {
   not_owner: { status: 400, data: zNotOwnerError },
 }
 
-export const put2Errors = {
+export const put3Errors = {
   cannot_operate_self: { status: 400, data: zCannotOperateSelfError },
   forbidden: { status: 403, data: zForbiddenError },
   invalid_role: { status: 400, data: zInvalidRoleError },
@@ -253,13 +265,13 @@ export const delete4Errors = {
   member_not_found: { status: 404, data: zMemberNotFoundError },
 }
 
-export const get27Errors = { plugin_error: { status: 400, data: zPluginError } }
-
-export const get29Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get28Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const get30Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const get31Errors = { plugin_error: { status: 400, data: zPluginError } }
+
+export const get32Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post29Errors = { plugin_error: { status: 400, data: zPluginError } }
 
@@ -267,17 +279,17 @@ export const post30Errors = { plugin_error: { status: 400, data: zPluginError } 
 
 export const post31Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get32Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get33Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post32Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post33Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get33Errors = { plugin_error: { status: 400, data: zPluginError } }
-
 export const get34Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const get35Errors = { plugin_error: { status: 400, data: zPluginError } }
+
+export const get36Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post34Errors = { plugin_error: { status: 400, data: zPluginError } }
 
@@ -287,9 +299,9 @@ export const post37Errors = { plugin_error: { status: 400, data: zPluginError } 
 
 export const post38Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get38Errors = { plugin_error: { status: 400, data: zPluginError } }
-
 export const get39Errors = { plugin_error: { status: 400, data: zPluginError } }
+
+export const get40Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post39Errors = { plugin_error: { status: 400, data: zPluginError } }
 
@@ -301,7 +313,7 @@ export const post43Errors = { plugin_error: { status: 400, data: zPluginError } 
 
 export const post44Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get40Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get41Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post49Errors = {
   filename_missing: { status: 400, data: zFilenameMissingError },
@@ -314,13 +326,13 @@ export const post51Errors = { invalid_request: { status: 400, data: zInvalidRequ
 
 export const post53Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
-export const get81Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
-
 export const get82Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
+
+export const get83Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
 export const patch5Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
-export const put20Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
+export const put21Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
 export const post54Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
@@ -334,7 +346,7 @@ export const patch7Errors = { invalid_request: { status: 400, data: zInvalidRequ
 
 export const post56Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
-export const get88Errors = {
+export const get89Errors = {
   current_workspace_archived: { status: 409, data: zCurrentWorkspaceArchivedError },
 }
 

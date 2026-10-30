@@ -9,7 +9,7 @@ from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 from models.credential_permission import CredentialPermission, CredentialType
 from models.enums import PermissionEnum
 from models.oauth import DatasourceProvider
-from models.provider import ProviderCredential
+from models.provider import ProviderCredential, ProviderModelCredential
 from models.provider_ids import ModelProviderID
 from models.tools import BuiltinToolProvider
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger
@@ -66,6 +66,51 @@ class CredentialQueryRepository(CredentialQuery):
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def model_credentials_visible(
+        self,
+        *,
+        workspace_id: str,
+        actor_id: str,
+        provider: str,
+        provider_credential_ids: Sequence[str],
+        model_credential_ids: Sequence[str],
+    ) -> bool:
+        names = {provider}
+        provider_id = ModelProviderID(provider)
+        if provider_id.is_langgenius():
+            names.add(provider_id.provider_name if "/" in provider else str(provider_id))
+        provider_ids = set(provider_credential_ids)
+        query = select(ProviderCredential.id).where(
+            ProviderCredential.tenant_id == workspace_id,
+            ProviderCredential.provider_name.in_(names),
+            ProviderCredential.id.in_(provider_ids),
+        )
+        query = apply_credential_visibility_filter_for_actor(
+            query,
+            tenant_id=workspace_id,
+            actor_id=actor_id,
+            model_id_column=ProviderCredential.id,
+            model_user_id_column=ProviderCredential.user_id,
+            model_visibility_column=ProviderCredential.visibility,
+            credential_type=CredentialType.PROVIDER_CREDENTIAL,
+        )
+        with self._session_factory() as session:
+            if set(session.scalars(query)) != provider_ids:
+                return False
+            # Native custom-model credential rows are tenant shared (the native
+            # schema has no actor visibility fields); still verify exact IDs.
+            model_ids = set(model_credential_ids)
+            visible = set(
+                session.scalars(
+                    select(ProviderModelCredential.id).where(
+                        ProviderModelCredential.tenant_id == workspace_id,
+                        ProviderModelCredential.provider_name.in_(names),
+                        ProviderModelCredential.id.in_(model_ids),
+                    )
+                )
+            )
+            return visible == model_ids
 
     @override
     def list_visible_tool_provider_ids(self, *, workspace_id: str, actor_id: str | None) -> set[str]:

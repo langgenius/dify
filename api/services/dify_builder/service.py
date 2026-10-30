@@ -73,6 +73,7 @@ from services.dify_builder.test_actions import TEST_ACTIONS, TestActionPort, par
 
 if TYPE_CHECKING:
     from core.dify_builder.real_call_consent import ConsentReceipt
+    from services.dify_builder.attachment_intake import BuilderAttachmentIntake
     from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 
 logger = logging.getLogger(__name__)
@@ -206,13 +207,13 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             id="submit_requirements",
             label=copy_text(BuilderCopyId.ACTIONS_SUBMIT_REQUIREMENTS),
             kind=ActionKind.PRIMARY,
-            next_state="build.resource_recommendation",
+            next_state="build.initial_plan",
         ),
     ],
     # build.initial_plan offers no UI action: it is a working/pass-through
     # state now (state.py), not a waiting one -- the straight-through path no
-    # longer stops there (submit_requirements now goes directly to resource
-    # discovery -- see handlers_build.handle_goal_analysis), and the
+    # longer stops there (submit_requirements commits the abstract plan here
+    # before resource discovery), and the
     # continue_adjusting/retry_after_revert loop-back that still lands there
     # runs its handler unconditionally on entry, with no action to gate on.
     PcState.BUILD_RESOURCE_RECOMMENDATION: [
@@ -972,9 +973,13 @@ class DifyBuilderService:
         test_actions: TestActionPort | None = None,
         read_task_dsl_fn: Callable | None = None,
         stream_read_scope_fn: Callable[[], AbstractContextManager] | None = None,
+        attachment_intake: "BuilderAttachmentIntake | None" = None,
+        cognition_policy_fn: Callable[[Actor, dict | None], dict] | None = None,
     ) -> None:
         # None: this instance cannot execute confirmed Tool tests (all existing callers).
+        self._cognition_policy_fn = cognition_policy_fn
         self._real_call_consent = real_call_consent
+        self._attachment_intake = attachment_intake
         self._test_actions = test_actions
         if read_task_dsl_fn is None:
 
@@ -994,6 +999,23 @@ class DifyBuilderService:
         self._get_app_revision_fn = get_app_revision_fn or (lambda _app_id, _actor: "")
         self._get_verification_identity_fn = get_verification_identity_fn or (lambda _app_id, _actor: ("", ""))
         self._get_app_name_fn = get_app_name_fn or (lambda _app_id, _actor: "")
+
+    def _validate_create_material(self, actor: Actor, attachments: list[str] | None) -> list[str]:
+        from services.dify_builder.attachment_intake import validated_upload_ids
+
+        ids = validated_upload_ids(attachments)
+        if ids:
+            if self._attachment_intake is None:
+                raise BadRequestError("Attachment intake is unavailable")
+            self._attachment_intake.authorize_uploads(actor, ids)
+        return ids
+
+    def _seed_material(self, session: Session, context: DifyBuilderContext, actor: Actor, ids: list[str]) -> None:
+        if ids:
+            assert self._attachment_intake is not None
+            self._attachment_intake.submit(
+                session, context, actor, text="", upload_file_ids=ids, client_turn_id="create:" + session.id
+            )
 
     def _get_app_revision(self, app_id: str, actor: Actor) -> str:
         revision = self._get_app_revision_fn(app_id, actor)
@@ -1029,10 +1051,11 @@ class DifyBuilderService:
         """
         self._get_authorized_session(session_id, actor)
 
-    @staticmethod
-    def _validate_model_config(actor: Actor, model_config: dict | None) -> dict:
+    def _validate_model_config(self, actor: Actor, model_config: dict | None) -> dict:
         if model_config is not None and not isinstance(model_config, dict):
             raise BadRequestError("model_config must be an object")
+        if self._cognition_policy_fn is not None:
+            return self._cognition_policy_fn(actor, model_config)
         return validate_model_config(actor.tenant_id, model_config)
 
     @staticmethod
@@ -1091,6 +1114,7 @@ class DifyBuilderService:
         failed_run_id: str | None = None,
         checklist_errors: list[ChecklistError] | list[dict] | None = None,
         model_config: dict | None = None,
+        attachments: list[str] | None = None,
     ) -> tuple[str, Action]:
         """Shared setup for ``create_fix_session``/``create_fix_session_stream``:
         everything through persisting the session (and the failed-run record)
@@ -1111,6 +1135,7 @@ class DifyBuilderService:
         if not failed_run_id and not checklist_errors:
             raise BadRequestError("failed_run_id or checklist_errors is required")
         app_id = self._authorize_app(app_id, actor)
+        attachment_ids = self._validate_create_material(actor, attachments)
         model_config = self._validate_model_config(actor, model_config)
         app_revision = self._get_app_revision(app_id, actor)
         failed_run: Run | None = None
@@ -1172,6 +1197,7 @@ class DifyBuilderService:
             )
         items = [context_card.to_item(seq=0, at_version=0)]
         self._repo.create_session(s, fc, items)  # assigns s.id, s.version = 1
+        self._seed_material(s, fc, actor, attachment_ids)
         if failed_run is not None:
             # Persist the failed-run record BEFORE dispatch so the enqueued
             # advance's diagnose can resolve fc.failed_run_id.
@@ -1186,9 +1212,12 @@ class DifyBuilderService:
         failed_run_id: str | None = None,
         checklist_errors: list[ChecklistError] | list[dict] | None = None,
         model_config: dict | None = None,
+        attachments: list[str] | None = None,
     ) -> SessionView:
         """Port of Go ``CreateFixSession``, extended to record the failed run."""
-        session_id, action = self._prepare_fix_session(app_id, actor, failed_run_id, checklist_errors, model_config)
+        session_id, action = self._prepare_fix_session(
+            app_id, actor, failed_run_id, checklist_errors, model_config, attachments
+        )
         if action is not None:
             self.dispatch(session_id, action, actor)
         return self.get_session_view(session_id, actor)
@@ -1200,13 +1229,16 @@ class DifyBuilderService:
         failed_run_id: str | None = None,
         checklist_errors: list[ChecklistError] | list[dict] | None = None,
         model_config: dict | None = None,
+        attachments: list[str] | None = None,
     ) -> Iterator[str]:
         """Streaming counterpart of ``create_fix_session``: subscribes to the
         session's progress channel BEFORE dispatching the initial
         ``request_fix`` advance, so no progress frames are lost."""
         from services.dify_builder.wiring import stream_advance_frames
 
-        session_id, action = self._prepare_fix_session(app_id, actor, failed_run_id, checklist_errors, model_config)
+        session_id, action = self._prepare_fix_session(
+            app_id, actor, failed_run_id, checklist_errors, model_config, attachments
+        )
         initial_items = self._repo.list_conversation(session_id)
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
@@ -1232,13 +1264,16 @@ class DifyBuilderService:
         goal_text: str,
         model_config: dict | None = None,
         derive_app_name: bool = False,
+        attachments: list[str] | None = None,
     ) -> tuple[str, Action]:
         """Shared setup for ``create_build_session``/``create_build_session_stream``:
         everything through persisting the session up to -- but not including --
         the internal ``start_build`` dispatch."""
-        if not isinstance(goal_text, str) or not (goal_text := goal_text.strip()):
+        if not isinstance(goal_text, str) or (not goal_text.strip() and not attachments):
             raise BadRequestError("goal_text is required")
+        goal_text = goal_text.strip() or "Analyze the attached material and clarify the workflow goal."
         app_id = self._authorize_app(app_id, actor)
+        attachment_ids = self._validate_create_material(actor, attachments)
         model_config = self._validate_model_config(actor, model_config)
         app_revision = self._get_app_revision(app_id, actor)
         fc = DifyBuilderContext(
@@ -1257,6 +1292,7 @@ class DifyBuilderService:
         )
         items = [UserItem(text=goal_text, turn_id=str(uuid4())).to_item(seq=0, at_version=0)]
         self._repo.create_session(s, fc, items)  # assigns s.id, s.version = 1
+        self._seed_material(s, fc, actor, attachment_ids)
         return s.id, Action(
             kind="start_build",
             base_version=1,
@@ -1270,12 +1306,15 @@ class DifyBuilderService:
         goal_text: str,
         model_config: dict | None = None,
         derive_app_name: bool = False,
+        attachments: list[str] | None = None,
     ) -> SessionView:
         """Start a Build session at build.capability_check and dispatch the
         initial ``start_build`` command (parallels ``create_fix_session``). The goal is
         seeded as the user's opening bubble; the first advance's
         ``handle_capability_check`` analyzes it into requirements."""
-        session_id, action = self._prepare_build_session(app_id, actor, goal_text, model_config, derive_app_name)
+        session_id, action = self._prepare_build_session(
+            app_id, actor, goal_text, model_config, derive_app_name, attachments
+        )
         if action is not None:
             self.dispatch(session_id, action, actor)
         return self.get_session_view(session_id, actor)
@@ -1287,12 +1326,15 @@ class DifyBuilderService:
         goal_text: str,
         model_config: dict | None = None,
         derive_app_name: bool = False,
+        attachments: list[str] | None = None,
     ) -> Iterator[str]:
         """Streaming counterpart of ``create_build_session``: subscribes BEFORE
         dispatching the initial ``start_build`` advance."""
         from services.dify_builder.wiring import stream_advance_frames
 
-        session_id, action = self._prepare_build_session(app_id, actor, goal_text, model_config, derive_app_name)
+        session_id, action = self._prepare_build_session(
+            app_id, actor, goal_text, model_config, derive_app_name, attachments
+        )
         initial_items = self._repo.list_conversation(session_id)
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
@@ -1317,14 +1359,17 @@ class DifyBuilderService:
         actor: Actor,
         goal_text: str,
         model_config: dict | None = None,
+        attachments: list[str] | None = None,
     ) -> tuple[str, Action]:
         """Shared setup for ``create_edit_session``/``create_edit_session_stream``:
         validate and persist the opening goal, then return the initial
         ``send_edit_goal`` action for the caller to dispatch.
         """
-        if not isinstance(goal_text, str) or not (goal_text := goal_text.strip()):
+        if not isinstance(goal_text, str) or (not goal_text.strip() and not attachments):
             raise BadRequestError("goal_text is required")
+        goal_text = goal_text.strip() or "Analyze the attached material and clarify the workflow goal."
         app_id = self._authorize_app(app_id, actor)
+        attachment_ids = self._validate_create_material(actor, attachments)
         model_config = self._validate_model_config(actor, model_config)
         app_revision = self._get_app_revision(app_id, actor)
         fc = DifyBuilderContext(
@@ -1341,6 +1386,7 @@ class DifyBuilderService:
         )
         items = [UserItem(text=goal_text, turn_id=str(uuid4())).to_item(seq=0, at_version=0)]
         self._repo.create_session(s, fc, items)  # assigns s.id, s.version = 1
+        self._seed_material(s, fc, actor, attachment_ids)
         return s.id, Action(
             kind="send_edit_goal",
             payload={"text": goal_text},
@@ -1354,13 +1400,14 @@ class DifyBuilderService:
         actor: Actor,
         goal_text: str,
         model_config: dict | None = None,
+        attachments: list[str] | None = None,
     ) -> SessionView:
         """Start an Edit session and dispatch its opening goal in one command.
 
         The goal is seeded as the opening user bubble and the initial
         ``send_edit_goal`` advance reads the graph and analyzes impact.
         """
-        session_id, action = self._prepare_edit_session(app_id, actor, goal_text, model_config)
+        session_id, action = self._prepare_edit_session(app_id, actor, goal_text, model_config, attachments)
         self.dispatch(session_id, action, actor)
         return self.get_session_view(session_id, actor)
 
@@ -1370,6 +1417,7 @@ class DifyBuilderService:
         actor: Actor,
         goal_text: str,
         model_config: dict | None = None,
+        attachments: list[str] | None = None,
     ) -> Iterator[str]:
         """Streaming counterpart of ``create_edit_session``.
 
@@ -1378,7 +1426,7 @@ class DifyBuilderService:
         """
         from services.dify_builder.wiring import stream_advance_frames
 
-        session_id, action = self._prepare_edit_session(app_id, actor, goal_text, model_config)
+        session_id, action = self._prepare_edit_session(app_id, actor, goal_text, model_config, attachments)
         initial_items = self._repo.list_conversation(session_id)
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
@@ -1582,6 +1630,9 @@ class DifyBuilderService:
         return SessionView(
             test_execution=test_execution,
             diagnostics=diagnostics,
+            attachments=self._attachment_intake.receipts(s, Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id))
+            if self._attachment_intake is not None
+            else [],
             session_id=s.id,
             app_id=s.app_id,
             version=s.version,
@@ -1710,6 +1761,18 @@ class DifyBuilderService:
         if action.kind == "message":
             client_turn_id = action.payload["client_turn_id"]
             turn_kinds = self._repo.get_conversation_turn_kinds(session_id, client_turn_id)
+            if turn_kinds and self._attachment_intake is not None:
+                receipt = self._attachment_intake.submit(
+                    s,
+                    fc,
+                    actor,
+                    text=action.payload["text"],
+                    upload_file_ids=[],
+                    client_turn_id=client_turn_id,
+                    as_message=True,
+                )
+                if receipt.status not in {"chat_pending", "chat_consumed"}:
+                    return self._build_session_view(s, fc), False, []
             if "assistant_turn" in turn_kinds:
                 return self._build_session_view(s, fc), False, []
             if "user" in turn_kinds:
@@ -1803,10 +1866,20 @@ class DifyBuilderService:
             model_config = action.payload.get("model_config")
             if not isinstance(model_config, dict) or not model_config:
                 raise BadRequestError("model_config is required")
-            fc.model_config = validate_model_config(actor.tenant_id, model_config)
+            fc.model_config = self._validate_model_config(actor, model_config)
             fc.last_command_id = action.command_id
             self._repo.compare_and_advance(session_id, s.version, s.current_state, fc, [])
             return self.get_session_view(session_id, actor), False, []
+        if action.kind == "message" and self._attachment_intake is not None:
+            self._attachment_intake.submit(
+                s,
+                fc,
+                actor,
+                text=action.payload["text"],
+                upload_file_ids=[],
+                client_turn_id=action.payload["client_turn_id"],
+                as_message=True,
+            )
         return self._build_session_view(s, fc), True, []
 
     @staticmethod
@@ -1895,8 +1968,15 @@ class DifyBuilderService:
         text: str,
         base_version: int,
         client_turn_id: str,
+        attachments: list[str] | None = None,
     ) -> SessionView:
         """Port of Go ``SubmitMessage``."""
+        queued = self._prepare_material_message(session_id, actor, text, base_version, client_turn_id, attachments)
+        if queued is not None:
+            session, action = queued
+            if action is not None:
+                self._dispatch_material_action(session.id, action, actor)
+            return self.get_session_view(session.id, actor)
         if not isinstance(text, str) or not (text := text.strip()):
             raise BadRequestError("message text is required")
         return self.submit_action(
@@ -1956,7 +2036,31 @@ class DifyBuilderService:
         text: str,
         base_version: int,
         client_turn_id: str,
+        attachments: list[str] | None = None,
     ) -> Iterator[str]:
+        queued = self._prepare_material_message(session_id, actor, text, base_version, client_turn_id, attachments)
+        if queued is not None:
+            from services.dify_builder.wiring import stream_advance_frames
+
+            session, action = queued
+            subscription = self._subscribe_fn(session_id) if action is not None else None
+            try:
+                command_id = self._dispatch_material_action(session.id, action, actor) if action is not None else ""
+                if not command_id and subscription is not None:
+                    subscription.close()
+                    subscription = None
+                view = asdict(self.get_session_view(session.id, actor))
+            except Exception:
+                if subscription is not None:
+                    subscription.close()
+                raise
+            return stream_advance_frames(
+                view,
+                subscription,
+                expect_advance=bool(command_id),
+                command_id=command_id,
+                read_session_view=lambda: self._read_stream_session_view(session_id, actor),
+            )
         if not isinstance(text, str) or not (text := text.strip()):
             raise BadRequestError("message text is required")
         return self.submit_action_stream(
@@ -1967,6 +2071,67 @@ class DifyBuilderService:
                 payload={"text": text, "client_turn_id": client_turn_id},
                 base_version=base_version,
             ),
+        )
+
+    def _prepare_material_message(self, session_id, actor, text, base_version, client_turn_id, attachments):
+        """Queue new material without interrupting an in-flight plan or taking its lease."""
+        if not attachments and self._attachment_intake is None:
+            return None
+        session, context = self._get_authorized_session(session_id, actor)
+        working = self._session_lock.exists(session.id) or is_working(session.current_state)
+        if self._attachment_intake is None:
+            raise BadRequestError("Attachment intake is unavailable")
+        if type(base_version) is not int or base_version > session.version:
+            raise ConflictError("stale base_version")
+        existing = self._attachment_intake.find_turn(session, actor, client_turn_id)
+        if not attachments and not working and existing is None:
+            return None
+        receipt = self._attachment_intake.submit(
+            session,
+            context,
+            actor,
+            text=text,
+            upload_file_ids=attachments,
+            client_turn_id=client_turn_id,
+            as_message=not attachments and not working,
+        )
+        if receipt.status == "chat_pending":
+            return None
+        session, context = self._get_authorized_session(session_id, actor)
+        working = self._session_lock.exists(session.id) or is_working(session.current_state)
+        action = None
+        if receipt.status == "pending" and not working and not context.paused:
+            action = Action(
+                kind="consume_material",
+                base_version=session.version,
+                command_id=str(uuid5(NAMESPACE_URL, f"builder-material:{session.id}:{receipt.id}")),
+            )
+        return session, action
+
+    def _dispatch_material_action(self, session_id: str, action: Action, actor: Actor) -> str:
+        try:
+            return self.dispatch(session_id, action, actor)
+        except BusyError:
+            return ""  # The existing owner consumes this already accepted queue.
+
+    def dispatch_pending_material(self, session_id: str, actor: Actor) -> str:
+        """Handoff after lease release; a concurrent winner keeps the same lease owner."""
+        if self._attachment_intake is None:
+            return ""
+        session, context = self._get_authorized_session(session_id, actor)
+        if context.paused or is_working(session.current_state) or self._session_lock.exists(session_id):
+            return ""
+        pending = self._attachment_intake.pending(session, context, actor)
+        if not pending:
+            return ""
+        return self._dispatch_material_action(
+            session_id,
+            Action(
+                kind="consume_material",
+                base_version=session.version,
+                command_id=str(uuid5(NAMESPACE_URL, f"builder-material:{session.id}:{pending[-1].id}")),
+            ),
+            actor,
         )
 
     def execute_confirmed_tool(
@@ -2049,6 +2214,10 @@ class DifyBuilderService:
         from services.dify_builder.task_controls import generation
 
         _, context = self._repo.get_session(session_id)
+        from services.dify_builder.application.cognition_policy import cognition_admission_required
+
+        if self._cognition_policy_fn is not None and cognition_admission_required(action.kind):
+            self._validate_model_config(actor, context.model_config)
         if context.paused:
             raise ConflictError("task is paused")
         if action.execution_generation is None:
@@ -2066,6 +2235,8 @@ class DifyBuilderService:
             session, current = self._repo.get_session(session_id)
             if current.paused or generation(current) != action.execution_generation:
                 raise ConflictError("task dispatch stopped or superseded")
+            if action.kind == "consume_material":
+                action.base_version = session.version
             if action.kind == "send_edit_goal" and session.current_state == PcState.EDIT_CAPABILITY_CHECK:
                 text = action.payload.get("text")
                 if isinstance(text, str) and text and text != current.goal_text:

@@ -294,6 +294,51 @@ def _build_node(
     into a ``no-auth`` node that sends no credential and is written in silence,
     which is exactly the failure a default is forbidden from creating.
     """
+    if flow_type == "custom-note":
+        if node_type:
+            raise ValueError("Canvas notes cannot carry executable node configuration")
+        text = config.get("text", "")
+        if not isinstance(text, str) or len(text) > 2000:
+            raise ValueError("Simple canvas note text must be at most 2000 characters")
+        # Native note widgets store a Lexical editor state, not plain text or
+        # executable configuration. Build only simple paragraphs/text runs.
+        config = {
+            "theme": "blue",
+            "author": "",
+            "showAuthor": False,
+            "text": json.dumps(
+                {
+                    "root": {
+                        "type": "root",
+                        "version": 1,
+                        "format": "",
+                        "indent": 0,
+                        "direction": None,
+                        "children": [
+                            {
+                                "type": "paragraph",
+                                "version": 1,
+                                "format": "",
+                                "indent": 0,
+                                "direction": None,
+                                "children": [
+                                    {
+                                        "type": "text",
+                                        "version": 1,
+                                        "text": text,
+                                        "format": 0,
+                                        "detail": 0,
+                                        "mode": "normal",
+                                        "style": "",
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                },
+                ensure_ascii=False,
+            ),
+        }
     existing_ids = {n.get("id") for n in graph.get("nodes", [])}
     if node_id is not None:
         if node_id in existing_ids:
@@ -818,7 +863,9 @@ def filter_applicable(
             validate_intent_args(intent)
             if allowed_node_types is not None and intent.op in ("create_node", "insert_between"):
                 node_type = intent.args.get("node_type")
-                if node_type not in allowed_node_types:
+                if node_type not in allowed_node_types and not (
+                    intent.op == "create_node" and node_type == "" and intent.args.get("flow_type") == "custom-note"
+                ):
                     rejected.append((intent, f"node_type not allowed: {node_type!r}"))
                     continue
             working, changed = APPLY_FNS[intent.op](working, **intent.args)

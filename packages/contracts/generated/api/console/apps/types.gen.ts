@@ -625,6 +625,17 @@ export type AppImportResponse = {
   warnings?: Array<DslImportWarning>
 }
 
+export type DifyBuilderAvailabilityResponse = {
+  available: boolean
+  default_model_id: string | null
+  enabled: boolean
+  fallback_model_ids: Array<string>
+  models: Array<CognitionModelResponse>
+  reason_code: 'builder_disabled' | 'model_availability_unknown' | 'model_unavailable' | null
+  revision: number
+  source: 'explicit' | 'workspace_default'
+}
+
 export type AppExportResponse = {
   data: string
 }
@@ -1977,6 +1988,17 @@ export type ConversationVariableResponse = {
   updated_at?: number | null
   value?: string | null
   value_type: string
+}
+
+export type CognitionModelResponse = {
+  completion_params: {
+    [key: string]: unknown
+  }
+  health: 'configured' | 'unavailable' | 'unknown'
+  id: string
+  mode: string
+  name: string
+  provider: string
 }
 
 export type AgentThought = {
@@ -6449,6 +6471,29 @@ export type PostAppsByAppIdCopyResponses = {
 
 export type PostAppsByAppIdCopyResponse =
   PostAppsByAppIdCopyResponses[keyof PostAppsByAppIdCopyResponses]
+
+export type GetAppsByAppIdDifyBuilderAvailabilityData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/dify-builder/availability'
+}
+
+export type GetAppsByAppIdDifyBuilderAvailabilityErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdDifyBuilderAvailabilityError =
+  GetAppsByAppIdDifyBuilderAvailabilityErrors[keyof GetAppsByAppIdDifyBuilderAvailabilityErrors]
+
+export type GetAppsByAppIdDifyBuilderAvailabilityResponses = {
+  200: DifyBuilderAvailabilityResponse
+}
+
+export type GetAppsByAppIdDifyBuilderAvailabilityResponse =
+  GetAppsByAppIdDifyBuilderAvailabilityResponses[keyof GetAppsByAppIdDifyBuilderAvailabilityResponses]
 
 export type GetAppsByAppIdExportData = {
   body?: never

@@ -72,6 +72,18 @@ export const zSimpleResultResponse = z.object({
 })
 
 /**
+ * BuilderPolicyConflictError
+ *
+ * Workspace Builder policy changed; reload before saving.
+ */
+export const zBuilderPolicyConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('builder_policy_conflict'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * EndpointCreatePayload
  */
 export const zEndpointCreatePayload = z.object({
@@ -1370,6 +1382,56 @@ export const zSnippetImportResponse = z.object({
   snippet_id: z.string().nullable(),
   status: zImportStatus,
   warnings: z.array(zDslImportWarning),
+})
+
+/**
+ * CognitionModelResponse
+ */
+export const zCognitionModelResponse = z.object({
+  completion_params: z.record(z.string(), z.unknown()),
+  health: z.enum(['configured', 'unavailable', 'unknown']),
+  id: z.string(),
+  mode: z.string(),
+  name: z.string(),
+  provider: z.string(),
+})
+
+/**
+ * DifyBuilderPolicyResponse
+ */
+export const zDifyBuilderPolicyResponse = z.object({
+  available: z.boolean(),
+  default_model_id: z.string().nullable(),
+  enabled: z.boolean(),
+  fallback_model_ids: z.array(z.string()),
+  models: z.array(zCognitionModelResponse),
+  reason_code: z
+    .enum(['builder_disabled', 'model_availability_unknown', 'model_unavailable'])
+    .nullable(),
+  revision: z.int(),
+  source: z.enum(['explicit', 'workspace_default']),
+})
+
+/**
+ * CognitionModelPayload
+ */
+export const zCognitionModelPayload = z.object({
+  completion_params: z.record(z.string(), z.unknown()).optional(),
+  id: z.string().min(1).max(255),
+  mode: z.enum(['chat', 'completion']),
+  name: z.string().min(1).max(255),
+  provider: z.string().min(1).max(255),
+})
+
+/**
+ * DifyBuilderPolicyPayload
+ */
+export const zDifyBuilderPolicyPayload = z.object({
+  default_model_id: z.string().min(1).max(255).nullable(),
+  enabled: z.boolean(),
+  expected_revision: z.int().gte(0),
+  fallback_model_ids: z.array(z.string().min(1).max(255)).max(19).optional(),
+  models: z.array(zCognitionModelPayload).max(20),
 })
 
 /**
@@ -4671,6 +4733,18 @@ export const zPostWorkspacesCurrentDefaultModelBody = zParserPostDefault
  * Success
  */
 export const zPostWorkspacesCurrentDefaultModelResponse = zSimpleResultResponse
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentDifyBuilderPolicyResponse = zDifyBuilderPolicyResponse
+
+export const zPutWorkspacesCurrentDifyBuilderPolicyBody = zDifyBuilderPolicyPayload
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentDifyBuilderPolicyResponse = zDifyBuilderPolicyResponse
 
 export const zPostWorkspacesCurrentEndpointsBody = zEndpointCreatePayload
 

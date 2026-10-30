@@ -66,6 +66,8 @@ from .dify_builder import (
     DifyBuilderSnapshot,
     DifyBuilderTestInput,
 )
+from .dify_builder_cognition_policy import DifyBuilderCognitionPolicy
+from .dify_builder_material import DifyBuilderMaterial
 from .dify_builder_native_code import NativeCodePhysicalOperation
 from .enums import (
     AppTriggerStatus,
@@ -289,7 +291,9 @@ __all__ = [
     "DatasourceOauthParamConfig",
     "DatasourceProvider",
     "DifyBuilderCheckpoint",
+    "DifyBuilderCognitionPolicy",
     "DifyBuilderConversationItem",
+    "DifyBuilderMaterial",
     "DifyBuilderRun",
     "DifyBuilderSession",
     "DifyBuilderSessionCommit",

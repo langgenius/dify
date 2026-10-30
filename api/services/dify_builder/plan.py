@@ -15,6 +15,8 @@ PLAN_PRESENTATION_INSTRUCTION = (
     "Do not invent inputs, destinations, external effects, or results absent from the source. "
     'Reply with ONLY JSON: {"title": "...", "input_summary": "...", '
     '"output_summary": "...", "plan": ["step", ...]}.'
+    " Keep at most 30 steps, 2000 characters per step/summary, 200 characters in the title, "
+    "and 24000 characters across the complete plan."
 )
 
 
@@ -44,19 +46,27 @@ def parse_plan_response(data: object) -> WorkflowPlan:
         raise ValueError(f"The plan field must be a nonempty list of strings, received {type(plan).__name__}.")
     if not plan:
         raise ValueError("The plan field must contain at least one nonblank string.")
+    if len(plan) > 30:
+        raise ValueError("The plan exceeds the 30-step limit.")
     items: list[str] = []
     for index, item in enumerate(plan):
         if not isinstance(item, str):
             raise ValueError(f"The plan[{index}] field must be a nonblank string, received {type(item).__name__}.")
         if not item.strip():
             raise ValueError(f"The plan[{index}] field is blank; every item must be a nonblank string.")
+        if len(item) > 2000:
+            raise ValueError("A plan step exceeds the 2000-character limit.")
         items.append(item)
     overview: dict[str, str] = {}
     for key in ("title", "input_summary", "output_summary"):
         value = data.get(key)
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"The {key} field must be a nonblank string.")
+        if len(value) > (200 if key == "title" else 2000):
+            raise ValueError(f"The {key} field exceeds its character limit.")
         overview[key] = value
+    if sum(map(len, [*items, *overview.values()])) > 24_000:
+        raise ValueError("The complete plan exceeds the 24000-character limit.")
     return WorkflowPlan(
         title=overview["title"],
         input_summary=overview["input_summary"],

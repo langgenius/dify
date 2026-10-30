@@ -172,10 +172,32 @@ def active_worker_lock(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def wired(monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository) -> Wired:
+def admitted_stub_cognition(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep engine-wiring tests at their explicit policy/agent boundaries.
+
+    These cases exercise worker persistence and delivery with StubAgent; native
+    policy membership and refusal are covered by the dedicated policy suites.
+    """
+    from extensions.application_services import dify_builder_cognition_policy as policy
+
+    def select(actor: Actor, requested: Inputs | None) -> Inputs:
+        assert actor == Actor(**_ACTOR_DICT)
+        return requested or {}
+
+    monkeypatch.setattr(policy, "select_cognition_config", select)
+    monkeypatch.setattr(mod, "build_dify_builder_agent", lambda **_kwargs: StubAgent())
+
+
+@pytest.fixture
+def wired(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+    admitted_stub_cognition: None,
+) -> Wired:
     """Patch the task's outbound seams: the SQLite repo, ``FakeDifyPort`` in
     place of the real Dify adapter, and event-capturing stand-ins for
     ``progress_bus.publish``/``session_lock.release``."""
+    del admitted_stub_cognition
     monkeypatch.setattr(mod, "_build_repo", lambda: repo)
     port = FakeDifyPort()
     port.workflow_events = [
@@ -812,6 +834,7 @@ def test_terminal_error_is_published_after_the_advance_lock_is_released(
     assert timeline == ["release", "publish:error"]
 
 
+@pytest.mark.usefixtures("admitted_stub_cognition")
 def test_terminal_state_is_published_after_the_advance_lock_is_released(
     monkeypatch: pytest.MonkeyPatch,
     repo: SqlDifyBuilderRepository,
@@ -836,6 +859,7 @@ def test_terminal_state_is_published_after_the_advance_lock_is_released(
     assert timeline[-2:] == ["release", "publish:command_finished"]
 
 
+@pytest.mark.usefixtures("admitted_stub_cognition")
 def test_terminal_state_projection_failure_publishes_error_frame(
     monkeypatch: pytest.MonkeyPatch,
     repo: SqlDifyBuilderRepository,
@@ -921,6 +945,7 @@ def test_message_advance_publishes_assistant_delta_before_durable_reply(
     assert released == [(session.id, "tok-message")]
 
 
+@pytest.mark.usefixtures("admitted_stub_cognition")
 def test_message_failure_keeps_the_durable_user_half_retryable(
     monkeypatch: pytest.MonkeyPatch,
     repo: SqlDifyBuilderRepository,
@@ -1023,6 +1048,7 @@ def test_message_failure_keeps_the_durable_user_half_retryable(
     assert released[-1] == (session.id, "tok-message-retry")
 
 
+@pytest.mark.usefixtures("admitted_stub_cognition")
 def test_advance_session_generic_exception_publishes_generic_error_and_releases_lock(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1103,6 +1129,7 @@ def test_stale_worker_failure_does_not_overwrite_a_newer_session_head(
     assert released == [(session.id, "tok-stale-worker")]
 
 
+@pytest.mark.usefixtures("admitted_stub_cognition")
 def test_observer_publish_failure_is_best_effort_and_terminal_state_is_still_published_once(
     monkeypatch: pytest.MonkeyPatch,
     repo: SqlDifyBuilderRepository,
@@ -1161,6 +1188,7 @@ def test_advance_session_setup_failure_still_releases_lock(monkeypatch: pytest.M
     assert ("sess-setup", "tok-setup") in released
 
 
+@pytest.mark.usefixtures("admitted_stub_cognition")
 def test_agent_setup_failure_persists_restartable_failed_state(
     monkeypatch: pytest.MonkeyPatch,
     repo: SqlDifyBuilderRepository,
@@ -1281,6 +1309,7 @@ def test_advance_builds_the_agent_for_the_acting_account(
     assert seen[0].get("account_id") == ACCOUNT_ID
 
 
+@pytest.mark.usefixtures("admitted_stub_cognition")
 def test_first_test_command_finished_contains_native_receipt_without_opt_in(
     monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository
 ) -> None:

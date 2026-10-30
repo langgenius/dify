@@ -10,13 +10,13 @@ from typing import Any
 from services.dify_builder.agent.llm import invoke_text
 from services.dify_builder.agent.model_resolver import (
     normalize_completion_params,
-    resolve_model_instance,
-    resolved_model_names,
 )
 
 
-def ping_model(tenant_id: str, model_config: dict[str, Any] | None) -> dict[str, Any]:
-    instance = resolve_model_instance(tenant_id, model_config)
+def ping_model(tenant_id: str, model_config: dict[str, Any] | None, *, account_id: str | None = None) -> dict[str, Any]:
+    from extensions.application_services.dify_builder_cognition_policy import guarded_cognition_model
+
+    instance = guarded_cognition_model(tenant_id, model_config, account_id=account_id, app_id=None)
     params, stop = normalize_completion_params((model_config or {}).get("completion_params", {}))
     reply = invoke_text(
         instance,
@@ -25,4 +25,4 @@ def ping_model(tenant_id: str, model_config: dict[str, Any] | None) -> dict[str,
         model_parameters=params,
         stop=stop,
     )
-    return {"ok": True, "model": resolved_model_names(tenant_id, model_config), "reply": reply}
+    return {"ok": True, "model": {"provider": instance.provider, "name": instance.model_name}, "reply": reply}

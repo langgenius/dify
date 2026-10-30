@@ -13,6 +13,7 @@ from typing import Any
 from core.dify_builder.models import Inputs, StartSchema
 from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.agent import llm
+from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
 
 _DEFAULT_BY_TYPE = {
     "number": 1,
@@ -108,6 +109,8 @@ def generate(
     for attempt in (1, 2):
         try:
             text = llm.invoke_text(model, system=system, user=user, on_reasoning=on_reasoning)
+        except CognitionPolicyDeniedError:
+            raise
         except Exception:
             diagnostics.report("deterministic_fallback", fallback_used=True)
             return _deterministic(vars_)

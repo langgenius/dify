@@ -78,6 +78,7 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         business_acceptance_case_id=d.get("business_acceptance_case_id", ""),
         business_acceptance_run_refs=dict(d.get("business_acceptance_run_refs") or {}),
         goal_text=d.get("goal_text", ""),
+        attachment_material=list(d.get("attachment_material") or []),
         active_entry_mode=d.get("active_entry_mode", ""),
         requirements=dict(d.get("requirements") or {}),
         plan_items=list(d.get("plan_items") or []),

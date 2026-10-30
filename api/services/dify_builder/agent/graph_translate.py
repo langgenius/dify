@@ -33,7 +33,8 @@ def to_intents(graph: dict[str, Any]) -> list[MutationIntent]:
         data = node.get("data") or {}
         node_type = data.get("type")
         node_id = node.get("id")
-        if not node_type or not node_id:
+        canvas_note = node.get("type") == "custom-note"
+        if (not node_type and not canvas_note) or not node_id:
             continue
         if node_type == "agent" and str(data.get("version")) == "2":
             from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
@@ -48,7 +49,7 @@ def to_intents(graph: dict[str, Any]) -> list[MutationIntent]:
             )
         config = {k: v for k, v in data.items() if k != "type"}
         args: dict[str, Any] = {
-            "node_type": str(node_type),
+            "node_type": "" if canvas_note else str(node_type),
             "config": config,
             "node_id": str(node_id),
         }

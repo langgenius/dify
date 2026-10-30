@@ -29,6 +29,7 @@ from services.dify_builder import preflight, trace_diagnostics
 from services.dify_builder.agent import form_schema, graph_translate, llm, resources, user_supplied
 from services.dify_builder.agent.model_resolver import resolve_model_instance
 from services.dify_builder.agent.resources import ResourceRef
+from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
 from services.dify_builder.generated_graph_completeness import generated_build_completeness_problems
 from services.dify_builder.native_constant_output_contract import (
     native_build_capability_system_rules,
@@ -93,6 +94,8 @@ def analyze_goal(
         )
     try:
         data = llm.invoke_json(model, system=system, user=f"GOAL:\n{goal_text}", on_reasoning=on_reasoning)
+    except CognitionPolicyDeniedError:
+        raise
     except Exception:
         trace_diagnostics.report("deterministic_fallback", fallback_used=True)
         return _degraded_form(goal_text)
@@ -312,6 +315,8 @@ def propose_app_name(
         user += f"\n\nREQUIREMENTS:\n{json.dumps(requirements, ensure_ascii=False)[:1000]}"
     try:
         raw = llm.invoke_text(model, system=system, user=user, on_reasoning=on_reasoning).strip()
+    except CognitionPolicyDeniedError:
+        raise
     except Exception:
         trace_diagnostics.report("deterministic_fallback", fallback_used=True)
         logger.warning("dify_builder: app-name proposal failed; keeping the derived name", exc_info=True)
@@ -459,6 +464,8 @@ def planning_catalogue(
     """
     try:
         inventory = resources.list_tenant_resources(tenant_id, account_id=account_id)
+    except CognitionPolicyDeniedError:
+        raise
     except Exception as exc:
         trace_diagnostics.report("inventory_unavailable", error=exc, fallback_used=True)
         logger.warning("dify_builder: resource listing failed; planning without a catalogue", exc_info=True)
@@ -584,13 +591,20 @@ def propose_plan_v1(
             # invoke_json retries internally; use one provider call per attempt
             # so parsing and schema correction share the same two-call budget.
             text = llm.invoke_text(model, system=system, user=user, on_reasoning=on_reasoning)
+        except CognitionPolicyDeniedError:
+            raise
         except Exception:
             trace_diagnostics.report("deterministic_fallback", fallback_used=True)
+            return None
+        if len(text) > 64_000:
+            trace_diagnostics.report("response_schema_invalid", fallback_used=True)
             return None
         try:
             data = json_repair.loads(text)
             if not isinstance(data, dict):
                 trace_diagnostics.report("json_decode_failed", attempt=attempt + 1)
+        except CognitionPolicyDeniedError:
+            raise
         except Exception as exc:
             trace_diagnostics.report("deterministic_fallback", fallback_used=True)
             trace_diagnostics.report("json_decode_failed", error=exc, attempt=attempt + 1)
@@ -717,6 +731,8 @@ def discover_resources(
         }
         if any(rid not in selection_reasons for rid in chosen_ids):
             trace_diagnostics.report("response_schema_invalid", fallback_used=True)
+    except CognitionPolicyDeniedError:
+        raise
     except Exception:
         trace_diagnostics.report("deterministic_fallback", fallback_used=True)
         logger.warning("dify_builder: resource recommendation failed; recommending none", exc_info=True)
@@ -847,6 +863,8 @@ def assess_capability_gap(
                 f"PLAN:\n{chr(10).join(plan_items)}\n\nAVAILABLE:\n{listing}"
             ),
         )
+    except CognitionPolicyDeniedError:
+        raise
     except Exception:
         trace_diagnostics.report("deterministic_fallback", fallback_used=True)
         logger.warning("dify_builder: capability-gap assessment failed", exc_info=True)
@@ -1029,6 +1047,8 @@ def learn_from_build(
             )
             or fallback
         )
+    except CognitionPolicyDeniedError:
+        raise
     except Exception:
         trace_diagnostics.report("deterministic_fallback", fallback_used=True)
         return fallback
@@ -1083,6 +1103,9 @@ def _selected_workflow_model(tenant_id: str, resource_ids: Sequence[str]) -> Mod
 
 # Node-usage rules shared by Workflow and Chatflow generation.
 _NODE_USAGE_DIRECTIVE = (
+    "When the user asks for simple canvas documentation, include a custom-note widget with data.type='', "
+    "data.text containing at most 2000 plain-text characters. Notes have no edges, executable configuration, "
+    "permissions or approval authority. Preserve existing notes unless the requested change targets them.\n"
     # Node-usage guidance (meeting item 9). Builder-only: this string is
     # prepended to the instruction at build.py:377 and cmd+K never sees it.
     # Only rules that earned their place by breaking a real build belong here --
@@ -1276,6 +1299,8 @@ def _installed_tool_refs(tenant_id: str, account_id: str | None) -> dict[tuple[s
     """Every verified installed Tool schema, uncapped; empty on lookup failure."""
     try:
         tools = resources.list_tenant_resources(tenant_id, account_id=account_id).tools
+    except CognitionPolicyDeniedError:
+        raise
     except Exception as exc:
         trace_diagnostics.report("inventory_unavailable", error=exc, fallback_used=True)
         logger.warning("dify_builder: tool listing failed; generating without installed tools", exc_info=True)
@@ -1312,6 +1337,7 @@ def build_nodes(
     account_id: str | None = None,
     mode: str = "workflow",
     reply_language: str | None = None,
+    cognition_model=None,
 ) -> BuildNodesResult:
     """Generate installed Tool schemas with delayed setup and no credential borrowing.
 
@@ -1365,15 +1391,18 @@ def build_nodes(
             )
 
         def _generate(instruction: str) -> dict[str, Any]:
+            from services.dify_builder.attachment_context import append_material
+
             return dict(
                 WorkflowGeneratorService.generate_workflow_graph(
                     tenant_id=tenant_id,
                     mode=graph_mode,
-                    instruction=instruction,
+                    instruction=append_material(instruction),
                     model_config=mc,
                     current_graph=None,
                     ready_tool_keys=ready_tool_keys,
                     reply_language=reply_language,
+                    **({"model_instance_override": cognition_model} if cognition_model is not None else {}),
                 )
             )
 
@@ -1433,6 +1462,8 @@ def build_nodes(
             error,
         )
         return BuildNodesResult(intents=[], error=error, diagnostics=diagnostics)
+    except CognitionPolicyDeniedError:
+        raise
     except Exception as exc:  # any generation/translation failure -> honest empty build
         trace_diagnostics.report("deterministic_fallback", fallback_used=True)
         logger.exception(

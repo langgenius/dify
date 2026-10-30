@@ -19,15 +19,6 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * DifyBuilderSubmitMessagePayload
- */
-export const zDifyBuilderSubmitMessagePayload = z.object({
-  base_version: z.int(),
-  client_turn_id: z.string().min(1).max(128),
-  text: z.string().min(1),
-})
-
-/**
  * NativeTestStartPayload
  */
 export const zNativeTestStartPayload = z.object({
@@ -230,37 +221,6 @@ export const zSessionModel = z.object({
 })
 
 /**
- * DifyBuilderCreateBuildSessionPayload
- */
-export const zDifyBuilderCreateBuildSessionPayload = z.object({
-  app_id: z.string().min(1),
-  derive_app_name: z.boolean().optional().default(false),
-  goal_text: z.string().min(1),
-  model_config: zSessionModel.nullish(),
-  scenario: z.literal('build'),
-})
-
-/**
- * DifyBuilderCreateEditSessionPayload
- */
-export const zDifyBuilderCreateEditSessionPayload = z.object({
-  app_id: z.string().min(1),
-  goal_text: z.string().min(1),
-  model_config: zSessionModel.nullish(),
-  scenario: z.literal('edit'),
-})
-
-/**
- * DifyBuilderCreateFixSessionPayload
- */
-export const zDifyBuilderCreateFixSessionPayload = z.object({
-  app_id: z.string().min(1),
-  failed_run_id: z.string().min(1),
-  model_config: zSessionModel.nullish(),
-  scenario: z.literal('fix'),
-})
-
-/**
  * Phase
  *
  * Coarse UX phase shown in the panel header (spec §2).
@@ -303,6 +263,59 @@ export const zRunStatus = z.enum([
   'waiting_confirmation',
   'waiting_input',
 ])
+
+/**
+ * DifyBuilderAttachmentPayload
+ *
+ * An opaque native upload reference; authority is reconstructed server-side.
+ */
+export const zDifyBuilderAttachmentPayload = z.object({
+  upload_file_id: z.uuid(),
+})
+
+/**
+ * DifyBuilderSubmitMessagePayload
+ */
+export const zDifyBuilderSubmitMessagePayload = z.object({
+  attachments: z.array(zDifyBuilderAttachmentPayload).max(5).optional(),
+  base_version: z.int(),
+  client_turn_id: z.string().min(1).max(128),
+  text: z.string().max(20000).optional().default(''),
+})
+
+/**
+ * DifyBuilderCreateBuildSessionPayload
+ */
+export const zDifyBuilderCreateBuildSessionPayload = z.object({
+  app_id: z.string().min(1),
+  attachments: z.array(zDifyBuilderAttachmentPayload).max(5).optional(),
+  derive_app_name: z.boolean().optional().default(false),
+  goal_text: z.string().max(20000).optional().default(''),
+  model_config: zSessionModel.nullish(),
+  scenario: z.literal('build'),
+})
+
+/**
+ * DifyBuilderCreateEditSessionPayload
+ */
+export const zDifyBuilderCreateEditSessionPayload = z.object({
+  app_id: z.string().min(1),
+  attachments: z.array(zDifyBuilderAttachmentPayload).max(5).optional(),
+  goal_text: z.string().max(20000).optional().default(''),
+  model_config: zSessionModel.nullish(),
+  scenario: z.literal('edit'),
+})
+
+/**
+ * DifyBuilderCreateFixSessionPayload
+ */
+export const zDifyBuilderCreateFixSessionPayload = z.object({
+  app_id: z.string().min(1),
+  attachments: z.array(zDifyBuilderAttachmentPayload).max(5).optional(),
+  failed_run_id: z.string().min(1),
+  model_config: zSessionModel.nullish(),
+  scenario: z.literal('fix'),
+})
 
 /**
  * NativeTestInputBinding
@@ -456,6 +469,7 @@ export const zDifyBuilderChecklistErrorPayload = z.object({
  */
 export const zDifyBuilderCreateChecklistFixSessionPayload = z.object({
   app_id: z.string().min(1),
+  attachments: z.array(zDifyBuilderAttachmentPayload).max(5).optional(),
   checklist_errors: z.array(zDifyBuilderChecklistErrorPayload).min(1),
   failed_run_id: z.string().min(1).nullish(),
   model_config: zSessionModel.nullish(),
@@ -566,6 +580,11 @@ export const zDifyBuilderErrorEventData = z.object({
   code: z.string().nullish(),
   command_id: z.string().nullish(),
   message: z.string(),
+  reason_code: z
+    .string()
+    .regex(/^[a-z][a-z0-9_]{0,127}$/)
+    .nullish(),
+  recoverable: z.boolean().nullish(),
   session_id: z.string().nullish(),
 })
 
@@ -587,6 +606,36 @@ export const zDifyBuilderErrorEventResponse = z.object({
  * FE can show "auto-continuing...".
  */
 export const zActionKind = z.enum(['automatic', 'destructive', 'primary', 'secondary'])
+
+/**
+ * DifyBuilderAttachmentStateResponse
+ */
+export const zDifyBuilderAttachmentStateResponse = z.object({
+  digest: z.string().optional().default(''),
+  extension: z.string(),
+  name: z.string(),
+  reason: z.string().optional().default(''),
+  size: z.int(),
+  status: z.enum(['consumed', 'pending', 'rejected', 'truncated']),
+  upload_file_id: z.uuid(),
+})
+
+/**
+ * DifyBuilderMaterialReceiptResponse
+ */
+export const zDifyBuilderMaterialReceiptResponse = z.object({
+  app_id: z.string(),
+  attachments: z.array(zDifyBuilderAttachmentStateResponse).max(5),
+  client_turn_id: z.string(),
+  consumed_version: z.int().nullable(),
+  generation: z.int(),
+  id: z.uuid(),
+  seq: z.int(),
+  session_id: z.string(),
+  status: z.enum(['consumed', 'pending', 'rejected', 'superseded', 'truncated']),
+  task_id: z.string(),
+  test_input_candidate: z.boolean(),
+})
 
 /**
  * CancellationReceipt
@@ -1346,6 +1395,7 @@ export const zDifyBuilderSessionViewResponse = z.object({
   actions: z.array(zDifyBuilderActionResponse).optional(),
   active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
   app_revision: zDifyBuilderAppRevisionResponse.nullish(),
+  attachments: z.array(zDifyBuilderMaterialReceiptResponse).max(100).optional(),
   canvas_read_only: z.boolean(),
   conversation_last_seq: z.int(),
   decision: zDecision.nullish(),
@@ -1378,6 +1428,7 @@ export const zDifyBuilderCommandFinishedEventData = z.object({
   actions: z.array(zDifyBuilderActionResponse).optional(),
   active_interaction: zDifyBuilderActiveInteractionResponse.nullish(),
   app_revision: zDifyBuilderAppRevisionResponse.nullish(),
+  attachments: z.array(zDifyBuilderMaterialReceiptResponse).max(100).optional(),
   canvas_read_only: z.boolean(),
   command_id: z.string(),
   conversation_last_seq: z.int(),

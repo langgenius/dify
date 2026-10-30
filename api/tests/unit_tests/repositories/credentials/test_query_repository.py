@@ -449,3 +449,49 @@ class TestApplyVisibilityFilter:
         )
 
         assert sqlite_session.scalars(query).all() == []
+
+
+def test_builder_actual_model_credential_id_cannot_borrow_visible_alternate(
+    sqlite_session: Session,
+    repository: CredentialQueryRepository,
+) -> None:
+    tenant, actor, other = (str(uuid4()) for _ in range(3))
+    visible = ProviderCredential(
+        tenant_id=tenant,
+        provider_name="openai",
+        credential_name="team",
+        encrypted_config="encrypted",
+        user_id=other,
+        visibility=PermissionEnum.ALL_TEAM,
+    )
+    hidden = ProviderCredential(
+        tenant_id=tenant,
+        provider_name="openai",
+        credential_name="private",
+        encrypted_config="encrypted",
+        user_id=other,
+        visibility=PermissionEnum.ONLY_ME,
+    )
+    sqlite_session.add_all([visible, hidden])
+    sqlite_session.commit()
+    assert repository.model_credentials_visible(
+        workspace_id=tenant,
+        actor_id=actor,
+        provider="langgenius/openai/openai",
+        provider_credential_ids=[visible.id],
+        model_credential_ids=[],
+    )
+    assert not repository.model_credentials_visible(
+        workspace_id=tenant,
+        actor_id=actor,
+        provider="openai",
+        provider_credential_ids=[hidden.id],
+        model_credential_ids=[],
+    )
+    assert not repository.model_credentials_visible(
+        workspace_id=str(uuid4()),
+        actor_id=actor,
+        provider="openai",
+        provider_credential_ids=[visible.id],
+        model_credential_ids=[],
+    )

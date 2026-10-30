@@ -32,9 +32,12 @@ import tasks.dify_builder_advance_task as task_mod
 from core.dify_builder.errors import BadRequestError, BusyError
 from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Graph, Run, Session
 from core.dify_builder.state import PcState
+from extensions.application_services import dify_builder_cognition_policy as policy_wiring
+from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import Base
 from services.dify_builder import service as service_mod
 from services.dify_builder import session_lock
+from services.dify_builder.application.cognition_policy import CognitionModel, CognitionPolicyService
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, StubAgent
@@ -95,6 +98,30 @@ def _wire(
     and the real (faked-Redis) session_lock module."""
     monkeypatch.setattr(session_lock, "redis_client", _FakeRedis())  # real lock module, faked redis (shared)
     monkeypatch.setattr(task_mod, "_build_repo", lambda: repo)  # task uses the SAME repo
+
+    # The worker must resolve current policy even with a deterministic cognition
+    # fixture. Keep real membership and current-policy persistence in this test.
+    with repo._session_factory() as sql, sql.begin():
+        if sql.get(Tenant, TENANT_ID) is None:
+            tenant = Tenant(name="Policy test Workspace")
+            tenant.id = TENANT_ID
+            sql.add(tenant)
+            sql.add(TenantAccountJoin(tenant_id=TENANT_ID, account_id=ACCOUNT_ID, role=TenantAccountRole.ADMIN))
+
+    class Models:
+        def workspace_default(self, actor: Actor) -> CognitionModel:
+            assert actor == _actor()
+            return CognitionModel("workspace_default", "openai", "gpt-4o", "chat", {})
+
+        def available(self, actor: Actor, model: CognitionModel) -> bool:
+            assert actor == _actor()
+            assert model.name == "gpt-4o"
+            return True
+
+    policy = CognitionPolicyService(repo, Models())
+    monkeypatch.setattr(
+        policy_wiring, "select_cognition_config", lambda actor, requested: policy.select(actor, requested).config()
+    )
 
     # Every eager worker observes the same authoritative draft, including the
     # revision written by apply_repair and later bound to the verification run.
@@ -293,3 +320,101 @@ def test_terminal_state_frame_excludes_conversation_history(
     assert "actions" in terminal
     assert "session_id" in terminal  # a SessionView-only field, proves it's the whole view
     json.dumps(terminal)  # must stay JSON-serializable
+
+
+def test_policy_revoked_after_queue_prevents_worker_cognition_without_failing_history(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+) -> None:
+    from services.dify_builder.application.cognition_policy import CognitionPolicy
+
+    _, _, events = _wire(monkeypatch, repo)
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_CAPABILITY_CHECK,
+    )
+    repo.create_session(
+        session,
+        DifyBuilderContext(
+            goal_text="queued goal",
+            model_config={"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}},
+        ),
+        [],
+    )
+    repo.put_policy(_actor(), CognitionPolicy(False, (), None, (), 0, "explicit"), 0)
+    token = session_lock.acquire(session.id)
+    assert token is not None
+    action = Action(kind="send_goal", payload={"text": "queued goal"}, base_version=1)
+    task_mod.advance_session(session.id, dataclasses.asdict(action), dataclasses.asdict(_actor()), token)
+    current, _ = repo.get_session(session.id)
+    assert current.version == 1
+    assert current.current_state == PcState.BUILD_CAPABILITY_CHECK
+    assert any(event.get("reason_code") == "builder_disabled" and event.get("recoverable") for _, event in events)
+    assert not session_lock.exists(session.id)
+
+
+def test_native_verify_remains_available_when_builder_cognition_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+) -> None:
+    from services.dify_builder.application.cognition_policy import CognitionPolicy
+
+    repo.save_run(
+        "00000000-0000-0000-0000-000000000000",
+        Run(id="TR-1", kind="original-failed", dify_run_id="", status="failed", immutable=True),
+    )
+    service, _, _ = _wire(monkeypatch, repo)
+    view = service.create_fix_session(APP_ID, _actor(), failed_run_id="TR-1")
+    repo.put_policy(_actor(), CognitionPolicy(False, (), None, (), 0, "explicit"), 0)
+    assert view.app_revision is not None
+    view = service.submit_action(
+        view.session_id,
+        _actor(),
+        Action(kind="run_verify", base_version=view.version, base_app_revision=view.app_revision.current),
+    )
+    assert view.state == "fix.await_testdata"
+    assert service.get_session_view(view.session_id, _actor()).session_id == view.session_id
+
+
+@pytest.mark.parametrize("command", ["run_verify", "stop"])
+def test_historical_empty_locale_native_verify_uses_real_guarded_agent_while_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
+    command: str,
+) -> None:
+    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
+    from services.dify_builder.application.cognition_policy import CognitionPolicy
+
+    service, _, events = _wire(monkeypatch, repo)
+
+    class PolicyDatabase:
+        engine = repo._session_factory.kw["bind"]
+
+    # Use the real guarded agent/proxy and the persisted disabled policy; only
+    # point the composition adapter at this test's actual SQL engine.
+    monkeypatch.setattr(policy_wiring, "db", PolicyDatabase())
+    monkeypatch.setattr(task_mod, "build_dify_builder_agent", lambda **kwargs: LlmBuilderAgent(**kwargs))
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_AWAIT_VERIFY,
+    )
+    repo.create_session(session, DifyBuilderContext(goal_text="historical nonempty goal", reply_language=""), [])
+    repo.put_policy(_actor(), CognitionPolicy(False, (), None, (), 0, "explicit"), 0)
+    token = session_lock.acquire(session.id)
+    assert token is not None
+    action = Action(kind=command, base_version=1)
+    task_mod.advance_session(session.id, dataclasses.asdict(action), dataclasses.asdict(_actor()), token)
+    current, context = repo.get_session(session.id)
+    assert current.current_state == (
+        PcState.FIX_AWAIT_TESTDATA if command == "run_verify" else PcState.FIX_AWAIT_VERIFY
+    )
+    assert context.paused == (command == "stop")
+    assert context.reply_language == ""
+    assert not any(event.get("reason_code") == "builder_disabled" for _, event in events)
+    assert service.get_session_view(session.id, _actor()).session_id == session.id

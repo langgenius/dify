@@ -25,6 +25,7 @@ from services.dify_builder import credentials, diagnostic_context, graph_ops, pr
 from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.agent import form_schema, graph_prompt, llm
 from services.dify_builder.agent.plan_context import workflow_io_context
+from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
 from services.dify_builder.plan import (
     PLAN_PRESENTATION_INSTRUCTION,
     EditPlanNotActionableError,
@@ -225,6 +226,8 @@ def analyze_impact(
             user=f"GOAL:\n{goal_text}\n\nGRAPH:\n{_graph_context(graph)}",
             on_reasoning=on_reasoning,
         )
+    except CognitionPolicyDeniedError:
+        raise
     except Exception:
         diagnostics.report("deterministic_fallback", fallback_used=True)
         return _degraded_impact(goal_text)
@@ -299,6 +302,8 @@ def propose_edit_plan(
     for attempt in range(2):
         try:
             text = llm.invoke_text(model, system=system, user=user, on_reasoning=on_reasoning)
+        except CognitionPolicyDeniedError:
+            raise
         except Exception:
             diagnostics.report("deterministic_fallback", fallback_used=True)
             return None
@@ -306,6 +311,8 @@ def propose_edit_plan(
             data = json_repair.loads(text)
             if not isinstance(data, dict):
                 diagnostics.report("json_decode_failed", attempt=attempt + 1)
+        except CognitionPolicyDeniedError:
+            raise
         except Exception as exc:
             diagnostics.report("deterministic_fallback", fallback_used=True)
             diagnostics.report("json_decode_failed", error=exc, attempt=attempt + 1)
@@ -707,6 +714,8 @@ def _assess_retained_bypasses(
             raise ValueError("invalid insertion indexes")
         if data["uncertain"]:
             raise ValueError("uncertain insertion intent")
+    except CognitionPolicyDeniedError:
+        raise
     except Exception:
         diagnostics.report("validation_refused")
         return [
@@ -759,6 +768,8 @@ def _invoke_intents(
 ) -> list[MutationIntent] | None:
     try:
         data = llm.invoke_json(model, system=system, user=user, on_reasoning=on_reasoning)
+    except CognitionPolicyDeniedError:
+        raise
     except Exception:
         diagnostics.report("deterministic_fallback", fallback_used=True)
         return None

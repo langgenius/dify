@@ -1281,3 +1281,59 @@ forbidden_modules =
     sqlalchemy
     tasks
     werkzeug
+
+[importlinter:contract:builder-cognition-policy-application-boundary]
+name = Builder cognition policy contracts and service are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.dify_builder.application.cognition_policy
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:builder-cognition-policy-controller-boundary]
+name = Builder cognition policy transport reaches persistence through its composition root
+type = forbidden
+source_modules =
+    controllers.console.dify_builder_policy
+forbidden_modules =
+    models
+    repositories
+    sqlalchemy
+allow_indirect_imports = True
+
+[importlinter:contract:builder-material-application-boundary]
+name = Builder material intake and prompt records use no direct framework or persistence dependency
+type = forbidden
+source_modules =
+    services.dify_builder.attachment_intake
+    services.dify_builder.attachment_context
+    services.dify_builder.attachment_extraction
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:builder-material-controller-boundary]
+name = Builder material transport reaches persistence through its composition root
+type = forbidden
+source_modules =
+    controllers.console.dify_builder
+forbidden_modules =
+    models
+    repositories
+allow_indirect_imports = True

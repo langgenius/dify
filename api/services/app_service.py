@@ -757,6 +757,18 @@ class AppService:
 
         return app
 
+    def describe_app(self, app: App, description: str, *, account_id: str, session: Session) -> App:
+        """Update description through the native identity owner outside a request."""
+        app.description = description
+        app.updated_by = account_id
+        app.updated_at = naive_utc_now()
+        self._sync_backing_agent_identity(
+            app, description=description, account_id=account_id, updated_at=app.updated_at, session=session
+        )
+        self._commit_app_identity_update(app, session=session)
+        app_was_updated.send(app)
+        return app
+
     def rename_app(self, app: App, name: str, *, account_id: str, session: Session) -> App:
         """Rename an app for the Dify Builder task outside a request context."""
         app.name = name
