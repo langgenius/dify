@@ -1,28 +1,11 @@
-import importlib.util
-import sys
-from pathlib import Path
-
 import pytest
 
-
-def _load_generate_billing_client_module():
-    api_dir = Path(__file__).parents[3]
-    script_path = api_dir / "dev" / "generate_billing_client.py"
-    spec = importlib.util.spec_from_file_location("generate_billing_client", script_path)
-    assert spec is not None
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-generator = _load_generate_billing_client_module()
+from dev import generate_billing_client as generator
 
 PREFIX = "#/components/schemas/dify.saas.api.billing."
 
 
-def _source_spec() -> dict:
+def _source_spec() -> generator.JsonObject:
     reply = {"$ref": f"{PREFIX}GetSubscriptionInfoReply"}
     return {
         "openapi": "3.0.3",

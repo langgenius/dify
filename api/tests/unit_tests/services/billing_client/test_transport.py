@@ -1,12 +1,16 @@
+from collections.abc import Callable
+
 import httpx
 import pytest
 
-from services.billing_client import billing, transport
+from services.billing_client import billing, saas, transport
 from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
+
+type RespondWith = Callable[[httpx.Response], list[httpx.Request]]
 
 
 @pytest.fixture
-def respond_with(monkeypatch: pytest.MonkeyPatch):
+def respond_with(monkeypatch: pytest.MonkeyPatch) -> RespondWith:
     requests: list[httpx.Request] = []
 
     def install(response: httpx.Response) -> list[httpx.Request]:
@@ -23,7 +27,7 @@ def respond_with(monkeypatch: pytest.MonkeyPatch):
     return install
 
 
-def test_response_coerces_int64_strings_and_ignores_unknown_fields(respond_with) -> None:
+def test_response_coerces_int64_strings_and_ignores_unknown_fields(respond_with: RespondWith) -> None:
     requests = respond_with(
         httpx.Response(
             200,
@@ -46,7 +50,7 @@ def test_response_coerces_int64_strings_and_ignores_unknown_fields(respond_with)
     assert requests[0].headers["Billing-Api-Secret-Key"] == "secret"
 
 
-def test_request_body_is_serialized_from_the_model(respond_with) -> None:
+def test_request_body_is_serialized_from_the_model(respond_with: RespondWith) -> None:
     requests = respond_with(httpx.Response(200, json={"reservation_id": "r1", "available": "1", "reserved": "1"}))
     body = billing.QuotaReserveReq(
         tenant_id="t1", feature_key="trigger_event", request_id="req", amount=2, meta={}, bucket=""
@@ -59,7 +63,7 @@ def test_request_body_is_serialized_from_the_model(respond_with) -> None:
     assert body.model_validate_json(requests[0].content) == body
 
 
-def test_missing_required_field_is_an_invalid_response(respond_with) -> None:
+def test_missing_required_field_is_an_invalid_response(respond_with: RespondWith) -> None:
     respond_with(httpx.Response(200, json={"available": "1"}))
 
     with pytest.raises(BillingUpstreamInvalidResponseError):
@@ -74,8 +78,21 @@ def test_missing_required_field_is_an_invalid_response(respond_with) -> None:
         (503, BillingUpstreamUnavailableError),
     ],
 )
-def test_non_ok_status_maps_to_upstream_errors(respond_with, status: int, error: type[Exception]) -> None:
+def test_non_ok_status_maps_to_upstream_errors(respond_with: RespondWith, status: int, error: type[Exception]) -> None:
     respond_with(httpx.Response(status, json={}))
 
     with pytest.raises(error):
         billing.subscription_get_knowledge_rate_limit(tenant_id="t1")
+
+
+def test_path_params_are_percent_encoded_into_the_saas_path(respond_with: RespondWith) -> None:
+    requests = respond_with(httpx.Response(200, json={"success": True}))
+
+    reply = saas.notification_dismiss_notification(
+        notification_id="a/b c", body=saas.DismissNotificationReq(notification_id="a/b c", account_id="acc")
+    )
+
+    assert reply.success is True
+    assert requests[0].url.raw_path == b"/v1/notifications/a%2Fb%20c/dismiss"
+    assert saas.DismissNotificationReq.model_validate_json(requests[0].content).account_id == "acc"
+    assert b'"accountId"' in requests[0].content
