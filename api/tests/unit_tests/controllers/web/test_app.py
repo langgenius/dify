@@ -28,6 +28,7 @@ from models.model import App, AppMode, EndUser
 from services.app_definition_query_service import (
     AppDefinitionNotPublishedError,
     AppDefinitionUnavailableError,
+    WebAppParametersDict,
 )
 from services.webapp_access_query_service import (
     WebAppAccessAppNotFoundError,
@@ -92,13 +93,13 @@ class TestAppParameterApi:
         )
         calls: list[tuple[str, str]] = []
 
-        def get_web_parameters(app_id: str, tenant_id: str) -> dict[str, object]:
+        def get_web_parameters(app_id: str, tenant_id: str) -> WebAppParametersDict:
             calls.append((app_id, tenant_id))
             return {
                 **get_parameters_from_feature_dict(features_dict={"opening_statement": "Hello"}, user_input_form=[]),
                 "connection_revision": None,
                 "requires_end_user_connections": False,
-                "connection_requirements": [],
+                "connection_requirements": (),
             }
 
         monkeypatch.setattr(

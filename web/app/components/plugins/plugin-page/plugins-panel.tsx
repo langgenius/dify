@@ -4,7 +4,6 @@ import type { PluginDetail } from '../types'
 import type { PluginPageContentInset } from './content-inset'
 import type { FilterState } from './filter-management'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,7 +12,7 @@ import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import { useGetLanguage } from '@/context/i18n'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import { renderI18nObject } from '@/i18n/metadata'
 import {
   normalizePluginCategoryListLanguage,
@@ -106,10 +105,7 @@ const PluginsPanel = ({
         : undefined,
     [filters.searchQuery, filters.tags, isIntegrationCategoryPage, locale, supportsTagFilter],
   )
-  const { data: enableMarketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const marketplace = useMarketplace()
   const {
     data: pluginList,
     isLoading: isPluginListLoading,
@@ -196,9 +192,8 @@ const PluginsPanel = ({
   }, [currentBuiltinToolID, filteredBuiltinTools])
 
   const handleDetailHide = () => setSelectedItem(undefined)
-  const hasToolMarketplacePanel = enableMarketplace && isToolIntegrationPage
-  const categoryMarketplace =
-    enableMarketplace && hasEmbeddedMarketplace ? fixedCategory : undefined
+  const hasToolMarketplacePanel = marketplace !== null && isToolIntegrationPage
+  const categoryMarketplace = marketplace && hasEmbeddedMarketplace ? fixedCategory : undefined
   const contentPaddingClassName = pluginPageContentInsetClassNames[contentInset]
   const contentFrameClassName = cn(
     pluginPageContentFrameClassNames[contentInset],
@@ -274,6 +269,7 @@ const PluginsPanel = ({
               filteredBuiltinTools={filteredBuiltinTools}
               filteredList={filteredList}
               hasToolMarketplacePanel={hasToolMarketplacePanel}
+              marketplace={marketplace}
               hasVisibleBuiltinTools={hasVisibleBuiltinTools}
               hasVisiblePlugins={hasVisiblePlugins}
               hasEmbeddedMarketplace={hasEmbeddedMarketplace}

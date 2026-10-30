@@ -549,6 +549,17 @@ class TestDataSourceCases:
         assert collaborators.notion_source.list_calls == [(TENANT_ID, ACCOUNT_ID, "credential-1")]
 
     @staticmethod
+    def test_notion_list_accepts_empty_dataset_id_for_new_dataset(collaborators: ControllerCollaborators) -> None:
+        response = collaborators.client.get(
+            "/console/api/notion/pre-import/pages",
+            query_string={"credential_id": "credential-1", "dataset_id": ""},
+        )
+
+        assert response.status_code == 200
+        assert response.get_json()["notion_info"][0]["pages"][0]["is_bound"] is False
+        assert collaborators.notion_source.list_calls == [(TENANT_ID, ACCOUNT_ID, "credential-1")]
+
+    @staticmethod
     @pytest.mark.parametrize("page_type", ["page", "database"])
     def test_notion_preview_validates_page_type_and_delegates(
         collaborators: ControllerCollaborators, page_type: str
