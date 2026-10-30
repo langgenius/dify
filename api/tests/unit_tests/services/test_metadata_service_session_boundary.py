@@ -1,7 +1,7 @@
 """Metadata operations persist through scoped, independently owned transactions."""
 
 from datetime import datetime
-from typing import Literal, cast
+from typing import Literal
 from unittest.mock import create_autospec
 
 import pytest
@@ -48,7 +48,8 @@ class _StatementRecordingSession:
 
 def test_metadata_owner_lock_queries_refresh_for_update() -> None:
     recorder = _StatementRecordingSession()
-    session = cast(Session, recorder)
+    session = create_autospec(Session, instance=True, spec_set=True)
+    session.scalar.side_effect = recorder.scalar
 
     lock_metadata_dataset(session, REF)
     lock_metadata_document(session, REF, DOCUMENT_ID)
@@ -379,7 +380,8 @@ def test_builtin_fields_batch_uploader_lookup_and_skip_unchanged_documents(
             )
             session.add(document)
 
-    engine = cast(Engine, sqlite_session_factory.kw["bind"])
+    engine = sqlite_session_factory.kw["bind"]
+    assert isinstance(engine, Engine)
     statements: list[str] = []
 
     def record_statement(

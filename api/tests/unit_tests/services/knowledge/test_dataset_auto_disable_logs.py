@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import cast
+from unittest.mock import create_autospec
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -74,13 +74,12 @@ def _log(*, tenant_id: str, dataset_id: str, document_id: str, created_at: datet
 
 
 def _operations(session_factory: sessionmaker[Session]) -> SQLAlchemyDatasetOperations:
-    unused = _UnusedDependency()
     return SQLAlchemyDatasetOperations(
         session_factory=session_factory,
-        tags=cast(TagTargetQuery, unused),
-        app_queries=cast(RelatedApps, unused),
-        members=cast(MemberService, unused),
-        datasets=cast(SQLAlchemyDatasetRepository, unused),
+        tags=create_autospec(TagTargetQuery, instance=True, spec_set=True),
+        app_queries=create_autospec(RelatedApps, instance=True, spec_set=True),
+        members=create_autospec(MemberService, instance=True, spec_set=True),
+        datasets=create_autospec(SQLAlchemyDatasetRepository, instance=True, spec_set=True),
     )
 
 

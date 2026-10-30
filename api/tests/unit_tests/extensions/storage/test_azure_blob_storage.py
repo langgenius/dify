@@ -1,4 +1,5 @@
-from typing import cast, override
+from typing import override
+from unittest.mock import create_autospec
 
 import pytest
 from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
@@ -32,10 +33,12 @@ class _TestAzureBlobStorage(AzureBlobStorage):
     def __init__(self, client: _AzureClient) -> None:
         self.bucket_name = "test-container"
         self._client = client
+        self._client_port = create_autospec(BlobServiceClient, instance=True, spec_set=True)
+        self._client_port.get_container_client.side_effect = client.get_container_client
 
     @override
     def _sync_client(self) -> BlobServiceClient:
-        return cast(BlobServiceClient, self._client)
+        return self._client_port
 
 
 def test_delete_succeeds_when_object_is_absent() -> None:

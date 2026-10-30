@@ -15,9 +15,9 @@ _REQUEST_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
 
 class FirecrawlDocumentData(TypedDict):
     title: str | None
-    description: str | None
     source_url: str | None
-    markdown: str | None
+    description: NotRequired[str | None]
+    markdown: NotRequired[str | None]
 
 
 class CrawlStatusResponse(TypedDict):

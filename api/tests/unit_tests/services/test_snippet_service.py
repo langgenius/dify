@@ -1032,7 +1032,7 @@ def test_workflow_run_queries_delegate_to_repositories(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    service = SnippetService.__new__(SnippetService)
+    service = _snippet_service(sqlite_session_factory)
     workflow_run_repo = SimpleNamespace(
         get_paginated_workflow_runs=Mock(return_value=SimpleNamespace(data=[])),
         get_workflow_run_by_id=Mock(return_value=WorkflowRun(id="run-1")),
@@ -1085,8 +1085,10 @@ def test_workflow_run_queries_delegate_to_repositories(
     )
 
 
-def test_workflow_run_node_executions_returns_empty_when_run_missing() -> None:
-    service = SnippetService.__new__(SnippetService)
+def test_workflow_run_node_executions_returns_empty_when_run_missing(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    service = _snippet_service(sqlite_session_factory)
     service._node_execution_service_repo = SimpleNamespace(get_executions_by_workflow_run=Mock())
     service.get_snippet_workflow_run = Mock(return_value=None)
 

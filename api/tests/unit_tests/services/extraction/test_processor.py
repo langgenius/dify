@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import cast
 from unittest.mock import Mock, create_autospec
 
 import httpx
@@ -391,12 +390,14 @@ def _website_service(
     scrape_data: Mapping[str, object] | None = None,
 ) -> _WebsiteServiceDouble:
     service = create_autospec(WebsiteService, instance=True)
-    crawl = cast(Mock, service.get_crawl_url_data_by_ref)
-    scrape = cast(Mock, service.get_scrape_url_data_by_ref)
+    crawl = Mock()
+    scrape = Mock()
     crawl.return_value = dict(crawl_data) if crawl_data is not None else None
     scrape.return_value = dict(scrape_data) if scrape_data is not None else None
+    service.get_crawl_url_data_by_ref.side_effect = crawl
+    service.get_scrape_url_data_by_ref.side_effect = scrape
     return _WebsiteServiceDouble(
-        service=cast(WebsiteService, service),
+        service=service,
         crawl=crawl,
         scrape=scrape,
     )

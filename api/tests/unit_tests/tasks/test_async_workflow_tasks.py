@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Generator
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from threading import Event
 from types import ModuleType
-from typing import Protocol, cast, override
+from typing import Protocol, override, runtime_checkable
 from unittest.mock import patch
 
 import pytest
@@ -24,6 +24,11 @@ from models.enums import AppTriggerType, EndUserType, WorkflowRunTriggeredFrom, 
 from models.model import App, AppMode, EndUser, Tenant
 from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowPause, WorkflowRun, WorkflowType
+from services.knowledge.entities.retrieval import (
+    KnowledgeRetrievalRequest,
+    KnowledgeRetrievalResult,
+    RetrievableDataset,
+)
 from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.workflow.entities import TriggerData, WorkflowTaskData
 from tasks import async_workflow_tasks
@@ -55,11 +60,33 @@ class _ApplicationServices:
     knowledge: _KnowledgeServices
 
 
+@runtime_checkable
 class _RunnableTask(Protocol):
     acks_late: bool
     reject_on_worker_lost: bool
 
     def run(self, task_data: dict[str, str]) -> None: ...
+
+
+class _UnusedKnowledgeRetriever:
+    """Complete retrieval fake for workflow tests that never issue a knowledge query."""
+
+    @staticmethod
+    def list_datasets(*, tenant_id: str, dataset_ids: Sequence[str]) -> list[RetrievableDataset]:
+        del tenant_id, dataset_ids
+        raise AssertionError("this workflow test must not list knowledge datasets")
+
+    @staticmethod
+    def retrieve(
+        request: KnowledgeRetrievalRequest,
+        *,
+        request_metadata: Mapping[str, object] | None,
+    ) -> KnowledgeRetrievalResult:
+        del request, request_metadata
+        raise AssertionError("this workflow test must not retrieve knowledge")
+
+
+_UNUSED_KNOWLEDGE_RETRIEVER: KnowledgeRetriever = _UnusedKnowledgeRetriever()
 
 
 class _OwnedExecutionLease:
@@ -294,7 +321,7 @@ def test_missing_trigger_log_is_acknowledged_without_execution(
 
     async_workflow_tasks._execute_workflow_common(
         WorkflowTaskData(workflow_trigger_log_id="missing"),
-        knowledge_retrieval=cast(KnowledgeRetriever, object()),
+        knowledge_retrieval=_UNUSED_KNOWLEDGE_RETRIEVER,
     )
 
     assert "Workflow trigger log not found: missing" in caplog.text
@@ -323,7 +350,7 @@ def test_execute_workflow_marks_running_before_generation(
         def generate(self, **kwargs: object) -> None:
             generated.append(kwargs)
 
-    retrieval = cast(KnowledgeRetriever, object())
+    retrieval: KnowledgeRetriever = _UnusedKnowledgeRetriever()
     monkeypatch.setattr(async_workflow_tasks, "WorkflowAppGenerator", Generator)
 
     with pytest.raises(async_workflow_tasks.WorkflowExecutionPublicationError):
@@ -341,7 +368,9 @@ def test_execute_workflow_marks_running_before_generation(
     assert generated[0]["user"] is user
     assert generated[0]["args"] == {"inputs": {"name": "dify"}, "files": []}
     assert generated[0]["root_node_id"] == "root-1"
-    assert len(cast(list[object], generated[0]["graph_engine_layers"])) == 1
+    graph_engine_layers = generated[0]["graph_engine_layers"]
+    assert isinstance(graph_engine_layers, list)
+    assert len(graph_engine_layers) == 1
     assert generated[0]["workflow_run_id"] == trigger_log.workflow_run_id
 
 
@@ -396,7 +425,10 @@ def test_publication_failure_reconciles_committed_result_without_reexecution(
     monkeypatch.setattr(async_workflow_tasks.TriggerPostLayer, "publish_pending_terminal", fail_publication)
     task_data = WorkflowTaskData(workflow_trigger_log_id=trigger_log.id)
     with pytest.raises(async_workflow_tasks.WorkflowExecutionPublicationError):
-        async_workflow_tasks._execute_workflow_common(task_data, knowledge_retrieval=cast(KnowledgeRetriever, object()))
+        async_workflow_tasks._execute_workflow_common(
+            task_data,
+            knowledge_retrieval=_UNUSED_KNOWLEDGE_RETRIEVER,
+        )
 
     sqlite_session.refresh(trigger_log)
     assert trigger_log.status == WorkflowTriggerStatus.RUNNING
@@ -405,7 +437,10 @@ def test_publication_failure_reconciles_committed_result_without_reexecution(
 
     # A new task invocation has no in-memory layer receipt. It must reconstruct
     # the result through the persisted identity and leave execution untouched.
-    async_workflow_tasks._execute_workflow_common(task_data, knowledge_retrieval=cast(KnowledgeRetriever, object()))
+    async_workflow_tasks._execute_workflow_common(
+        task_data,
+        knowledge_retrieval=_UNUSED_KNOWLEDGE_RETRIEVER,
+    )
     sqlite_session.refresh(trigger_log)
     assert trigger_log.status == (
         WorkflowTriggerStatus.PAUSED if status == WorkflowExecutionStatus.PAUSED else WorkflowTriggerStatus.SUCCEEDED
@@ -436,14 +471,15 @@ def test_execute_workflow_persists_terminal_failure(
 
     async_workflow_tasks._execute_workflow_common(
         WorkflowTaskData(workflow_trigger_log_id="trigger-1"),
-        knowledge_retrieval=cast(KnowledgeRetriever, object()),
+        knowledge_retrieval=_UNUSED_KNOWLEDGE_RETRIEVER,
     )
 
     assert trigger_log.status == WorkflowTriggerStatus.FAILED
     assert trigger_log.error == "generation failed"
     assert isinstance(trigger_log.finished_at, datetime)
     assert trigger_log.finished_at.tzinfo == UTC
-    assert cast(float, trigger_log.elapsed_time) >= 0
+    assert trigger_log.elapsed_time is not None
+    assert trigger_log.elapsed_time >= 0
     sqlite_session.expire_all()
     stored = sqlite_session.get(WorkflowTriggerLog, trigger_log.id)
     assert stored is not None
@@ -479,7 +515,7 @@ def test_redelivery_does_not_restart_terminal_or_paused_trigger(
 
     async_workflow_tasks._execute_workflow_common(
         WorkflowTaskData(workflow_trigger_log_id=trigger_log.id),
-        knowledge_retrieval=cast(KnowledgeRetriever, object()),
+        knowledge_retrieval=_UNUSED_KNOWLEDGE_RETRIEVER,
     )
 
     sqlite_session.refresh(trigger_log)
@@ -504,7 +540,7 @@ def test_running_trigger_with_unknown_result_is_not_replayed(
 
     async_workflow_tasks._execute_workflow_common(
         WorkflowTaskData(workflow_trigger_log_id=trigger_log.id),
-        knowledge_retrieval=cast(KnowledgeRetriever, object()),
+        knowledge_retrieval=_UNUSED_KNOWLEDGE_RETRIEVER,
     )
 
     sqlite_session.refresh(trigger_log)
@@ -547,7 +583,7 @@ def test_concurrent_redelivery_does_not_start_a_second_generator(
     monkeypatch.setattr(async_workflow_tasks, "build_workflow_execution_identity", lambda _user: object())
     monkeypatch.setattr(async_workflow_tasks.session_factory, "get_session_maker", lambda: "session-maker")
     generator_calls: list[str] = []
-    retrieval = cast(KnowledgeRetriever, object())
+    retrieval: KnowledgeRetriever = _UnusedKnowledgeRetriever()
 
     class GeneratorImpl:
         def __init__(self, **_kwargs: object) -> None:
@@ -602,7 +638,7 @@ def test_failure_does_not_overwrite_terminal_state_published_by_another_worker(
 
     async_workflow_tasks._execute_workflow_common(
         WorkflowTaskData(workflow_trigger_log_id=trigger_log.id),
-        knowledge_retrieval=cast(KnowledgeRetriever, object()),
+        knowledge_retrieval=_UNUSED_KNOWLEDGE_RETRIEVER,
     )
 
     sqlite_session.expire_all()
@@ -624,7 +660,7 @@ def test_queue_entrypoints_resolve_retrieval_service_and_validate_payload(
     monkeypatch: pytest.MonkeyPatch,
     task: object,
 ) -> None:
-    retrieval = cast(KnowledgeRetriever, object())
+    retrieval: KnowledgeRetriever = _UnusedKnowledgeRetriever()
 
     def application_services() -> _ApplicationServices:
         return _ApplicationServices(knowledge=_KnowledgeServices(retrieval=retrieval))
@@ -639,16 +675,17 @@ def test_queue_entrypoints_resolve_retrieval_service_and_validate_payload(
         lambda task_data, *, knowledge_retrieval: calls.append((task_data, knowledge_retrieval)),
     )
 
-    cast(_RunnableTask, task).run({"workflow_trigger_log_id": "trigger-1"})
+    assert isinstance(task, _RunnableTask)
+    task.run({"workflow_trigger_log_id": "trigger-1"})
 
     assert calls == [(WorkflowTaskData(workflow_trigger_log_id="trigger-1"), retrieval)]
-    assert cast(_RunnableTask, task).acks_late is True
-    assert cast(_RunnableTask, task).reject_on_worker_lost is True
+    assert task.acks_late is True
+    assert task.reject_on_worker_lost is True
 
 
 @pytest.fixture
 def resume_retrieval(monkeypatch: pytest.MonkeyPatch) -> KnowledgeRetriever:
-    retrieval = cast(KnowledgeRetriever, object())
+    retrieval: KnowledgeRetriever = _UnusedKnowledgeRetriever()
     monkeypatch.setattr(
         "extensions.ext_application_services.application_services",
         lambda: _ApplicationServices(_KnowledgeServices(retrieval)),
@@ -718,7 +755,9 @@ def test_canonical_resume_owner_is_noop_when_pause_is_missing(
 ) -> None:
     from tasks.app_generate import workflow_execute_task
 
-    WorkflowRun.metadata.create_all(sqlite_session.get_bind(), tables=[cast(Table, WorkflowRun.__table__)])
+    workflow_run_table = WorkflowRun.__table__
+    assert isinstance(workflow_run_table, Table)
+    WorkflowRun.metadata.create_all(sqlite_session.get_bind(), tables=[workflow_run_table])
     sqlite_session.add(
         WorkflowRun(
             id="missing-pause-run",
@@ -753,7 +792,7 @@ def test_canonical_resume_owner_is_noop_when_pause_is_missing(
 
     workflow_execute_task._resume_app_execution(
         {"workflow_run_id": "missing-pause-run"},
-        knowledge_retrieval=cast(KnowledgeRetriever, object()),
+        knowledge_retrieval=_UNUSED_KNOWLEDGE_RETRIEVER,
     )
 
     assert queried_run_ids == ["missing-pause-run"]

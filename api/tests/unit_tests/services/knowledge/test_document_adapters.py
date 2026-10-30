@@ -1,8 +1,8 @@
 import json
 from dataclasses import dataclass
 from datetime import datetime
-from typing import NoReturn, cast
-from unittest.mock import patch
+from typing import NoReturn
+from unittest.mock import create_autospec, patch
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -323,7 +323,10 @@ class RecordingFiles:
 
 def test_upload_adapter_uses_request_actor_and_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
     files = RecordingFiles()
-    uploads = DocumentUploadAdapter(files=cast(FileService, files))
+    file_service = create_autospec(FileService, instance=True, spec_set=True)
+    file_service.upload_text.side_effect = files.upload_text
+    file_service.upload_file.side_effect = files.upload_file
+    uploads = DocumentUploadAdapter(files=file_service)
     context = RequestContext("request", None, "actor-1", "tenant-1")
     monkeypatch.setattr(document_adapters.FeatureService, "get_knowledge_file_size_limit", lambda _tenant_id: 25)
 
@@ -350,7 +353,10 @@ def test_upload_adapter_uses_request_actor_and_tenant(monkeypatch: pytest.Monkey
 def test_upload_adapter_translates_file_service_failures(monkeypatch: pytest.MonkeyPatch) -> None:
     files = RecordingFiles()
     files.file_error = FileTooLargeError("25 MB limit")
-    uploads = DocumentUploadAdapter(files=cast(FileService, files))
+    file_service = create_autospec(FileService, instance=True, spec_set=True)
+    file_service.upload_text.side_effect = files.upload_text
+    file_service.upload_file.side_effect = files.upload_file
+    uploads = DocumentUploadAdapter(files=file_service)
     context = RequestContext("request", None, "actor-1", "tenant-1")
     monkeypatch.setattr(document_adapters.FeatureService, "get_knowledge_file_size_limit", lambda _tenant_id: 25)
 
@@ -400,9 +406,14 @@ class FailingModelConfiguration:
     ],
 )
 def test_document_model_adapter_preserves_provider_error_contract(error: Exception, operation: str, kind: str) -> None:
-    models = DocumentModelConfigurationAdapter(
-        models=cast(DocumentModelConfigurationGateway, FailingModelConfiguration(error))
-    )
+    failing = FailingModelConfiguration(error)
+    model_gateway = create_autospec(DocumentModelConfigurationGateway, instance=True, spec_set=True)
+    model_gateway.resolve_default_embedding_model.side_effect = failing.resolve_default_embedding_model
+    model_gateway.resolve_embedding_model.side_effect = failing.resolve_embedding_model
+    model_gateway.validate_embedding_model.side_effect = failing.validate_embedding_model
+    model_gateway.validate_reranking_model.side_effect = failing.validate_reranking_model
+    model_gateway.validate_dataset_model.side_effect = failing.validate_dataset_model
+    models = DocumentModelConfigurationAdapter(models=model_gateway)
     operations = {
         "default": lambda: models.resolve_default_embedding_model(tenant_id="tenant-1"),
         "embedding": lambda: models.resolve_embedding_model(
@@ -420,9 +431,10 @@ def test_document_model_adapter_preserves_provider_error_contract(error: Excepti
 
 
 def test_document_model_adapter_keeps_shared_validation_value_errors() -> None:
-    models = DocumentModelConfigurationAdapter(
-        models=cast(DocumentModelConfigurationGateway, FailingModelConfiguration(ValueError("missing")))
-    )
+    failing = FailingModelConfiguration(ValueError("missing"))
+    model_gateway = create_autospec(DocumentModelConfigurationGateway, instance=True, spec_set=True)
+    model_gateway.validate_dataset_model.side_effect = failing.validate_dataset_model
+    models = DocumentModelConfigurationAdapter(models=model_gateway)
     configuration = DatasetModelConfiguration("tenant-1", "high_quality", "provider", "embedding")
 
     with pytest.raises(ValueError, match="missing") as raised:

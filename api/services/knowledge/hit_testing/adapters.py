@@ -1,8 +1,9 @@
 """Retrieval execution and presentation after scoped repository reads complete."""
 
 from collections import defaultdict
-from collections.abc import Sequence
-from typing import Any, Protocol, cast
+from collections.abc import Mapping, Sequence
+from operator import itemgetter
+from typing import Any, Protocol, TypedDict
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -17,10 +18,11 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
+from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import Document
+from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file_preview_url
 from graphon.model_runtime.errors.invoke import InvokeError
@@ -28,6 +30,11 @@ from machinery.context import RequestContext
 from repositories.knowledge.retrieval_source_repository import expand_attachment_document_filter
 from services.knowledge.entities.metadata import MetadataFilteringCondition
 from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge.entities.retrieval_settings import (
+    RerankingModelDict,
+    WeightedScoreConfig,
+    WeightsDict,
+)
 from services.knowledge.hit_testing.application import ExternalHitTestingGateway
 from services.knowledge.hit_testing.entities import (
     ExternalHitTestingRecord,
@@ -50,13 +57,81 @@ _MISSING_PROVIDER_MESSAGE = (
     "No Embedding Model or Reranking Model available. Please configure a valid provider "
     "in the Settings -> Model Provider."
 )
-_DEFAULT_RETRIEVAL_MODEL = {
+_DEFAULT_RETRIEVAL_MODEL: dict[str, object] = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     "top_k": 4,
     "score_threshold_enabled": False,
 }
+
+
+class _ChildRecord(TypedDict):
+    id: str
+    content: str
+    position: int
+    score: float
+
+
+def _string_keyed_dict(value: object, *, setting: str) -> dict[str, object]:
+    """Validate a JSON-like object.
+
+    Preconditions: ``value`` comes from an untyped retrieval configuration.
+    Postconditions: return a fresh string-keyed mapping or raise ``ValueError`` without mutating the input.
+    """
+    if not isinstance(value, dict):
+        raise ValueError(f"{setting} must be an object")
+    result: dict[str, object] = {}
+    for key, item in value.items():
+        if not isinstance(key, str):
+            raise ValueError(f"{setting} keys must be strings")
+        result[key] = item
+    return result
+
+
+def _reranking_model(value: object) -> RerankingModelDict | None:
+    """Normalize one enabled model-reranking configuration.
+
+    Preconditions: callers invoke this only when model reranking is active.
+    Postconditions: aliases are normalized to the internal names; invalid active configuration raises validation
+    errors and ignored configuration is never passed here.
+    """
+    if value is None:
+        return None
+    raw = _string_keyed_dict(value, setting="reranking_model")
+    provider = raw.get("reranking_provider_name", raw.get("provider"))
+    model = raw.get("reranking_model_name", raw.get("model"))
+    # The legacy rerank runner treats incomplete model selection as disabled.
+    if not provider or not model:
+        return None
+    if not isinstance(provider, str) or not isinstance(model, str):
+        raise ValueError("reranking model provider and name must be strings")
+    return {
+        "reranking_provider_name": provider,
+        "reranking_model_name": model,
+    }
+
+
+def _weights(value: object) -> WeightsDict | None:
+    """Normalize one enabled weighted-reranking configuration.
+
+    Preconditions: callers invoke this only for weighted-score reranking.
+    Postconditions: return the canonical nested shape consumed by ``RetrievalService`` or raise validation errors;
+    the caller-owned object is not mutated.
+    """
+    if value is None:
+        return None
+    if value == {}:
+        return None
+    weights = WeightedScoreConfig.model_validate(value)
+    return {
+        "vector_setting": {
+            "vector_weight": weights.vector_setting.vector_weight,
+            "embedding_provider_name": weights.vector_setting.embedding_provider_name,
+            "embedding_model_name": weights.vector_setting.embedding_model_name,
+        },
+        "keyword_setting": {"keyword_weight": weights.keyword_setting.keyword_weight},
+    }
 
 
 class HitTestingDatasetReader(Protocol):
@@ -121,6 +196,12 @@ class DatasetHitTestingGateway:
         ref: DatasetRef,
         request: HitTestingRequest,
     ) -> HitTestingResult:
+        """Execute hit testing for an admitted dataset reference.
+
+        Preconditions: ``ref`` and ``context`` were admitted by the application layer; request shape validation has
+        completed. Postconditions: only effective settings reach provider I/O, provider failures retain their domain
+        error mapping, and the result records whether query history should be written.
+        """
         try:
             dataset = self._datasets.get_hit_testing_dataset(ref)
             if dataset.provider == "external":
@@ -145,7 +226,7 @@ class DatasetHitTestingGateway:
                     record_query=False,
                 )
 
-            model = request.retrieval_model or dataset.retrieval_model or _DEFAULT_RETRIEVAL_MODEL
+            model = dict(request.retrieval_model or dataset.retrieval_model or _DEFAULT_RETRIEVAL_MODEL)
             if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
                 model = {**model, "search_method": RetrievalMethod.KEYWORD_SEARCH}
             document_filter = None
@@ -153,7 +234,8 @@ class DatasetHitTestingGateway:
             conditions = model.get("metadata_filtering_conditions", {})
             if conditions:
                 document_filter = self._documents.get_hit_testing_document_filter(
-                    ref, cast(dict[str, object], conditions)
+                    ref,
+                    _string_keyed_dict(conditions, setting="metadata_filtering_conditions"),
                 )
                 has_metadata_matches = bool(document_filter)
             provider_document_filter = document_filter
@@ -171,7 +253,7 @@ class DatasetHitTestingGateway:
                 self._retrieve_documents(
                     ref.dataset_id,
                     request.query,
-                    cast(DefaultRetrievalModelDict, model),
+                    model,
                     request.attachment_ids,
                     provider_document_filter,
                     document_filter,
@@ -205,6 +287,12 @@ class DatasetHitTestingGateway:
     def _format_records(
         self, ref: DatasetRef, retrieved: list[Document], *, top_k: int
     ) -> list[dict[str, Any] | ExternalHitTestingRecord]:
+        """Reconcile provider hits with current rows and publish final access grants.
+
+        Preconditions: candidates belong to the requested retrieval execution but remain untrusted until current
+        ownership is loaded. Postconditions: return at most ``top_k`` eligible records and grant access only to files
+        and segments present in those final records.
+        """
         scope = get_current_file_access_scope()
         if scope is not None and scope.tenant_id != ref.tenant_id:
             return []
@@ -256,7 +344,7 @@ class DatasetHitTestingGateway:
             pair = identity[:2]
             valid_summary_scores[pair] = max(valid_summary_scores.get(pair, score), score)
             valid_summary_content[pair] = content
-        children: dict[str, list[dict[str, object]]] = defaultdict(list)
+        children: dict[str, list[_ChildRecord]] = defaultdict(list)
         for child in snapshot.children:
             if child.index_node_id is None:
                 continue
@@ -278,7 +366,7 @@ class DatasetHitTestingGateway:
                 continue
             attachment_pairs.add(pair)
             files[attachment.segment_id].append(attachment)
-        eligible_records: list[tuple[dict[str, object], str, list[RetrievalAttachmentRecord]]] = []
+        eligible_records: list[tuple[float, dict[str, object], str, list[RetrievalAttachmentRecord]]] = []
         for segment in snapshot.segments:
             document = documents.get(segment.document_id)
             if document is None:
@@ -291,9 +379,7 @@ class DatasetHitTestingGateway:
             if document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                 if not (child_records or attachments or pair in valid_summary_scores):
                     continue
-                score = max(
-                    [valid_summary_scores.get(pair, 0.0)] + [cast(float, child["score"]) for child in child_records]
-                )
+                score = max([valid_summary_scores.get(pair, 0.0)] + [child["score"] for child in child_records])
             else:
                 has_node_hit = (
                     segment.index_node_id is not None and (segment.document_id, segment.index_node_id) in node_scores
@@ -307,6 +393,7 @@ class DatasetHitTestingGateway:
             score = max([score] + [image_scores[attachment.document_id, attachment.id] for attachment in attachments])
             eligible_records.append(
                 (
+                    score,
                     {
                         "segment": {
                             **segment.values,
@@ -315,9 +402,7 @@ class DatasetHitTestingGateway:
                             "document": document.values,
                         },
                         "score": score,
-                        "child_chunks": sorted(
-                            child_records, key=lambda child: cast(float, child["score"]), reverse=True
-                        ),
+                        "child_chunks": sorted(child_records, key=itemgetter("score"), reverse=True),
                         "tsne_position": None,
                         "files": [],
                         "summary": valid_summary_content.get(pair),
@@ -326,12 +411,12 @@ class DatasetHitTestingGateway:
                     attachments,
                 )
             )
-        eligible_records.sort(key=lambda item: cast(float, item[0]["score"]), reverse=True)
+        eligible_records.sort(key=itemgetter(0), reverse=True)
         selected_records = eligible_records[:top_k] if top_k else eligible_records
-        included_segment_ids = [segment_id for _, segment_id, _ in selected_records]
-        included_file_ids = [attachment.id for _, _, attachments in selected_records for attachment in attachments]
+        included_segment_ids = [segment_id for _, _, segment_id, _ in selected_records]
+        included_file_ids = [attachment.id for _, _, _, attachments in selected_records for attachment in attachments]
         records: list[dict[str, Any] | ExternalHitTestingRecord] = []
-        for record, _, attachments in selected_records:
+        for _, record, _, attachments in selected_records:
             record["files"] = self._file_values(attachments)
             records.append(record)
         grant_upload_file_access(included_file_ids)
@@ -356,21 +441,55 @@ class DatasetHitTestingGateway:
     def _retrieve_documents(
         dataset_id: str,
         query: str,
-        model: DefaultRetrievalModelDict,
+        model: Mapping[str, object],
         attachment_ids: list[str] | None,
         document_filter: list[str] | None,
         allowed_document_filter: list[str] | None,
     ) -> list[Document]:
+        """Execute one internal retrieval using only effective configuration.
+
+        Preconditions: ``model`` is the selected request, dataset, or default configuration.
+        Postconditions: fields that affect this invocation are narrowed or validated before provider I/O; malformed
+        fields for disabled reranking or threshold features remain ignored as they were historically.
+        """
+        raw_search_method = model.get("search_method", RetrievalMethod.SEMANTIC_SEARCH)
+        if not isinstance(raw_search_method, str):
+            raise ValueError("search_method must be a string")
+        retrieval_method = RetrievalMethod(raw_search_method)
+
+        raw_top_k = model.get("top_k", 4)
+        top_k = raw_top_k if isinstance(raw_top_k, int) and not isinstance(raw_top_k, bool) else 4
+
+        threshold_enabled = model.get("score_threshold_enabled", False)
+        if not isinstance(threshold_enabled, bool):
+            raise ValueError("score_threshold_enabled must be a boolean")
+        raw_threshold = model.get("score_threshold", 0.0) if threshold_enabled else 0.0
+        if not isinstance(raw_threshold, int | float) or isinstance(raw_threshold, bool):
+            raise ValueError("score_threshold must be numeric")
+
+        reranking_enabled = model.get("reranking_enable", False)
+        if not isinstance(reranking_enabled, bool):
+            raise ValueError("reranking_enable must be a boolean")
+        reranking_mode: str = "reranking_model"
+        if reranking_enabled:
+            raw_reranking_mode = model.get("reranking_mode", "reranking_model") or "reranking_model"
+            if not isinstance(raw_reranking_mode, str):
+                raise ValueError("reranking_mode must be a string")
+            reranking_mode = raw_reranking_mode
+
+        model_reranking = reranking_enabled and reranking_mode == RerankMode.RERANKING_MODEL
+        weighted_reranking = reranking_enabled and reranking_mode == RerankMode.WEIGHTED_SCORE
+
         return RetrievalService.retrieve(
-            retrieval_method=RetrievalMethod(model.get("search_method", RetrievalMethod.SEMANTIC_SEARCH)),
+            retrieval_method=retrieval_method,
             dataset_id=dataset_id,
             query=query,
             attachment_ids=attachment_ids,
-            top_k=model.get("top_k", 4),
-            score_threshold=model.get("score_threshold", 0.0) if model["score_threshold_enabled"] else 0.0,
-            reranking_model=model.get("reranking_model") if model["reranking_enable"] else None,
-            reranking_mode=model.get("reranking_mode") or "reranking_model",
-            weights=model.get("weights"),
+            top_k=top_k,
+            score_threshold=float(raw_threshold) if threshold_enabled else 0.0,
+            reranking_model=_reranking_model(model.get("reranking_model")) if model_reranking else None,
+            reranking_mode=reranking_mode,
+            weights=_weights(model.get("weights")) if weighted_reranking else None,
             document_ids_filter=document_filter,
             allowed_document_ids_filter=allowed_document_filter,
         )

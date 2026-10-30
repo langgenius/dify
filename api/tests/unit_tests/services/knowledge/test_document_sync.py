@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import cast
+from unittest.mock import create_autospec
 
 import pytest
 
@@ -97,10 +97,19 @@ class TaskDispatcherStub:
 
 
 def _service(documents: DocumentReaderStub, tasks: TaskDispatcherStub | None = None) -> DocumentSyncApplicationService:
+    document_reader = create_autospec(DocumentSyncReader, instance=True, spec_set=True)
+    document_reader.list_active_notion_refs.side_effect = documents.list_active_notion_refs
+    document_reader.get_sync_document.side_effect = documents.get_sync_document
+    document_reader.sync_notion.side_effect = documents.sync_notion
+    task_stub = tasks or TaskDispatcherStub()
+    dispatcher = create_autospec(DocumentTaskDispatcher, instance=True, spec_set=True)
+    dispatcher.cleanup.side_effect = task_stub.cleanup
+    dispatcher.cleanup_dataset.side_effect = task_stub.cleanup_dataset
+    dispatcher.sync_notion.side_effect = task_stub.sync_notion
     return DocumentSyncApplicationService(
         dataset_access=DatasetAccessStub(),
-        documents=cast(DocumentSyncReader, documents),
-        tasks=cast(DocumentTaskDispatcher, tasks or TaskDispatcherStub()),
+        documents=document_reader,
+        tasks=dispatcher,
     )
 
 
@@ -154,10 +163,14 @@ def test_sync_document_rejects_invalid_document_before_dispatch(
 
 def test_sync_stops_before_document_read_and_dispatch_when_dataset_access_is_denied() -> None:
     documents = DocumentReaderStub()
+    document_reader = create_autospec(DocumentSyncReader, instance=True, spec_set=True)
+    document_reader.list_active_notion_refs.side_effect = documents.list_active_notion_refs
+    document_reader.get_sync_document.side_effect = documents.get_sync_document
+    document_reader.sync_notion.side_effect = documents.sync_notion
     service = DocumentSyncApplicationService(
         dataset_access=DatasetAccessStub(error=DatasetAccessDeniedError()),
-        documents=cast(DocumentSyncReader, documents),
-        tasks=cast(DocumentTaskDispatcher, TaskDispatcherStub()),
+        documents=document_reader,
+        tasks=create_autospec(DocumentTaskDispatcher, instance=True, spec_set=True),
     )
 
     with pytest.raises(DatasetAccessDeniedError):

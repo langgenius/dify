@@ -1,7 +1,6 @@
 import json
 from datetime import datetime
-from typing import cast
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 from sqlalchemy import Engine, event
@@ -95,7 +94,7 @@ class TestDocumentAdaptersCases:
         return SQLAlchemyDocumentOperations(
             session_factory=sqlite_session_factory,
             documents=SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory),
-            files=cast(FileService, object()),
+            files=create_autospec(FileService, instance=True, spec_set=True),
         )
 
     @staticmethod

@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime
 from threading import Event
-from typing import Literal, cast
+from typing import Literal
 from uuid import uuid4
 
 import pytest
@@ -23,7 +23,8 @@ from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWo
 
 
 def _repeatable_read_sessions(mysql_session: Session) -> sessionmaker[Session]:
-    engine = cast(Engine, mysql_session.get_bind().execution_options(isolation_level="REPEATABLE READ"))
+    engine = mysql_session.get_bind().execution_options(isolation_level="REPEATABLE READ")
+    assert isinstance(engine, Engine)
     return sessionmaker(bind=engine, expire_on_commit=False)
 
 

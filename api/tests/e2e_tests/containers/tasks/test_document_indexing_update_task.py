@@ -182,7 +182,9 @@ class TestDocumentIndexingUpdateTask:
         run_call = mock_external_dependencies["runner_instance"].run.call_args
         assert run_call is not None
         assert run_call.args[0] == [DatasetRef(dataset.tenant_id, dataset.id).document(document.id)]
-        assert run_call.kwargs == {}
+        owned_leases = run_call.kwargs["owned_leases"]
+        assert set(owned_leases) == {document.id}
+        assert owned_leases[document.id] is not None
 
     def test_clean_error_still_runs_reindexing(
         self, db_session_with_containers: Session, mock_external_dependencies: ExternalDependencies
@@ -202,9 +204,10 @@ class TestDocumentIndexingUpdateTask:
         # Ensure we see committed changes from another session
         db_session_with_containers.expire_all()
 
-        mock_external_dependencies["runner_instance"].run.assert_called_once_with(
-            [DatasetRef(dataset.tenant_id, dataset.id).document(document.id)]
-        )
+        run_call = mock_external_dependencies["runner_instance"].run.call_args
+        assert run_call is not None
+        assert run_call.args[0] == [DatasetRef(dataset.tenant_id, dataset.id).document(document.id)]
+        assert set(run_call.kwargs["owned_leases"]) == {document.id}
 
         # Segments should remain (since clean failed before DB delete)
         remaining = db_session_with_containers.scalar(

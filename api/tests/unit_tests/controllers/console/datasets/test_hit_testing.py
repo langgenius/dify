@@ -2,7 +2,6 @@ import uuid
 from dataclasses import dataclass, field
 from importlib import import_module
 from inspect import unwrap
-from typing import cast
 
 import pytest
 from flask import Flask
@@ -219,7 +218,7 @@ def test_empty_external_retrieval_settings_preserve_dataset_defaults(monkeypatch
 def test_hit_testing_response_serializes_internal_record(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response = cast(HitTestingResponse, {"query": {"content": "hello"}, "records": [_record()]})
+    response: HitTestingResponse = {"query": {"content": "hello"}, "records": [_record()]}
     service = HitTestingStub(response=response)
 
     result = _invoke(monkeypatch, service, HitTestingPayload(query="hello"))
@@ -242,20 +241,17 @@ def test_external_hit_testing_response_is_serialized_through_the_http_endpoint(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    response = cast(
-        HitTestingResponse,
-        {
-            "query": {"content": "hello"},
-            "records": [
-                {
-                    "content": "External passage",
-                    "title": "External title",
-                    "score": 0.91,
-                    "metadata": {"source": "remote"},
-                }
-            ],
-        },
-    )
+    response: HitTestingResponse = {
+        "query": {"content": "hello"},
+        "records": [
+            {
+                "content": "External passage",
+                "title": "External title",
+                "score": 0.91,
+                "metadata": {"source": "remote"},
+            }
+        ],
+    }
     service = HitTestingStub(response=response)
     monkeypatch.setattr(
         module,

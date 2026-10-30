@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from inspect import unwrap
-from typing import cast
 from unittest.mock import Mock, create_autospec
 from uuid import UUID
 
@@ -33,23 +32,17 @@ from services.knowledge.external.application import (
     ExternalHitTestingError,
     ExternalKnowledgeApplicationService,
 )
+from tests.helpers.unit.model_factories import make_account
 
 CONTEXT = RequestContext("request-1", None, "actor-1", "tenant-1")
 ID = UUID(int=1)
 REAL_API_KEY = "real-provider-secret"
 
 
-@dataclass
-class AdmittedAccount:
-    id: str
-    role: TenantAccountRole
-    status: str = "active"
-
-
 @dataclass(frozen=True)
 class TemplateRoutes:
     client: FlaskClient
-    account: AdmittedAccount
+    account: Account
     external: Mock
     api: ExternalApi
 
@@ -99,8 +92,8 @@ def template_routes(monkeypatch, config_overrides, external) -> TemplateRoutes:
     api.add_resource(controller.ExternalApiTemplateApi, "/templates/<uuid:external_knowledge_api_id>")
     api.add_resource(controller.ExternalKnowledgeHitTestingApi, "/datasets/<uuid:dataset_id>/external-hit-testing")
 
-    account = AdmittedAccount(id="actor-1", role=TenantAccountRole.OWNER)
-    identity = AccountWithTenant(account=cast("Account", account), tenant_id="tenant-1")
+    account = make_account(account_id="actor-1", role=TenantAccountRole.OWNER)
+    identity = AccountWithTenant(account=account, tenant_id="tenant-1")
     monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: identity)
     monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: identity)
     return TemplateRoutes(app.test_client(), account, external, api)

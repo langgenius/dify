@@ -332,7 +332,8 @@ def test_qdrant_legacy_attachment_requires_the_unfiltered_compatibility_pool(qdr
     )
 
     def apply_qdrant_filter(*, query_filter, **_kwargs):
-        legacy_metadata = cast(dict[str, object], legacy_point.payload["metadata"])
+        legacy_metadata = legacy_point.payload["metadata"]
+        assert isinstance(legacy_metadata, dict)
         document_filter = next(
             (condition.match.any for condition in query_filter.must if condition.key == "metadata.document_id"),
             None,

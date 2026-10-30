@@ -27,7 +27,12 @@ from services.knowledge.retrieval.retrieval import (
     ExternalDatasetRetriever,
     RetrievalDatasetSnapshot,
 )
-from tests.unit_tests.core.app.workflow.layers.conftest import memory_span_exporter
+
+
+@pytest.fixture
+def memory_span_exporter() -> InMemorySpanExporter:
+    """Provide a fresh exporter per test so assertions cannot observe another test's spans."""
+    return InMemorySpanExporter()
 
 
 @pytest.fixture
@@ -270,9 +275,7 @@ def test_retriever_thread_exception_emits_skip_event_when_requested(
 
     with (
         patch.object(retrieval, "_retrieve_dataset", side_effect=expected_error),
-            tracer_provider_with_memory_exporter.get_tracer(__name__).start_as_current_span(
-                "dataset-retrieval-parent"
-            ),
+        tracer_provider_with_memory_exporter.get_tracer(__name__).start_as_current_span("dataset-retrieval-parent"),
     ):
         retrieval._retrieve_dataset_safely(
             flask_app=app,

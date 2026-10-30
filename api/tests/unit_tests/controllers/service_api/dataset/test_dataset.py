@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from inspect import unwrap
-from typing import cast
+from unittest.mock import create_autospec
 from uuid import UUID
 
 import pytest
@@ -211,7 +211,7 @@ class DocumentServiceFake:
 
 @dataclass
 class KnowledgeFake:
-    datasets: DatasetServiceFake
+    datasets: DatasetServiceFake | DatasetApplicationService
     documents: DocumentServiceFake
 
 
@@ -397,7 +397,8 @@ def test_explicit_embedding_provider_failure_remains_invalid_param_at_http_bound
             assert actor_id == CONTEXT.account_id
             return DatasetPermissionChangeSnapshot("owner", "all_team_members", ())
 
-        def update_dataset(self, _mutation: DatasetUpdateMutation) -> bool:
+        def update_dataset(self, mutation: DatasetUpdateMutation) -> bool:
+            del mutation
             raise AssertionError("provider validation must precede persistence")
 
     class FailingModelManager:
@@ -409,10 +410,17 @@ def test_explicit_embedding_provider_failure_remains_invalid_param_at_http_bound
         "_manager",
         staticmethod(lambda _tenant_id: FailingModelManager()),
     )
+    access = create_autospec(DatasetAccess, instance=True, spec_set=True)
+    access.require_accessible.side_effect = Access().require_accessible
+    mutation_store = create_autospec(DatasetMutationStore, instance=True, spec_set=True)
+    mutations = Mutations()
+    mutation_store.get_update_snapshot.side_effect = mutations.get_update_snapshot
+    mutation_store.get_permission_change_snapshot.side_effect = mutations.get_permission_change_snapshot
+    mutation_store.update_dataset.side_effect = mutations.update_dataset
     service = DatasetApplicationService(
-        dataset_access=cast(DatasetAccess, Access()),
-        operations=cast(DatasetOperations, object()),
-        mutations=cast(DatasetMutationStore, Mutations()),
+        dataset_access=access,
+        operations=create_autospec(DatasetOperations, instance=True, spec_set=True),
+        mutations=mutation_store,
         models=KnowledgeModelConfigurationGateway(),
         cleanup_dataset=lambda _cleanup: None,
         rbac_enabled=False,
@@ -423,7 +431,7 @@ def test_explicit_embedding_provider_failure_remains_invalid_param_at_http_bound
     monkeypatch.setattr(
         controller,
         "application_services",
-        lambda: ApplicationServicesFake(KnowledgeFake(datasets=cast(DatasetServiceFake, service), documents=documents)),
+        lambda: ApplicationServicesFake(KnowledgeFake(datasets=service, documents=documents)),
     )
     method = unwrap(controller.DatasetApi.patch)
     http_api = Api(app, doc=False)

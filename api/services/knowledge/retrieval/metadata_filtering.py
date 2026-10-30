@@ -5,7 +5,7 @@ import logging
 import re
 from collections.abc import Generator, Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 
 from core.entities.model_entities import ModelStatus
 from core.model_manager import ModelInstance, ModelManager
@@ -56,6 +56,12 @@ class MetadataFilterPlanner:
         self._repository = repository
 
     def plan(self, *, request: KnowledgeRetrievalRequest, dataset_ids: Sequence[str]) -> MetadataFilterPlan:
+        """Build the effective metadata filter plan for authorized datasets.
+
+        Preconditions: ``dataset_ids`` have already been scoped to the request tenant. Postconditions: automatic
+        model output is Pydantic-validated before becoming conditions, manual placeholders are resolved, and the
+        returned document IDs come only from the injected repository.
+        """
         if request.metadata_filtering_mode == "disabled":
             return MetadataFilterPlan(None, None, LLMUsage.empty_usage())
         condition: MetadataFilteringCondition | None = None
@@ -78,10 +84,12 @@ class MetadataFilterPlanner:
                         else "or"
                     ),
                     conditions=[
-                        Condition(
-                            name=cast(str, item.get("metadata_name")),
-                            comparison_operator=cast(Any, item.get("condition")),
-                            value=item.get("value"),
+                        Condition.model_validate(
+                            {
+                                "name": item.get("metadata_name"),
+                                "comparison_operator": item.get("condition"),
+                                "value": item.get("value"),
+                            }
                         )
                         for item in filters
                     ],
@@ -132,6 +140,12 @@ class MetadataFilterPlanner:
         user_id: str,
         model: ModelConfig,
     ) -> tuple[list[dict[str, Any]] | None, LLMUsage]:
+        """Generate metadata filters with a streaming LLM response.
+
+        Preconditions: ``model`` identifies an LLM available to the tenant and dataset fields come from the scoped
+        repository. Postconditions: return only filters for known fields plus measured usage; provider, parsing, or
+        result-shape failures are logged and return ``None`` without publishing a partial filter.
+        """
         fields = self._repository.list_metadata_field_names(tenant_id=tenant_id, dataset_ids=dataset_ids)
         model_instance, model_config = self._fetch_model_config(tenant_id, model, user_id=user_id)
         prompt_messages, stop = self._prompt(
@@ -142,15 +156,14 @@ class MetadataFilterPlanner:
         )
         usage = LLMUsage.empty_usage()
         try:
-            result = cast(
-                Generator[LLMResultChunk],
-                model_instance.invoke_llm(
-                    prompt_messages=prompt_messages,
-                    model_parameters=model_config.parameters,
-                    stop=stop,
-                    stream=True,
-                ),
+            result = model_instance.invoke_llm(
+                prompt_messages=prompt_messages,
+                model_parameters=model_config.parameters,
+                stop=stop,
+                stream=True,
             )
+            if not isinstance(result, Generator):
+                raise InvalidModelTypeError("Streaming metadata filtering expected an LLM result generator.")
             text, usage = self._invoke_result(result)
             value = parse_and_check_json_markdown(text, [])
             filters = [
@@ -171,13 +184,21 @@ class MetadataFilterPlanner:
     def _fetch_model_config(
         tenant_id: str, model: ModelConfig, *, user_id: str
     ) -> tuple[ModelInstance, RoutingModelConfig]:
+        """Resolve and validate the tenant's metadata-routing LLM.
+
+        Preconditions: tenant, user, and requested model identifiers are supplied by the admitted request.
+        Postconditions: return an LLM instance with normalized stop parameters, or raise a retrieval-domain error for
+        unsupported type, missing schema, credentials, permission, or quota.
+        """
         model_instance = ModelManager.for_tenant(tenant_id=tenant_id, user_id=user_id).get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
             provider=model.provider,
             model=model.name,
         )
-        model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
+        model_type_instance = model_instance.model_type_instance
+        if not isinstance(model_type_instance, LargeLanguageModel):
+            raise InvalidModelTypeError("The configured metadata model is not a large language model.")
         provider_model = model_instance.provider_model_bundle.configuration.get_provider_model(
             model=model.name, model_type=ModelType.LLM
         )

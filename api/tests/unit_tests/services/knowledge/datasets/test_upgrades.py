@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import cast
-from unittest.mock import patch
+from datetime import UTC, datetime
+from unittest.mock import create_autospec, patch
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -19,7 +19,7 @@ from services.knowledge.datasets.contracts import DatasetListFilter, DatasetVisi
 from services.knowledge.datasets.upgrades import KnowledgeFSUpgradeUnavailableError, KnowledgeUpgradeApplicationService
 from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
 from services.knowledge.entities.resource_scope import DatasetRef
-from tests.helpers.unit.services.knowledge_fs_services_a_fakes import UnusedSessionFactory, upgrade_job
+from tests.helpers.unit.services.knowledge_fs_services_a_fakes import upgrade_job
 
 CONTEXT = RequestContext("request", None, "account-1", "tenant-1")
 
@@ -57,13 +57,8 @@ class FakeDatasets:
         del context
         self.list_calls.append((query, accessible_ids, include_own))
         requested = set(query.ids)
-        data = [
-            cast("dict[str, object]", {"id": dataset_id}) for dataset_id in self.visible_ids if dataset_id in requested
-        ]
-        return cast(
-            DatasetPage,
-            {"data": data, "has_more": False, "total": len(data), "page": 1, "limit": query.limit},
-        )
+        data = [_dataset_record(dataset_id) for dataset_id in self.visible_ids if dataset_id in requested]
+        return {"data": data, "has_more": False, "total": len(data), "page": 1, "limit": query.limit}
 
     def get_dataset(self, context: RequestContext, ref: DatasetRef) -> DatasetDetailRecord:
         del context, ref
@@ -112,6 +107,49 @@ class FakeSnapshots:
         return self.jobs
 
 
+def _dataset_record(dataset_id: str) -> DatasetDetailRecord:
+    return DatasetDetailRecord(
+        id=dataset_id,
+        name=dataset_id,
+        description=None,
+        provider="vendor",
+        permission="only_me",
+        data_source_type=None,
+        indexing_technique="high_quality",
+        keyword_number=None,
+        app_count=0,
+        document_count=0,
+        word_count=0,
+        created_by="account-1",
+        author_name=None,
+        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        updated_by=None,
+        updated_at=datetime(2026, 1, 1, tzinfo=UTC),
+        embedding_model=None,
+        embedding_model_provider=None,
+        embedding_available=True,
+        retrieval_model_dict={},
+        summary_index_setting=None,
+        tags=[],
+        doc_form=None,
+        external_knowledge_info=None,
+        external_retrieval_model=None,
+        doc_metadata=[],
+        built_in_field_enabled=False,
+        pipeline_id=None,
+        runtime_mode="general",
+        chunk_structure=None,
+        icon_info=None,
+        is_published=False,
+        total_documents=0,
+        total_available_documents=0,
+        enable_api=False,
+        is_multimodal=False,
+        permission_keys=[],
+        maintainer=None,
+    )
+
+
 def _service(
     *,
     feature_enabled: bool = True,
@@ -119,9 +157,12 @@ def _service(
     datasets: FakeDatasets | None = None,
     enqueue: FakeEnqueue | None = None,
 ) -> KnowledgeUpgradeApplicationService:
+    access_fake = access or FakeDatasetAccess()
+    access_port = create_autospec(DatasetAccess, instance=True, spec_set=True)
+    access_port.require_accessible.side_effect = access_fake.require_accessible
     return KnowledgeUpgradeApplicationService(
-        session_factory=cast("sessionmaker[Session]", UnusedSessionFactory()),
-        dataset_access=cast(DatasetAccess, access or FakeDatasetAccess()),
+        session_factory=sessionmaker(),
+        dataset_access=access_port,
         datasets=datasets or FakeDatasets(),
         rbac_enabled=False,
         feature_enabled=lambda: feature_enabled,

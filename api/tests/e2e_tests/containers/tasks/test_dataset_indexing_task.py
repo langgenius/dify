@@ -233,7 +233,7 @@ class TestDatasetIndexingTaskIntegration:
         document_indexing_task(dataset.id, list(reversed(document_ids)))
 
         # Assert
-        assert patched_external_dependencies["indexing_runner_instance"].run.call_count == 2
+        assert patched_external_dependencies["indexing_runner_instance"].run.call_count == 4
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
     def test_batch_processing_multiple_documents(
@@ -248,12 +248,13 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
+        assert patched_external_dependencies["indexing_runner_instance"].run.call_count == len(document_ids)
         run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == len(document_ids)
-        run_call = patched_external_dependencies["indexing_runner_instance"].run.call_args
-        assert run_call is not None
-        assert len(run_call.args[0]) == len(document_ids)
+        assert all(
+            len(call.args[0]) == 1
+            for call in patched_external_dependencies["indexing_runner_instance"].run.call_args_list
+        )
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -309,7 +310,7 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, [])
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once_with([])
+        patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
 
     def test_tenant_queue_dispatches_next_task_after_completion(
         self, db_session_with_containers: Session, patched_external_dependencies
@@ -352,7 +353,6 @@ class TestDatasetIndexingTaskIntegration:
             "tenant_id": next_task["tenant_id"],
             "dataset_id": next_task["dataset_id"],
             "document_ids": next_task["document_ids"],
-            "indexing_request_id": None,
         }
         set_waiting_spy.assert_called_once()
         delete_key_spy.assert_not_called()
@@ -637,7 +637,7 @@ class TestDatasetIndexingTaskIntegration:
             normal_document_indexing_task(dataset.tenant_id, dataset.id, document_ids)
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
+        assert patched_external_dependencies["indexing_runner_instance"].run.call_count == len(document_ids)
         self._assert_documents_parsing(db_session_with_containers, document_ids)
         delete_key_spy.assert_called_once()
 
@@ -660,7 +660,7 @@ class TestDatasetIndexingTaskIntegration:
             priority_document_indexing_task(dataset.tenant_id, dataset.id, document_ids)
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
+        assert patched_external_dependencies["indexing_runner_instance"].run.call_count == len(document_ids)
         self._assert_documents_parsing(db_session_with_containers, document_ids)
         delete_key_spy.assert_called_once()
 
@@ -712,7 +712,7 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
+        assert patched_external_dependencies["indexing_runner_instance"].run.call_count == len(document_ids)
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -732,7 +732,7 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, document_ids)
 
         # Assert
-        patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
+        assert patched_external_dependencies["indexing_runner_instance"].run.call_count == len(document_ids)
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)

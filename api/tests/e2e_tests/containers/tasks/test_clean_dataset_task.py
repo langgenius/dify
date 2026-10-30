@@ -795,6 +795,8 @@ class TestCleanDatasetTask:
 
         document.data_source_info = json.dumps({"upload_file_id": upload_file.id})
         db_session_with_containers.commit()
+        upload_file_id = upload_file.id
+        document_id = document.id
 
         # Mock storage to raise exceptions
         mock_storage = mock_external_service_dependencies["storage"]
@@ -804,8 +806,8 @@ class TestCleanDatasetTask:
         clean_dataset_task(**cleanup_args)
 
         db_session_with_containers.expire_all()
-        assert db_session_with_containers.get(UploadFile, upload_file.id) is None
-        assert db_session_with_containers.get(Document, document.id) is None
+        assert db_session_with_containers.get(UploadFile, upload_file_id) is None
+        assert db_session_with_containers.get(Document, document_id) is None
 
         # Verify that storage.delete was called
         mock_storage.delete.assert_called_once()

@@ -695,7 +695,7 @@ class TestDuplicateDocumentIndexingTasks:
         )
 
         mock_external_service_dependencies["indexing_runner"].assert_called_once()
-        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once_with([])
+        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once_with([], owned_leases={})
 
     def test_normal_duplicate_document_indexing_task(
         self, db_session_with_containers: Session, mock_external_service_dependencies: ExternalServiceDependencies

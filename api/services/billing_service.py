@@ -1,8 +1,8 @@
 import json
 import logging
 import os
-from collections.abc import Sequence
-from typing import Any, Literal, NotRequired, TypedDict
+from collections.abc import Mapping, Sequence
+from typing import Any, Literal, TypedDict
 from warnings import deprecated
 
 import httpx
@@ -64,68 +64,6 @@ class EducationAutocompleteResponseDict(TypedDict):
 _compliance_download_link_adapter = TypeAdapter(ComplianceDownloadLink)
 
 
-class QuotaReserveResult(TypedDict):
-    reservation_id: str
-    available: int
-    reserved: int
-
-
-class QuotaCommitResult(TypedDict):
-    available: int
-    reserved: int
-    refunded: int
-
-
-class QuotaReleaseResult(TypedDict):
-    available: int
-    reserved: int
-    released: int
-
-
-class QuotaBalanceResult(TypedDict):
-    available: int
-    reserved: int
-    quota: int
-    usage: int
-    exhausted_at: NotRequired[int]
-
-
-class QuotaConsumeCappedResult(TypedDict):
-    deducted: int
-    available: int
-    reserved: int
-    quota: int
-    usage: int
-
-
-_quota_reserve_adapter = TypeAdapter(QuotaReserveResult)
-_quota_commit_adapter = TypeAdapter(QuotaCommitResult)
-_quota_release_adapter = TypeAdapter(QuotaReleaseResult)
-_quota_balance_adapter = TypeAdapter(QuotaBalanceResult)
-_quota_consume_capped_adapter = TypeAdapter(QuotaConsumeCappedResult)
-
-
-class _TenantFeatureQuota(TypedDict):
-    usage: int
-    limit: int
-    reset_date: NotRequired[int]
-
-
-class TenantFeatureQuotaInfo(TypedDict):
-    """Response of /quota/info.
-
-    NOTE (hj24):
-    - Billing may return int fields as str,
-      always keep non-strict mode to auto-coerce.
-    """
-
-    trigger_event: _TenantFeatureQuota
-    api_rate_limit: _TenantFeatureQuota
-
-
-_tenant_feature_quota_info_adapter = TypeAdapter(TenantFeatureQuotaInfo)
-
-
 class LangContentDict(TypedDict):
     lang: str
     title: str
@@ -151,9 +89,13 @@ class DismissNotificationDict(TypedDict):
     success: bool
 
 
+def _quota_meta(meta: Mapping[str, object] | None) -> dict[str, str]:
+    """The spec types quota metadata as a string map."""
+    return {key: value if isinstance(value, str) else str(value) for key, value in (meta or {}).items()}
+
+
 class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
-    quota_base_url = os.environ.get("BILLING_QUOTA_API_URL") or base_url
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
 
     # Redis key prefix for tenant plan cache
@@ -176,11 +118,8 @@ class BillingService:
         cls.get_vector_space(tenant_id, bypass_cache=True)
 
     @classmethod
-    def get_quota_info(cls, tenant_id: str) -> TenantFeatureQuotaInfo:
-        params = {"tenant_id": tenant_id}
-        return _tenant_feature_quota_info_adapter.validate_python(
-            cls._send_quota_request("GET", "/quota/info", params=params)
-        )
+    def get_quota_info(cls, tenant_id: str) -> billing.QuotaGetInfoReply:
+        return billing.quota_get_quota_info(tenant_id=tenant_id)
 
     @classmethod
     def quota_reserve(
@@ -189,21 +128,20 @@ class BillingService:
         feature_key: str,
         request_id: str,
         amount: int = 1,
-        meta: dict | None = None,
+        meta: Mapping[str, object] | None = None,
         bucket: str = "",
-    ) -> QuotaReserveResult:
+    ) -> billing.QuotaReserveReply:
         """Reserve quota before task execution."""
-        payload: dict = {
-            "tenant_id": tenant_id,
-            "feature_key": feature_key,
-            "request_id": request_id,
-            "amount": amount,
-        }
-        if bucket:
-            payload["bucket"] = bucket
-        if meta:
-            payload["meta"] = meta
-        return _quota_reserve_adapter.validate_python(cls._send_quota_request("POST", "/quota/reserve", json=payload))
+        return billing.quota_reserve(
+            body=billing.QuotaReserveReq(
+                tenant_id=tenant_id,
+                feature_key=feature_key,
+                request_id=request_id,
+                amount=amount,
+                meta=_quota_meta(meta),
+                bucket=bucket,
+            )
+        )
 
     @classmethod
     def quota_commit(
@@ -212,70 +150,55 @@ class BillingService:
         feature_key: str,
         reservation_id: str,
         actual_amount: int,
-        meta: dict | None = None,
+        meta: Mapping[str, object] | None = None,
         bucket: str = "",
-    ) -> QuotaCommitResult:
+    ) -> billing.QuotaCommitReply:
         """Commit a reservation with actual consumption."""
-        payload: dict = {
-            "tenant_id": tenant_id,
-            "feature_key": feature_key,
-            "reservation_id": reservation_id,
-            "actual_amount": actual_amount,
-        }
-        if bucket:
-            payload["bucket"] = bucket
-        if meta:
-            payload["meta"] = meta
         try:
-            return _quota_commit_adapter.validate_python(cls._send_quota_request("POST", "/quota/commit", json=payload))
-        except _BillingHTTPStatusError as error:
-            if error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
-                error.status_code >= 500
-            ):
-                raise BillingUpstreamUnavailableError from error
-            raise BillingUpstreamInvalidResponseError from error
-        except httpx.RequestError as error:
-            raise BillingUpstreamUnavailableError from error
-        except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
-            # The request may have committed even though its response could not
-            # be decoded. Keep the durable reservation pending and retry the
-            # idempotent settlement rather than claiming a terminal outcome.
-            raise BillingUpstreamUnavailableError from error
+            return billing.quota_commit(
+                body=billing.QuotaCommitReq(
+                    tenant_id=tenant_id,
+                    feature_key=feature_key,
+                    reservation_id=reservation_id,
+                    actual_amount=actual_amount,
+                    meta=_quota_meta(meta),
+                    bucket=bucket,
+                )
+            )
+        except BillingUpstreamInvalidResponseError as error:
+            # The generated transport chains JSON/model validation failures, while
+            # permanent non-2xx responses (for example 409) have no cause. An
+            # invalid success body leaves the idempotent commit outcome unknown,
+            # so retain the durable settlement and retry it.
+            if error.__cause__ is not None:
+                raise BillingUpstreamUnavailableError("Quota commit returned an invalid success body") from error
+            raise
 
     @classmethod
     def quota_release(
         cls, tenant_id: str, feature_key: str, reservation_id: str, bucket: str = ""
-    ) -> QuotaReleaseResult:
+    ) -> billing.QuotaReleaseReply:
         """Release a reservation (cancel, return frozen quota)."""
-        payload = {
-            "tenant_id": tenant_id,
-            "feature_key": feature_key,
-            "reservation_id": reservation_id,
-        }
-        if bucket:
-            payload["bucket"] = bucket
         try:
-            return _quota_release_adapter.validate_python(
-                cls._send_quota_request("POST", "/quota/release", json=payload)
+            return billing.quota_release(
+                body=billing.QuotaReleaseReq(
+                    tenant_id=tenant_id,
+                    feature_key=feature_key,
+                    reservation_id=reservation_id,
+                    bucket=bucket,
+                )
             )
-        except _BillingHTTPStatusError as error:
-            if error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
-                error.status_code >= 500
-            ):
-                raise BillingUpstreamUnavailableError from error
-            raise BillingUpstreamInvalidResponseError from error
-        except httpx.RequestError as error:
-            raise BillingUpstreamUnavailableError from error
-        except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
-            raise BillingUpstreamUnavailableError from error
+        except BillingUpstreamInvalidResponseError as error:
+            # As with commit, a chained validation failure means the release may
+            # already have applied remotely and must remain retryable.
+            if error.__cause__ is not None:
+                raise BillingUpstreamUnavailableError("Quota release returned an invalid success body") from error
+            raise
 
     @classmethod
-    def quota_get_balance(cls, tenant_id: str, feature_key: str, bucket: str = "") -> QuotaBalanceResult:
+    def quota_get_balance(cls, tenant_id: str, feature_key: str, bucket: str = "") -> billing.QuotaGetBalanceReply:
         """Get quota balance for a feature bucket."""
-        params = {"tenant_id": tenant_id, "feature_key": feature_key}
-        if bucket:
-            params["bucket"] = bucket
-        return _quota_balance_adapter.validate_python(cls._send_quota_request("GET", "/quota/balance", params=params))
+        return billing.quota_get_balance(tenant_id=tenant_id, feature_key=feature_key, bucket=bucket)
 
     @classmethod
     def quota_consume_capped(
@@ -284,22 +207,19 @@ class BillingService:
         feature_key: str,
         request_id: str,
         amount: int,
-        meta: dict | None = None,
+        meta: Mapping[str, object] | None = None,
         bucket: str = "",
-    ) -> QuotaConsumeCappedResult:
+    ) -> billing.QuotaConsumeCappedReply:
         """Consume up to the available quota and return the actual deducted amount."""
-        payload: dict = {
-            "tenant_id": tenant_id,
-            "feature_key": feature_key,
-            "request_id": request_id,
-            "amount": amount,
-        }
-        if bucket:
-            payload["bucket"] = bucket
-        if meta:
-            payload["meta"] = meta
-        return _quota_consume_capped_adapter.validate_python(
-            cls._send_quota_request("POST", "/quota/consume-capped", json=payload)
+        return billing.quota_consume_capped(
+            body=billing.QuotaConsumeCappedReq(
+                tenant_id=tenant_id,
+                feature_key=feature_key,
+                request_id=request_id,
+                amount=amount,
+                meta=_quota_meta(meta),
+                bucket=bucket,
+            )
         )
 
     @classmethod
@@ -328,12 +248,6 @@ class BillingService:
     def get_invoices(cls, prefilled_email: str = "", tenant_id: str = "") -> BillingPortalLink:
         reply = billing.invoice_get_invoices(prefilled_email=prefilled_email, tenant_id=tenant_id)
         return {"url": reply.url}
-
-    @classmethod
-    def _send_quota_request(
-        cls, method: Literal["GET", "POST", "DELETE", "PUT"], endpoint: str, json=None, params=None
-    ) -> dict[str, Any]:
-        return cls._send_request(method, endpoint, json=json, params=params, base_url=cls.quota_base_url)
 
     @classmethod
     @retry(

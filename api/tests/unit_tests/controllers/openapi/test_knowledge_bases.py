@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from inspect import unwrap
-from typing import cast
+from typing import override
 
 import pytest
 
@@ -28,8 +29,48 @@ def _record(**extra: object) -> dict[str, object]:
 
 
 def _page() -> DatasetPage:
+    record = DatasetDetailRecord(
+        id="ds-1",
+        name="Docs",
+        description=None,
+        provider="vendor",
+        permission="only_me",
+        data_source_type=None,
+        indexing_technique="high_quality",
+        keyword_number=None,
+        app_count=0,
+        document_count=3,
+        word_count=0,
+        created_by="account-1",
+        author_name=None,
+        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        updated_by=None,
+        updated_at=datetime(2026, 1, 1, tzinfo=UTC),
+        embedding_model=None,
+        embedding_model_provider=None,
+        embedding_available=True,
+        retrieval_model_dict={},
+        summary_index_setting=None,
+        tags=[],
+        doc_form=None,
+        external_knowledge_info=None,
+        external_retrieval_model=None,
+        doc_metadata=[],
+        built_in_field_enabled=False,
+        pipeline_id=None,
+        runtime_mode="general",
+        chunk_structure=None,
+        icon_info=None,
+        is_published=False,
+        total_documents=3,
+        total_available_documents=3,
+        enable_api=False,
+        is_multimodal=False,
+        permission_keys=[],
+        maintainer=None,
+    )
     return {
-        "data": [cast(DatasetDetailRecord, _record())],
+        "data": [record],
         "has_more": True,
         "total": 3,
         "page": 2,
@@ -56,9 +97,14 @@ class ApplicationServicesFake:
     knowledge: KnowledgeServicesFake
 
 
-@dataclass(frozen=True)
-class ContextFake:
-    request_context: RequestContext
+class ContextFake(Context):
+    def __init__(self, request_context: RequestContext) -> None:
+        self._request_context = request_context
+
+    @property
+    @override
+    def request_context(self) -> RequestContext:
+        return self._request_context
 
 
 def test_row_carries_a_retrieval_fragment() -> None:
@@ -84,7 +130,7 @@ def test_list_delegates_to_account_visible_use_case_and_serializes_page(monkeypa
     query = KnowledgeBaseListQuery(page=2, limit=1, query="Docs")
 
     response = unwrap(KnowledgeBasesApi.get)(
-        KnowledgeBasesApi(), cast(Context, ContextFake(REQUEST_CONTEXT)), "workspace-1", query=query
+        KnowledgeBasesApi(), ContextFake(REQUEST_CONTEXT), "workspace-1", query=query
     )
 
     assert datasets.calls == [(REQUEST_CONTEXT, DatasetListFilter(page=2, limit=1, keyword="Docs"))]

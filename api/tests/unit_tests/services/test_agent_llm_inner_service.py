@@ -21,6 +21,7 @@ from graphon.model_runtime.entities.message_entities import AssistantPromptMessa
 from models.model import App, AppMode
 from models.provider import ProviderType
 from services.agent_llm_inner_service import AgentLLMInnerService, AgentLLMInnerServiceError, PreparedAgentLLMInvocation
+from services.billing_client import billing
 from services.entities.agent_llm_inner import AgentLLMInvokeCaller, AgentLLMInvokeRequest, AgentLLMInvokeTarget
 from tests.helpers.unit.core.model_fixtures import make_model_instance
 
@@ -299,17 +300,17 @@ def test_retried_gateway_delivery_uses_one_effective_billing_charge(
     effective_charges = 0
     reserve_request_ids: list[str] = []
 
-    def reserve(*, request_id: str, **_: object) -> dict[str, object]:
+    def reserve(*, request_id: str, **_: object) -> billing.QuotaReserveReply:
         reserve_request_ids.append(request_id)
         reservation_id = reservations_by_request.setdefault(request_id, "reservation-1")
-        return {"reservation_id": reservation_id, "available": 97, "reserved": 3}
+        return billing.QuotaReserveReply(reservation_id=reservation_id, available=97, reserved=3)
 
-    def commit(*, reservation_id: str, actual_amount: int, **_: object) -> dict[str, object]:
+    def commit(*, reservation_id: str, actual_amount: int, **_: object) -> billing.QuotaCommitReply:
         nonlocal effective_charges
         if reservation_id not in committed_reservations:
             committed_reservations.add(reservation_id)
             effective_charges += actual_amount
-        return {"available": 97, "reserved": 0, "refunded": 0}
+        return billing.QuotaCommitReply(available=97, reserved=0, refunded=0)
 
     def provider_invoke(*_: object, **__: object) -> Generator[LLMResultChunk]:
         yield _chunk("done", usage=_usage())

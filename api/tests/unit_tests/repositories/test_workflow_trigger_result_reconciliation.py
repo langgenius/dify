@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from typing import cast
 
 import pytest
 from sqlalchemy import Table
@@ -27,11 +26,15 @@ def test_terminal_result_repairs_old_paused_trigger_without_resume(
     run_status: WorkflowExecutionStatus,
     trigger_status: WorkflowTriggerStatus,
 ) -> None:
+    workflow_run_table = WorkflowRun.__table__
+    trigger_log_table = WorkflowTriggerLog.__table__
+    assert isinstance(workflow_run_table, Table)
+    assert isinstance(trigger_log_table, Table)
     WorkflowRun.metadata.create_all(
         sqlite_session.get_bind(),
         tables=[
-            cast(Table, WorkflowRun.__table__),
-            cast(Table, WorkflowTriggerLog.__table__),
+            workflow_run_table,
+            trigger_log_table,
         ],
     )
     finished = datetime.now(UTC).replace(tzinfo=None)

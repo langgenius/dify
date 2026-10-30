@@ -1,6 +1,5 @@
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from typing import cast
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -14,16 +13,9 @@ from enums.account import TenantAccountRole
 from extensions.ext_application_services import ApplicationServices
 from libs.external_api import ExternalApi
 from libs.login import AccountWithTenant
-from models.account import Account
 from services.auth.api_key_contracts import ApiKeyRecord
 from services.knowledge.api_key_service import DatasetApiKeyService
-
-
-@dataclass
-class AdmittedAccount:
-    id: str
-    role: TenantAccountRole
-    status: str = "active"
+from tests.helpers.unit.model_factories import make_account
 
 
 @dataclass(frozen=True)
@@ -47,8 +39,8 @@ def api_key_routes(
     services = replace(account_application_services, dataset_api_keys=keys)
     monkeypatch.setattr(controller, "application_services", lambda: services)
 
-    account = AdmittedAccount(id="account-1", role=TenantAccountRole.OWNER)
-    identity = AccountWithTenant(account=cast("Account", account), tenant_id="workspace-1")
+    account = make_account(account_id="account-1", role=TenantAccountRole.OWNER)
+    identity = AccountWithTenant(account=account, tenant_id="workspace-1")
     monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: identity)
     monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: identity)
 

@@ -3,7 +3,7 @@ from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
-from typing import Never, cast
+from typing import Never
 from unittest.mock import Mock, create_autospec, patch
 
 import pytest
@@ -146,17 +146,10 @@ class ApplicationServiceStub:
     knowledge: KnowledgeServiceStub
 
 
-@dataclass
-class AdmittedAccount:
-    id: str
-    role: TenantAccountRole
-    status: str = "active"
-
-
 @dataclass(frozen=True)
 class BatchImportRoutes:
     client: FlaskClient
-    account: AdmittedAccount
+    account: Account
     segments: Mock
 
 
@@ -185,8 +178,8 @@ def batch_import_routes(
         "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/batch_import",
     )
 
-    account = AdmittedAccount(id="account-1", role=TenantAccountRole.EDITOR)
-    identity = AccountWithTenant(account=cast("Account", account), tenant_id="workspace-1")
+    account = make_account(account_id="account-1", role=TenantAccountRole.EDITOR)
+    identity = AccountWithTenant(account=account, tenant_id="workspace-1")
     monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: identity)
     monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: identity)
     monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)

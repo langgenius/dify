@@ -1,4 +1,4 @@
-from typing import cast
+from unittest.mock import create_autospec
 
 import pytest
 
@@ -60,7 +60,10 @@ def test_crawl_status_maps_all_watercrawl_states_and_reads_results_only_when_fin
 ) -> None:
     provider = WaterCrawlProvider(api_key="key")
     client = _RecordingWaterCrawlClient(remote_status)
-    provider.client = cast(WaterCrawlAPIClient, client)
+    client_port = create_autospec(WaterCrawlAPIClient, instance=True, spec_set=True)
+    client_port.get_crawl_request.side_effect = client.get_crawl_request
+    client_port.get_crawl_request_results.side_effect = client.get_crawl_request_results
+    provider.client = client_port
 
     result = provider.get_crawl_status("job-1")
 
@@ -83,7 +86,10 @@ def test_crawl_status_maps_all_watercrawl_states_and_reads_results_only_when_fin
 def test_crawl_status_rejects_unknown_state_without_reading_results() -> None:
     provider = WaterCrawlProvider(api_key="key")
     client = _RecordingWaterCrawlClient("unexpected")
-    provider.client = cast(WaterCrawlAPIClient, client)
+    client_port = create_autospec(WaterCrawlAPIClient, instance=True, spec_set=True)
+    client_port.get_crawl_request.side_effect = client.get_crawl_request
+    client_port.get_crawl_request_results.side_effect = client.get_crawl_request_results
+    provider.client = client_port
 
     with pytest.raises(ValueError, match="Unknown WaterCrawl status"):
         provider.get_crawl_status("job-1")

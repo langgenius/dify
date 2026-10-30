@@ -1,7 +1,6 @@
 import base64
 import json
 from collections.abc import Sequence
-from typing import cast
 
 import pytest
 from pymysql.err import OperationalError as PyMySQLOperationalError
@@ -33,7 +32,7 @@ from models.workflow import (
 )
 from repositories.app.upload_file_references import get_referenced_upload_file_ids as get_app_file_references
 from repositories.file.reference_queries import payload_reference_predicate
-from repositories.file.upload_file_reclamation import SQLAlchemyUploadFileReclaimer, UploadFileReferenceQuery
+from repositories.file.upload_file_reclamation import SQLAlchemyUploadFileReclaimer
 from repositories.file.upload_file_repository import (
     UploadFileRepository,
     lock_and_validate_owned_upload_files_in_session,
@@ -480,11 +479,12 @@ def test_owner_lock_conflict_aborts_reclamation(sqlite_session_factory: sessionm
         session.add_all((candidate, owner))
 
     def owner_query(
-        _session: Session,
+        session: Session,
         *,
         tenant_id: str,
         candidates: Sequence[UploadFileReferenceCandidate],
     ) -> set[str]:
+        del session
         assert tenant_id == "tenant-1"
         assert tuple(stored.id for stored in candidates) == (candidate.id,)
         raise OperationalError(
@@ -498,7 +498,7 @@ def test_owner_lock_conflict_aborts_reclamation(sqlite_session_factory: sessionm
     reclaimer = SQLAlchemyUploadFileReclaimer(
         session_factory=sqlite_session_factory,
         files=files,
-        reference_queries=(cast(UploadFileReferenceQuery, owner_query),),
+        reference_queries=(owner_query,),
     )
 
     def delete_owner_and_reclaim() -> None:
@@ -533,11 +533,12 @@ def test_non_lock_owner_query_error_aborts_reclamation(sqlite_session_factory: s
     )
 
     def owner_query(
-        _session: Session,
+        session: Session,
         *,
         tenant_id: str,
         candidates: Sequence[UploadFileReferenceCandidate],
     ) -> set[str]:
+        del session
         assert tenant_id == "tenant-1"
         assert tuple(stored.id for stored in candidates) == (candidate.id,)
         raise database_error
@@ -547,7 +548,7 @@ def test_non_lock_owner_query_error_aborts_reclamation(sqlite_session_factory: s
     reclaimer = SQLAlchemyUploadFileReclaimer(
         session_factory=sqlite_session_factory,
         files=files,
-        reference_queries=(cast(UploadFileReferenceQuery, owner_query),),
+        reference_queries=(owner_query,),
     )
 
     with pytest.raises(OperationalError) as error:

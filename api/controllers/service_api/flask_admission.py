@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Concatenate, TypedDict, cast
+from typing import Any, Concatenate
 from uuid import UUID
 
 from flask import current_app, request
@@ -51,17 +51,6 @@ VECTOR_SPACE_UNAVAILABLE_RESPONSE = {
 }
 
 
-class _ViewMetadata(TypedDict, total=False):
-    """Metadata carried on Flask view functions by decorators."""
-
-    __apidoc__: dict[str, object]
-    __dataset_admission_policy__: DatasetAdmissionPolicy
-
-
-def _view_metadata(view: Callable[..., object]) -> _ViewMetadata:
-    return cast(_ViewMetadata, vars(view))
-
-
 def dataset_admission[**P, R](
     *,
     rate_limit: bool = False,
@@ -78,12 +67,13 @@ def dataset_admission[**P, R](
     )
 
     def declare(view: Callable[P, R]) -> Callable[P, R]:
-        metadata = _view_metadata(view)
+        """Attach policy and response docs to a view; reject malformed API metadata before mutation."""
+        metadata = vars(view)
         if "vector_space" in billing_resources:
-            metadata["__apidoc__"] = cast(
-                dict[str, object],
-                merge(metadata.get("__apidoc__", {}), {"responses": VECTOR_SPACE_UNAVAILABLE_RESPONSE}),
-            )
+            api_documentation = metadata.get("__apidoc__", {})
+            if not isinstance(api_documentation, dict):
+                raise TypeError("View API documentation must be a dictionary.")
+            metadata["__apidoc__"] = merge(api_documentation, {"responses": VECTOR_SPACE_UNAVAILABLE_RESPONSE})
         metadata["__dataset_admission_policy__"] = policy
         return view
 
@@ -91,7 +81,10 @@ def dataset_admission[**P, R](
 
 
 def _admit_dataset_request[R](view: Callable[..., R]) -> Callable[..., R]:
-    policy = _view_metadata(view).get("__dataset_admission_policy__", DatasetAdmissionPolicy())
+    """Apply a view's declared policy once; reject invalid decorator metadata before serving requests."""
+    policy = vars(view).get("__dataset_admission_policy__", DatasetAdmissionPolicy())
+    if not isinstance(policy, DatasetAdmissionPolicy):
+        raise TypeError("View admission policy must be a DatasetAdmissionPolicy.")
 
     @wraps(view)
     def admitted(*args: Any, **kwargs: Any) -> R:

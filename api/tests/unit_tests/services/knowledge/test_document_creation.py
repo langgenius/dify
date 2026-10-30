@@ -2,26 +2,15 @@ from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import cast
+from typing import Never
 
 import pytest
 
+from enums.knowledge import DocumentCreatedFrom
 from machinery.context import RequestContext
-from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess
+from services.knowledge.dataset_access import AccessibleDataset
 from services.knowledge.documents.adapters import DocumentResponsePresentationAdapter
-from services.knowledge.documents.application import (
-    DatasetCreatorAccess,
-    DatasetDocumentApplicationService,
-    DocumentCreationGateway,
-    DocumentDatasetRepository,
-    DocumentLifecycleCache,
-    DocumentModelConfigurationGateway,
-    DocumentOperations,
-    DocumentRepository,
-    DocumentSourceAuthorization,
-    DocumentTaskDispatcher,
-    DocumentUploads,
-)
+from services.knowledge.documents.application import DatasetDocumentApplicationService
 from services.knowledge.documents.contracts import (
     DocumentBatchCleanupJob,
     DocumentCleanupJob,
@@ -39,8 +28,9 @@ from services.knowledge.documents.contracts import (
 from services.knowledge.documents.creation import build_document_write_config
 from services.knowledge.entities.datasets import DatasetCleanupRecord
 from services.knowledge.entities.knowledge_entities import KnowledgeConfig
+from services.knowledge.entities.model_configuration import EmbeddingModelConfiguration
 from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
-from services.knowledge.indexing.locks import KnowledgeIndexingLock
+from services.knowledge.indexing.locks import KnowledgeIndexingLease
 
 CONTEXT = RequestContext("request-1", None, "actor-1", "tenant-1")
 REF = DatasetRef("tenant-1", "dataset-1")
@@ -118,6 +108,9 @@ class _DatasetAccess:
         assert dataset_id == REF.dataset_id
         return AccessibleDataset(id=dataset_id, workspace_id=context.active_workspace_id)
 
+    def check_access(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected access snapshot check: {args}, {kwargs}")
+
 
 @dataclass
 class _Datasets:
@@ -131,6 +124,12 @@ class _Datasets:
         assert ref == REF
         return self.defaults
 
+    def get_model_configuration(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected model configuration lookup: {args}, {kwargs}")
+
+    def delete_with_relations(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected dataset deletion: {args}, {kwargs}")
+
 
 @dataclass
 class _Documents:
@@ -138,6 +137,9 @@ class _Documents:
     fail_persistence: bool = False
     deleted_documents: list[DocumentRef] = field(default_factory=list)
     deleted_batches: list[tuple[DatasetRef, tuple[str, ...]]] = field(default_factory=list)
+
+    def find_ref(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected document lookup: {args}, {kwargs}")
 
     def get_creation_dataset(
         self,
@@ -156,11 +158,20 @@ class _Documents:
         )
 
     def persist_creation(
-        self, ref: DatasetRef, config: object, **kwargs: object
+        self,
+        ref: DatasetRef,
+        config: DocumentWriteConfig,
+        *,
+        actor_id: str,
+        initialize: bool,
+        created_from: DocumentCreatedFrom,
+        priority: bool,
+        initial_permission: str | None = None,
     ) -> tuple[DocumentCreationProjection, DocumentIndexingJobs]:
         del config
         assert ref == REF
-        assert kwargs["actor_id"] == "actor-1"
+        assert actor_id == "actor-1"
+        del initialize, created_from, priority, initial_permission
         self.events.append("persist")
         if self.fail_persistence:
             raise RuntimeError("commit failed")
@@ -182,6 +193,27 @@ class _Documents:
             need_summary=False,
         )
 
+    def get_states(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected document state lookup: {args}, {kwargs}")
+
+    def list_documents(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected document listing: {args}, {kwargs}")
+
+    def get_indexing_status(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected indexing status lookup: {args}, {kwargs}")
+
+    def get_batch_indexing_status(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected batch status lookup: {args}, {kwargs}")
+
+    def get_execution_log(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected execution log lookup: {args}, {kwargs}")
+
+    def get_upload_file_ids(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected upload lookup: {args}, {kwargs}")
+
+    def resolve_file_document_actor(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected document actor lookup: {args}, {kwargs}")
+
     def delete_document(self, ref: DocumentRef) -> DocumentCleanupJob:
         self.deleted_documents.append(ref)
         return DocumentCleanupJob(ref.document_id, ref.dataset.dataset_id, "text_model", "file-1")
@@ -189,6 +221,39 @@ class _Documents:
     def delete_documents(self, ref: DatasetRef, document_ids: Sequence[str]) -> DocumentBatchCleanupJob:
         self.deleted_batches.append((ref, tuple(document_ids)))
         return DocumentBatchCleanupJob(tuple(document_ids), ref.dataset_id, "text_model", ("file-2", "file-3"))
+
+    def update_metadata(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected metadata update: {args}, {kwargs}")
+
+    def rename_document(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected rename: {args}, {kwargs}")
+
+    def pause_document(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected pause: {args}, {kwargs}")
+
+    def recover_document(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected recovery: {args}, {kwargs}")
+
+    def retry_documents(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected retry: {args}, {kwargs}")
+
+    def fail_retry_dispatch(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected retry rollback: {args}, {kwargs}")
+
+    def change_status(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected status change: {args}, {kwargs}")
+
+    def rollback_status_change(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected status rollback: {args}, {kwargs}")
+
+    def sync_website(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected website sync: {args}, {kwargs}")
+
+    def get_summary_configuration(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected summary configuration lookup: {args}, {kwargs}")
+
+    def enable_summary(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected summary enable: {args}, {kwargs}")
 
 
 class _Creation:
@@ -206,7 +271,7 @@ class _Creation:
             initial_permission="only_me",
         )
 
-    def resolve_default_embedding_model(self, tenant_id: str) -> object:
+    def resolve_default_embedding_model(self, tenant_id: str) -> EmbeddingModelConfiguration:
         raise AssertionError(f"unexpected default embedding lookup for {tenant_id}")
 
     def validate_dataset_model(self, dataset: DocumentCreationDataset) -> None:
@@ -239,11 +304,61 @@ class _Tasks:
     def cleanup_dataset(self, cleanup: DatasetCleanupRecord) -> None:
         self.dataset_cleanups.append(cleanup)
 
+    def recover(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected recovery dispatch: {args}, {kwargs}")
+
+    def retry(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected retry dispatch: {args}, {kwargs}")
+
+    def change_status(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected status dispatch: {args}, {kwargs}")
+
+    def sync_website(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected website sync dispatch: {args}, {kwargs}")
+
+    def sync_notion(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected Notion sync dispatch: {args}, {kwargs}")
+
+    def generate_summary(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected summary dispatch: {args}, {kwargs}")
+
+
+class _Lease:
+    @property
+    def token(self) -> str:
+        return "lease-token"
+
+    def assert_owned(self) -> None:
+        return None
+
+    def renew(self) -> bool:
+        return True
+
+    def release(self) -> bool:
+        return True
+
 
 class _Lock:
+    def try_acquire(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected non-blocking lock acquisition: {args}, {kwargs}")
+
+    def try_acquire_handoff(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected handoff acquisition: {args}, {kwargs}")
+
     @contextmanager
-    def hold(self, _name: str, **_kwargs: object) -> Generator[None]:
-        yield
+    def hold(
+        self,
+        name: str,
+        *,
+        timeout: int,
+        expected_token: str | None = None,
+        blocking_timeout: float = 0,
+    ) -> Generator[KnowledgeIndexingLease]:
+        del name, timeout, expected_token, blocking_timeout
+        yield _Lease()
+
+    def hold_handoff(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected handoff lock: {args}, {kwargs}")
 
 
 @dataclass
@@ -255,10 +370,82 @@ class _Uploads:
         self.uploaded.append((name, text))
         return "uploaded-text"
 
+    def upload_file(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected file upload: {args}, {kwargs}")
+
 
 class _CreatorAccess:
     def initialize_creator_access(self, context: RequestContext, *, dataset_id: str) -> None:
         del context, dataset_id
+
+
+class _Operations:
+    def list_documents(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected document listing: {args}, {kwargs}")
+
+    def get_detail(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected document detail: {args}, {kwargs}")
+
+    def get_process_rule(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected process rule lookup: {args}, {kwargs}")
+
+    def get_indexing_status(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected indexing status lookup: {args}, {kwargs}")
+
+    def get_batch_indexing_status(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected batch status lookup: {args}, {kwargs}")
+
+    def get_execution_log(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected execution log lookup: {args}, {kwargs}")
+
+    def get_summary_status(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected summary status lookup: {args}, {kwargs}")
+
+    def get_download_url(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected download URL lookup: {args}, {kwargs}")
+
+    def build_download_zip(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected document archive request: {args}, {kwargs}")
+
+
+class _LifecycleCache:
+    def is_indexing(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected indexing cache lookup: {args}, {kwargs}")
+
+    def mark_indexing(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected indexing cache update: {args}, {kwargs}")
+
+    def clear_indexing(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected indexing cache clear: {args}, {kwargs}")
+
+    def mark_paused(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected pause cache update: {args}, {kwargs}")
+
+    def clear_paused(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected pause cache clear: {args}, {kwargs}")
+
+    def try_mark_syncing(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected sync cache update: {args}, {kwargs}")
+
+    def clear_syncing(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected sync cache clear: {args}, {kwargs}")
+
+
+class _ModelConfiguration:
+    def validate_dataset_model(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected dataset model validation: {args}, {kwargs}")
+
+    def resolve_default_embedding_model(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected default embedding model lookup: {args}, {kwargs}")
+
+    def validate_embedding_model(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected embedding validation: {args}, {kwargs}")
+
+    def validate_reranking_model(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected reranking validation: {args}, {kwargs}")
+
+    def resolve_embedding_model(self, *args: object, **kwargs: object) -> Never:
+        raise AssertionError(f"unexpected embedding model lookup: {args}, {kwargs}")
 
 
 def _service(
@@ -267,19 +454,20 @@ def _service(
     tasks: _Tasks,
     uploads: _Uploads | None = None,
 ) -> DatasetDocumentApplicationService:
+    upload_store = uploads or _Uploads()
     return DatasetDocumentApplicationService(
-        dataset_access=cast(DatasetAccess, _DatasetAccess()),
-        datasets=cast(DocumentDatasetRepository, _Datasets()),
-        documents=cast(DocumentRepository, documents),
-        operations=cast(DocumentOperations, object()),
-        uploads=cast(DocumentUploads, uploads or _Uploads()),
-        indexing_locks=cast(KnowledgeIndexingLock, _Lock()),
-        lifecycle_cache=cast(DocumentLifecycleCache, object()),
-        model_configuration=cast(DocumentModelConfigurationGateway, object()),
-        creation=cast(DocumentCreationGateway, _Creation()),
-        source_authorization=cast(DocumentSourceAuthorization, _SourceAuthorization()),
-        creator_access=cast(DatasetCreatorAccess, _CreatorAccess()),
-        tasks=cast(DocumentTaskDispatcher, tasks),
+        dataset_access=_DatasetAccess(),
+        datasets=_Datasets(),
+        documents=documents,
+        operations=_Operations(),
+        uploads=upload_store,
+        indexing_locks=_Lock(),
+        lifecycle_cache=_LifecycleCache(),
+        model_configuration=_ModelConfiguration(),
+        creation=_Creation(),
+        source_authorization=_SourceAuthorization(),
+        creator_access=_CreatorAccess(),
+        tasks=tasks,
         presenter=DocumentResponsePresentationAdapter(),
     )
 

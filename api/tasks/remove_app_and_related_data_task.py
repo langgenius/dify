@@ -2,13 +2,12 @@ import logging
 import time
 from collections.abc import Callable
 from contextlib import suppress
-from typing import Any, cast
+from typing import Any
 
 import click
 import sqlalchemy as sa
 from celery import shared_task
 from sqlalchemy import delete, select
-from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -606,14 +605,11 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
 
         # Delete the draft variables
         with session_factory.create_session() as session, session.begin():
-            deleted_result = cast(
-                CursorResult[Any],
-                session.execute(
-                    delete(WorkflowDraftVariable).where(
-                        WorkflowDraftVariable.app_id == app_id,
-                        WorkflowDraftVariable.id.in_(draft_var_ids),
-                    )
-                ),
+            deleted_result = session.execute(
+                delete(WorkflowDraftVariable).where(
+                    WorkflowDraftVariable.app_id == app_id,
+                    WorkflowDraftVariable.id.in_(draft_var_ids),
+                )
             )
             batch_deleted: int = int(getattr(deleted_result, "rowcount", 0) or 0)
             total_deleted += batch_deleted

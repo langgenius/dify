@@ -4,7 +4,7 @@ import io
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Literal, cast
+from typing import Literal
 from uuid import uuid4
 
 import pytest
@@ -66,14 +66,13 @@ class RecordingDocuments:
         text: str,
         settings: Mapping[str, object],
     ) -> dict[str, object]:
-        return cast(
-            dict[str, object],
-            self._invoke(
-                "create_by_text",
-                context,
-                {"dataset_id": dataset_id, "name": name, "text": text, "settings": dict(settings)},
-            ),
+        result = self._invoke(
+            "create_by_text",
+            context,
+            {"dataset_id": dataset_id, "name": name, "text": text, "settings": dict(settings)},
         )
+        assert isinstance(result, dict)
+        return result
 
     def update_by_text(
         self,
@@ -83,14 +82,13 @@ class RecordingDocuments:
         document_id: str,
         settings: Mapping[str, object],
     ) -> dict[str, object]:
-        return cast(
-            dict[str, object],
-            self._invoke(
-                "update_by_text",
-                context,
-                {"dataset_id": dataset_id, "document_id": document_id, "settings": dict(settings)},
-            ),
+        result = self._invoke(
+            "update_by_text",
+            context,
+            {"dataset_id": dataset_id, "document_id": document_id, "settings": dict(settings)},
         )
+        assert isinstance(result, dict)
+        return result
 
     def rename_document(
         self,
@@ -100,14 +98,13 @@ class RecordingDocuments:
         document_id: str,
         name: str,
     ) -> dict[str, object]:
-        return cast(
-            dict[str, object],
-            self._invoke(
-                "rename_document",
-                context,
-                {"dataset_id": dataset_id, "document_id": document_id, "name": name},
-            ),
+        result = self._invoke(
+            "rename_document",
+            context,
+            {"dataset_id": dataset_id, "document_id": document_id, "name": name},
         )
+        assert isinstance(result, dict)
+        return result
 
     def create_by_file(
         self,
@@ -120,28 +117,27 @@ class RecordingDocuments:
         settings: Mapping[str, object],
         attribute_to_dataset_creator: bool = False,
     ) -> dict[str, object]:
-        return cast(
-            dict[str, object],
-            self._invoke(
-                "create_by_file",
-                context,
-                {
-                    "dataset_id": dataset_id,
-                    "filename": filename,
-                    "content": content,
-                    "mimetype": mimetype,
-                    "settings": dict(settings),
-                    "attribute_to_dataset_creator": attribute_to_dataset_creator,
-                },
-            ),
+        result = self._invoke(
+            "create_by_file",
+            context,
+            {
+                "dataset_id": dataset_id,
+                "filename": filename,
+                "content": content,
+                "mimetype": mimetype,
+                "settings": dict(settings),
+                "attribute_to_dataset_creator": attribute_to_dataset_creator,
+            },
         )
+        assert isinstance(result, dict)
+        return result
 
     def list_documents(
         self, context: RequestContext, *, dataset_id: str, query: DocumentListFilter
     ) -> dict[str, object]:
-        return cast(
-            dict[str, object], self._invoke("list_documents", context, {"dataset_id": dataset_id, "query": query})
-        )
+        result = self._invoke("list_documents", context, {"dataset_id": dataset_id, "query": query})
+        assert isinstance(result, dict)
+        return result
 
     def get_document(
         self,
@@ -151,23 +147,21 @@ class RecordingDocuments:
         document_id: str,
         metadata_only: bool,
     ) -> dict[str, object]:
-        return cast(
-            dict[str, object],
-            self._invoke(
-                "get_document",
-                context,
-                {"dataset_id": dataset_id, "document_id": document_id, "metadata_only": metadata_only},
-            ),
+        result = self._invoke(
+            "get_document",
+            context,
+            {"dataset_id": dataset_id, "document_id": document_id, "metadata_only": metadata_only},
         )
+        assert isinstance(result, dict)
+        return result
 
     def delete_document(self, context: RequestContext, *, dataset_id: str, document_id: str) -> None:
         self._invoke("delete_document", context, {"dataset_id": dataset_id, "document_id": document_id})
 
     def get_download_url(self, context: RequestContext, *, dataset_id: str, document_id: str) -> str:
-        return cast(
-            str,
-            self._invoke("get_download_url", context, {"dataset_id": dataset_id, "document_id": document_id}),
-        )
+        result = self._invoke("get_download_url", context, {"dataset_id": dataset_id, "document_id": document_id})
+        assert isinstance(result, str)
+        return result
 
 
 @dataclass(frozen=True)
@@ -256,7 +250,8 @@ class TestDocumentControllerDelegation:
         assert arguments["dataset_id"] == str(dataset_id)
         assert arguments["name"] == "Guide"
         assert arguments["text"] == "content"
-        settings = cast(dict[str, object], arguments["settings"])
+        settings = arguments["settings"]
+        assert isinstance(settings, dict)
         assert settings["doc_language"] == "French"
 
     def test_update_by_text_delegates_document_identity(
@@ -332,7 +327,8 @@ class TestDocumentControllerDelegation:
         assert status == 200
         assert body["batch"] == "batch-id"
         assert documents.calls[-1][0] == "update_by_text"
-        settings = cast(dict[str, object], documents.calls[-1][2]["settings"])
+        settings = documents.calls[-1][2]["settings"]
+        assert isinstance(settings, dict)
         assert settings["text"] == ""
 
     def test_false_and_zero_retrieval_values_are_not_treated_as_absent(
@@ -352,7 +348,8 @@ class TestDocumentControllerDelegation:
 
         assert status == 200
         assert documents.calls[-1][0] == "update_by_text"
-        settings = cast(dict[str, object], documents.calls[-1][2]["settings"])
+        settings = documents.calls[-1][2]["settings"]
+        assert isinstance(settings, dict)
         assert settings["retrieval_model"] == retrieval_model
 
     def test_create_by_file_parses_multipart_input(

@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
-from typing import cast
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 
@@ -74,7 +73,9 @@ def test_service_passes_resource_dataset_scope_to_tag_query() -> None:
         "workspace-1",
         resource_dataset_ids=frozenset({"dataset-1"}),
     )
-    service = TagApplicationService(tags=cast(TagStore, store))
+    tag_store = create_autospec(TagStore, instance=True, spec_set=True)
+    tag_store.list_tags.side_effect = store.list_tags
+    service = TagApplicationService(tags=tag_store)
 
     assert service.list_tags(context, "knowledge") == (TagSummary("tag-1", "Scoped", "knowledge", 1),)
     assert store.calls == [("workspace-1", "knowledge", None, frozenset({"dataset-1"}))]

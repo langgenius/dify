@@ -61,6 +61,33 @@ _adaptive_http_client: httpx.Client = get_pooled_http_client(
 )
 
 
+def _firecrawl_document_from_cache(value: object) -> FirecrawlDocumentData:
+    """Validate one cached Firecrawl document without trusting decoded JSON types.
+
+    Preconditions: ``value`` is one element from the tenant-scoped crawl cache. Postconditions: return a fresh
+    four-field normalized document, accepting missing nullable fields; malformed objects raise ``ValueError``.
+    """
+    if not isinstance(value, dict):
+        raise ValueError("Invalid Firecrawl crawl cache document")
+
+    def optional_string(field: str) -> str | None:
+        """Return one nullable string field or reject an invalid cached value."""
+        field_value = value.get(field)
+        if field_value is not None and not isinstance(field_value, str):
+            raise ValueError(f"Invalid Firecrawl crawl cache field: {field}")
+        return field_value
+
+    document = FirecrawlDocumentData(
+        title=optional_string("title"),
+        source_url=optional_string("source_url"),
+    )
+    if "description" in value:
+        document["description"] = optional_string("description")
+    if "markdown" in value:
+        document["markdown"] = optional_string("markdown")
+    return document
+
+
 @dataclass
 class CrawlOptions:
     """Options for crawling operations."""
@@ -544,12 +571,26 @@ class WebsiteService:
         provider_instance_id: str,
         result: CrawlStatusResponse,
     ) -> CrawlStatusDict:
+        """Build the public crawl status while retaining provider data for cache persistence.
+
+        Preconditions: ``result`` has passed the Firecrawl adapter's response validation. Postconditions: the public
+        status always exposes all page fields, while the original sparse documents remain available for compatible
+        cache serialization.
+        """
         crawl_status_data: CrawlStatusDict = {
             "status": result["status"],
             "job_id": job_id,
             "total": result["total"] or 0,
             "current": result["current"] or 0,
-            "data": result["data"],
+            "data": [
+                {
+                    "title": item["title"],
+                    "description": item.get("description"),
+                    "source_url": item["source_url"],
+                    "markdown": item.get("markdown"),
+                }
+                for item in result["data"]
+            ],
         }
         if crawl_status_data["status"] == "completed":
             cls._save_firecrawl_crawl_data(
@@ -652,7 +693,7 @@ class WebsiteService:
                 decoded = json.loads(stored_data.decode("utf-8"))
                 if not isinstance(decoded, list):
                     raise ValueError("Invalid crawl cache data")
-                crawl_data = cast(list[FirecrawlDocumentData], decoded)
+                crawl_data = [_firecrawl_document_from_cache(item) for item in decoded]
         else:
             firecrawl_app = FirecrawlApp(api_key=api_key, base_url=config.get("base_url"))
             result = firecrawl_app.check_crawl_status(job_id)

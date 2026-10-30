@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import cast
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 from sqlalchemy import select
@@ -73,7 +73,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSStagedUploadResponse,
 )
 from services.knowledge_fs.product_remote import KnowledgeFSProductResourceNotFoundError
-from tests.helpers.unit.services.knowledge_fs_services_a_fakes import CallRecorder, RecordedCall, UnusedSessionFactory
+from tests.helpers.unit.services.knowledge_fs_services_a_fakes import CallRecorder, RecordedCall
 
 _TENANT_ID = "00000000-0000-0000-0000-000000000001"
 _ACCOUNT_ID = "00000000-0000-0000-0000-000000000002"
@@ -236,11 +236,14 @@ def _claimed_response(asset_id: str, compilation_job_id: str) -> KnowledgeFSDocu
 
 
 def _runner(session_factory: sessionmaker[Session]) -> KnowledgeFSUpgradeRunner:
-    return KnowledgeFSUpgradeRunner(session_factory, files=cast(FileService, object()))
+    return KnowledgeFSUpgradeRunner(
+        session_factory,
+        files=create_autospec(FileService, instance=True, spec_set=True),
+    )
 
 
 def _unused_runner() -> KnowledgeFSUpgradeRunner:
-    return _runner(cast("sessionmaker[Session]", UnusedSessionFactory()))
+    return _runner(sessionmaker())
 
 
 def _document_asset() -> KnowledgeFSDocumentResponse:
@@ -2333,7 +2336,7 @@ def test_final_reconciliation_publication_failure_is_recovered_after_parent_succ
         with (
             patch(
                 "tasks.knowledge_fs_upgrade_tasks.application_services",
-                return_value=_ApplicationServicesStub(files=cast(FileService, object())),
+                return_value=_ApplicationServicesStub(files=create_autospec(FileService, instance=True, spec_set=True)),
             ),
             patch.object(reconcile_knowledge_fs_upgrade_documents, "apply_async", side_effect=OSError("broker down")),
         ):

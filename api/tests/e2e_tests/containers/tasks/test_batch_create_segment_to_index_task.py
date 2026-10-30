@@ -29,12 +29,13 @@ from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAcco
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
+from services.knowledge.segments.indexing import SegmentIndexingGateway
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 
 
 class _ExternalServiceDependencies(TypedDict):
     storage: MagicMock
-    segment_mutations: MagicMock
+    segment_index: MagicMock
 
 
 class TestBatchCreateSegmentToIndexTask:
@@ -63,17 +64,15 @@ class TestBatchCreateSegmentToIndexTask:
         """Mock setup for external service dependencies."""
         with (
             patch("tasks.batch_create_segment_to_index_task.storage", autospec=True) as mock_storage,
-            patch("extensions.ext_application_services.application_services") as mock_services,
+            patch.object(SegmentIndexingGateway, "count_tokens_many", autospec=True) as count_tokens,
+            patch.object(SegmentIndexingGateway, "create_many", autospec=True) as create_many,
         ):
-            # Setup default mock returns
             mock_storage.download.return_value = None
-
-            mutations = mock_services.return_value.knowledge.segments.mutations
-            mutations.index_segments.return_value = None
+            count_tokens.side_effect = lambda _gateway, _dataset, texts: [len(text) for text in texts]
 
             yield {
                 "storage": mock_storage,
-                "segment_mutations": mutations,
+                "segment_index": create_many,
             }
 
     def _create_test_account_and_tenant(self, db_session_with_containers: Session) -> tuple[Account, Tenant]:
@@ -331,8 +330,7 @@ class TestBatchCreateSegmentToIndexTask:
         assert document.word_count > 0
 
         # Verify vector service was called
-        mutations = mock_external_service_dependencies["segment_mutations"]
-        mutations.index_segments.assert_called_once()
+        mock_external_service_dependencies["segment_index"].assert_called_once()
 
         # Check Redis cache was set
         from extensions.ext_redis import redis_client
@@ -386,9 +384,7 @@ class TestBatchCreateSegmentToIndexTask:
         cache_key = f"segment_batch_import_{job_id}"
         assert redis_client.get(cache_key) == b"completed"
 
-    def test_batch_create_segment_to_index_task_dataset_not_found(
-        self, db_session_with_containers: Session
-    ) -> None:
+    def test_batch_create_segment_to_index_task_dataset_not_found(self, db_session_with_containers: Session) -> None:
         """
         Test task failure when dataset does not exist.
 
@@ -434,9 +430,7 @@ class TestBatchCreateSegmentToIndexTask:
         documents = db_session_with_containers.scalars(select(Document)).all()
         assert len(documents) == 0
 
-    def test_batch_create_segment_to_index_task_document_not_found(
-        self, db_session_with_containers: Session
-    ) -> None:
+    def test_batch_create_segment_to_index_task_document_not_found(self, db_session_with_containers: Session) -> None:
         """
         Test task failure when document does not exist.
 
@@ -774,8 +768,7 @@ class TestBatchCreateSegmentToIndexTask:
         assert document.word_count > 0
 
         # Verify vector service was called
-        mutations = mock_external_service_dependencies["segment_mutations"]
-        mutations.index_segments.assert_called_once()
+        mock_external_service_dependencies["segment_index"].assert_called_once()
 
         # Check Redis cache was set
         from extensions.ext_redis import redis_client

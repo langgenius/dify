@@ -665,13 +665,17 @@ def test_clickzetta_failed_delete_preserves_retry_references(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     file_id, offload_id = _offload(sqlite_session, "app-1", "owned.json")
-    backend = ClickZettaVolumeStorage.__new__(ClickZettaVolumeStorage)
-    monkeypatch.setattr(
-        backend,
-        "_config",
-        ClickZettaVolumeConfig.model_construct(volume_type="user", dify_prefix="dify", permission_check=False),
-        raising=False,
+    config = ClickZettaVolumeConfig(
+        username="test-user",
+        password="test-password",
+        instance="test-instance",
+        volume_type="user",
+        dify_prefix="dify",
+        permission_check=False,
     )
+    monkeypatch.setattr(ClickZettaVolumeStorage, "_init_connection", lambda _storage: None)
+    monkeypatch.setattr(ClickZettaVolumeStorage, "_init_permission_manager", lambda _storage: None)
+    backend = ClickZettaVolumeStorage(config)
 
     def fail_execute(*_args: object, **_kwargs: object) -> None:
         raise RuntimeError("backend unavailable")

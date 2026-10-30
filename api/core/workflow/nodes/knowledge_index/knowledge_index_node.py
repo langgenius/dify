@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, cast, override
+from typing import TYPE_CHECKING, Any, override
 
 from sqlalchemy.orm import Session
 
@@ -46,6 +46,11 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         runtime_state: "RuntimeState",
         files: UploadFileCreator | None = None,
     ) -> None:
+        """Build the node with an optional summary service validated from the run context.
+
+        Invalid injected services raise before indexing; absent services retain the
+        existing path without summary generation.
+        """
         super().__init__(
             node_id=node_id,
             data=data,
@@ -53,10 +58,10 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
             runtime_state=runtime_state,
         )
         self.index_processor = IndexProcessor(files=files)
-        self.summary_index_service = cast(
-            SummaryIndexServiceProtocol | None,
-            init_params.run_context.get(SUMMARY_INDEX_SERVICE_CONTEXT_KEY),
-        )
+        summary_service = init_params.run_context.get(SUMMARY_INDEX_SERVICE_CONTEXT_KEY)
+        if summary_service is not None and not isinstance(summary_service, SummaryIndexServiceProtocol):
+            raise TypeError("Summary index service does not implement the required interface.")
+        self.summary_index_service = summary_service
 
     @override
     def _run(self) -> NodeRunResult:

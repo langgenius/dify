@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import cast
+from unittest.mock import create_autospec
 
 import pytest
 
@@ -57,7 +57,9 @@ class RecordingRedis:
 
 def _cache(monkeypatch: pytest.MonkeyPatch, locks: RecordingMarkerLocks) -> RedisDocumentLifecycleCache:
     monkeypatch.setattr(document_adapters, "RedisKnowledgeIndexingLock", lambda **_kwargs: locks)
-    return RedisDocumentLifecycleCache(redis=cast(RedisClientWrapper, RecordingRedis(locks)))
+    redis = create_autospec(RedisClientWrapper, instance=True, spec_set=True)
+    redis.set.side_effect = RecordingRedis(locks).set
+    return RedisDocumentLifecycleCache(redis=redis)
 
 
 def test_sync_marker_stores_the_generation_as_owner(monkeypatch: pytest.MonkeyPatch) -> None:

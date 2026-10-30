@@ -4,7 +4,7 @@ import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager, nullcontext
-from typing import TYPE_CHECKING, Any, Protocol, cast, final
+from typing import TYPE_CHECKING, Any, Protocol, final, runtime_checkable
 
 from configs import dify_config
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -79,6 +79,7 @@ _CONTAINER_METADATA_KEYS = frozenset(
 type WorkflowToolEventListenerFactory = Callable[[WorkflowToolSource, str, str], Callable[[NodeEvent], None]]
 
 
+@runtime_checkable
 class _KnowledgeRetrievalNodeFactory(Protocol):
     @property
     def knowledge_retrieval(self) -> KnowledgeRetriever: ...
@@ -313,6 +314,11 @@ class WorkflowToolContainerHandler:
         runtime_data: FrameRuntimeData | None = None,
         variable_pool: VariablePool | None = None,
     ) -> ExecutionFrame:
+        """Create a child frame from a known source and a retrieval-capable parent factory.
+
+        Missing sources, invalid factories, or excessive depth fail before a child
+        frame is published; valid frames inherit the parent's retrieval dependency.
+        """
         if payload.call_depth > dify_config.WORKFLOW_CALL_MAX_DEPTH:
             raise ValueError(f"Max workflow call depth {dify_config.WORKFLOW_CALL_MAX_DEPTH} reached.")
 
@@ -343,7 +349,9 @@ class WorkflowToolContainerHandler:
             update={"app_id": source.app_id, "workflow_tool_invocation_id": run_state.invocation_id}
         )
         parent_factory = parent_frame.graph.node_factory
-        knowledge_retrieval = cast(_KnowledgeRetrievalNodeFactory, parent_factory).knowledge_retrieval
+        if not isinstance(parent_factory, _KnowledgeRetrievalNodeFactory):
+            raise TypeError("Workflow tool node factory must provide knowledge retrieval.")
+        knowledge_retrieval = parent_factory.knowledge_retrieval
         graph_init_context = DifyGraphInitContext(
             workflow_id=source.workflow_id,
             graph_config=graph_config,

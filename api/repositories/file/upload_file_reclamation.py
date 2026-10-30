@@ -3,7 +3,7 @@
 import logging
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Protocol, cast
+from typing import Protocol
 
 from psycopg2.errors import LockNotAvailable
 from pymysql.err import OperationalError as PyMySQLOperationalError
@@ -26,13 +26,45 @@ class _PendingBlobDeletion:
     delete_blob: Callable[[str], None]
 
 
+@dataclass
+class _PendingBlobDeletions:
+    items: list[_PendingBlobDeletion]
+
+
+def _get_pending_blob_deletions(session: Session) -> _PendingBlobDeletions:
+    """Return the transaction-local deferred deletion holder.
+
+    Preconditions: ``session.info`` is owned by this Session; an existing value under the private key must have
+    been created by this module. Postconditions: return the existing holder or install an empty one; incompatible
+    state raises ``TypeError`` without scheduling a deletion.
+    """
+    value = session.info.get(_PENDING_DELETIONS)
+    if value is None:
+        pending = _PendingBlobDeletions([])
+        session.info[_PENDING_DELETIONS] = pending
+        return pending
+    if not isinstance(value, _PendingBlobDeletions):
+        raise TypeError(f"Invalid {_PENDING_DELETIONS} Session state")
+    return value
+
+
 def _delete_committed_blobs(session: Session) -> None:
+    """Publish blob deletions after the outer database transaction commits.
+
+    Preconditions: SQLAlchemy invokes this for a Session that may contain module-owned pending deletions.
+    Postconditions: nested commits do nothing; an outer commit consumes the holder and attempts every deletion,
+    logging storage failures because metadata is already durable.
+    """
     # A released savepoint also emits after_commit. Its outer transaction can
     # still roll back, so only the outermost commit may publish this effect.
     if session.in_nested_transaction():
         return
-    pending = cast(list[_PendingBlobDeletion], session.info.pop(_PENDING_DELETIONS, []))
-    for deletion in pending:
+    value = session.info.pop(_PENDING_DELETIONS, None)
+    if value is None:
+        return
+    if not isinstance(value, _PendingBlobDeletions):
+        raise TypeError(f"Invalid {_PENDING_DELETIONS} Session state")
+    for deletion in value.items:
         for file in deletion.files:
             try:
                 deletion.delete_blob(file.key)
@@ -48,18 +80,32 @@ def _delete_committed_blobs(session: Session) -> None:
 
 
 def _discard_rolled_back_blobs(session: Session, rolled_back: SessionTransaction) -> None:
-    pending = cast(list[_PendingBlobDeletion], session.info.get(_PENDING_DELETIONS, []))
-    retained = []
-    for deletion in pending:
+    """Discard effects owned by a rolled-back transaction subtree.
+
+    Preconditions: ``rolled_back`` belongs to ``session``. Postconditions: only deletions whose owning transaction
+    remains outside that subtree stay scheduled; no storage operation is performed.
+    """
+    value = session.info.get(_PENDING_DELETIONS)
+    if value is None:
+        return
+    if not isinstance(value, _PendingBlobDeletions):
+        raise TypeError(f"Invalid {_PENDING_DELETIONS} Session state")
+    retained: list[_PendingBlobDeletion] = []
+    for deletion in value.items:
         transaction: SessionTransaction | None = deletion.transaction
         while transaction is not None and transaction is not rolled_back:
             transaction = transaction.parent
         if transaction is None:
             retained.append(deletion)
-    session.info[_PENDING_DELETIONS] = retained
+    value.items = retained
 
 
 def _discard_finished_transaction_blobs(session: Session, transaction: SessionTransaction) -> None:
+    """Clear abandoned effects when an outer transaction finishes.
+
+    Preconditions: SQLAlchemy invokes this after transaction completion. Postconditions: finishing an outer
+    transaction removes module state so a reused Session cannot publish an earlier transaction's effects.
+    """
     # close() can roll back without after_soft_rollback. A reused Session must
     # never execute effects from the transaction it previously abandoned.
     if transaction.parent is None:
@@ -71,6 +117,11 @@ def _delete_blobs_after_commit(
     files: tuple[UploadFileReferenceCandidate, ...],
     delete_blob: Callable[[str], None],
 ) -> None:
+    """Schedule candidate blobs for deletion after the caller commits metadata.
+
+    Preconditions: non-empty ``files`` requires an active Session transaction. Postconditions: the effect is
+    attached to that transaction and publishes only after its outer commit; rollback or Session close discards it.
+    """
     if not files:
         return
     transaction = session.get_nested_transaction() or session.get_transaction()
@@ -79,8 +130,8 @@ def _delete_blobs_after_commit(
         event.listen(session, "after_commit", _delete_committed_blobs)
         event.listen(session, "after_soft_rollback", _discard_rolled_back_blobs)
         event.listen(session, "after_transaction_end", _discard_finished_transaction_blobs)
-    pending = cast(list[_PendingBlobDeletion], session.info.setdefault(_PENDING_DELETIONS, []))
-    pending.append(_PendingBlobDeletion(transaction, files, delete_blob))
+    pending = _get_pending_blob_deletions(session)
+    pending.items.append(_PendingBlobDeletion(transaction, files, delete_blob))
 
 
 def _is_owner_lock_not_available(error: OperationalError) -> bool:

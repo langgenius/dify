@@ -1,4 +1,3 @@
-from typing import cast
 from unittest.mock import patch
 
 from sqlalchemy.orm import sessionmaker
@@ -17,7 +16,7 @@ def _doc(content: str) -> Document:
     return Document(page_content=content)
 
 
-class RecordingRerankRunner:
+class RecordingRerankRunner(BaseRerankRunner):
     def __init__(self, result: list[Document]) -> None:
         self.result = result
         self.calls: list[tuple[str, list[Document], float | None, int | None, QueryType]] = []
@@ -34,7 +33,7 @@ class RecordingRerankRunner:
         return self.result
 
 
-class RecordingReorderRunner:
+class RecordingReorderRunner(ReorderRunner):
     def __init__(self, result: list[Document]) -> None:
         self.result = result
         self.calls: list[list[Document]] = []
@@ -82,8 +81,8 @@ class TestDataPostProcessor:
         processor = DataPostProcessor.__new__(DataPostProcessor)
         rerank_runner = RecordingRerankRunner(reranked_documents)
         reorder_runner = RecordingReorderRunner(reordered_documents)
-        processor.rerank_runner = cast(BaseRerankRunner, rerank_runner)
-        processor.reorder_runner = cast(ReorderRunner, reorder_runner)
+        processor.rerank_runner = rerank_runner
+        processor.reorder_runner = reorder_runner
 
         result = processor.invoke(
             query="how to test",

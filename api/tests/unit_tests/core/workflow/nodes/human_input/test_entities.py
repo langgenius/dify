@@ -98,7 +98,6 @@ from graphon.engine_events import (
     GraphEdgeTakenEvent,
     NodeRunHumanInputFormFilledEvent,
 )
-from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from graphon.entities import WorkflowStartReason
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from graphon.file import File, FileTransferMethod, FileType
@@ -123,6 +122,7 @@ from models.enums import ConversationFromSource, MessageStatus
 from models.human_input import HumanInputForm
 from models.model import AppMode
 from tests.helpers.unit.model_factories import make_account, make_message, make_tenant
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 def test_session_binding_identity_mapping() -> None:

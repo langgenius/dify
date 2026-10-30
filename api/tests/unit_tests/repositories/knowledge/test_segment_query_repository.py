@@ -1,7 +1,6 @@
 """Behavior tests for segment read-query helpers."""
 
 from datetime import UTC, datetime
-from typing import cast
 
 from sqlalchemy import Table, insert
 from sqlalchemy.orm import Session
@@ -233,8 +232,10 @@ def test_segment_files_require_matching_tenant_and_attachment_owner_chain(sqlite
     )
     sqlite_session.add(binding)
     sqlite_session.flush()
+    binding_table = SegmentAttachmentBinding.__table__
+    assert isinstance(binding_table, Table)
     sqlite_session.execute(
-        insert(cast(Table, SegmentAttachmentBinding.__table__)).values(
+        insert(binding_table).values(
             id="00000000-0000-0000-0000-000000000127",
             tenant_id=segment.tenant_id,
             dataset_id=segment.dataset_id,
@@ -361,8 +362,10 @@ def test_child_chunks_follow_hierarchical_rule_and_complete_owner_chain(sqlite_s
     )
     sqlite_session.add_all([later, earlier])
     sqlite_session.flush()
+    child_chunk_table = ChildChunk.__table__
+    assert isinstance(child_chunk_table, Table)
     sqlite_session.execute(
-        insert(cast(Table, ChildChunk.__table__)).values(
+        insert(child_chunk_table).values(
             id="00000000-0000-0000-0000-000000000153",
             tenant_id=_OTHER_TENANT_ID,
             dataset_id=segment.dataset_id,

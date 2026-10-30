@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import cast, override
+from typing import override
 from unittest.mock import create_autospec, patch
 
 import pytest
@@ -264,8 +264,8 @@ def test_preview_extract_failure_deletes_only_uncommitted_artifact_keys(
     artifacts: list[CreatedUploadArtifact] = []
 
     def fail_extract(*_args: object, **kwargs: object) -> ExtractionResult[Document]:
-        writer = cast(ExtractionImageWriter | None, kwargs["image_writer"])
-        assert writer is not None
+        writer = kwargs["image_writer"]
+        assert isinstance(writer, ExtractionImageWriter)
         writer.write(ExtractedImage(content=b"image", extension="png", mime_type="image/png"))
         artifacts.extend(writer.created_upload_artifacts)
         raise RuntimeError("extract failed")
@@ -304,8 +304,8 @@ def test_preview_transform_failure_cleans_extraction_and_published_artifacts_by_
     artifacts: list[CreatedUploadArtifact] = []
 
     def extract(*_args: object, **kwargs: object) -> ExtractionResult[Document]:
-        writer = cast(ExtractionImageWriter | None, kwargs["image_writer"])
-        assert writer is not None
+        writer = kwargs["image_writer"]
+        assert isinstance(writer, ExtractionImageWriter)
         writer.write(ExtractedImage(content=b"image", extension="png", mime_type="image/png"))
         artifacts.extend(writer.created_upload_artifacts)
         return ExtractionResult(documents=[Document(page_content="source")])
@@ -349,8 +349,8 @@ def test_preview_commit_failure_never_deletes_by_uncommitted_blob_key(
     artifacts: list[CreatedUploadArtifact] = []
 
     def extract(*_args: object, **kwargs: object) -> ExtractionResult[Document]:
-        writer = cast(ExtractionImageWriter | None, kwargs["image_writer"])
-        assert writer is not None
+        writer = kwargs["image_writer"]
+        assert isinstance(writer, ExtractionImageWriter)
         writer.write(ExtractedImage(content=b"image", extension="png", mime_type="image/png"))
         artifacts.extend(writer.created_upload_artifacts)
         return ExtractionResult(documents=[Document(page_content="source")])

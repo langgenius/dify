@@ -3,7 +3,6 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from typing import cast
 from unittest.mock import Mock, patch
 
 import pytest
@@ -44,7 +43,9 @@ class _ExecutionLease:
 @pytest.fixture(autouse=True)
 def trigger_database(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Iterator[TriggerDatabase]:
     """Create the trigger-log table and bind layer-owned sessions to SQLite."""
-    WorkflowTriggerLog.metadata.create_all(sqlite_engine, tables=[cast(Table, WorkflowTriggerLog.__table__)])
+    trigger_log_table = WorkflowTriggerLog.__table__
+    assert isinstance(trigger_log_table, Table)
+    WorkflowTriggerLog.metadata.create_all(sqlite_engine, tables=[trigger_log_table])
     sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     monkeypatch.setattr("core.db.session_factory._session_maker", sqlite_session_maker)
     statements: list[str] = []

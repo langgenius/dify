@@ -1,4 +1,4 @@
-from typing import cast
+from typing import TypeIs
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.queue_entities import AppQueueEvent, QueueRetrieverResourcesEvent
@@ -16,7 +16,12 @@ class RecordingQueueManager:
 
 def test_return_retriever_resource_info_publishes_application_event() -> None:
     queue_manager = RecordingQueueManager()
-    handler = DatasetIndexToolCallbackHandler(queue_manager=cast(AppQueueManager, queue_manager))
+
+    def is_queue_manager(value: object) -> TypeIs[AppQueueManager]:
+        return callable(getattr(value, "publish", None))
+
+    assert is_queue_manager(queue_manager)
+    handler = DatasetIndexToolCallbackHandler(queue_manager=queue_manager)
     resources = [RetrievalSourceMetadata(dataset_id="dataset-1")]
 
     handler.return_retriever_resource_info(resources)

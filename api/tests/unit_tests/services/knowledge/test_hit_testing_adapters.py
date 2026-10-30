@@ -451,11 +451,21 @@ def test_retrieval_configuration_precedence(
         "search_method": "hybrid_search",
         "top_k": 10,
         "reranking_enable": True,
-        "reranking_model": {"provider": "test"},
-        "reranking_mode": "weighted_sum",
+        "reranking_model": {
+            "reranking_provider_name": "test-provider",
+            "reranking_model_name": "test-model",
+        },
+        "reranking_mode": "weighted_score",
         "score_threshold_enabled": True,
         "score_threshold": 0.5,
-        "weights": {"vector": 0.5, "keyword": 0.5},
+        "weights": {
+            "vector_setting": {
+                "vector_weight": 0.5,
+                "embedding_provider_name": "test-embedding-provider",
+                "embedding_model_name": "test-embedding-model",
+            },
+            "keyword_setting": {"keyword_weight": 0.5},
+        },
     }
     if configuration != "default":
         with sqlite_session_factory.begin() as session:
@@ -478,7 +488,37 @@ def test_retrieval_configuration_precedence(
     assert options["top_k"] == {"default": 4, "stored": 9, "override": 10}[configuration]
     assert options["attachment_ids"] == ["upload"]
     assert options["score_threshold"] == (0.5 if configuration == "override" else 0.0)
-    assert options["reranking_model"] == ({"provider": "test"} if configuration == "override" else None)
+    assert options["reranking_model"] is None
     if configuration == "override":
-        assert options["reranking_mode"] == "weighted_sum"
-        assert options["weights"] == {"vector": 0.5, "keyword": 0.5}
+        assert options["reranking_mode"] == "weighted_score"
+        assert options["weights"] == requested_model["weights"]
+
+
+def test_disabled_retrieval_features_ignore_inapplicable_legacy_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Disabled features ignore malformed historical payload fragments and publish neutral provider options."""
+    retrieval = create_autospec(RetrievalService.retrieve, spec_set=True, return_value=[])
+    monkeypatch.setattr(RetrievalService, "retrieve", retrieval)
+
+    DatasetHitTestingGateway._retrieve_documents(
+        REF.dataset_id,
+        "query",
+        {
+            "search_method": "semantic_search",
+            "top_k": 4,
+            "reranking_enable": False,
+            "reranking_mode": {"invalid": "ignored"},
+            "reranking_model": {"invalid": "ignored"},
+            "weights": {"invalid": "ignored"},
+            "score_threshold_enabled": False,
+            "score_threshold": {"invalid": "ignored"},
+        },
+        None,
+        None,
+        None,
+    )
+
+    options = retrieval.call_args.kwargs
+    assert options["reranking_mode"] == "reranking_model"
+    assert options["reranking_model"] is None
+    assert options["weights"] is None
+    assert options["score_threshold"] == 0.0

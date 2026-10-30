@@ -8,7 +8,6 @@ from sqlalchemy import Connection, Engine, event
 
 from enums import DeploymentEdition
 from services.billing_client import transport
-from services.billing_service import BillingService
 from services.knowledge.documents.creation_adapters import load_document_creation_environment
 from tests.helpers import billing_builders as builders
 
@@ -54,7 +53,6 @@ def test_billing_http_boundary_does_not_hold_a_transaction(
     """Given Cloud configuration, billing success or failure leaves no open SQL transaction."""
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     monkeypatch.setenv("BILLING_API_URL", "https://billing.example.test")
-    monkeypatch.setattr(BillingService, "quota_base_url", "https://billing.example.test")
     requested_urls: list[str] = []
 
     def request(method: str, url: str, **_kwargs: object) -> httpx.Response:
@@ -71,7 +69,10 @@ def test_billing_http_boundary_does_not_hold_a_transaction(
         payload = (
             builders.subscription_info("professional").model_dump(mode="json")
             if url.endswith("/subscription/info")
-            else {"trigger_event": {"usage": 0, "limit": 10}, "api_rate_limit": {"usage": 0, "limit": 10}}
+            else {
+                "trigger_event": {"usage": 0, "limit": 10, "reset_date": 0},
+                "api_rate_limit": {"usage": 0, "limit": 10, "reset_date": 0},
+            }
         )
         return httpx.Response(
             200,

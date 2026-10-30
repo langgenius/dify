@@ -3,7 +3,7 @@
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from importlib import import_module
-from typing import cast
+from unittest.mock import create_autospec
 from uuid import uuid4
 
 import pytest
@@ -111,10 +111,6 @@ class StaticDatasetAccess:
         return AccessibleDataset(dataset_id, context.active_workspace_id)
 
 
-class UnusedDependency:
-    """Constructor dependency outside the website-sync use case under test."""
-
-
 class StoredWebsiteAuthorization:
     def validate_stored_website(self, context: RequestContext, source_info: Mapping[str, object]) -> None:
         assert context.active_workspace_id == "tenant-1"
@@ -171,20 +167,29 @@ def document_application_route(
 ) -> tuple[FlaskClient, FailingWebsiteDocumentRepository, RecordingLifecycleCache]:
     repository = FailingWebsiteDocumentRepository()
     lifecycle_cache = RecordingLifecycleCache()
-    unused = UnusedDependency()
+    dataset_access = create_autospec(DatasetAccess, instance=True, spec_set=True)
+    dataset_access.require_accessible.side_effect = StaticDatasetAccess().require_accessible
+    document_repository = create_autospec(DocumentRepository, instance=True, spec_set=True)
+    document_repository.get_state.side_effect = repository.get_state
+    document_repository.sync_website.side_effect = repository.sync_website
+    lifecycle = create_autospec(DocumentLifecycleCache, instance=True, spec_set=True)
+    lifecycle.try_mark_syncing.side_effect = lifecycle_cache.try_mark_syncing
+    lifecycle.clear_syncing.side_effect = lifecycle_cache.clear_syncing
+    source_authorization = create_autospec(DocumentSourceAuthorization, instance=True, spec_set=True)
+    source_authorization.validate_stored_website.side_effect = StoredWebsiteAuthorization().validate_stored_website
     service = DatasetDocumentApplicationService(
-        dataset_access=cast(DatasetAccess, StaticDatasetAccess()),
-        datasets=cast(DocumentDatasetRepository, unused),
-        documents=cast(DocumentRepository, repository),
-        operations=cast(DocumentOperations, unused),
-        uploads=cast(DocumentUploads, unused),
-        indexing_locks=cast(KnowledgeIndexingLock, unused),
-        lifecycle_cache=cast(DocumentLifecycleCache, lifecycle_cache),
-        model_configuration=cast(DocumentModelConfigurationGateway, unused),
-        creation=cast(DocumentCreationGateway, unused),
-        source_authorization=cast(DocumentSourceAuthorization, StoredWebsiteAuthorization()),
-        creator_access=cast(DatasetCreatorAccess, unused),
-        tasks=cast(DocumentTaskDispatcher, unused),
+        dataset_access=dataset_access,
+        datasets=create_autospec(DocumentDatasetRepository, instance=True, spec_set=True),
+        documents=document_repository,
+        operations=create_autospec(DocumentOperations, instance=True, spec_set=True),
+        uploads=create_autospec(DocumentUploads, instance=True, spec_set=True),
+        indexing_locks=create_autospec(KnowledgeIndexingLock, instance=True, spec_set=True),
+        lifecycle_cache=lifecycle,
+        model_configuration=create_autospec(DocumentModelConfigurationGateway, instance=True, spec_set=True),
+        creation=create_autospec(DocumentCreationGateway, instance=True, spec_set=True),
+        source_authorization=source_authorization,
+        creator_access=create_autospec(DatasetCreatorAccess, instance=True, spec_set=True),
+        tasks=create_autospec(DocumentTaskDispatcher, instance=True, spec_set=True),
         presenter=DocumentResponsePresentationAdapter(),
     )
     return _document_client(monkeypatch, config_overrides, service), repository, lifecycle_cache

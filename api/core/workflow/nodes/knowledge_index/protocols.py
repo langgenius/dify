@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Protocol, TypedDict
+from typing import Any, Protocol, TypedDict, runtime_checkable
 
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -65,6 +65,7 @@ class IndexProcessorProtocol(Protocol):
     ) -> Preview: ...
 
 
+@runtime_checkable
 class SummaryIndexServiceProtocol(Protocol):
     def generate_and_vectorize_summary(
         self,

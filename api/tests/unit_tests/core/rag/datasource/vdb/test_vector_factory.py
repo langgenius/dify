@@ -6,7 +6,7 @@ import types
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import cast
+from typing import Protocol
 from unittest.mock import MagicMock, create_autospec, patch
 from uuid import uuid4
 
@@ -49,6 +49,25 @@ class _RecordingMultimodalProcessor:
             raise RuntimeError("duplicate primary key")
         self.existing_ids.update(ids)
         self.create_calls.append(tuple(texts))
+
+
+class _VectorWithMultimodalDependencies(Protocol):
+    _embeddings: Embeddings
+    _vector_processor: BaseVector
+
+
+def _install_multimodal_dependencies(
+    vector: _VectorWithMultimodalDependencies,
+    embeddings: _MultimodalEmbeddings,
+    processor: _RecordingMultimodalProcessor,
+) -> None:
+    embeddings_port = create_autospec(Embeddings, instance=True, spec_set=True)
+    embeddings_port.embed_multimodal_documents.side_effect = embeddings.embed_multimodal_documents
+    processor_port = create_autospec(BaseVector, instance=True, spec_set=True)
+    processor_port.text_exists.side_effect = processor.text_exists
+    processor_port.create.side_effect = processor.create
+    vector._embeddings = embeddings_port
+    vector._vector_processor = processor_port
 
 
 def _dataset(**overrides) -> Dataset:
@@ -561,8 +580,7 @@ def test_create_multimodal_keeps_completed_batches_before_later_local_failure(
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     embeddings = _MultimodalEmbeddings()
     processor = _RecordingMultimodalProcessor()
-    vector._embeddings = cast(Embeddings, embeddings)
-    vector._vector_processor = cast(BaseVector, processor)
+    _install_multimodal_dependencies(vector, embeddings, processor)
     vector._session = None
     vector._dataset = Dataset(tenant_id=tenant_id, name="dataset", created_by=creator_id)
     monkeypatch.setattr(vector_factory_module.storage, "load_once", load_until_second_batch)
@@ -609,8 +627,7 @@ def test_create_multimodal_stably_deduplicates_attachment_ids_before_batching(
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     embeddings = _MultimodalEmbeddings()
     processor = _RecordingMultimodalProcessor()
-    vector._embeddings = cast(Embeddings, embeddings)
-    vector._vector_processor = cast(BaseVector, processor)
+    _install_multimodal_dependencies(vector, embeddings, processor)
     vector._session = None
     vector._dataset = Dataset(tenant_id=tenant_id, name="dataset", created_by=creator_id)
     monkeypatch.setattr(vector_factory_module.storage, "load_once", lambda _key: b"abc")
@@ -632,8 +649,7 @@ def test_create_multimodal_supports_image_only_first_write_and_shared_replay(
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     embeddings = _MultimodalEmbeddings()
     processor = _RecordingMultimodalProcessor()
-    vector._embeddings = cast(Embeddings, embeddings)
-    vector._vector_processor = cast(BaseVector, processor)
+    _install_multimodal_dependencies(vector, embeddings, processor)
     vector._session = None
     vector._dataset = Dataset(tenant_id=str(uuid4()), name="dataset", created_by=str(uuid4()))
     loaded_keys: list[str] = []
@@ -774,13 +790,16 @@ def test_search_by_file_uses_pre_authorized_file_key(vector_factory_module):
     vector._vector_processor.search_by_vector.assert_called_once_with([0.3, 0.4], top_k=2)
 
 
-def test_delete_clears_redis_cache_when_collection_exists(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
+def test_delete_clears_redis_cache_when_collection_exists(
+    vector_factory_module, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+):
     delete_mock = MagicMock()
     redis_delete = MagicMock()
     monkeypatch.setattr(vector_factory_module.redis_client, "delete", redis_delete)
 
-    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._vector_processor = SimpleNamespace(delete=delete_mock, collection_name="collection_1")
+    processor = SimpleNamespace(delete=delete_mock, collection_name="collection_1")
+    with patch.object(vector_factory_module.Vector, "_init_vector", return_value=processor):
+        vector = vector_factory_module.Vector(_dataset(), session=unbound_session)
 
     vector.delete()
 
@@ -793,7 +812,9 @@ def test_delete_clears_redis_cache_when_collection_exists(vector_factory_module,
     redis_delete.assert_not_called()
 
 
-def test_get_embeddings_builds_cache_embedding(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
+def test_get_embeddings_builds_cache_embedding(
+    vector_factory_module, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+):
     model_manager = MagicMock()
     model_manager.get_model_instance.return_value = "model-instance"
 
@@ -801,8 +822,8 @@ def test_get_embeddings_builds_cache_embedding(vector_factory_module, monkeypatc
     monkeypatch.setattr(vector_factory_module.ModelManager, "for_tenant", for_tenant_mock)
     monkeypatch.setattr(vector_factory_module, "CacheEmbedding", MagicMock(return_value="cached-embedding"))
 
-    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._dataset = _dataset()
+    with patch.object(vector_factory_module.Vector, "_init_vector", return_value=None):
+        vector = vector_factory_module.Vector(_dataset(), session=unbound_session)
 
     result = vector._get_embeddings()
 
@@ -816,8 +837,14 @@ def test_get_embeddings_builds_cache_embedding(vector_factory_module, monkeypatc
     )
 
 
-def test_filter_duplicate_texts_and_getattr(vector_factory_module):
-    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+def test_filter_duplicate_texts_and_getattr(vector_factory_module, unbound_session: Session):
+    class _Processor:
+        def ping(self):
+            return "pong"
+
+    processor = _Processor()
+    with patch.object(vector_factory_module.Vector, "_init_vector", return_value=processor):
+        vector = vector_factory_module.Vector(_dataset(), session=unbound_session)
     vector.text_exists = MagicMock(side_effect=lambda doc_id: doc_id == "dup")
 
     docs = [
@@ -830,11 +857,6 @@ def test_filter_duplicate_texts_and_getattr(vector_factory_module):
     filtered = vector._filter_duplicate_texts(docs)
     assert [doc.page_content for doc in filtered] == ["no-meta", "empty-doc-id", "unique"]
 
-    class _Processor:
-        def ping(self):
-            return "pong"
-
-    vector._vector_processor = _Processor()
     assert vector.ping() == "pong"
 
     with pytest.raises(AttributeError):

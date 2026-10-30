@@ -1,6 +1,6 @@
 """Cloud storage adapters normalize repeated delete into idempotent success."""
 
-from typing import cast
+from unittest.mock import create_autospec
 
 import pytest
 from azure.core.exceptions import ResourceNotFoundError
@@ -9,6 +9,7 @@ from google.cloud.storage import Client
 
 from extensions.storage.azure_blob_storage import AzureBlobStorage
 from extensions.storage.google_cloud_storage import GoogleCloudStorage
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 class _DeleteOnceBucket:
@@ -52,11 +53,17 @@ class _AzureClient:
         return self.container
 
 
-def test_google_storage_delete_is_idempotent() -> None:
+def test_google_storage_delete_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
     bucket = _DeleteOnceBucket()
-    storage = object.__new__(GoogleCloudStorage)
-    storage.bucket_name = "bucket"
-    storage.client = cast(Client, _GoogleClient(bucket))
+    client = create_autospec(Client, instance=True, spec_set=True)
+    client.get_bucket.side_effect = _GoogleClient(bucket).get_bucket
+    apply_config_overrides(
+        monkeypatch,
+        GOOGLE_STORAGE_BUCKET_NAME="bucket",
+        GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64="",
+    )
+    monkeypatch.setattr("extensions.storage.google_cloud_storage.google_cloud_storage.Client", lambda: client)
+    storage = GoogleCloudStorage()
 
     storage.delete("private.pem")
     storage.delete("private.pem")
@@ -66,8 +73,14 @@ def test_google_storage_delete_is_idempotent() -> None:
 
 def test_azure_storage_delete_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
     container = _DeleteOnceContainer()
-    storage = object.__new__(AzureBlobStorage)
-    storage.bucket_name = "bucket"
+    apply_config_overrides(
+        monkeypatch,
+        AZURE_BLOB_CONTAINER_NAME="bucket",
+        AZURE_BLOB_ACCOUNT_URL="",
+        AZURE_BLOB_ACCOUNT_NAME="",
+        AZURE_BLOB_ACCOUNT_KEY="",
+    )
+    storage = AzureBlobStorage()
     monkeypatch.setattr(storage, "_sync_client", lambda: _AzureClient(container))
 
     storage.delete("private.pem")

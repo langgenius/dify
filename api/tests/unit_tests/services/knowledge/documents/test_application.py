@@ -2,7 +2,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager, nullcontext
 from dataclasses import replace
 from datetime import datetime
-from typing import Literal, cast
+from typing import Literal
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -829,13 +829,32 @@ def _recording_service(
 ) -> tuple[DatasetDocumentApplicationService, RecordingDocumentRefs, RecordingModelConfiguration]:
     document_store = documents or RecordingDocumentRefs()
     models = model_configuration or RecordingModelConfiguration()
+    dataset_store = datasets or RecordingDatasets()
+    access_port = create_autospec(DatasetAccess, instance=True, spec_set=True, wraps=access)
+    access_port.require_accessible.side_effect = access.require_accessible
+    dataset_port = create_autospec(DocumentDatasetRepository, instance=True, spec_set=True, wraps=dataset_store)
+    dataset_port.get_document_creation_defaults.side_effect = dataset_store.get_document_creation_defaults
+    dataset_port.delete_with_relations.side_effect = dataset_store.delete_with_relations
+    document_port = create_autospec(DocumentRepository, instance=True, spec_set=True, wraps=document_store)
+    document_port.find_ref.side_effect = document_store.find_ref
+    document_port.get_state.side_effect = document_store.get_state
+    document_port.get_states.side_effect = document_store.get_states
+    document_port.get_creation_dataset.side_effect = document_store.get_creation_dataset
+    document_port.persist_creation.side_effect = document_store.persist_creation
+    upload_port = create_autospec(DocumentUploads, instance=True, spec_set=True, wraps=uploads)
+    upload_port.upload_text.side_effect = uploads.upload_text
+    upload_port.upload_file.side_effect = uploads.upload_file
+    lock_store = UnusedIndexingLocks()
+    lock_port = create_autospec(KnowledgeIndexingLock, instance=True, spec_set=True, wraps=lock_store)
+    lock_port.try_acquire.side_effect = lock_store.try_acquire
+    lock_port.hold.side_effect = lock_store.hold
     service = DatasetDocumentApplicationService(
-        dataset_access=cast(DatasetAccess, access),
-        datasets=cast(DocumentDatasetRepository, datasets or RecordingDatasets()),
-        documents=cast(DocumentRepository, document_store),
-        operations=cast(DocumentOperations, operations),
-        uploads=cast(DocumentUploads, uploads),
-        indexing_locks=cast(KnowledgeIndexingLock, UnusedIndexingLocks()),
+        dataset_access=access_port,
+        datasets=dataset_port,
+        documents=document_port,
+        operations=create_autospec(DocumentOperations, instance=True, spec_set=True, wraps=operations),
+        uploads=upload_port,
+        indexing_locks=lock_port,
         lifecycle_cache=RecordingLifecycleCache(),
         model_configuration=models,
         creation=RecordingCreation(),

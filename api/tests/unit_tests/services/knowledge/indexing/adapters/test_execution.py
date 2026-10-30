@@ -4,7 +4,7 @@ from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import replace
 from datetime import datetime
-from typing import cast, override
+from typing import override
 from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
@@ -36,7 +36,6 @@ from services.extraction.contracts import (
     ExtractedImage,
     ExtractionResult,
     ExtractSetting,
-    ImageWriter,
     UploadFileExtractionInput,
 )
 from services.extraction.images import ExtractionImageWriter
@@ -193,7 +192,8 @@ def test_vector_io_releases_transactions_and_preserves_chunk_structure(
         attachments=[AttachmentDocument(page_content="image", metadata={"doc_id": upload.id, "doc_type": "image"})],
     )
     segments.save_for_indexing(indexing_document, [chunk], [5])
-    get_files = cast(MagicMock, adapter._files.get_files)
+    get_files = adapter._files.get_files
+    assert isinstance(get_files, MagicMock)
     get_files.return_value = {upload.id: upload}
 
     def external_call(*_args: object, **_kwargs: object) -> None:
@@ -330,8 +330,8 @@ def test_extract_failure_deletes_only_artifacts_known_not_to_have_entered_commit
     artifacts: list[CreatedUploadArtifact] = []
 
     def fail_extract(*_args: object, **kwargs: object) -> ExtractionResult[IndexDocument]:
-        writer = cast(ExtractionImageWriter | None, kwargs["image_writer"])
-        assert writer is not None
+        writer = kwargs["image_writer"]
+        assert isinstance(writer, ExtractionImageWriter)
         writer.write(ExtractedImage(content=b"image", extension="png", mime_type="image/png"))
         artifacts.extend(writer.created_upload_artifacts)
         raise RuntimeError("extract failed")
@@ -355,8 +355,8 @@ def test_extract_retains_service_owned_image_evidence_after_parser_returns(
     sources.resolve.return_value = _file_extract_setting()
 
     def extract(*_args: object, **kwargs: object) -> ExtractionResult[IndexDocument]:
-        writer = cast(ImageWriter | None, kwargs["image_writer"])
-        assert writer is not None
+        writer = kwargs["image_writer"]
+        assert isinstance(writer, ExtractionImageWriter)
         reference = writer.write(ExtractedImage(content=b"image", extension="png", mime_type="image/png"))
         return ExtractionResult(documents=[IndexDocument(page_content=f"![image]({reference.preview_url})")])
 
@@ -394,8 +394,8 @@ def test_extract_commit_failure_never_deletes_by_uncommitted_blob_key(
     artifacts: list[CreatedUploadArtifact] = []
 
     def extract(*_args: object, **kwargs: object) -> ExtractionResult[IndexDocument]:
-        writer = cast(ExtractionImageWriter | None, kwargs["image_writer"])
-        assert writer is not None
+        writer = kwargs["image_writer"]
+        assert isinstance(writer, ExtractionImageWriter)
         writer.write(ExtractedImage(content=b"image", extension="png", mime_type="image/png"))
         artifacts.extend(writer.created_upload_artifacts)
         return ExtractionResult(documents=[IndexDocument(page_content="source")])
@@ -488,7 +488,8 @@ def test_transform_selects_embedding_model_and_preserves_processor_options(
 
 def test_transform_failure_cleans_uploads_reported_by_the_processor(backend: BackendFixture) -> None:
     adapter, documents, _, _, job, _ = backend
-    delete_file = cast(MagicMock, adapter._files.delete_file)
+    delete_file = adapter._files.delete_file
+    assert isinstance(delete_file, MagicMock)
     indexing_user = Account(name="Indexer", email="indexer@example.com")
     indexing_user.id = "account-1"
     with (
@@ -498,7 +499,8 @@ def test_transform_failure_cleans_uploads_reported_by_the_processor(backend: Bac
         processor = factory.return_value.init_index_processor.return_value
 
         def transform(*_args: object, **kwargs: object) -> list[IndexDocument]:
-            callback = cast(Callable[[str], None], kwargs["on_upload_file_created"])
+            callback = kwargs["on_upload_file_created"]
+            assert callable(callback)
             callback("upload-1")
             raise RuntimeError("transform failed")
 
@@ -674,13 +676,16 @@ def test_jina_sync_refetches_scrape_source_and_completes_real_pipeline(
             crawl_calls.append((job_ref, url, use_job))
             return {"content": "fresh Jina content", "url": url, "title": "Current page"}
 
+    website_stub = WebsiteServiceStub()
+    website = create_autospec(WebsiteService, instance=True, spec_set=True)
+    website.get_crawl_url_data_by_ref.side_effect = website_stub.get_crawl_url_data_by_ref
     adapter = IndexingExecutionAdapter(
         session_factory=sqlite_session_factory,
         documents=documents,
         segments=segments,
         sources=sources,
         files=_NoopFileService(),
-        website=cast(WebsiteService, WebsiteServiceStub()),
+        website=website,
     )
 
     indexing_user = Account(name="Indexer", email="indexer@example.com")

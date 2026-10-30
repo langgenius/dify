@@ -6,8 +6,8 @@ from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from time import perf_counter
 from types import SimpleNamespace
-from typing import cast, override
-from unittest.mock import MagicMock, PropertyMock, patch
+from typing import TypeIs, override
+from unittest.mock import MagicMock, PropertyMock, create_autospec, patch
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -139,7 +139,12 @@ def _workflow_app_runner(
     app_id: str,
     variable_loader: VariableLoader | None = None,
 ) -> WorkflowBasedAppRunner:
-    queue = cast(AppQueueManager, queue_manager)
+    def is_queue_manager(value: object) -> TypeIs[AppQueueManager]:
+        return callable(getattr(value, "publish", None))
+
+    if not is_queue_manager(queue_manager):
+        queue_manager = create_autospec(AppQueueManager, instance=True, spec_set=True)
+    queue = queue_manager
     if variable_loader is None:
         return WorkflowBasedAppRunner(
             queue_manager=queue,

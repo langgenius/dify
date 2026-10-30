@@ -15,7 +15,10 @@ from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom
 from models.model import UploadFile
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
-from services.knowledge.documents.contracts import DocumentPersistenceNotFoundError
+from services.knowledge.documents.contracts import (
+    DocumentPersistenceDatasetNotFoundError,
+    DocumentPersistenceNotFoundError,
+)
 from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
 
 FIXED_UPLOAD_CREATED_AT = datetime.datetime(2024, 1, 1, 0, 0, 0)
@@ -130,7 +133,7 @@ def test_rename_document_success(db_session_with_containers: Session) -> None:
 
     # Assert
     db_session_with_containers.refresh(document)
-    assert result["id"] == document.id
+    assert result.id == document.id
     assert document.name == new_name
 
 
@@ -229,7 +232,7 @@ def test_rename_document_missing_owner_chain_is_not_found(db_session_with_contai
     """The repository rejects a document whose complete owner chain is absent."""
     ref = DatasetRef(str(uuid4()), str(uuid4())).document(str(uuid4()))
 
-    with pytest.raises(DocumentPersistenceNotFoundError, match="Document not found"):
+    with pytest.raises(DocumentPersistenceDatasetNotFoundError, match="Dataset not found"):
         _repository(db_session_with_containers).rename_document(ref, "x")
 
 

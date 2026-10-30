@@ -3529,9 +3529,7 @@ class TestWorkflowServiceCases:
                     user=account,
                     app_id=app.id,
                     triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
-                    files=build_file_service(
-                        session_factory=sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-                    ),
+                    files=build_file_service(session_factory=sessionmaker(bind=sqlite_engine, expire_on_commit=False)),
                 )
                 if repository_type is LogstoreWorkflowNodeExecutionRepository:
                     config_overrides(

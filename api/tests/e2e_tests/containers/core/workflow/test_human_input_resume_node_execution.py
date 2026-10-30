@@ -36,6 +36,7 @@ from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFor
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
+from services.file_adapters import build_file_service
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -262,6 +263,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
         )
         node_execution_repo = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=session_factory,
+            files=build_file_service(session_factory=session_factory),
             tenant_id=self.tenant.id,
             user=self.account,
             app_id=self.app.id,

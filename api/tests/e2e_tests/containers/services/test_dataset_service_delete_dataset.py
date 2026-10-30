@@ -146,20 +146,22 @@ class TestDatasetRepositoryDeleteDataset:
             created_by=owner.id,
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
+        tenant_id = tenant.id
+        dataset_id = dataset.id
 
         # Act
         result = _dataset_repository(db_session_with_containers).delete_with_relations(
-            DatasetRef(tenant.id, dataset.id)
+            DatasetRef(tenant_id, dataset_id)
         )
 
         # Assert
         db_session_with_containers.expire_all()
         assert result is not None
-        assert result.id == dataset.id
-        assert result.workspace_id == tenant.id
+        assert result.id == dataset_id
+        assert result.workspace_id == tenant_id
         assert result.doc_form == IndexStructureType.PARAGRAPH_INDEX
         assert result.indexing_technique == IndexTechniqueType.HIGH_QUALITY
-        assert db_session_with_containers.get(Dataset, dataset.id) is None
+        assert db_session_with_containers.get(Dataset, dataset_id) is None
 
     def test_delete_empty_dataset_success(self, db_session_with_containers: Session) -> None:
         """Return cleanup even for an empty dataset without indexing configuration."""
@@ -175,19 +177,21 @@ class TestDatasetRepositoryDeleteDataset:
             collection_binding_id=None,
             pipeline_id=None,
         )
+        tenant_id = tenant.id
+        dataset_id = dataset.id
 
         # Act
         result = _dataset_repository(db_session_with_containers).delete_with_relations(
-            DatasetRef(tenant.id, dataset.id)
+            DatasetRef(tenant_id, dataset_id)
         )
 
         # Assert
         db_session_with_containers.expire_all()
         assert result is not None
-        assert result.id == dataset.id
+        assert result.id == dataset_id
         assert result.doc_form is None
         assert result.indexing_technique is None
-        assert db_session_with_containers.get(Dataset, dataset.id) is None
+        assert db_session_with_containers.get(Dataset, dataset_id) is None
 
     def test_delete_dataset_with_partial_none_values(self, db_session_with_containers: Session) -> None:
         """Return a complete cleanup snapshot when indexing technique is absent."""
@@ -203,19 +207,21 @@ class TestDatasetRepositoryDeleteDataset:
             collection_binding_id=str(uuid4()),
             pipeline_id=str(uuid4()),
         )
+        tenant_id = tenant.id
+        dataset_id = dataset.id
 
         # Act
         result = _dataset_repository(db_session_with_containers).delete_with_relations(
-            DatasetRef(tenant.id, dataset.id)
+            DatasetRef(tenant_id, dataset_id)
         )
 
         # Assert
         db_session_with_containers.expire_all()
         assert result is not None
-        assert result.id == dataset.id
+        assert result.id == dataset_id
         assert result.doc_form == "text_model"
         assert result.indexing_technique is None
-        assert db_session_with_containers.get(Dataset, dataset.id) is None
+        assert db_session_with_containers.get(Dataset, dataset_id) is None
 
     def test_delete_dataset_with_doc_form_none_indexing_technique_exists(
         self, db_session_with_containers: Session
@@ -233,19 +239,21 @@ class TestDatasetRepositoryDeleteDataset:
             collection_binding_id=str(uuid4()),
             pipeline_id=str(uuid4()),
         )
+        tenant_id = tenant.id
+        dataset_id = dataset.id
 
         # Act
         result = _dataset_repository(db_session_with_containers).delete_with_relations(
-            DatasetRef(tenant.id, dataset.id)
+            DatasetRef(tenant_id, dataset_id)
         )
 
         # Assert
         db_session_with_containers.expire_all()
         assert result is not None
-        assert result.id == dataset.id
+        assert result.id == dataset_id
         assert result.doc_form is None
         assert result.indexing_technique == IndexTechniqueType.HIGH_QUALITY
-        assert db_session_with_containers.get(Dataset, dataset.id) is None
+        assert db_session_with_containers.get(Dataset, dataset_id) is None
 
     def test_delete_dataset_not_found(self, db_session_with_containers: Session) -> None:
         """Return False without scheduling cleanup when the target dataset does not exist."""

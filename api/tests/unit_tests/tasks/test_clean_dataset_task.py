@@ -1,6 +1,5 @@
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import cast
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -119,7 +118,8 @@ def test_dataset_cleanup_retry_remembers_completed_index_cleanup(
 
     assert cleaned_indexes == ["dataset-1"]
     assert refreshed == ["tenant-1"]
-    retry_task_kwargs = cast(dict[str, object], retry_kwargs[0]["kwargs"])
+    retry_task_kwargs = retry_kwargs[0]["kwargs"]
+    assert isinstance(retry_task_kwargs, dict)
     assert retry_task_kwargs["index_cleanup_done"] is True
     assert retry_task_kwargs["dataset_id"] == "dataset-1"
 

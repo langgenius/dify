@@ -1,6 +1,5 @@
 from datetime import datetime
 from types import SimpleNamespace
-from typing import cast
 from unittest.mock import MagicMock, Mock, create_autospec
 
 import pytest
@@ -30,7 +29,7 @@ def proxy(mocker: MockerFixture, file_service: MagicMock) -> RagPipelineTaskProx
         dataset_tenant_id="tenant-1",
         user_id="user-1",
         rag_pipeline_invoke_entities=[entity],
-        files=cast(FileService, file_service),
+        files=file_service,
     )
 
 
@@ -43,7 +42,7 @@ def test_delay_with_empty_entities_logs_warning_and_returns(
         dataset_tenant_id="tenant-1",
         user_id="user-1",
         rag_pipeline_invoke_entities=[],
-        files=cast(FileService, file_service),
+        files=file_service,
     )
     dispatch_mock = mocker.patch.object(proxy, "_dispatch")
 
@@ -112,9 +111,9 @@ def test_dispatch_raises_on_empty_upload_file_id(mocker: MockerFixture, proxy: R
 
 
 def test_send_to_direct_queue_calls_task_func_delay(proxy: RagPipelineTaskProxy) -> None:
-    task_func = Mock()
+    task_func = create_autospec(Signature, instance=True, spec_set=True)
 
-    proxy._send_to_direct_queue("file-1", cast(Signature[object], task_func))
+    proxy._send_to_direct_queue("file-1", task_func)
 
     task_func.delay.assert_called_once_with(
         rag_pipeline_invoke_entities_file_id="file-1",
@@ -123,22 +122,24 @@ def test_send_to_direct_queue_calls_task_func_delay(proxy: RagPipelineTaskProxy)
 
 
 def test_send_to_tenant_queue_pushes_when_task_key_exists(proxy: RagPipelineTaskProxy) -> None:
-    queue = cast(MagicMock, proxy._tenant_isolated_task_queue)
+    queue = proxy._tenant_isolated_task_queue
+    assert isinstance(queue, MagicMock)
     queue.get_task_key.return_value = "existing-key"
     task_func = create_autospec(Signature, instance=True, spec_set=True)
 
-    proxy._send_to_tenant_queue("file-1", cast(Signature[object], task_func))
+    proxy._send_to_tenant_queue("file-1", task_func)
 
     queue.push_tasks.assert_called_once_with(["file-1"])
     task_func.delay.assert_not_called()
 
 
 def test_send_to_tenant_queue_sets_waiting_time_and_calls_delay(proxy: RagPipelineTaskProxy) -> None:
-    queue = cast(MagicMock, proxy._tenant_isolated_task_queue)
+    queue = proxy._tenant_isolated_task_queue
+    assert isinstance(queue, MagicMock)
     queue.get_task_key.return_value = None
     task_func = create_autospec(Signature, instance=True, spec_set=True)
 
-    proxy._send_to_tenant_queue("file-1", cast(Signature[object], task_func))
+    proxy._send_to_tenant_queue("file-1", task_func)
 
     queue.set_task_waiting_time.assert_called_once()
     task_func.delay.assert_called_once_with(

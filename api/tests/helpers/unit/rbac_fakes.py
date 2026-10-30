@@ -2,7 +2,7 @@
 
 from contextlib import nullcontext
 from dataclasses import dataclass, field
-from typing import cast
+from unittest.mock import create_autospec
 
 import pytest
 from pydantic import JsonValue
@@ -93,10 +93,12 @@ def build_rbac_domain(sessions: sessionmaker[Session], monkeypatch: pytest.Monke
     monkeypatch.setattr(EnterpriseRequest, "send_inner_rbac_request", transport.send)
     monkeypatch.setattr(initialize_created_app_rbac_access_task, "delay", tasks.delay)
     workspaces = WorkspaceRepository(sessions)
+    redis = create_autospec(RedisClientWrapper, instance=True, spec_set=True)
+    redis.lock.side_effect = WorkspaceQuotaLocks().lock
     members, _ = build_workspace_membership_services(
         workspaces=workspaces,
         accounts=SQLAlchemyAccountRepository(sessions),
-        redis=cast(RedisClientWrapper, WorkspaceQuotaLocks()),
+        redis=redis,
     )
     return RBACDomain(
         rbac=build_rbac_services(

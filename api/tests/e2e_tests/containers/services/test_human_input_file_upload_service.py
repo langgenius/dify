@@ -65,7 +65,7 @@ class _RecordingFiles(FileService):
         self.deleted.append((tenant_id, file_id))
 
 
-def _upload_record(*, file_id: str, tenant_id: str) -> UploadFileRecord:
+def _upload_record(*, file_id: str, tenant_id: str, created_by: str) -> UploadFileRecord:
     return UploadFileRecord(
         id=file_id,
         tenant_id=tenant_id,
@@ -76,7 +76,7 @@ def _upload_record(*, file_id: str, tenant_id: str) -> UploadFileRecord:
         extension="txt",
         mime_type="text/plain",
         created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="account-1",
+        created_by=created_by,
         created_at=naive_utc_now(),
         hash=None,
         source_url="",
@@ -200,7 +200,7 @@ def test_conversation_cleanup_serializes_with_final_upload_owner_check(
             form,
             recipient,
             upload_token,
-            make_upload_file(file_id=upload_file_id, tenant_id=tenant_id),
+            make_upload_file(file_id=upload_file_id, tenant_id=tenant_id, created_by=account.id),
         ]
     )
     db_session_with_containers.commit()
@@ -209,7 +209,7 @@ def test_conversation_cleanup_serializes_with_final_upload_owner_check(
     assert isinstance(engine, Engine)
     sessions = sessionmaker(bind=engine, expire_on_commit=False)
     monkeypatch.setattr(delete_conversation_module.session_factory, "get_session_maker", lambda: sessions)
-    files = _RecordingFiles(_upload_record(file_id=upload_file_id, tenant_id=tenant_id))
+    files = _RecordingFiles(_upload_record(file_id=upload_file_id, tenant_id=tenant_id, created_by=account.id))
     service = HumanInputFileUploadService(
         uploads=SQLAlchemyHumanInputFileUploadRepository(session_factory=sessions),
         workflow_run_repository=DifyAPISQLAlchemyWorkflowRunRepository(sessions),

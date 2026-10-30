@@ -262,7 +262,11 @@ def test_blob_failure_keeps_an_orphan_after_metadata_commit(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     tenant_id = str(uuid4())
-    upload = make_upload_file(tenant_id=tenant_id, key=f"uploads/{uuid4()}.txt")
+    upload = make_upload_file(
+        tenant_id=tenant_id,
+        key=f"uploads/{uuid4()}.txt",
+        created_by=str(uuid4()),
+    )
     db_session_with_containers.add(upload)
     db_session_with_containers.commit()
     sessions = _sessions(db_session_with_containers)

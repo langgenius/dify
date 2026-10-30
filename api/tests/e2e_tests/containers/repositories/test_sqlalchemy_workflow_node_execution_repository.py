@@ -21,6 +21,7 @@ from graphon.enums import (
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.account import Account, Tenant
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from services.file_adapters import build_file_service
 
 
 def _create_account_with_tenant(session: Session) -> Account:
@@ -41,8 +42,10 @@ def _make_repo(session: Session, account: Account, app_id: str) -> SQLAlchemyWor
     assert isinstance(engine, Engine)
     tenant_id = account.current_tenant_id
     assert tenant_id is not None
+    sessions = sessionmaker(bind=engine, expire_on_commit=False)
     return SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=sessionmaker(bind=engine, expire_on_commit=False),
+        session_factory=sessions,
+        files=build_file_service(session_factory=sessions),
         tenant_id=tenant_id,
         user=account,
         app_id=app_id,

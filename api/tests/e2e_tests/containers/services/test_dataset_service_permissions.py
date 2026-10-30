@@ -12,7 +12,7 @@ from models.enums import DataSourceType
 from repositories.knowledge.dataset_read_repository import get_or_create_dataset_collection_binding
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
-from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetAccessService
+from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetAccessService, DatasetNotFoundError
 from services.knowledge.entities.resource_scope import DatasetRef
 
 
@@ -101,7 +101,7 @@ def test_partial_member_permission_is_scoped_to_dataset_and_tenant(
     )
 
     assert access.require_accessible(_context(member, tenant), dataset.id).id == dataset.id
-    with pytest.raises(DatasetAccessDeniedError):
+    with pytest.raises(DatasetNotFoundError):
         access.require_accessible(_context(outsider, other_tenant), dataset.id)
 
 

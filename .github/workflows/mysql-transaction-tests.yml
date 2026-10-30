@@ -72,9 +72,10 @@ jobs:
           exit 1
 
       - name: Prepare database schema
+        working-directory: api
         env:
           DEBUG: true
-        run: uv run --project api --env-file api/.env flask --app api/app.py upgrade-db
+        run: uv run --env-file .env flask --app app.py upgrade-db
 
       - name: Run MySQL transaction and concurrency tests
         run: uv run --project api --env-file api/.env pytest --no-cov api/tests/mysql_integration_tests

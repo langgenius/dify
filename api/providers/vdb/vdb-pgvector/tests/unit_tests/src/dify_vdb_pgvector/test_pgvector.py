@@ -1,5 +1,5 @@
 import json
-from collections.abc import Generator, Iterator
+from collections.abc import Iterator
 from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import Any, override
@@ -47,6 +47,9 @@ class _RecordingSearchCursor:
     def execute(self, query: str, parameters: object = None) -> None:
         del parameters
         self.executed_sql.append(query)
+
+    def close(self) -> None:
+        """Close the in-memory cursor without discarding recorded SQL."""
 
     def replace_rows(self, rows: list[tuple[dict[str, object], str, float]]) -> None:
         self._rows = rows
@@ -533,16 +536,37 @@ def test_search_by_vector_supports_filter_and_threshold():
     assert "meta->>'document_id' in ('d-1')" in sql
 
 
-def test_search_by_full_text_branches_for_bigm_and_standard():
-    vector = PGVector.__new__(PGVector)
-    vector.table_name = "embedding_collection_1"
+def test_search_by_full_text_branches_for_bigm_and_standard(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Construct a real vector with an in-memory pool; both SQL modes must preserve document filtering."""
     cursor = _RecordingSearchCursor([({"doc_id": "1"}, "text-1", 0.7)])
 
-    @contextmanager
-    def _cursor_ctx() -> Generator[_RecordingSearchCursor]:
-        yield cursor
+    class SearchConnection:
+        def cursor(self) -> _RecordingSearchCursor:
+            return cursor
 
-    vector._get_cursor = _cursor_ctx
+        def commit(self) -> None:
+            pass
+
+    class SearchPool:
+        def getconn(self) -> SearchConnection:
+            return SearchConnection()
+
+        def putconn(self, connection: SearchConnection) -> None:
+            del connection
+
+    monkeypatch.setattr(pgvector_module.psycopg2.pool, "SimpleConnectionPool", lambda *args, **kwargs: SearchPool())
+    vector = PGVector(
+        collection_name="collection_1",
+        config=PGVectorConfig(
+            host="localhost",
+            port=5432,
+            user="test_user",
+            password="test_password",
+            database="test_db",
+            min_connection=1,
+            max_connection=5,
+        ),
+    )
 
     with pytest.raises(ValueError, match="top_k must be a positive integer"):
         vector.search_by_full_text("hello", top_k=0)

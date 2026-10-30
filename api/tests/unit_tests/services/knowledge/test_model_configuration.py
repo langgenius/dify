@@ -1,10 +1,9 @@
 from dataclasses import dataclass
-from typing import cast
 
 import pytest
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.model_manager import ModelInstance, ModelManager
+from core.model_manager import ModelManager
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from services.knowledge.datasets.model_configuration import KnowledgeModelConfigurationGateway
 from services.knowledge.entities.model_configuration import DatasetModelConfiguration
@@ -31,23 +30,23 @@ class _ModelManager:
         self.error = error
         self.calls: list[tuple[str, str, ModelType, str]] = []
 
-    def get_model_instance(self, tenant_id: str, provider: str, model_type: ModelType, model: str) -> ModelInstance:
+    def get_model_instance(self, tenant_id: str, provider: str, model_type: ModelType, model: str) -> _ModelInstance:
         self.calls.append((tenant_id, provider, model_type, model))
         if self.error is not None:
             raise self.error
-        return cast(ModelInstance, self.instance)
+        return self.instance
 
-    def get_default_model_instance(self, tenant_id: str, model_type: ModelType) -> ModelInstance:
+    def get_default_model_instance(self, tenant_id: str, model_type: ModelType) -> _ModelInstance:
         self.calls.append((tenant_id, "", model_type, ""))
         if self.error is not None:
             raise self.error
-        return cast(ModelInstance, self.instance)
+        return self.instance
 
 
 def _install_manager(monkeypatch: pytest.MonkeyPatch, manager: _ModelManager) -> None:
-    def for_tenant(cls: type[ModelManager], tenant_id: str) -> ModelManager:
+    def for_tenant(cls: type[ModelManager], tenant_id: str) -> _ModelManager:
         del cls, tenant_id
-        return cast(ModelManager, manager)
+        return manager
 
     monkeypatch.setattr(ModelManager, "for_tenant", classmethod(for_tenant))
 

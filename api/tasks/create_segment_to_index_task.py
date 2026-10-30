@@ -44,23 +44,6 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
         indexing_cache_key = f"segment_{segment.id}_indexing"
 
         try:
-            # update segment status to indexing
-            session.execute(
-                update(DocumentSegment)
-                .where(DocumentSegment.id == segment.id)
-                .values(status=SegmentStatus.INDEXING, indexing_at=naive_utc_now())
-            )
-            session.commit()
-            document = Document(
-                page_content=segment.content,
-                metadata={
-                    "doc_id": segment.index_node_id,
-                    "doc_hash": segment.index_node_hash,
-                    "document_id": segment.document_id,
-                    "dataset_id": segment.dataset_id,
-                },
-            )
-
             dataset = get_segment_dataset(segment, session=session)
 
             if not dataset:
@@ -80,6 +63,25 @@ def create_segment_to_index_task(segment_id: str, keywords: list[str] | None = N
             ):
                 logger.info(click.style(f"Segment {segment.id} document status is invalid, pass.", fg="cyan"))
                 return
+
+            # Publish an in-progress state only after the complete owner chain
+            # has been validated. Early exits must leave a retryable segment in
+            # WAITING rather than stranding it in INDEXING.
+            session.execute(
+                update(DocumentSegment)
+                .where(DocumentSegment.id == segment.id)
+                .values(status=SegmentStatus.INDEXING, indexing_at=naive_utc_now())
+            )
+            session.commit()
+            document = Document(
+                page_content=segment.content,
+                metadata={
+                    "doc_id": segment.index_node_id,
+                    "doc_hash": segment.index_node_hash,
+                    "document_id": segment.document_id,
+                    "dataset_id": segment.dataset_id,
+                },
+            )
 
             index_type = get_dataset_doc_form(dataset, session=session)
             index_processor = IndexProcessorFactory(index_type).init_index_processor()

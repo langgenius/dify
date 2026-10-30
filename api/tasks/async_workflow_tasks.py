@@ -5,7 +5,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from threading import Event, Thread
-from typing import Any, Protocol, cast
+from typing import Any, Protocol, runtime_checkable
 from uuid import uuid4
 
 from celery import Task, shared_task
@@ -58,6 +58,7 @@ class WorkflowGeneratorArgsDict(TypedDict):
     files: list[Any]
 
 
+@runtime_checkable
 class _RedisExecutionLock(Protocol):
     def acquire(self, *, blocking: bool, token: str) -> bool: ...
 
@@ -115,15 +116,15 @@ class _WorkflowExecutionLease:
 
 @contextmanager
 def _hold_workflow_execution(trigger_log_id: str) -> Generator[_WorkflowExecutionLease]:
-    lock = cast(
-        _RedisExecutionLock,
-        redis_client.lock(
-            f"workflow-trigger-execution:{trigger_log_id}",
-            timeout=_EXECUTION_LEASE_TIMEOUT_SECONDS,
-            blocking=False,
-            thread_local=False,
-        ),
+    """Acquire one execution lease; release it on exit and reject incompatible lock backends."""
+    lock = redis_client.lock(
+        f"workflow-trigger-execution:{trigger_log_id}",
+        timeout=_EXECUTION_LEASE_TIMEOUT_SECONDS,
+        blocking=False,
+        thread_local=False,
     )
+    if not isinstance(lock, _RedisExecutionLock):
+        raise TypeError("Workflow execution requires a renewable Redis lock.")
     token = uuid4().hex
     if not lock.acquire(blocking=False, token=token):
         raise WorkflowExecutionBusyError(f"Workflow trigger is already executing: {trigger_log_id}")

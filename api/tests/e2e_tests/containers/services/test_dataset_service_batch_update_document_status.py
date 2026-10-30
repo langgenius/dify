@@ -20,14 +20,14 @@ from services.knowledge.documents.contracts import DocumentPersistenceInvalidSta
 from services.knowledge.entities.resource_scope import DatasetRef
 
 
-def _dataset(*, dataset_id: str, tenant_id: str) -> Dataset:
+def _dataset(*, dataset_id: str, tenant_id: str, actor_id: str) -> Dataset:
     return Dataset(
         id=dataset_id,
         tenant_id=tenant_id,
         name=f"dataset-{dataset_id}",
         provider="vendor",
-        created_by="actor",
-        maintainer="actor",
+        created_by=actor_id,
+        maintainer=actor_id,
         data_source_type=DataSourceType.UPLOAD_FILE,
         indexing_technique="economy",
     )
@@ -38,6 +38,7 @@ def _document(
     document_id: str,
     dataset_id: str,
     tenant_id: str,
+    actor_id: str,
     enabled: bool = True,
     archived: bool = False,
     indexing_status: IndexingStatus = IndexingStatus.COMPLETED,
@@ -53,7 +54,7 @@ def _document(
         batch=f"batch-{uuid4()}",
         name=f"document-{document_id}",
         created_from=DocumentCreatedFrom.WEB,
-        created_by="actor",
+        created_by=actor_id,
         doc_form=IndexStructureType.PARAGRAPH_INDEX,
         indexing_status=indexing_status,
         completed_at=completed_at,
@@ -88,13 +89,15 @@ def test_change_status_commits_active_state_transition(
     tenant_id = str(uuid4())
     dataset_id = str(uuid4())
     document_id = str(uuid4())
+    actor_id = str(uuid4())
     db_session_with_containers.add_all(
         [
-            _dataset(dataset_id=dataset_id, tenant_id=tenant_id),
+            _dataset(dataset_id=dataset_id, tenant_id=tenant_id, actor_id=actor_id),
             _document(
                 document_id=document_id,
                 dataset_id=dataset_id,
                 tenant_id=tenant_id,
+                actor_id=actor_id,
                 enabled=enabled,
                 archived=archived,
             ),
@@ -106,7 +109,7 @@ def test_change_status_commits_active_state_transition(
         DatasetRef(tenant_id, dataset_id),
         [document_id],
         action=action,
-        actor_id="actor",
+        actor_id=actor_id,
     )
 
     db_session_with_containers.rollback()
@@ -114,10 +117,10 @@ def test_change_status_commits_active_state_transition(
     assert (persisted.enabled, persisted.archived) == (expected_enabled, expected_archived)
     assert mutation.indexing_document_ids == (document_id,)
     if action == "disable":
-        assert persisted.disabled_by == "actor"
+        assert persisted.disabled_by == actor_id
         assert persisted.disabled_at is not None
     elif action == "archive":
-        assert persisted.archived_by == "actor"
+        assert persisted.archived_by == actor_id
         assert persisted.archived_at is not None
     elif action == "enable":
         assert persisted.disabled_by is None
@@ -134,28 +137,50 @@ def test_change_status_skips_missing_foreign_and_already_matching_documents(
     dataset_id = str(uuid4())
     other_tenant_id = str(uuid4())
     other_dataset_id = str(uuid4())
+    actor_id = str(uuid4())
+    owned_disabled_id = str(uuid4())
+    owned_enabled_id = str(uuid4())
+    foreign_id = str(uuid4())
+    missing_id = str(uuid4())
     db_session_with_containers.add_all(
         [
-            _dataset(dataset_id=dataset_id, tenant_id=tenant_id),
-            _dataset(dataset_id=other_dataset_id, tenant_id=other_tenant_id),
-            _document(document_id="owned-disabled", dataset_id=dataset_id, tenant_id=tenant_id, enabled=False),
-            _document(document_id="owned-enabled", dataset_id=dataset_id, tenant_id=tenant_id),
-            _document(document_id="foreign", dataset_id=other_dataset_id, tenant_id=other_tenant_id, enabled=False),
+            _dataset(dataset_id=dataset_id, tenant_id=tenant_id, actor_id=actor_id),
+            _dataset(dataset_id=other_dataset_id, tenant_id=other_tenant_id, actor_id=actor_id),
+            _document(
+                document_id=owned_disabled_id,
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                actor_id=actor_id,
+                enabled=False,
+            ),
+            _document(
+                document_id=owned_enabled_id,
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                actor_id=actor_id,
+            ),
+            _document(
+                document_id=foreign_id,
+                dataset_id=other_dataset_id,
+                tenant_id=other_tenant_id,
+                actor_id=actor_id,
+                enabled=False,
+            ),
         ]
     )
     db_session_with_containers.commit()
 
     mutation = _repository(db_session_with_containers).change_status(
         DatasetRef(tenant_id, dataset_id),
-        ["missing", "foreign", "owned-enabled", "owned-disabled", "owned-disabled"],
+        [missing_id, foreign_id, owned_enabled_id, owned_disabled_id, owned_disabled_id],
         action="enable",
-        actor_id="actor",
+        actor_id=actor_id,
     )
 
-    assert mutation.indexing_document_ids == ("owned-disabled",)
+    assert mutation.indexing_document_ids == (owned_disabled_id,)
     db_session_with_containers.rollback()
-    assert db_session_with_containers.get_one(Document, "owned-disabled").enabled is True
-    assert db_session_with_containers.get_one(Document, "foreign").enabled is False
+    assert db_session_with_containers.get_one(Document, owned_disabled_id).enabled is True
+    assert db_session_with_containers.get_one(Document, foreign_id).enabled is False
 
 
 def test_invalid_batch_transition_rolls_back_all_documents(
@@ -163,14 +188,23 @@ def test_invalid_batch_transition_rolls_back_all_documents(
 ) -> None:
     tenant_id = str(uuid4())
     dataset_id = str(uuid4())
+    actor_id = str(uuid4())
+    completed_id = str(uuid4())
+    indexing_id = str(uuid4())
     db_session_with_containers.add_all(
         [
-            _dataset(dataset_id=dataset_id, tenant_id=tenant_id),
-            _document(document_id="a-completed", dataset_id=dataset_id, tenant_id=tenant_id),
+            _dataset(dataset_id=dataset_id, tenant_id=tenant_id, actor_id=actor_id),
             _document(
-                document_id="b-indexing",
+                document_id=completed_id,
                 dataset_id=dataset_id,
                 tenant_id=tenant_id,
+                actor_id=actor_id,
+            ),
+            _document(
+                document_id=indexing_id,
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                actor_id=actor_id,
                 indexing_status=IndexingStatus.INDEXING,
             ),
         ]
@@ -180,11 +214,11 @@ def test_invalid_batch_transition_rolls_back_all_documents(
     with pytest.raises(DocumentPersistenceInvalidStateError, match="is not completed"):
         _repository(db_session_with_containers).change_status(
             DatasetRef(tenant_id, dataset_id),
-            ["a-completed", "b-indexing"],
+            [completed_id, indexing_id],
             action="disable",
-            actor_id="actor",
+            actor_id=actor_id,
         )
 
     db_session_with_containers.rollback()
-    assert db_session_with_containers.get_one(Document, "a-completed").enabled is True
-    assert db_session_with_containers.get_one(Document, "b-indexing").enabled is True
+    assert db_session_with_containers.get_one(Document, completed_id).enabled is True
+    assert db_session_with_containers.get_one(Document, indexing_id).enabled is True

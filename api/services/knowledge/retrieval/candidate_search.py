@@ -6,10 +6,11 @@ import threading
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, cast
+from typing import Any, Literal, Protocol
 
 from flask import Flask, current_app
 from opentelemetry.trace import get_current_span
+from pydantic import TypeAdapter
 
 from core.entities.model_entities import ModelStatus
 from core.model_manager import ModelManager
@@ -26,6 +27,7 @@ from graphon.model_runtime.entities.message_entities import PromptMessageTool
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from services.errors.knowledge_retrieval import (
+    InvalidModelTypeError,
     ModelCredentialsNotInitializedError,
     ModelNotExistError,
     ModelNotSupportedError,
@@ -41,6 +43,8 @@ from services.knowledge.retrieval.retrieval import ExternalDatasetRetriever, Ret
 from services.knowledge.retrieval.routing_model import RoutingModelConfig
 
 logger = logging.getLogger(__name__)
+
+_RETRIEVAL_MODEL_ADAPTER = TypeAdapter(DefaultRetrievalModelDict)
 
 default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
@@ -144,7 +148,31 @@ class CandidateSearch:
 
     @staticmethod
     def _retrieval_model(dataset: RetrievalDatasetSnapshot) -> DefaultRetrievalModelDict:
-        return cast(DefaultRetrievalModelDict, dataset.retrieval_model or default_retrieval_model)
+        """Validate the effective internal retrieval configuration.
+
+        Preconditions: the snapshot may contain a partial or legacy persisted mapping.
+        Postconditions: required active fields are normalized to ``DefaultRetrievalModelDict``; malformed settings
+        owned by disabled or unrelated features are ignored rather than changing historical retrieval behavior.
+        """
+        raw: dict[str, object] = {**default_retrieval_model, **(dataset.retrieval_model or {})}
+        if raw.get("score_threshold_enabled") is not True:
+            raw["score_threshold"] = 0.0
+
+        reranking_enabled = raw.get("reranking_enable") is True
+        reranking_mode = raw.get("reranking_mode", RerankMode.RERANKING_MODEL)
+        if not reranking_enabled:
+            raw["reranking_mode"] = RerankMode.RERANKING_MODEL
+            raw["reranking_model"] = default_retrieval_model["reranking_model"]
+            raw["weights"] = None
+        elif reranking_mode == RerankMode.RERANKING_MODEL:
+            raw["weights"] = None
+        elif reranking_mode == RerankMode.WEIGHTED_SCORE:
+            raw["reranking_model"] = default_retrieval_model["reranking_model"]
+        else:
+            # Unknown historical modes did not activate either reranker.
+            raw["reranking_model"] = default_retrieval_model["reranking_model"]
+            raw["weights"] = None
+        return _RETRIEVAL_MODEL_ADAPTER.validate_python(raw)
 
     def route_dataset(
         self,
@@ -152,6 +180,12 @@ class CandidateSearch:
         request: KnowledgeRetrievalRequest,
         datasets: Sequence[RetrievalDatasetSnapshot],
     ) -> RoutedDataset:
+        """Route a single-mode request with its configured LLM.
+
+        Preconditions: provider, model, and query are present and datasets are already tenant-authorized.
+        Postconditions: return the selected dataset and usage; a non-LLM routing model or unavailable provider state
+        raises the corresponding retrieval-domain error before invocation.
+        """
         if request.model_provider is None or request.model_name is None or request.query is None:
             raise ValueError("model_provider, model_name, and query are required for single retrieval mode")
 
@@ -163,7 +197,9 @@ class CandidateSearch:
             model=request.model_name,
         )
         provider_model_bundle = model_instance.provider_model_bundle
-        model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
+        model_type_instance = model_instance.model_type_instance
+        if not isinstance(model_type_instance, LargeLanguageModel):
+            raise InvalidModelTypeError("The configured routing model is not a large language model.")
         provider_model = provider_model_bundle.configuration.get_provider_model(
             model=request.model_name, model_type=ModelType.LLM
         )
@@ -294,6 +330,12 @@ class CandidateSearch:
         document_filters: Mapping[str, DatasetDocumentFilter],
         metadata_condition: MetadataFilteringCondition | None,
     ) -> CandidateSearchResult:
+        """Search multiple authorized datasets and optionally rerank their candidates.
+
+        Preconditions: dataset snapshots and document filters share the request tenant. Postconditions: weighted
+        reranking receives a fresh canonical configuration with the active embedding route, caller inputs remain
+        unmodified, and the returned candidates carry the aggregate usage and timing data.
+        """
         if not datasets:
             return self._result([], request.top_k, (), {}, LLMUsage.empty_usage())
         weights = request.weights
@@ -321,13 +363,18 @@ class CandidateSearch:
                     "The configured knowledge base list have different embedding model, please set reranking model."
                 )
             if weights is not None and request.reranking_mode == RerankMode.WEIGHTED_SCORE:
-                weights = cast(WeightsDict, {**weights, "vector_setting": dict(weights["vector_setting"])})
                 embedding_provider = datasets[0].embedding_model_provider
                 embedding_model = datasets[0].embedding_model
                 if not embedding_provider or not embedding_model:
                     raise ValueError("The configured knowledge base has no available embedding model.")
-                weights["vector_setting"]["embedding_provider_name"] = embedding_provider
-                weights["vector_setting"]["embedding_model_name"] = embedding_model
+                weights = WeightsDict(
+                    vector_setting={
+                        **weights["vector_setting"],
+                        "embedding_provider_name": embedding_provider,
+                        "embedding_model_name": embedding_model,
+                    },
+                    keyword_setting={"keyword_weight": weights["keyword_setting"]["keyword_weight"]},
+                )
 
         all_documents: list[Document] = []
         threads: list[threading.Thread] = []

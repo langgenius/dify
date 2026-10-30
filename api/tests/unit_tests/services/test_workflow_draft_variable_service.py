@@ -5,7 +5,7 @@ import unittest
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import cast, override
+from typing import override
 from unittest.mock import Mock, create_autospec, patch
 
 import pytest
@@ -727,7 +727,7 @@ class TestWorkflowDraftVariableServiceCases:
                 node_type=_workflow_draft_variable_service_BuiltinNodeTypes.LLM,
                 node_execution_id="test-execution-id",
                 user=mock_user,
-                files=cast(UploadFileCreator, file_creator),
+                files=file_creator,
             )
             truncation_result = TruncationResult(result=StringSegment(value="..."), truncated=True)
 

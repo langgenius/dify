@@ -2,9 +2,9 @@
 
 import uuid
 from collections.abc import Generator, Sequence
-from contextlib import contextmanager, nullcontext
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from importlib import import_module
-from typing import cast, override
+from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -26,7 +26,6 @@ from services.knowledge.indexing.contracts import IndexingDocument
 from services.knowledge.indexing.execution import DocumentIndexingService, IndexingTransformResult
 from services.knowledge.indexing.locks import (
     KnowledgeIndexingLeaseLostError,
-    KnowledgeIndexingLock,
     KnowledgeIndexingLockBusyError,
 )
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
@@ -101,6 +100,50 @@ class _RecordingLocks:
             lease.assert_owned()
         finally:
             lease.release()
+
+
+class _InMemoryIndexingLock:
+    """Full lock-port fake for a service invocation that receives an owned lease."""
+
+    @staticmethod
+    def _lease(name: str) -> _RecordingLease:
+        values = {name: "in-memory-owner"}
+        return _RecordingLease(values, name, "in-memory-owner")
+
+    def try_acquire(self, name: str, *, timeout: int) -> _RecordingLease:
+        assert timeout > 0
+        return self._lease(name)
+
+    def try_acquire_handoff(self, name: str, *, timeout: int, owner_id: str) -> _RecordingLease:
+        assert timeout > 0
+        assert owner_id
+        return self._lease(name)
+
+    def hold(
+        self,
+        name: str,
+        *,
+        timeout: int,
+        expected_token: str | None = None,
+        blocking_timeout: float = 0,
+    ) -> AbstractContextManager[_RecordingLease]:
+        assert timeout > 0
+        assert expected_token is None
+        assert blocking_timeout >= 0
+        return nullcontext(self._lease(name))
+
+    def hold_handoff(
+        self,
+        name: str,
+        *,
+        timeout: int,
+        owner_id: str,
+        blocking_timeout: float = 0,
+    ) -> AbstractContextManager[_RecordingLease]:
+        assert timeout > 0
+        assert owner_id
+        assert blocking_timeout >= 0
+        return nullcontext(self._lease(name))
 
 
 class _RecordingRedis:
@@ -528,7 +571,7 @@ def test_indexing_redelivery_restores_scoped_attachment_vectors_and_completes_do
         documents=documents,
         segments=segments,
         backend=backend,
-        indexing_locks=cast(KnowledgeIndexingLock, object()),
+        indexing_locks=_InMemoryIndexingLock(),
     )
     lease_values = {"website-sync": "worker-token"}
     lease = _RecordingLease(lease_values, "website-sync", "worker-token")

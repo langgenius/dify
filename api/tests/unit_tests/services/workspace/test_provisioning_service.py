@@ -119,15 +119,17 @@ def test_create_delegation(owner_email: str | None) -> None:
     owners = create_autospec(WorkspaceOwnerQuery, instance=True)
     owners.find_first_by_email.return_value = OWNER
     gateway = create_autospec(WorkspaceProvisioningStore, instance=True)
+    policies = create_autospec(WorkspaceCreationPolicy, instance=True)
+    policies.has_workspace_capacity.return_value = True
+    quota_guard = create_autospec(WorkspaceQuotaGuard, instance=True)
+    quota_guard.acquire.side_effect = lambda: nullcontext(lambda: None)
     result = CreatedWorkspace("w", "Test", "sandbox", "normal", None, None, None, {})
     gateway.provision.return_value = result
-    service = _service(owners=owners, provisioning=gateway)
+    service = _service(owners=owners, provisioning=gateway, policies=policies, quota_guard=quota_guard)
     assert service.create(name="Test", owner_email=owner_email) is result
     assert gateway.provision.call_args.kwargs["owner_id"] == (OWNER.id if owner_email else None)
     if owner_email is None:
         owners.find_first_by_email.assert_not_called()
-        policies = cast(Mock, service._policies)
-        quota_guard = cast(Mock, service._quota_guard)
         policies.has_workspace_capacity.assert_not_called()
         quota_guard.acquire.assert_not_called()
 
@@ -504,12 +506,22 @@ def _service(
     owners: WorkspaceOwnerQuery,
     provisioning: WorkspaceProvisioningStore,
     effects: WorkspaceProvisioningEffects | None = None,
+    policies: WorkspaceCreationPolicy | None = None,
+    quota_guard: WorkspaceQuotaGuard | None = None,
 ) -> WorkspaceProvisioningService:
     """Use the supplied effects, or prepare autospecced effects when omitted or None."""
-    policy = create_autospec(WorkspaceCreationPolicy, instance=True)
-    policy.has_workspace_capacity.return_value = True
-    quota_guard = create_autospec(WorkspaceQuotaGuard, instance=True)
-    quota_guard.acquire.side_effect = lambda: nullcontext(lambda: None)
+    if policies is None:
+        policy_mock = create_autospec(WorkspaceCreationPolicy, instance=True)
+        policy_mock.has_workspace_capacity.return_value = True
+        policy: WorkspaceCreationPolicy = policy_mock
+    else:
+        policy = policies
+    if quota_guard is None:
+        quota_guard_mock = create_autospec(WorkspaceQuotaGuard, instance=True)
+        quota_guard_mock.acquire.side_effect = lambda: nullcontext(lambda: None)
+        guard: WorkspaceQuotaGuard = quota_guard_mock
+    else:
+        guard = quota_guard
     if effects is None:
         prepared = create_autospec(WorkspaceProvisioningEffects, instance=True)
         prepared.prepare.return_value = WorkspaceCreation("w", "Test", "key", 123, 0, {})
@@ -519,7 +531,7 @@ def _service(
         owners=owners,
         provisioning=provisioning,
         policies=policy,
-        quota_guard=quota_guard,
+        quota_guard=guard,
         memberships=create_autospec(WorkspaceMembershipQuery, instance=True),
         members=create_autospec(WorkspaceMemberWriter, instance=True),
     )

@@ -1,6 +1,5 @@
 from collections.abc import Callable
 from threading import Event
-from typing import cast
 from unittest.mock import Mock, create_autospec
 
 import httpx
@@ -83,7 +82,9 @@ def test_workspace_quota_guard_renews_and_releases_owned_token(monkeypatch: pyte
             return Lock()
 
     monkeypatch.setattr(gateways, "_WORKSPACE_QUOTA_LOCK_RENEW_INTERVAL_SECONDS", 0.001)
-    guard = gateways.RedisWorkspaceQuotaGuard(redis=cast(RedisClientWrapper, Redis()))
+    redis = create_autospec(RedisClientWrapper, instance=True, spec_set=True)
+    redis.lock.side_effect = Redis().lock
+    guard = gateways.RedisWorkspaceQuotaGuard(redis=redis)
 
     with guard.acquire() as assert_owned:
         assert renewed.wait(timeout=1)

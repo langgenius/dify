@@ -1,4 +1,3 @@
-from typing import cast
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -64,11 +63,14 @@ class TestMetadataNullableBug:
     def test_metadata_service_update_with_none_name_crashes(self, sqlite_session: Session) -> None:
         """Test that MetadataService.update_metadata_name crashes when name is None."""
         account = _make_account()
-        none_name = cast(str, None)
+        none_name = None
         # This should crash with TypeError when calling len(None)
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
             _metadata_service(sqlite_session).update_metadata_name(
-                DatasetRef(Mock().tenant_id, Mock().id), "metadata-456", none_name, actor_id=account.id
+                DatasetRef(Mock().tenant_id, Mock().id),
+                "metadata-456",
+                none_name,  # pyrefly: ignore[bad-argument-type]
+                actor_id=account.id,
             )
         assert not sqlite_session.in_transaction()
 

@@ -1,6 +1,5 @@
 import json
 from collections.abc import Generator
-from typing import cast
 from unittest.mock import create_autospec
 
 import pytest
@@ -246,10 +245,12 @@ class TestPluginAppInvocationService:
             )
 
     def test_invoke_app_unexpected_mode_raises(self, mocker: MockerFixture) -> None:
+        app = _app()
+        app.__dict__["mode"] = "other"
         mocker.patch.object(
             self.service,
             "_get_app",
-            return_value=_app(mode=cast(AppMode, "other")),
+            return_value=app,
         )
         mocker.patch.object(self.service, "_get_user", return_value=_end_user())
 
@@ -356,7 +357,8 @@ class TestPluginAppInvocationService:
             )
 
     def test_invoke_chat_app_unexpected_mode_raises(self) -> None:
-        app = _app(mode=cast(AppMode, "invalid"))
+        app = _app()
+        app.__dict__["mode"] = "invalid"
         with pytest.raises(ValueError, match="unexpected app type"):
             self.service.invoke_chat_app(
                 app=app,

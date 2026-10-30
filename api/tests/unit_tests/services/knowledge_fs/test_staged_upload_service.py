@@ -348,9 +348,7 @@ def test_stage_canonicalizes_content_type_from_the_supported_extension(
     upload_file.mime_type = expected_content_type
     with sqlite_session_factory.begin() as session:
         session.add(upload_file)
-    files = FakeUploadFileCreator(
-        upload_file=_upload_file_record(name=file_name, mime_type=expected_content_type)
-    )
+    files = FakeUploadFileCreator(upload_file=_upload_file_record(name=file_name, mime_type=expected_content_type))
     service = KnowledgeFSStagedUploadService(
         sqlite_session_factory,
         facade=cast(KnowledgeFSDataFacade, FakeFacade()),

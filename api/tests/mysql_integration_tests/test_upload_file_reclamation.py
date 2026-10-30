@@ -2,7 +2,6 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event, current_thread
-from typing import cast
 from uuid import uuid4
 
 from sqlalchemy import delete, event, select
@@ -26,13 +25,14 @@ from repositories.file.upload_file_repository import (
 from repositories.knowledge.upload_file_references import (
     get_referenced_upload_file_ids as get_knowledge_file_references,
 )
-from tests.unit_tests.model_factories import make_app, make_dataset, make_upload_file
+from tests.helpers.unit.model_factories import make_app, make_dataset, make_upload_file
 
 
 def test_old_snapshot_rechecks_message_owner_with_current_read(mysql_session: Session) -> None:
     """A reference committed after an old snapshot must still fence physical deletion."""
 
-    engine = cast(Engine, mysql_session.get_bind().execution_options(isolation_level="REPEATABLE READ"))
+    engine = mysql_session.get_bind().execution_options(isolation_level="REPEATABLE READ")
+    assert isinstance(engine, Engine)
     sessions = sessionmaker(bind=engine, expire_on_commit=False)
     tenant_id = str(uuid4())
     message_id = str(uuid4())
@@ -120,7 +120,8 @@ def test_old_snapshot_rechecks_message_owner_with_current_read(mysql_session: Se
 def test_app_icon_writer_fence_serializes_reclamation(mysql_session: Session) -> None:
     """A real app writer must keep the upload alive across an old GC snapshot."""
 
-    engine = cast(Engine, mysql_session.get_bind().execution_options(isolation_level="REPEATABLE READ"))
+    engine = mysql_session.get_bind().execution_options(isolation_level="REPEATABLE READ")
+    assert isinstance(engine, Engine)
     sessions = sessionmaker(bind=engine, expire_on_commit=False)
     tenant_id = str(uuid4())
     actor_id = str(uuid4())
@@ -226,7 +227,8 @@ def test_app_icon_writer_fence_serializes_reclamation(mysql_session: Session) ->
 def test_dataset_docstore_attachment_writer_fence_serializes_reclamation(mysql_session: Session) -> None:
     """The legacy index writer must fence cleanup until its binding commits."""
 
-    engine = cast(Engine, mysql_session.get_bind().execution_options(isolation_level="REPEATABLE READ"))
+    engine = mysql_session.get_bind().execution_options(isolation_level="REPEATABLE READ")
+    assert isinstance(engine, Engine)
     sessions = sessionmaker(bind=engine, expire_on_commit=False)
     tenant_id = str(uuid4())
     dataset_id = str(uuid4())

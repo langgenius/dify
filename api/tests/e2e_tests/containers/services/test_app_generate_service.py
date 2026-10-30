@@ -16,6 +16,7 @@ from models.model import EndUser
 from models.workflow import Workflow
 from models.workflow import WorkflowType as ModelWorkflowType
 from services.app_generate_service import AppGenerateService
+from services.billing_client import billing
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
 from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from tests.e2e_tests.containers.helpers import generate_valid_password
@@ -54,16 +55,12 @@ class TestAppGenerateService:
             patch("configs.dify_config") as mock_global_dify_config,
         ):
             # Setup default mock returns for billing service
-            mock_billing_service.quota_reserve.return_value = {
-                "reservation_id": "test-reservation-id",
-                "available": 100,
-                "reserved": 1,
-            }
-            mock_billing_service.quota_commit.return_value = {
-                "available": 99,
-                "reserved": 0,
-                "refunded": 0,
-            }
+            mock_billing_service.quota_reserve.return_value = billing.QuotaReserveReply(
+                reservation_id="test-reservation-id", available=100, reserved=1
+            )
+            mock_billing_service.quota_commit.return_value = billing.QuotaCommitReply(
+                available=99, reserved=0, refunded=0
+            )
 
             # Setup default mock returns for workflow service
             mock_workflow_service_instance = mock_workflow_service.return_value
@@ -974,85 +971,6 @@ class TestAppGenerateService:
 
         # Verify error message
         assert "Invalid app mode" in str(exc_info.value)
-
-    def test_generate_more_like_this_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test successful more like this generation.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
-        )
-
-        message_id = fake.uuid4()
-
-        # Execute the method under test
-        result = AppGenerateService(
-            knowledge_retrieval=mock_external_service_dependencies["knowledge_retrieval"]
-        ).generate_more_like_this(
-            session=db_session_with_containers,
-            app_model=app,
-            user=account,
-            message_id=message_id,
-            invoke_from=InvokeFrom.SERVICE_API,
-            streaming=True,
-        )
-
-        # Verify the result
-        assert result == ["more_like_this_response"]
-
-        # Verify completion generator was called
-        mock_external_service_dependencies[
-            "completion_generator"
-        ].return_value.generate_more_like_this.assert_called_once()
-        assert (
-            mock_external_service_dependencies["completion_generator"].call_args.kwargs["knowledge_retrieval"]
-            is mock_external_service_dependencies["knowledge_retrieval"]
-        )
-
-    def test_generate_more_like_this_with_end_user(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test more like this generation with EndUser.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
-        )
-
-        # Create end user
-        end_user = EndUser(
-            tenant_id=account.current_tenant.id,
-            app_id=app.id,
-            type=EndUserType.BROWSER,
-            external_user_id=fake.uuid4(),
-            name=fake.name(),
-            is_anonymous=False,
-            session_id=fake.uuid4(),
-        )
-
-        db_session_with_containers.add(end_user)
-        db_session_with_containers.commit()
-
-        message_id = fake.uuid4()
-
-        # Execute the method under test
-        result = AppGenerateService(
-            knowledge_retrieval=mock_external_service_dependencies["knowledge_retrieval"]
-        ).generate_more_like_this(
-            session=db_session_with_containers,
-            app_model=app,
-            user=end_user,
-            message_id=message_id,
-            invoke_from=InvokeFrom.SERVICE_API,
-            streaming=True,
-        )
-
-        # Verify the result
-        assert result == ["more_like_this_response"]
 
     def test_get_max_active_requests_with_app_limit(
         self, db_session_with_containers: Session, mock_external_service_dependencies

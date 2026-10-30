@@ -1,6 +1,5 @@
 import json
 from datetime import UTC, datetime
-from typing import cast
 
 from sqlalchemy import Table, insert
 from sqlalchemy.orm import Session
@@ -247,8 +246,10 @@ def test_read_batch_follows_document_owner_chain_for_relations_and_counts(sqlite
     sqlite_session.flush()
     sqlite_session.add(document)
     sqlite_session.flush()
+    document_table = Document.__table__
+    assert isinstance(document_table, Table)
     sqlite_session.execute(
-        insert(cast(Table, Document.__table__)).values(
+        insert(document_table).values(
             id="00000000-0000-0000-0000-000000000124",
             tenant_id=_TENANT_ID,
             dataset_id=_DATASET_ID,
@@ -270,8 +271,10 @@ def test_read_batch_follows_document_owner_chain_for_relations_and_counts(sqlite
     sqlite_session.flush()
     sqlite_session.add_all([completed, pending])
     sqlite_session.flush()
+    segment_table = DocumentSegment.__table__
+    assert isinstance(segment_table, Table)
     sqlite_session.execute(
-        insert(cast(Table, DocumentSegment.__table__)).values(
+        insert(segment_table).values(
             id="00000000-0000-0000-0000-000000000125",
             tenant_id=_OTHER_TENANT_ID,
             dataset_id=document.dataset_id,

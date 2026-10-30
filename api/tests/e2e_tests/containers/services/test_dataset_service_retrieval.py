@@ -13,7 +13,7 @@ This test suite covers:
 import json
 from uuid import uuid4
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from enums.creator import CreatorUserRole
@@ -27,8 +27,8 @@ from models.dataset import (
     DatasetProcessRule,
     DatasetQuery,
 )
-from models.enums import DatasetQuerySource, DataSourceType, ProcessRuleMode
-from models.model import App
+from models.enums import DatasetQuerySource, DataSourceType, ProcessRuleMode, TagType
+from models.model import App, Tag, TagBinding
 from repositories.knowledge.dataset_read_repository import (
     get_dataset_for_tenant,
     get_dataset_process_rules,
@@ -37,6 +37,7 @@ from repositories.knowledge.dataset_read_repository import (
     list_related_apps,
     list_visible_datasets,
 )
+from repositories.tag_repository import TagRepository
 from services.knowledge.documents.creation_adapters import default_document_process_rules
 
 
@@ -47,10 +48,12 @@ def _query_visible_datasets(
     actor: Account | None = None,
     keyword: str | None = None,
     target_ids: list[str] | None = None,
+    creator_ids: list[str] | None = None,
     include_all: bool = False,
     page: int = 1,
     per_page: int = 20,
 ) -> tuple[list[Dataset], int]:
+    """Query a tenant's visible datasets, applying all provided filters in the caller's session."""
     return list_visible_datasets(
         session,
         tenant_id=tenant_id,
@@ -62,6 +65,7 @@ def _query_visible_datasets(
         include_own_datasets=False,
         keyword=keyword,
         tag_target_ids=target_ids,
+        creator_ids=creator_ids or (),
         page=page,
         per_page=per_page,
     )
@@ -364,8 +368,8 @@ class TestListVisibleDatasets:
         assert len(datasets) == 3
         assert total == 3
 
-    def test_get_datasets_combines_creator_tag_and_search_filters(self, db_session_with_containers: Session):
-        """Test creator, tag, and search filters are combined."""
+    def test_get_datasets_combines_creator_tag_and_search_filters(self, db_session_with_containers: Session) -> None:
+        """Given committed tag bindings, creator and search filters must retain only their shared match."""
         creator, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(db_session_with_containers)
         other_creator = DatasetRetrievalTestDataFactory.create_account_in_tenant(db_session_with_containers, tenant)
         matching_dataset = DatasetRetrievalTestDataFactory.create_dataset(
@@ -389,28 +393,42 @@ class TestListVisibleDatasets:
             name="Engineering Handbook",
             permission=DatasetPermissionEnum.ALL_TEAM,
         )
-        tag = DatasetRetrievalTestDataFactory.create_tag_binding(
-            db_session_with_containers, tenant.id, creator.id, matching_dataset.id
-        )
-        db_session_with_containers.add(
-            TagBinding(
-                tenant_id=tenant.id,
-                tag_id=tag.id,
-                target_id=other_creator_dataset.id,
-                created_by=creator.id,
-            )
+        tag = Tag(tenant_id=tenant.id, type=TagType.KNOWLEDGE, name="support", created_by=creator.id)
+        db_session_with_containers.add(tag)
+        db_session_with_containers.flush()
+        db_session_with_containers.add_all(
+            [
+                TagBinding(
+                    tenant_id=tenant.id,
+                    tag_id=tag.id,
+                    target_id=matching_dataset.id,
+                    created_by=creator.id,
+                ),
+                TagBinding(
+                    tenant_id=tenant.id,
+                    tag_id=tag.id,
+                    target_id=other_creator_dataset.id,
+                    created_by=creator.id,
+                ),
+            ]
         )
         db_session_with_containers.commit()
 
-        datasets, total = DatasetService.get_datasets(
+        tags = TagRepository(sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False))
+        target_ids = tags.find_target_ids(
+            tenant_id=tenant.id,
+            tag_type="knowledge",
+            tag_ids=[tag.id],
+            match_all=True,
+        )
+        datasets, total = _query_visible_datasets(
+            db_session_with_containers,
             page=1,
             per_page=20,
-            session=db_session_with_containers,
             tenant_id=tenant.id,
-            search="Support",
-            tag_ids=[tag.id],
+            keyword="Support",
+            target_ids=target_ids,
             creator_ids=[creator.id],
-            tags=application_services().tags,
         )
 
         assert [dataset.id for dataset in datasets] == [matching_dataset.id]

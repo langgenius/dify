@@ -4,7 +4,7 @@ from collections.abc import Generator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from threading import Event
-from typing import cast
+from typing import Literal
 from uuid import uuid4
 
 import pytest
@@ -20,24 +20,26 @@ from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from services.extraction.contracts import ExtractionResult
-from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef, SegmentRef
 from services.knowledge.entities.segments import SegmentUpdateArgs
 from services.knowledge.indexing.adapters.redis_lock import RedisKnowledgeIndexingLock
 from services.knowledge.indexing.contracts import IndexingDocument
 from services.knowledge.indexing.execution import (
     DocumentIndexingService,
-    IndexingBackend,
     IndexingTransformResult,
 )
 from services.knowledge.indexing.locks import document_index_lock_name
 from services.knowledge.segments.adapters import RedisSegmentIndexingState
 from services.knowledge.segments.application import (
-    SegmentIndex,
-    SegmentIndexingState,
     SegmentMutationService,
-    SegmentUploadCatalog,
 )
-from services.knowledge.segments.contracts import SegmentDatasetRecord, SegmentDocumentRecord, SegmentMutationScope
+from services.knowledge.segments.contracts import (
+    ChildChunkState,
+    SegmentDatasetRecord,
+    SegmentDocumentRecord,
+    SegmentIndexTarget,
+    SegmentMutationScope,
+)
 
 
 class _ObservedIndexingState:
@@ -52,6 +54,21 @@ class _ObservedIndexingState:
         with self._state.lock(name, timeout=timeout) as lease:
             self._entered.set()
             yield lease
+
+    def is_segment_indexing(self, segment_id: str, *, deleting: bool = False) -> bool:
+        return self._state.is_segment_indexing(segment_id, deleting=deleting)
+
+    def mark_segment_indexing(self, segment_id: str, *, deleting: bool = False) -> None:
+        self._state.mark_segment_indexing(segment_id, deleting=deleting)
+
+    def is_document_indexing(self, document_id: str) -> bool:
+        return self._state.is_document_indexing(document_id)
+
+    def set_batch_waiting(self, job_id: str) -> None:
+        self._state.set_batch_waiting(job_id)
+
+    def get_batch_status(self, job_id: str) -> str | None:
+        return self._state.get_batch_status(job_id)
 
 
 class _RecordingIndex:
@@ -76,8 +93,63 @@ class _RecordingIndex:
         del document_ref, segment_ids, keywords_list
         self._published.set()
 
+    def create(
+        self,
+        segment_ref: SegmentRef,
+        *,
+        keywords: Sequence[str] | None,
+        attachment_ids: Sequence[str],
+    ) -> None:
+        del segment_ref, keywords, attachment_ids
+        raise AssertionError("This test publishes manual segments through create_many")
+
+    def update(self, segment_ref: SegmentRef, *, keywords: Sequence[str] | None, regenerate_children: bool) -> None:
+        del segment_ref, keywords, regenerate_children
+        raise AssertionError("This test does not update segments")
+
+    def update_attachments(self, segment_ref: SegmentRef, attachment_ids: Sequence[str]) -> None:
+        del segment_ref, attachment_ids
+        raise AssertionError("This test does not update attachments")
+
+    def update_summary(self, segment_ref: SegmentRef, *, summary: str | None, content_changed: bool) -> None:
+        del segment_ref, summary, content_changed
+        raise AssertionError("This test does not update summaries")
+
+    def update_children(
+        self,
+        segment_ref: SegmentRef,
+        *,
+        added: Sequence[ChildChunkState] = (),
+        updated: Sequence[ChildChunkState] = (),
+        deleted: Sequence[ChildChunkState] = (),
+    ) -> None:
+        del segment_ref, added, updated, deleted
+        raise AssertionError("This test does not update child chunks")
+
+    def delete(
+        self,
+        document_ref: DocumentRef,
+        segments: Sequence[SegmentIndexTarget],
+        children: Sequence[ChildChunkState],
+    ) -> None:
+        del document_ref, segments, children
+        raise AssertionError("This test does not delete segments")
+
+    def change_status(
+        self,
+        document_ref: DocumentRef,
+        segment_ids: Sequence[str],
+        action: Literal["enable", "disable"],
+    ) -> None:
+        del document_ref, segment_ids, action
+        raise AssertionError("This test does not change segment status")
+
 
 class _NoUploads:
+    def get_file_name(self, *, workspace_id: str, upload_file_id: str) -> str | None:
+        del workspace_id, upload_file_id
+        return None
+
     def get_existing_file_ids(self, *, workspace_id: str, file_ids: Sequence[str]) -> frozenset[str]:
         del workspace_id
         return frozenset(file_ids)
@@ -141,6 +213,9 @@ class _ControlledIndexingBackend:
             [str(chunk.metadata["doc_id"]) for chunk in chunks],
         )
 
+    def discard(self, document: IndexingDocument, chunks: list[IndexDocument]) -> None:
+        del document, chunks
+
 
 def test_full_indexing_lock_blocks_manual_segment_persistence_and_publication(
     db_session_with_containers: Session,
@@ -192,21 +267,18 @@ def test_full_indexing_lock_blocks_manual_segment_persistence_and_publication(
     segments = SQLAlchemySegmentRepository(session_factory=sessions)
     mutation = SegmentMutationService(
         store=segments,
-        index=cast(SegmentIndex, _RecordingIndex(published)),
+        index=_RecordingIndex(published),
         text_hash=generate_text_hash,
-        uploads=cast(SegmentUploadCatalog, _NoUploads()),
-        indexing_state=cast(SegmentIndexingState, state),
+        uploads=_NoUploads(),
+        indexing_state=state,
     )
     indexing = DocumentIndexingService(
         documents=SQLAlchemyDocumentRepository(session_factory=sessions),
         segments=segments,
-        backend=cast(
-            IndexingBackend,
-            _ControlledIndexingBackend(
-                segments=segments,
-                extraction_started=extraction_started,
-                continue_extraction=continue_extraction,
-            ),
+        backend=_ControlledIndexingBackend(
+            segments=segments,
+            extraction_started=extraction_started,
+            continue_extraction=continue_extraction,
         ),
         indexing_locks=locks,
     )
@@ -246,7 +318,9 @@ def test_full_indexing_lock_blocks_manual_segment_persistence_and_publication(
                     select(DocumentSegment.content, DocumentSegment.index_node_id).where(
                         DocumentSegment.document_id == document_id
                     )
-                ).tuples()
+                )
+                .tuples()
+                .all()
             )
             assert segments_by_content["full indexing segment"] == "full-index-node"
             assert segments_by_content["manual segment"] is not None
@@ -322,7 +396,7 @@ def test_document_cleanup_waits_until_index_writer_has_finished(
     indexing = DocumentIndexingService(
         documents=SQLAlchemyDocumentRepository(session_factory=sessions),
         segments=segments,
-        backend=cast(IndexingBackend, backend),
+        backend=backend,
         indexing_locks=RedisKnowledgeIndexingLock(redis=redis_client),
     )
 

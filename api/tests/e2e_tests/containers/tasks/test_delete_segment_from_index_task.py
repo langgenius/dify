@@ -281,9 +281,11 @@ class TestDeleteSegmentFromIndexTask:
 
         # Extract segment IDs for the task
         segment_ids = [segment.id for segment in segments]
+        dataset_id = dataset.id
+        document_id = document.id
 
         # Execute the task
-        result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, segment_ids)
+        result = delete_segment_from_index_task(index_node_ids, dataset_id, document_id, segment_ids)
 
         # Verify the task completed successfully
         assert result is None  # Task should return None on success
@@ -291,7 +293,7 @@ class TestDeleteSegmentFromIndexTask:
         processor = mock_index_processor["processor"]
         processor.clean.assert_called_once()
         clean_args, clean_kwargs = processor.clean.call_args
-        assert clean_args[0].id == dataset.id
+        assert clean_args[0].id == dataset_id
         assert clean_args[1] == index_node_ids
         assert clean_kwargs["with_keywords"] is True
         assert clean_kwargs["delete_child_chunks"] is True

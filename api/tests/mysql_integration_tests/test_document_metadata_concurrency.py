@@ -1,7 +1,7 @@
 """MySQL locking regressions for document metadata projections and schema changes."""
 
 from threading import Event, Thread, local
-from typing import Literal, cast
+from typing import Literal
 from uuid import uuid4
 
 import pytest
@@ -56,7 +56,8 @@ class _UnexpectedActorCredentialsBoundary:
 
 
 def _repeatable_read_sessions(mysql_session: Session) -> tuple[Engine, sessionmaker[Session]]:
-    engine = cast(Engine, mysql_session.get_bind().execution_options(isolation_level="REPEATABLE READ"))
+    engine = mysql_session.get_bind().execution_options(isolation_level="REPEATABLE READ")
+    assert isinstance(engine, Engine)
     return engine, sessionmaker(bind=engine, expire_on_commit=False)
 
 

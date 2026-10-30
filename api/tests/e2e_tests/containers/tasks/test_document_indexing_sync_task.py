@@ -356,7 +356,9 @@ class TestDocumentIndexingSyncTask:
         run_call = mock_external_dependencies["indexing_runner"].run.call_args
         ref = DatasetRef(context["tenant"].id, context["dataset"].id).document(context["document"].id)
         assert run_call.args == ([ref],)
-        assert run_call.kwargs == {}
+        owned_leases = run_call.kwargs["owned_leases"]
+        assert set(owned_leases) == {context["document"].id}
+        assert owned_leases[context["document"].id] is not None
 
     def test_dataset_not_found_during_cleaning(self, db_session_with_containers: Session, mock_external_dependencies):
         """A vanished owner skips vector cleanup while the current worker still reindexes."""

@@ -1,7 +1,8 @@
 from collections.abc import Mapping
 from contextlib import AbstractContextManager
 from types import TracebackType
-from typing import Never, cast
+from typing import Never
+from unittest.mock import create_autospec
 
 import pytest
 
@@ -156,20 +157,19 @@ def _config(*, original_document_id: str | None = None) -> KnowledgeConfig:
 def _service(
     lock: _RecordingIndexingLock, *, authorization_calls: list[str] | None = None
 ) -> DatasetDocumentApplicationService:
-    unused = _UnexpectedDependency()
     return DatasetDocumentApplicationService(
-        dataset_access=cast(DatasetAccess, unused),
-        datasets=cast(DocumentDatasetRepository, unused),
-        documents=cast(DocumentRepository, unused),
-        operations=cast(DocumentOperations, unused),
-        uploads=cast(DocumentUploads, unused),
+        dataset_access=create_autospec(DatasetAccess, instance=True, spec_set=True),
+        datasets=create_autospec(DocumentDatasetRepository, instance=True, spec_set=True),
+        documents=create_autospec(DocumentRepository, instance=True, spec_set=True),
+        operations=create_autospec(DocumentOperations, instance=True, spec_set=True),
+        uploads=create_autospec(DocumentUploads, instance=True, spec_set=True),
         indexing_locks=lock,
-        lifecycle_cache=cast(DocumentLifecycleCache, unused),
-        model_configuration=cast(DocumentModelConfigurationGateway, unused),
-        creation=cast(DocumentCreationGateway, unused),
+        lifecycle_cache=create_autospec(DocumentLifecycleCache, instance=True, spec_set=True),
+        model_configuration=create_autospec(DocumentModelConfigurationGateway, instance=True, spec_set=True),
+        creation=create_autospec(DocumentCreationGateway, instance=True, spec_set=True),
         source_authorization=_SourceAuthorization(authorization_calls),
-        creator_access=cast(DatasetCreatorAccess, unused),
-        tasks=cast(DocumentTaskDispatcher, unused),
+        creator_access=create_autospec(DatasetCreatorAccess, instance=True, spec_set=True),
+        tasks=create_autospec(DocumentTaskDispatcher, instance=True, spec_set=True),
         presenter=DocumentResponsePresentationAdapter(),
     )
 

@@ -457,160 +457,118 @@ class TestBillingServiceSubscriptionInfo:
 
         get_vector_space.assert_called_once_with(tenant_id, bypass_cache=True)
 
-    def test_quota_get_balance_uses_quota_request(self):
-        tenant_id = "tenant-123"
-        with patch.object(BillingService, "_send_quota_request") as mock_send_quota_request:
-            mock_send_quota_request.return_value = {
-                "quota": "200",
-                "usage": "6",
-                "available": "194",
-                "reserved": "0",
-                "exhausted_at": "1748908800",
-            }
-
-            result = BillingService.quota_get_balance(tenant_id, "credit_pool", bucket="trial")
-
-        assert result == {"quota": 200, "usage": 6, "available": 194, "reserved": 0, "exhausted_at": 1748908800}
-        mock_send_quota_request.assert_called_once_with(
-            "GET",
-            "/quota/balance",
-            params={"tenant_id": tenant_id, "feature_key": "credit_pool", "bucket": "trial"},
-        )
-
-
-class TestBillingServiceUsageCalculation:
-    """Unit tests for usage calculation and credit management.
-
-    Tests cover:
-    - Quota information retrieval
-    """
-
-    def test_get_quota_info(self):
-        """Test retrieval of quota info from new endpoint."""
-        # Arrange
-        tenant_id = "tenant-123"
-        expected_response = {"trigger_event": {"limit": 100, "usage": 30}, "api_rate_limit": {"limit": -1, "usage": 0}}
-        with patch.object(BillingService, "_send_quota_request") as mock_send_quota_request:
-            mock_send_quota_request.return_value = expected_response
-
-            # Act
-            result = BillingService.get_quota_info(tenant_id)
-
-        # Assert
-        assert result == expected_response
-        mock_send_quota_request.assert_called_once_with("GET", "/quota/info", params={"tenant_id": tenant_id})
-
 
 class TestBillingServiceQuotaOperations:
-    """Unit tests for quota reserve/commit/release operations."""
+    """Quota calls build the generated request bodies and return the generated replies."""
 
-    @pytest.fixture
-    def mock_send_request(self):
-        with patch.object(BillingService, "_send_quota_request") as mock:
-            yield mock
-
-    def test_quota_reserve_success(self, mock_send_request):
-        expected = {"reservation_id": "rid-1", "available": 99, "reserved": 1}
-        mock_send_request.return_value = expected
-
-        result = BillingService.quota_reserve(tenant_id="t1", feature_key="trigger_event", request_id="req-1", amount=1)
-
-        assert result == expected
-        mock_send_request.assert_called_once_with(
-            "POST",
-            "/quota/reserve",
-            json={"tenant_id": "t1", "feature_key": "trigger_event", "request_id": "req-1", "amount": 1},
+    def test_get_quota_info_returns_the_generated_reply(self):
+        reply = billing.QuotaGetInfoReply(
+            trigger_event=billing.QuotaFeatureInfo(usage=30, limit=100, reset_date=1767225600),
+            api_rate_limit=billing.QuotaFeatureInfo(usage=0, limit=-1, reset_date=0),
         )
 
-    def test_quota_reserve_coerces_string_to_int(self, mock_send_request):
-        """Test that TypeAdapter coerces string values to int."""
-        mock_send_request.return_value = {"reservation_id": "rid-str", "available": "99", "reserved": "1"}
+        with patch.object(billing, "quota_get_quota_info", return_value=reply) as get:
+            assert BillingService.get_quota_info(TENANT_ID) is reply
 
-        result = BillingService.quota_reserve(tenant_id="t1", feature_key="trigger_event", request_id="req-s", amount=1)
+        get.assert_called_once_with(tenant_id=TENANT_ID)
 
-        assert result["available"] == 99
-        assert isinstance(result["available"], int)
-        assert result["reserved"] == 1
-        assert isinstance(result["reserved"], int)
+    def test_quota_reserve_sends_bucket_and_string_meta(self):
+        reply = billing.QuotaReserveReply(reservation_id="rid-1", available=99, reserved=1)
 
-    def test_quota_reserve_with_meta(self, mock_send_request):
-        mock_send_request.return_value = {"reservation_id": "rid-2", "available": 98, "reserved": 1}
-        meta = {"source": "webhook"}
+        with patch.object(billing, "quota_reserve", return_value=reply) as reserve:
+            result = BillingService.quota_reserve(
+                tenant_id="t1",
+                feature_key="credit_pool",
+                request_id="req-1",
+                amount=2,
+                meta={"source": "llm.invoke", "attempt": 1},
+                bucket="trial",
+            )
 
-        BillingService.quota_reserve(
-            tenant_id="t1", feature_key="trigger_event", request_id="req-2", amount=1, meta=meta
+        assert result is reply
+        reserve.assert_called_once_with(
+            body=billing.QuotaReserveReq(
+                tenant_id="t1",
+                feature_key="credit_pool",
+                request_id="req-1",
+                amount=2,
+                meta={"source": "llm.invoke", "attempt": "1"},
+                bucket="trial",
+            )
         )
 
-        call_json = mock_send_request.call_args[1]["json"]
-        assert call_json["meta"] == {"source": "webhook"}
+    def test_quota_reserve_defaults_to_empty_bucket_and_meta(self):
+        reply = billing.QuotaReserveReply(reservation_id="rid-1", available=99, reserved=1)
 
-    def test_quota_reserve_with_bucket(self, mock_send_request):
-        mock_send_request.return_value = {"reservation_id": "rid-2", "available": 98, "reserved": 1}
+        with patch.object(billing, "quota_reserve", return_value=reply) as reserve:
+            BillingService.quota_reserve(tenant_id="t1", feature_key="trigger_event", request_id="req-1")
 
-        BillingService.quota_reserve(
-            tenant_id="t1", feature_key="credit_pool", request_id="req-2", amount=1, bucket="trial"
+        assert reserve.call_args.kwargs["body"] == billing.QuotaReserveReq(
+            tenant_id="t1", feature_key="trigger_event", request_id="req-1", amount=1, meta={}, bucket=""
         )
 
-        call_json = mock_send_request.call_args[1]["json"]
-        assert call_json["bucket"] == "trial"
+    def test_quota_commit_builds_the_request(self):
+        reply = billing.QuotaCommitReply(available=98, reserved=0, refunded=0)
 
-    def test_quota_commit_success(self, mock_send_request):
-        expected = {"available": 98, "reserved": 0, "refunded": 0}
-        mock_send_request.return_value = expected
+        with patch.object(billing, "quota_commit", return_value=reply) as commit:
+            result = BillingService.quota_commit(
+                tenant_id="t1",
+                feature_key="credit_pool",
+                reservation_id="rid-1",
+                actual_amount=2,
+                meta={"request_id": "req-1"},
+                bucket="paid",
+            )
 
-        result = BillingService.quota_commit(
-            tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1", actual_amount=1
+        assert result is reply
+        commit.assert_called_once_with(
+            body=billing.QuotaCommitReq(
+                tenant_id="t1",
+                feature_key="credit_pool",
+                reservation_id="rid-1",
+                actual_amount=2,
+                meta={"request_id": "req-1"},
+                bucket="paid",
+            )
         )
 
-        assert result == expected
-        mock_send_request.assert_called_once_with(
-            "POST",
-            "/quota/commit",
-            json={
-                "tenant_id": "t1",
-                "feature_key": "trigger_event",
-                "reservation_id": "rid-1",
-                "actual_amount": 1,
-            },
+    def test_quota_release_builds_the_request(self):
+        reply = billing.QuotaReleaseReply(available=100, reserved=0, released=1)
+
+        with patch.object(billing, "quota_release", return_value=reply) as release:
+            result = BillingService.quota_release(
+                tenant_id="t1", feature_key="credit_pool", reservation_id="rid-1", bucket="trial"
+            )
+
+        assert result is reply
+        release.assert_called_once_with(
+            body=billing.QuotaReleaseReq(
+                tenant_id="t1", feature_key="credit_pool", reservation_id="rid-1", bucket="trial"
+            )
         )
 
-    def test_quota_commit_coerces_string_to_int(self, mock_send_request):
-        """Test that TypeAdapter coerces string values to int."""
-        mock_send_request.return_value = {"available": "97", "reserved": "0", "refunded": "1"}
+    def test_quota_get_balance_forwards_the_bucket(self):
+        reply = billing.QuotaGetBalanceReply(available=194, reserved=0, quota=200, usage=6, exhausted_at=0)
 
-        result = BillingService.quota_commit(
-            tenant_id="t1", feature_key="trigger_event", reservation_id="rid-s", actual_amount=1
+        with patch.object(billing, "quota_get_balance", return_value=reply) as get:
+            assert BillingService.quota_get_balance("t1", "credit_pool", bucket="trial") is reply
+
+        get.assert_called_once_with(tenant_id="t1", feature_key="credit_pool", bucket="trial")
+
+    def test_quota_consume_capped_builds_the_request(self):
+        reply = billing.QuotaConsumeCappedReply(deducted=3, available=0, reserved=0, quota=10, usage=10)
+
+        with patch.object(billing, "quota_consume_capped", return_value=reply) as consume:
+            result = BillingService.quota_consume_capped(
+                tenant_id="t1", feature_key="credit_pool", request_id="req-1", amount=5, bucket="trial"
+            )
+
+        assert result is reply
+        consume.assert_called_once_with(
+            body=billing.QuotaConsumeCappedReq(
+                tenant_id="t1", feature_key="credit_pool", request_id="req-1", amount=5, meta={}, bucket="trial"
+            )
         )
-
-        assert result["available"] == 97
-        assert isinstance(result["available"], int)
-        assert result["refunded"] == 1
-        assert isinstance(result["refunded"], int)
-
-    def test_quota_commit_with_meta(self, mock_send_request):
-        mock_send_request.return_value = {"available": 97, "reserved": 0, "refunded": 0}
-        meta = {"reason": "partial"}
-
-        BillingService.quota_commit(
-            tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1", actual_amount=1, meta=meta
-        )
-
-        call_json = mock_send_request.call_args[1]["json"]
-        assert call_json["meta"] == {"reason": "partial"}
-
-    def test_quota_commit_with_bucket(self, mock_send_request):
-        mock_send_request.return_value = {"available": 97, "reserved": 0, "refunded": 0}
-
-        BillingService.quota_commit(
-            tenant_id="t1",
-            feature_key="credit_pool",
-            reservation_id="rid-1",
-            actual_amount=1,
-            bucket="paid",
-        )
-
-        call_json = mock_send_request.call_args[1]["json"]
-        assert call_json["bucket"] == "paid"
 
     @pytest.mark.parametrize(
         ("status_code", "error_type"),
@@ -622,144 +580,74 @@ class TestBillingServiceQuotaOperations:
     )
     def test_quota_commit_classifies_permanent_and_retryable_http_errors(
         self,
-        mock_send_request,
-        status_code,
-        error_type,
-    ):
-        mock_send_request.side_effect = _BillingHTTPStatusError("quota settlement failed", status_code)
+        monkeypatch: pytest.MonkeyPatch,
+        status_code: int,
+        error_type: type[Exception],
+    ) -> None:
+        monkeypatch.setenv("BILLING_QUOTA_API_URL", "https://quota.example.com/v1")
+        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(status_code))) as client:
+            monkeypatch.setattr(transport, "_http_client", client)
+            with pytest.raises(error_type):
+                BillingService.quota_commit(
+                    tenant_id="t1",
+                    feature_key="trigger_event",
+                    reservation_id="rid-1",
+                    actual_amount=1,
+                )
 
-        with pytest.raises(error_type):
-            BillingService.quota_commit(
+    @pytest.mark.parametrize(
+        ("status_code", "error_type"),
+        [
+            (409, BillingUpstreamInvalidResponseError),
+            (429, BillingUpstreamUnavailableError),
+            (503, BillingUpstreamUnavailableError),
+        ],
+    )
+    def test_quota_release_classifies_permanent_and_retryable_http_errors(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        status_code: int,
+        error_type: type[Exception],
+    ) -> None:
+        monkeypatch.setenv("BILLING_QUOTA_API_URL", "https://quota.example.com/v1")
+        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(status_code))) as client:
+            monkeypatch.setattr(transport, "_http_client", client)
+            with pytest.raises(error_type):
+                BillingService.quota_release(
+                    tenant_id="t1",
+                    feature_key="trigger_event",
+                    reservation_id="rid-1",
+                )
+
+    @pytest.mark.parametrize("operation", ["commit", "release"])
+    def test_quota_settlement_treats_unknown_success_response_as_retryable(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        operation: str,
+    ) -> None:
+        monkeypatch.setenv("BILLING_QUOTA_API_URL", "https://quota.example.com/v1")
+        response = {"unexpected": "response"}
+
+        def settle() -> billing.QuotaCommitReply | billing.QuotaReleaseReply:
+            if operation == "commit":
+                return BillingService.quota_commit(
+                    tenant_id="t1",
+                    feature_key="trigger_event",
+                    reservation_id="rid-1",
+                    actual_amount=1,
+                )
+            return BillingService.quota_release(
                 tenant_id="t1",
                 feature_key="trigger_event",
                 reservation_id="rid-1",
-                actual_amount=1,
             )
 
-    def test_quota_commit_treats_unknown_response_as_retryable(self, mock_send_request):
-        mock_send_request.return_value = {"unexpected": "response"}
+        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=response))) as client:
+            monkeypatch.setattr(transport, "_http_client", client)
+            with pytest.raises(BillingUpstreamUnavailableError) as exc_info:
+                settle()
 
-        with pytest.raises(BillingUpstreamUnavailableError):
-            BillingService.quota_commit(
-                tenant_id="t1",
-                feature_key="trigger_event",
-                reservation_id="rid-1",
-                actual_amount=1,
-            )
-
-    def test_quota_release_success(self, mock_send_request):
-        expected = {"available": 100, "reserved": 0, "released": 1}
-        mock_send_request.return_value = expected
-
-        result = BillingService.quota_release(tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1")
-
-        assert result == expected
-        mock_send_request.assert_called_once_with(
-            "POST",
-            "/quota/release",
-            json={"tenant_id": "t1", "feature_key": "trigger_event", "reservation_id": "rid-1"},
-        )
-
-    def test_quota_release_coerces_string_to_int(self, mock_send_request):
-        """Test that TypeAdapter coerces string values to int."""
-        mock_send_request.return_value = {"available": "100", "reserved": "0", "released": "1"}
-
-        result = BillingService.quota_release(tenant_id="t1", feature_key="trigger_event", reservation_id="rid-s")
-
-        assert result["available"] == 100
-        assert isinstance(result["available"], int)
-        assert result["released"] == 1
-        assert isinstance(result["released"], int)
-
-    def test_quota_release_with_bucket(self, mock_send_request):
-        mock_send_request.return_value = {"available": 100, "reserved": 0, "released": 1}
-
-        BillingService.quota_release(tenant_id="t1", feature_key="credit_pool", reservation_id="rid-1", bucket="trial")
-
-        call_json = mock_send_request.call_args[1]["json"]
-        assert call_json["bucket"] == "trial"
-
-    def test_quota_consume_capped_success(self, mock_send_request):
-        mock_send_request.return_value = {
-            "deducted": "2",
-            "available": "8",
-            "reserved": "0",
-            "quota": "10",
-            "usage": "2",
-        }
-
-        result = BillingService.quota_consume_capped(
-            tenant_id="t1",
-            feature_key="credit_pool",
-            request_id="req-1",
-            amount=5,
-            bucket="paid",
-            meta={"source": "test"},
-        )
-
-        assert result == {"deducted": 2, "available": 8, "reserved": 0, "quota": 10, "usage": 2}
-        mock_send_request.assert_called_once_with(
-            "POST",
-            "/quota/consume-capped",
-            json={
-                "tenant_id": "t1",
-                "feature_key": "credit_pool",
-                "request_id": "req-1",
-                "amount": 5,
-                "bucket": "paid",
-                "meta": {"source": "test"},
-            },
-        )
-
-    def test_send_quota_request_uses_quota_base_url(self):
-        with (
-            patch.object(BillingService, "quota_base_url", "https://quota.example.com/v1"),
-            patch.object(BillingService, "_send_request") as mock_send_request,
-        ):
-            mock_send_request.return_value = {"ok": True}
-
-            result = BillingService._send_quota_request("GET", "/quota/info", params={"tenant_id": "t1"})
-
-        assert result == {"ok": True}
-        mock_send_request.assert_called_once_with(
-            "GET",
-            "/quota/info",
-            json=None,
-            params={"tenant_id": "t1"},
-            base_url="https://quota.example.com/v1",
-        )
-
-    def test_get_quota_info_coerces_string_to_int(self, mock_send_request):
-        """Test that TypeAdapter coerces string values to int for get_quota_info."""
-        mock_send_request.return_value = {
-            "trigger_event": {"usage": "42", "limit": "3000", "reset_date": "1700000000"},
-            "api_rate_limit": {"usage": "10", "limit": "-1", "reset_date": "-1"},
-        }
-
-        result = BillingService.get_quota_info("t1")
-
-        assert result["trigger_event"]["usage"] == 42
-        assert isinstance(result["trigger_event"]["usage"], int)
-        assert result["trigger_event"]["limit"] == 3000
-        assert isinstance(result["trigger_event"]["limit"], int)
-        assert result["trigger_event"]["reset_date"] == 1700000000
-        assert isinstance(result["trigger_event"]["reset_date"], int)
-        assert result["api_rate_limit"]["limit"] == -1
-        assert isinstance(result["api_rate_limit"]["limit"], int)
-
-    def test_get_quota_info_accepts_int_values(self, mock_send_request):
-        """Test that get_quota_info works with native int values."""
-        expected = {
-            "trigger_event": {"usage": 42, "limit": 3000, "reset_date": 1700000000},
-            "api_rate_limit": {"usage": 0, "limit": -1},
-        }
-        mock_send_request.return_value = expected
-
-        result = BillingService.get_quota_info("t1")
-
-        assert result["trigger_event"]["usage"] == 42
-        assert result["trigger_event"]["limit"] == 3000
-        assert result["api_rate_limit"]["limit"] == -1
+        assert isinstance(exc_info.value.__cause__, BillingUpstreamInvalidResponseError)
 
 
 class TestBillingServiceComplianceDownload:

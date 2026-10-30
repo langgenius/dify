@@ -67,6 +67,7 @@ from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_workflow
 from tests.helpers.workflow.mock_config import MockConfig, MockConfigBuilder
 from tests.helpers.workflow.table_runner import WorkflowRunner
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.unit_tests.core.workflow.test_workflow_tool_container_handler import (
     _workflow_tool_container_outer_graph as _outer_graph,
 )
@@ -76,7 +77,6 @@ from tests.unit_tests.core.workflow.test_workflow_tool_container_handler import 
 from tests.unit_tests.core.workflow.test_workflow_tool_container_handler import (
     _workflow_tool_container_workflow_tool_source as _workflow_tool_source,
 )
-from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """Unit coverage for Dify's in-memory ResponseStreamFilter boundary behavior."""
@@ -1552,8 +1552,8 @@ class TestWorkflowEntryHelpersCases:
                 ),
                 run_context={"_dify": "context"},
                 call_depth=0,
-            knowledge_retrieval=ANY,
-            knowledge_index_files=ANY,
+                knowledge_retrieval=ANY,
+                knowledge_index_files=ANY,
             )
             dify_node_factory_cls.assert_called_once_with(
                 graph_init_context=sentinel.graph_init_context,
