@@ -230,10 +230,11 @@ def test_education_gateway_maps_verification_status(
 )
 def test_education_gateway_rejects_invalid_billing_replies(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     read: Callable[[BillingAccountEducationGateway], object],
     body: dict[str, object],
 ) -> None:
-    monkeypatch.setenv("BILLING_API_URL", "http://billing/v1")
+    config_overrides(BILLING_API_URL="http://billing/v1")
     monkeypatch.setattr(
         transport,
         "_http_client",
