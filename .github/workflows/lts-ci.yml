@@ -1,0 +1,138 @@
+name: LTS CI
+
+on:
+  pull_request:
+    branches:
+      - 'lts/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lts-ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  check-changes:
+    name: Check Changed Files
+    runs-on: depot-ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      api-changed: ${{ steps.changes.outputs.api }}
+      web-changed: ${{ steps.changes.outputs.web }}
+      dify-agent-changed: ${{ steps.changes.outputs.dify-agent }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: changes
+        with:
+          filters: |
+            api:
+              - 'api/**'
+              - 'dev/pyrefly-check-local'
+              - 'Makefile'
+              - '.github/workflows/lts-ci.yml'
+            web:
+              - 'web/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.github/workflows/lts-ci.yml'
+              - '.github/workflows/web-tests.yml'
+              - '.github/actions/setup-web/**'
+            dify-agent:
+              - 'dify-agent/**'
+              - '.github/workflows/lts-ci.yml'
+              - '.github/workflows/dify-agent-tests.yml'
+
+  web-tests:
+    name: Web Tests
+    needs: check-changes
+    if: needs.check-changes.outputs.web-changed == 'true'
+    uses: ./.github/workflows/web-tests.yml
+    secrets: inherit
+
+  dify-agent-tests:
+    name: Dify Agent Tests
+    needs: check-changes
+    if: needs.check-changes.outputs.dify-agent-changed == 'true'
+    uses: ./.github/workflows/dify-agent-tests.yml
+
+  api-unit:
+    name: API Unit Tests
+    needs: check-changes
+    if: needs.check-changes.outputs.api-changed == 'true'
+    runs-on: depot-ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: api/uv.lock
+
+      - name: Check UV lockfile
+        run: uv lock --project api --check
+
+      - name: Install dependencies
+        run: uv sync --project api --dev
+
+      - name: Run Unit Tests
+        run: |
+          uv run --project api pytest \
+            -p no:benchmark \
+            --timeout "${PYTEST_TIMEOUT:-20}" \
+            -n auto \
+            api/tests/unit_tests \
+            api/providers/vdb/*/tests/unit_tests \
+            api/providers/trace/*/tests/unit_tests \
+            --ignore=api/tests/unit_tests/controllers
+          # Controller tests register Flask routes at import time, so keep them out of xdist.
+          uv run --project api pytest \
+            --timeout "${PYTEST_TIMEOUT:-20}" \
+            --cov-append \
+            api/tests/unit_tests/controllers
+
+  api-type-check:
+    name: API Type Check
+    needs: check-changes
+    if: needs.check-changes.outputs.api-changed == 'true'
+    runs-on: depot-ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: api/uv.lock
+
+      - name: Install dependencies
+        run: uv sync --project api --dev
+
+      - name: Run Type Checks
+        env:
+          PYREFLY_OUTPUT_FORMAT: github
+        run: make type-check-core
