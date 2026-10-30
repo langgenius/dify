@@ -185,11 +185,6 @@ class KnowledgeRateLimitDict(TypedDict):
     subscription_plan: str
 
 
-class TenantFeaturePlanUsageDict(TypedDict):
-    result: str
-    history_id: str
-
-
 class LangContentDict(TypedDict):
     lang: str
     title: str
@@ -383,47 +378,6 @@ class BillingService:
     def get_invoices(cls, prefilled_email: str = "", tenant_id: str = "") -> BillingPortalLink:
         params = {"prefilled_email": prefilled_email, "tenant_id": tenant_id}
         return cls._send_billing_portal_request("/invoices", params=params)
-
-    @classmethod
-    def update_tenant_feature_plan_usage(
-        cls, tenant_id: str, feature_key: str, delta: int
-    ) -> TenantFeaturePlanUsageDict:
-        """
-        Update tenant feature plan usage.
-
-        Args:
-            tenant_id: Tenant identifier
-            feature_key: Feature key (e.g., 'trigger', 'workflow')
-            delta: Usage delta (positive to add, negative to consume)
-
-        Returns:
-            Response dict with 'result' and 'history_id'
-            Example: {"result": "success", "history_id": "uuid"}
-        """
-        return cls._send_request(
-            "POST",
-            "/tenant-feature-usage/usage",
-            params={"tenant_id": tenant_id, "feature_key": feature_key, "delta": delta},
-        )
-
-    @classmethod
-    def refund_tenant_feature_plan_usage(cls, history_id: str) -> TenantFeaturePlanUsageDict:
-        """
-        Refund a previous usage charge.
-
-        Args:
-            history_id: The history_id returned from update_tenant_feature_plan_usage
-
-        Returns:
-            Response dict with 'result' and 'history_id'
-        """
-        return cls._send_request("POST", "/tenant-feature-usage/refund", params={"quota_usage_history_id": history_id})
-
-    @classmethod
-    @deprecated("Legacy tenant feature-plan usage endpoint; use the quota APIs instead.")
-    def get_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str):
-        params = {"tenant_id": tenant_id, "feature_key": feature_key}
-        return cls._send_request("GET", "/billing/tenant_feature_plan/usage", params=params)
 
     @classmethod
     def _send_quota_request(
