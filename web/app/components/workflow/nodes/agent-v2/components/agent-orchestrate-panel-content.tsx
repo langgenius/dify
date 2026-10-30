@@ -500,7 +500,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
         params: {
           agent_id: agentId,
         },
-      }).catch(() => undefined)
+      })
       await resetBuildSession().catch(() => undefined)
       setBuildDraftSoulSourceOverride('draft')
       queryClient.removeQueries({
