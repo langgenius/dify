@@ -231,6 +231,7 @@
   "console GET /workspaces/current/agent-providers": ["no-input-schema", "parsed-vs-wire-output"],
   "console GET /workspaces/current/dataset-operators": ["no-input-schema", "compatible"],
   "console GET /workspaces/current/default-model": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/dify-builder/policy": ["no-input-schema", "compatible"],
   "console GET /workspaces/current/endpoints/list": ["compatible", "parsed-vs-wire-output"],
   "console GET /workspaces/current/endpoints/list/plugin": ["compatible", "parsed-vs-wire-output"],
   "console GET /workspaces/current/model-providers": ["compatible", "parsed-vs-wire-output"],
