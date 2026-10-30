@@ -102,13 +102,11 @@ def _check_hint(context: RequestContext, app_id: str | None) -> Hint:
     )
 
 
-def _prepared_yaml(
-    context: RequestContext, *, mode: ImportMode, source: str, app_id: str | None, draft_hash: str | None
-) -> str:
+@contextmanager
+def _yaml_check_refusals(context: RequestContext, app_id: str | None) -> Generator[None]:
+    """Answer the refusals of the YAML check, and of the save's draft guard, for the YAML and package imports."""
     try:
-        return application_services().apps.dsl_imports.prepare(
-            context, mode=mode, source=source, app_id=app_id, draft_hash=draft_hash
-        )
+        yield
     except ConsoleAppNotFoundError as error:
         raise NotFound(str(error)) from error
     except DraftChangedError as error:
@@ -118,6 +116,28 @@ def _prepared_yaml(
             details=[ErrorDetail(type=i.code, loc=list(i.loc), msg=i.message) for i in error.issues],
             hints=[_check_hint(context, app_id)],
         ) from error
+
+
+def _prepared_yaml(context: RequestContext, body: AppDslImportPayload) -> str:
+    with _yaml_check_refusals(context, body.app_id):
+        return application_services().apps.dsl_imports.prepare(
+            context,
+            mode=ImportMode(body.mode),
+            source=body.source,
+            app_id=body.app_id,
+            draft_hash=body.draft_hash,
+        )
+
+
+@contextmanager
+def _export_refusals(workflow_id: str | None) -> Generator[None]:
+    """Answer an export of a draft or workflow version that does not exist."""
+    try:
+        yield
+    except WorkflowNotFoundError as exc:
+        raise (VersionNotFound() if workflow_id else DraftNotFound()) from exc
+    except IsDraftWorkflowError as exc:
+        raise VersionNotFound() from exc
 
 
 @contextmanager
@@ -202,9 +222,7 @@ class AppDslImportApi(Resource):
     )
     def post(self, ctx: RequestContext, workspace_id: str, *, body: AppDslImportPayload):
         try:
-            yaml_content = _prepared_yaml(
-                ctx, mode=ImportMode(body.mode), source=body.source, app_id=body.app_id, draft_hash=body.draft_hash
-            )
+            yaml_content = _prepared_yaml(ctx, body)
         except YamlUrlFetchError as error:
             failed = Import(id=str(uuid4()), status=ImportStatus.FAILED, error=str(error))
             return _import_response(failed, workspace_id=workspace_id), HTTPStatus.BAD_REQUEST
@@ -263,15 +281,16 @@ class AppPackageImportApi(Resource):
         params = DraftGuardedImportParams.model_validate(
             body.model_dump(exclude={"package", "preserve_agent_bindings"}) | {"mode": ImportMode.YAML_CONTENT}
         )
-        with _package_source(body.package) as source:
+        services = application_services().apps
+        with _package_source(body.package) as source, _yaml_check_refusals(ctx, body.app_id):
             try:
-                result = application_services().apps.console.import_app(
+                result = services.console.import_app(
                     ctx,
                     params,
                     source=source,
                     preserve_agent_bindings=body.preserve_agent_bindings,
                     refuse_roster_references=not body.preserve_agent_bindings,
-                    prepare_dsl=lambda dsl: _prepared_yaml(
+                    prepare_dsl=lambda dsl: services.dsl_imports.prepare(
                         ctx, mode=ImportMode.YAML_CONTENT, source=dsl, app_id=body.app_id, draft_hash=body.draft_hash
                     ),
                 )
@@ -301,8 +320,6 @@ class AppPackageImportApi(Resource):
                 raise AppPackageTooLarge(exc.description) from exc
             except NoPermissionError as exc:
                 raise ForbiddenError(str(exc)) from exc
-            except DraftChangedError as exc:
-                raise DraftChanged() from exc
         return _import_response(result, workspace_id=workspace_id), _import_status(result)
 
 
@@ -408,15 +425,12 @@ class AppDslExportApi(Resource):
         # Read the hash first: a draft edited in between then refuses the import instead of losing the edit.
         draft_hash = current_draft_token(ctx.tenant_id, ctx.app_id)
         try:
-            data = application_services().apps.exports.export_app(
-                ctx, AppExportOptions(include_secret=query.include_secret, workflow_id=query.workflow_id)
-            )
+            with _export_refusals(query.workflow_id):
+                data = application_services().apps.exports.export_app(
+                    ctx, AppExportOptions(include_secret=query.include_secret, workflow_id=query.workflow_id)
+                )
         except AppDiscoveryNotFoundError as exc:
             raise NotFoundError(str(exc)) from exc
-        except WorkflowNotFoundError as exc:
-            raise (VersionNotFound() if query.workflow_id else DraftNotFound()) from exc
-        except IsDraftWorkflowError as exc:
-            raise VersionNotFound() from exc
         return AppDslExportResponse(data=data, draft_hash=draft_hash), 200
 
 
@@ -454,13 +468,10 @@ class AppPackageExportApi(Resource):
             preserve_agent_bindings=query.preserve_agent_bindings,
         )
         try:
-            exported = application_services().apps.console.export(ctx, app_id, options)
+            with _export_refusals(query.workflow_id):
+                exported = application_services().apps.console.export(ctx, app_id, options)
         except ConsoleAppNotFoundError as exc:
             raise NotFound(str(exc)) from exc
-        except WorkflowNotFoundError as exc:
-            raise (VersionNotFound() if query.workflow_id else DraftNotFound()) from exc
-        except IsDraftWorkflowError as exc:
-            raise VersionNotFound() from exc
         if isinstance(exported, str):
             raise TypeError("a package export returned YAML text")
         try:

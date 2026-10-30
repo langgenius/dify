@@ -83,6 +83,7 @@ from services.errors.app import (
 )
 from services.errors.base import NoPermissionError
 from services.workflow import graph_check
+from services.workflow.dsl_import import DslRefusedError
 from services.workflow.graph_check import IssueCode, IssueSeverity
 from services.workflow.graph_diff import current_draft_token, draft_token
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
@@ -990,10 +991,49 @@ def test_package_import_parses_a_file_or_a_folder_from_multipart(
         assert isinstance(handler(), expected)
 
 
+def _preparing_import(monkeypatch: pytest.MonkeyPatch, services: ControllerTestServices, dsl: str) -> None:
+    """Stand in for the console import: hand ``dsl`` to the handler's ``prepare_dsl``, as the service does."""
+
+    def import_app(
+        _context: RequestContext,
+        _params: DraftGuardedImportParams,
+        *,
+        prepare_dsl: Callable[[str], str],
+        **_options: object,
+    ) -> Import:
+        prepare_dsl(dsl)
+        return _COMPLETED
+
+    monkeypatch.setattr(services.apps.console, "import_app", import_app)
+
+
 @pytest.mark.usefixtures("credentials")
-def test_package_import_prepare_runs_the_yaml_checks(
-    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+@pytest.mark.parametrize(
+    ("draft_hash", "dsl", "refusal", "expected", "hint_inputs"),
+    [
+        pytest.param(
+            None,
+            _dsl("workflow", _START, _ANSWER),
+            DslRefusedError,
+            DslInvalid,
+            [(op_of(AppDslCheckApi.post), _OVERWRITTEN_APP_ID)],
+            id="graph-error",
+        ),
+        pytest.param("stale", _dsl("workflow", _START, _END), DraftChangedError, DraftChanged, [], id="stale-draft"),
+    ],
+)
+def test_package_import_answers_the_yaml_checks_refusals(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    draft_hash: str | None,
+    dsl: str,
+    refusal: type[Exception],
+    expected: type[OpenApiError],
+    hint_inputs: list[tuple[str, object]],
 ) -> None:
+    """The service sees only the YAML check's own errors; the handler answers each as the YAML import does."""
     sqlite_session.add(
         App(
             id=_OVERWRITTEN_APP_ID,
@@ -1005,20 +1045,29 @@ def test_package_import_prepare_runs_the_yaml_checks(
         )
     )
     sqlite_session.commit()
+    body = AppPackageImportPayload(package=_part(b"x"), app_id=_OVERWRITTEN_APP_ID, draft_hash=draft_hash)
     calls = _recorded_package_import(monkeypatch, app_query_services)
-    _import_package(app, AppPackageImportPayload(package=_part(b"x"), app_id=_OVERWRITTEN_APP_ID))
-    _import_package(app, AppPackageImportPayload(package=_part(b"x"), app_id=_OVERWRITTEN_APP_ID, draft_hash="stale"))
-    [unguarded, stale] = calls
-
+    _import_package(app, body)
+    [call] = calls
     with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/packages", method="POST"):
-        with pytest.raises(DslInvalid) as exc_info:
-            unguarded.prepare_dsl(_dsl("workflow", _START, _ANSWER))
-        with pytest.raises(DraftChanged):
-            stale.prepare_dsl(_dsl("workflow", _START, _END))
+        with pytest.raises(refusal):
+            call.prepare_dsl(dsl)
+    _preparing_import(monkeypatch, app_query_services, dsl)
 
-    assert [(h.op, h.input["app_id"]) for h in exc_info.value.hints or []] == [
-        (op_of(AppDslCheckApi.post), _OVERWRITTEN_APP_ID)
-    ]
+    with pytest.raises(expected) as exc_info:
+        _import_package(app, body)
+
+    assert [(h.op, h.input["app_id"]) for h in exc_info.value.hints or []] == hint_inputs
+
+
+@pytest.mark.usefixtures("credentials")
+def test_package_import_answers_404_for_an_app_outside_the_workspace(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _preparing_import(monkeypatch, app_query_services, _dsl("workflow", _START, _END))
+
+    with pytest.raises(NotFound):
+        _import_package(app, AppPackageImportPayload(package=_part(b"x"), app_id=_OVERWRITTEN_APP_ID))
 
 
 @pytest.mark.parametrize(
