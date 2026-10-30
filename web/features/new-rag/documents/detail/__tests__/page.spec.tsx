@@ -947,6 +947,69 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByRole('article').querySelector('br')).toBeNull()
   })
 
+  it('renders the returned document summary when its source chunks have no section paths', async () => {
+    chunksQuery.data = {
+      pages: [
+        {
+          items: [
+            chunk({
+              id: 'source-1',
+              ordinal: 0,
+              sectionPath: [],
+              text: 'Knowledge sources ground agents.',
+            }),
+            chunk({
+              id: 'source-2',
+              ordinal: 1,
+              sectionPath: [],
+              text: 'Generative orchestration filters sources.',
+            }),
+          ],
+        },
+      ],
+    }
+    outlineQuery.data = {
+      artifact_hash: 'artifact-hash',
+      created_at: '2026-10-30T09:30:00Z',
+      document_asset_id: 'asset-1',
+      id: 'outline-1',
+      knowledge_space_id: 'space-1',
+      metadata: {},
+      nodes: [
+        {
+          children: [],
+          id: 'document-outline',
+          level: 1,
+          metadata: {},
+          section_path: ['Document'],
+          source_node_ids: ['source-1', 'source-2'],
+          summary: 'Agents use knowledge sources and filter them during orchestration.',
+          title: 'Document',
+          toc_source: 'fallback',
+        },
+      ],
+      outline_version: 'document-outline-v1',
+      parse_artifact_id: 'parse-artifact-1',
+      version: 1,
+    }
+
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    expect(
+      await screen.findByText('Agents use knowledge sources and filter them during orchestration.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('button', { name: 'knowledgeDocuments.documentSummary' }),
+    ).toHaveLength(1)
+    expect(within(screen.getByRole('tree')).getAllByRole('treeitem')).toHaveLength(1)
+    expect(
+      within(screen.getByRole('tree')).getByRole('treeitem', { name: 'Document' }),
+    ).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { name: 'Document' })).toHaveLength(1)
+    expect(screen.getByText('Knowledge sources ground agents.')).toBeInTheDocument()
+    expect(screen.getByText('Generative orchestration filters sources.')).toBeInTheDocument()
+  })
+
   it('renders collapsible outline summaries and semantic heading levels', async () => {
     const user = userEvent.setup()
     chunksQuery.data = {
