@@ -796,11 +796,7 @@ def build_application_services(
             notifications=BillingNotificationGateway(),
         ),
         network_access_groups=NetworkAccessGroupService(
-            control_plane=NetworkAccessGroupGateway(
-                base_url=dify_config.NETWORK_ACCESS_API_URL,
-                fallback_base_url=BillingService.base_url,
-                secret_key=BillingService.secret_key,
-            ),
+            control_plane=NetworkAccessGroupGateway(),
             apps=SQLAlchemyNetworkAccessGroupAppRepository(session_factory=database_client),
             memberships=workspace_repository,
             entitlement=BillingNetworkAccessGroupEntitlementGateway(),

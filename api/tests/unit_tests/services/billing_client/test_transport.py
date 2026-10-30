@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 
 import httpx
 import pytest
@@ -6,7 +7,12 @@ import tenacity
 
 from services.billing_client import billing, transport
 from services.billing_client.transport import BillingModel, Upstream
-from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
+from services.errors.billing import (
+    BillingUpstreamError,
+    BillingUpstreamInvalidResponseError,
+    BillingUpstreamUnavailableError,
+    UpstreamErrorBody,
+)
 from tests.unit_tests.services.billing_client.conftest import RespondWith
 
 
@@ -43,10 +49,47 @@ def _get(upstream: Upstream) -> _Reply:
     ],
 )
 def test_non_ok_status_maps_to_upstream_errors(respond_with: RespondWith, status: int, error: type[Exception]) -> None:
-    respond_with(httpx.Response(status, json={}))
+    respond_with(httpx.Response(status, json={"code": status, "reason": "QUOTA_EXCEEDED", "message": "over"}))
 
-    with pytest.raises(error):
+    with pytest.raises(error) as exc_info:
         _get(Upstream.BILLING)
+
+    assert isinstance(exc_info.value, BillingUpstreamError)
+    assert exc_info.value.status_code == status
+    assert exc_info.value.body == UpstreamErrorBody(code=status, reason="QUOTA_EXCEEDED", message="over")
+
+
+@pytest.mark.parametrize(
+    ("content", "body"),
+    [
+        (b"upstream crashed", None),
+        (b"[]", None),
+        (b'{"code": "x", "reason": "CONFLICT", "metadata": {"k": 1}}', UpstreamErrorBody(reason="CONFLICT")),
+    ],
+)
+def test_error_body_keeps_well_typed_fields(
+    respond_with: RespondWith, content: bytes, body: UpstreamErrorBody | None
+) -> None:
+    respond_with(httpx.Response(409, content=content))
+
+    with pytest.raises(BillingUpstreamInvalidResponseError) as exc_info:
+        _get(Upstream.BILLING)
+
+    assert exc_info.value.body == body
+
+
+def test_unreachable_upstream_has_no_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    monkeypatch.setattr("services.billing_client.transport._send.retry.stop", tenacity.stop_after_attempt(1))
+    monkeypatch.setattr(transport, "_http_client", httpx.Client(transport=httpx.MockTransport(handler)))
+
+    with pytest.raises(BillingUpstreamUnavailableError) as exc_info:
+        _get(Upstream.BILLING)
+
+    assert exc_info.value.status_code is None
+    assert exc_info.value.body is None
 
 
 def test_request_error_is_retried_then_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -80,12 +123,34 @@ def test_request_error_is_retried_then_unavailable(monkeypatch: pytest.MonkeyPat
     ],
 )
 def test_upstream_selects_base_url(
-    monkeypatch: pytest.MonkeyPatch, respond_with: RespondWith, upstream: Upstream, quota_url: str, expected: str
+    config_overrides: Callable[..., None],
+    respond_with: RespondWith,
+    upstream: Upstream,
+    quota_url: str,
+    expected: str,
 ) -> None:
-    monkeypatch.setenv("BILLING_QUOTA_API_URL", quota_url)
+    config_overrides(BILLING_QUOTA_API_URL=quota_url)
     requests = respond_with(httpx.Response(200, json={"ok": True}))
 
     assert _get(upstream).ok is True
+    assert str(requests[0].url) == expected
+
+
+@pytest.mark.parametrize(
+    ("configured", "expected"),
+    [
+        ("http://network-access/v1/", "http://network-access/v1/probe"),
+        ("", "http://billing/v1/probe"),
+    ],
+)
+def test_network_access_upstream_falls_back_to_billing_url(
+    respond_with: RespondWith, config_overrides: Callable[..., None], configured: str, expected: str
+) -> None:
+    config_overrides(NETWORK_ACCESS_API_URL=configured)
+    requests = respond_with(httpx.Response(200, json={"ok": True}))
+
+    _get(Upstream.NETWORK_ACCESS)
+
     assert str(requests[0].url) == expected
 
 

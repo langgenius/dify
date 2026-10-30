@@ -9,10 +9,13 @@ type RespondWith = Callable[[httpx.Response], list[httpx.Request]]
 
 
 @pytest.fixture(autouse=True)
-def billing_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("BILLING_API_URL", "http://billing/v1")
-    monkeypatch.setenv("BILLING_QUOTA_API_URL", "http://quota/v1")
-    monkeypatch.setenv("BILLING_API_SECRET_KEY", "secret")
+def billing_config(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        BILLING_API_URL="http://billing/v1",
+        BILLING_QUOTA_API_URL="http://quota/v1",
+        BILLING_API_SECRET_KEY="secret",
+        NETWORK_ACCESS_API_URL="",
+    )
 
 
 @pytest.fixture
