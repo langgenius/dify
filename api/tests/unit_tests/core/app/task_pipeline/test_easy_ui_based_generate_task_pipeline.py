@@ -969,7 +969,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert pipeline._task_state.llm_result.usage.prompt_tokens == 10
             assert pipeline._task_state.llm_result.usage.completion_tokens == 5
 
-        def test_record_files_builds_file_payloads(self, monkeypatch: pytest.MonkeyPatch):
+        def test_record_files_builds_file_payloads(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
 
@@ -1012,45 +1012,58 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 )
             ]
 
-            class _Result:
-                def __init__(self, items):
-                    self._items = items
+            sqlite_session.add_all([*message_files, *upload_files])
+            sqlite_session.commit()
 
-                def all(self):
-                    return self._items
+            signed_upload_file_ids: list[str] = []
+            signed_tool_files: list[tuple[str, str]] = []
 
-            class _Session:
-                def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
-                    self.calls = 0
+            def _get_signed_file_url(*, upload_file_id: str) -> str:
+                signed_upload_file_ids.append(upload_file_id)
+                return "signed-url"
 
-                def __enter__(self):
-                    return self
+            def _sign_tool_file(*, tool_file_id: str, extension: str) -> str:
+                signed_tool_files.append((tool_file_id, extension))
+                return "signed-tool"
 
-                def __exit__(self, exc_type, exc, tb):
-                    return False
-
-                def scalars(self, *args, **kwargs):
-                    self.calls += 1
-                    return _Result(message_files if self.calls == 1 else upload_files)
-
-            monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-                lambda: _Session(),
-            )
             monkeypatch.setattr(
                 "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url",
-                lambda **kwargs: "signed-url",
+                _get_signed_file_url,
             )
             monkeypatch.setattr(
                 "core.app.task_pipeline.message_file_utils.sign_tool_file",
-                lambda **kwargs: "signed-tool",
+                _sign_tool_file,
             )
 
             response = pipeline._message_end_to_stream_response()
             files = response.files
 
-            assert files
+            assert files is not None
             assert len(files) == 3
+            files_by_id = {cast(str, file_dict["related_id"]): file_dict for file_dict in files}
+            assert set(files_by_id) == {"mf-1", "mf-2", "mf-3"}
+
+            remote_file = files_by_id["mf-1"]
+            assert remote_file["transfer_method"] == FileTransferMethod.REMOTE_URL.value
+            assert remote_file["url"] == "http://example.com/a.png"
+            assert remote_file["filename"] == "a.png"
+            assert remote_file["remote_url"] == "http://example.com/a.png"
+
+            local_file = files_by_id["mf-2"]
+            assert local_file["transfer_method"] == FileTransferMethod.LOCAL_FILE.value
+            assert local_file["url"] == "signed-url"
+            assert local_file["filename"] == "local.png"
+            assert local_file["mime_type"] == "image/png"
+            assert local_file["size"] == 123
+            assert local_file["extension"] == ".png"
+            assert local_file["upload_file_id"] == "upload-1"
+
+            tool_file = files_by_id["mf-3"]
+            assert tool_file["transfer_method"] == FileTransferMethod.TOOL_FILE.value
+            assert tool_file["type"] == FileType.CUSTOM.value
+            assert tool_file["url"] == "signed-tool"
+            assert signed_upload_file_ids == ["upload-1"]
+            assert signed_tool_files == [("file", ".bin")]
 
         def test_process_stream_response_handles_annotation_and_error(self, monkeypatch: pytest.MonkeyPatch):
             conversation = _make_conversation(AppMode.CHAT)
