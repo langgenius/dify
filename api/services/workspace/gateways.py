@@ -4,13 +4,16 @@ import logging
 import secrets
 from collections.abc import Mapping, Sequence
 from contextlib import AbstractContextManager
+from dataclasses import replace
 from typing import Literal, override
 from uuid import uuid4
 
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from core.model_billing_profile import ModelBillingProfileService
 from enums import CloudPlan, DeploymentEdition
+from enums.model_billing import ModelBillingSource
 from events.tenant_event import tenant_was_created
 from extensions.ext_redis import RedisClientWrapper
 from libs.helper import RateLimiter, TokenManager
@@ -24,6 +27,7 @@ from models.account import (
     TenantAccountRole,
     TenantPluginAutoUpgradeCategory,
 )
+from models.tokener import TenantTokenerIntegrationStatus
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
 from services.account_security_gateway import RedisAccountEmailSecurityGateway
@@ -35,6 +39,7 @@ from services.enterprise.rbac_service import RBACService
 from services.entities.account_activation_entities import InvitationToken
 from services.entities.account_entities import AccountSnapshot
 from services.errors.base import NoPermissionError
+from services.errors.billing import BillingError, LegacyCreditPoolManagedByTokenerError
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     OwnerTransferSendRateLimitError,
@@ -342,35 +347,112 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
     @override
     def get_features(self, workspace_id: str) -> WorkspaceFeatures:
         features = FeatureService.get_features(workspace_id, exclude_vector_space=True)
-        credits = EffectiveCreditPool()
+        credits = self._billing_context(workspace_id, migration_status=features.model_billing_migration_status)
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             credits = self._credit_pool(
-                workspace_id, CloudPlan(features.billing.subscription.plan), features.next_credit_reset_date
+                workspace_id,
+                replace(
+                    credits,
+                    plan=CloudPlan(features.billing.subscription.plan),
+                    next_credit_reset_date=features.next_credit_reset_date,
+                ),
             )
         return WorkspaceFeatures(can_replace_logo=features.can_replace_logo, credits=credits)
 
     @override
     def get_effective_credit_pool(self, workspace_id: str) -> EffectiveCreditPool:
+        from core.model_invocation_routing import migration_display_status
+
+        credits = self._billing_context(workspace_id, migration_status=migration_display_status(workspace_id))
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-            return EffectiveCreditPool()
+            return credits
         billing = BillingService.get_info(workspace_id, exclude_vector_space=True)
         return self._credit_pool(
-            workspace_id, CloudPlan(billing["subscription"]["plan"]), billing.get("next_credit_reset_date")
+            workspace_id,
+            replace(
+                credits,
+                plan=CloudPlan(billing["subscription"]["plan"]),
+                next_credit_reset_date=billing.get("next_credit_reset_date"),
+            ),
         )
 
     @staticmethod
-    def _credit_pool(workspace_id: str, plan: CloudPlan, reset_date: int | None) -> EffectiveCreditPool:
+    def _billing_context(
+        workspace_id: str, *, migration_status: Literal["none", "preparing", "processing", "active"]
+    ) -> EffectiveCreditPool:
+        # Resolve with an owned, bounded read Session. No ORM transaction stays
+        # open while the gateway calls Billing or reads legacy quota balances.
+        billing = ModelBillingProfileService.resolve(workspace_id)
+        return EffectiveCreditPool(
+            model_billing_source=ModelBillingSource.TOKENER
+            if migration_status == "active"
+            else billing.model_billing_source,
+            model_billing_migration_status=migration_status,
+            tokener_bootstrap_status=(
+                billing.tokener_bootstrap_status.value if billing.tokener_bootstrap_status else None
+            ),
+        )
+
+    @override
+    def get_model_provider_credits(self, workspace_id: str) -> EffectiveCreditPool:
+        """Enrich a ready Tokener cohort without reopening the fenced legacy pool."""
+        from core.model_invocation_routing import migration_display_status
+
+        if migration_display_status(workspace_id) == "processing":
+            return EffectiveCreditPool(model_billing_migration_status="processing")
+        credits = self.get_effective_credit_pool(workspace_id)
+        # The nested read may observe a later claim/activation. Never replace
+        # that newer authority with the initial display snapshot.
+        if (
+            dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
+            or credits.model_billing_migration_status == "processing"
+            or credits.model_billing_source != ModelBillingSource.TOKENER
+            or credits.tokener_bootstrap_status != TenantTokenerIntegrationStatus.READY.value
+        ):
+            return credits
+        try:
+            metering = BillingService.get_tokener_metering(workspace_id)
+        except BillingError:
+            logger.warning("Tokener metering usage is unavailable for tenant %s", workspace_id)
+            return credits
+        return replace(credits, tokener_metering=metering)
+
+    @staticmethod
+    def _credit_pool(workspace_id: str, context: EffectiveCreditPool) -> EffectiveCreditPool:
+        """Read display credits without crossing an already claimed legacy fence."""
+        from core.model_invocation_routing import migration_display_status
+
+        if (
+            context.model_billing_migration_status in {"processing", "active"}
+            or context.model_billing_source == ModelBillingSource.TOKENER
+        ):
+            return context
         # In Cloud, CreditPoolService reads the billing quota API, without an ORM Session.
         pool = None
         pool_type: Literal["paid", "trial"] = "trial"
-        if plan != CloudPlan.SANDBOX:
-            paid = CreditPoolService.get_pool(tenant_id=workspace_id, pool_type="paid")
-            if paid is not None and (paid.quota_limit == -1 or paid.quota_limit > paid.quota_used):
-                pool, pool_type = paid, "paid"
+        try:
+            if context.plan != CloudPlan.SANDBOX:
+                paid = CreditPoolService.get_pool(tenant_id=workspace_id, pool_type="paid")
+                if paid is not None and (paid.quota_limit == -1 or paid.quota_limit > paid.quota_used):
+                    pool, pool_type = paid, "paid"
+            if pool is None:
+                pool = CreditPoolService.get_pool(tenant_id=workspace_id, pool_type="trial")
+        except LegacyCreditPoolManagedByTokenerError:
+            # Claim can race the initial display read. Only the exact financial
+            # fence allows an authority refresh; never mask other 409s/outages or
+            # fall back to a local balance after ownership has changed.
+            current_status = migration_display_status(workspace_id)
+            if current_status not in {"processing", "active"}:
+                raise
+            return replace(
+                context,
+                model_billing_migration_status=current_status,
+                model_billing_source=ModelBillingSource.TOKENER
+                if current_status == "active"
+                else context.model_billing_source,
+            )
         if pool is None:
-            pool = CreditPoolService.get_pool(tenant_id=workspace_id, pool_type="trial")
-        if pool is None:
-            return EffectiveCreditPool(plan=plan, next_credit_reset_date=reset_date)
+            return context
         exhausted_at = pool.exhausted_at if isinstance(pool, CreditPoolBalance) else None
         if not (
             isinstance(exhausted_at, int)
@@ -379,13 +461,12 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
             and pool.quota_used >= pool.quota_limit
         ):
             exhausted_at = None
-        return EffectiveCreditPool(
-            plan=plan,
+        return replace(
+            context,
             pool_type=pool_type,
             quota_limit=pool.quota_limit,
             quota_used=pool.quota_used,
             exhausted_at=exhausted_at,
-            next_credit_reset_date=reset_date,
         )
 
     @override
@@ -469,6 +550,10 @@ class WorkspaceProvisioningEffectsGateway:
                 category.value: PluginAutoUpgradeService.default_strategy_setting_for_category(category).value
                 for category in TenantPluginAutoUpgradeCategory
             },
+            model_billing_source=ModelBillingSource.TOKENER
+            if dify_config.TOKENER_NEW_TENANT_COHORT_ENABLED
+            else ModelBillingSource.LEGACY_MESSAGE_CREDITS,
+            tokener_plugin_unique_identifier=dify_config.TOKENER_PLUGIN_UNIQUE_IDENTIFIER.strip() or None,
         )
 
     def bind_owner(self, workspace_id: str, account_id: str) -> None:

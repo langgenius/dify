@@ -62,6 +62,7 @@ from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBa
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.plugin.impl.model import PluginModelClient
 from extensions.ext_redis import RedisClientWrapper
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
@@ -70,6 +71,7 @@ from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMR
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.model_factories import make_upload_file
 
@@ -902,29 +904,16 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert any(isinstance(event, QueueStopEvent) for event in events)
 
         def test_handle_stop_updates_usage(self, monkeypatch: pytest.MonkeyPatch):
+            apply_config_overrides(monkeypatch, PLUGIN_BASED_TOKEN_COUNTING_ENABLED=True)
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
 
-            class _ModelType:
-                def calc_response_usage(self, model, credentials, prompt_tokens, completion_tokens):
-                    return LLMUsage.from_metadata(
-                        {
-                            "prompt_tokens": prompt_tokens,
-                            "completion_tokens": completion_tokens,
-                        }
-                    )
-
-            class _ModelConf:
-                def __init__(self) -> None:
-                    self.model = "mock"
-                    self.credentials = {}
-                    self.provider_model_bundle = _ProviderModelBundle(model_type_instance=_ModelType())
-
+            model_config = make_model_config(provider="langgenius/openai/openai", model="mock", mode="chat")
             app_config = _make_app_config(AppMode.CHAT)
             application_generate_entity = ChatAppGenerateEntity.model_construct(
                 task_id="task",
                 app_config=app_config,
-                model_conf=_ModelConf(),
+                model_conf=model_config,
                 file_upload_config=None,
                 conversation_id=None,
                 inputs={},
@@ -951,17 +940,13 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             calls: list[int] = []
 
-            class _FakeModelInstance:
-                def __init__(self, provider_model_bundle, model):
-                    pass
+            def token_count(_client: PluginModelClient, **_kwargs: object) -> int:
+                calls.append(1)
+                return 10 if len(calls) == 1 else 5
 
-                def get_llm_num_tokens(self, messages):
-                    calls.append(1)
-                    return 10 if len(calls) == 1 else 5
-
+            monkeypatch.setattr(PluginModelClient, "get_llm_num_tokens", token_count)
             monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.ModelInstance",
-                _FakeModelInstance,
+                PluginModelClient, "get_model_schema", lambda *_args, **_kwargs: model_config.model_schema
             )
 
             pipeline._handle_stop(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL))

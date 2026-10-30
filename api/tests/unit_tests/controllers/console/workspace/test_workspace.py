@@ -166,6 +166,34 @@ class Services:
 
 class TestWorkspaceCases:
     @staticmethod
+    def test_migration_processing_serializes_explicit_unknown_credits(workspaces: WorkspaceMocks) -> None:
+        workspaces.management.current_summary.return_value = {
+            "id": "workspace-1",
+            "name": "Workspace",
+            "role": "owner",
+            "plan": CloudPlan.PROFESSIONAL,
+            "credits": None,
+            "model_billing_source": "legacy_message_credits",
+            "model_billing_migration_status": "processing",
+            "tokener_bootstrap_status": None,
+        }
+        summary, status = unwrap(controller.CurrentWorkspaceSummaryApi.get)(
+            controller.CurrentWorkspaceSummaryApi(), CONTEXT
+        )
+        details = controller.TenantInfoResponse.model_validate(
+            {
+                "id": "workspace-1",
+                "plan": "professional",
+                "model_billing_migration_status": "processing",
+            }
+        ).model_dump(mode="json")
+        assert status == HTTPStatus.OK
+        assert summary["credits"] is None
+        assert summary["model_billing_migration_status"] == "processing"
+        assert details["trial_credits"] is None
+        assert details["trial_credits_used"] is None
+
+    @staticmethod
     @pytest.fixture
     def workspaces(monkeypatch: pytest.MonkeyPatch) -> WorkspaceMocks:
         services = WorkspaceMocks(

@@ -28,6 +28,10 @@ const createCredits = (
   exhausted_at: null,
   next_credit_reset_date: 1775001600,
   pool_type: 'trial',
+  model_billing_source: 'legacy_message_credits',
+  model_billing_migration_status: 'none',
+  tokener_bootstrap_status: null,
+  tokener_metering: null,
   ...overrides,
 })
 const renderCredits = (data?: ModelProviderCreditsResponse) => {
@@ -41,6 +45,17 @@ const renderCredits = (data?: ModelProviderCreditsResponse) => {
 }
 
 describe('useTrialCredits', () => {
+  it('does not present migrated Tokener money as legacy credits', () => {
+    const { result } = renderCredits(createCredits({
+      model_billing_source: 'tokener', model_billing_migration_status: 'active',
+      tokener_bootstrap_status: 'ready', quota_limit: null, quota_used: null, remaining_credits: null,
+    }))
+    expect(result.current).toMatchObject({
+      modelBillingSource: 'tokener', modelBillingMigrationStatus: 'active',
+      tokenerBootstrapStatus: 'ready', credits: 0, usedCredits: 0, totalCredits: 0, isExhausted: false,
+    })
+  })
+
   beforeEach(() => {
     getCredits.mockReset().mockImplementation(() => new Promise(() => {}))
   })
@@ -48,6 +63,10 @@ describe('useTrialCredits', () => {
   it('returns the remaining credits and reset date', () => {
     const { result } = renderCredits(createCredits())
     expect(result.current).toEqual({
+      modelBillingSource: 'legacy_message_credits',
+      modelBillingMigrationStatus: 'none',
+      tokenerBootstrapStatus: null,
+      tokenerMetering: null,
       credits: 60,
       usedCredits: 40,
       totalCredits: 100,
@@ -82,6 +101,10 @@ describe('useTrialCredits', () => {
     getCredits.mockReturnValue(request.promise)
     const { result } = renderCredits()
     expect(result.current).toEqual({
+      modelBillingSource: 'legacy_message_credits',
+      modelBillingMigrationStatus: undefined,
+      tokenerBootstrapStatus: undefined,
+      tokenerMetering: null,
       credits: 0,
       usedCredits: 0,
       totalCredits: 0,

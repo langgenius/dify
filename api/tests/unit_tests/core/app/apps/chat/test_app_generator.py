@@ -22,6 +22,7 @@ from models.model import App, AppMode, AppModelConfig, Conversation, IconType, M
 class DummyGenerateEntity:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
+        self._classic_message_billing = Mock()
 
 
 class DummyQueueManager:
@@ -167,6 +168,7 @@ class TestChatAppGenerator:
                 ),
             ),
             patch("core.app.apps.chat.app_generator.ModelConfigConverter.convert", return_value=SimpleNamespace()),
+            patch("core.app.llm.message_billing.begin_message_billing"),
             patch("core.app.apps.chat.app_generator.FileUploadConfigManager.convert", return_value=None),
             patch("core.app.apps.chat.app_generator.file_factory.build_from_mappings", return_value=[]),
             patch(
@@ -446,7 +448,7 @@ class TestChatAppRunner:
         )
         app_generate_entity = DummyGenerateEntity(
             app_config=app_config,
-            model_conf=SimpleNamespace(provider_model_bundle=None, model="model-1", parameters={}),
+            model_conf=SimpleNamespace(provider_model_bundle=None, model="model-1", parameters={}, credentials={}),
             inputs={},
             query="hi",
             files=[],
@@ -485,7 +487,7 @@ class TestChatAppRunner:
                     "_handle_invoke_result",
                     side_effect=lambda invoke_result, **kwargs: list(invoke_result),
                 ) as mock_handle,
-                patch("core.app.apps.chat.app_runner.ModelInstance", return_value=model_instance),
+                patch("core.app.apps.chat.app_runner.create_model_instance", return_value=model_instance),
             ):
                 model_instance.invoke_llm.side_effect = invoke_llm
                 runner.run(app_generate_entity, queue_manager, conversation, message, sqlite_session)

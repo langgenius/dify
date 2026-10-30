@@ -19,6 +19,10 @@ const createCredits = (
   exhausted_at: null,
   next_credit_reset_date: 1735603200,
   pool_type: 'trial',
+  model_billing_source: 'legacy_message_credits',
+  model_billing_migration_status: 'none',
+  tokener_bootstrap_status: null,
+  tokener_metering: null,
   ...overrides,
 })
 let credits: ModelProviderCreditsResponse | undefined
@@ -126,6 +130,26 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
 }))
 
 describe('QuotaPanel', () => {
+  it('shows migration processing instead of exhausted legacy quota', () => {
+    credits = createCredits({
+      model_billing_migration_status: 'processing', quota_limit: null, quota_used: null,
+      remaining_credits: null, is_exhausted: false,
+    })
+    renderQuotaPanel(<QuotaPanel providers={[]} />)
+    expect(screen.getByRole('status')).toHaveTextContent('modelProvider.tokenerProcessing')
+    expect(screen.queryByText(/modelProvider\.quota/)).not.toBeInTheDocument()
+  })
+
+  it('shows a Tokener setup state instead of a zero legacy balance', () => {
+    credits = createCredits({
+      model_billing_source: 'tokener', model_billing_migration_status: 'active',
+      tokener_bootstrap_status: 'pending', quota_limit: null, quota_used: null, remaining_credits: null,
+    })
+    renderQuotaPanel(<QuotaPanel providers={[]} />)
+    expect(screen.getByRole('status')).toHaveTextContent('modelProvider.tokenerUsagePending')
+    expect(screen.queryByText(/modelProvider\.quota/)).not.toBeInTheDocument()
+  })
+
   const mockProviders = [
     {
       provider: 'langgenius/openai/openai',

@@ -1,0 +1,1285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Dify model-billing migration API v1 — implementation contract revision 1.1",
+  "x-contract-revision": "1.1",
+  "$comment": "Generated from Pydantic request/response owners. API api_version remains 1 because this feature is unreleased. POST returns current authoritative status; replayed_operation is the immutable original result. Lease replay consumers must not adopt a successor token from current status. Runtime additionally enforces date ordering, hash equality, command ownership, terminal fences and CAS.",
+  "$defs": {
+    "PrepareMigrationPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "api_version": {
+          "const": 1,
+          "title": "Api Version",
+          "type": "integer"
+        },
+        "operation_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "expected_revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Expected Revision",
+          "type": "integer"
+        },
+        "migration_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Migration Id",
+          "type": "string"
+        },
+        "batch_id": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Batch Id",
+          "type": "string"
+        },
+        "eligibility_policy_version": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Eligibility Policy Version",
+          "type": "string"
+        },
+        "model_mapping_version": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Model Mapping Version",
+          "type": "string"
+        },
+        "inventory_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Inventory Hash",
+          "type": "string"
+        },
+        "billing_preparation_ref": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Billing Preparation Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "api_version",
+        "operation_id",
+        "expected_revision",
+        "migration_id",
+        "batch_id",
+        "eligibility_policy_version",
+        "model_mapping_version",
+        "inventory_hash",
+        "billing_preparation_ref"
+      ],
+      "title": "PrepareMigrationPayload",
+      "type": "object"
+    },
+    "PrepareRequest": {
+      "$ref": "#/$defs/PrepareMigrationPayload"
+    },
+    "MigrationWindow": {
+      "additionalProperties": false,
+      "properties": {
+        "ordinal": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Ordinal",
+          "type": "integer"
+        },
+        "cycle_key": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Cycle Key",
+          "type": "string"
+        },
+        "window_id": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Window Id",
+          "type": "string"
+        },
+        "source_ref": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Source Ref",
+          "type": "string"
+        },
+        "starts_at": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T00:00:00Z$",
+          "title": "Starts At",
+          "type": "string"
+        },
+        "ends_at": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T00:00:00Z$",
+          "title": "Ends At",
+          "type": "string"
+        },
+        "amount_usd_micro": {
+          "pattern": "^[1-9][0-9]*$",
+          "title": "Amount Usd Micro",
+          "type": "string"
+        },
+        "aliases": {
+          "items": {
+            "$ref": "#/$defs/WindowAlias"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "title": "Aliases",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ordinal",
+        "cycle_key",
+        "window_id",
+        "source_ref",
+        "starts_at",
+        "ends_at",
+        "amount_usd_micro",
+        "aliases"
+      ],
+      "title": "MigrationWindow",
+      "type": "object"
+    },
+    "WindowAlias": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "legacy_annual_target_date",
+            "invoice_initial",
+            "normal_slot",
+            "reanchor_slot"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "title": "WindowAlias",
+      "type": "object"
+    },
+    "WindowManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "tenant_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "migration_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Migration Id",
+          "type": "string"
+        },
+        "plan_revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Plan Revision",
+          "type": "integer"
+        },
+        "calendar_policy": {
+          "enum": [
+            "STRIPE_UTC_V1",
+            "LEGACY_TRANSITION_V1",
+            "REANCHOR_V1"
+          ],
+          "title": "Calendar Policy",
+          "type": "string"
+        },
+        "contract_ref": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Contract Ref",
+          "type": "string"
+        },
+        "subscription_id": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Subscription Id",
+          "type": "string"
+        },
+        "paid_period_start": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+          "title": "Paid Period Start",
+          "type": "string"
+        },
+        "paid_period_end": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+          "title": "Paid Period End",
+          "type": "string"
+        },
+        "funding_invoice_id": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Funding Invoice Id",
+          "type": "string"
+        },
+        "amount_policy_version": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Amount Policy Version",
+          "type": "string"
+        },
+        "model_mapping_version": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Model Mapping Version",
+          "type": "string"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/MigrationWindow"
+          },
+          "maxItems": 120,
+          "minItems": 1,
+          "title": "Windows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "migration_id",
+        "plan_revision",
+        "calendar_policy",
+        "contract_ref",
+        "subscription_id",
+        "paid_period_start",
+        "paid_period_end",
+        "funding_invoice_id",
+        "amount_policy_version",
+        "model_mapping_version",
+        "windows"
+      ],
+      "title": "WindowManifest",
+      "type": "object"
+    },
+    "DecideCyclePayload": {
+      "additionalProperties": false,
+      "properties": {
+        "api_version": {
+          "const": 1,
+          "title": "Api Version",
+          "type": "integer"
+        },
+        "operation_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "expected_revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Expected Revision",
+          "type": "integer"
+        },
+        "cycle_key": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Cycle Key",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "legacy_deferred",
+            "tokener"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "contract_ref": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Contract Ref",
+          "type": "string"
+        },
+        "preparation_binding_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Preparation Binding Hash",
+          "type": "string"
+        },
+        "billing_receipt_refs": {
+          "items": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Billing Receipt Refs",
+          "type": "array"
+        },
+        "manifest": {
+          "$ref": "#/$defs/WindowManifest"
+        },
+        "manifest_hash": {
+          "title": "Manifest Hash",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "api_version",
+        "operation_id",
+        "expected_revision",
+        "cycle_key",
+        "decision",
+        "contract_ref",
+        "preparation_binding_hash",
+        "billing_receipt_refs"
+      ],
+      "title": "DecideCyclePayload",
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "decision": {
+                "const": "tokener"
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          },
+          "then": {
+            "required": [
+              "manifest",
+              "manifest_hash"
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "manifest"
+                  ]
+                },
+                {
+                  "required": [
+                    "manifest_hash"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "DecideCycleRequest": {
+      "$ref": "#/$defs/DecideCyclePayload"
+    },
+    "LeasePayload": {
+      "additionalProperties": false,
+      "properties": {
+        "api_version": {
+          "const": 1,
+          "title": "Api Version",
+          "type": "integer"
+        },
+        "operation_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "expected_revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Expected Revision",
+          "type": "integer"
+        },
+        "action": {
+          "enum": [
+            "acquire",
+            "renew",
+            "release"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "lease_token": {
+          "title": "Lease Token",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "api_version",
+        "operation_id",
+        "expected_revision",
+        "action"
+      ],
+      "title": "LeasePayload",
+      "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "renew",
+                  "release"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "lease_token"
+            ]
+          }
+        }
+      ]
+    },
+    "LeaseRequest": {
+      "$ref": "#/$defs/LeasePayload"
+    },
+    "CommandReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "payload_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Payload Hash",
+          "type": "string"
+        },
+        "remote_id": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Remote Id",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "registered",
+            "dispatched",
+            "accepted",
+            "verified",
+            "failed_definitive",
+            "outcome_unknown",
+            "superseded"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "command_id",
+        "payload_hash",
+        "remote_id",
+        "state"
+      ],
+      "title": "CommandReceipt",
+      "type": "object"
+    },
+    "FundingReceiptsPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "api_version": {
+          "const": 1,
+          "title": "Api Version",
+          "type": "integer"
+        },
+        "operation_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "expected_revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Expected Revision",
+          "type": "integer"
+        },
+        "lease_token": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Lease Token",
+          "type": "string"
+        },
+        "intent_revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Intent Revision",
+          "type": "integer"
+        },
+        "manifest_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Manifest Hash",
+          "type": "string"
+        },
+        "commands": {
+          "items": {
+            "$ref": "#/$defs/CommandReceipt"
+          },
+          "maxItems": 500,
+          "minItems": 1,
+          "title": "Commands",
+          "type": "array"
+        }
+      },
+      "required": [
+        "api_version",
+        "operation_id",
+        "expected_revision",
+        "lease_token",
+        "intent_revision",
+        "manifest_hash",
+        "commands"
+      ],
+      "title": "FundingReceiptsPayload",
+      "type": "object"
+    },
+    "FundingReceiptsRequest": {
+      "$ref": "#/$defs/FundingReceiptsPayload"
+    },
+    "MigrationCorrectionPayload": {
+      "additionalProperties": false,
+      "description": "Frozen control command, not a balance or a local consumption projection.",
+      "properties": {
+        "command_id": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Command Id",
+          "type": "string"
+        },
+        "payload_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Payload Hash",
+          "type": "string"
+        },
+        "window": {
+          "$ref": "#/$defs/MigrationWindow"
+        },
+        "delta_usd_micro": {
+          "pattern": "^(0|-?[1-9][0-9]*)$",
+          "title": "Delta Usd Micro",
+          "type": "string"
+        },
+        "target_amount_usd_micro": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "title": "Target Amount Usd Micro",
+          "type": "string"
+        }
+      },
+      "required": [
+        "command_id",
+        "payload_hash",
+        "window",
+        "delta_usd_micro",
+        "target_amount_usd_micro"
+      ],
+      "title": "MigrationCorrectionPayload",
+      "type": "object"
+    },
+    "ContractEventPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "api_version": {
+          "const": 1,
+          "title": "Api Version",
+          "type": "integer"
+        },
+        "operation_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "expected_revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Expected Revision",
+          "type": "integer"
+        },
+        "business_event_ref": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Business Event Ref",
+          "type": "string"
+        },
+        "contract_ref": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Contract Ref",
+          "type": "string"
+        },
+        "billing_receipt_ref": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Billing Receipt Ref",
+          "type": "string"
+        },
+        "affected_window_ids": {
+          "items": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Affected Window Ids",
+          "type": "array"
+        },
+        "event_type": {
+          "enum": [
+            "refund",
+            "cancel",
+            "reanchor",
+            "plan_change",
+            "paid_to_free"
+          ],
+          "title": "Event Type",
+          "type": "string"
+        },
+        "terminal": {
+          "default": false,
+          "title": "Terminal",
+          "type": "boolean"
+        },
+        "manual_replan": {
+          "default": false,
+          "title": "Manual Replan",
+          "type": "boolean"
+        },
+        "replacement_manifest": {
+          "$ref": "#/$defs/WindowManifest"
+        },
+        "replacement_manifest_hash": {
+          "title": "Replacement Manifest Hash",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "command_payloads": {
+          "items": {
+            "$ref": "#/$defs/MigrationCorrectionPayload"
+          },
+          "maxItems": 500,
+          "title": "Command Payloads",
+          "type": "array"
+        }
+      },
+      "required": [
+        "api_version",
+        "operation_id",
+        "expected_revision",
+        "business_event_ref",
+        "contract_ref",
+        "billing_receipt_ref",
+        "affected_window_ids",
+        "event_type"
+      ],
+      "title": "ContractEventPayload",
+      "type": "object",
+      "dependentRequired": {
+        "replacement_manifest": [
+          "replacement_manifest_hash"
+        ],
+        "replacement_manifest_hash": [
+          "replacement_manifest"
+        ]
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "terminal": {
+                "const": true
+              }
+            },
+            "required": [
+              "terminal"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "replacement_manifest"
+                  ]
+                },
+                {
+                  "required": [
+                    "replacement_manifest_hash"
+                  ]
+                }
+              ]
+            },
+            "properties": {
+              "command_payloads": {
+                "items": {
+                  "properties": {
+                    "target_amount_usd_micro": {
+                      "const": "0"
+                    },
+                    "delta_usd_micro": {
+                      "pattern": "^(0|-[1-9][0-9]*)$"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "affected_window_ids": {
+                "minItems": 1
+              }
+            },
+            "required": [
+              "affected_window_ids"
+            ]
+          },
+          "then": {
+            "required": [
+              "command_payloads"
+            ],
+            "properties": {
+              "command_payloads": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "manual_replan": {
+                "const": true
+              }
+            },
+            "required": [
+              "manual_replan"
+            ]
+          },
+          "then": {
+            "required": [
+              "replacement_manifest",
+              "replacement_manifest_hash"
+            ],
+            "properties": {
+              "event_type": {
+                "const": "plan_change"
+              },
+              "terminal": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ContractEventRequest": {
+      "$ref": "#/$defs/ContractEventPayload"
+    },
+    "ActivateMigrationPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "api_version": {
+          "const": 1,
+          "title": "Api Version",
+          "type": "integer"
+        },
+        "operation_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "expected_revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Expected Revision",
+          "type": "integer"
+        },
+        "lease_token": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Lease Token",
+          "type": "string"
+        },
+        "intent_revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Intent Revision",
+          "type": "integer"
+        },
+        "manifest_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Manifest Hash",
+          "type": "string"
+        },
+        "funding_receipt_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Funding Receipt Hash",
+          "type": "string"
+        },
+        "preparation_binding_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Preparation Binding Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "api_version",
+        "operation_id",
+        "expected_revision",
+        "lease_token",
+        "intent_revision",
+        "manifest_hash",
+        "funding_receipt_hash",
+        "preparation_binding_hash"
+      ],
+      "title": "ActivateMigrationPayload",
+      "type": "object"
+    },
+    "ActivateRequest": {
+      "$ref": "#/$defs/ActivateMigrationPayload"
+    },
+    "Window": {
+      "$ref": "#/$defs/MigrationWindow"
+    },
+    "MigrationOperationSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "phase": {
+          "enum": [
+            "preparing",
+            "prepared",
+            "claimed",
+            "granting",
+            "activating",
+            "active",
+            "blocked",
+            "cancelled"
+          ],
+          "title": "Phase",
+          "type": "string"
+        },
+        "decision": {
+          "title": "Decision",
+          "enum": [
+            "legacy_deferred",
+            "tokener"
+          ],
+          "type": "string"
+        },
+        "cycle_key": {
+          "title": "Cycle Key",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "manifest_hash": {
+          "title": "Manifest Hash",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "error_code": {
+          "title": "Error Code",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "route_epoch": {
+          "title": "Route Epoch",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "intent_revision": {
+          "title": "Intent Revision",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "phase"
+      ],
+      "title": "MigrationOperationSummary",
+      "type": "object"
+    },
+    "MigrationOperationResult": {
+      "additionalProperties": false,
+      "properties": {
+        "operation_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "request_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Request Hash",
+          "type": "string"
+        },
+        "result_code": {
+          "maximum": 599,
+          "minimum": 100,
+          "title": "Result Code",
+          "type": "integer"
+        },
+        "result_revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Result Revision",
+          "type": "integer"
+        },
+        "result_summary": {
+          "$ref": "#/$defs/MigrationOperationSummary"
+        },
+        "lease_action": {
+          "title": "Lease Action",
+          "enum": [
+            "acquire",
+            "renew",
+            "release"
+          ],
+          "type": "string"
+        },
+        "lease_token": {
+          "title": "Lease Token",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "lease_expires_at": {
+          "title": "Lease Expires At",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation_id",
+        "request_hash",
+        "result_code",
+        "result_revision",
+        "result_summary"
+      ],
+      "title": "MigrationOperationResult",
+      "type": "object"
+    },
+    "OperationResult": {
+      "$ref": "#/$defs/MigrationOperationResult"
+    },
+    "MigrationCycleDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "cycle_key": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Cycle Key",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "legacy_deferred",
+            "tokener"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "contract_ref": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Contract Ref",
+          "type": "string"
+        },
+        "operation_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "manifest_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "const": "",
+              "type": "string"
+            }
+          ],
+          "title": "Manifest Hash"
+        }
+      },
+      "required": [
+        "cycle_key",
+        "decision",
+        "contract_ref",
+        "operation_id",
+        "manifest_hash"
+      ],
+      "title": "MigrationCycleDecision",
+      "type": "object"
+    },
+    "MigrationStatusResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "api_version": {
+          "const": 1,
+          "title": "Api Version",
+          "type": "integer"
+        },
+        "tenant_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Tenant Id",
+          "type": "string"
+        },
+        "migration_id": {
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Migration Id",
+          "type": "string"
+        },
+        "phase": {
+          "enum": [
+            "preparing",
+            "prepared",
+            "claimed",
+            "granting",
+            "activating",
+            "active",
+            "blocked",
+            "cancelled"
+          ],
+          "title": "Phase",
+          "type": "string"
+        },
+        "attention": {
+          "enum": [
+            "normal",
+            "alerted",
+            "manual_required"
+          ],
+          "title": "Attention",
+          "type": "string"
+        },
+        "revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "route_epoch": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Route Epoch",
+          "type": "integer"
+        },
+        "replayed": {
+          "title": "Replayed",
+          "type": "boolean"
+        },
+        "ever_activated": {
+          "default": false,
+          "description": "Tokener routing/profile has been published, including zero-money terminal finalization",
+          "title": "Ever Activated",
+          "type": "boolean"
+        },
+        "model_mapping_version": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Model Mapping Version",
+          "type": "string"
+        },
+        "inventory_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Inventory Hash",
+          "type": "string"
+        },
+        "billing_receipt_refs": {
+          "items": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Billing Receipt Refs",
+          "type": "array"
+        },
+        "operation_results": {
+          "items": {
+            "$ref": "#/$defs/MigrationOperationResult"
+          },
+          "title": "Operation Results",
+          "type": "array"
+        },
+        "replayed_operation": {
+          "description": "Immutable original outcome when replayed; all other top-level status fields are current authority",
+          "$ref": "#/$defs/MigrationOperationResult"
+        },
+        "commands": {
+          "items": {
+            "$ref": "#/$defs/CommandReceipt"
+          },
+          "title": "Commands",
+          "type": "array"
+        },
+        "cycle_decisions": {
+          "items": {
+            "$ref": "#/$defs/MigrationCycleDecision"
+          },
+          "title": "Cycle Decisions",
+          "type": "array"
+        },
+        "contract_events": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ContractEventPayload"
+          },
+          "title": "Contract Events",
+          "type": "object"
+        },
+        "prior_manifests": {
+          "items": {
+            "$ref": "#/$defs/WindowManifest"
+          },
+          "title": "Prior Manifests",
+          "type": "array"
+        },
+        "terminated_contract_refs": {
+          "items": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Terminated Contract Refs",
+          "type": "array"
+        },
+        "pending_contract_event": {
+          "$ref": "#/$defs/ContractEventPayload"
+        },
+        "intent_revision": {
+          "title": "Intent Revision",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "claimed_at": {
+          "title": "Claimed At",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+          "type": "string"
+        },
+        "manifest": {
+          "$ref": "#/$defs/WindowManifest"
+        },
+        "manifest_hash": {
+          "title": "Manifest Hash",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "preparation_binding_hash": {
+          "title": "Preparation Binding Hash",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "funding_receipt_hash": {
+          "title": "Funding Receipt Hash",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "blocked_from": {
+          "title": "Blocked From",
+          "enum": [
+            "preparing",
+            "prepared",
+            "claimed",
+            "granting",
+            "activating",
+            "active",
+            "blocked",
+            "cancelled"
+          ],
+          "type": "string"
+        },
+        "last_error_code": {
+          "title": "Last Error Code",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "lease_token": {
+          "title": "Lease Token",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        },
+        "lease_expires_at": {
+          "title": "Lease Expires At",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "api_version",
+        "tenant_id",
+        "migration_id",
+        "phase",
+        "attention",
+        "revision",
+        "route_epoch",
+        "replayed",
+        "model_mapping_version",
+        "inventory_hash",
+        "billing_receipt_refs",
+        "operation_results",
+        "commands",
+        "cycle_decisions"
+      ],
+      "title": "MigrationStatusResponse",
+      "type": "object"
+    },
+    "StatusResponse": {
+      "$ref": "#/$defs/MigrationStatusResponse"
+    },
+    "MigrationErrorResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "retryable": {
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "operation_id": {
+          "title": "Operation Id",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "title": "MigrationErrorResponse",
+      "type": "object"
+    },
+    "ErrorResponse": {
+      "$ref": "#/$defs/MigrationErrorResponse"
+    }
+  }
+}

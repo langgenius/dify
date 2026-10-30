@@ -14,6 +14,8 @@ from core.app.apps.agent_chat.app_runner import AgentChatAppRunner
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueLLMChunkEvent, QueueMessageEndEvent
+from core.app.llm.message_billing import begin_message_billing
+from core.model_invocation_routing import ModelRouteUnavailable
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.plugin.entities.plugin_daemon import PluginLLMNumTokensResponse
@@ -36,8 +38,13 @@ def _assert_direct_output(agent_queue_manager: MessageBasedAppQueueManager, text
 
 
 @pytest.fixture
-def runner(agent_records: tuple[Conversation, Message]) -> AgentChatAppRunner:
+def runner(
+    agent_records: tuple[Conversation, Message], agent_generate_entity: AgentChatAppGenerateEntity
+) -> AgentChatAppRunner:
     assert agent_records[0].id == "conv"
+    # Production generation establishes message-level accounting before the
+    # worker starts. Exercise that real boundary for these direct runner tests.
+    begin_message_billing(agent_generate_entity, agent_records[1].id)
     return AgentChatAppRunner(execution_driver=WorkflowRunAgg.run)
 
 
@@ -50,6 +57,18 @@ def _records(session: Session) -> tuple[Conversation, Message]:
 
 
 class TestAgentChatAppRunnerRun:
+    def test_run_rejects_lost_message_billing_owner(
+        self,
+        runner: AgentChatAppRunner,
+        sqlite_session: Session,
+        agent_generate_entity: AgentChatAppGenerateEntity,
+        agent_queue_manager: MessageBasedAppQueueManager,
+    ) -> None:
+        conversation, message = _records(sqlite_session)
+        agent_generate_entity._classic_message_billing = None
+        with pytest.raises(ModelRouteUnavailable):
+            runner.run(agent_generate_entity, agent_queue_manager, conversation, message, sqlite_session)
+
     def test_run_app_not_found(
         self,
         runner: AgentChatAppRunner,

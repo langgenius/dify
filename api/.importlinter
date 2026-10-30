@@ -68,6 +68,9 @@ ignore_imports =
     core.app.features.annotation_reply.annotation_reply -> services.annotation_service
     core.app.features.annotation_reply.annotation_reply -> services.knowledge.dataset_service
     core.app.llm.quota -> services.credit_pool_service
+    # Legacy runtime delegates revision-scoped migration policy to its application owner.
+    core.model_invocation_routing -> services.entities.model_billing_mapping
+    core.model_invocation_routing -> services.model_billing_mapping_service
     core.app.task_pipeline.message_cycle_manager -> services.annotation_service
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
     core.helper.credential_utils -> services.system_feature_service

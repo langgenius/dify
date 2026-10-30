@@ -12,6 +12,7 @@ export type UsagePriority = 'credits' | 'apiKey' | 'apiKeyOnly'
 
 export type CardVariant =
   | 'credits-active'
+  | 'credits-processing'
   | 'credits-fallback'
   | 'credits-exhausted'
   | 'no-usage'
@@ -72,7 +73,7 @@ export function useCredentialPanelState(
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const { isExhausted, credits } = useTrialCredits()
+  const { isExhausted, credits, modelBillingMigrationStatus } = useTrialCredits()
   const { hasCredential, authorized, current_credential_name } = useCredentialStatus(provider)
 
   const { data: trialModels = [] } = useQuery(
@@ -93,14 +94,12 @@ export function useCredentialPanelState(
       : 'apiKey'
 
   const showPrioritySwitcher = supportsCredits
+  const isCreditsProcessing = supportsCredits && modelBillingMigrationStatus === 'processing'
 
-  const variant = deriveVariant(
-    priority,
-    isExhausted,
-    hasCredential,
-    !!authorized,
-    current_credential_name,
-  )
+  const variant =
+    priority === 'credits' && isCreditsProcessing
+      ? 'credits-processing'
+      : deriveVariant(priority, isExhausted, hasCredential, !!authorized, current_credential_name)
 
   return {
     variant,
@@ -108,7 +107,7 @@ export function useCredentialPanelState(
     supportsCredits,
     showPrioritySwitcher,
     hasCredentials: hasCredential,
-    isCreditsExhausted: isExhausted,
+    isCreditsExhausted: isExhausted && !isCreditsProcessing,
     credentialName: current_credential_name,
     credits,
   }

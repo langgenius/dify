@@ -11,6 +11,7 @@ from controllers.console.billing.error import (
     BillingUnavailableError,
     BillingUnavailableErrorResponse,
     BillingUnprocessableEntityErrorResponse,
+    TokenerEducationCheckoutUnsupportedErrorResponse,
     to_billing_request_error,
 )
 from controllers.console.flask_admission import console_account_admission
@@ -48,6 +49,7 @@ register_response_schema_models(
     BillingUnavailableErrorResponse,
     BillingInvoiceResponse,
     BillingSubscriptionResponse,
+    TokenerEducationCheckoutUnsupportedErrorResponse,
 )
 
 
@@ -71,6 +73,11 @@ class Subscription(Resource):
         503,
         "Billing unavailable",
         console_ns.models[BillingUnavailableErrorResponse.__name__],
+    )
+    @console_ns.response(
+        409,
+        "Education subscriptions are not supported with Tokener billing",
+        console_ns.models[TokenerEducationCheckoutUnsupportedErrorResponse.__name__],
     )
     @console_account_admission(
         editions=frozenset({DeploymentEdition.CLOUD}),

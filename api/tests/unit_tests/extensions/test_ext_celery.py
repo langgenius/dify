@@ -189,6 +189,9 @@ class TestCelerySslCases:
             mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = False
+            mock_config.TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED = False
+            mock_config.ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK = False
+            mock_config.ENABLE_TOKENER_MIGRATION_RECOVERY_TASK = False
             mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
             mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
             mock_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
@@ -246,6 +249,9 @@ class TestCelerySslCases:
             mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
+            mock_config.TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED = True
+            mock_config.ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK = True
+            mock_config.TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL = 7
             mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
             mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
             mock_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
@@ -285,6 +291,10 @@ class TestCelerySslCases:
             assert celery_app.conf["result_backend_transport_options"]["global_keyprefix"] == "enterprise-a:"
             assert "tasks.collect_agent_resources_task" in celery_app.conf["imports"]
             assert "tasks.delete_conversation_task" in celery_app.conf["imports"]
+            assert "tasks.bootstrap_tokener_tenant_task" in celery_app.conf["imports"]
+            recovery = celery_app.conf["beat_schedule"]["tokener_bootstrap_recovery_sweeper"]
+            assert recovery["task"] == "tasks.bootstrap_tokener_tenant_task.sweep_pending_tokener_integrations_task"
+            assert recovery["schedule"].total_seconds() == 7 * 60
             assert "tasks.workflow_run_archive_deletion_tasks" in celery_app.conf["imports"]
             import_module("tasks.workflow_run_archive_deletion_tasks")
             task_name = "tasks.workflow_run_archive_deletion_tasks.delete_workflow_run_archive_task"

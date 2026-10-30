@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from collections.abc import Sequence
+from datetime import date, datetime
 from typing import Any, Literal, NotRequired, TypedDict
 from warnings import deprecated
 
@@ -10,15 +11,55 @@ from pydantic import TypeAdapter, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 from werkzeug.exceptions import InternalServerError
 
+from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
 from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from services.billing_portal_service import BillingPortalLink
 from services.compliance_download_service import ComplianceDownloadLink
+from services.entities.tokener_metering import (
+    TokenerAllowanceMetering,
+    TokenerCurrentMonthAvailableMetering,
+    TokenerCurrentMonthMetering,
+    TokenerCurrentMonthUnavailableMetering,
+    TokenerTenantMeteringResponse,
+)
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
+    LegacyCreditPoolManagedByTokenerError,
+    TokenerEducationCheckoutUnsupportedError,
 )
+
+__all__ = [
+    "AccountNotificationDict",
+    "BillingInfo",
+    "BillingService",
+    "DismissNotificationDict",
+    "EducationAutocompleteResponseDict",
+    "EducationStatusResponseDict",
+    "EducationVerifyResponseDict",
+    "EmailFreezeType",
+    "KnowledgeRateLimitDict",
+    "LangContentDict",
+    "MessageResponseDict",
+    "NotificationDict",
+    "QuotaBalanceResult",
+    "QuotaCommitResult",
+    "QuotaConsumeCappedResult",
+    "QuotaReleaseResult",
+    "QuotaReserveResult",
+    "SubscriptionPlan",
+    "TenantFeaturePlanUsageDict",
+    "TenantFeatureQuotaInfo",
+    "TokenerAllowanceMetering",
+    "TokenerBootstrapUpstreamError",
+    "TokenerCurrentMonthAvailableMetering",
+    "TokenerCurrentMonthMetering",
+    "TokenerCurrentMonthUnavailableMetering",
+    "TokenerTenantBootstrapResponse",
+    "TokenerTenantMeteringResponse",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +76,43 @@ EmailFreezeType = Literal["freeze", "email_domain_suspended"]
 
 
 class _BillingHTTPStatusError(ValueError):
-    def __init__(self, message: str, status_code: int) -> None:
+    def __init__(self, message: str, status_code: int, upstream_error_code: str | None = None) -> None:
         super().__init__(message)
         self.status_code = status_code
+        self.upstream_error_code = upstream_error_code
+
+
+_TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED = "TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED"
+_CREDIT_MANAGED_BY_TOKENER = "CREDIT_MANAGED_BY_TOKENER"
+
+
+def _safe_billing_error_code(response: httpx.Response) -> str | None:
+    """Keep only explicitly supported upstream codes; never retain arbitrary error bodies."""
+    try:
+        payload = response.json()
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+
+    candidates = [payload.get("reason"), payload.get("code")]
+    nested_error = payload.get("error")
+    if isinstance(nested_error, dict):
+        candidates.append(nested_error.get("code"))
+    if _TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED in candidates:
+        return _TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED
+    if _CREDIT_MANAGED_BY_TOKENER in candidates:
+        return _CREDIT_MANAGED_BY_TOKENER
+    return None
+
+
+class TokenerBootstrapUpstreamError(RuntimeError):
+    """Sanitized failure returned by the billing-side Tokener bootstrap API."""
+
+    def __init__(self, error_code: str, *, retryable: bool) -> None:
+        super().__init__(error_code)
+        self.error_code = error_code
+        self.retryable = retryable
 
 
 class SubscriptionPlan(TypedDict):
@@ -62,6 +137,14 @@ class EducationStatusResponseDict(TypedDict):
     allow_refresh: bool
 
 
+class TokenerTenantBootstrapResponse(TypedDict):
+    tenant_id: str
+    status: Literal["pending", "ready"]
+    data_plane_api_key: NotRequired[str]
+    retryable: bool
+    error_code: NotRequired[str]
+
+
 class EducationAutocompleteResponseDict(TypedDict):
     data: list[str]
     curr_page: int
@@ -78,6 +161,7 @@ class QuotaReserveResult(TypedDict):
     reservation_id: str
     available: int
     reserved: int
+    reserved_amount: NotRequired[int]
 
 
 class QuotaCommitResult(TypedDict):
@@ -178,6 +262,7 @@ class BillingInfo(TypedDict):
 
 _billing_info_adapter = TypeAdapter(BillingInfo)
 _vector_space_quota_adapter = TypeAdapter(_VectorSpaceQuota)
+_tokener_tenant_metering_adapter = TypeAdapter(TokenerTenantMeteringResponse)
 
 
 class KnowledgeRateLimitDict(TypedDict):
@@ -226,6 +311,139 @@ class BillingService:
     _PLAN_CACHE_TTL = 600
 
     @classmethod
+    def bootstrap_tokener_tenant(cls, tenant_id: str, display_name: str) -> TokenerTenantBootstrapResponse:
+        """Ensure the remote Tokener org and trial allowance without logging its one-time key."""
+        base_url = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
+        if not base_url:
+            raise TokenerBootstrapUpstreamError("tokener_billing_api_not_configured", retryable=False)
+        try:
+            payload = cls._send_request(
+                "POST",
+                f"/internal/v1/tokener/tenants/{tenant_id}/bootstrap",
+                json={"tenant_id": tenant_id, "display_name": display_name},
+                base_url=base_url,
+            )
+        except _BillingHTTPStatusError as error:
+            retryable = error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
+                error.status_code >= 500
+            )
+            raise TokenerBootstrapUpstreamError("tokener_bootstrap_http_error", retryable=retryable) from None
+        except httpx.RequestError:
+            raise TokenerBootstrapUpstreamError("tokener_bootstrap_unavailable", retryable=True) from None
+
+        if not isinstance(payload, dict):
+            raise TokenerBootstrapUpstreamError("tokener_bootstrap_invalid_response", retryable=False)
+
+        raw_data_plane_api_key = payload.pop("data_plane_api_key", None)
+        response_tenant_id = payload.get("tenant_id")
+        status = payload.get("status")
+        retryable = payload.get("retryable", status == "pending")
+        raw_error_code = payload.get("error_code")
+        error_code = (
+            raw_error_code
+            if isinstance(raw_error_code, str)
+            and raw_error_code
+            and len(raw_error_code) <= 100
+            and all(character.isalnum() or character in "_-" for character in raw_error_code)
+            else None
+        )
+
+        if response_tenant_id != tenant_id or status not in {"pending", "ready"} or not isinstance(retryable, bool):
+            raw_data_plane_api_key = None
+            raise TokenerBootstrapUpstreamError("tokener_bootstrap_invalid_response", retryable=False)
+
+        response: TokenerTenantBootstrapResponse = {
+            "tenant_id": tenant_id,
+            "status": status,
+            "retryable": retryable,
+        }
+        if error_code:
+            response["error_code"] = error_code
+
+        if status == "ready":
+            if not isinstance(raw_data_plane_api_key, str) or not raw_data_plane_api_key:
+                raw_data_plane_api_key = None
+                raise TokenerBootstrapUpstreamError("tokener_bootstrap_key_missing", retryable=True)
+            response["data_plane_api_key"] = raw_data_plane_api_key
+        raw_data_plane_api_key = None
+
+        return response
+
+    @classmethod
+    def get_tokener_metering(cls, tenant_id: str) -> TokenerTenantMeteringResponse:
+        """Read secret-free Tokener balance and current-month usage from the internal billing API."""
+        base_url = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
+        if not base_url:
+            raise BillingUpstreamUnavailableError
+
+        try:
+            payload = cls._send_request(
+                "GET",
+                f"/internal/v1/tokener/tenants/{tenant_id}/metering",
+                base_url=base_url,
+            )
+        except _BillingHTTPStatusError as error:
+            if error.status_code in {
+                httpx.codes.REQUEST_TIMEOUT,
+                httpx.codes.TOO_MANY_REQUESTS,
+                httpx.codes.SERVICE_UNAVAILABLE,
+            } or (error.status_code >= 500 and error.status_code != httpx.codes.BAD_GATEWAY):
+                raise BillingUpstreamUnavailableError from None
+            raise BillingUpstreamInvalidResponseError from None
+        except httpx.RequestError:
+            raise BillingUpstreamUnavailableError from None
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            raise BillingUpstreamInvalidResponseError from None
+
+        try:
+            metering = _tokener_tenant_metering_adapter.validate_python(payload, strict=True)
+            if metering["tenant_id"] != tenant_id:
+                raise ValueError("tenant mismatch")
+
+            current_month = metering["current_month"]
+            raw_current_month = payload.get("current_month") if isinstance(payload, dict) else None
+            if not isinstance(raw_current_month, dict):
+                raise ValueError("invalid current-month usage")
+            if current_month["status"] == "available":
+                if "usage_generated_at" not in metering or "error_code" in raw_current_month:
+                    raise ValueError("incomplete available usage")
+            elif (
+                "billed_usd_micro" in raw_current_month
+                or "request_count" in raw_current_month
+                or "usage_generated_at" in metering
+            ):
+                raise ValueError("unavailable usage must not contain metrics")
+
+            start_date = date.fromisoformat(current_month["start_date"])
+            end_date = date.fromisoformat(current_month["end_date"])
+            if start_date > end_date:
+                raise ValueError("invalid usage period")
+
+            generated_at_values = [metering["balance_generated_at"]]
+            usage_generated_at = metering.get("usage_generated_at")
+            if usage_generated_at is not None:
+                generated_at_values.append(usage_generated_at)
+            for generated_at_value in generated_at_values:
+                generated_at = datetime.fromisoformat(generated_at_value)
+                if generated_at.utcoffset() is None:
+                    raise ValueError("timestamp must include a timezone")
+
+            allowance = metering.get("allowance")
+            if allowance is not None:
+                allowance_start = datetime.fromisoformat(allowance["starts_at"])
+                allowance_end = datetime.fromisoformat(allowance["ends_at"])
+                if allowance_start.utcoffset() is None or allowance_end.utcoffset() is None:
+                    raise ValueError("allowance timestamps must include a timezone")
+                if allowance_start >= allowance_end:
+                    raise ValueError("invalid allowance period")
+                if int(allowance["available_usd_micro"]) > int(allowance["amount_usd_micro"]):
+                    raise ValueError("allowance available amount exceeds total")
+        except (TypeError, ValueError, ValidationError):
+            raise BillingUpstreamInvalidResponseError from None
+
+        return metering
+
+    @classmethod
     def get_info(cls, tenant_id: str, exclude_vector_space: bool = False) -> BillingInfo:
         params = {"tenant_id": tenant_id}
         if exclude_vector_space:
@@ -266,6 +484,7 @@ class BillingService:
         amount: int = 1,
         meta: dict | None = None,
         bucket: str = "",
+        capped: bool = False,
     ) -> QuotaReserveResult:
         """Reserve quota before task execution."""
         payload: dict = {
@@ -278,6 +497,8 @@ class BillingService:
             payload["bucket"] = bucket
         if meta:
             payload["meta"] = meta
+        if capped:
+            payload["capped"] = True
         return _quota_reserve_adapter.validate_python(cls._send_quota_request("POST", "/quota/reserve", json=payload))
 
     @classmethod
@@ -323,7 +544,17 @@ class BillingService:
         params = {"tenant_id": tenant_id, "feature_key": feature_key}
         if bucket:
             params["bucket"] = bucket
-        return _quota_balance_adapter.validate_python(cls._send_quota_request("GET", "/quota/balance", params=params))
+        try:
+            result = cls._send_quota_request("GET", "/quota/balance", params=params)
+        except _BillingHTTPStatusError as error:
+            if (
+                feature_key == "credit_pool"
+                and error.status_code == httpx.codes.CONFLICT
+                and error.upstream_error_code == _CREDIT_MANAGED_BY_TOKENER
+            ):
+                raise LegacyCreditPoolManagedByTokenerError(_CREDIT_MANAGED_BY_TOKENER) from None
+            raise
+        return _quota_balance_adapter.validate_python(result)
 
     @classmethod
     def quota_consume_capped(
@@ -453,6 +684,7 @@ class BillingService:
             raise _BillingHTTPStatusError(
                 "Unable to retrieve billing information. Please try again later or contact support.",
                 response.status_code,
+                _safe_billing_error_code(response),
             )
         if method == "PUT":
             if response.status_code == httpx.codes.INTERNAL_SERVER_ERROR:
@@ -482,6 +714,11 @@ class BillingService:
             response = cls._send_request("GET", endpoint, params=params)
             return _billing_portal_link_adapter.validate_python(response)
         except _BillingHTTPStatusError as error:
+            if (
+                error.status_code == httpx.codes.CONFLICT
+                and error.upstream_error_code == _TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED
+            ):
+                raise TokenerEducationCheckoutUnsupportedError from error
             if error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
                 error.status_code >= 500
             ):

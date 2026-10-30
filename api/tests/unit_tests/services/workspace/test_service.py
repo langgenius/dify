@@ -2,10 +2,12 @@
 
 from dataclasses import replace
 from datetime import datetime
+from typing import Literal
 from unittest.mock import Mock, create_autospec
 
 import pytest
 
+from core.model_billing_profile import ModelBillingSource
 from enums import CloudPlan
 from machinery.context import RequestContext
 from services.errors.file import UnsupportedFileTypeError
@@ -65,6 +67,9 @@ def test_summary_uses_context_identity_and_credit_snapshot(
         "role": "editor",
         "plan": plan,
         "credits": remaining,
+        "model_billing_source": "legacy_message_credits",
+        "model_billing_migration_status": "none",
+        "tokener_bootstrap_status": None,
     }
     store.get_for_account.assert_called_once_with("workspace", "account")
 
@@ -148,3 +153,64 @@ def test_logo_delegation(dependencies: tuple[WorkspaceService, Mock, Mock, Mock]
     logos.upload.return_value = "file-id"
     assert service.upload_logo(CONTEXT, filename="logo.SVG", content=b"<svg/>", mimetype="image/svg+xml") == "file-id"
     logos.upload.assert_called_once_with(CONTEXT, filename="logo.SVG", content=b"<svg/>", mimetype="image/svg+xml")
+
+
+@pytest.mark.parametrize("migration_status", ["processing", "active"])
+def test_summary_and_tenant_info_preserve_plan_but_hide_fenced_legacy_balance(
+    dependencies: tuple[WorkspaceService, Mock, Mock, Mock], migration_status: Literal["processing", "active"]
+) -> None:
+    service, store, features, _ = dependencies
+    source = ModelBillingSource.TOKENER if migration_status == "active" else ModelBillingSource.LEGACY_MESSAGE_CREDITS
+    credits = EffectiveCreditPool(
+        plan=CloudPlan.PROFESSIONAL,
+        model_billing_source=source,
+        model_billing_migration_status=migration_status,
+        next_credit_reset_date=1775001600,
+    )
+    features.get_effective_credit_pool.return_value = credits
+    features.get_features.return_value = WorkspaceFeatures(False, credits)
+    store.switch.return_value = WORKSPACE
+
+    summary = service.current_summary(CONTEXT)
+    assert summary["plan"] == CloudPlan.PROFESSIONAL
+    assert summary["credits"] is None
+    assert summary["model_billing_source"] == source.value
+    assert summary["model_billing_migration_status"] == migration_status
+    info = service.switch(CONTEXT, "target")
+    assert info["plan"] == CloudPlan.PROFESSIONAL
+    assert info["model_billing_source"] == source.value
+    assert info["model_billing_migration_status"] == migration_status
+    assert "trial_credits" not in info
+    assert "trial_credits_used" not in info
+    assert "next_credit_reset_date" not in info
+
+
+@pytest.mark.parametrize("bootstrap_status", ["pending", "ready", "failed"])
+def test_tokener_workspace_never_serializes_legacy_credit_fields(
+    dependencies: tuple[WorkspaceService, Mock, Mock, Mock], bootstrap_status: str
+) -> None:
+    service, store, features, _ = dependencies
+    credits = EffectiveCreditPool(
+        plan=CloudPlan.PROFESSIONAL,
+        model_billing_source=ModelBillingSource.TOKENER,
+        tokener_bootstrap_status=bootstrap_status,
+    )
+    features.get_effective_credit_pool.return_value = credits
+    features.get_features.return_value = WorkspaceFeatures(False, credits)
+    store.switch.return_value = WORKSPACE
+    summary = service.current_summary(CONTEXT)
+    assert summary["credits"] is None
+    assert summary["model_billing_source"] == "tokener"
+    assert summary["tokener_bootstrap_status"] == bootstrap_status
+    info = service.switch(CONTEXT, "target")
+    assert info["tokener_bootstrap_status"] == bootstrap_status
+    assert "trial_credits" not in info
+    assert "next_credit_reset_date" not in info
+
+
+def test_model_provider_credits_delegates_to_gateway(dependencies: tuple[WorkspaceService, Mock, Mock, Mock]) -> None:
+    service, _, features, _ = dependencies
+    credits = EffectiveCreditPool(model_billing_source=ModelBillingSource.TOKENER)
+    features.get_model_provider_credits.return_value = credits
+    assert service.get_model_provider_credits("workspace") is credits
+    features.get_model_provider_credits.assert_called_once_with("workspace")

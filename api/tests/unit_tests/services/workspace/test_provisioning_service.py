@@ -15,6 +15,8 @@ from sqlalchemy.orm import Mapper, ORMExecuteState, Session, sessionmaker
 from enums import DeploymentEdition
 from models import TenantCreditPool
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantPluginAutoUpgradeStrategy
+from models.model_billing import TenantModelBillingProfile
+from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account_errors import AccountNotFoundError
@@ -129,7 +131,9 @@ def gateway(
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
 ) -> tuple[WorkspaceProvisioningService, Signal]:
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=False)
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=False, TOKENER_NEW_TENANT_COHORT_ENABLED=False
+    )
     monkeypatch.setattr(gateways.SystemFeatureService, "is_workspace_creation_allowed", lambda: True)
     monkeypatch.setattr(gateways.SystemFeatureService, "get_license", lambda: LicenseModel())
     monkeypatch.setattr(gateways, "generate_key_pair", lambda _workspace_id: "public-key")
@@ -212,6 +216,97 @@ def test_missing_owner_cannot_create_or_emit(
     with sqlite_session_factory() as session:
         assert session.scalar(select(Tenant.id)) is None
     assert emitted == []
+
+
+@pytest.mark.parametrize("with_owner", [False, True])
+@pytest.mark.parametrize("plugin_pin", ["langgenius/tokener:0.1.2@digest", "   "])
+def test_tokener_creation_commits_billing_identity_before_event_without_legacy_pool(
+    gateway: tuple[WorkspaceProvisioningService, Signal],
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+    with_owner: bool,
+    plugin_pin: str,
+) -> None:
+    adapter, signal = gateway
+    config_overrides(TOKENER_NEW_TENANT_COHORT_ENABLED=True, TOKENER_PLUGIN_UNIQUE_IDENTIFIER=plugin_pin)
+    with sqlite_session_factory.begin() as session:
+        owner = Account(name="Owner", email="owner@example.com")
+        session.add(owner)
+
+    emitted = []
+
+    def record(workspace: CreatedWorkspace) -> None:
+        # These rows must be durable before asynchronous bootstrap can observe
+        # the creation event. A missing pin must not put the cohort on legacy.
+        with sqlite_session_factory() as session:
+            profile = session.scalar(
+                select(TenantModelBillingProfile).where(TenantModelBillingProfile.tenant_id == workspace.id)
+            )
+            integration = session.scalar(
+                select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == workspace.id)
+            )
+            assert profile is not None
+            assert profile.model_billing_source == "tokener"
+            assert integration is not None
+            assert integration.status == TenantTokenerIntegrationStatus.PENDING
+            assert integration.plugin_unique_identifier == (plugin_pin.strip() or None)
+            assert session.scalar(select(TenantCreditPool).where(TenantCreditPool.tenant_id == workspace.id)) is None
+        emitted.append(workspace.id)
+
+    signal.connect(record)
+    created = adapter.create(name="Tokener", owner_email="owner@example.com" if with_owner else None)
+    assert emitted == [created.id]
+
+
+def test_tokener_billing_initialization_failure_rolls_back_workspace_and_does_not_emit(
+    gateway: tuple[WorkspaceProvisioningService, Signal],
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+) -> None:
+    adapter, signal = gateway
+    config_overrides(TOKENER_NEW_TENANT_COHORT_ENABLED=True)
+    emitted = Mock()
+    signal.connect(emitted, weak=False)
+
+    def fail_insert(_mapper: Mapper, _connection: Connection, _target: TenantModelBillingProfile) -> None:
+        raise RuntimeError("billing row rejected")
+
+    event.listen(TenantModelBillingProfile, "before_insert", fail_insert)
+    try:
+        with pytest.raises(RuntimeError, match="billing row rejected"):
+            adapter.create(name="Rolled back")
+    finally:
+        event.remove(TenantModelBillingProfile, "before_insert", fail_insert)
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(Tenant.id)) is None
+        assert session.scalar(select(TenantModelBillingProfile.tenant_id)) is None
+        assert session.scalar(select(TenantTokenerIntegration.id)) is None
+        assert session.scalar(select(TenantCreditPool.id)) is None
+    emitted.assert_not_called()
+
+
+def test_ensuring_existing_workspace_does_not_backfill_tokener(
+    gateway: tuple[WorkspaceProvisioningService, Signal],
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+) -> None:
+    adapter, signal = gateway
+    with sqlite_session_factory.begin() as session:
+        owner = Account(name="Owner", email="existing@example.com")
+        tenant = Tenant(name="Existing legacy")
+        session.add_all([owner, tenant])
+        session.flush()
+        owner_id = owner.id
+        session.add(TenantAccountJoin(account_id=owner_id, tenant_id=tenant.id, role=TenantAccountRole.OWNER))
+    config_overrides(TOKENER_NEW_TENANT_COHORT_ENABLED=True)
+    emitted = Mock()
+    signal.connect(emitted, weak=False)
+    adapter.ensure_owner_workspace(owner_id)
+    with sqlite_session_factory() as session:
+        assert len(session.scalars(select(Tenant.id)).all()) == 1
+        assert session.scalar(select(TenantModelBillingProfile.tenant_id)) is None
+        assert session.scalar(select(TenantTokenerIntegration.id)) is None
+    emitted.assert_not_called()
 
 
 def test_membership_uses_explicit_session_and_preserves_current(

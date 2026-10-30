@@ -2,7 +2,7 @@ from typing import Any
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_manager import ModelInstance
+from core.model_manager import ModelInstance, create_model_instance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey
@@ -18,10 +18,11 @@ class PromptTransform:
         if model_instance is None:
             if model_config is None:
                 raise ValueError("Either model_config or model_instance must be provided.")
-            model_instance = ModelInstance(
-                provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
+            model_instance = create_model_instance(
+                provider_model_bundle=model_config.provider_model_bundle,
+                model=model_config.model,
+                credentials=model_config.credentials,
             )
-            model_instance.credentials = model_config.credentials
             model_instance.parameters = model_config.parameters
             model_instance.stop = model_config.stop
 

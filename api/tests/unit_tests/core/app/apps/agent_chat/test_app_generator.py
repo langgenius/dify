@@ -182,6 +182,7 @@ class TestAgentChatAppGeneratorGenerate:
         agent_records: tuple[Conversation, Message],
         scheduled_threads: list[threading.Thread],
     ) -> None:
+        monkeypatch.setattr("core.app.llm.message_billing.begin_message_billing", CallRecorder(None))
         app_model = _app()
         app_model_config = AppModelConfig(app_id="app1")
 
@@ -280,6 +281,7 @@ class TestAgentChatAppGeneratorGenerate:
         agent_records: tuple[Conversation, Message],
         scheduled_threads: list[threading.Thread],
     ) -> None:
+        monkeypatch.setattr("core.app.llm.message_billing.begin_message_billing", CallRecorder(None))
         app_model = _app()
         app_model_config = AppModelConfig(app_id="app1")
         annotation_reply = {"enabled": False}

@@ -368,6 +368,50 @@ def test_reserve_credits_database_fallback_restores_released_amount(sqlite_sessi
     assert _get_quota_used(session=sqlite_session, pool_id=pool.id) == 2
 
 
+def test_message_capped_reservation_preserves_tail_amount_and_releases_it(sqlite_session: Session) -> None:
+    pool = _create_pool(sqlite_session, quota_limit=5, quota_used=3)
+    with patch("services.credit_pool_service.redis_client.lock", return_value=_make_redis_lock()):
+        reservation = CreditPoolService.reserve_credits_capped(
+            tenant_id=pool.tenant_id,
+            credits_required=5,
+            request_id="message-tail",
+            session_factory=lambda: sqlite_session,
+        )
+        assert reservation.amount == 2
+        assert _get_quota_used(session=sqlite_session, pool_id=pool.id) == 5
+        reservation.release()
+        reservation.release()
+    assert _get_quota_used(session=sqlite_session, pool_id=pool.id) == 3
+
+
+def test_message_capped_reservation_commits_actual_remote_amount_once(config_overrides):
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    with (
+        patch(
+            "services.billing_service.BillingService.quota_reserve",
+            return_value={"reservation_id": "tail-1", "available": 0, "reserved": 9, "reserved_amount": 2},
+        ) as reserve,
+        patch("services.billing_service.BillingService.quota_commit") as commit,
+    ):
+        reservation = CreditPoolService.reserve_credits_capped("tenant-1", 5, request_id="message-1")
+        reservation.commit()
+        reservation.commit()
+    assert reserve.call_args.kwargs["capped"] is True
+    assert reservation.amount == 2
+    assert commit.call_count == 1
+    assert commit.call_args.kwargs["actual_amount"] == 2
+
+
+def test_message_capped_reservation_never_infers_amount_from_aggregate_reserved(config_overrides):
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    with patch(
+        "services.billing_service.BillingService.quota_reserve",
+        return_value={"reservation_id": "old-server-1", "available": 0, "reserved": 9},
+    ):
+        with pytest.raises(ValueError, match="Invalid capped reservation amount"):
+            CreditPoolService.reserve_credits_capped("tenant-1", 5, request_id="message-1")
+
+
 def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled(
     config_overrides: Callable[..., None],
 ) -> None:

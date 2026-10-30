@@ -2,7 +2,15 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    ValidationInfo,
+    ValidatorFunctionWrapHandler,
+    field_validator,
+)
 
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
@@ -22,6 +30,7 @@ from models.model import AppMode
 from repositories.entities.workflow_execution import WorkflowExecutionTiming
 
 if TYPE_CHECKING:
+    from core.app.llm.message_billing import ClassicMessageBilling
     from core.ops.ops_trace_manager import TraceQueueManager
 
 
@@ -168,6 +177,15 @@ class ModelConfigWithCredentialsEntity(BaseModel):
     parameters: dict[str, Any] = Field(default_factory=dict)
     stop: list[str] = Field(default_factory=list)
 
+    @field_validator("credentials", mode="wrap")
+    @classmethod
+    def preserve_trusted_invocation_binding(cls, value: Any, handler: ValidatorFunctionWrapHandler) -> dict[str, Any]:
+        from core.model_invocation_routing import LegacyModelCredentials, RoutedModelCredentials
+
+        if isinstance(value, (LegacyModelCredentials, RoutedModelCredentials)):
+            return value
+        return handler(value)
+
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
@@ -216,6 +234,7 @@ class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     # app config
     app_config: EasyUIBasedAppConfig = None  # type: ignore
     model_conf: ModelConfigWithCredentialsEntity
+    _classic_message_billing: "ClassicMessageBilling | None" = PrivateAttr(default=None)
 
     query: str = ""
 

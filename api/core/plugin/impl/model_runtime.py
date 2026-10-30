@@ -236,6 +236,8 @@ class PluginModelRuntime(ModelRuntime):
         model: str,
         credentials: dict[str, Any],
     ) -> AIModelEntity | None:
+        from core.model_invocation_routing import RoutedModelCredentials
+
         cache_key = self._get_schema_cache_key(
             provider=provider,
             model_type=model_type,
@@ -256,7 +258,12 @@ class PluginModelRuntime(ModelRuntime):
 
         if cached_schema_json:
             try:
-                return AIModelEntity.model_validate_json(cached_schema_json)
+                cached = AIModelEntity.model_validate_json(cached_schema_json)
+                return (
+                    cached.model_copy(update={"model": model})
+                    if isinstance(credentials, RoutedModelCredentials)
+                    else cached
+                )
             except ValidationError:
                 logger.warning("Failed to validate cached plugin model schema for model %s", model, exc_info=True)
                 try:
@@ -280,6 +287,11 @@ class PluginModelRuntime(ModelRuntime):
             model=model,
             credentials=credentials,
         )
+
+        if schema is not None and isinstance(credentials, RoutedModelCredentials):
+            # Keep app/provider lookup identity logical while using the
+            # physical model's actual capability and parameter schema.
+            schema = schema.model_copy(update={"model": model})
 
         if schema:
             try:
@@ -775,6 +787,10 @@ class PluginModelRuntime(ModelRuntime):
         identifier = self._provider_identifiers.get(str(ModelProviderID(provider)))
         if identifier is not None:
             cache_key = f"{cache_key}:plugin:{identifier}"
+        from core.model_invocation_routing import RoutedModelCredentials
+
+        if isinstance(credentials, RoutedModelCredentials):
+            return f"{cache_key}:route:{credentials.plan.cache_identity}"
         sorted_credentials = sorted(credentials.items()) if credentials else []
         if not sorted_credentials:
             return cache_key

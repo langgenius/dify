@@ -47,6 +47,7 @@ const renderPanelHook = (
   provider: Provider | undefined,
   exhausted = false,
   edition: DeploymentEdition = 'CLOUD',
+  migrationStatus: ModelProviderCreditsResponse['model_billing_migration_status'] = 'none',
 ) => {
   const queryClient = createConsoleQueryClient()
   const credits: ModelProviderCreditsResponse = {
@@ -58,6 +59,10 @@ const renderPanelHook = (
     is_exhausted: exhausted,
     exhausted_at: null,
     next_credit_reset_date: null,
+    model_billing_source: 'legacy_message_credits',
+    model_billing_migration_status: migrationStatus,
+    tokener_bootstrap_status: null,
+    tokener_metering: null,
   }
   queryClient.setQueryData(
     consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
@@ -71,6 +76,11 @@ const renderPanelHook = (
 }
 
 describe('useCredentialPanelState', () => {
+  it('does not fall back to a personal key while migration is processing', () => {
+    const { result } = renderPanelHook(createProvider(), true, 'CLOUD', 'processing')
+    expect(result.current).toMatchObject({ variant: 'credits-processing', showPrioritySwitcher: false })
+  })
+
   it.each([
     ['system', 'authorized', false, 'credits-active'],
     ['system', 'authorized', true, 'api-fallback'],

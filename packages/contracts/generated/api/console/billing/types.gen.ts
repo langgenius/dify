@@ -44,6 +44,12 @@ export type BillingSubscriptionResponse = {
   url: string
 }
 
+export type TokenerEducationCheckoutUnsupportedErrorResponse = {
+  code: 'tokener_education_checkout_unsupported'
+  message: string
+  status: 409
+}
+
 export type BillingUnprocessableEntityErrorResponse = {
   code: 'unprocessable_entity'
   message: string
@@ -85,6 +91,7 @@ export type GetBillingSubscriptionData = {
 
 export type GetBillingSubscriptionErrors = {
   403: ErrorResponse
+  409: TokenerEducationCheckoutUnsupportedErrorResponse | ErrorResponse
   422: BillingUnprocessableEntityErrorResponse | ErrorResponse
   502: BillingOperationFailedErrorResponse | BillingOperationFailedError | ErrorResponse
   503: BillingUnavailableErrorResponse | BillingUnavailableError | ErrorResponse

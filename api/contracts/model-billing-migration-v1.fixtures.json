@@ -1,0 +1,1383 @@
+[
+  {
+    "id": "valid-tokener-decision",
+    "schema": "migration.schema.json",
+    "definition": "DecideCycleRequest",
+    "valid": true,
+    "value": {
+      "api_version": 1,
+      "operation_id": "33333333-3333-4333-8333-333333333333",
+      "expected_revision": 7,
+      "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+      "decision": "tokener",
+      "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+      "manifest": {
+        "schema_version": 1,
+        "tenant_id": "11111111-1111-4111-8111-111111111111",
+        "migration_id": "22222222-2222-4222-8222-222222222222",
+        "plan_revision": 1,
+        "calendar_policy": "LEGACY_TRANSITION_V1",
+        "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+        "subscription_id": "sub_fixture",
+        "paid_period_start": "2027-01-15T18:00:00Z",
+        "paid_period_end": "2028-01-15T18:00:00Z",
+        "funding_invoice_id": "in_fixture_annual",
+        "amount_policy_version": "plans-v1",
+        "model_mapping_version": "hosted-v1",
+        "windows": [
+          {
+            "ordinal": 0,
+            "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "starts_at": "2027-06-17T00:00:00Z",
+            "ends_at": "2027-07-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-06-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 1,
+            "cycle_key": "dify.cycle.v1.c8d99ac75032500bc94280146dd49b324ca090514a74470fce529c6b755801e0",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+            "starts_at": "2027-07-17T00:00:00Z",
+            "ends_at": "2027-08-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-07-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 2,
+            "cycle_key": "dify.cycle.v1.5a8eae08c2dbc0e35540c1ae365a245939b0f217971affe7405af6ce16a6ee0e",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+            "starts_at": "2027-08-17T00:00:00Z",
+            "ends_at": "2027-09-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-08-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 3,
+            "cycle_key": "dify.cycle.v1.1dc92d26b40a4b9293784814a2b58a581187f26064b1246830f0270bd05b9eaf",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+            "starts_at": "2027-09-17T00:00:00Z",
+            "ends_at": "2027-10-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-09-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 4,
+            "cycle_key": "dify.cycle.v1.64cf8db5a75b691e7f027c183c9fd084f124ea4567df782d3e168aaa5d1c8c68",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+            "starts_at": "2027-10-17T00:00:00Z",
+            "ends_at": "2027-11-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-10-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 5,
+            "cycle_key": "dify.cycle.v1.7f76efb3e0824fd2bb92b5f9a05e6c4775290dd4c44d819c595407304ed44561",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+            "starts_at": "2027-11-17T00:00:00Z",
+            "ends_at": "2027-12-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-11-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 6,
+            "cycle_key": "dify.cycle.v1.43c3afeb9bc53b9607cf47394563983762fcb410c43a6ab9d96cc179e2761c63",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+            "starts_at": "2027-12-17T00:00:00Z",
+            "ends_at": "2028-01-15T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-12-16"
+              }
+            ]
+          }
+        ]
+      },
+      "manifest_hash": "sha256:f3ae39ce87bafef86bfeadef2e2e279a922ee693ee8e2a8ef9b1cfd643788006",
+      "preparation_binding_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "billing_receipt_refs": [
+        "annual-reset:fixture"
+      ]
+    }
+  },
+  {
+    "id": "recoverable-status",
+    "schema": "migration.schema.json",
+    "definition": "StatusResponse",
+    "valid": true,
+    "value": {
+      "api_version": 1,
+      "tenant_id": "11111111-1111-4111-8111-111111111111",
+      "migration_id": "22222222-2222-4222-8222-222222222222",
+      "phase": "granting",
+      "attention": "normal",
+      "revision": 9,
+      "route_epoch": 1,
+      "replayed": false,
+      "intent_revision": 1,
+      "claimed_at": "2027-06-17T00:00:00Z",
+      "manifest_hash": "sha256:f3ae39ce87bafef86bfeadef2e2e279a922ee693ee8e2a8ef9b1cfd643788006",
+      "manifest": {
+        "schema_version": 1,
+        "tenant_id": "11111111-1111-4111-8111-111111111111",
+        "migration_id": "22222222-2222-4222-8222-222222222222",
+        "plan_revision": 1,
+        "calendar_policy": "LEGACY_TRANSITION_V1",
+        "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+        "subscription_id": "sub_fixture",
+        "paid_period_start": "2027-01-15T18:00:00Z",
+        "paid_period_end": "2028-01-15T18:00:00Z",
+        "funding_invoice_id": "in_fixture_annual",
+        "amount_policy_version": "plans-v1",
+        "model_mapping_version": "hosted-v1",
+        "windows": [
+          {
+            "ordinal": 0,
+            "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "starts_at": "2027-06-17T00:00:00Z",
+            "ends_at": "2027-07-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-06-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 1,
+            "cycle_key": "dify.cycle.v1.c8d99ac75032500bc94280146dd49b324ca090514a74470fce529c6b755801e0",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+            "starts_at": "2027-07-17T00:00:00Z",
+            "ends_at": "2027-08-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-07-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 2,
+            "cycle_key": "dify.cycle.v1.5a8eae08c2dbc0e35540c1ae365a245939b0f217971affe7405af6ce16a6ee0e",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+            "starts_at": "2027-08-17T00:00:00Z",
+            "ends_at": "2027-09-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-08-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 3,
+            "cycle_key": "dify.cycle.v1.1dc92d26b40a4b9293784814a2b58a581187f26064b1246830f0270bd05b9eaf",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+            "starts_at": "2027-09-17T00:00:00Z",
+            "ends_at": "2027-10-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-09-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 4,
+            "cycle_key": "dify.cycle.v1.64cf8db5a75b691e7f027c183c9fd084f124ea4567df782d3e168aaa5d1c8c68",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+            "starts_at": "2027-10-17T00:00:00Z",
+            "ends_at": "2027-11-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-10-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 5,
+            "cycle_key": "dify.cycle.v1.7f76efb3e0824fd2bb92b5f9a05e6c4775290dd4c44d819c595407304ed44561",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+            "starts_at": "2027-11-17T00:00:00Z",
+            "ends_at": "2027-12-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-11-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 6,
+            "cycle_key": "dify.cycle.v1.43c3afeb9bc53b9607cf47394563983762fcb410c43a6ab9d96cc179e2761c63",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+            "starts_at": "2027-12-17T00:00:00Z",
+            "ends_at": "2028-01-15T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-12-16"
+              }
+            ]
+          }
+        ]
+      },
+      "billing_receipt_refs": [
+        "annual-reset:fixture"
+      ],
+      "commands": [
+        {
+          "command_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+          "remote_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+          "payload_hash": "sha256:a8bed17c378500a03bd5be203f44e4ddd80d507187dec5ee45e3b8e56d692886",
+          "state": "outcome_unknown"
+        }
+      ],
+      "operation_results": [
+        {
+          "operation_id": "33333333-3333-4333-8333-333333333333",
+          "request_hash": "sha256:33ee61a14c5eca2eaf9c6fdaa2372abea4fb6d7a82491d16b487da3102a30a8b",
+          "result_code": 200,
+          "result_revision": 8,
+          "result_summary": {
+            "phase": "claimed",
+            "decision": "tokener"
+          }
+        }
+      ],
+      "model_mapping_version": "hosted-v1",
+      "inventory_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "cycle_decisions": [],
+      "ever_activated": false,
+      "contract_events": {},
+      "prior_manifests": [],
+      "terminated_contract_refs": []
+    }
+  },
+  {
+    "id": "reject-numeric-money",
+    "schema": "migration.schema.json",
+    "valid": false,
+    "value": {
+      "api_version": 1,
+      "operation_id": "33333333-3333-4333-8333-333333333333",
+      "expected_revision": 7,
+      "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+      "decision": "tokener",
+      "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+      "manifest": {
+        "schema_version": 1,
+        "tenant_id": "11111111-1111-4111-8111-111111111111",
+        "migration_id": "22222222-2222-4222-8222-222222222222",
+        "plan_revision": 1,
+        "calendar_policy": "LEGACY_TRANSITION_V1",
+        "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+        "subscription_id": "sub_fixture",
+        "paid_period_start": "2027-01-15T18:00:00Z",
+        "paid_period_end": "2028-01-15T18:00:00Z",
+        "funding_invoice_id": "in_fixture_annual",
+        "amount_policy_version": "plans-v1",
+        "model_mapping_version": "hosted-v1",
+        "windows": [
+          {
+            "ordinal": 0,
+            "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "starts_at": "2027-06-17T00:00:00Z",
+            "ends_at": "2027-07-17T00:00:00Z",
+            "amount_usd_micro": 5000000,
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-06-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 1,
+            "cycle_key": "dify.cycle.v1.c8d99ac75032500bc94280146dd49b324ca090514a74470fce529c6b755801e0",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+            "starts_at": "2027-07-17T00:00:00Z",
+            "ends_at": "2027-08-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-07-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 2,
+            "cycle_key": "dify.cycle.v1.5a8eae08c2dbc0e35540c1ae365a245939b0f217971affe7405af6ce16a6ee0e",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+            "starts_at": "2027-08-17T00:00:00Z",
+            "ends_at": "2027-09-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-08-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 3,
+            "cycle_key": "dify.cycle.v1.1dc92d26b40a4b9293784814a2b58a581187f26064b1246830f0270bd05b9eaf",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+            "starts_at": "2027-09-17T00:00:00Z",
+            "ends_at": "2027-10-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-09-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 4,
+            "cycle_key": "dify.cycle.v1.64cf8db5a75b691e7f027c183c9fd084f124ea4567df782d3e168aaa5d1c8c68",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+            "starts_at": "2027-10-17T00:00:00Z",
+            "ends_at": "2027-11-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-10-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 5,
+            "cycle_key": "dify.cycle.v1.7f76efb3e0824fd2bb92b5f9a05e6c4775290dd4c44d819c595407304ed44561",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+            "starts_at": "2027-11-17T00:00:00Z",
+            "ends_at": "2027-12-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-11-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 6,
+            "cycle_key": "dify.cycle.v1.43c3afeb9bc53b9607cf47394563983762fcb410c43a6ab9d96cc179e2761c63",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+            "starts_at": "2027-12-17T00:00:00Z",
+            "ends_at": "2028-01-15T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-12-16"
+              }
+            ]
+          }
+        ]
+      },
+      "manifest_hash": "sha256:f3ae39ce87bafef86bfeadef2e2e279a922ee693ee8e2a8ef9b1cfd643788006",
+      "preparation_binding_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "billing_receipt_refs": [
+        "annual-reset:fixture"
+      ]
+    },
+    "definition": "DecideCycleRequest"
+  },
+  {
+    "id": "reject-non-day-window",
+    "schema": "migration.schema.json",
+    "valid": false,
+    "value": {
+      "api_version": 1,
+      "operation_id": "33333333-3333-4333-8333-333333333333",
+      "expected_revision": 7,
+      "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+      "decision": "tokener",
+      "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+      "manifest": {
+        "schema_version": 1,
+        "tenant_id": "11111111-1111-4111-8111-111111111111",
+        "migration_id": "22222222-2222-4222-8222-222222222222",
+        "plan_revision": 1,
+        "calendar_policy": "LEGACY_TRANSITION_V1",
+        "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+        "subscription_id": "sub_fixture",
+        "paid_period_start": "2027-01-15T18:00:00Z",
+        "paid_period_end": "2028-01-15T18:00:00Z",
+        "funding_invoice_id": "in_fixture_annual",
+        "amount_policy_version": "plans-v1",
+        "model_mapping_version": "hosted-v1",
+        "windows": [
+          {
+            "ordinal": 0,
+            "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "starts_at": "2027-06-17T00:45:00Z",
+            "ends_at": "2027-07-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-06-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 1,
+            "cycle_key": "dify.cycle.v1.c8d99ac75032500bc94280146dd49b324ca090514a74470fce529c6b755801e0",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+            "starts_at": "2027-07-17T00:00:00Z",
+            "ends_at": "2027-08-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-07-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 2,
+            "cycle_key": "dify.cycle.v1.5a8eae08c2dbc0e35540c1ae365a245939b0f217971affe7405af6ce16a6ee0e",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+            "starts_at": "2027-08-17T00:00:00Z",
+            "ends_at": "2027-09-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-08-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 3,
+            "cycle_key": "dify.cycle.v1.1dc92d26b40a4b9293784814a2b58a581187f26064b1246830f0270bd05b9eaf",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+            "starts_at": "2027-09-17T00:00:00Z",
+            "ends_at": "2027-10-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-09-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 4,
+            "cycle_key": "dify.cycle.v1.64cf8db5a75b691e7f027c183c9fd084f124ea4567df782d3e168aaa5d1c8c68",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+            "starts_at": "2027-10-17T00:00:00Z",
+            "ends_at": "2027-11-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-10-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 5,
+            "cycle_key": "dify.cycle.v1.7f76efb3e0824fd2bb92b5f9a05e6c4775290dd4c44d819c595407304ed44561",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+            "starts_at": "2027-11-17T00:00:00Z",
+            "ends_at": "2027-12-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-11-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 6,
+            "cycle_key": "dify.cycle.v1.43c3afeb9bc53b9607cf47394563983762fcb410c43a6ab9d96cc179e2761c63",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+            "starts_at": "2027-12-17T00:00:00Z",
+            "ends_at": "2028-01-15T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-12-16"
+              }
+            ]
+          }
+        ]
+      },
+      "manifest_hash": "sha256:f3ae39ce87bafef86bfeadef2e2e279a922ee693ee8e2a8ef9b1cfd643788006",
+      "preparation_binding_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "billing_receipt_refs": [
+        "annual-reset:fixture"
+      ]
+    },
+    "definition": "DecideCycleRequest"
+  },
+  {
+    "id": "reject-funding-on-deferral",
+    "schema": "migration.schema.json",
+    "valid": false,
+    "value": {
+      "api_version": 1,
+      "operation_id": "33333333-3333-4333-8333-333333333333",
+      "expected_revision": 7,
+      "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+      "decision": "legacy_deferred",
+      "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+      "manifest": {
+        "schema_version": 1,
+        "tenant_id": "11111111-1111-4111-8111-111111111111",
+        "migration_id": "22222222-2222-4222-8222-222222222222",
+        "plan_revision": 1,
+        "calendar_policy": "LEGACY_TRANSITION_V1",
+        "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+        "subscription_id": "sub_fixture",
+        "paid_period_start": "2027-01-15T18:00:00Z",
+        "paid_period_end": "2028-01-15T18:00:00Z",
+        "funding_invoice_id": "in_fixture_annual",
+        "amount_policy_version": "plans-v1",
+        "model_mapping_version": "hosted-v1",
+        "windows": [
+          {
+            "ordinal": 0,
+            "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "starts_at": "2027-06-17T00:00:00Z",
+            "ends_at": "2027-07-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-06-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 1,
+            "cycle_key": "dify.cycle.v1.c8d99ac75032500bc94280146dd49b324ca090514a74470fce529c6b755801e0",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+            "starts_at": "2027-07-17T00:00:00Z",
+            "ends_at": "2027-08-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-07-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 2,
+            "cycle_key": "dify.cycle.v1.5a8eae08c2dbc0e35540c1ae365a245939b0f217971affe7405af6ce16a6ee0e",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+            "starts_at": "2027-08-17T00:00:00Z",
+            "ends_at": "2027-09-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-08-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 3,
+            "cycle_key": "dify.cycle.v1.1dc92d26b40a4b9293784814a2b58a581187f26064b1246830f0270bd05b9eaf",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+            "starts_at": "2027-09-17T00:00:00Z",
+            "ends_at": "2027-10-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-09-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 4,
+            "cycle_key": "dify.cycle.v1.64cf8db5a75b691e7f027c183c9fd084f124ea4567df782d3e168aaa5d1c8c68",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+            "starts_at": "2027-10-17T00:00:00Z",
+            "ends_at": "2027-11-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-10-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 5,
+            "cycle_key": "dify.cycle.v1.7f76efb3e0824fd2bb92b5f9a05e6c4775290dd4c44d819c595407304ed44561",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+            "starts_at": "2027-11-17T00:00:00Z",
+            "ends_at": "2027-12-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-11-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 6,
+            "cycle_key": "dify.cycle.v1.43c3afeb9bc53b9607cf47394563983762fcb410c43a6ab9d96cc179e2761c63",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+            "starts_at": "2027-12-17T00:00:00Z",
+            "ends_at": "2028-01-15T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-12-16"
+              }
+            ]
+          }
+        ]
+      },
+      "manifest_hash": "sha256:f3ae39ce87bafef86bfeadef2e2e279a922ee693ee8e2a8ef9b1cfd643788006",
+      "preparation_binding_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "billing_receipt_refs": [
+        "annual-reset:fixture"
+      ]
+    },
+    "definition": "DecideCycleRequest"
+  },
+  {
+    "id": "implementation-terminal-frozen-command",
+    "schema": "migration.schema.json",
+    "definition": "ContractEventRequest",
+    "valid": true,
+    "value": {
+      "api_version": 1,
+      "operation_id": "44444444-4444-4444-8444-444444444444",
+      "expected_revision": 8,
+      "business_event_ref": "re_fixture_actual_refund",
+      "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+      "billing_receipt_ref": "receipt-fixture",
+      "event_type": "refund",
+      "terminal": true,
+      "affected_window_ids": [
+        "dify.migration.v1.22222222-2222-4222-8222-222222222222.0"
+      ],
+      "command_payloads": [
+        {
+          "command_id": "dify.correction.v2.fixture",
+          "window": {
+            "ordinal": 0,
+            "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "starts_at": "2027-06-17T00:00:00Z",
+            "ends_at": "2027-07-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-06-16"
+              }
+            ]
+          },
+          "delta_usd_micro": "-5000000",
+          "target_amount_usd_micro": "0",
+          "payload_hash": "sha256:12a5f3889c4d6541e9c0ee1317fb13c6be5ca577db17a143d14bdb6ac59ddc30"
+        }
+      ]
+    }
+  },
+  {
+    "id": "implementation-reject-extra-event-field",
+    "schema": "migration.schema.json",
+    "definition": "ContractEventRequest",
+    "valid": false,
+    "value": {
+      "api_version": 1,
+      "operation_id": "44444444-4444-4444-8444-444444444444",
+      "expected_revision": 8,
+      "business_event_ref": "re_fixture_actual_refund",
+      "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+      "billing_receipt_ref": "receipt-fixture",
+      "event_type": "refund",
+      "terminal": true,
+      "affected_window_ids": [
+        "dify.migration.v1.22222222-2222-4222-8222-222222222222.0"
+      ],
+      "command_payloads": [
+        {
+          "command_id": "dify.correction.v2.fixture",
+          "window": {
+            "ordinal": 0,
+            "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "starts_at": "2027-06-17T00:00:00Z",
+            "ends_at": "2027-07-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-06-16"
+              }
+            ]
+          },
+          "delta_usd_micro": "-5000000",
+          "target_amount_usd_micro": "0",
+          "payload_hash": "sha256:12a5f3889c4d6541e9c0ee1317fb13c6be5ca577db17a143d14bdb6ac59ddc30"
+        }
+      ],
+      "wallet_balance": "0"
+    }
+  },
+  {
+    "id": "implementation-reject-event-without-type",
+    "schema": "migration.schema.json",
+    "definition": "ContractEventRequest",
+    "valid": false,
+    "value": {
+      "api_version": 1,
+      "operation_id": "44444444-4444-4444-8444-444444444444",
+      "expected_revision": 8,
+      "business_event_ref": "re_fixture_actual_refund",
+      "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+      "billing_receipt_ref": "receipt-fixture",
+      "terminal": true,
+      "affected_window_ids": [
+        "dify.migration.v1.22222222-2222-4222-8222-222222222222.0"
+      ],
+      "command_payloads": [
+        {
+          "command_id": "dify.correction.v2.fixture",
+          "window": {
+            "ordinal": 0,
+            "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "starts_at": "2027-06-17T00:00:00Z",
+            "ends_at": "2027-07-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-06-16"
+              }
+            ]
+          },
+          "delta_usd_micro": "-5000000",
+          "target_amount_usd_micro": "0",
+          "payload_hash": "sha256:12a5f3889c4d6541e9c0ee1317fb13c6be5ca577db17a143d14bdb6ac59ddc30"
+        }
+      ]
+    }
+  },
+  {
+    "id": "implementation-reject-unfrozen-correction",
+    "schema": "migration.schema.json",
+    "definition": "ContractEventRequest",
+    "valid": false,
+    "value": {
+      "api_version": 1,
+      "operation_id": "44444444-4444-4444-8444-444444444444",
+      "expected_revision": 8,
+      "business_event_ref": "re_fixture_actual_refund",
+      "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+      "billing_receipt_ref": "receipt-fixture",
+      "event_type": "refund",
+      "terminal": true,
+      "affected_window_ids": [
+        "dify.migration.v1.22222222-2222-4222-8222-222222222222.0"
+      ],
+      "command_payloads": []
+    }
+  },
+  {
+    "id": "implementation-status-with-pending-terminal-event",
+    "schema": "migration.schema.json",
+    "definition": "StatusResponse",
+    "valid": true,
+    "value": {
+      "api_version": 1,
+      "tenant_id": "11111111-1111-4111-8111-111111111111",
+      "migration_id": "22222222-2222-4222-8222-222222222222",
+      "phase": "blocked",
+      "attention": "normal",
+      "revision": 9,
+      "route_epoch": 1,
+      "replayed": false,
+      "intent_revision": 1,
+      "claimed_at": "2027-06-17T00:00:00Z",
+      "manifest_hash": "sha256:f3ae39ce87bafef86bfeadef2e2e279a922ee693ee8e2a8ef9b1cfd643788006",
+      "manifest": {
+        "schema_version": 1,
+        "tenant_id": "11111111-1111-4111-8111-111111111111",
+        "migration_id": "22222222-2222-4222-8222-222222222222",
+        "plan_revision": 1,
+        "calendar_policy": "LEGACY_TRANSITION_V1",
+        "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+        "subscription_id": "sub_fixture",
+        "paid_period_start": "2027-01-15T18:00:00Z",
+        "paid_period_end": "2028-01-15T18:00:00Z",
+        "funding_invoice_id": "in_fixture_annual",
+        "amount_policy_version": "plans-v1",
+        "model_mapping_version": "hosted-v1",
+        "windows": [
+          {
+            "ordinal": 0,
+            "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "starts_at": "2027-06-17T00:00:00Z",
+            "ends_at": "2027-07-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-06-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 1,
+            "cycle_key": "dify.cycle.v1.c8d99ac75032500bc94280146dd49b324ca090514a74470fce529c6b755801e0",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+            "starts_at": "2027-07-17T00:00:00Z",
+            "ends_at": "2027-08-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-07-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 2,
+            "cycle_key": "dify.cycle.v1.5a8eae08c2dbc0e35540c1ae365a245939b0f217971affe7405af6ce16a6ee0e",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+            "starts_at": "2027-08-17T00:00:00Z",
+            "ends_at": "2027-09-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-08-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 3,
+            "cycle_key": "dify.cycle.v1.1dc92d26b40a4b9293784814a2b58a581187f26064b1246830f0270bd05b9eaf",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+            "starts_at": "2027-09-17T00:00:00Z",
+            "ends_at": "2027-10-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-09-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 4,
+            "cycle_key": "dify.cycle.v1.64cf8db5a75b691e7f027c183c9fd084f124ea4567df782d3e168aaa5d1c8c68",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+            "starts_at": "2027-10-17T00:00:00Z",
+            "ends_at": "2027-11-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-10-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 5,
+            "cycle_key": "dify.cycle.v1.7f76efb3e0824fd2bb92b5f9a05e6c4775290dd4c44d819c595407304ed44561",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+            "starts_at": "2027-11-17T00:00:00Z",
+            "ends_at": "2027-12-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-11-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 6,
+            "cycle_key": "dify.cycle.v1.43c3afeb9bc53b9607cf47394563983762fcb410c43a6ab9d96cc179e2761c63",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+            "starts_at": "2027-12-17T00:00:00Z",
+            "ends_at": "2028-01-15T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-12-16"
+              }
+            ]
+          }
+        ]
+      },
+      "billing_receipt_refs": [
+        "annual-reset:fixture"
+      ],
+      "commands": [
+        {
+          "command_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+          "remote_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+          "payload_hash": "sha256:a8bed17c378500a03bd5be203f44e4ddd80d507187dec5ee45e3b8e56d692886",
+          "state": "outcome_unknown"
+        }
+      ],
+      "operation_results": [
+        {
+          "operation_id": "33333333-3333-4333-8333-333333333333",
+          "request_hash": "sha256:33ee61a14c5eca2eaf9c6fdaa2372abea4fb6d7a82491d16b487da3102a30a8b",
+          "result_code": 200,
+          "result_revision": 8,
+          "result_summary": {
+            "phase": "claimed",
+            "decision": "tokener"
+          }
+        }
+      ],
+      "model_mapping_version": "hosted-v1",
+      "inventory_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "cycle_decisions": [],
+      "ever_activated": true,
+      "contract_events": {
+        "re_fixture_actual_refund": {
+          "api_version": 1,
+          "operation_id": "44444444-4444-4444-8444-444444444444",
+          "expected_revision": 8,
+          "business_event_ref": "re_fixture_actual_refund",
+          "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+          "billing_receipt_ref": "receipt-fixture",
+          "event_type": "refund",
+          "terminal": true,
+          "affected_window_ids": [
+            "dify.migration.v1.22222222-2222-4222-8222-222222222222.0"
+          ],
+          "command_payloads": [
+            {
+              "command_id": "dify.correction.v2.fixture",
+              "window": {
+                "ordinal": 0,
+                "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+                "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+                "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+                "starts_at": "2027-06-17T00:00:00Z",
+                "ends_at": "2027-07-17T00:00:00Z",
+                "amount_usd_micro": "5000000",
+                "aliases": [
+                  {
+                    "kind": "legacy_annual_target_date",
+                    "id": "2027-06-16"
+                  }
+                ]
+              },
+              "delta_usd_micro": "-5000000",
+              "target_amount_usd_micro": "0",
+              "payload_hash": "sha256:12a5f3889c4d6541e9c0ee1317fb13c6be5ca577db17a143d14bdb6ac59ddc30"
+            }
+          ]
+        }
+      },
+      "prior_manifests": [],
+      "terminated_contract_refs": [
+        "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7"
+      ],
+      "blocked_from": "active",
+      "pending_contract_event": {
+        "api_version": 1,
+        "operation_id": "44444444-4444-4444-8444-444444444444",
+        "expected_revision": 8,
+        "business_event_ref": "re_fixture_actual_refund",
+        "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+        "billing_receipt_ref": "receipt-fixture",
+        "event_type": "refund",
+        "terminal": true,
+        "affected_window_ids": [
+          "dify.migration.v1.22222222-2222-4222-8222-222222222222.0"
+        ],
+        "command_payloads": [
+          {
+            "command_id": "dify.correction.v2.fixture",
+            "window": {
+              "ordinal": 0,
+              "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+              "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+              "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+              "starts_at": "2027-06-17T00:00:00Z",
+              "ends_at": "2027-07-17T00:00:00Z",
+              "amount_usd_micro": "5000000",
+              "aliases": [
+                {
+                  "kind": "legacy_annual_target_date",
+                  "id": "2027-06-16"
+                }
+              ]
+            },
+            "delta_usd_micro": "-5000000",
+            "target_amount_usd_micro": "0",
+            "payload_hash": "sha256:12a5f3889c4d6541e9c0ee1317fb13c6be5ca577db17a143d14bdb6ac59ddc30"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "implementation-replayed-original-lease-receipt",
+    "schema": "migration.schema.json",
+    "definition": "StatusResponse",
+    "valid": true,
+    "value": {
+      "api_version": 1,
+      "tenant_id": "11111111-1111-4111-8111-111111111111",
+      "migration_id": "22222222-2222-4222-8222-222222222222",
+      "phase": "blocked",
+      "attention": "normal",
+      "revision": 9,
+      "route_epoch": 1,
+      "replayed": true,
+      "intent_revision": 1,
+      "claimed_at": "2027-06-17T00:00:00Z",
+      "manifest_hash": "sha256:f3ae39ce87bafef86bfeadef2e2e279a922ee693ee8e2a8ef9b1cfd643788006",
+      "manifest": {
+        "schema_version": 1,
+        "tenant_id": "11111111-1111-4111-8111-111111111111",
+        "migration_id": "22222222-2222-4222-8222-222222222222",
+        "plan_revision": 1,
+        "calendar_policy": "LEGACY_TRANSITION_V1",
+        "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+        "subscription_id": "sub_fixture",
+        "paid_period_start": "2027-01-15T18:00:00Z",
+        "paid_period_end": "2028-01-15T18:00:00Z",
+        "funding_invoice_id": "in_fixture_annual",
+        "amount_policy_version": "plans-v1",
+        "model_mapping_version": "hosted-v1",
+        "windows": [
+          {
+            "ordinal": 0,
+            "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+            "starts_at": "2027-06-17T00:00:00Z",
+            "ends_at": "2027-07-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-06-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 1,
+            "cycle_key": "dify.cycle.v1.c8d99ac75032500bc94280146dd49b324ca090514a74470fce529c6b755801e0",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.1",
+            "starts_at": "2027-07-17T00:00:00Z",
+            "ends_at": "2027-08-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-07-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 2,
+            "cycle_key": "dify.cycle.v1.5a8eae08c2dbc0e35540c1ae365a245939b0f217971affe7405af6ce16a6ee0e",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.2",
+            "starts_at": "2027-08-17T00:00:00Z",
+            "ends_at": "2027-09-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-08-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 3,
+            "cycle_key": "dify.cycle.v1.1dc92d26b40a4b9293784814a2b58a581187f26064b1246830f0270bd05b9eaf",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.3",
+            "starts_at": "2027-09-17T00:00:00Z",
+            "ends_at": "2027-10-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-09-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 4,
+            "cycle_key": "dify.cycle.v1.64cf8db5a75b691e7f027c183c9fd084f124ea4567df782d3e168aaa5d1c8c68",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.4",
+            "starts_at": "2027-10-17T00:00:00Z",
+            "ends_at": "2027-11-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-10-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 5,
+            "cycle_key": "dify.cycle.v1.7f76efb3e0824fd2bb92b5f9a05e6c4775290dd4c44d819c595407304ed44561",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.5",
+            "starts_at": "2027-11-17T00:00:00Z",
+            "ends_at": "2027-12-17T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-11-16"
+              }
+            ]
+          },
+          {
+            "ordinal": 6,
+            "cycle_key": "dify.cycle.v1.43c3afeb9bc53b9607cf47394563983762fcb410c43a6ab9d96cc179e2761c63",
+            "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+            "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.6",
+            "starts_at": "2027-12-17T00:00:00Z",
+            "ends_at": "2028-01-15T00:00:00Z",
+            "amount_usd_micro": "5000000",
+            "aliases": [
+              {
+                "kind": "legacy_annual_target_date",
+                "id": "2027-12-16"
+              }
+            ]
+          }
+        ]
+      },
+      "billing_receipt_refs": [
+        "annual-reset:fixture"
+      ],
+      "commands": [
+        {
+          "command_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+          "remote_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+          "payload_hash": "sha256:a8bed17c378500a03bd5be203f44e4ddd80d507187dec5ee45e3b8e56d692886",
+          "state": "outcome_unknown"
+        }
+      ],
+      "operation_results": [
+        {
+          "operation_id": "33333333-3333-4333-8333-333333333333",
+          "request_hash": "sha256:33ee61a14c5eca2eaf9c6fdaa2372abea4fb6d7a82491d16b487da3102a30a8b",
+          "result_code": 200,
+          "result_revision": 8,
+          "result_summary": {
+            "phase": "claimed",
+            "decision": "tokener"
+          }
+        }
+      ],
+      "model_mapping_version": "hosted-v1",
+      "inventory_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "cycle_decisions": [],
+      "ever_activated": true,
+      "contract_events": {
+        "re_fixture_actual_refund": {
+          "api_version": 1,
+          "operation_id": "44444444-4444-4444-8444-444444444444",
+          "expected_revision": 8,
+          "business_event_ref": "re_fixture_actual_refund",
+          "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+          "billing_receipt_ref": "receipt-fixture",
+          "event_type": "refund",
+          "terminal": true,
+          "affected_window_ids": [
+            "dify.migration.v1.22222222-2222-4222-8222-222222222222.0"
+          ],
+          "command_payloads": [
+            {
+              "command_id": "dify.correction.v2.fixture",
+              "window": {
+                "ordinal": 0,
+                "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+                "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+                "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+                "starts_at": "2027-06-17T00:00:00Z",
+                "ends_at": "2027-07-17T00:00:00Z",
+                "amount_usd_micro": "5000000",
+                "aliases": [
+                  {
+                    "kind": "legacy_annual_target_date",
+                    "id": "2027-06-16"
+                  }
+                ]
+              },
+              "delta_usd_micro": "-5000000",
+              "target_amount_usd_micro": "0",
+              "payload_hash": "sha256:12a5f3889c4d6541e9c0ee1317fb13c6be5ca577db17a143d14bdb6ac59ddc30"
+            }
+          ]
+        }
+      },
+      "prior_manifests": [],
+      "terminated_contract_refs": [
+        "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7"
+      ],
+      "blocked_from": "active",
+      "pending_contract_event": {
+        "api_version": 1,
+        "operation_id": "44444444-4444-4444-8444-444444444444",
+        "expected_revision": 8,
+        "business_event_ref": "re_fixture_actual_refund",
+        "contract_ref": "dify.contract.v1.eb3d7bacaccaeaf767a863e51b3b63bc7033a58971010a371e28552349349ee7",
+        "billing_receipt_ref": "receipt-fixture",
+        "event_type": "refund",
+        "terminal": true,
+        "affected_window_ids": [
+          "dify.migration.v1.22222222-2222-4222-8222-222222222222.0"
+        ],
+        "command_payloads": [
+          {
+            "command_id": "dify.correction.v2.fixture",
+            "window": {
+              "ordinal": 0,
+              "cycle_key": "dify.cycle.v1.d03379f2a78034a6b4c0adbf05611b675704fb1fffefe03a50ecfa15c018958a",
+              "window_id": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+              "source_ref": "dify.migration.v1.22222222-2222-4222-8222-222222222222.0",
+              "starts_at": "2027-06-17T00:00:00Z",
+              "ends_at": "2027-07-17T00:00:00Z",
+              "amount_usd_micro": "5000000",
+              "aliases": [
+                {
+                  "kind": "legacy_annual_target_date",
+                  "id": "2027-06-16"
+                }
+              ]
+            },
+            "delta_usd_micro": "-5000000",
+            "target_amount_usd_micro": "0",
+            "payload_hash": "sha256:12a5f3889c4d6541e9c0ee1317fb13c6be5ca577db17a143d14bdb6ac59ddc30"
+          }
+        ]
+      },
+      "replayed_operation": {
+        "operation_id": "55555555-5555-4555-8555-555555555555",
+        "request_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "result_code": 200,
+        "result_revision": 5,
+        "result_summary": {
+          "phase": "claimed",
+          "route_epoch": 1
+        },
+        "lease_action": "acquire",
+        "lease_token": "66666666-6666-4666-8666-666666666666",
+        "lease_expires_at": "2027-06-17T00:01:00Z"
+      }
+    }
+  }
+]

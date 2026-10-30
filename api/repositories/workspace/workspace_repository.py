@@ -7,6 +7,7 @@ from typing import override
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.model_billing import ModelBillingSource
 from libs.datetime_utils import naive_utc_now
 from libs.pagination import paginate_query
 from models import TenantCreditPool
@@ -25,6 +26,8 @@ from models.account import (
 from models.dataset import Dataset
 from models.enums import ProviderQuotaType
 from models.model import App
+from models.model_billing import TenantModelBillingProfile
+from models.tokener import TenantTokenerIntegration
 from repositories.account.repository import SQLAlchemyAccountRepository
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthWorkspaceQuery
@@ -132,14 +135,24 @@ class WorkspaceRepository(
                         include_plugins=[],
                     )
                 )
-            session.add(
-                TenantCreditPool(
-                    tenant_id=tenant.id,
-                    quota_limit=creation.trial_credits,
-                    quota_used=0,
-                    pool_type=ProviderQuotaType.TRIAL,
+            if creation.model_billing_source == ModelBillingSource.TOKENER:
+                session.add_all(
+                    [
+                        TenantModelBillingProfile(tenant_id=tenant.id, model_billing_source="tokener"),
+                        TenantTokenerIntegration(
+                            tenant_id=tenant.id, plugin_unique_identifier=creation.tokener_plugin_unique_identifier
+                        ),
+                    ]
                 )
-            )
+            else:
+                session.add(
+                    TenantCreditPool(
+                        tenant_id=tenant.id,
+                        quota_limit=creation.trial_credits,
+                        quota_used=0,
+                        pool_type=ProviderQuotaType.TRIAL,
+                    )
+                )
             session.flush()
             return CreatedWorkspace(
                 tenant.id,
