@@ -7,7 +7,6 @@ from contextlib import ExitStack
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum, auto
-from functools import singledispatch
 from typing import Final
 from unittest.mock import patch
 
@@ -83,6 +82,7 @@ from tests.helpers.unit.controllers.openapi.auth._world import (
     CLIENT_ID,
     TOKEN_ID,
     account_subject,
+    canonical,
     make_account,
     make_app,
     make_ctx,
@@ -2197,41 +2197,6 @@ def _endpoint_spec(app: Flask, rule: Rule, method: str) -> EndpointSpec | None:
     return handler.__spec__ if hasattr(handler, "__spec__") else None
 
 
-@singledispatch
-def _config(_requirement: Requirement) -> object:
-    return None
-
-
-@_config.register
-def _(requirement: CheckSubject) -> object:
-    return requirement.allowed
-
-
-@_config.register
-def _(requirement: CheckAppMode) -> object:
-    return requirement.modes
-
-
-@_config.register
-def _(requirement: CheckScope) -> object:
-    return requirement.scope
-
-
-@_config.register
-def _(requirement: CheckRBACPermission) -> object:
-    return tuple((check.scene, repr(check.locator)) for check in requirement.checks)
-
-
-@_config.register
-def _(requirement: CheckWorkspaceRole) -> object:
-    return requirement.allowed_roles
-
-
-def _canonical(requirement: Requirement) -> tuple[type[Requirement], object]:
-    """`Requirement` has no `__eq__`, so compare by type plus the config that sets it apart."""
-    return type(requirement), _config(requirement)
-
-
 def _spec_for(app: Flask, route: Route) -> EndpointSpec | None:
     for rule in app.url_map.iter_rules():
         if str(rule) == _rule_path(route) and route.method in (rule.methods or set()):
@@ -2658,7 +2623,7 @@ class TestAuthMatrixCases:
         """
         spec = _spec_for(matrix_app, route)
         assert spec is not None, route.id
-        assert [*map(_canonical, spec.requirements)] == [*map(_canonical, DECLARED[route.id])]
+        assert [*map(canonical, spec.requirements)] == [*map(canonical, DECLARED[route.id])]
 
     @staticmethod
     @pytest.fixture
