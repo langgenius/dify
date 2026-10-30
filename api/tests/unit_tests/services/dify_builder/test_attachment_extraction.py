@@ -31,7 +31,10 @@ def test_native_stream_stops_before_materializing_an_oversized_file() -> None:
         yield b"a" * (10 * 1024 * 1024 + 1)
         raise AssertionError("must not continue an oversized stream")
 
-    assert extract_local_context("txt", chunks()).reason == "byte_limit"
+    stream = chunks()
+    assert extract_local_context("txt", stream).reason == "byte_limit"
+    with pytest.raises(StopIteration):
+        next(stream)
 
 
 @pytest.mark.parametrize(
