@@ -1,4 +1,3 @@
-import os
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from dataclasses import replace
@@ -1078,8 +1077,7 @@ def _typed_status_http_response(
     with (
         httpx.Client(transport=httpx.MockTransport(respond)) as client,
         patch.object(transport, "_http_client", client),
-        patch.dict(os.environ, {"BILLING_API_SECRET_KEY": "synthetic"}),
-        config_overrides_context(NETWORK_ACCESS_API_URL="https://test.invalid"),
+        config_overrides_context(NETWORK_ACCESS_API_URL="https://test.invalid", BILLING_API_SECRET_KEY="synthetic"),
     ):
         gateway = NetworkAccessGroupGateway()
         service = NetworkAccessGroupService(

@@ -79,9 +79,9 @@ def _ok(reply: BillingModel | dict[str, object]) -> httpx.Response:
 @pytest.fixture
 def respond(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]) -> Respond:
     """Answer every saas request with the latest `response`; the returned list records every request of the test."""
-    monkeypatch.setenv("BILLING_API_URL", "https://billing.internal/v1")
-    monkeypatch.setenv("BILLING_API_SECRET_KEY", "test-secret")
-    config_overrides(NETWORK_ACCESS_API_URL="")
+    config_overrides(
+        BILLING_API_URL="https://billing.internal/v1", BILLING_API_SECRET_KEY="test-secret", NETWORK_ACCESS_API_URL=""
+    )
 
     requests: list[httpx.Request] = []
 

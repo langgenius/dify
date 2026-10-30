@@ -13,6 +13,7 @@ from controllers.console.billing.error import (
 )
 from enums import CloudPlan
 from machinery.context import RequestContext
+from services.billing_client import billing
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
@@ -56,7 +57,9 @@ class TestBillingPortal:
         resource = Subscription()
         method = unwrap(resource.get)
         query = SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month")
-        billing_portal.get_subscription.return_value = {"url": "https://billing.example.com/checkout"}
+        billing_portal.get_subscription.return_value = billing.GetSubscriptionPaymentLinkReply(
+            url="https://billing.example.com/checkout"
+        )
 
         with app.test_request_context("/billing/subscription"):
             result = method(resource, query, request_context)
@@ -76,7 +79,7 @@ class TestBillingPortal:
     ) -> None:
         resource = Invoices()
         method = unwrap(resource.get)
-        billing_portal.get_invoices.return_value = {"url": "https://billing.example.com/portal"}
+        billing_portal.get_invoices.return_value = billing.GetInvoicesReply(url="https://billing.example.com/portal")
 
         with app.test_request_context("/billing/invoices"):
             result = method(resource, request_context)

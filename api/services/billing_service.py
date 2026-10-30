@@ -7,8 +7,6 @@ from pydantic import ValidationError
 
 from extensions.ext_redis import redis_client
 from services.billing_client import billing, saas
-from services.billing_portal_service import BillingPortalLink
-from services.compliance_download_service import ComplianceDownloadLink
 
 logger = logging.getLogger(__name__)
 
@@ -133,11 +131,10 @@ class BillingService:
     @classmethod
     def get_subscription(
         cls, plan: str, interval: str, prefilled_email: str = "", tenant_id: str = ""
-    ) -> BillingPortalLink:
-        reply = billing.subscription_get_subscription_payment_link(
+    ) -> billing.GetSubscriptionPaymentLinkReply:
+        return billing.subscription_get_subscription_payment_link(
             plan=plan, interval=interval, prefilled_email=prefilled_email, tenant_id=tenant_id
         )
-        return {"url": reply.url}
 
     @classmethod
     @deprecated("Only used by the deprecated model-provider checkout endpoint.")
@@ -149,9 +146,8 @@ class BillingService:
         )
 
     @classmethod
-    def get_invoices(cls, prefilled_email: str = "", tenant_id: str = "") -> BillingPortalLink:
-        reply = billing.invoice_get_invoices(prefilled_email=prefilled_email, tenant_id=tenant_id)
-        return {"url": reply.url}
+    def get_invoices(cls, prefilled_email: str = "", tenant_id: str = "") -> billing.GetInvoicesReply:
+        return billing.invoice_get_invoices(prefilled_email=prefilled_email, tenant_id=tenant_id)
 
     @classmethod
     def delete_account(cls, account_id: str) -> saas.DeleteAccountReply:
@@ -219,13 +215,12 @@ class BillingService:
         tenant_id: str,
         ip: str,
         device_info: str,
-    ) -> ComplianceDownloadLink:
-        reply = billing.compliance_download_compliance_document(
+    ) -> billing.DownloadComplianceDocumentReply:
+        return billing.compliance_download_compliance_document(
             body=billing.DownloadComplianceDocumentReq(
                 doc_name=doc_name, account_id=account_id, tenant_id=tenant_id, ip_address=ip, device_info=device_info
             )
         )
-        return {"url": reply.url}
 
     @classmethod
     def clean_billing_info_cache(cls, tenant_id: str) -> None:

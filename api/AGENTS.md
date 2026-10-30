@@ -40,6 +40,7 @@ changes, and CI checks the PR against its target revision.
 ## Billing And SaaS Calls
 
 - Call billing and saas only through the generated functions in `services/billing_client`; do not hand-write paths or response types.
+- Ruff's banned-api rule (TID251) enforces this: outside `services/billing_client`, reading the billing URL and secret settings or calling `transport.request` fails lint.
 - To call a new endpoint, add it to `ALLOWED_OPERATIONS` in `dev/generate_billing_client.py` and rerun that script against a dify-saas checkout. Never edit the generated modules or snapshots by hand.
 
 ## Typing Best Practises
