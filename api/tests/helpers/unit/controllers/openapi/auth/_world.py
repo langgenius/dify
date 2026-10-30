@@ -8,17 +8,28 @@ those models had to be chased through six files.
 from __future__ import annotations
 
 import uuid
-from typing import NoReturn
+from functools import singledispatch
+from typing import NoReturn, Protocol
 
 from sqlalchemy.orm import Session
 
 from constants.oauth_bearer import SubjectType, TokenType
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.requirements import (
+    CheckAppMode,
+    CheckRBACPermission,
+    CheckScope,
+    CheckSubject,
+    CheckWorkspaceRole,
+    Requirement,
+)
+from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext
 from models import Account, App, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
+from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.enums import AppStatus
 from models.model import AppMode, IconType
 from services.enterprise.enterprise_service import WebAppSettings
@@ -35,6 +46,8 @@ ACCOUNT_ID = "00000000-0000-0000-0000-000000000003"
 TOKEN_ID = "00000000-0000-0000-0000-000000000004"
 SESSION_ID = "00000000-0000-0000-0000-000000000005"
 OTHER_TENANT_ID = "00000000-0000-0000-0000-000000000006"
+AGENT_ID = "00000000-0000-0000-0000-000000000007"
+AGENT_APP_ID = "00000000-0000-0000-0000-000000000008"
 CLIENT_ID = "openapi-client"
 ACCOUNT_EMAIL = "account@example.com"
 SSO_EMAIL = "user@sso.com"
@@ -84,6 +97,24 @@ def make_app(
     )
 
 
+def make_agent(
+    *,
+    tenant_id: str = TENANT_ID,
+    scope: AgentScope = AgentScope.ROSTER,
+    source: AgentSource = AgentSource.AGENT_APP,
+    status: AgentStatus = AgentStatus.ACTIVE,
+) -> Agent:
+    return Agent(
+        id=AGENT_ID,
+        tenant_id=tenant_id,
+        name="Roster agent",
+        scope=scope,
+        source=source,
+        app_id=AGENT_APP_ID,
+        status=status,
+    )
+
+
 def make_tenant(*, tenant_id: str = TENANT_ID, status: TenantStatus = TenantStatus.NORMAL) -> Tenant:
     tenant = Tenant(name="OpenAPI tenant", status=status)
     tenant.id = tenant_id
@@ -129,3 +160,44 @@ def webapp_settings(access_mode: str) -> WebAppSettings:
 def never_reached(*_args: object, **_kwargs: object) -> NoReturn:
     """Stand-in for anything a test's own setup says the code under test must not reach."""
     raise AssertionError("reached a call this test's setup says nothing should have made")
+
+
+class EndpointOwner(Protocol):
+    """A route handler `@endpoint` has attached its spec to."""
+
+    __spec__: EndpointSpec
+
+
+@singledispatch
+def _config(_requirement: Requirement) -> object:
+    return None
+
+
+@_config.register
+def _(requirement: CheckSubject) -> object:
+    return requirement.allowed
+
+
+@_config.register
+def _(requirement: CheckAppMode) -> object:
+    return requirement.modes
+
+
+@_config.register
+def _(requirement: CheckScope) -> object:
+    return requirement.scope
+
+
+@_config.register
+def _(requirement: CheckRBACPermission) -> object:
+    return tuple((check.scene, repr(check.locator)) for check in requirement.checks)
+
+
+@_config.register
+def _(requirement: CheckWorkspaceRole) -> object:
+    return requirement.allowed_roles
+
+
+def canonical(requirement: Requirement) -> tuple[type[Requirement], object]:
+    """`Requirement` has no `__eq__`, so compare by type plus the config that sets it apart."""
+    return type(requirement), _config(requirement)
