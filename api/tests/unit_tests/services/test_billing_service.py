@@ -908,6 +908,41 @@ class TestBillingServiceQuotaOperations:
         call_json = mock_send_request.call_args[1]["json"]
         assert call_json["bucket"] == "paid"
 
+    @pytest.mark.parametrize(
+        ("status_code", "error_type"),
+        [
+            (409, BillingUpstreamInvalidResponseError),
+            (429, BillingUpstreamUnavailableError),
+            (503, BillingUpstreamUnavailableError),
+        ],
+    )
+    def test_quota_commit_classifies_permanent_and_retryable_http_errors(
+        self,
+        mock_send_request,
+        status_code,
+        error_type,
+    ):
+        mock_send_request.side_effect = _BillingHTTPStatusError("quota settlement failed", status_code)
+
+        with pytest.raises(error_type):
+            BillingService.quota_commit(
+                tenant_id="t1",
+                feature_key="trigger_event",
+                reservation_id="rid-1",
+                actual_amount=1,
+            )
+
+    def test_quota_commit_treats_unknown_response_as_retryable(self, mock_send_request):
+        mock_send_request.return_value = {"unexpected": "response"}
+
+        with pytest.raises(BillingUpstreamUnavailableError):
+            BillingService.quota_commit(
+                tenant_id="t1",
+                feature_key="trigger_event",
+                reservation_id="rid-1",
+                actual_amount=1,
+            )
+
     def test_quota_release_success(self, mock_send_request):
         expected = {"available": 100, "reserved": 0, "released": 1}
         mock_send_request.return_value = expected

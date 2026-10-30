@@ -14,8 +14,10 @@ from models.account import (
     InvitationCodeStatus,
     Tenant,
     TenantAccountJoin,
+    TenantAccountRole,
     TenantStatus,
 )
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthAccountRepository
 from services.account_email import normalize_email
@@ -53,6 +55,28 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
         """Load a detached identity for framework adapters that require Account."""
         with self._session_factory() as session:
             return session.get(Account, account_id)
+
+    def get_workspace_identity(self, account_id: str, workspace_id: str) -> Account | None:
+        """Materialize an active workspace owner's identity without changing active membership."""
+        with self._session_factory() as session:
+            account = session.scalar(
+                select(Account)
+                .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
+                .where(
+                    Account.id == account_id,
+                    Tenant.id == workspace_id,
+                    Tenant.status == TenantStatus.NORMAL,
+                    TenantAccountJoin.role == TenantAccountRole.OWNER,
+                )
+                .limit(1)
+            )
+            if account is None:
+                return None
+            account.set_tenant_id_with_session(workspace_id, session=session)
+            if account.current_tenant_id != workspace_id or account.role != TenantAccountRole.OWNER:
+                return None
+            return account
 
     def find_identity(self, email: str, *, case_fallback: bool = False) -> Account | None:
         """Prefer an exact email match, then the oldest normalized match when requested.
@@ -257,15 +281,23 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
             return True
 
     @override
-    def update_profile(self, account_id: str, changes: AccountProfileChanges) -> AccountSnapshot | None:
+    def update_profile(
+        self, account_id: str, workspace_id: str, changes: AccountProfileChanges
+    ) -> AccountSnapshot | None:
         with self._session_factory.begin() as session:
-            account = session.get(Account, account_id)
+            account = session.scalar(select(Account).where(Account.id == account_id).with_for_update())
             if account is None:
                 return None
 
             if changes.name is not None:
                 account.name = changes.name
             if changes.avatar is not None:
+                if changes.avatar and changes.avatar != account.avatar:
+                    lock_and_validate_owned_upload_files_in_session(
+                        session,
+                        tenant_id=workspace_id,
+                        upload_file_ids=(changes.avatar,),
+                    )
                 account.avatar = changes.avatar
             if changes.interface_language is not None:
                 account.interface_language = changes.interface_language

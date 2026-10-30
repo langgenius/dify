@@ -11,16 +11,18 @@ from sqlalchemy.orm import Session, sessionmaker
 import services.app_task_service as task_module
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
+from enums.creator import CreatorUserRole
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
 from libs.broadcast_channel.redis.pubsub_channel import Topic
 from models import EndUser
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.app_task_service import AppTaskService
+from services.file_adapters import build_file_service
 from tests.unit_tests.services.test_app_task_service import _StopRedis
 
 
@@ -104,6 +106,7 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
     pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="state")
     sqlite_session.add_all([run, pause])
     sqlite_session.commit()
+    files = build_file_service(session_factory=sqlite_session_factory)
     for node_app, origin in (
         ("app-1", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
         ("source-app", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
@@ -114,6 +117,7 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
             user=EndUser(id="user-1"),
             app_id=node_app,
             triggered_from=origin,
+            files=files,
         ).save(
             WorkflowNodeExecution(
                 id=f"node-{node_app}",

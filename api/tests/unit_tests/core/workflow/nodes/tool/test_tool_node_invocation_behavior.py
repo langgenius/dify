@@ -7,7 +7,7 @@ from unittest.mock import patch
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
+from core.workflow.node_runtime import DifyToolFileManager, DifyToolNodeRuntime, build_knowledge_index_files
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.graph import Graph
@@ -15,6 +15,7 @@ from graphon.node_events import StreamCompletedEvent
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool.tool_node import ToolNode
 from graphon.runtime import RuntimeState, VariablePool
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -57,6 +58,8 @@ def init_tool_node(config: dict[str, object]) -> ToolNode:
     node_factory = DifyNodeFactory(
         init_params=init_params,
         runtime_state=graph_runtime_state,
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=build_knowledge_index_files(),
     )
 
     Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
@@ -69,7 +72,7 @@ def init_tool_node(config: dict[str, object]) -> ToolNode:
         init_params=init_params,
         runtime_state=graph_runtime_state,
         tool_file_manager=tool_file_manager,
-        runtime=DifyToolNodeRuntime(init_params.run_context),
+        runtime=DifyToolNodeRuntime(init_params.run_context, knowledge_retrieval=make_knowledge_retriever()),
     )
     node.bind_execution_id(str(uuid.uuid4()))
     return node

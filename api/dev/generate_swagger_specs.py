@@ -29,9 +29,6 @@ API_ROOT = Path(__file__).resolve().parents[1]
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
-# Import after script path setup.
-from libs.flask_restx_compat import finalize_openapi_payload  # noqa: E402
-
 
 @dataclass(frozen=True)
 class SpecTarget:
@@ -288,7 +285,6 @@ def generate_specs(output_dir: Path) -> list[Path]:
         # happen before this exporter forces its generation-only defaults.
         with app.test_request_context(target.route):
             payload = Swagger(target_apis[target.route]).as_dict()
-        payload = finalize_openapi_payload(payload)
 
         output_path = output_dir / target.filename
         output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")

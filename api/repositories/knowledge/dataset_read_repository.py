@@ -6,221 +6,110 @@ they never create, commit, or close a session and perform no external I/O.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import uuid
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 import sqlalchemy as sa
-from sqlalchemy import Select, func, select, tuple_
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy import func, select, tuple_
+from sqlalchemy.orm import Session
 
-from core.app.file_access import DatabaseFileAccessController
-from core.rag.entities import ParentMode, Rule
-from models.account import Account
+from configs import dify_config
+from enums.account import TenantAccountRole
+from enums.creator import CreatorUserRole
+from libs.helper import escape_like_pattern
+from libs.pagination import paginate_query
+from models.account import Account, TenantAccountJoin
 from models.dataset import (
     AppDatasetJoin,
-    ChildChunk,
     Dataset,
-    DatasetBindingItem,
+    DatasetAutoDisableLog,
+    DatasetCollectionBinding,
     DatasetKeywordTable,
     DatasetMetadata,
-    DatasetMetadataBinding,
+    DatasetPermission,
+    DatasetPermissionEnum,
     DatasetProcessRule,
     DatasetQuery,
     Document,
-    DocumentSegment,
     ExternalKnowledgeApis,
     ExternalKnowledgeBindings,
     Pipeline,
-    PipelineCustomizedTemplate,
-    SegmentAttachmentBinding,
+    Whitelist,
 )
+from models.enums import DatasetQuerySource, ProcessRuleMode
 from models.model import App, Tag, TagBinding, UploadFile
-from models.tools import ToolFile
+
+_DEFAULT_PROCESS_RULES: dict[str, Any] = {
+    "pre_processing_rules": [
+        {"id": "remove_extra_spaces", "enabled": True},
+        {"id": "remove_urls_emails", "enabled": False},
+    ],
+    "segmentation": {"delimiter": "\n", "max_tokens": 1024, "chunk_overlap": 50},
+}
 
 
-@dataclass(frozen=True)
-class DocumentReadBatch:
-    uploads: dict[tuple[str, str], UploadFile] = field(default_factory=dict)
-    metadatas: dict[str, list[DatasetMetadata]] = field(default_factory=dict)
-    built_in_enabled: dict[tuple[str, str], bool] = field(default_factory=dict)
-    uploader_names: dict[str, str] = field(default_factory=dict)
-    segment_counts: dict[str, int] = field(default_factory=dict)
-    hit_counts: dict[str, int] = field(default_factory=dict)
-    process_rules: dict[str, DatasetProcessRule] = field(default_factory=dict)
+def resolve_dataset_vector_type(dataset: Dataset, *, session: Session) -> str:
+    """Resolve the configured vector backend using only persisted routing state."""
 
-
-def load_document_read_batch(documents: Sequence[Document], *, session: Session) -> DocumentReadBatch:
-    """Load a page's document relations with a bounded number of queries."""
-    if not documents:
-        return DocumentReadBatch()
-    owners = [(doc.tenant_id, doc.dataset_id, doc.id) for doc in documents]
-    dataset_owners = list({(doc.tenant_id, doc.dataset_id) for doc in documents})
-    upload_owners = list(
-        {
-            (doc.tenant_id, file_id)
-            for doc in documents
-            if doc.data_source_type == "upload_file" and (file_id := doc.data_source_info_dict.get("upload_file_id"))
-        }
-    )
-    uploads = (
-        {
-            (file.tenant_id, file.id): file
-            for file in session.scalars(
-                select(UploadFile).where(tuple_(UploadFile.tenant_id, UploadFile.id).in_(upload_owners))
-            )
-        }
-        if upload_owners
-        else {}
-    )
-    metadatas: dict[str, list[DatasetMetadata]] = {}
-    for doc_id, metadata in session.execute(
-        select(DatasetMetadataBinding.document_id, DatasetMetadata)
-        .join(DatasetMetadata, DatasetMetadata.id == DatasetMetadataBinding.metadata_id)
-        .where(
-            tuple_(
-                DatasetMetadataBinding.tenant_id, DatasetMetadataBinding.dataset_id, DatasetMetadataBinding.document_id
-            ).in_(owners),
-            DatasetMetadata.tenant_id == DatasetMetadataBinding.tenant_id,
-            DatasetMetadata.dataset_id == DatasetMetadataBinding.dataset_id,
-        )
-    ):
-        metadatas.setdefault(doc_id, []).append(metadata)
-    built_in_enabled = {
-        (tenant_id, dataset_id): enabled
-        for tenant_id, dataset_id, enabled in session.execute(
-            select(Dataset.tenant_id, Dataset.id, Dataset.built_in_field_enabled).where(
-                tuple_(Dataset.tenant_id, Dataset.id).in_(dataset_owners)
+    vector_type = dify_config.VECTOR_STORE
+    if dataset.index_struct_dict:
+        vector_type = dataset.index_struct_dict["type"]
+    elif dify_config.VECTOR_STORE_WHITELIST_ENABLE:
+        whitelist = session.scalar(
+            select(Whitelist).where(
+                Whitelist.tenant_id == dataset.tenant_id,
+                Whitelist.category == "vector_db",
             )
         )
-    }
-    uploader_names = dict(
-        session.execute(select(Account.id, Account.name).where(Account.id.in_({doc.created_by for doc in documents})))
-        .tuples()
-        .all()
-    )
-    counts = session.execute(
-        select(
-            DocumentSegment.document_id,
-            func.count(DocumentSegment.id),
-            func.coalesce(func.sum(DocumentSegment.hit_count), 0),
-        )
-        .where(tuple_(DocumentSegment.tenant_id, DocumentSegment.dataset_id, DocumentSegment.document_id).in_(owners))
-        .group_by(DocumentSegment.document_id)
-    ).all()
-    rule_ids = {doc.dataset_process_rule_id for doc in documents if doc.dataset_process_rule_id}
-    process_rules = (
-        {
-            rule.id: rule
-            for rule in session.scalars(
-                select(DatasetProcessRule)
-                .join(Dataset, Dataset.id == DatasetProcessRule.dataset_id)
-                .where(DatasetProcessRule.id.in_(rule_ids), tuple_(Dataset.tenant_id, Dataset.id).in_(dataset_owners))
-            )
-        }
-        if rule_ids
-        else {}
-    )
-    return DocumentReadBatch(
-        uploads=uploads,
-        metadatas=metadatas,
-        built_in_enabled=built_in_enabled,
-        uploader_names=uploader_names,
-        segment_counts={doc_id: count for doc_id, count, _ in counts},
-        hit_counts={doc_id: hits for doc_id, _, hits in counts},
-        process_rules=process_rules,
-    )
+        if whitelist is not None:
+            vector_type = "tidb_on_qdrant"
+    if not vector_type:
+        raise ValueError("Vector store must be specified.")
+    return vector_type
 
 
-def get_segment_content_file_ids(
-    segment: DocumentSegment, *, upload_ids: set[str], tool_ids: set[str], session: Session
-) -> tuple[set[str], set[str]]:
-    access = DatabaseFileAccessController()
-    uploads = (
-        session.scalars(
-            access.apply_upload_file_filters(
-                select(UploadFile).where(UploadFile.id.in_(upload_ids), UploadFile.tenant_id == segment.tenant_id)
-            )
-        ).all()
-        if upload_ids
-        else []
-    )
-    tools = (
-        session.scalars(
-            access.apply_tool_file_filters(
-                select(ToolFile).where(ToolFile.id.in_(tool_ids), ToolFile.tenant_id == segment.tenant_id)
-            )
-        ).all()
-        if tool_ids
-        else []
-    )
-    return {file.id for file in uploads}, {file.id for file in tools}
+def lock_dataset_row_for_child_write(session: Session, *, tenant_id: str, dataset_id: str) -> Dataset | None:
+    """Serialize child writes with deletion and recheck that the parent still exists.
 
+    Dataset deletion takes the same row lock before it snapshots descendants. A
+    child writer that wins the lock therefore commits before that snapshot; a
+    writer that loses waits for deletion and observes that the dataset is gone.
+    ``populate_existing`` makes the locking read refresh an identity already
+    present in a MySQL repeatable-read session.
+    """
 
-def get_segment_attachment_files(segment: DocumentSegment, *, session: Session) -> Sequence[UploadFile]:
-    return session.scalars(
-        select(UploadFile)
-        .join(SegmentAttachmentBinding, UploadFile.id == SegmentAttachmentBinding.attachment_id)
-        .where(
-            SegmentAttachmentBinding.tenant_id == segment.tenant_id,
-            SegmentAttachmentBinding.dataset_id == segment.dataset_id,
-            SegmentAttachmentBinding.document_id == segment.document_id,
-            SegmentAttachmentBinding.segment_id == segment.id,
-            UploadFile.tenant_id == segment.tenant_id,
-        )
-    ).all()
-
-
-def is_retrieved_segment_owned(
-    segment: DocumentSegment, *, tenant_id: str, dataset_ids: Sequence[str], session: Session
-) -> bool:
-    """Validate retrieved identifiers against the complete persisted owner chain."""
-    if segment.tenant_id != tenant_id or segment.dataset_id not in dataset_ids:
-        return False
-    return (
-        session.scalar(
-            select(DocumentSegment.id)
-            .join(Document, Document.id == DocumentSegment.document_id)
-            .join(Dataset, Dataset.id == Document.dataset_id)
-            .where(
-                Dataset.tenant_id == tenant_id,
-                Dataset.id == segment.dataset_id,
-                Document.tenant_id == tenant_id,
-                Document.dataset_id == segment.dataset_id,
-                Document.id == segment.document_id,
-                Document.enabled.is_(True),
-                Document.archived.is_(False),
-                DocumentSegment.tenant_id == tenant_id,
-                DocumentSegment.dataset_id == segment.dataset_id,
-                DocumentSegment.id == segment.id,
-                DocumentSegment.enabled.is_(True),
-            )
-        )
-        is not None
-    )
-
-
-def get_document_upload_file(document: Document, *, session: Session) -> UploadFile | None:
-    file_id = document.data_source_info_dict.get("upload_file_id")
-    if not file_id:
-        return None
     return session.scalar(
-        select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == document.tenant_id)
+        select(Dataset)
+        .where(
+            Dataset.id == dataset_id,
+            Dataset.tenant_id == tenant_id,
+        )
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
 
 
-def get_document_metadata_rows(document: Document, *, session: Session) -> Sequence[DatasetMetadata]:
-    return session.scalars(
-        select(DatasetMetadata)
-        .join(DatasetMetadataBinding, DatasetMetadataBinding.metadata_id == DatasetMetadata.id)
+def lock_dataset_row_for_child_append(session: Session, *, tenant_id: str, dataset_id: str) -> Dataset | None:
+    """Keep an append-only child write mutually exclusive with parent deletion.
+
+    A shared current read lets independent query-history writers proceed together,
+    while still conflicting with the exclusive lock used by dataset deletion.
+    Writers that allocate document positions or mutate parent state must continue
+    to use :func:`lock_dataset_row_for_child_write`.
+    """
+
+    return session.scalar(
+        select(Dataset)
         .where(
-            DatasetMetadata.tenant_id == document.tenant_id,
-            DatasetMetadata.dataset_id == document.dataset_id,
-            DatasetMetadataBinding.tenant_id == document.tenant_id,
-            DatasetMetadataBinding.dataset_id == document.dataset_id,
-            DatasetMetadataBinding.document_id == document.id,
+            Dataset.id == dataset_id,
+            Dataset.tenant_id == tenant_id,
         )
-    ).all()
+        .with_for_update(read=True)
+        .execution_options(populate_existing=True)
+    )
 
 
 def get_query_upload_files(query: DatasetQuery, file_ids: set[str], *, session: Session) -> dict[str, UploadFile]:
@@ -234,52 +123,12 @@ def get_query_upload_files(query: DatasetQuery, file_ids: set[str], *, session: 
     return {file.id: file for file in rows}
 
 
-def get_external_api_bindings_batch(
-    apis: Sequence[ExternalKnowledgeApis], *, session: Session
-) -> dict[str, list[DatasetBindingItem]]:
-    if not apis:
-        return {}
-    allowed = {(api.id, api.tenant_id) for api in apis}
-    rows = session.execute(
-        select(
-            ExternalKnowledgeBindings.external_knowledge_api_id,
-            ExternalKnowledgeBindings.tenant_id,
-            Dataset.id,
-            Dataset.name,
-        )
-        .join(Dataset, Dataset.id == ExternalKnowledgeBindings.dataset_id)
-        .where(
-            tuple_(ExternalKnowledgeBindings.external_knowledge_api_id, ExternalKnowledgeBindings.tenant_id).in_(
-                allowed
-            ),
-            Dataset.tenant_id == ExternalKnowledgeBindings.tenant_id,
-        )
-        .distinct()
-    ).all()
-    bindings: dict[str, list[DatasetBindingItem]] = {}
-    for api_id, tenant_id, dataset_id, name in rows:
-        if (api_id, tenant_id) in allowed:
-            bindings.setdefault(api_id, []).append({"id": dataset_id, "name": name})
-    return bindings
-
-
-def get_external_api_dataset_bindings(api: ExternalKnowledgeApis, *, session: Session) -> list[DatasetBindingItem]:
-    return get_external_api_bindings_batch([api], session=session).get(api.id, [])
-
-
 def get_dataset_keyword_table(dataset: Dataset, *, session: Session) -> DatasetKeywordTable | None:
     return session.scalar(select(DatasetKeywordTable).where(DatasetKeywordTable.dataset_id == dataset.id))
 
 
 def get_dataset_creator(dataset: Dataset, *, session: Session) -> Account | None:
     return session.get(Account, dataset.created_by)
-
-
-def get_dataset_author_name(dataset: Dataset, *, session: Session) -> str | None:
-    account = get_dataset_creator(dataset, session=session)
-    if account:
-        return account.name
-    return None
 
 
 def get_latest_dataset_process_rule(dataset: Dataset, *, session: Session) -> DatasetProcessRule | None:
@@ -291,70 +140,6 @@ def get_latest_dataset_process_rule(dataset: Dataset, *, session: Session) -> Da
     )
 
 
-def get_dataset_app_count(dataset: Dataset, *, session: Session) -> int:
-    return (
-        session.scalar(
-            select(func.count(AppDatasetJoin.id)).where(
-                AppDatasetJoin.dataset_id == dataset.id,
-                App.id == AppDatasetJoin.app_id,
-                App.tenant_id == dataset.tenant_id,
-            )
-        )
-        or 0
-    )
-
-
-def get_dataset_document_count(dataset: Dataset, *, session: Session) -> int:
-    return (
-        session.scalar(
-            select(func.count(Document.id)).where(
-                Document.dataset_id == dataset.id, Document.tenant_id == dataset.tenant_id
-            )
-        )
-        or 0
-    )
-
-
-def get_dataset_available_document_count(dataset: Dataset, *, session: Session) -> int:
-    return (
-        session.scalar(
-            select(func.count(Document.id)).where(
-                Document.dataset_id == dataset.id,
-                Document.tenant_id == dataset.tenant_id,
-                Document.indexing_status == "completed",
-                Document.enabled.is_(True),
-                Document.archived.is_(False),
-            )
-        )
-        or 0
-    )
-
-
-def get_dataset_available_segment_count(dataset: Dataset, *, session: Session) -> int:
-    return (
-        session.scalar(
-            select(func.count(DocumentSegment.id)).where(
-                DocumentSegment.dataset_id == dataset.id,
-                DocumentSegment.tenant_id == dataset.tenant_id,
-                DocumentSegment.status == "completed",
-                DocumentSegment.enabled.is_(True),
-            )
-        )
-        or 0
-    )
-
-
-def get_dataset_word_count(dataset: Dataset, *, session: Session) -> int:
-    return (
-        session.scalar(
-            select(func.coalesce(func.sum(Document.word_count), 0)).where(
-                Document.dataset_id == dataset.id, Document.tenant_id == dataset.tenant_id
-            )
-        )
-        or 0
-    )
-
-
 def get_dataset_doc_form(dataset: Dataset, *, session: Session) -> str | None:
     if dataset.chunk_structure:
         return dataset.chunk_structure
@@ -363,218 +148,6 @@ def get_dataset_doc_form(dataset: Dataset, *, session: Session) -> str | None:
         .where(Document.dataset_id == dataset.id, Document.tenant_id == dataset.tenant_id)
         .limit(1)
     )
-
-
-def get_dataset_tags(dataset: Dataset, *, session: Session) -> Sequence[Tag]:
-    tags = session.scalars(
-        select(Tag)
-        .join(TagBinding, Tag.id == TagBinding.tag_id)
-        .where(
-            TagBinding.target_id == dataset.id,
-            TagBinding.tenant_id == dataset.tenant_id,
-            Tag.tenant_id == dataset.tenant_id,
-            Tag.type == "knowledge",
-        )
-    ).all()
-    return tags or []
-
-
-def get_external_knowledge_info(dataset: Dataset, *, session: Session) -> dict[str, Any] | None:
-    if dataset.provider != "external":
-        return None
-    external_knowledge_binding = session.scalar(
-        select(ExternalKnowledgeBindings).where(
-            ExternalKnowledgeBindings.dataset_id == dataset.id, ExternalKnowledgeBindings.tenant_id == dataset.tenant_id
-        )
-    )
-    if not external_knowledge_binding:
-        return None
-    external_knowledge_api = session.scalar(
-        select(ExternalKnowledgeApis).where(
-            ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id,
-            ExternalKnowledgeApis.tenant_id == dataset.tenant_id,
-        )
-    )
-    return dataset.build_external_knowledge_info(external_knowledge_binding, external_knowledge_api)
-
-
-def get_dataset_is_published(dataset: Dataset, *, session: Session) -> bool:
-    if dataset.pipeline_id:
-        pipeline = session.scalar(
-            select(Pipeline).where(Pipeline.id == dataset.pipeline_id, Pipeline.tenant_id == dataset.tenant_id)
-        )
-        if pipeline:
-            return pipeline.is_published
-    return False
-
-
-def get_dataset_doc_metadata(dataset: Dataset, *, session: Session) -> list[dict[str, str]]:
-    dataset_metadatas = session.scalars(
-        select(DatasetMetadata).where(
-            DatasetMetadata.dataset_id == dataset.id, DatasetMetadata.tenant_id == dataset.tenant_id
-        )
-    ).all()
-    return dataset.build_doc_metadata(dataset_metadatas)
-
-
-def get_document_process_rule(document: Document, *, session: Session) -> DatasetProcessRule | None:
-    if document.dataset_process_rule_id:
-        return session.scalar(
-            select(DatasetProcessRule).where(
-                DatasetProcessRule.id == document.dataset_process_rule_id,
-                DatasetProcessRule.dataset_id == document.dataset_id,
-            )
-        )
-    return None
-
-
-def get_document_dataset(document: Document, *, session: Session) -> Dataset | None:
-    """Load the owning dataset with the caller-owned database session."""
-    return session.scalar(
-        select(Dataset).where(Dataset.id == document.dataset_id, Dataset.tenant_id == document.tenant_id)
-    )
-
-
-def get_document_segment_count(document: Document, *, session: Session) -> int:
-    return (
-        session.scalar(
-            select(func.count(DocumentSegment.id)).where(
-                DocumentSegment.document_id == document.id,
-                DocumentSegment.dataset_id == document.dataset_id,
-                DocumentSegment.tenant_id == document.tenant_id,
-            )
-        )
-        or 0
-    )
-
-
-def get_document_hit_count(document: Document, *, session: Session) -> int:
-    return (
-        session.scalar(
-            select(func.coalesce(func.sum(DocumentSegment.hit_count), 0)).where(
-                DocumentSegment.document_id == document.id,
-                DocumentSegment.dataset_id == document.dataset_id,
-                DocumentSegment.tenant_id == document.tenant_id,
-            )
-        )
-        or 0
-    )
-
-
-def get_document_uploader(document: Document, *, session: Session) -> str | None:
-    user = session.scalar(select(Account).where(Account.id == document.created_by))
-    return user.name if user else None
-
-
-def get_segment_dataset(segment: DocumentSegment, *, session: Session) -> Dataset | None:
-    """Load the owning dataset with the caller-owned database session."""
-    return session.scalar(
-        select(Dataset).where(Dataset.id == segment.dataset_id, Dataset.tenant_id == segment.tenant_id)
-    )
-
-
-def get_segment_document(segment: DocumentSegment, *, session: Session) -> Document | None:
-    """Load the owning document with the caller-owned database session."""
-    return session.scalar(
-        select(Document).where(
-            Document.id == segment.document_id,
-            Document.dataset_id == segment.dataset_id,
-            Document.tenant_id == segment.tenant_id,
-        )
-    )
-
-
-def get_previous_segment(segment: DocumentSegment, session: Session) -> DocumentSegment | None:
-    return session.scalar(
-        select(DocumentSegment).where(
-            DocumentSegment.document_id == segment.document_id,
-            DocumentSegment.dataset_id == segment.dataset_id,
-            DocumentSegment.tenant_id == segment.tenant_id,
-            DocumentSegment.position == segment.position - 1,
-        )
-    )
-
-
-def get_next_segment(segment: DocumentSegment, session: Session) -> DocumentSegment | None:
-    return session.scalar(
-        select(DocumentSegment).where(
-            DocumentSegment.document_id == segment.document_id,
-            DocumentSegment.dataset_id == segment.dataset_id,
-            DocumentSegment.tenant_id == segment.tenant_id,
-            DocumentSegment.position == segment.position + 1,
-        )
-    )
-
-
-def get_segment_child_chunks(
-    segment: DocumentSegment, *, session: Session, include_full_doc: bool = True
-) -> Sequence[ChildChunk]:
-    """Load hierarchical child chunks with the caller-owned database session."""
-    document = get_segment_document(segment, session=session)
-    if not document:
-        return []
-    process_rule = get_document_process_rule(document, session=session)
-    if process_rule and process_rule.mode == "hierarchical":
-        rules_dict = process_rule.rules_dict
-        if rules_dict:
-            rules = Rule.model_validate(rules_dict)
-            if rules.parent_mode and (include_full_doc or rules.parent_mode != ParentMode.FULL_DOC):
-                child_chunks = session.scalars(
-                    select(ChildChunk)
-                    .where(
-                        ChildChunk.segment_id == segment.id,
-                        ChildChunk.tenant_id == segment.tenant_id,
-                        ChildChunk.dataset_id == segment.dataset_id,
-                        ChildChunk.document_id == segment.document_id,
-                    )
-                    .order_by(ChildChunk.position.asc())
-                ).all()
-                return child_chunks or []
-    return []
-
-
-def get_child_dataset(chunk: ChildChunk, session: Session) -> Dataset | None:
-    return session.scalar(select(Dataset).where(Dataset.id == chunk.dataset_id, Dataset.tenant_id == chunk.tenant_id))
-
-
-def get_child_document(chunk: ChildChunk, session: Session) -> Document | None:
-    return session.scalar(
-        select(Document).where(
-            Document.id == chunk.document_id,
-            Document.dataset_id == chunk.dataset_id,
-            Document.tenant_id == chunk.tenant_id,
-        )
-    )
-
-
-def get_child_segment(chunk: ChildChunk, session: Session) -> DocumentSegment | None:
-    return session.scalar(
-        select(DocumentSegment).where(
-            DocumentSegment.id == chunk.segment_id,
-            DocumentSegment.document_id == chunk.document_id,
-            DocumentSegment.dataset_id == chunk.dataset_id,
-            DocumentSegment.tenant_id == chunk.tenant_id,
-        )
-    )
-
-
-def get_joined_app(binding: AppDatasetJoin, session: Session) -> App | None:
-    return session.get(App, binding.app_id)
-
-
-def get_pipeline_template_creator_name(template: PipelineCustomizedTemplate, session: Session) -> str:
-    account = session.scalar(select(Account).where(Account.id == template.created_by))
-    if account:
-        return account.name
-    return ""
-
-
-def get_pipeline_dataset(pipeline: Pipeline, session: Session | scoped_session) -> Dataset | None:
-    return session.scalar(pipeline_dataset_query(pipeline.tenant_id, pipeline.id))
-
-
-def pipeline_dataset_query(workspace_id: str, pipeline_id: str) -> Select[tuple[Dataset]]:
-    return select(Dataset).where(Dataset.pipeline_id == pipeline_id, Dataset.tenant_id == workspace_id)
 
 
 @dataclass(frozen=True)
@@ -754,3 +327,382 @@ def _load_external_knowledge_infos(
         if info is not None:
             infos[(binding.dataset_id, binding.tenant_id)] = info
     return infos
+
+
+def stage_dataset_queries(
+    session: Session,
+    *,
+    tenant_id: str,
+    dataset_ids: Sequence[str],
+    content: str,
+    source: DatasetQuerySource,
+    source_app_id: str | None,
+    created_by_role: CreatorUserRole,
+    created_by: str,
+) -> int:
+    """Stage append-only query history while holding parent liveness locks."""
+
+    locked_dataset_ids: list[str] = []
+    for dataset_id in sorted(set(dataset_ids)):
+        if lock_dataset_row_for_child_append(session, tenant_id=tenant_id, dataset_id=dataset_id) is not None:
+            locked_dataset_ids.append(dataset_id)
+    session.add_all(
+        [
+            DatasetQuery(
+                dataset_id=dataset_id,
+                content=content,
+                source=source,
+                source_app_id=source_app_id,
+                created_by_role=created_by_role,
+                created_by=created_by,
+            )
+            for dataset_id in locked_dataset_ids
+        ]
+    )
+    return len(locked_dataset_ids)
+
+
+def get_dataset_for_tenant(session: Session, *, tenant_id: str, dataset_id: str) -> Dataset | None:
+    return session.scalar(select(Dataset).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id).limit(1))
+
+
+def list_datasets_by_ids(
+    session: Session,
+    *,
+    tenant_id: str,
+    dataset_ids: Sequence[str],
+    actor_id: str | None = None,
+    accessible_dataset_ids: Sequence[str] | None = None,
+    include_own_datasets: bool = False,
+) -> tuple[list[Dataset], int]:
+    """List tenant-owned datasets for trusted internal ID validation.
+
+    Account-facing callers must use :func:`list_visible_datasets_by_ids`, which
+    also applies legacy dataset permissions.
+    """
+
+    unique_ids = tuple(dict.fromkeys(dataset_ids))
+    if not unique_ids:
+        return [], 0
+    statement = select(Dataset).where(Dataset.id.in_(unique_ids), Dataset.tenant_id == tenant_id)
+    if accessible_dataset_ids is not None:
+        allowed_ids = set(unique_ids).intersection(accessible_dataset_ids)
+        scope: sa.ColumnElement[bool] = Dataset.id.in_(allowed_ids)
+        if include_own_datasets and actor_id is not None:
+            scope = sa.or_(Dataset.maintainer == actor_id, scope)
+        statement = statement.where(scope)
+    page = paginate_query(statement, session=session, page=1, per_page=len(unique_ids), max_per_page=len(unique_ids))
+    return page.items, page.total
+
+
+def _apply_resolved_dataset_scope(
+    statement: sa.Select[tuple[Dataset]],
+    *,
+    actor_id: str | None,
+    accessible_dataset_ids: Sequence[str] | None,
+    include_own_datasets: bool,
+) -> sa.Select[tuple[Dataset]]:
+    if accessible_dataset_ids is None:
+        return statement
+    scope: sa.ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
+    if include_own_datasets and actor_id is not None:
+        scope = sa.or_(Dataset.maintainer == actor_id, scope)
+    return statement.where(scope)
+
+
+def _apply_legacy_dataset_visibility(
+    statement: sa.Select[tuple[Dataset]],
+    session: Session,
+    *,
+    tenant_id: str,
+    actor_id: str | None,
+    actor_role: TenantAccountRole | None,
+    rbac_enabled: bool,
+    include_all: bool,
+) -> sa.Select[tuple[Dataset]]:
+    """Apply the account visibility shared by paginated and explicit-ID lists."""
+
+    if actor_id is None:
+        return statement.where(sa.false() if rbac_enabled else Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
+    if rbac_enabled:
+        return statement
+
+    permitted_ids = set(
+        session.scalars(
+            select(DatasetPermission.dataset_id).where(
+                DatasetPermission.account_id == actor_id,
+                DatasetPermission.tenant_id == tenant_id,
+            )
+        ).all()
+    )
+    if actor_role == TenantAccountRole.DATASET_OPERATOR:
+        return statement.where(Dataset.id.in_(permitted_ids))
+    if actor_role == TenantAccountRole.OWNER and include_all:
+        return statement
+
+    visible: list[sa.ColumnElement[bool]] = [
+        Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+        sa.and_(
+            Dataset.permission == DatasetPermissionEnum.ONLY_ME,
+            Dataset.maintainer == actor_id,
+        ),
+    ]
+    if permitted_ids:
+        visible.append(
+            sa.and_(
+                Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
+                Dataset.id.in_(permitted_ids),
+            )
+        )
+    return statement.where(sa.or_(*visible))
+
+
+def list_visible_datasets_by_ids(
+    session: Session,
+    *,
+    tenant_id: str,
+    dataset_ids: Sequence[str],
+    actor_id: str | None,
+    actor_role: TenantAccountRole | None,
+    rbac_enabled: bool,
+    include_all: bool,
+    accessible_dataset_ids: Sequence[str] | None,
+    include_own_datasets: bool,
+) -> tuple[list[Dataset], int]:
+    """List requested datasets under the same account policy as the ordinary list."""
+
+    unique_ids = tuple(dict.fromkeys(dataset_ids))
+    if not unique_ids:
+        return [], 0
+    statement = select(Dataset).where(Dataset.id.in_(unique_ids), Dataset.tenant_id == tenant_id)
+    statement = _apply_resolved_dataset_scope(
+        statement,
+        actor_id=actor_id,
+        accessible_dataset_ids=accessible_dataset_ids,
+        include_own_datasets=include_own_datasets,
+    )
+    statement = _apply_legacy_dataset_visibility(
+        statement,
+        session,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        actor_role=actor_role,
+        rbac_enabled=rbac_enabled,
+        include_all=include_all,
+    )
+    page = paginate_query(statement, session=session, page=1, per_page=len(unique_ids), max_per_page=len(unique_ids))
+    return page.items, page.total
+
+
+def get_dataset_list_actor_role(session: Session, *, tenant_id: str, actor_id: str) -> TenantAccountRole | None:
+    """Return the actor's detached workspace role for dataset visibility rules."""
+
+    return session.scalar(
+        select(TenantAccountJoin.role)
+        .join(Account, Account.id == TenantAccountJoin.account_id)
+        .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == actor_id)
+        .limit(1)
+    )
+
+
+def list_dataset_permission_member_ids(
+    session: Session, *, tenant_id: str, dataset_ids: Sequence[str]
+) -> Mapping[str, tuple[str, ...]]:
+    """Return permission members for tenant-owned datasets in stable order."""
+
+    unique_ids = tuple(dict.fromkeys(dataset_ids))
+    if not unique_ids:
+        return {}
+    members: dict[str, list[str]] = {}
+    rows = session.execute(
+        select(DatasetPermission.dataset_id, DatasetPermission.account_id)
+        .join(Dataset, Dataset.id == DatasetPermission.dataset_id)
+        .where(
+            DatasetPermission.dataset_id.in_(unique_ids),
+            DatasetPermission.tenant_id == tenant_id,
+            Dataset.id.in_(unique_ids),
+            Dataset.tenant_id == tenant_id,
+        )
+        .order_by(DatasetPermission.dataset_id, DatasetPermission.account_id, DatasetPermission.id)
+    )
+    for dataset_id, account_id in rows:
+        members.setdefault(dataset_id, []).append(account_id)
+    return {dataset_id: tuple(account_ids) for dataset_id, account_ids in members.items()}
+
+
+def list_visible_datasets(
+    session: Session,
+    *,
+    tenant_id: str,
+    actor_id: str | None,
+    actor_role: TenantAccountRole | None,
+    rbac_enabled: bool,
+    include_all: bool,
+    accessible_dataset_ids: Sequence[str] | None,
+    include_own_datasets: bool,
+    keyword: str | None,
+    tag_target_ids: Sequence[str] | None,
+    page: int,
+    per_page: int,
+) -> tuple[list[Dataset], int]:
+    """List datasets using access decisions already resolved by the application adapter."""
+
+    statement = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
+    statement = _apply_resolved_dataset_scope(
+        statement,
+        actor_id=actor_id,
+        accessible_dataset_ids=accessible_dataset_ids,
+        include_own_datasets=include_own_datasets,
+    )
+    statement = _apply_legacy_dataset_visibility(
+        statement,
+        session,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        actor_role=actor_role,
+        rbac_enabled=rbac_enabled,
+        include_all=include_all,
+    )
+
+    if keyword:
+        statement = statement.where(Dataset.name.ilike(f"%{escape_like_pattern(keyword)}%", escape="\\"))
+    if tag_target_ids is not None:
+        if not tag_target_ids:
+            return [], 0
+        statement = statement.where(Dataset.id.in_(tag_target_ids))
+
+    result = paginate_query(statement, session=session, page=page, per_page=per_page, max_per_page=100)
+    return result.items, result.total
+
+
+def get_dataset_process_rules(
+    session: Session, *, tenant_id: str, dataset_id: str
+) -> tuple[ProcessRuleMode, dict[str, Any]]:
+    rule = session.scalar(
+        select(DatasetProcessRule)
+        .join(Dataset, Dataset.id == DatasetProcessRule.dataset_id)
+        .where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
+        .order_by(DatasetProcessRule.created_at.desc())
+        .limit(1)
+    )
+    if rule is None:
+        return ProcessRuleMode.CUSTOM, {
+            "pre_processing_rules": [dict(item) for item in _DEFAULT_PROCESS_RULES["pre_processing_rules"]],
+            "segmentation": dict(_DEFAULT_PROCESS_RULES["segmentation"]),
+        }
+    return rule.mode, dict(rule.rules_dict or {})
+
+
+def get_dataset_process_rule_by_id(
+    session: Session, *, tenant_id: str, dataset_id: str, process_rule_id: str
+) -> DatasetProcessRule | None:
+    return session.scalar(
+        select(DatasetProcessRule)
+        .join(Dataset, Dataset.id == DatasetProcessRule.dataset_id)
+        .where(
+            DatasetProcessRule.id == process_rule_id,
+            DatasetProcessRule.dataset_id == dataset_id,
+            Dataset.tenant_id == tenant_id,
+        )
+        .limit(1)
+    )
+
+
+def list_dataset_queries(
+    session: Session,
+    *,
+    tenant_id: str,
+    dataset_id: str,
+    page: int,
+    per_page: int,
+) -> tuple[list[DatasetQuery], int]:
+    statement = (
+        select(DatasetQuery)
+        .join(Dataset, Dataset.id == DatasetQuery.dataset_id)
+        .where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
+        .order_by(DatasetQuery.created_at.desc(), DatasetQuery.id)
+    )
+    result = paginate_query(statement, page=page, per_page=per_page, max_per_page=100, session=session)
+    return result.items, result.total
+
+
+def list_related_apps(session: Session, *, tenant_id: str, dataset_id: str) -> Sequence[AppDatasetJoin]:
+    return session.scalars(
+        select(AppDatasetJoin)
+        .join(Dataset, Dataset.id == AppDatasetJoin.dataset_id)
+        .join(App, App.id == AppDatasetJoin.app_id)
+        .where(
+            Dataset.tenant_id == tenant_id,
+            Dataset.id == dataset_id,
+            App.tenant_id == tenant_id,
+        )
+        .order_by(AppDatasetJoin.created_at.desc(), AppDatasetJoin.id)
+    ).all()
+
+
+def list_auto_disabled_document_ids(
+    session: Session,
+    *,
+    tenant_id: str,
+    dataset_id: str,
+    created_after: datetime,
+) -> list[str]:
+    return list(
+        session.scalars(
+            select(DatasetAutoDisableLog.document_id)
+            .join(Dataset, Dataset.id == DatasetAutoDisableLog.dataset_id)
+            .where(
+                Dataset.tenant_id == tenant_id,
+                Dataset.id == dataset_id,
+                DatasetAutoDisableLog.tenant_id == tenant_id,
+                DatasetAutoDisableLog.created_at >= created_after,
+            )
+            .order_by(DatasetAutoDisableLog.created_at.desc(), DatasetAutoDisableLog.id)
+        ).all()
+    )
+
+
+def get_or_create_dataset_collection_binding(
+    session: Session,
+    *,
+    provider_name: str,
+    model_name: str,
+    collection_type: str = "dataset",
+) -> DatasetCollectionBinding:
+    binding = session.scalar(
+        select(DatasetCollectionBinding)
+        .where(
+            DatasetCollectionBinding.provider_name == provider_name,
+            DatasetCollectionBinding.model_name == model_name,
+            DatasetCollectionBinding.type == collection_type,
+        )
+        .order_by(DatasetCollectionBinding.created_at)
+        .limit(1)
+    )
+    if binding is None:
+        binding = DatasetCollectionBinding(
+            provider_name=provider_name,
+            model_name=model_name,
+            collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
+            type=collection_type,
+        )
+        session.add(binding)
+        session.flush()
+    return binding
+
+
+def get_dataset_collection_binding(
+    session: Session,
+    *,
+    binding_id: str,
+    collection_type: str = "dataset",
+) -> DatasetCollectionBinding | None:
+    return session.scalar(
+        select(DatasetCollectionBinding)
+        .where(
+            DatasetCollectionBinding.id == binding_id,
+            DatasetCollectionBinding.type == collection_type,
+        )
+        .order_by(DatasetCollectionBinding.created_at)
+        .limit(1)
+    )

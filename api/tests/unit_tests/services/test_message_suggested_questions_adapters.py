@@ -19,13 +19,14 @@ from core.file import remote_fetcher
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
 from core.model_manager import ModelInstance
 from core.ops.ops_trace_manager import TraceTask
+from enums.creator import CreatorUserRole
 from extensions.ext_database import db
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities import AssistantPromptMessage, PromptMessage
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from models import Account, App, AppMode, Conversation, Message
-from models.enums import ConversationFromSource, CreatorUserRole, EndUserType
+from models.enums import ConversationFromSource, EndUserType
 from models.model import AppModelConfig, EndUser, MessageFile
 from models.workflow import Workflow, WorkflowType
 from services.app_definition_query_service import AppDefinitionUnavailableError

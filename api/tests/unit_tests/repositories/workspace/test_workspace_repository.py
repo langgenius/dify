@@ -11,14 +11,21 @@ from sqlalchemy.orm import Session, sessionmaker
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from repositories.workspace.workspace_repository import WorkspaceRepository
+from services.errors.base import PersistenceCommitOutcomeUnknownError
 from services.errors.workspace import WorkspaceNotFoundError, WorkspaceNotLinkedError
-from services.workspace.contracts import EffectiveCreditPool, WorkspaceCustomConfig, WorkspaceFeatures
+from services.workspace.contracts import (
+    EffectiveCreditPool,
+    WorkspaceCreation,
+    WorkspaceCustomConfig,
+    WorkspaceFeatures,
+)
 from services.workspace.service import (
     WorkspaceFeatureGateway,
     WorkspaceLogoGateway,
     WorkspaceQueryService,
     WorkspaceService,
 )
+from tests.unit_tests.model_factories import make_upload_file
 
 
 @pytest.fixture
@@ -43,6 +50,8 @@ def seeded(sqlite_session_factory: sessionmaker[Session]) -> WorkspaceRepository
                 TenantAccountJoin(tenant_id="w2", account_id="a1", role=TenantAccountRole.EDITOR),
                 TenantAccountJoin(tenant_id="w3", account_id="a1", role=TenantAccountRole.NORMAL),
                 TenantAccountJoin(tenant_id="w2", account_id="other", role=TenantAccountRole.OWNER),
+                TenantAccountJoin(tenant_id="w3", account_id="archived-owner", role=TenantAccountRole.OWNER),
+                make_upload_file(file_id="logo", tenant_id="w1"),
             ]
         )
         session.commit()
@@ -86,6 +95,15 @@ def test_snapshot_role_is_scoped_to_both_account_and_workspace(seeded: Workspace
     with pytest.raises(WorkspaceNotFoundError):
         seeded.get_for_account("w1", "other")
     assert seeded.get_for_account("missing", "a1") is None
+
+
+def test_active_owner_id_requires_a_normal_workspace_and_owner_role(seeded: WorkspaceRepository) -> None:
+    assert seeded.owner_id("w2") == "other"
+    assert seeded.active_owner_id("w2") == "other"
+    assert seeded.owner_id("w3") == "archived-owner"
+    assert seeded.active_owner_id("w3") is None
+    assert seeded.active_owner_id("w1") is None
+    assert seeded.active_owner_id("missing") is None
 
 
 def test_membership_role_is_scoped_to_both_account_and_workspace(seeded: WorkspaceRepository) -> None:
@@ -154,6 +172,63 @@ def test_write_rolls_back_on_commit_failure(
     snapshot = seeded.get_for_account("w1", "a1")
     assert snapshot is not None
     assert snapshot.name == "First"
+
+
+def test_provision_rolls_back_a_known_precommit_failure(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    repository = WorkspaceRepository(sqlite_session_factory)
+
+    def reject_before_commit() -> None:
+        raise RuntimeError("quota lease lost")
+
+    with pytest.raises(RuntimeError, match="quota lease lost"):
+        repository.provision(
+            lambda: WorkspaceCreation(
+                id="rolled-back-workspace",
+                name="Rolled Back",
+                encrypt_public_key="public-key",
+                trial_credits=0,
+                plugin_upgrade_time=0,
+                plugin_upgrade_settings={},
+            ),
+            owner_id=None,
+            before_commit=reject_before_commit,
+        )
+
+    with sqlite_session_factory() as session:
+        assert session.get(Tenant, "rolled-back-workspace") is None
+
+
+def test_provision_classifies_after_commit_failure_as_unknown(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    repository = WorkspaceRepository(sqlite_session_factory)
+
+    def fail_after_commit(_session: Session) -> None:
+        raise RuntimeError("commit acknowledgement lost")
+
+    event.listen(sqlite_session_factory, "after_commit", fail_after_commit)
+    try:
+        with pytest.raises(PersistenceCommitOutcomeUnknownError) as raised:
+            repository.provision(
+                lambda: WorkspaceCreation(
+                    id="committed-workspace",
+                    name="Committed",
+                    encrypt_public_key="public-key",
+                    trial_credits=0,
+                    plugin_upgrade_time=0,
+                    plugin_upgrade_settings={},
+                ),
+                owner_id=None,
+                before_commit=lambda: None,
+            )
+    finally:
+        event.remove(sqlite_session_factory, "after_commit", fail_after_commit)
+
+    assert isinstance(raised.value.__cause__, RuntimeError)
+    with sqlite_session_factory() as session:
+        assert session.get(Tenant, "committed-workspace") is not None
 
 
 def test_sessions_are_closed_before_feature_and_plan_io(

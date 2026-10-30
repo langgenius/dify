@@ -6,9 +6,10 @@ from typing import Any, Never
 from uuid import UUID
 
 from flask_restx import Resource
-from pydantic import AliasChoices, BaseModel, Field, field_validator
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from pydantic import AliasChoices, BaseModel, Field, field_serializer, field_validator
 
+from constants import HIDDEN_VALUE
+from controllers.common.errors import ConflictError, InternalServerError, NotFoundError
 from controllers.common.fields import UsageCountResponse
 from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import (
@@ -17,7 +18,8 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.datasets.error import DatasetNameDuplicateError
+from controllers.console.datasets.error import DatasetAccessDeniedRequestError, DatasetNameDuplicateError
+from controllers.console.datasets.permission_keys import get_dataset_permission_keys
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
@@ -28,29 +30,46 @@ from fields.base import ResponseModel
 from fields.dataset_fields import (
     DatasetDetailResponse,
 )
+from fields.hit_testing_fields import (
+    ExternalHitTestingQueryResponse,
+    ExternalHitTestingRecordResponse,
+    ExternalHitTestingResponse,
+)
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
-from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
+from services.errors.knowledge_retrieval import (
+    ExternalTemplateConcurrentUpdateError,
+    ExternalTemplateNotFoundError,
+)
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
-from services.knowledge.external.application import ExternalHitTestingError, ExternalTemplateNotFoundError
+from services.knowledge.entities.external import ExternalDatasetCreatePayload
+from services.knowledge.external.application import ExternalHitTestingError
 
 logger = logging.getLogger(__name__)
-_DATASET_EDIT_ROLES = frozenset(
-    {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.DATASET_OPERATOR}
+_EXTERNAL_CONNECT_ROLES = frozenset(
+    {
+        TenantAccountRole.OWNER,
+        TenantAccountRole.ADMIN,
+        TenantAccountRole.EDITOR,
+        TenantAccountRole.DATASET_OPERATOR,
+    }
 )
-_EXTERNAL_CONNECT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
 
 
 def _raise_external_error(error: Exception) -> Never:
-    if isinstance(error, (DatasetNotFoundError, ExternalTemplateNotFoundError)):
-        raise NotFound(str(error)) from error
+    if isinstance(error, ExternalTemplateNotFoundError):
+        raise NotFoundError(description="API template not found.") from error
+    if isinstance(error, DatasetNotFoundError):
+        raise NotFoundError(description=str(error)) from error
     if isinstance(error, DatasetAccessDeniedError):
-        raise Forbidden(str(error)) from error
+        raise DatasetAccessDeniedRequestError(description=str(error)) from error
     if isinstance(error, DatasetNameDuplicateFailure):
         raise DatasetNameDuplicateError() from error
+    if isinstance(error, ExternalTemplateConcurrentUpdateError):
+        raise ConflictError(description=str(error)) from error
     if isinstance(error, ExternalHitTestingError):
         logger.exception("External hit testing failed")
         raise InternalServerError() from error
@@ -83,6 +102,10 @@ class ExternalKnowledgeApiSettingsResponse(ResponseModel):
     endpoint: str | None = None
     api_key: str | None = None
 
+    @field_serializer("api_key")
+    def _mask_api_key(self, value: str | None) -> str | None:
+        return HIDDEN_VALUE if value else value
+
 
 class ExternalKnowledgeApiResponse(ResponseModel):
     id: str
@@ -110,22 +133,6 @@ class ExternalKnowledgeApiListResponse(ResponseModel):
     limit: int
     total: int | None
     page: int
-
-
-class ExternalHitTestingQueryResponse(ResponseModel):
-    content: str
-
-
-class ExternalHitTestingRecordResponse(ResponseModel):
-    content: str | None = None
-    title: str | None = None
-    score: float | None = None
-    metadata: dict[str, Any] | None = None
-
-
-class ExternalHitTestingResponse(ResponseModel):
-    query: ExternalHitTestingQueryResponse
-    records: list[ExternalHitTestingRecordResponse]
 
 
 register_schema_models(
@@ -176,7 +183,10 @@ class ExternalApiTemplateListApi(Resource):
         console_ns.models[ExternalKnowledgeApiResponse.__name__],
     )
     @console_ns.response(403, "Permission denied")
-    @console_account_admission(allowed_roles=_DATASET_EDIT_ROLES)
+    @console_account_admission(
+        allowed_roles=_EXTERNAL_CONNECT_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EXTERNAL_CONNECT, Workspace()),),
+    )
     @model_validate(ExternalKnowledgeApiPayload)
     def post(self, req_data: ExternalKnowledgeApiPayload, request_context: RequestContext):
         try:
@@ -221,7 +231,11 @@ class ExternalApiTemplateApi(Resource):
         console_ns.models[ExternalKnowledgeApiResponse.__name__],
     )
     @console_ns.response(404, "Template not found")
-    @console_account_admission()
+    @console_ns.response(409, "Template changed during validation")
+    @console_account_admission(
+        allowed_roles=_EXTERNAL_CONNECT_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EXTERNAL_CONNECT, Workspace()),),
+    )
     @model_validate(ExternalKnowledgeApiPayload)
     def patch(
         self, req_data: ExternalKnowledgeApiPayload, request_context: RequestContext, external_knowledge_api_id: UUID
@@ -239,7 +253,10 @@ class ExternalApiTemplateApi(Resource):
 
     @error_responses(DatasetNameDuplicateError)
     @console_ns.response(204, "External knowledge API deleted successfully")
-    @console_account_admission(allowed_roles=_DATASET_EDIT_ROLES)
+    @console_account_admission(
+        allowed_roles=_EXTERNAL_CONNECT_ROLES,
+        rbac_checks=(RBACCheck(RBACPermission.DATASET_EXTERNAL_CONNECT, Workspace()),),
+    )
     def delete(self, request_context: RequestContext, external_knowledge_api_id: UUID):
         try:
             application_services().knowledge.external.delete_template(
@@ -285,12 +302,15 @@ class ExternalDatasetCreateApi(Resource):
             result = application_services().knowledge.external.create_dataset(request_context, payload=req_data)
         except Exception as error:
             _raise_external_error(error)
-        return dump_response(DatasetDetailResponse, result), 201
+        return dump_response(
+            DatasetDetailResponse,
+            {**result, "permission_keys": get_dataset_permission_keys(request_context, result["id"])},
+        ), 201
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/external-hit-testing")
 class ExternalKnowledgeHitTestingApi(Resource):
-    @error_responses(DatasetNameDuplicateError)
+    @error_responses(DatasetAccessDeniedRequestError)
     @console_ns.doc("test_external_knowledge_retrieval")
     @console_ns.doc(description="Test external knowledge retrieval for dataset")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})

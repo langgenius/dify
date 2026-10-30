@@ -17,11 +17,12 @@ from core.app.file_access import (
     grant_tool_file_access,
 )
 from core.workflow.file_reference import build_file_reference, parse_file_reference, resolve_file_record_id
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from factories.file_factory.builders import build_from_mapping as _build_from_mapping
 from factories.file_factory.builders import build_from_mappings as _build_from_mappings
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
-from models import CreatorUserRole, ToolFile, UploadFile
+from models import ToolFile, UploadFile
 
 # Test Data
 TEST_TENANT_ID = "test_tenant_id"

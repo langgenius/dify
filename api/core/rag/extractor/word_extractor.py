@@ -9,7 +9,6 @@ import mimetypes
 import os
 import re
 import tempfile
-import uuid
 from typing import override
 from urllib.parse import urlparse
 
@@ -18,18 +17,11 @@ from docx.oxml.ns import qn
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
-from sqlalchemy.orm import Session
 
-from configs import dify_config
 from core.file import remote_fetcher
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
-from extensions.ext_database import db
-from extensions.ext_storage import storage
-from extensions.storage.storage_type import StorageType
-from libs.datetime_utils import naive_utc_now
-from models.enums import CreatorUserRole
-from models.model import UploadFile
+from services.extraction.contracts import ExtractedImage, ImageWriter
 
 logger = logging.getLogger(__name__)
 
@@ -39,19 +31,22 @@ class WordExtractor(BaseExtractor):
 
     Args:
         file_path: Path to the file to load.
-        session: Session used to persist extracted images.
+        image_writer: Optional caller-owned image persistence operation.
     """
 
     _closed: bool
-    _session: Session | None
+    _image_writer: ImageWriter | None
 
-    def __init__(self, file_path: str, tenant_id: str, user_id: str, *, session: Session | None = None):
+    def __init__(
+        self,
+        file_path: str,
+        *,
+        image_writer: ImageWriter | None = None,
+    ):
         """Initialize with file path."""
         self._closed = False
         self.file_path = file_path
-        self.tenant_id = tenant_id
-        self.user_id = user_id
-        self._session = session
+        self._image_writer = image_writer
 
         if "~" in self.file_path:
             self.file_path = os.path.expanduser(self.file_path)
@@ -116,15 +111,12 @@ class WordExtractor(BaseExtractor):
         return bool(parsed.netloc) and bool(parsed.scheme)
 
     def _extract_images_from_docx(self, doc):
-        session = self._session or db.session
-        image_count = 0
         image_map = {}
-        upload_files: list[UploadFile] = []
-        base_url = dify_config.FILES_URL
+        if self._image_writer is None:
+            return image_map
 
         for r_id, rel in doc.part.rels.items():
             if "image" in rel.target_ref:
-                image_count += 1
                 if rel.is_external:
                     url = rel.target_ref
                     if not self._is_valid_url(url):
@@ -134,64 +126,34 @@ class WordExtractor(BaseExtractor):
                     except Exception:
                         logger.warning("Failed to download image from URL: %s", url, exc_info=True)
                         continue
-                    if response.status_code == 200:
-                        image_ext = mimetypes.guess_extension(response.headers.get("Content-Type", ""))
-                        if image_ext is None:
-                            continue
-                        file_uuid = str(uuid.uuid4())
-                        file_key = "image_files/" + self.tenant_id + "/" + file_uuid + image_ext
-                        mime_type, _ = mimetypes.guess_type(file_key)
-                        storage.save(file_key, response.content)
-                        # save file to db
-                        upload_file = UploadFile(
-                            tenant_id=self.tenant_id,
-                            storage_type=StorageType(dify_config.STORAGE_TYPE),
-                            key=file_key,
-                            name=file_key,
-                            size=0,
-                            extension=str(image_ext),
-                            mime_type=mime_type or "",
-                            created_by=self.user_id,
-                            created_by_role=CreatorUserRole.ACCOUNT,
-                            created_at=naive_utc_now(),
-                            used=True,
-                            used_by=self.user_id,
-                            used_at=naive_utc_now(),
-                        )
-                        upload_files.append(upload_file)
-                        image_map[r_id] = f"![image]({base_url}/files/{upload_file.id}/file-preview)"
+                    try:
+                        if response.status_code == 200:
+                            mime_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip()
+                            image_ext = mimetypes.guess_extension(mime_type)
+                            if image_ext is None:
+                                continue
+                            extension = image_ext.lstrip(".")
+                            image = ExtractedImage(
+                                content=response.content,
+                                extension=extension,
+                                mime_type=mime_type,
+                            )
+                            preview_url = self._image_writer.write(image).preview_url
+                            image_map[r_id] = f"![image]({preview_url})"
+                    finally:
+                        response.close()
                 else:
                     image_ext = rel.target_ref.split(".")[-1]
                     if image_ext is None:
                         continue
-                    # user uuid as file name
-                    file_uuid = str(uuid.uuid4())
-                    file_key = "image_files/" + self.tenant_id + "/" + file_uuid + "." + image_ext
-                    mime_type, _ = mimetypes.guess_type(file_key)
-
-                    storage.save(file_key, rel.target_part.blob)
-                    # save file to db
-                    upload_file = UploadFile(
-                        tenant_id=self.tenant_id,
-                        storage_type=StorageType(dify_config.STORAGE_TYPE),
-                        key=file_key,
-                        name=file_key,
-                        size=0,
-                        extension=str(image_ext),
+                    mime_type, _ = mimetypes.guess_type(f"image.{image_ext}")
+                    image = ExtractedImage(
+                        content=rel.target_part.blob,
+                        extension=image_ext,
                         mime_type=mime_type or "",
-                        created_by=self.user_id,
-                        created_by_role=CreatorUserRole.ACCOUNT,
-                        created_at=naive_utc_now(),
-                        used=True,
-                        used_by=self.user_id,
-                        used_at=naive_utc_now(),
                     )
-                    upload_files.append(upload_file)
-                    image_map[rel.target_part] = f"![image]({base_url}/files/{upload_file.id}/file-preview)"
-        if upload_files:
-            session.add_all(upload_files)
-        if self._session is None:
-            session.commit()
+                    preview_url = self._image_writer.write(image).preview_url
+                    image_map[rel.target_part] = f"![image]({preview_url})"
         return image_map
 
     def _table_to_markdown(self, table, image_map):
@@ -301,7 +263,7 @@ class WordExtractor(BaseExtractor):
 
         content: list[str] = []
 
-        image_map = self._extract_images_from_docx(doc)
+        image_map = self._extract_images_from_docx(doc) if self._image_writer is not None else {}
 
         def parse_paragraph(paragraph):
             def append_image_link(image_id, has_drawing, target_buffer):

@@ -9,8 +9,9 @@ from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceTask
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, Message, MessageFile
 from models.workflow import WorkflowAppLog, WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
 

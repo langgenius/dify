@@ -291,6 +291,13 @@ def test_workflow_config_contracts_describe_node_defaults_and_unpublished_pipeli
         {"type": "null"},
     ]
 
+    publish = payload["paths"]["/rag/pipelines/{pipeline_id}/workflows/publish"]["post"]
+    conflict_schemas = publish["responses"]["409"]["content"]["application/json"]["schema"]["anyOf"]
+    assert {"$ref": "#/components/schemas/DatasetConcurrentUpdateError"} in conflict_schemas
+    conflict = schemas["DatasetConcurrentUpdateError"]["allOf"][1]
+    assert conflict["properties"]["code"]["const"] == "dataset_concurrent_update"
+    assert conflict["properties"]["status"]["const"] == 409
+
 
 def test_console_segment_mutation_contracts_survive_admission(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.console import bp as console_bp
@@ -608,7 +615,8 @@ def test_service_delete_schemas_omit_unenforced_state_constraints(openapi_json: 
 
     delete_document = paths["/datasets/{dataset_id}/documents/{document_id}"]["delete"]
     assert "document_indexing" not in json.dumps(delete_document["responses"])
-    assert "archived_document_immutable" in delete_document["responses"]["403"]["description"]
+    assert "403" in delete_document["responses"]
+    assert "archived_document_immutable" not in delete_document["responses"]["403"]["description"]
 
 
 def test_service_schemas_only_document_reachable_not_found_responses(openapi_json: OpenAPIJSONLoader):

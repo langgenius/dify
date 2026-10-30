@@ -18,6 +18,7 @@ from graphon.engine_events import GraphRunSucceededEvent
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.file.runtime import peek_workflow_file_runtime, use_workflow_file_runtime
 from graphon.nodes.base.node import Node
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.unit_tests.core.workflow.test_workflow_tool_container import (
     _outer_graph,
     _workflow_tool_node,
@@ -56,7 +57,7 @@ def test_host_context_preserves_each_engine_file_runtime(monkeypatch: pytest.Mon
         sources = {source.workflow_id: source}
         tool, _, _ = _workflow_tool_node()
         engine = Engine(
-            graph=_outer_graph(tool),
+            graph=_outer_graph(tool, knowledge_retrieval=make_knowledge_retriever()),
             runtime_state=tool.runtime_state,
             workers=2,
             file_runtime=runtime,

@@ -10,10 +10,10 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
+from enums.creator import CreatorUserRole
 from fields.workflow_run_fields import WorkflowRunNodeExecutionListResponse
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.account import Account
-from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 from services.workflow_node_execution_trace_service import assemble_workflow_node_execution_traces

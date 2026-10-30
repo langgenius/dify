@@ -55,8 +55,14 @@ class _MoreLikeThisEventStream:
 
 
 class AppGenerateServiceRuntime(InstalledAppGenerationRuntime):
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        app_generation: AppGenerateService,
+    ) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
+        self._app_generation = app_generation
 
     @override
     def generate(
@@ -74,7 +80,7 @@ class AppGenerateServiceRuntime(InstalledAppGenerationRuntime):
             conversation_id=conversation_id if isinstance(conversation_id, str) else None,
         )
         return self._run_generation(
-            lambda session: AppGenerateService.generate(
+            lambda session: self._app_generation.generate(
                 session=session,
                 app_model=app,
                 user=account,
@@ -96,7 +102,7 @@ class AppGenerateServiceRuntime(InstalledAppGenerationRuntime):
         app, account = self._load_generation_context(app_id=app_id, account_id=account_id)
 
         def generate(session: Session) -> GenerationResponse:
-            response = AppGenerateService.generate_more_like_this(
+            response = self._app_generation.generate_more_like_this(
                 session=session,
                 app_model=app,
                 user=account,

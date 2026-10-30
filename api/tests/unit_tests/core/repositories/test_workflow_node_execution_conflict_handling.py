@@ -20,6 +20,7 @@ from graphon.entities.workflow_node_execution import (
 from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models import Account, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from services.file_adapters import build_file_service
 from tests.unit_tests.model_factories import make_account, make_tenant
 
 
@@ -68,6 +69,7 @@ def repository(conflict_database: ConflictDatabase) -> SQLAlchemyWorkflowNodeExe
         user=_account(),
         app_id="test-app-id",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        files=build_file_service(session_factory=conflict_database.session_factory),
     )
 
 

@@ -14,11 +14,14 @@ Tests follow the Arrange-Act-Assert pattern for clarity.
 
 from datetime import UTC, datetime
 from operator import itemgetter
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy import event
+from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import FileAccessScope, bind_file_access_scope
 from core.entities.provider_configuration import ProviderModelBundle
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
@@ -31,11 +34,11 @@ from core.rag.rerank.rerank_factory import RerankRunnerFactory
 from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.rerank.weight_rerank import WeightRerankRunner
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 from graphon.model_runtime.model_providers.base.rerank_model import RerankModel
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from tests.unit_tests.core.model_fixtures import make_model_config
 
@@ -63,12 +66,23 @@ def create_model_instance() -> ModelInstance:
     return instance
 
 
+class _FixedEmbeddingCache:
+    def __init__(self, embedding: list[float]) -> None:
+        self._embedding = embedding
+
+    def embed_query(self, text: str) -> list[float]:
+        del text
+        return self._embedding
+
+
 class _UsesSQLiteSession:
-    session: Session
+    sessions: sessionmaker[Session]
+    tenant_id = "00000000-0000-0000-0000-000000000001"
+    dataset_document_filters = {"dataset-id": None}
 
     @pytest.fixture(autouse=True)
     def _inject_sqlite_session(self, sqlite_session: Session) -> None:
-        self.session = sqlite_session
+        self.sessions = sessionmaker(bind=sqlite_session.get_bind())
 
 
 class TestRerankModelRunner(_UsesSQLiteSession):
@@ -90,7 +104,12 @@ class TestRerankModelRunner(_UsesSQLiteSession):
     @pytest.fixture
     def rerank_runner(self, mock_model_instance):
         """Create a RerankModelRunner with mocked model instance."""
-        return RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        return RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
+        )
 
     @pytest.fixture
     def sample_documents(self):
@@ -446,7 +465,12 @@ class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
 
     @pytest.fixture
     def rerank_runner(self, mock_model_instance):
-        return RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        return RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
+        )
 
     def test_run_returns_original_documents_for_non_text_query_without_vision_support(
         self, rerank_runner, mock_model_instance
@@ -482,28 +506,12 @@ class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
         assert len(result) == 1
         assert result[0].metadata["score"] == 0.88
 
-    def test_fetch_multimodal_rerank_builds_docs_and_calls_text_rerank(
-        self, rerank_runner: RerankModelRunner, sqlite_session: Session
+    def test_fetch_multimodal_rerank_delegates_text_query_without_loading_images(
+        self, rerank_runner: RerankModelRunner
     ):
-        upload_file = UploadFile(
-            tenant_id="00000000-0000-0000-0000-000000000001",
-            storage_type=StorageType.LOCAL,
-            key="image-key",
-            name="document.png",
-            size=10,
-            extension="png",
-            mime_type="image/png",
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by="00000000-0000-0000-0000-000000000002",
-            created_at=datetime.now(UTC),
-            used=True,
-        )
-        upload_file.id = "00000000-0000-0000-0000-000000000003"
-        sqlite_session.add(upload_file)
-        sqlite_session.commit()
         image_doc = Document(
             page_content="image-content",
-            metadata={"doc_id": upload_file.id, "doc_type": DocType.IMAGE},
+            metadata={"doc_id": "image-id", "doc_type": DocType.IMAGE},
             provider="dify",
         )
         text_doc = Document(
@@ -534,33 +542,9 @@ class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
 
         assert result == rerank_result
         assert len(unique_documents) == 3
-        mock_load_once.assert_called_once_with("image-key")
+        mock_load_once.assert_not_called()
         text_rerank_call_args = mock_text_rerank.call_args.args
-        assert len(text_rerank_call_args[1]) == 3
-
-    def test_fetch_multimodal_rerank_skips_missing_image_upload(self, rerank_runner):
-        image_doc = Document(
-            page_content="image-content",
-            metadata={"doc_id": "img-missing", "doc_type": DocType.IMAGE},
-            provider="dify",
-        )
-        rerank_result = RerankResult(model="rerank-model", docs=[])
-
-        with patch.object(
-            rerank_runner,
-            "fetch_text_rerank",
-            return_value=(rerank_result, [image_doc]),
-        ) as mock_text_rerank:
-            result, unique_documents = rerank_runner.fetch_multimodal_rerank(
-                query="python",
-                documents=[image_doc],
-                query_type=QueryType.TEXT_QUERY,
-            )
-
-        assert result == rerank_result
-        assert unique_documents == [image_doc]
-        docs_arg = mock_text_rerank.call_args.args[1]
-        assert len(docs_arg) == 1
+        assert text_rerank_call_args[1] == [image_doc, text_doc, external_doc, external_doc]
 
     def test_fetch_multimodal_rerank_image_query_invokes_multimodal_model(
         self, rerank_runner: RerankModelRunner, mock_model_instance, sqlite_session: Session
@@ -592,10 +576,7 @@ class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
         upload_file.id = "00000000-0000-0000-0000-000000000003"
         sqlite_session.add(upload_file)
         sqlite_session.commit()
-        with (
-            patch.object(rerank_runner, "_session", sqlite_session),
-            patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"query-image-bytes"),
-        ):
+        with patch("core.rag.rerank.rerank_model.storage.load_once", return_value=b"query-image-bytes"):
             result, unique_documents = rerank_runner.fetch_multimodal_rerank(
                 query=upload_file.id,
                 documents=[text_doc],
@@ -611,6 +592,194 @@ class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
         assert invoke_kwargs["docs"][0]["content"] == "text-content"
         assert "user" not in invoke_kwargs
 
+    def test_fetch_multimodal_rerank_includes_candidate_authorized_by_retrieval_scope(
+        self, rerank_runner: RerankModelRunner, mock_model_instance, sqlite_session: Session
+    ):
+        query_file = UploadFile(
+            tenant_id=self.tenant_id,
+            storage_type=StorageType.LOCAL,
+            key="query-image-key",
+            name="query.png",
+            size=10,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="00000000-0000-0000-0000-000000000002",
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        query_file.id = "00000000-0000-0000-0000-000000000003"
+        sqlite_session.add(query_file)
+        sqlite_session.commit()
+        image_doc = Document(
+            page_content="image-content",
+            metadata={"doc_id": "candidate-file-id", "doc_type": DocType.IMAGE},
+            provider="dify",
+        )
+        rerank_result = RerankResult(
+            model="rerank-model",
+            docs=[RerankDocument(index=0, text="image-content", score=0.8)],
+        )
+        mock_model_instance.invoke_multimodal_rerank.return_value = rerank_result
+
+        with (
+            patch(
+                "core.rag.rerank.rerank_model.get_authorized_retrieval_attachment_file_keys",
+                return_value={"candidate-file-id": "candidate-image-key"},
+            ) as resolve_candidate_keys,
+            patch(
+                "core.rag.rerank.rerank_model.storage.load_once",
+                side_effect=[b"candidate-image-bytes", b"query-image-bytes"],
+            ),
+        ):
+            result, unique_documents = rerank_runner.fetch_multimodal_rerank(
+                query=query_file.id,
+                documents=[image_doc],
+                query_type=QueryType.IMAGE_QUERY,
+            )
+
+        assert result == rerank_result
+        assert unique_documents == [image_doc]
+        assert resolve_candidate_keys.call_args.kwargs["tenant_id"] == self.tenant_id
+        assert resolve_candidate_keys.call_args.kwargs["attachment_ids"] == ("candidate-file-id",)
+        assert resolve_candidate_keys.call_args.kwargs["dataset_document_filters"] == {"dataset-id": None}
+        invoke_kwargs = mock_model_instance.invoke_multimodal_rerank.call_args.kwargs
+        assert invoke_kwargs["docs"][0]["content_type"] == DocType.IMAGE
+
+    def test_multimodal_rerank_scores_every_dataset_source_for_a_shared_attachment(
+        self, rerank_runner: RerankModelRunner, mock_model_instance, sqlite_session: Session
+    ):
+        query_file = UploadFile(
+            tenant_id=self.tenant_id,
+            storage_type=StorageType.LOCAL,
+            key="query-image-key",
+            name="query.png",
+            size=10,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="00000000-0000-0000-0000-000000000002",
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        query_file.id = "00000000-0000-0000-0000-000000000003"
+        sqlite_session.add(query_file)
+        sqlite_session.commit()
+        documents = [
+            Document(
+                page_content="shared image from A",
+                metadata={
+                    "doc_id": "shared-attachment",
+                    "doc_type": DocType.IMAGE,
+                    "_retrieval_source_dataset_id": "dataset-a",
+                    "document_id": "document-a",
+                },
+                provider="dify",
+            ),
+            Document(
+                page_content="duplicate image from A",
+                metadata={
+                    "doc_id": "shared-attachment",
+                    "doc_type": DocType.IMAGE,
+                    "_retrieval_source_dataset_id": "dataset-a",
+                    "document_id": "document-a-duplicate",
+                },
+                provider="dify",
+            ),
+            Document(
+                page_content="shared image from B",
+                metadata={
+                    "doc_id": "shared-attachment",
+                    "doc_type": DocType.IMAGE,
+                    "_retrieval_source_dataset_id": "dataset-b",
+                    "document_id": "document-b",
+                },
+                provider="dify",
+            ),
+        ]
+        mock_model_instance.get_model_schema.return_value.features = [ModelFeature.VISION]
+        mock_model_instance.invoke_multimodal_rerank.return_value = RerankResult(
+            model="rerank-model",
+            docs=[RerankDocument(index=0, text="shared image", score=0.82)],
+        )
+
+        with (
+            patch(
+                "core.rag.rerank.rerank_model.get_authorized_retrieval_attachment_file_keys",
+                return_value={"shared-attachment": "shared-image-key"},
+            ),
+            patch(
+                "core.rag.rerank.rerank_model.storage.load_once",
+                side_effect=[b"shared-image-bytes", b"query-image-bytes"],
+            ),
+        ):
+            result = rerank_runner.run(
+                query=query_file.id,
+                documents=documents,
+                query_type=QueryType.IMAGE_QUERY,
+            )
+
+        invoke_kwargs = mock_model_instance.invoke_multimodal_rerank.call_args.kwargs
+        assert len(invoke_kwargs["docs"]) == 1
+        assert [document.metadata["_retrieval_source_dataset_id"] for document in result] == [
+            "dataset-a",
+            "dataset-b",
+        ]
+        assert [document.metadata["document_id"] for document in result] == ["document-a", "document-b"]
+        assert [document.metadata["score"] for document in result] == [0.82, 0.82]
+
+    def test_fetch_multimodal_rerank_closes_metadata_session_before_storage_and_provider_io(
+        self, rerank_runner: RerankModelRunner, mock_model_instance, sqlite_session: Session
+    ):
+        upload_file = UploadFile(
+            tenant_id=self.tenant_id,
+            storage_type=StorageType.LOCAL,
+            key="query-file-key",
+            name="query.png",
+            size=10,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="00000000-0000-0000-0000-000000000002",
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        upload_file.id = "query-file-id"
+        sqlite_session.add(upload_file)
+        sqlite_session.commit()
+        session_closed = False
+
+        def mark_session_closed(session: Session, transaction: object) -> None:
+            del transaction
+            nonlocal session_closed
+            if session is not sqlite_session:
+                session_closed = True
+
+        rerank_result = RerankResult(model="rerank-model", docs=[])
+
+        def load_after_session_close(_key: str) -> bytes:
+            assert session_closed
+            return b"query-image-bytes"
+
+        def invoke_after_session_close(**_kwargs: object) -> RerankResult:
+            assert session_closed
+            return rerank_result
+
+        mock_model_instance.invoke_multimodal_rerank.side_effect = invoke_after_session_close
+        event.listen(Session, "after_transaction_end", mark_session_closed)
+        try:
+            with patch("core.rag.rerank.rerank_model.storage.load_once", side_effect=load_after_session_close):
+                result, unique_documents = rerank_runner.fetch_multimodal_rerank(
+                    query="query-file-id",
+                    documents=[],
+                    query_type=QueryType.IMAGE_QUERY,
+                )
+        finally:
+            event.remove(Session, "after_transaction_end", mark_session_closed)
+
+        assert result == rerank_result
+        assert unique_documents == []
+
     def test_fetch_multimodal_rerank_raises_when_query_image_not_found(self, rerank_runner):
         with pytest.raises(ValueError, match="Upload file not found for query"):
             rerank_runner.fetch_multimodal_rerank(
@@ -618,6 +787,77 @@ class TestRerankModelRunnerMultimodal(_UsesSQLiteSession):
                 documents=[],
                 query_type=QueryType.IMAGE_QUERY,
             )
+
+    def test_fetch_multimodal_rerank_rejects_foreign_tenant_query_before_storage_io(
+        self, rerank_runner: RerankModelRunner, sqlite_session: Session
+    ):
+        upload_file = UploadFile(
+            tenant_id="00000000-0000-0000-0000-000000000099",
+            storage_type=StorageType.LOCAL,
+            key="foreign-query-image-key",
+            name="foreign-query.png",
+            size=10,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="00000000-0000-0000-0000-000000000002",
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        upload_file.id = "00000000-0000-0000-0000-000000000098"
+        sqlite_session.add(upload_file)
+        sqlite_session.commit()
+
+        with (
+            patch("core.rag.rerank.rerank_model.storage.load_once") as load_once,
+            pytest.raises(ValueError, match="Upload file not found for query"),
+        ):
+            rerank_runner.fetch_multimodal_rerank(
+                query=upload_file.id,
+                documents=[],
+                query_type=QueryType.IMAGE_QUERY,
+            )
+
+        load_once.assert_not_called()
+
+    def test_fetch_multimodal_rerank_rejects_other_end_user_query_before_storage_io(
+        self, rerank_runner: RerankModelRunner, sqlite_session: Session
+    ):
+        upload_file = UploadFile(
+            tenant_id=self.tenant_id,
+            storage_type=StorageType.LOCAL,
+            key="other-user-query-image-key",
+            name="other-user-query.png",
+            size=10,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.END_USER,
+            created_by="00000000-0000-0000-0000-000000000097",
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        upload_file.id = "00000000-0000-0000-0000-000000000096"
+        sqlite_session.add(upload_file)
+        sqlite_session.commit()
+        scope = FileAccessScope(
+            tenant_id=self.tenant_id,
+            user_id="00000000-0000-0000-0000-000000000095",
+            user_from=UserFrom.END_USER,
+            invoke_from=InvokeFrom.SERVICE_API,
+        )
+
+        with (
+            bind_file_access_scope(scope),
+            patch("core.rag.rerank.rerank_model.storage.load_once") as load_once,
+            pytest.raises(ValueError, match="Upload file not found for query"),
+        ):
+            rerank_runner.fetch_multimodal_rerank(
+                query=upload_file.id,
+                documents=[],
+                query_type=QueryType.IMAGE_QUERY,
+            )
+
+        load_once.assert_not_called()
 
     def test_fetch_multimodal_rerank_rejects_unsupported_query_type(self, rerank_runner):
         with pytest.raises(ValueError, match="is not supported"):
@@ -1014,15 +1254,11 @@ class TestWeightRerankRunner:
 
         runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
 
-        # Mock keyword extraction
-        # After deduplication: doc1 (first dify with doc_id="doc1") and doc_external_1
-        # Note: The duplicate dify doc with same doc_id goes to else branch but is added as different object
-        # So we actually have 3 unique documents after deduplication
+        # After deduplication: doc1 (first dify with doc_id="doc1") and doc_external_1.
         mock_handler_instance = MagicMock()
         mock_handler_instance.extract_keywords.side_effect = [
             ["test"],  # query keywords
             ["content"],  # doc1 keywords
-            ["content", "duplicate"],  # doc1 duplicate keywords (different object, added via else)
             ["external"],  # external doc keywords
         ]
         mock_jieba_handler.return_value = mock_handler_instance
@@ -1037,13 +1273,101 @@ class TestWeightRerankRunner:
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
 
-        # Assert: External duplicate is removed (same object)
-        # Note: dify duplicates with same doc_id but different objects are NOT removed by current logic
-        # This tests the actual behavior, not ideal behavior
-        assert len(result) >= 2  # At least unique doc_id and external
-        # Verify external document appears only once
+        assert len(result) == 2
+        assert sum(1 for doc in result if doc.metadata.get("doc_id") == "doc1") == 1
         external_count = sum(1 for doc in result if doc.provider == "external")
         assert external_count == 1
+
+    def test_image_query_uses_vector_scores_without_text_embedding_or_keyword_reranking(
+        self,
+        weights_config,
+        mock_model_manager,
+        mock_cache_embedding,
+        mock_jieba_handler,
+    ):
+        documents = [
+            Document(
+                page_content="image A",
+                metadata={
+                    "doc_id": "shared-attachment",
+                    "doc_type": DocType.IMAGE,
+                    "_retrieval_source_dataset_id": "dataset-a",
+                    "score": 0.91,
+                },
+                provider="dify",
+            ),
+            Document(
+                page_content="duplicate image A",
+                metadata={
+                    "doc_id": "shared-attachment",
+                    "doc_type": DocType.IMAGE,
+                    "_retrieval_source_dataset_id": "dataset-a",
+                    "score": 0.89,
+                },
+                provider="dify",
+            ),
+            Document(
+                page_content="image B",
+                metadata={
+                    "doc_id": "shared-attachment",
+                    "doc_type": DocType.IMAGE,
+                    "_retrieval_source_dataset_id": "dataset-b",
+                    "score": 0.73,
+                },
+                provider="dify",
+            ),
+        ]
+        runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
+
+        result = runner.run(
+            query="query-image-id",
+            documents=documents,
+            score_threshold=0.7,
+            query_type=QueryType.IMAGE_QUERY,
+        )
+
+        assert [document.metadata["_retrieval_source_dataset_id"] for document in result] == [
+            "dataset-a",
+            "dataset-b",
+        ]
+        assert [document.metadata["score"] for document in result] == [0.91, 0.73]
+        mock_model_manager.assert_not_called()
+        mock_cache_embedding.assert_not_called()
+        mock_jieba_handler.assert_not_called()
+
+    def test_text_query_excludes_image_candidates_from_keyword_and_embedding_work(
+        self,
+        weights_config,
+        mock_model_manager,
+        mock_cache_embedding,
+        mock_jieba_handler,
+    ):
+        text_document = Document(
+            page_content="text content",
+            metadata={"doc_id": "text-node", "doc_type": DocType.TEXT, "score": 0.8},
+            provider="dify",
+        )
+        image_document = Document(
+            page_content="image description must not be embedded as text",
+            metadata={"doc_id": "image-node", "doc_type": DocType.IMAGE, "score": 0.95},
+            provider="dify",
+        )
+        mock_jieba_handler.return_value.extract_keywords.side_effect = [["query"], ["text"]]
+        runner = WeightRerankRunner(tenant_id="tenant123", weights=weights_config)
+
+        result = runner.run(
+            query="query",
+            documents=[image_document, text_document],
+            query_type=QueryType.TEXT_QUERY,
+        )
+
+        assert [document.metadata["doc_id"] for document in result] == ["text-node"]
+        assert mock_jieba_handler.return_value.extract_keywords.call_args_list == [
+            call("query", None),
+            call("text content", None),
+        ]
+        mock_model_manager.assert_not_called()
+        mock_cache_embedding.assert_not_called()
 
     def test_weight_combination(
         self,
@@ -1170,7 +1494,9 @@ class TestRerankRunnerFactory(_UsesSQLiteSession):
         runner = RerankRunnerFactory.create_rerank_runner(
             runner_type=RerankMode.RERANKING_MODEL,
             rerank_model_instance=mock_model_instance,
-            session=self.session,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
         )
 
         # Assert: Correct runner type is created
@@ -1233,7 +1559,9 @@ class TestRerankRunnerFactory(_UsesSQLiteSession):
         runner = RerankRunnerFactory.create_rerank_runner(
             runner_type=RerankMode.RERANKING_MODEL.value,
             rerank_model_instance=mock_model_instance,
-            session=self.session,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
         )
 
         # Assert: Runner is created successfully
@@ -1291,7 +1619,9 @@ class TestRerankIntegration(_UsesSQLiteSession):
         runner = RerankRunnerFactory.create_rerank_runner(
             runner_type=RerankMode.RERANKING_MODEL,
             rerank_model_instance=mock_model_instance,
-            session=self.session,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
         )
         result = runner.run(
             query="best programming language",
@@ -1332,7 +1662,12 @@ class TestRerankIntegration(_UsesSQLiteSession):
             Document(page_content="Low relevance", metadata={"doc_id": "doc3"}, provider="dify"),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
+        )
 
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
@@ -1387,7 +1722,12 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
+        )
 
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
@@ -1427,7 +1767,12 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
             Document(page_content="Negative score", metadata={"doc_id": "doc3"}, provider="dify"),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
+        )
 
         # Act: Run reranking with zero threshold
         result = runner.run(query="test", documents=documents, score_threshold=0.0)
@@ -1463,7 +1808,12 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
             Document(page_content="Perfect 3", metadata={"doc_id": "doc3"}, provider="dify"),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
+        )
 
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
@@ -1504,7 +1854,12 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
+        )
 
         # Act: Run reranking
         result = runner.run(query="test 测试", documents=documents)
@@ -1542,7 +1897,12 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
+        )
 
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
@@ -1578,7 +1938,12 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
             for i in range(num_docs)
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
+        )
 
         # Act: Run reranking with top_n
         result = runner.run(query="test", documents=documents, top_n=10)
@@ -1669,7 +2034,12 @@ class TestRerankEdgeCases(_UsesSQLiteSession):
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
+        )
 
         # Act: Run reranking with empty query
         result = runner.run(query="", documents=documents)
@@ -1715,7 +2085,12 @@ class TestRerankPerformance(_UsesSQLiteSession):
             for i in range(5)
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
+        )
 
         # Act: Run reranking
         result = runner.run(query="test", documents=documents)
@@ -1773,11 +2148,10 @@ class TestRerankPerformance(_UsesSQLiteSession):
             ]
             mock_jieba.return_value = mock_handler
 
-            mock_embedding = MagicMock()
+            mock_embedding = object()
             mock_manager.return_value.get_model_instance.return_value = mock_embedding
 
-            mock_cache_instance = MagicMock()
-            mock_cache_instance.embed_query.return_value = [0.1, 0.2]
+            mock_cache_instance = _FixedEmbeddingCache([0.1, 0.2])
             mock_cache.return_value = mock_cache_instance
             mock_cache.get_cached_query_embedding.return_value = None
 
@@ -1821,7 +2195,12 @@ class TestRerankErrorHandling(_UsesSQLiteSession):
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
+        )
 
         # Act & Assert: Exception is raised
         with pytest.raises(RuntimeError, match="Model invocation failed"):
@@ -1854,7 +2233,12 @@ class TestRerankErrorHandling(_UsesSQLiteSession):
             ),
         ]
 
-        runner = RerankModelRunner(rerank_model_instance=mock_model_instance, session=self.session)
+        runner = RerankModelRunner(
+            rerank_model_instance=mock_model_instance,
+            tenant_id=self.tenant_id,
+            session_factory=self.sessions,
+            dataset_document_filters=self.dataset_document_filters,
+        )
 
         # Act & Assert: Should raise IndexError or handle gracefully
         with pytest.raises(IndexError):
@@ -1913,11 +2297,10 @@ class TestRerankErrorHandling(_UsesSQLiteSession):
             mock_handler.extract_keywords.return_value = ["test"]
             mock_jieba.return_value = mock_handler
 
-            mock_embedding = MagicMock()
+            mock_embedding = object()
             mock_manager.return_value.get_model_instance.return_value = mock_embedding
 
-            mock_cache_instance = MagicMock()
-            mock_cache_instance.embed_query.return_value = [0.1, 0.2]
+            mock_cache_instance = _FixedEmbeddingCache([0.1, 0.2])
             mock_cache.return_value = mock_cache_instance
             mock_cache.get_cached_query_embedding.return_value = None
 

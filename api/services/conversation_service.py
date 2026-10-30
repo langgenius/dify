@@ -16,7 +16,8 @@ from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, ConversationVariable
 from models.model import App, Conversation, EndUser, Message
-from repositories.conversation_lifecycle import retire_conversation
+from repositories.conversation.lifecycle import retire_conversation
+from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
 from services.errors.conversation import (
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
@@ -335,10 +336,14 @@ class ConversationService:
         conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
 
         # Get the existing conversation variable
-        stmt = select(ConversationVariable).where(
-            ConversationVariable.app_id == app_model.id,
-            ConversationVariable.conversation_id == conversation.id,
-            ConversationVariable.id == variable_id,
+        stmt = (
+            select(ConversationVariable)
+            .where(
+                ConversationVariable.app_id == app_model.id,
+                ConversationVariable.conversation_id == conversation.id,
+                ConversationVariable.id == variable_id,
+            )
+            .with_for_update()
         )
 
         existing_variable = session.scalar(stmt)
@@ -373,7 +378,14 @@ class ConversationService:
         }
 
         updated_variable = variable_factory.build_conversation_variable_from_mapping(updated_variable_dict)
-        existing_variable.data = updated_variable.model_dump_json()
+        serialized_variable = updated_variable.model_dump_json()
+        lock_new_workflow_upload_file_references(
+            session,
+            tenant_id=app_model.tenant_id,
+            previous_payloads=(existing_variable.data,),
+            current_payloads=(serialized_variable,),
+        )
+        existing_variable.data = serialized_variable
         session.commit()
 
         return {

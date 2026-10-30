@@ -1,24 +1,14 @@
 from enum import StrEnum
-from typing import override
 
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
+from enums import knowledge
 
-
-class CreatorUserRole(StrEnum):
-    ACCOUNT = "account"
-    END_USER = "end_user"
-
-    @classmethod
-    @override
-    def _missing_(cls, value):
-        if value == "end-user":
-            return cls.END_USER
-        else:
-            return super()._missing_(value)
+ProcessRuleMode = knowledge.ProcessRuleMode
+DocumentCreatedFrom = knowledge.DocumentCreatedFrom
 
 
 class WorkflowRunTriggeredFrom(StrEnum):
@@ -110,14 +100,6 @@ class DataSourceType(StrEnum):
     ONLINE_DRIVE = "online_drive"
 
 
-class ProcessRuleMode(StrEnum):
-    """Dataset Process Rule Mode"""
-
-    AUTOMATIC = "automatic"
-    CUSTOM = "custom"
-    HIERARCHICAL = "hierarchical"
-
-
 class IndexingStatus(StrEnum):
     """Document Indexing Status"""
 
@@ -129,14 +111,6 @@ class IndexingStatus(StrEnum):
     PAUSED = "paused"
     COMPLETED = "completed"
     ERROR = "error"
-
-
-class DocumentCreatedFrom(StrEnum):
-    """Document Created From"""
-
-    WEB = "web"
-    API = "api"
-    RAG_PIPELINE = "rag-pipeline"
 
 
 class ConversationFromSource(StrEnum):

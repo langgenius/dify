@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Generator, Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from inspect import unwrap
 from typing import TypedDict, Unpack
@@ -46,14 +46,15 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     WorkflowListQuery,
     WorkflowUpdatePayload,
 )
+from enums.creator import CreatorUserRole
 from fields.workflow_run_fields import node_execution_response_source
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline
-from models.enums import CreatorUserRole
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.knowledge.datasets.contracts import DatasetConcurrentUpdateError as DatasetConcurrentUpdateFailure
 from tests.unit_tests.controllers.error_body import raised_error
 
 pytestmark = pytest.mark.usefixtures("pipeline_application")
@@ -203,6 +204,22 @@ def make_node_execution(**overrides: Unpack[NodeExecutionOverrides]) -> Workflow
     return execution
 
 
+@dataclass
+class _DatasourceVariableService:
+    result: WorkflowNodeExecutionModel
+    calls: list[tuple[Pipeline, dict[str, object], Account]] = field(default_factory=list)
+
+    def set_datasource_variables(
+        self,
+        *,
+        pipeline: Pipeline,
+        args: dict[str, object],
+        current_user: Account,
+    ) -> WorkflowNodeExecutionModel:
+        self.calls.append((pipeline, args, current_user))
+        return self.result
+
+
 def default_workflow_payload() -> WorkflowFactoryPayload:
     return {
         "id": "workflow-1",
@@ -274,7 +291,7 @@ class TestDraftWorkflowApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
@@ -302,7 +319,7 @@ class TestDraftWorkflowApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
@@ -322,7 +339,7 @@ class TestDraftWorkflowApi:
         with (
             app.test_request_context("/", json={"graph": empty_mapping(), "features": empty_mapping()}),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
@@ -359,7 +376,7 @@ class TestDraftWorkflowApi:
         with (
             app.test_request_context("/", method="POST"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
@@ -381,7 +398,7 @@ class TestDraftWorkflowApi:
         with (
             app.test_request_context("/", method="POST"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
@@ -403,7 +420,7 @@ class TestDraftWorkflowApi:
         with (
             app.test_request_context("/", method="POST"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
@@ -488,7 +505,7 @@ class TestDraftNodeRun:
         with (
             app.test_request_context("/", json={"inputs": empty_mapping()}),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
@@ -553,7 +570,7 @@ class TestPublishedPipelineApis:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
@@ -561,6 +578,29 @@ class TestPublishedPipelineApis:
 
         assert result["result"] == "success"
         assert "created_at" in result
+
+    def test_publish_maps_concurrent_dataset_update_to_conflict(self, app: Flask) -> None:
+        api = PublishedRagPipelineApi()
+        method = unwrap(api.post)
+        pipeline = make_pipeline()
+        user = make_account(id="u1")
+        service = MagicMock()
+        service.publish_workflow.side_effect = DatasetConcurrentUpdateFailure()
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
+                return_value=service,
+            ),
+        ):
+            response, status = raised_error(lambda: method(api, user, pipeline))
+
+        assert status == 409
+        assert response == {
+            "code": "dataset_concurrent_update",
+            "message": "The dataset changed while it was being updated. Please retry the request.",
+        }
 
 
 class TestMiscApis:
@@ -617,7 +657,7 @@ class TestMiscApis:
         with (
             app.test_request_context("/?type=all"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
@@ -639,7 +679,7 @@ class TestDefaultBlockConfigApi:
         with (
             app.test_request_context("/?q={}"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
@@ -671,7 +711,7 @@ class TestPublishedAllRagPipelineApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
@@ -713,7 +753,7 @@ class TestRagPipelineByIdApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
@@ -827,7 +867,7 @@ class TestRagPipelineWorkflowLastRunApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
@@ -848,7 +888,7 @@ class TestRagPipelineWorkflowLastRunApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
@@ -876,7 +916,7 @@ class TestRagPipelineWorkflowRunNodeExecutionListApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
@@ -907,16 +947,17 @@ class TestRagPipelineDatasourceVariableApi:
             "start_node_title": "Node",
         }
 
-        service = MagicMock()
-        service.set_datasource_variables.return_value = make_node_execution(node_id="n1")
+        service = _DatasourceVariableService(result=make_node_execution(node_id="n1"))
 
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service",
                 return_value=service,
             ),
         ):
             result = method(api, DatasourceVariablesPayload.model_validate(payload), user, pipeline)
             assert result["node_id"] == "n1"
             assert result["process_data"] == {}
+
+        assert service.calls == [(pipeline, DatasourceVariablesPayload.model_validate(payload).model_dump(), user)]

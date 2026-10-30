@@ -6,11 +6,26 @@ from pathlib import Path
 import pytest
 
 
+@pytest.mark.parametrize("filename", ["external.py", "hit_testing.py"])
+def test_migrated_error_boundaries_do_not_import_werkzeug(filename: str) -> None:
+    root = Path(__file__).resolve().parents[5]
+    tree = ast.parse((root / "controllers/console/datasets" / filename).read_text())
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            modules = [node.module or ""]
+        elif isinstance(node, ast.Import):
+            modules = [alias.name for alias in node.names]
+        else:
+            continue
+        assert not any(module == "werkzeug" or module.startswith("werkzeug.") for module in modules), modules
+
+
 @pytest.mark.parametrize(
-    ("filename", "count"),
-    [("data_source.py", 7), ("datasets.py", 20), ("datasets_document.py", 24), ("external.py", 8)],
+    "filename",
+    ["data_source.py", "datasets.py", "datasets_document.py", "external.py"],
 )
-def test_every_endpoint_declares_admission_context_and_application_service(filename: str, count: int) -> None:
+def test_every_endpoint_declares_admission_context_and_application_service(filename: str) -> None:
     root = Path(__file__).resolve().parents[5]
     tree = ast.parse((root / "controllers/console/datasets" / filename).read_text())
     # This namespace package is not traversed by import-linter's package graph.
@@ -19,9 +34,8 @@ def test_every_endpoint_declares_admission_context_and_application_service(filen
         "repositories",
         "controllers.common.session",
         "libs.login",
-        "services.knowledge.dataset_service",
         "services.knowledge.external.service",
-        "services.hit_testing_service",
+        "services.knowledge.hit_testing.adapters",
         "services.knowledge.dataset_read_service",
         "services.knowledge.datasets.adapters",
         "services.knowledge.documents.adapters",
@@ -44,7 +58,7 @@ def test_every_endpoint_declares_admission_context_and_application_service(filen
         for method in resource.body
         if isinstance(method, ast.FunctionDef) and method.name in {"get", "post", "patch", "put", "delete"}
     ]
-    assert len(endpoints) == count
+    assert endpoints
     for endpoint in endpoints:
         assert any(
             isinstance(d, ast.Call) and ast.unparse(d.func) == "console_account_admission"

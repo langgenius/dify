@@ -2,12 +2,14 @@
 
 import time
 import uuid
+from unittest.mock import create_autospec
 
 import pytest
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_runtime import build_knowledge_index_files
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.graph import Graph
@@ -16,6 +18,7 @@ from graphon.nodes.code.code_node import CodeNode
 from graphon.nodes.code.entities import CodeNodeData
 from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.runtime import RuntimeState, VariablePool
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from tests.workflow_test_utils import build_test_graph_init_params
 
 pytest_plugins = ("tests.integration_tests.workflow.nodes.__mock.code_executor",)
@@ -47,7 +50,12 @@ def _init_code_node(code_config: dict) -> CodeNode:
     graph_runtime_state = RuntimeState(
         workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter()
     )
-    node_factory = DifyNodeFactory(init_params=init_params, runtime_state=graph_runtime_state)
+    node_factory = DifyNodeFactory(
+        init_params=init_params,
+        runtime_state=graph_runtime_state,
+        knowledge_retrieval=create_autospec(KnowledgeRetriever, instance=True, spec_set=True),
+        knowledge_index_files=build_knowledge_index_files(),
+    )
     Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
     return CodeNode(
         node_id=str(uuid.uuid4()),

@@ -1,5 +1,7 @@
+"""Current segment indexing transactions, without retired delivery generations."""
+
 import uuid
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
@@ -12,6 +14,22 @@ from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.enable_segment_to_index_task import enable_segment_to_index_task
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
+
+
+class _LoadProbe:
+    def __init__(self) -> None:
+        self.called = False
+
+    def load(self, *_args: object, **_kwargs: object) -> None:
+        self.called = True
+
+
+class _IndexProcessorFactoryStub:
+    def __init__(self, processor: _LoadProbe) -> None:
+        self._processor = processor
+
+    def init_index_processor(self) -> _LoadProbe:
+        return self._processor
 
 
 @pytest.fixture
@@ -61,7 +79,7 @@ def indexed_segment(sqlite_session: Session) -> tuple[Dataset, Document, Documen
 @contextmanager
 def _record_transaction_events(
     sqlite_session_factory: sessionmaker[Session], phase_events: list[str]
-) -> Iterator[None]:
+) -> Generator[None]:
     """Record real transaction boundaries from task-owned SQLite sessions."""
     session_type = sqlite_session_factory.class_
 
@@ -152,6 +170,7 @@ def test_enable_segments_commits_index_rows_after_loading(
     dataset, document, segment = indexed_segment
     phase_events: list[str] = []
     index_processor = MagicMock()
+    index_processor.clean.side_effect = lambda *_args, **_kwargs: phase_events.append("clean")
     index_processor.load.side_effect = lambda *_args, **_kwargs: phase_events.append("load")
     enable_summaries = MagicMock(side_effect=lambda *_args, **_kwargs: phase_events.append("summary"))
 
@@ -171,6 +190,7 @@ def test_enable_segments_commits_index_rows_after_loading(
     enable_summaries.assert_called_once()
     assert enable_summaries.call_args.kwargs["dataset"].id == dataset.id
     assert enable_summaries.call_args.kwargs["segment_ids"] == [segment.id]
+    index_processor.clean.assert_not_called()
 
 
 def test_enable_segments_skips_segments_that_are_not_completed(
@@ -199,38 +219,28 @@ def test_enable_segments_skips_segments_that_are_not_completed(
     enable_summaries.assert_not_called()
 
 
-def test_enable_segments_rolls_back_before_error_compensation(
+def test_late_enable_delivery_skips_segment_restored_after_publish_failure(
     sqlite_session: Session,
     indexed_segment: tuple[Dataset, Document, DocumentSegment],
-    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     dataset, document, segment = indexed_segment
-    phase_events: list[str] = []
-    index_processor = MagicMock()
+    segment.enabled = False
+    sqlite_session.commit()
+    index_processor = _LoadProbe()
 
-    def fail_load(*_args: object, **_kwargs: object) -> None:
-        phase_events.append("load")
-        raise RuntimeError("load failed")
-
-    index_processor.load.side_effect = fail_load
+    def unexpected_summary(**_kwargs: object) -> None:
+        raise AssertionError("A stale enable must not update summaries")
 
     with (
-        _record_transaction_events(sqlite_session_factory, phase_events),
-        patch("tasks.enable_segments_to_index_task.IndexProcessorFactory") as processor_factory,
         patch(
-            "services.knowledge.summaries.adapters.SummaryIndexAdapter.enable_summaries_for_segments"
-        ) as enable_summaries,
-        patch("tasks.enable_segments_to_index_task.redis_client.delete"),
+            "tasks.enable_segments_to_index_task.IndexProcessorFactory",
+            new=lambda _doc_form: _IndexProcessorFactoryStub(index_processor),
+        ),
+        patch(
+            "services.knowledge.summaries.adapters.SummaryIndexAdapter.enable_summaries_for_segments",
+            new=unexpected_summary,
+        ),
     ):
-        processor_factory.return_value.init_index_processor.return_value = index_processor
         enable_segments_to_index_task.run([segment.id], dataset.id, document.id)
 
-    sqlite_session.expire_all()
-    persisted_segment = sqlite_session.get(DocumentSegment, segment.id)
-    assert persisted_segment is not None
-    assert persisted_segment.enabled is False
-    assert persisted_segment.status == SegmentStatus.ERROR
-    assert persisted_segment.error == "load failed"
-    assert persisted_segment.disabled_at is not None
-    assert phase_events == ["load", "rollback", "commit"]
-    enable_summaries.assert_not_called()
+    assert index_processor.called is False

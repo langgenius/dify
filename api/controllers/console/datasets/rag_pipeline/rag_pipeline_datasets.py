@@ -7,6 +7,7 @@ from configs import dify_config
 from controllers.common.schema import JsonResponseWithStatus, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
+from controllers.console.datasets.permission_keys import get_dataset_permission_keys
 from controllers.console.datasets.rag_pipeline.rag_pipeline_import import RagPipelineImportResponse
 from controllers.console.wraps import (
     account_initialization_required,
@@ -16,6 +17,8 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from core.logging.context import get_request_id, get_trace_id
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.dataset_fields import (
     DatasetDetailResponse,
@@ -23,12 +26,11 @@ from fields.dataset_fields import (
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
+from machinery.context import RequestContext
 from models import Account
 from models.dataset import DatasetPermissionEnum
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
-from services.knowledge.dataset_read_service import load_dataset_detail
-from services.knowledge.dataset_service import DatasetPermissionService, DatasetService
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 from services.rbac import contracts as rbac_contracts
 
@@ -85,13 +87,6 @@ class CreateRagPipelineDatasetApi(Resource):
                 rag_pipeline_dataset_create_entity=rag_pipeline_dataset_create_entity,
             )
             dataset_id = import_info["dataset_id"]
-            if rag_pipeline_dataset_create_entity.permission == "partial_members":
-                DatasetPermissionService.update_partial_member_list(
-                    current_tenant_id,
-                    dataset_id,
-                    rag_pipeline_dataset_create_entity.partial_member_list,
-                    db.session(),
-                )
             db.session.commit()
         except services.errors.dataset.DatasetNameDuplicateError as caught_error:
             raise DatasetNameDuplicateError() from caught_error
@@ -126,20 +121,27 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
-        session = db.session()
-        dataset = DatasetService.create_empty_rag_pipeline_dataset(
-            tenant_id=current_tenant_id,
-            rag_pipeline_dataset_create_entity=RagPipelineDatasetCreateEntity(
-                name="",
-                description="",
-                icon_info=IconInfo(
+        context = RequestContext(
+            request_id=get_request_id(),
+            trace_id=get_trace_id(),
+            account_id=current_user.id,
+            active_workspace_id=current_tenant_id,
+        )
+        dataset = application_services().knowledge.datasets.create_rag_pipeline_dataset(
+            context,
+            values={
+                "name": "",
+                "description": "",
+                "icon_info": IconInfo(
                     icon="📙",
                     icon_background="#FFF4ED",
                     icon_type="emoji",
-                ),
-                permission=DatasetPermissionEnum.ONLY_ME,
-                partial_member_list=None,
-            ),
-            session=session,
+                ).model_dump(),
+                "permission": DatasetPermissionEnum.ONLY_ME,
+                "partial_member_list": None,
+            },
         )
-        return dump_response(DatasetDetailResponse, load_dataset_detail(dataset, session=session)), 201
+        return dump_response(
+            DatasetDetailResponse,
+            {**dataset, "permission_keys": get_dataset_permission_keys(context, dataset["id"])},
+        ), 201

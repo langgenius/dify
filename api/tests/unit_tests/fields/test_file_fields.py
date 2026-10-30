@@ -5,11 +5,11 @@ from datetime import datetime
 import pytest
 
 from core.workflow.file_reference import build_file_reference
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from fields import conversation_fields, message_fields
 from fields.file_fields import FileResponse, FileWithSignedUrl, RemoteFileInfo, UploadConfig
 from graphon.file import File, FileTransferMethod, FileType
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 
 

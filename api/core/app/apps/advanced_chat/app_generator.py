@@ -15,10 +15,6 @@ from sqlalchemy.orm import Session, sessionmaker
 import contexts
 from configs import dify_config
 from constants import UUID_NIL
-
-if TYPE_CHECKING:
-    from controllers.console.app.workflow import LoopNodeRunPayload
-    from core.app.apps.workflow_app_runner import WorkflowRunDriver
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
@@ -45,8 +41,6 @@ from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.helper.trace_id_helper import extract_external_trace_id_from_args, extract_trace_session_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
-from core.repositories import DifyCoreRepositoryFactory
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.engine.filter import ResponseStreamFilter
@@ -56,12 +50,20 @@ from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
+from services.file_adapters import build_file_service
+from services.workflow.persistence import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from services.workflow_draft_variable_service import (
     DraftVarLoader,
     WorkflowDraftVariableService,
 )
+
+if TYPE_CHECKING:
+    from controllers.console.app.workflow import LoopNodeRunPayload
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +75,14 @@ def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> 
 
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
-    def __init__(self, *, execution_driver: WorkflowRunDriver) -> None:
+    def __init__(
+        self,
+        *,
+        execution_driver: WorkflowRunDriver,
+        knowledge_retrieval: KnowledgeRetriever,
+    ) -> None:
         self._execution_driver = execution_driver
+        self._knowledge_retrieval = knowledge_retrieval
 
     _dialogue_count: int
 
@@ -243,7 +251,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 workflow_triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
             else:
                 workflow_triggered_from = WorkflowRunTriggeredFrom.APP_RUN
-            workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+            workflow_execution_repository = WorkflowRepositoryFactory.create_workflow_execution_repository(
                 session_factory=session_factory,
                 tenant_id=app_model.tenant_id,
                 user=user,
@@ -251,12 +259,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 triggered_from=workflow_triggered_from,
             )
             # Create workflow node execution repository
-            workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+            workflow_node_execution_repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=session_factory,
                 tenant_id=app_model.tenant_id,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                files=build_file_service(session_factory=session_factory),
             )
 
             return self._generate(
@@ -378,7 +387,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         # Create session factory
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
         # Create workflow execution(aka workflow run) repository
-        workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+        workflow_execution_repository = WorkflowRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,
@@ -386,12 +395,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
         # Create workflow node execution repository
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            files=build_file_service(session_factory=session_factory),
         )
         var_loader = DraftVarLoader(
             engine=db.engine,
@@ -471,7 +481,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         # Create session factory
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
         # Create workflow execution(aka workflow run) repository
-        workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+        workflow_execution_repository = WorkflowRepositoryFactory.create_workflow_execution_repository(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,
@@ -479,12 +489,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         )
         # Create workflow node execution repository
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=app_model.tenant_id,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            files=build_file_service(session_factory=session_factory),
         )
         var_loader = DraftVarLoader(
             engine=db.engine,
@@ -703,6 +714,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             runner = AdvancedChatAppRunner(
                 application_generate_entity=application_generate_entity,
                 execution_driver=self._execution_driver,
+                knowledge_retrieval=self._knowledge_retrieval,
                 queue_manager=queue_manager,
                 conversation=conversation,
                 message=message,

@@ -12,8 +12,8 @@ from core.rag.index_processor.index_processor import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from repositories.knowledge.dataset_read_repository import get_dataset_doc_form, get_segment_child_chunks
-from repositories.knowledge.segment_read_adapter import get_segment_attachments
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
+from repositories.knowledge.segment_query_repository import get_segment_attachment_files, get_segment_child_chunks
 
 
 @shared_task(queue="dataset")
@@ -168,12 +168,12 @@ def deal_dataset_index_update_task(dataset_id: str, action: str):
                                                 child_documents.append(child_document)
                                             document.children = child_documents
                                     if dataset.is_multimodal:
-                                        for attachment in get_segment_attachments(segment, session=session):
+                                        for attachment in get_segment_attachment_files(segment, session=session):
                                             multimodal_documents.append(
                                                 AttachmentDocument(
-                                                    page_content=attachment["name"],
+                                                    page_content=attachment.name,
                                                     metadata={
-                                                        "doc_id": attachment["id"],
+                                                        "doc_id": attachment.id,
                                                         "doc_hash": "",
                                                         "document_id": segment.document_id,
                                                         "dataset_id": segment.dataset_id,

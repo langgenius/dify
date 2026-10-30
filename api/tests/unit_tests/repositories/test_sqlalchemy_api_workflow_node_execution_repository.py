@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_ROOT_APP_ID_KEY,
 )
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowNodeExecutionStatus
-from models.enums import CreatorUserRole
 from models.workflow import (
     ExecutionOffLoadType,
     WorkflowNodeExecutionModel,
@@ -19,10 +19,10 @@ from models.workflow import (
     WorkflowNodeExecutionTriggeredFrom,
 )
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from tests.unit_tests.config_override import apply_config_overrides
 
 
@@ -81,7 +81,7 @@ def test_app_deletion_removes_nested_caller_records_and_offloads(
             ),
         )
         with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
-            repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sqlite_session_factory)
+            repository = WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(sqlite_session_factory)
     else:
         repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)
 

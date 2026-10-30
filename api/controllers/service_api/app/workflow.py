@@ -58,8 +58,7 @@ from libs import helper
 from libs.external_api import error_responses
 from libs.helper import dump_response, to_timestamp
 from models.model import App, AppMode, EndUser
-from repositories.factory import DifyAPIRepositoryFactory
-from services.app_generate_service import AppGenerateService
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.app_task_service import AppTaskService
 from services.billing_service import BillingService
 from services.errors.app import (
@@ -272,7 +271,7 @@ class WorkflowRunDetailApi(Resource):
 
         # Use repository to get workflow run
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        workflow_run_repo = WorkflowRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
         workflow_run = workflow_run_repo.get_workflow_run_by_id(
             tenant_id=app_model.tenant_id,
@@ -370,7 +369,7 @@ class WorkflowRunApi(Resource):
         streaming = payload.response_mode == "streaming"
 
         try:
-            response = AppGenerateService.generate(
+            response = application_services().app_generation.generate(
                 session=session,
                 app_model=app_model,
                 user=end_user,
@@ -512,7 +511,7 @@ class WorkflowRunByIdApi(Resource):
         streaming = payload.response_mode == "streaming"
 
         try:
-            response = AppGenerateService.generate(
+            response = application_services().app_generation.generate(
                 session=session,
                 app_model=app_model,
                 user=end_user,

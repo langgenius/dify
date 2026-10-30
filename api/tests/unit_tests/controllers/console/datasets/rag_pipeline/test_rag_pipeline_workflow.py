@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
+from dataclasses import dataclass, field
 from datetime import datetime
 from inspect import unwrap as unwrap_all
 from unittest.mock import patch
@@ -26,6 +27,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
+from machinery.context import RequestContext
 from models.account import Account, TenantAccountRole
 from models.dataset import Dataset, Pipeline
 from models.engine import db
@@ -34,6 +36,7 @@ from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
 from services.errors.llm import InvokeRateLimitError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
+from services.knowledge.dataset_access import DatasetAccessDeniedError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant
@@ -94,6 +97,31 @@ def _dataset(*, tenant_id: str = DEFAULT_WORKFLOW_TENANT_ID, maintainer: str = D
         permission=PermissionEnum.ONLY_ME,
         provider="vendor",
     )
+
+
+@dataclass
+class _DatasetAccessRecorder:
+    error: DatasetAccessDeniedError | None = None
+    calls: list[tuple[RequestContext, str]] = field(default_factory=list)
+
+    def require_accessible(self, context: RequestContext, dataset_id: str) -> None:
+        self.calls.append((context, dataset_id))
+        if self.error is not None:
+            raise self.error
+
+
+@dataclass(frozen=True)
+class _KnowledgeServices:
+    datasets: _DatasetAccessRecorder
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    knowledge: _KnowledgeServices
+
+
+def _services_with_datasets(datasets: _DatasetAccessRecorder) -> _ApplicationServices:
+    return _ApplicationServices(knowledge=_KnowledgeServices(datasets=datasets))
 
 
 def _persist_workflow(workflow: Workflow) -> None:
@@ -310,12 +338,18 @@ def test_rag_pipeline_transform_enforces_legacy_dataset_permission_before_servic
 ) -> None:
     api = module.RagPipelineTransformApi()
     handler = unwrap_all(api.post)
+    datasets = _DatasetAccessRecorder(error=DatasetAccessDeniedError())
 
     with Session(sqlite_engine) as session:
         session.add(_dataset(maintainer="00000000-0000-0000-0000-000000000099"))
 
         with (
             config_overrides_context(RBAC_ENABLED=False),
+            patch.object(
+                module,
+                "application_services",
+                return_value=_services_with_datasets(datasets),
+            ),
             patch.object(module.RagPipelineTransformService, "transform_dataset") as transform_dataset,
             pytest.raises(Forbidden),
         ):
@@ -331,6 +365,7 @@ def test_rag_pipeline_transform_passes_authorized_dataset_and_account_to_service
     handler = unwrap_all(api.post)
     account = _account()
     expected = {"pipeline_id": "pipeline-1", "dataset_id": DEFAULT_DATASET_ID, "status": "success"}
+    datasets = _DatasetAccessRecorder()
 
     with Session(sqlite_engine) as session:
         dataset = _dataset()
@@ -338,6 +373,11 @@ def test_rag_pipeline_transform_passes_authorized_dataset_and_account_to_service
 
         with (
             config_overrides_context(RBAC_ENABLED=False),
+            patch.object(
+                module,
+                "application_services",
+                return_value=_services_with_datasets(datasets),
+            ),
             patch.object(module.RagPipelineTransformService, "transform_dataset", return_value=expected) as transform,
         ):
             response = handler(api, session, DEFAULT_WORKFLOW_TENANT_ID, account, UUID(DEFAULT_DATASET_ID))
@@ -350,12 +390,18 @@ def test_rag_pipeline_transform_passes_authorized_dataset_and_account_to_service
 def test_rag_pipeline_transform_maps_missing_pipeline_to_not_found(sqlite_engine: Engine) -> None:
     api = module.RagPipelineTransformApi()
     handler = unwrap_all(api.post)
+    datasets = _DatasetAccessRecorder()
 
     with Session(sqlite_engine) as session:
         session.add(_dataset())
 
         with (
             config_overrides_context(RBAC_ENABLED=False),
+            patch.object(
+                module,
+                "application_services",
+                return_value=_services_with_datasets(datasets),
+            ),
             patch.object(
                 module.RagPipelineTransformService,
                 "transform_dataset",

@@ -9,11 +9,11 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from core.workflow.file_reference import build_file_reference
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.workflow import WorkflowDraftVariable, WorkflowDraftVariableFile
 from services.workflow_draft_variable_service import DraftVarLoader

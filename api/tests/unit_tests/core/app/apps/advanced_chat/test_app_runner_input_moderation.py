@@ -16,6 +16,7 @@ from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueSto
 from core.moderation.base import ModerationError
 from models.model import App, AppMode, Conversation, IconType, Message, MessageAnnotation
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 MINIMAL_GRAPH = {
     "nodes": [
@@ -87,6 +88,7 @@ def build_runner(sqlite_session: Session):
     runner = AdvancedChatAppRunner(
         application_generate_entity=gen,
         queue_manager=mock_queue_manager,
+        knowledge_retrieval=make_knowledge_retriever(),
         conversation=conversation,
         message=message,
         dialogue_count=1,

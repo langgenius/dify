@@ -16,6 +16,7 @@ from core.workflow.system_variables import default_system_variables
 from graphon.runtime import RuntimeState, VariablePool
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 def _make_graph_state():
@@ -80,6 +81,7 @@ def test_run_uses_single_node_execution_branch(
     runner = WorkflowAppRunner(
         application_generate_entity=app_generate_entity,
         queue_manager=queue_manager,
+        knowledge_retrieval=make_knowledge_retriever(),
         variable_loader=MagicMock(),
         workflow=workflow,
         system_user_id="system-user",
@@ -124,6 +126,7 @@ def test_run_uses_single_node_execution_branch(
 def test_single_node_run_validates_target_node_config(queue_manager: WorkflowAppQueueManager) -> None:
     runner = WorkflowBasedAppRunner(
         queue_manager=queue_manager,
+        knowledge_retrieval=make_knowledge_retriever(),
         variable_loader=MagicMock(),
         app_id="app",
     )
@@ -160,6 +163,7 @@ def test_single_node_run_validates_target_node_config(queue_manager: WorkflowApp
 def test_single_node_run_rejects_invalid_loop_count(queue_manager: WorkflowAppQueueManager) -> None:
     runner = WorkflowBasedAppRunner(
         queue_manager=queue_manager,
+        knowledge_retrieval=make_knowledge_retriever(),
         app_id="app",
     )
 
@@ -231,6 +235,7 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: Wo
     runner = WorkflowAppRunner(
         application_generate_entity=app_generate_entity,
         queue_manager=queue_manager,
+        knowledge_retrieval=make_knowledge_retriever(),
         variable_loader=MagicMock(),
         workflow=workflow,
         system_user_id="system-user",

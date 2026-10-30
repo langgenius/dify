@@ -1,21 +1,49 @@
 """Focused tests for attachment-aware dataset retrieval entry behavior."""
 
-from unittest.mock import patch
+from unittest.mock import create_autospec
 
-from sqlalchemy.orm import Session
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from services.knowledge.admission.application import DatasetAdmissionLimits
+from services.knowledge.entities.retrieval import KnowledgeRetrievalRequest
+from services.knowledge.retrieval.application import KnowledgeRetrievalApplicationService
+from services.knowledge.retrieval.candidate_search import CandidateSearch, CandidateSearchResult
+from services.knowledge.retrieval.metadata_filtering import MetadataFilterPlan, MetadataFilterPlanner
+from services.knowledge.retrieval.records import RetrievalFinalizer
+from services.knowledge.retrieval.retrieval import RetrievalDatasetSnapshot, RetrievalRepository
 
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
-from models.dataset import Dataset
 
-
-def test_knowledge_retrieval_allows_attachment_only_requests(unbound_session: Session) -> None:
-    retrieval = DatasetRetrieval()
-    available_dataset = Dataset(
+def test_knowledge_retrieval_allows_attachment_only_requests() -> None:
+    repository = create_autospec(RetrievalRepository, instance=True, spec_set=True)
+    candidate_search = create_autospec(CandidateSearch, instance=True, spec_set=True)
+    metadata_filters = create_autospec(MetadataFilterPlanner, instance=True, spec_set=True)
+    finalizer = create_autospec(RetrievalFinalizer, instance=True, spec_set=True)
+    limits = create_autospec(DatasetAdmissionLimits, instance=True, spec_set=True)
+    retrieval = KnowledgeRetrievalApplicationService(
+        repository=repository,
+        candidate_search=candidate_search,
+        metadata_filters=metadata_filters,
+        finalizer=finalizer,
+        limits=limits,
+    )
+    available_dataset = RetrievalDatasetSnapshot(
         id="dataset-1",
         tenant_id="tenant-1",
         name="Dataset",
-        created_by="user-1",
+        description=None,
+        provider="dify",
+        retrieval_model=None,
+        indexing_technique="high_quality",
+        embedding_model_provider=None,
+        embedding_model=None,
+    )
+    repository.list_available_datasets.return_value = [available_dataset]
+    metadata_filters.plan.return_value = MetadataFilterPlan(None, None, LLMUsage.empty_usage())
+    candidate_search.search_multiple.return_value = CandidateSearchResult(
+        candidates=(),
+        top_k=4,
+        queried_dataset_ids=(),
+        timer={},
+        usage=LLMUsage.empty_usage(),
     )
 
     request = KnowledgeRetrievalRequest(
@@ -33,12 +61,7 @@ def test_knowledge_retrieval_allows_attachment_only_requests(unbound_session: Se
         attachment_ids=["attachment-1"],
     )
 
-    with (
-        patch.object(retrieval, "_check_knowledge_rate_limit"),
-        patch.object(retrieval, "_get_available_datasets", return_value=[available_dataset]),
-        patch.object(retrieval, "multiple_retrieve", return_value=[]) as mock_multiple,
-    ):
-        result = retrieval.knowledge_retrieval(unbound_session, request)
+    result = retrieval.retrieve(request, request_metadata=None)
 
-    assert result == []
-    mock_multiple.assert_called_once()
+    assert result.sources == []
+    candidate_search.search_multiple.assert_called_once()

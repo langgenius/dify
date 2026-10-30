@@ -1,13 +1,16 @@
 """Internal provisioning policy and the existing tenant write path."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Generator
+from contextlib import contextmanager, nullcontext
 from datetime import datetime
+from threading import Barrier, Lock, Thread
 from typing import cast
 from unittest.mock import Mock, create_autospec
+from uuid import uuid4
 
 import pytest
 from blinker import Signal
-from sqlalchemy import Select, event, select
+from sqlalchemy import Select, event, func, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Mapper, ORMExecuteState, Session, sessionmaker
@@ -24,6 +27,7 @@ from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     WorkspaceNotFoundError,
     WorkspaceOwnerNotFoundError,
+    WorkspacesLimitExceededError,
 )
 from services.workspace import gateways
 from services.workspace.contracts import CreatedWorkspace, WorkspaceCreation
@@ -36,6 +40,7 @@ from services.workspace.provisioning_service import (
     WorkspaceProvisioningEffects,
     WorkspaceProvisioningService,
     WorkspaceProvisioningStore,
+    WorkspaceQuotaGuard,
 )
 from tests.unit_tests.account_domain import AccountDomain
 
@@ -121,6 +126,116 @@ def test_create_delegation(owner_email: str | None) -> None:
     assert gateway.provision.call_args.kwargs["owner_id"] == (OWNER.id if owner_email else None)
     if owner_email is None:
         owners.find_first_by_email.assert_not_called()
+        policies = cast(Mock, service._policies)
+        quota_guard = cast(Mock, service._quota_guard)
+        policies.has_workspace_capacity.assert_not_called()
+        quota_guard.acquire.assert_not_called()
+
+
+def test_workspace_quota_guard_serializes_different_owners_through_commit(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        owners = [Account(name=f"Owner {index}", email=f"owner-{index}@example.com") for index in range(2)]
+        session.add_all(owners)
+    owner_ids = tuple(owner.id for owner in owners)
+
+    start = Barrier(2)
+    capacity_prechecks = Barrier(2)
+    capacity_call_lock = Lock()
+    capacity_calls = 0
+    observed_counts: list[int] = []
+    phases: list[tuple[str, bool]] = []
+
+    class DatabaseCapacityPolicy:
+        def is_workspace_creation_allowed(self) -> bool:
+            return True
+
+        def has_workspace_capacity(self) -> bool:
+            nonlocal capacity_calls
+            with sqlite_session_factory() as session:
+                count = session.scalar(select(func.count(Tenant.id))) or 0
+            with capacity_call_lock:
+                capacity_calls += 1
+                call_number = capacity_calls
+                observed_counts.append(count)
+            # Force both transaction-external prechecks to observe the same
+            # remaining slot before either request reaches the global guard.
+            if call_number <= 2:
+                capacity_prechecks.wait()
+            return count < 1
+
+    class ThreadQuotaGuard:
+        def __init__(self) -> None:
+            self._lock = Lock()
+            self.active = False
+            self.ownership_checks = 0
+
+        @contextmanager
+        def acquire(self) -> Generator[Callable[[], None]]:
+            self._lock.acquire()
+            assert not self.active
+            self.active = True
+            phases.append(("guard-enter", self.active))
+
+            def assert_owned() -> None:
+                self.ownership_checks += 1
+                assert self.active
+
+            try:
+                yield assert_owned
+            finally:
+                phases.append(("guard-exit", self.active))
+                self.active = False
+                self._lock.release()
+
+    repository = WorkspaceRepository(sqlite_session_factory)
+    effects = create_autospec(WorkspaceProvisioningEffects, instance=True)
+    effects.prepare.side_effect = lambda name: WorkspaceCreation(str(uuid4()), name, "key", 123, 0, {})
+    guard = ThreadQuotaGuard()
+    service = WorkspaceProvisioningService(
+        owners=SQLAlchemyAccountRepository(sqlite_session_factory),
+        provisioning=repository,
+        effects=effects,
+        policies=DatabaseCapacityPolicy(),
+        quota_guard=guard,
+        memberships=repository,
+        members=create_autospec(WorkspaceMemberWriter, instance=True),
+    )
+    effects.created.side_effect = lambda *_args, **_kwargs: phases.append(("created", guard.active))
+
+    def committed(_session: Session) -> None:
+        phases.append(("commit", guard.active))
+
+    results: list[object] = []
+
+    def create(account_id: str) -> None:
+        start.wait()
+        try:
+            results.append(service.create_owner_workspace(account_id))
+        except Exception as error:
+            results.append(error)
+
+    event.listen(sqlite_session_factory, "after_commit", committed)
+    threads = [Thread(target=create, args=(account_id,)) for account_id in owner_ids]
+    try:
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=5)
+            assert not thread.is_alive()
+    finally:
+        event.remove(sqlite_session_factory, "after_commit", committed)
+
+    assert len([result for result in results if isinstance(result, CreatedWorkspace)]) == 1
+    assert len([result for result in results if isinstance(result, WorkspacesLimitExceededError)]) == 1
+    assert observed_counts == [0, 0, 0, 1]
+    assert guard.ownership_checks == 2
+    assert ("commit", True) in phases
+    assert ("created", False) in phases
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(func.count(Tenant.id))) == 1
+        assert session.scalar(select(func.count(TenantAccountJoin.id))) == 1
 
 
 @pytest.fixture
@@ -314,17 +429,18 @@ def test_competing_initial_workspace_skips_key_and_owner_binding(
         provisioning=competing_repository,
         effects=effects,
         policies=account_domain.policy,
+        quota_guard=account_domain.provisioning._quota_guard,
         memberships=competing_repository,
         members=account_domain.members,
     )
     has_active_workspace = account_domain.workspaces.has_active_for_account
 
     def finish_competing_request_after_precheck(account_id: str) -> bool:
-        # Both requests see no workspace. The winner commits before the losing
-        # request reaches its locked recheck in the real repository.
+        # The winner commits after the losing request's first precheck. The
+        # quota-guarded recheck must then skip before capacity or preparation.
         observed = has_active_workspace(account_id)
-        assert not observed
-        competing_service.ensure_owner_workspace(account_id)
+        if not observed:
+            competing_service.ensure_owner_workspace(account_id)
         return observed
 
     monkeypatch.setattr(account_domain.workspaces, "has_active_for_account", finish_competing_request_after_precheck)
@@ -333,6 +449,7 @@ def test_competing_initial_workspace_skips_key_and_owner_binding(
     effects.prepare.assert_called_once_with("Owner's Workspace")
     effects.bind_owner.assert_called_once_with("winner", account.id)
     effects.created.assert_called_once()
+    assert account_domain.policy.has_workspace_capacity.call_count == 1
     with sqlite_session_factory() as session:
         assert list(session.scalars(select(Tenant.id))) == ["winner"]
         assert list(session.scalars(select(TenantAccountJoin.tenant_id))) == ["winner"]
@@ -391,6 +508,8 @@ def _service(
     """Use the supplied effects, or prepare autospecced effects when omitted or None."""
     policy = create_autospec(WorkspaceCreationPolicy, instance=True)
     policy.has_workspace_capacity.return_value = True
+    quota_guard = create_autospec(WorkspaceQuotaGuard, instance=True)
+    quota_guard.acquire.side_effect = lambda: nullcontext(lambda: None)
     if effects is None:
         prepared = create_autospec(WorkspaceProvisioningEffects, instance=True)
         prepared.prepare.return_value = WorkspaceCreation("w", "Test", "key", 123, 0, {})
@@ -400,6 +519,7 @@ def _service(
         owners=owners,
         provisioning=provisioning,
         policies=policy,
+        quota_guard=quota_guard,
         memberships=create_autospec(WorkspaceMembershipQuery, instance=True),
         members=create_autospec(WorkspaceMemberWriter, instance=True),
     )

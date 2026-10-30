@@ -7,13 +7,13 @@ from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.enums import (
     ConversationFromSource,
-    CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
     MessageStatus,

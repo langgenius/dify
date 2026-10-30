@@ -4,7 +4,8 @@ from contextlib import nullcontext
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat.generate_task_pipeline import (
@@ -51,6 +52,7 @@ from core.app.entities.task_entities import (
     ReasoningChunkStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
+from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.human_input.entities import UserActionConfig
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from core.workflow.system_variables import build_system_variables
@@ -61,6 +63,9 @@ from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus
 from models.model import AppMode, EndUser, Message, MessageFile
+from repositories.file.upload_file_repository import UploadFileRepository
+from services.errors.file import UploadFileReferenceNotFoundError
+from tests.unit_tests.model_factories import make_upload_file
 from tests.workflow_test_utils import build_test_variable_pool
 
 
@@ -652,7 +657,7 @@ class TestAdvancedChatGenerateTaskPipeline:
                 "type": FileType.IMAGE,
                 "transfer_method": FileTransferMethod.REMOTE_URL,
                 "remote_url": "http://example.com/file.png",
-                "related_id": "file-id",
+                "related_id": None,
             }
         ]
         # The answer is stored verbatim; markdown image links are never stripped.
@@ -678,6 +683,91 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert message.answer == "![img](http://example.com/file.png) hello ![inline](http://llm.com/img.jpg)"
         assert message.message_metadata
         assert sqlite_session.query(MessageFile).filter_by(message_id=message.id).count() == 1
+
+    @pytest.mark.parametrize("file_state", ["owned", "foreign", "removed"])
+    def test_save_message_revalidates_recorded_upload_before_adding_its_reference(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        file_state: str,
+    ) -> None:
+        pipeline = _make_pipeline()
+        pipeline._task_state.answer = "workflow answer"
+        with sqlite_session_factory() as session:
+            _persist_message(session)
+            upload = make_upload_file(tenant_id="other-tenant" if file_state == "foreign" else "tenant")
+            session.add(upload)
+            session.commit()
+            upload_id = upload.id
+        pipeline._recorded_files = [
+            {
+                "type": FileType.IMAGE,
+                "transfer_method": FileTransferMethod.LOCAL_FILE,
+                "remote_url": None,
+                "reference": build_file_reference(record_id=upload_id),
+            }
+        ]
+        if file_state == "removed":
+            repository = UploadFileRepository(session_factory=sqlite_session_factory)
+            with sqlite_session_factory.begin() as cleanup_session:
+                files = repository.lock_reclamation_candidates_in_session(
+                    cleanup_session,
+                    tenant_id="tenant",
+                    file_ids=(upload_id,),
+                )
+                assert len(files) == 1
+                repository.delete_in_session(cleanup_session, files[0])
+
+        with sqlite_session_factory() as session:
+            if file_state == "owned":
+                pipeline._save_message(session=session)
+                session.commit()
+            else:
+                with pytest.raises(UploadFileReferenceNotFoundError):
+                    pipeline._save_message(session=session)
+                session.rollback()
+
+        with sqlite_session_factory() as verifier:
+            message_files = verifier.scalars(select(MessageFile).where(MessageFile.message_id == "message-id")).all()
+            message = verifier.get_one(Message, "message-id")
+            if file_state == "owned":
+                assert [file.upload_file_id for file in message_files] == [upload_id]
+                assert message.answer == "workflow answer"
+            else:
+                assert message_files == []
+                assert message.answer == ""
+
+    def test_save_message_rejects_new_answer_reference_after_upload_was_removed(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        pipeline = _make_pipeline()
+        pipeline._task_state.answer = "![removed](/files/removed-upload/file-preview)"
+        with sqlite_session_factory() as session:
+            _persist_message(session)
+
+        with sqlite_session_factory() as session:
+            with pytest.raises(UploadFileReferenceNotFoundError):
+                pipeline._save_message(session=session)
+            session.rollback()
+
+        with sqlite_session_factory() as session:
+            assert session.get_one(Message, "message-id").answer == ""
+
+    def test_save_message_does_not_revalidate_unchanged_historical_answer_reference(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        answer = "![historical](/files/missing-historical/file-preview)"
+        pipeline = _make_pipeline()
+        pipeline._task_state.answer = answer
+        with sqlite_session_factory() as session:
+            message = _persist_message(session)
+            message.answer = answer
+            session.commit()
+
+        with sqlite_session_factory.begin() as session:
+            pipeline._save_message(session=session)
+
+        with sqlite_session_factory() as session:
+            assert session.get_one(Message, "message-id").answer == answer
 
     def test_handle_stop_event_saves_message_for_moderation(self):
         pipeline = _make_pipeline()

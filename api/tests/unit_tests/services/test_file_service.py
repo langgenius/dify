@@ -1,528 +1,409 @@
-import base64
+from __future__ import annotations
+
 import hashlib
 import os
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from unittest.mock import patch
+from zipfile import ZipFile
 
 import pytest
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import NotFound
 
-from enums import DeploymentEdition
-from extensions.storage.storage_type import StorageType
-from models.base import TypeBase
-from models.enums import CreatorUserRole
-from models.model import Account, EndUser, UploadFile
-from services.errors.file import (
-    BlockedFileExtensionError,
-    FileNotExistsError,
-    FileTooLargeError,
-    UnsupportedFileTypeError,
-)
-from services.file_service import FileService
-from tests.unit_tests.model_factories import make_account
+from enums.creator import CreatorUserRole
+from services.entities.upload_file import CreatedUploadArtifact, FileUploadActor, UploadFileRecord
+from services.errors.file import FileNotExistsError, UnsupportedFileTypeError
+from services.file_service import FileService, _dedupe_zip_entry_name, _sanitize_zip_entry_name
+from services.file_upload_policy import FileUploadPolicy
+
+NOW = datetime(2025, 1, 2, 3, 4, tzinfo=UTC)
+TENANT_ID = "tenant-1"
 
 
-def _account() -> Account:
-    return make_account(account_id="user_id", name="Test Account", email="test@example.com")
+@dataclass
+class _FileStore:
+    file: UploadFileRecord | None = None
+    save_error: Exception | None = None
+    saved: list[UploadFileRecord] = field(default_factory=list)
+    reads: list[tuple[str, str]] = field(default_factory=list)
+
+    def save_created_upload_file(self, *, file: UploadFileRecord) -> None:
+        if self.save_error is not None:
+            raise self.save_error
+        self.saved.append(file)
+
+    def get_file(self, *, tenant_id: str, file_id: str) -> UploadFileRecord | None:
+        self.reads.append((tenant_id, file_id))
+        return self.file
+
+    def get_files(self, *, tenant_id: str, file_ids: Sequence[str]) -> dict[str, UploadFileRecord]:
+        del tenant_id
+        if self.file is None or self.file.id not in file_ids:
+            return {}
+        return {self.file.id: self.file}
 
 
-class TestFileService:
-    @pytest.fixture
-    def sqlite_session_maker(self, sqlite_engine: Engine) -> sessionmaker[Session]:
-        TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[UploadFile.__tablename__]])
-        return sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+@dataclass
+class _Reclaimer:
+    calls: list[tuple[str, tuple[str, ...], Callable[[str], None]]] = field(default_factory=list)
 
-    @pytest.fixture
-    def db_session(self, sqlite_session_maker: sessionmaker[Session]) -> Iterator[Session]:
-        with sqlite_session_maker() as session:
-            yield session
-
-    @pytest.fixture
-    def file_service(self, sqlite_session_maker: sessionmaker[Session]) -> FileService:
-        return FileService(session_factory=sqlite_session_maker)
-
-    @staticmethod
-    def _persist_upload_file(
-        session: Session,
+    def delete_unreferenced_files(
+        self,
         *,
-        file_id: str = "file_id",
-        tenant_id: str = "tenant_id",
-        extension: str = "txt",
-        mime_type: str = "text/plain",
-        key: str = "key",
-    ) -> UploadFile:
-        upload_file = UploadFile(
+        tenant_id: str,
+        file_ids: Sequence[str],
+        delete_blob: Callable[[str], None],
+    ) -> tuple[str, ...]:
+        self.calls.append((tenant_id, tuple(file_ids), delete_blob))
+        return tuple(file_ids)
+
+
+@dataclass
+class _Storage:
+    save_error: Exception | None = None
+    saved: list[tuple[str, bytes]] = field(default_factory=list)
+    content: bytes = b"contents"
+    streams: list[list[bytes]] = field(default_factory=list)
+    presigned_url: str = "direct-url"
+    presigned_calls: list[tuple[str, int, str | None]] = field(default_factory=list)
+
+    def save(self, filename: str, data: bytes) -> None:
+        if self.save_error is not None:
+            raise self.save_error
+        self.saved.append((filename, data))
+
+    def load_once(self, filename: str) -> bytes:
+        del filename
+        return self.content
+
+    def load_stream(self, filename: str) -> Iterator[bytes]:
+        del filename
+        return iter(self.streams.pop(0))
+
+    def generate_presigned_url(self, filename: str, *, expires_in: int, content_type: str | None = None) -> str:
+        self.presigned_calls.append((filename, expires_in, content_type))
+        return self.presigned_url
+
+
+@dataclass
+class _Signer:
+    value: str = "signed-url"
+    calls: list[str] = field(default_factory=list)
+
+    def __call__(self, *, upload_file_id: str) -> str:
+        self.calls.append(upload_file_id)
+        return self.value
+
+
+@dataclass
+class _TextExtractor:
+    value: str = "preview"
+    calls: list[UploadFileRecord] = field(default_factory=list)
+
+    def __call__(self, file: UploadFileRecord) -> str:
+        self.calls.append(file)
+        return self.value
+
+
+@dataclass
+class _BlobDeleter:
+    calls: list[str] = field(default_factory=list)
+
+    def __call__(self, key: str) -> None:
+        self.calls.append(key)
+
+
+@dataclass
+class _Dependencies:
+    files: _FileStore = field(default_factory=_FileStore)
+    reclaimer: _Reclaimer = field(default_factory=_Reclaimer)
+    storage: _Storage = field(default_factory=_Storage)
+    sign_file: _Signer = field(default_factory=_Signer)
+    extract_text: _TextExtractor = field(default_factory=_TextExtractor)
+    delete_blob: _BlobDeleter = field(default_factory=_BlobDeleter)
+
+
+def _actor() -> FileUploadActor:
+    return FileUploadActor(id="account-1", creator_role=CreatorUserRole.ACCOUNT)
+
+
+def _record(
+    *,
+    file_id: str = "file-1",
+    tenant_id: str = TENANT_ID,
+    name: str = "file.txt",
+    extension: str = "txt",
+    source_url: str = "",
+) -> UploadFileRecord:
+    return UploadFileRecord(
+        id=file_id,
+        tenant_id=tenant_id,
+        storage_type="local",
+        key=f"upload_files/{tenant_id}/{file_id}.{extension}",
+        name=name,
+        size=4,
+        extension=extension,
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        created_at=NOW,
+        hash="hash",
+        source_url=source_url,
+    )
+
+
+@pytest.fixture
+def dependencies() -> _Dependencies:
+    return _Dependencies()
+
+
+@pytest.fixture
+def file_service(dependencies: _Dependencies) -> FileService:
+    return FileService(
+        files=dependencies.files,
+        reclaimer=dependencies.reclaimer,
+        storage=dependencies.storage,
+        upload_policy=FileUploadPolicy(
+            file_size_limit_mib=1,
+            image_size_limit_mib=1,
+            video_size_limit_mib=1,
+            audio_size_limit_mib=1,
+            blocked_extensions=frozenset({"exe"}),
+        ),
+        storage_type="local",
+        sign_file=dependencies.sign_file,
+        extract_text=dependencies.extract_text,
+        delete_blob=dependencies.delete_blob,
+        direct_icon_urls=False,
+        access_timeout=300,
+        clock=lambda: NOW,
+    )
+
+
+def test_upload_file_publishes_detached_metadata_after_blob_write(
+    file_service: FileService,
+    dependencies: _Dependencies,
+) -> None:
+    result = file_service.upload_file(
+        actor=_actor(),
+        tenant_id=TENANT_ID,
+        filename="notes.TXT",
+        content=b"text",
+        mimetype="text/plain",
+    )
+
+    assert result.tenant_id == TENANT_ID
+    assert result.extension == "txt"
+    assert result.hash == hashlib.sha3_256(b"text").hexdigest()
+    assert result.source_url == "signed-url"
+    assert dependencies.storage.saved == [(result.key, b"text")]
+    assert len(dependencies.files.saved) == 1
+    assert dependencies.files.saved[0].source_url == ""
+    assert dependencies.sign_file.calls == [result.id]
+
+
+def test_upload_file_preserves_explicit_source_url(
+    file_service: FileService,
+    dependencies: _Dependencies,
+) -> None:
+    result = file_service.upload_file(
+        actor=_actor(),
+        tenant_id=TENANT_ID,
+        filename="notes.txt",
+        content=b"text",
+        mimetype="text/plain",
+        source_url="https://source.example/file",
+    )
+
+    assert result.source_url == "https://source.example/file"
+    assert dependencies.sign_file.calls == []
+
+
+@pytest.mark.parametrize(("tenant_id", "actor_id"), [("", "account-1"), (TENANT_ID, "")])
+def test_upload_file_requires_explicit_tenant_and_creator_identity(
+    file_service: FileService,
+    dependencies: _Dependencies,
+    tenant_id: str,
+    actor_id: str,
+) -> None:
+    with pytest.raises(ValueError, match="tenant and creator identity"):
+        file_service.upload_file(
+            actor=FileUploadActor(id=actor_id, creator_role=CreatorUserRole.ACCOUNT),
             tenant_id=tenant_id,
-            storage_type=StorageType.LOCAL,
-            key=key,
-            name=f"test.{extension}",
-            size=10,
-            extension=extension,
-            mime_type=mime_type,
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by="user_id",
-            created_at=datetime(2024, 1, 1, tzinfo=UTC),
-            used=False,
-        )
-        upload_file.id = file_id
-        session.add(upload_file)
-        session.commit()
-        return upload_file
-
-    def test_init_with_engine(self, sqlite_engine: Engine):
-        service = FileService(session_factory=sqlite_engine)
-        assert isinstance(service._session_maker, sessionmaker)
-
-    def test_init_with_sessionmaker(self, sqlite_session_maker: sessionmaker[Session]):
-        service = FileService(session_factory=sqlite_session_maker)
-        assert service._session_maker == sqlite_session_maker
-
-    def test_init_invalid_factory(self):
-        with pytest.raises(AssertionError, match="must be a sessionmaker or an Engine."):
-            FileService(session_factory="invalid")
-
-    @patch("services.file_service.storage")
-    @patch("services.file_service.naive_utc_now")
-    @patch("services.file_service.extract_tenant_id")
-    @patch("services.file_service.file_helpers.get_signed_file_url")
-    def test_upload_file_success(
-        self, mock_get_url, mock_tenant_id, mock_now, mock_storage, file_service: FileService, db_session: Session
-    ):
-        # Setup
-        mock_tenant_id.return_value = "tenant_id"
-        mock_now.return_value = datetime(2024, 1, 1, tzinfo=UTC)
-        mock_get_url.return_value = "http://signed-url"
-
-        user = Account(name="Test Account", email="test@example.com")
-        user.id = "user_id"
-        content = b"file content"
-        filename = "test.jpg"
-        mimetype = "image/jpeg"
-
-        # Execute
-        result = file_service.upload_file(filename=filename, content=content, mimetype=mimetype, user=user)
-
-        # Assert
-        assert isinstance(result, UploadFile)
-        assert result.name == filename
-        assert result.tenant_id == "tenant_id"
-        assert result.size == len(content)
-        assert result.extension == "jpg"
-        assert result.mime_type == mimetype
-        assert result.created_by_role == CreatorUserRole.ACCOUNT
-        assert result.created_by == "user_id"
-        assert result.hash == hashlib.sha3_256(content).hexdigest()
-        assert result.source_url == "http://signed-url"
-
-        mock_storage.save.assert_called_once()
-        persisted = db_session.get(UploadFile, result.id)
-        assert persisted is not None
-        assert persisted.hash == result.hash
-
-    @pytest.mark.parametrize("text", ["ASCII text", "包含多字节 UTF-8 文本 🚀"])
-    def test_upload_text_uses_utf8_byte_length(self, text: str, file_service: FileService):
-        with patch("services.file_service.storage") as mock_storage:
-            result = file_service.upload_text(
-                text=text,
-                text_name="test.txt",
-                user_id="user_id",
-                tenant_id="tenant_id",
-            )
-
-        expected_content = text.encode("utf-8")
-        assert result.size == len(expected_content)
-        mock_storage.save.assert_called_once_with(result.key, expected_content)
-
-    def test_upload_file_uses_explicit_resource_tenant(self, file_service: FileService):
-        user = Account(name="Test Account", email="test@example.com")
-        user.id = "user-id"
-
-        with (
-            patch("services.file_service.storage") as mock_storage,
-            patch("services.file_service.extract_tenant_id") as mock_extract_tenant_id,
-            patch("services.file_service.file_helpers.get_signed_file_url"),
-        ):
-            result = file_service.upload_file(
-                filename="test.txt",
-                content=b"test",
-                mimetype="text/plain",
-                user=user,
-                tenant_id="resource-tenant-id",
-            )
-
-        assert result.tenant_id == "resource-tenant-id"
-        assert mock_storage.save.call_args.args[0].startswith("upload_files/resource-tenant-id/")
-        mock_extract_tenant_id.assert_not_called()
-
-    def test_upload_file_invalid_characters(self, file_service):
-        with pytest.raises(ValueError, match="Filename contains invalid characters"):
-            file_service.upload_file(filename="invalid/file.txt", content=b"", mimetype="text/plain", user=_account())
-
-    def test_upload_file_long_filename(self, file_service: FileService, db_session: Session):
-        # Setup
-        long_name = "a" * 210 + ".txt"
-        user = Account(name="Test Account", email="test@example.com")
-        user.id = "user_id"
-
-        with (
-            patch("services.file_service.storage"),
-            patch("services.file_service.extract_tenant_id") as mock_tenant,
-            patch("services.file_service.file_helpers.get_signed_file_url"),
-        ):
-            mock_tenant.return_value = "tenant"
-            result = file_service.upload_file(filename=long_name, content=b"test", mimetype="text/plain", user=user)
-            assert len(result.name) <= 205  # 200 + . + extension
-            assert result.name.endswith(".txt")
-            assert db_session.get(UploadFile, result.id) is not None
-
-    def test_upload_file_blocked_extension(self, file_service, config_overrides: Callable[..., None]):
-        config_overrides(inner_UPLOAD_FILE_EXTENSION_BLACKLIST="exe")
-        with pytest.raises(BlockedFileExtensionError):
-            file_service.upload_file(
-                filename="test.exe", content=b"", mimetype="application/octet-stream", user=_account()
-            )
-
-    def test_upload_file_unsupported_type_for_datasets(self, file_service):
-        with pytest.raises(UnsupportedFileTypeError):
-            file_service.upload_file(
-                filename="test.jpg", content=b"", mimetype="image/jpeg", user=_account(), source="datasets"
-            )
-
-    def test_upload_file_too_large(self, file_service, config_overrides: Callable[..., None]):
-        # 16MB file for an image with 15MB limit
-        content = b"a" * (16 * 1024 * 1024)
-        config_overrides(UPLOAD_IMAGE_FILE_SIZE_LIMIT=15)
-        with pytest.raises(FileTooLargeError):
-            file_service.upload_file(filename="test.jpg", content=content, mimetype="image/jpeg", user=_account())
-
-    def test_upload_file_end_user(self, file_service: FileService, db_session: Session):
-        user = EndUser(
-            id="end_user_id",
+            filename="notes.txt",
+            content=b"text",
+            mimetype="text/plain",
         )
 
-        with (
-            patch("services.file_service.storage"),
-            patch("services.file_service.extract_tenant_id") as mock_tenant,
-            patch("services.file_service.file_helpers.get_signed_file_url"),
-        ):
-            mock_tenant.return_value = "tenant"
-            result = file_service.upload_file(filename="test.txt", content=b"test", mimetype="text/plain", user=user)
-            assert result.created_by_role == CreatorUserRole.END_USER
-            assert db_session.get(UploadFile, result.id) is not None
+    assert dependencies.storage.saved == []
+    assert dependencies.files.saved == []
 
-    def test_is_file_size_within_limit(self, config_overrides: Callable[..., None]):
-        config_overrides(
-            UPLOAD_IMAGE_FILE_SIZE_LIMIT=10,
-            UPLOAD_VIDEO_FILE_SIZE_LIMIT=20,
-            UPLOAD_AUDIO_FILE_SIZE_LIMIT=30,
-            UPLOAD_FILE_SIZE_LIMIT=5,
-        )
-        # Image
-        assert FileService.is_file_size_within_limit(extension="jpg", file_size=10 * 1024 * 1024) is True
-        assert FileService.is_file_size_within_limit(extension="png", file_size=11 * 1024 * 1024) is False
 
-        # Video
-        assert FileService.is_file_size_within_limit(extension="mp4", file_size=20 * 1024 * 1024) is True
-        assert FileService.is_file_size_within_limit(extension="avi", file_size=21 * 1024 * 1024) is False
+def test_upload_file_compensates_blob_when_storage_reports_failure(
+    file_service: FileService,
+    dependencies: _Dependencies,
+) -> None:
+    dependencies.storage.save_error = OSError("response lost")
 
-        # Audio
-        assert FileService.is_file_size_within_limit(extension="mp3", file_size=30 * 1024 * 1024) is True
-        assert FileService.is_file_size_within_limit(extension="wav", file_size=31 * 1024 * 1024) is False
-
-        # Default
-        assert FileService.is_file_size_within_limit(extension="txt", file_size=5 * 1024 * 1024) is True
-        assert FileService.is_file_size_within_limit(extension="pdf", file_size=6 * 1024 * 1024) is False
-        assert FileService.is_file_size_within_limit(extension="txt", file_size=0, default_file_size_limit=0) is True
-        assert FileService.is_file_size_within_limit(extension="txt", file_size=1, default_file_size_limit=0) is False
-        assert (
-            FileService.is_file_size_within_limit(
-                extension="pdf",
-                file_size=6 * 1024 * 1024,
-                default_file_size_limit=7,
-            )
-            is True
-        )
-        assert (
-            FileService.is_file_size_within_limit(
-                extension="pdf",
-                file_size=8 * 1024 * 1024,
-                default_file_size_limit=7,
-            )
-            is False
+    with pytest.raises(OSError, match="response lost"):
+        file_service.upload_file(
+            actor=_actor(),
+            tenant_id=TENANT_ID,
+            filename="notes.txt",
+            content=b"text",
+            mimetype="text/plain",
         )
 
-        # Media-specific limits are not affected by the knowledge document override.
-        assert (
-            FileService.is_file_size_within_limit(
-                extension="jpg",
-                file_size=11 * 1024 * 1024,
-                default_file_size_limit=100,
-            )
-            is False
+    [candidate] = dependencies.delete_blob.calls
+    assert candidate.startswith(f"upload_files/{TENANT_ID}/")
+    assert dependencies.files.saved == []
+
+
+def test_upload_file_retains_blob_when_metadata_commit_outcome_is_unknown(
+    file_service: FileService,
+    dependencies: _Dependencies,
+) -> None:
+    dependencies.files.save_error = RuntimeError("commit outcome unknown")
+
+    with pytest.raises(RuntimeError, match="commit outcome unknown"):
+        file_service.upload_file(
+            actor=_actor(),
+            tenant_id=TENANT_ID,
+            filename="notes.txt",
+            content=b"text",
+            mimetype="text/plain",
         )
 
-    def test_file_size_limit(self, config_overrides: Callable[..., None]):
-        config_overrides(
-            UPLOAD_IMAGE_FILE_SIZE_LIMIT=10,
-            UPLOAD_VIDEO_FILE_SIZE_LIMIT=20,
-            UPLOAD_AUDIO_FILE_SIZE_LIMIT=30,
-            UPLOAD_FILE_SIZE_LIMIT=5,
-        )
+    assert len(dependencies.storage.saved) == 1
+    assert dependencies.delete_blob.calls == []
 
-        assert FileService.file_size_limit(extension="jpg") == 10 * 1024 * 1024
-        assert FileService.file_size_limit(extension="mp4") == 20 * 1024 * 1024
-        assert FileService.file_size_limit(extension="mp3") == 30 * 1024 * 1024
-        assert FileService.file_size_limit(extension="txt") == 5 * 1024 * 1024
-        assert FileService.file_size_limit(extension="txt", default_file_size_limit=None) == 5 * 1024 * 1024
-        assert FileService.file_size_limit(extension="txt", default_file_size_limit=0) == 0
-        assert FileService.file_size_limit(extension="jpg", default_file_size_limit=0) == 10 * 1024 * 1024
-        assert FileService.file_size_limit(extension="txt", default_file_size_limit=7) == 7 * 1024 * 1024
 
-    def test_get_file_base64_success(self, file_service: FileService, db_session: Session):
-        self._persist_upload_file(db_session, key="test_key")
-
-        with patch("services.file_service.storage") as mock_storage:
-            mock_storage.load_once.return_value = b"test content"
-
-            # Execute
-            result = file_service.get_file_base64("file_id")
-
-            # Assert
-            assert result == base64.b64encode(b"test content").decode()
-            mock_storage.load_once.assert_called_once_with("test_key")
-
-    def test_get_file_base64_not_found(self, file_service: FileService):
-        with pytest.raises(NotFound, match="File not found"):
-            file_service.get_file_base64("non_existent")
-
-    def test_get_file_presigned_url_success(
-        self, file_service: FileService, db_session: Session, config_overrides: Callable[..., None]
-    ):
-        config_overrides(FILES_ACCESS_TIMEOUT=300)
-        self._persist_upload_file(
-            db_session,
-            extension="png",
-            mime_type="image/png",
-            key="upload_files/tenant_id/icon.png",
-        )
-
-        with (
-            patch("services.file_service.storage") as mock_storage,
-        ):
-            mock_storage.generate_presigned_url.return_value = "https://s3.example.com/icon.png?signature=test"
-
-            result = file_service.get_file_presigned_url(file_id="file_id", tenant_id="tenant_id")
-
-        assert result == "https://s3.example.com/icon.png?signature=test"
-        mock_storage.generate_presigned_url.assert_called_once_with(
-            "upload_files/tenant_id/icon.png",
-            expires_in=300,
-            content_type="image/png",
-        )
-
-    def test_get_file_presigned_url_not_found(self, file_service: FileService):
-        with pytest.raises(NotFound, match="File not found"):
-            file_service.get_file_presigned_url(file_id="file_id", tenant_id="tenant_id")
-
-    def test_get_icon_url_uses_direct_storage_url_for_cloud_s3(
-        self, file_service: FileService, config_overrides: Callable[..., None]
-    ):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, STORAGE_TYPE=StorageType.S3)
-        with patch.object(file_service, "get_file_presigned_url", return_value="direct-url") as get_presigned_url:
-            result = file_service.get_icon_url("file_id", "tenant_id")
-
-        assert result == "direct-url"
-        get_presigned_url.assert_called_once_with(file_id="file_id", tenant_id="tenant_id")
-
-    def test_get_icon_url_maps_missing_cloud_file_to_service_error(
-        self, file_service: FileService, config_overrides: Callable[..., None]
-    ) -> None:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, STORAGE_TYPE=StorageType.S3)
-        with (
-            patch.object(file_service, "get_file_presigned_url", side_effect=NotFound("File not found")),
-            pytest.raises(FileNotExistsError, match="File reference not found"),
-        ):
-            file_service.get_icon_url("file_id", "tenant_id")
-
-    @pytest.mark.parametrize(
-        ("deployment_edition", "storage_type"),
-        [
-            (DeploymentEdition.COMMUNITY, StorageType.S3),
-            (DeploymentEdition.CLOUD, StorageType.LOCAL),
-        ],
+def test_upload_text_uses_utf8_bytes_and_marks_record_used(
+    file_service: FileService,
+    dependencies: _Dependencies,
+) -> None:
+    result = file_service.upload_text(
+        actor=_actor(),
+        tenant_id=TENANT_ID,
+        text="文档 🚀",
+        text_name="generated.txt",
     )
-    def test_get_icon_url_uses_preview_url_outside_cloud_s3(
-        self,
-        file_service: FileService,
-        db_session: Session,
-        deployment_edition: DeploymentEdition,
-        storage_type: StorageType,
-        config_overrides: Callable[..., None],
-    ):
-        self._persist_upload_file(db_session)
-        config_overrides(DEPLOYMENT_EDITION=deployment_edition, STORAGE_TYPE=storage_type)
-        with patch("services.file_service.file_helpers.get_signed_file_url", return_value="preview-url") as get_url:
-            result = file_service.get_icon_url("file_id", "tenant_id")
 
-        assert result == "preview-url"
-        get_url.assert_called_once_with(upload_file_id="file_id")
+    content = "文档 🚀".encode()
+    assert result.size == len(content)
+    assert result.used is True
+    assert result.used_by == "account-1"
+    assert result.used_at == NOW
+    assert result.hash is None
+    assert dependencies.storage.saved == [(result.key, content)]
 
-    @pytest.mark.parametrize(
-        ("deployment_edition", "storage_type"),
-        [
-            (DeploymentEdition.COMMUNITY, StorageType.S3),
-            (DeploymentEdition.CLOUD, StorageType.LOCAL),
-        ],
-    )
-    def test_get_icon_url_rejects_missing_file_outside_cloud_s3(
-        self,
-        file_service: FileService,
-        deployment_edition: DeploymentEdition,
-        storage_type: StorageType,
-        config_overrides: Callable[..., None],
-    ) -> None:
-        config_overrides(DEPLOYMENT_EDITION=deployment_edition, STORAGE_TYPE=storage_type)
 
-        with pytest.raises(FileNotExistsError, match="File reference not found"):
-            file_service.get_icon_url("file_id", "tenant_id")
+def test_get_file_and_content_scope_every_read_to_tenant(
+    file_service: FileService,
+    dependencies: _Dependencies,
+) -> None:
+    dependencies.files.file = _record()
+    dependencies.storage.content = b"contents"
 
-    def test_get_icon_url_rejects_cross_tenant_file_outside_cloud_s3(
-        self,
-        file_service: FileService,
-        db_session: Session,
-        config_overrides: Callable[..., None],
-    ) -> None:
-        self._persist_upload_file(db_session, tenant_id="other_tenant_id")
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, STORAGE_TYPE=StorageType.LOCAL)
+    assert file_service.get_file_content(tenant_id=TENANT_ID, file_id="file-1") == "contents"
+    assert dependencies.files.reads == [(TENANT_ID, "file-1")]
 
-        with pytest.raises(FileNotExistsError, match="File reference not found"):
-            file_service.get_icon_url("file_id", "tenant_id")
 
-    def test_upload_text_success(self, file_service: FileService, db_session: Session):
-        # Setup
-        text = "sample text"
-        text_name = "test.txt"
-        user_id = "user_id"
-        tenant_id = "tenant_id"
+def test_get_file_maps_missing_record_to_service_error(
+    file_service: FileService,
+    dependencies: _Dependencies,
+) -> None:
+    dependencies.files.file = None
 
-        with patch("services.file_service.storage") as mock_storage:
-            # Execute
-            result = file_service.upload_text(text, text_name, user_id, tenant_id)
+    with pytest.raises(FileNotExistsError, match="File not found"):
+        file_service.get_file(tenant_id=TENANT_ID, file_id="missing")
 
-            # Assert
-            assert result.name == text_name
-            assert result.size == len(text)
-            assert result.tenant_id == tenant_id
-            assert result.created_by == user_id
-            assert result.used is True
-            assert result.extension == "txt"
-            mock_storage.save.assert_called_once()
-            assert db_session.get(UploadFile, result.id) is not None
 
-    def test_upload_text_long_name(self, file_service: FileService, db_session: Session):
-        long_name = "a" * 210
-        with patch("services.file_service.storage"):
-            result = file_service.upload_text("text", long_name, "user", "tenant")
-            assert len(result.name) == 200
-            assert db_session.get(UploadFile, result.id) is not None
+def test_get_file_preview_validates_extension_and_caps_text(
+    file_service: FileService,
+    dependencies: _Dependencies,
+) -> None:
+    record = _record(name="manual.pdf", extension="pdf")
+    dependencies.files.file = record
+    dependencies.extract_text.value = "x" * 4000
 
-    def test_get_file_preview_success(self, file_service: FileService, db_session: Session):
-        self._persist_upload_file(db_session, extension="pdf", mime_type="application/pdf")
+    assert file_service.get_file_preview("file-1", TENANT_ID) == "x" * 3000
+    assert dependencies.extract_text.calls == [record]
 
-        with patch("services.file_service.ExtractProcessor.load_from_upload_file") as mock_extract:
-            mock_extract.return_value = "Extracted text content"
 
-            # Execute
-            result = file_service.get_file_preview("file_id", "tenant_id")
+def test_get_file_preview_rejects_non_document(
+    file_service: FileService,
+    dependencies: _Dependencies,
+) -> None:
+    dependencies.files.file = _record(name="program.exe", extension="exe")
 
-            # Assert
-            assert result == "Extracted text content"
+    with pytest.raises(UnsupportedFileTypeError):
+        file_service.get_file_preview("file-1", TENANT_ID)
 
-    def test_get_file_preview_not_found(self, file_service: FileService):
-        with pytest.raises(NotFound, match="File not found"):
-            file_service.get_file_preview("non_existent", "tenant_id")
+    assert dependencies.extract_text.calls == []
 
-    def test_get_file_preview_unsupported_type(self, file_service: FileService, db_session: Session):
-        self._persist_upload_file(db_session, extension="exe", mime_type="application/octet-stream")
-        with pytest.raises(UnsupportedFileTypeError):
-            file_service.get_file_preview("file_id", "tenant_id")
 
-    def test_get_file_content_success(self, file_service: FileService, db_session: Session):
-        self._persist_upload_file(db_session)
+def test_get_file_presigned_url_uses_file_metadata(
+    file_service: FileService,
+    dependencies: _Dependencies,
+) -> None:
+    record = _record()
+    dependencies.files.file = record
+    dependencies.storage.presigned_url = "direct-url"
 
-        with patch("services.file_service.storage") as mock_storage:
-            mock_storage.load.return_value = b"hello world"
-            result = file_service.get_file_content("file_id")
-            assert result == "hello world"
+    assert file_service.get_file_presigned_url(file_id=record.id, tenant_id=TENANT_ID) == "direct-url"
+    assert dependencies.storage.presigned_calls == [(record.key, 300, record.mime_type)]
 
-    def test_get_file_content_not_found(self, file_service: FileService):
-        with pytest.raises(NotFound, match="File not found"):
-            file_service.get_file_content("file_id")
 
-    def test_delete_file_success(self, file_service: FileService, db_session: Session):
-        self._persist_upload_file(db_session)
+def test_get_icon_url_checks_tenant_owned_record_before_signing(
+    file_service: FileService,
+    dependencies: _Dependencies,
+) -> None:
+    dependencies.files.file = _record()
 
-        with patch("services.file_service.storage") as mock_storage:
-            file_service.delete_file("file_id")
-            mock_storage.delete.assert_called_once_with("key")
-            db_session.expire_all()
-            assert db_session.get(UploadFile, "file_id") is None
+    assert file_service.get_icon_url("file-1", TENANT_ID) == "signed-url"
+    assert dependencies.files.reads == [(TENANT_ID, "file-1")]
+    assert dependencies.sign_file.calls == ["file-1"]
 
-    def test_delete_file_not_found(self, file_service: FileService):
-        file_service.delete_file("file_id")
-        # Should return without doing anything
 
-    def test_get_upload_files_by_ids_empty(self, db_session: Session):
-        result = FileService.get_upload_files_by_ids("tenant_id", [], session=db_session)
-        assert result == {}
+def test_delete_file_delegates_tenant_scoped_liveness_check(
+    file_service: FileService,
+    dependencies: _Dependencies,
+) -> None:
+    file_service.delete_file(tenant_id=TENANT_ID, file_id="file-1")
 
-    def test_get_upload_file_by_id_scopes_to_tenant(self, db_session: Session) -> None:
-        upload_file = self._persist_upload_file(db_session)
+    assert dependencies.reclaimer.calls == [(TENANT_ID, ("file-1",), dependencies.delete_blob)]
 
-        assert FileService.get_upload_file_by_id("tenant_id", "file_id", session=db_session) == upload_file
-        assert FileService.get_upload_file_by_id("other_tenant_id", "file_id", session=db_session) is None
 
-    def test_get_upload_files_by_ids(self, db_session: Session):
-        upload_file = self._persist_upload_file(db_session, file_id="550e8400-e29b-41d4-a716-446655440000")
-        self._persist_upload_file(
-            db_session,
-            file_id="550e8400-e29b-41d4-a716-446655440001",
-            tenant_id="other-tenant",
-        )
+def test_delete_uncommitted_artifact_removes_known_blob(
+    file_service: FileService,
+    dependencies: _Dependencies,
+) -> None:
+    file_service.delete_uncommitted_artifact(artifact=CreatedUploadArtifact(id="file-1", key="temporary/key"))
 
-        result = FileService.get_upload_files_by_ids(
-            "tenant_id",
-            ["550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001"],
-            session=db_session,
-        )
-        assert result["550e8400-e29b-41d4-a716-446655440000"] == upload_file
+    assert dependencies.delete_blob.calls == ["temporary/key"]
 
-    def test_sanitize_zip_entry_name(self):
-        assert FileService._sanitize_zip_entry_name("path/to/file.txt") == "file.txt"
-        assert FileService._sanitize_zip_entry_name("../../../etc/passwd") == "passwd"
-        assert FileService._sanitize_zip_entry_name("   ") == "file"
-        assert FileService._sanitize_zip_entry_name("a\\b") == "a_b"
 
-    def test_dedupe_zip_entry_name(self):
-        used = {"a.txt"}
-        assert FileService._dedupe_zip_entry_name("b.txt", used) == "b.txt"
-        assert FileService._dedupe_zip_entry_name("a.txt", used) == "a (1).txt"
-        used.add("a (1).txt")
-        assert FileService._dedupe_zip_entry_name("a.txt", used) == "a (2).txt"
+def test_zip_archive_sanitizes_and_deduplicates_names(
+    file_service: FileService,
+    dependencies: _Dependencies,
+) -> None:
+    dependencies.storage.streams = [[b"first"], [b"second"]]
+    files = [
+        _record(file_id="file-1", name="../report.txt"),
+        _record(file_id="file-2", name="report.txt"),
+    ]
 
-    def test_build_upload_files_zip_tempfile(self, db_session: Session):
-        upload_file = self._persist_upload_file(db_session)
+    with file_service.build_upload_files_zip_tempfile(upload_files=files) as tmp_path:
+        assert os.path.exists(tmp_path)
+        with ZipFile(tmp_path) as archive:
+            assert archive.namelist() == ["report.txt", "report (1).txt"]
+            assert archive.read("report.txt") == b"first"
+            assert archive.read("report (1).txt") == b"second"
 
-        with (
-            patch("services.file_service.storage") as mock_storage,
-            patch("services.file_service.os.remove") as mock_remove,
-        ):
-            mock_storage.load.return_value = [b"chunk1", b"chunk2"]
+    assert not os.path.exists(tmp_path)
 
-            with FileService.build_upload_files_zip_tempfile(upload_files=[upload_file]) as tmp_path:
-                assert os.path.exists(tmp_path)
 
-            mock_remove.assert_called_once()
+def test_zip_name_helpers_cover_empty_and_repeated_names() -> None:
+    assert _sanitize_zip_entry_name("   ") == "file"
+    assert _sanitize_zip_entry_name("a\\b.txt") == "a_b.txt"
+    assert _dedupe_zip_entry_name("a.txt", {"a.txt", "a (1).txt"}) == "a (2).txt"

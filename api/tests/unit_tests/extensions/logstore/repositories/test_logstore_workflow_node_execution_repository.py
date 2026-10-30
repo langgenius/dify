@@ -14,6 +14,7 @@ from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from services.file_adapters import build_file_service
 
 
 def _make_account() -> Account:
@@ -30,6 +31,7 @@ def test_workflow_tool_scope_preserves_logstore_and_source_scoped_synchronous_ag
     source_app: str,
 ) -> None:
     config_overrides(LOGSTORE_DUAL_WRITE_ENABLED=False)
+    files = build_file_service(session_factory=sqlite_session_factory)
     with patch(
         "extensions.logstore.repositories.logstore_workflow_node_execution_repository.AliyunLogStore"
     ) as logstore:
@@ -39,6 +41,7 @@ def test_workflow_tool_scope_preserves_logstore_and_source_scoped_synchronous_ag
             user=_make_account(),
             app_id="caller-app",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=files,
         )
         source = caller.for_workflow_tool(source_app)
 
@@ -134,6 +137,7 @@ def test_save_synchronously_writes_sql_when_dual_write_is_disabled(
             user=_make_account(),
             app_id="app-1",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=build_file_service(session_factory=sqlite_session_factory),
         )
 
     execution = MagicMock()

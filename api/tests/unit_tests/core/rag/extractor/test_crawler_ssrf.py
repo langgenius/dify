@@ -6,12 +6,12 @@ import httpx
 import pytest
 
 from core.helper import ssrf_proxy
-from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
-from core.rag.extractor.watercrawl.client import WaterCrawlAPIClient
 from core.tools.errors import ToolSSRFError
 from services.data_source.auth.firecrawl.firecrawl import FirecrawlAuth
 from services.data_source.auth.watercrawl.watercrawl import WatercrawlAuth
 from services.data_source.entities.api_key_auth import DataSourceApiKeyAuthCredentials
+from services.data_source.firecrawl import FirecrawlApp
+from services.data_source.watercrawl_client import WaterCrawlAPIClient
 
 
 @pytest.fixture

@@ -15,9 +15,9 @@ from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext,
 from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
-from models.enums import CreatorUserRole
 from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import WorkflowRun

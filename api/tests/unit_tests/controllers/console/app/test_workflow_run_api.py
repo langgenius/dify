@@ -19,12 +19,13 @@ from controllers.common.errors import NotFoundError
 from controllers.common.rbac import locators as rbac_locators
 from controllers.console.app import workflow_run as workflow_run_module
 from core.rbac import RBACPermission, RBACResourceScope
+from enums.creator import CreatorUserRole
 from extensions.ext_database import db
 from fields.workflow_run_fields import node_execution_response_source
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from machinery.context import RequestContext
 from models import Account, App, AppMode
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import (
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionTriggeredFrom,

@@ -12,6 +12,7 @@ from factories import variable_factory
 from graphon.variables import SegmentType
 from models import App, Conversation, ConversationVariable, Message
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
 CONVERSATION_ID = "22222222-2222-2222-2222-222222222222"
@@ -47,6 +48,7 @@ def _runner(workflow_variables: list[object]) -> AdvancedChatAppRunner:
     return AdvancedChatAppRunner(
         application_generate_entity=MagicMock(),
         queue_manager=MagicMock(),
+        knowledge_retrieval=make_knowledge_retriever(),
         conversation=conversation,
         message=Message(id="77777777-7777-7777-7777-777777777777"),
         dialogue_count=1,

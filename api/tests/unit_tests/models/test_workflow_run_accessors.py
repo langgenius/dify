@@ -12,9 +12,10 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
+from enums.creator import CreatorUserRole
 from fields.workflow_run_fields import workflow_run_pagination_response_source, workflow_run_response_source
 from models.account import Account
-from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
+from models.enums import EndUserType, WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import WorkflowRun
 

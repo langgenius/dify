@@ -12,12 +12,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from enums.creator import CreatorUserRole
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
 from models import Account
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from services.file_adapters import build_file_service
 from tasks.workflow_node_execution_tasks import (
     _create_node_execution_from_domain,
     _update_node_execution_from_domain,
@@ -400,6 +402,7 @@ def test_delayed_nonterminal_node_write_cannot_revive_or_insert_a_live_node_afte
             app_id=APP_ID,
             user=user,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=build_file_service(session_factory=sqlite_session_factory),
         )
         if writer == "sql":
             repository.save(execution)

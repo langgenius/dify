@@ -19,6 +19,7 @@ from extensions.logstore.repositories.logstore_workflow_node_execution_repositor
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.enums import ExecutionOffLoadType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
+from services.file_adapters import build_file_service
 from tasks import workflow_node_execution_tasks
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account, make_upload_file
@@ -46,12 +47,14 @@ def test_batch_creates_missing_rows_and_updates_only_supplied_records(
     sqlite_session_factory: sessionmaker[Session], sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, backend: str
 ) -> None:
     expiring_session_factory = sessionmaker(sqlite_engine)
+    files = build_file_service(session_factory=expiring_session_factory)
     sql = SQLAlchemyWorkflowNodeExecutionRepository(
         expiring_session_factory,
         "tenant",
         make_account(),
         "source-app",
         WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+        files,
     )
     existing, missing, untouched = (_execution() for _ in range(3))
     sql.save(existing)
@@ -88,6 +91,7 @@ def test_batch_creates_missing_rows_and_updates_only_supplied_records(
             make_account(),
             "source-app",
             WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+            files,
         )
     elif backend == "logstore":
         apply_config_overrides(monkeypatch, LOGSTORE_DUAL_WRITE_ENABLED=True)
@@ -106,6 +110,7 @@ def test_batch_creates_missing_rows_and_updates_only_supplied_records(
             make_account(),
             "source-app",
             WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+            files,
         )
     else:
         repository = sql
@@ -161,8 +166,14 @@ def test_batch_creates_missing_rows_and_updates_only_supplied_records(
 def test_owner_mismatch_rolls_back_the_whole_batch(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, backend: str, owner: str
 ) -> None:
+    files = build_file_service(session_factory=sqlite_session_factory)
     repository = SQLAlchemyWorkflowNodeExecutionRepository(
-        sqlite_session_factory, "tenant", make_account(), "source-app", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+        sqlite_session_factory,
+        "tenant",
+        make_account(),
+        "source-app",
+        WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+        files,
     )
     valid, foreign = _execution(), _execution()
     repository.save(valid)
@@ -208,7 +219,12 @@ def test_delayed_start_cannot_undo_completed_failure_cleanup(
     monkeypatch.setattr(start_task, "delay", lambda **kwargs: queued.append(kwargs))
     monkeypatch.setattr(batch_task, "delay", lambda **kwargs: queued.append(kwargs))
     repository = CeleryWorkflowNodeExecutionRepository(
-        sqlite_session_factory, "tenant", make_account(), "source-app", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+        sqlite_session_factory,
+        "tenant",
+        make_account(),
+        "source-app",
+        WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+        build_file_service(session_factory=sqlite_session_factory),
     )
     execution = _execution()
     repository.save(execution)

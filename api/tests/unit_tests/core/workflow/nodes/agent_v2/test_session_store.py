@@ -18,6 +18,7 @@ from core.workflow.nodes.agent_v2.session_store import (
     WorkflowAgentWorkspaceStore,
     resolve_workflow_agent_workspace_owner_scope,
 )
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
 from models.agent import (
     AgentConfigVersionKind,
@@ -27,7 +28,7 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, AppMode, IconType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository

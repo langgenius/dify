@@ -14,6 +14,7 @@ from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow import node_factory as node_factory_module
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_runtime import build_knowledge_index_files
 from core.workflow.system_variables import build_system_variables
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
@@ -40,6 +41,7 @@ from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import Workflow, WorkflowType
 from services.workflow_run_agg import WorkflowRunAgg
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params
 
 if "core.ops.ops_trace_manager" not in sys.modules:
@@ -180,6 +182,8 @@ def _build_graph(runtime_state: RuntimeState, *, pause_on: str | None) -> Graph:
     node_factory = DifyNodeFactory(
         init_params=params,
         runtime_state=runtime_state,
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=build_knowledge_index_files(),
     )
 
     return Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
@@ -288,7 +292,10 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
 
     resumed_state = RuntimeState.from_snapshot(snapshot)
 
-    generator = wf_app_gen_module.WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = wf_app_gen_module.WorkflowAppGenerator(
+        execution_driver=WorkflowRunAgg.run,
+        knowledge_retrieval=make_knowledge_retriever(),
+    )
 
     def _fake_generate(**kwargs):
         state: RuntimeState = kwargs["graph_runtime_state"]
@@ -332,7 +339,10 @@ def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture, unbo
 
     resumed_state = RuntimeState.from_snapshot(snapshot)
 
-    generator = adv_app_gen_module.AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = adv_app_gen_module.AdvancedChatAppGenerator(
+        execution_driver=WorkflowRunAgg.run,
+        knowledge_retrieval=make_knowledge_retriever(),
+    )
 
     def _fake_generate(**kwargs):
         state: RuntimeState = kwargs["graph_runtime_state"]

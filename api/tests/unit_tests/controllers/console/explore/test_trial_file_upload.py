@@ -22,18 +22,19 @@ import controllers.console.files as files_module
 import controllers.console.remote_files as remote_module
 import controllers.console.wraps as console_wraps
 import libs.login as login_module
-import services.file_service as file_module
+import services.file_adapters as file_module
 from core.file import remote_fetcher
 from core.tools.errors import ToolSSRFError
 from enums import DeploymentEdition
+from enums.creator import CreatorUserRole
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
 from libs.external_api import ExternalApi
 from models import Account, AccountTrialAppRecord, App, AppMode, Tenant, TrialApp, UploadFile
 from models.account import TenantAccountRole
-from models.enums import CreatorUserRole
 from repositories.trial_app_repository import TrialAppRepository
 from services.entities.feature_entities import FeatureModel
 from services.feature_service import FeatureService
+from services.file_adapters import build_file_service
 from services.file_service import FileService
 from services.remote_file_service import RemoteFileService
 from services.trial_app_access_service import TrialAppAccessService
@@ -165,7 +166,9 @@ def harness(
         sessions.append(session)
 
     io = _ExternalIO(sessions)
-    files = FileService(session_factory=sqlite_session_factory)
+    monkeypatch.setattr(file_module.storage, "save", io.save)
+    monkeypatch.setattr(file_module, "naive_utc_now", lambda: _CREATED_AT)
+    files = build_file_service(session_factory=sqlite_session_factory)
     services = _ApplicationServices(
         trial_apps=_TrialAppServices(
             access=TrialAppAccessService(apps=TrialAppRepository(session_factory=repository_factory))
@@ -188,8 +191,6 @@ def harness(
     monkeypatch.setattr(console_wraps, "_is_setup_completed", setup_completed)
     monkeypatch.setattr(login_module, "current_user", account)
     monkeypatch.setattr(login_module, "check_csrf_token", csrf)
-    monkeypatch.setattr(file_module.storage, "save", io.save)
-    monkeypatch.setattr(file_module, "naive_utc_now", lambda: _CREATED_AT)
     monkeypatch.setattr(remote_fetcher, "make_request", io.request)
 
     app = Flask(__name__)
@@ -296,7 +297,13 @@ def test_remote_upload_fetches_once_and_preserves_response_and_actor(harness: _H
     assert harness.io.saved == {file.key: _CONTENT}
     assert harness.io.requests == [
         ("HEAD", _REMOTE_URL, {}),
-        ("GET", _REMOTE_URL, {} if head_status == 200 else {"timeout": 3, "follow_redirects": True}),
+        (
+            "GET",
+            _REMOTE_URL,
+            {"follow_redirects": True, "stream_response": True}
+            if head_status == 200
+            else {"timeout": 3, "follow_redirects": True, "stream_response": True},
+        ),
     ]
     assert harness.usage() is None
 

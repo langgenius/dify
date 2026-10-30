@@ -9,10 +9,10 @@ from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
     WORKFLOW_TOOL_ROOT_APP_ID_KEY,
 )
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from machinery.context import RequestContext
 from models import WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
-from models.enums import CreatorUserRole
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunMessageRef
 from services import workflow_run_service as service_module
 from services.workflow_node_execution_trace_service import WorkflowNodeExecutionTrace

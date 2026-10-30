@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Sequence
+from datetime import datetime
 from typing import Any, cast
 
 from sqlalchemy.orm import Session
@@ -11,21 +12,25 @@ from sqlalchemy.orm import Session
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from core.rag.index_processor.constant.query_type import QueryType
 from core.tools.signature import sign_upload_file_preview_url
-from models.dataset import Dataset, DatasetMetadata, DatasetQuery, DocMetadataDetailItem, Document, DocumentSegment
-from models.model import UploadFile
+from models.dataset import Dataset, DatasetQuery, DocMetadataDetailItem, Document
 from repositories.knowledge.dataset_read_repository import (
     DatasetDetailPrefetch,
-    DocumentReadBatch,
     build_dataset_detail_prefetch,
+    get_query_upload_files,
+)
+from repositories.knowledge.document_query_repository import (
     get_document_dataset,
     get_document_metadata_rows,
     get_document_upload_file,
     get_document_uploader,
-    get_query_upload_files,
-    get_segment_child_chunks,
-    load_document_read_batch,
 )
-from repositories.knowledge.segment_read_adapter import get_segment_attachments, sign_segment_content
+from services.knowledge.documents.contracts import (
+    DocumentCreationProjection,
+    DocumentMetadataProjection,
+    DocumentPageProjection,
+    DocumentReadProjection,
+    DocumentSourceFileProjection,
+)
 from services.knowledge.entities.datasets import DatasetDetailRecord
 
 
@@ -88,99 +93,13 @@ def _dataset_detail_values(dataset: Dataset, prefetch: DatasetDetailPrefetch) ->
     }
 
 
-def load_document_detail(document: Document, *, session: Session) -> dict[str, Any]:
-    return load_document_details([document], session=session)[0]
-
-
-def load_document_details(documents: Iterable[Document], *, session: Session) -> list[dict[str, Any]]:
-    """Materialize document attributes and relations while the caller's session is open."""
-    items = list(documents)
-    batch = load_document_read_batch(items, session=session)
-    return [
-        {
-            "id": document.id,
-            "position": document.position,
-            "data_source_type": document.data_source_type,
-            "data_source_info_dict": document.data_source_info_dict,
-            "dataset_process_rule_id": document.dataset_process_rule_id,
-            "name": document.name,
-            "created_from": document.created_from,
-            "created_by": document.created_by,
-            "created_at": document.created_at,
-            "tokens": document.tokens,
-            "indexing_status": document.indexing_status,
-            "error": document.error,
-            "enabled": document.enabled,
-            "disabled_at": document.disabled_at,
-            "disabled_by": document.disabled_by,
-            "archived": document.archived,
-            "display_status": document.display_status,
-            "word_count": document.word_count,
-            "doc_form": document.doc_form,
-            "summary_index_status": vars(document).get("summary_index_status"),
-            "need_summary": document.need_summary,
-            "completed_segments": vars(document).get("completed_segments"),
-            "total_segments": vars(document).get("total_segments"),
-            **document_response_values(document, batch),
-        }
-        for document in items
-    ]
-
-
-def load_segment_detail(segment: DocumentSegment, summary: str | None, *, session: Session) -> dict[str, Any]:
-    """Load relations and authorize file links before handing plain values to the response model."""
-    child_chunks = get_segment_child_chunks(segment, session=session, include_full_doc=False)
-    return {
-        "id": segment.id,
-        "position": segment.position,
-        "document_id": segment.document_id,
-        "content": segment.content,
-        "sign_content": sign_segment_content(segment, session=session),
-        "answer": segment.answer,
-        "word_count": segment.word_count,
-        "tokens": segment.tokens,
-        "keywords": segment.keywords,
-        "index_node_id": segment.index_node_id,
-        "index_node_hash": segment.index_node_hash,
-        "hit_count": segment.hit_count,
-        "enabled": segment.enabled,
-        "disabled_at": segment.disabled_at,
-        "disabled_by": segment.disabled_by,
-        "status": segment.status,
-        "created_by": segment.created_by,
-        "created_at": segment.created_at,
-        "updated_at": segment.updated_at,
-        "updated_by": segment.updated_by,
-        "indexing_at": segment.indexing_at,
-        "completed_at": segment.completed_at,
-        "error": segment.error,
-        "stopped_at": segment.stopped_at,
-        "child_chunks": [
-            {
-                "id": chunk.id,
-                "segment_id": chunk.segment_id,
-                "content": chunk.content,
-                "position": chunk.position,
-                "word_count": chunk.word_count,
-                "type": chunk.type,
-                "created_at": chunk.created_at,
-                "updated_at": chunk.updated_at,
-            }
-            for chunk in child_chunks
-        ],
-        "attachments": get_segment_attachments(segment, session=session),
-        "summary": summary,
-    }
-
-
-def load_segment_details(
-    segments: Iterable[DocumentSegment], summaries: Mapping[str, str | None], *, session: Session
-) -> list[dict[str, Any]]:
-    return [load_segment_detail(segment, summaries.get(segment.id), session=session) for segment in segments]
-
-
-def format_document_source_detail(document: Document, file: UploadFile | None) -> dict[str, Any]:
-    if document.data_source_type == "upload_file" and file is not None:
+def _format_document_source_detail(
+    *,
+    data_source_type: str,
+    data_source_info: dict[str, object],
+    file: DocumentSourceFileProjection | None,
+) -> dict[str, Any]:
+    if data_source_type == "upload_file" and file is not None:
         return {
             "upload_file": {
                 "id": file.id,
@@ -192,92 +111,176 @@ def format_document_source_detail(document: Document, file: UploadFile | None) -
                 "created_at": file.created_at.timestamp(),
             }
         }
-    if document.data_source_type in {"notion_import", "website_crawl"}:
-        return document.data_source_info_dict
+    if data_source_type in {"notion_import", "website_crawl"}:
+        return data_source_info
     return {}
 
 
-def format_document_metadata(
-    document: Document, metadatas: Sequence[DatasetMetadata], *, built_in_enabled: bool, uploader_name: str | None
+def _format_document_metadata(
+    *,
+    name: str,
+    data_source_type: str,
+    created_at: datetime,
+    updated_at: datetime,
+    doc_metadata: dict[str, object],
+    metadata: Sequence[DocumentMetadataProjection],
+    built_in_enabled: bool,
+    uploader_name: str | None,
 ) -> list[DocMetadataDetailItem] | None:
-    values = document.doc_metadata or {}
     details: list[DocMetadataDetailItem] = [
-        {"id": metadata.id, "name": metadata.name, "type": metadata.type, "value": values.get(metadata.name)}
-        for metadata in metadatas
+        {"id": field.id, "name": field.name, "type": field.type, "value": doc_metadata.get(field.name)}
+        for field in metadata
     ]
     if built_in_enabled:
-        details.extend(format_document_built_in_fields(document, uploader_name=uploader_name))
+        details.extend(
+            [
+                {"id": "built-in", "name": BuiltInField.document_name, "type": "string", "value": name},
+                {"id": "built-in", "name": BuiltInField.uploader, "type": "string", "value": uploader_name},
+                {
+                    "id": "built-in",
+                    "name": BuiltInField.upload_date,
+                    "type": "time",
+                    "value": str(created_at.timestamp()),
+                },
+                {
+                    "id": "built-in",
+                    "name": BuiltInField.last_update_date,
+                    "type": "time",
+                    "value": str(updated_at.timestamp()),
+                },
+                {
+                    "id": "built-in",
+                    "name": BuiltInField.source,
+                    "type": "string",
+                    "value": MetadataDataSource[data_source_type],
+                },
+            ]
+        )
     return details or None
 
 
-def document_response_values(document: Document, batch: DocumentReadBatch) -> dict[str, Any]:
-    """Build response-only values from a loaded snapshot without database access."""
-    file_id = document.data_source_info_dict.get("upload_file_id")
-    process_rule = batch.process_rules.get(document.dataset_process_rule_id)
-    if process_rule is not None and process_rule.dataset_id != document.dataset_id:
-        process_rule = None
+def format_document_read_projection(document: DocumentReadProjection) -> dict[str, Any]:
+    process_rule = document.process_rule
     return {
-        "data_source_detail_dict": format_document_source_detail(
-            document, batch.uploads.get((document.tenant_id, file_id)) if isinstance(file_id, str) else None
+        "id": document.id,
+        "position": document.position,
+        "data_source_type": document.data_source_type,
+        "data_source_info_dict": dict(document.data_source_info),
+        "dataset_process_rule_id": document.dataset_process_rule_id,
+        "name": document.name,
+        "created_from": document.created_from,
+        "created_by": document.created_by,
+        "created_at": document.created_at,
+        "tokens": document.tokens,
+        "indexing_status": document.indexing_status,
+        "error": document.error,
+        "enabled": document.enabled,
+        "disabled_at": document.disabled_at,
+        "disabled_by": document.disabled_by,
+        "archived": document.archived,
+        "display_status": document.display_status,
+        "word_count": document.word_count,
+        "doc_form": document.doc_form,
+        "summary_index_status": document.summary_index_status,
+        "need_summary": document.need_summary,
+        "completed_segments": document.completed_segments,
+        "total_segments": document.total_segments,
+        "data_source_detail_dict": _format_document_source_detail(
+            data_source_type=document.data_source_type,
+            data_source_info=dict(document.data_source_info),
+            file=document.source_file,
         ),
-        "hit_count": batch.hit_counts.get(document.id, 0),
-        "doc_metadata_details": format_document_metadata(
-            document,
-            batch.metadatas.get(document.id, []),
-            built_in_enabled=batch.built_in_enabled.get((document.tenant_id, document.dataset_id), False),
-            uploader_name=batch.uploader_names.get(document.created_by),
+        "hit_count": document.hit_count,
+        "doc_metadata_details": _format_document_metadata(
+            name=document.name,
+            data_source_type=document.data_source_type,
+            created_at=document.created_at,
+            updated_at=document.updated_at,
+            doc_metadata=dict(document.doc_metadata),
+            metadata=document.metadata,
+            built_in_enabled=document.built_in_enabled,
+            uploader_name=document.uploader_name,
         ),
-        "process_rule_dict": process_rule.to_dict() if process_rule else None,
+        "process_rule_dict": (
+            {
+                "id": process_rule.id,
+                "dataset_id": process_rule.dataset_id,
+                "mode": process_rule.mode,
+                "rules": process_rule.rules,
+            }
+            if process_rule is not None
+            else None
+        ),
+    }
+
+
+def format_document_page(page: DocumentPageProjection) -> dict[str, Any]:
+    return {
+        "data": [format_document_read_projection(document) for document in page.documents],
+        "has_more": page.has_more,
+        "limit": page.limit,
+        "total": page.total,
+        "page": page.page,
+    }
+
+
+def format_document_creation(result: DocumentCreationProjection) -> dict[str, Any]:
+    return {
+        "dataset": {
+            "id": result.dataset.id,
+            "name": result.dataset.name,
+            "description": result.dataset.description,
+            "permission": result.dataset.permission,
+            "data_source_type": result.dataset.data_source_type,
+            "indexing_technique": result.dataset.indexing_technique,
+            "created_by": result.dataset.created_by,
+            "created_at": result.dataset.created_at,
+        },
+        "documents": [format_document_read_projection(document) for document in result.documents],
+        "batch": result.batch,
     }
 
 
 def get_document_source_detail(document: Document, *, session: Session) -> dict[str, Any]:
     file = get_document_upload_file(document, session=session) if document.data_source_type == "upload_file" else None
-    return format_document_source_detail(document, file)
+    projection = (
+        DocumentSourceFileProjection(
+            id=file.id,
+            name=file.name,
+            size=file.size,
+            extension=file.extension,
+            mime_type=file.mime_type,
+            created_by=file.created_by,
+            created_at=file.created_at,
+        )
+        if file is not None
+        else None
+    )
+    return _format_document_source_detail(
+        data_source_type=document.data_source_type,
+        data_source_info=dict(document.data_source_info_dict),
+        file=projection,
+    )
 
 
 def get_document_metadata_details(document: Document, *, session: Session) -> list[DocMetadataDetailItem] | None:
     dataset = get_document_dataset(document, session=session)
     built_in_enabled = bool(dataset is not None and dataset.built_in_field_enabled)
-    return format_document_metadata(
-        document,
-        get_document_metadata_rows(document, session=session) if document.doc_metadata else [],
+    return _format_document_metadata(
+        name=document.name,
+        data_source_type=document.data_source_type,
+        created_at=document.created_at,
+        updated_at=document.updated_at,
+        doc_metadata=dict(document.doc_metadata or {}),
+        metadata=tuple(
+            DocumentMetadataProjection(id=field.id, name=field.name, type=field.type)
+            for field in get_document_metadata_rows(document, session=session)
+        )
+        if document.doc_metadata
+        else (),
         built_in_enabled=built_in_enabled,
         uploader_name=get_document_uploader(document, session=session) if built_in_enabled else None,
     )
-
-
-def get_document_built_in_fields(document: Document, *, session: Session) -> list[DocMetadataDetailItem]:
-    return format_document_built_in_fields(document, uploader_name=get_document_uploader(document, session=session))
-
-
-def format_document_built_in_fields(document: Document, *, uploader_name: str | None) -> list[DocMetadataDetailItem]:
-    built_in_fields: list[DocMetadataDetailItem] = []
-    built_in_fields.extend(
-        (
-            {"id": "built-in", "name": BuiltInField.document_name, "type": "string", "value": document.name},
-            {"id": "built-in", "name": BuiltInField.uploader, "type": "string", "value": uploader_name},
-            {
-                "id": "built-in",
-                "name": BuiltInField.upload_date,
-                "type": "time",
-                "value": str(document.created_at.timestamp()),
-            },
-            {
-                "id": "built-in",
-                "name": BuiltInField.last_update_date,
-                "type": "time",
-                "value": str(document.updated_at.timestamp()),
-            },
-            {
-                "id": "built-in",
-                "name": BuiltInField.source,
-                "type": "string",
-                "value": MetadataDataSource[document.data_source_type],
-            },
-        )
-    )
-    return built_in_fields
 
 
 def get_dataset_queries(query: DatasetQuery, *, session: Session) -> list[dict[str, Any]]:

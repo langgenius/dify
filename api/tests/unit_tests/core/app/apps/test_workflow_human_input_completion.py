@@ -42,6 +42,7 @@ from core.workflow.nodes.human_input.entities import (
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from core.workflow.workflow_entry import WorkflowEntry
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from graphon.engine.ready_queue import StartTask
 from graphon.engine_events import EngineEvent, GraphRunFailedEvent
@@ -55,17 +56,19 @@ from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.runtime.execution import ROOT_FRAME_ID
 from models import Account, UploadFile
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from services.file_adapters import build_file_service
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.core.app.apps.advanced_chat.test_generate_task_pipeline import (
     _build_generate_entity,
     _build_pipeline,
 )
 from tests.unit_tests.core.app.apps.common.test_workflow_response_converter_human_input import _build_converter
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context
 
 
@@ -202,6 +205,7 @@ def _resume_events(runner: WorkflowBasedAppRunner, entry: WorkflowEntry) -> Gene
         app_id="app",
         user=user,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        files=build_file_service(session_factory=factory),
     )
     prepared = PreparedWorkflowRun(entry, WorkflowType.WORKFLOW, "draft", entity, ())
     return WorkflowRunAgg(
@@ -211,6 +215,14 @@ def _resume_events(runner: WorkflowBasedAppRunner, entry: WorkflowEntry) -> Gene
         workflow_execution_repository=runs,
         workflow_node_execution_repository=nodes,
     ).iter_events()
+
+
+def _make_runner(queue_manager: WorkflowAppQueueManager) -> WorkflowBasedAppRunner:
+    return WorkflowBasedAppRunner(
+        queue_manager=queue_manager,
+        knowledge_retrieval=make_knowledge_retriever(),
+        app_id="app",
+    )
 
 
 @pytest.mark.parametrize("status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.TIMEOUT])
@@ -226,7 +238,7 @@ def test_resume_publishes_only_the_completed_form_among_repeated_node_invocation
     expired = _save_form(sqlite_session, status=HumanInputFormStatus.EXPIRED)
     _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
     queue, publish_spy = workflow_queue
-    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+    runner = _make_runner(queue)
     entry = _make_paused_workflow(
         runner, [selected, waiting, selected, expired], human_input_form=selected if runs_human_input_node else None
     )
@@ -268,7 +280,7 @@ def test_resume_rejects_form_outside_the_trusted_execution_owner(
     setattr(form, owner_field, "another-owner")
     sqlite_session.commit()
     queue, publish_spy = workflow_queue
-    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+    runner = _make_runner(queue)
     entry = _make_paused_workflow(runner, [form])
 
     events = list(_resume_events(runner, entry))
@@ -341,7 +353,7 @@ def test_resume_refreshes_expired_file_and_file_list_urls_before_form_completion
     )
     assert not any(url_is_valid(file) for file in saved_files)
     queue, publish_spy = workflow_queue
-    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+    runner = _make_runner(queue)
     entry = _make_paused_workflow(runner, [form])
     for event in _resume_events(runner, entry):
         runner.handle_event(entry, event)
@@ -374,7 +386,7 @@ def test_form_completed_during_resume_is_published_once_before_the_terminal_even
     first = _save_form(sqlite_session, status=HumanInputFormStatus.SUBMITTED)
     second = _save_form(sqlite_session, status=HumanInputFormStatus.WAITING)
     queue, publish_spy = workflow_queue
-    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+    runner = _make_runner(queue)
     entry = _make_paused_workflow(runner, [first, second])
 
     def complete_second_form_during_execution(event: AppQueueEvent, publish_from: PublishFrom) -> None:
@@ -419,7 +431,7 @@ def test_waiting_form_expiring_during_resume_publishes_timeout_before_success(
     form.expiration_time = datetime.now(UTC) - timedelta(seconds=1)
     sqlite_session.commit()
     queue, publish_spy = workflow_queue
-    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+    runner = _make_runner(queue)
     entry = _make_paused_workflow(runner, [form], human_input_form=form)
 
     for event in _resume_events(runner, entry):

@@ -21,8 +21,8 @@ from sqlalchemy import Column, Engine, Integer, MetaData, String, Table, delete,
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session, registry, sessionmaker
 
+from enums.creator import CreatorUserRole
 from libs.archive_storage import ArchiveStorageNotConfiguredError
-from models.enums import CreatorUserRole
 from models.trigger import WorkflowTriggerLog
 from models.workflow import (
     WorkflowAppLog,
@@ -288,7 +288,7 @@ class TestWorkflowRunRestoreInit:
 class TestGetWorkflowRunRepo:
     """Tests for WorkflowRunRestore._get_workflow_run_repo method."""
 
-    @patch("services.retention.workflow_run.restore_archived_workflow_run.DifyAPIRepositoryFactory")
+    @patch("services.retention.workflow_run.restore_archived_workflow_run.WorkflowRepositoryFactory")
     def test_first_call_creates_repo(self, mock_factory, database: Database):
         """First call should create and cache repository."""
         restore = WorkflowRunRestore()

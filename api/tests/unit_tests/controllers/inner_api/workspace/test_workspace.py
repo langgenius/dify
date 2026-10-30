@@ -12,6 +12,8 @@ from flask.typing import ResponseReturnValue
 from flask_restx import Api, Resource
 from werkzeug.exceptions import UnprocessableEntity
 
+from controllers.common.errors import InvalidArgumentError
+from controllers.inner_api import bp as inner_api_bp
 from controllers.inner_api.workspace import workspace as controller
 from controllers.inner_api.wraps import InnerApiUnauthorizedError
 from extensions.application_services.workspace import WorkspaceServices
@@ -19,6 +21,7 @@ from libs.external_api import register_external_error_handlers
 from services.account_errors import AccountNotFoundError
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
+    WorkspaceInvitationQuotaError,
     WorkspaceNotFoundError,
     WorkspaceOwnerNotFoundError,
     WorkspacesLimitExceededError,
@@ -119,6 +122,26 @@ def test_workspace_limit_remains_a_client_error(provisioning: Mock) -> None:
     assert response.json == {"code": "invalid_param", "message": "Workspace limit reached", "status": 400}
 
 
+def test_ownerless_workspace_limit_returns_invalid_param_over_http(
+    provisioning: Mock,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(INNER_API=True, INNER_API_KEY="secret", DEPLOYMENT_EDITION="CLOUD")
+    provisioning.create.side_effect = WorkspacesLimitExceededError("Workspace limit reached")
+    http_app = Flask(__name__)
+    http_app.config["TESTING"] = False
+    http_app.register_blueprint(inner_api_bp)
+
+    response = http_app.test_client().post(
+        "/inner/api/enterprise/workspace/ownerless",
+        json={"name": "Test"},
+        headers={"X-Inner-Api-Key": "secret"},
+    )
+
+    assert response.status_code == 400
+    assert response.json == {"code": "invalid_param", "message": "Workspace limit reached", "status": 400}
+
+
 MEMBER = {"workspace_id": "w1", "account_id": "a1", "email": "member@example.com", "current": True}
 
 
@@ -146,6 +169,13 @@ def test_join_errors(app: Flask, provisioning: Mock, error: Exception, message: 
     with app.test_request_context(method="POST", json=MEMBER):
         result = unwrap(controller.EnterpriseWorkspaceMember.post)(controller.EnterpriseWorkspaceMember())
     assert result == ({"message": message}, status)
+
+
+def test_join_member_maps_lock_time_capacity_failure(app: Flask, provisioning: Mock) -> None:
+    provisioning.join_member.side_effect = WorkspaceInvitationQuotaError()
+
+    with app.test_request_context(method="POST", json=MEMBER), pytest.raises(InvalidArgumentError):
+        unwrap(controller.EnterpriseWorkspaceMember.post)(controller.EnterpriseWorkspaceMember())
 
 
 @pytest.mark.parametrize(

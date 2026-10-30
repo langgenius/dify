@@ -13,6 +13,7 @@ from models.account import Tenant, TenantStatus
 from models.dataset import Dataset
 from models.model import App
 from models.resource_access_token import ResourceAccessToken, ResourceAccessTokenRelation
+from repositories.knowledge.dataset_read_repository import lock_dataset_row_for_child_write
 from services.auth.resource_access_token_contracts import (
     BoundResource,
     ResourceAccessTokenAccess,
@@ -36,6 +37,7 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
         self, tenant_id: str, created_by: str, name: str, resources: tuple[ResourceAccessTokenResource, ...]
     ) -> ResourceAccessTokenCreateResult:
         with self._session_factory.begin() as session:
+            self._lock_resources_for_binding(session, tenant_id, resources)
             token = ResourceAccessToken(
                 tenant_id=tenant_id,
                 name=name,
@@ -46,7 +48,6 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
             session.add(token)
             session.flush()
             for resource in resources:
-                self._ensure_resource_available(session, tenant_id, resource)
                 session.add(self._relation(token.id, resource))
             session.flush()
             return ResourceAccessTokenCreateResult(
@@ -130,11 +131,14 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
         self, tenant_id: str, token_id: str, name: str, resources: tuple[ResourceAccessTokenResource, ...] | None
     ) -> tuple[ResourceAccessTokenRow, ...]:
         with self._session_factory.begin() as session:
+            if resources is not None:
+                # Resource deletion takes the parent row before any token row.
+                # Keep the same order here so validation and relation writes are
+                # protected by the parent lifecycle lock.
+                self._lock_resources_for_binding(session, tenant_id, resources)
             token = self._get_token(session, tenant_id, token_id)
             token.name = name
             if resources is not None:
-                for resource in resources:
-                    self._ensure_resource_available(session, tenant_id, resource)
                 existing = session.scalars(
                     select(ResourceAccessTokenRelation).where(ResourceAccessTokenRelation.token_id == token.id)
                 ).all()
@@ -167,13 +171,12 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
     @override
     def access_by_secret(self, token: str) -> ResourceAccessTokenAccess:
         with self._session_factory() as session:
-            row = session.scalar(select(ResourceAccessToken).where(ResourceAccessToken.token == token))
-            return self._access(session, row)
+            return self._access(session, ResourceAccessToken.token == token)
 
     @override
     def access_by_id(self, token_id: str) -> ResourceAccessTokenAccess:
         with self._session_factory() as session:
-            return self._access(session, session.get(ResourceAccessToken, token_id))
+            return self._access(session, ResourceAccessToken.id == token_id)
 
     @override
     def record_usage(self, tenant_id: str, token_id: str) -> None:
@@ -215,20 +218,36 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
         assert resource_id is not None
         return relation.resource_type, resource_id
 
+    @classmethod
+    def _lock_resources_for_binding(
+        cls, session: Session, tenant_id: str, resources: tuple[ResourceAccessTokenResource, ...]
+    ) -> None:
+        """Lock resource parents in one stable order before locking a token."""
+
+        for resource in sorted(resources, key=lambda item: (item.type.value, item.id)):
+            resource_enabled = cls._lock_resource_parent(session, tenant_id, resource)
+            if resource.type == ResourceAccessTokenResourceType.APP:
+                if resource_enabled is None:
+                    raise ResourceAccessTokenNotFoundError("App not found.")
+                if not resource_enabled:
+                    raise ResourceAccessTokenForbiddenError("App API access is not enabled.")
+            else:
+                if resource_enabled is None:
+                    raise ResourceAccessTokenNotFoundError("Knowledge base not found.")
+                if not resource_enabled:
+                    raise ResourceAccessTokenForbiddenError("Knowledge base API access is not enabled.")
+
     @staticmethod
-    def _ensure_resource_available(session: Session, tenant_id: str, resource: ResourceAccessTokenResource) -> None:
+    def _lock_resource_parent(session: Session, tenant_id: str, resource: ResourceAccessTokenResource) -> bool | None:
         if resource.type == ResourceAccessTokenResourceType.APP:
-            app = session.scalar(select(App).where(App.id == resource.id, App.tenant_id == tenant_id))
-            if app is None:
-                raise ResourceAccessTokenNotFoundError("App not found.")
-            if app.status != "normal" or not app.enable_api:
-                raise ResourceAccessTokenForbiddenError("App API access is not enabled.")
-        else:
-            dataset = session.scalar(select(Dataset).where(Dataset.id == resource.id, Dataset.tenant_id == tenant_id))
-            if dataset is None:
-                raise ResourceAccessTokenNotFoundError("Knowledge base not found.")
-            if not dataset.enable_api:
-                raise ResourceAccessTokenForbiddenError("Knowledge base API access is not enabled.")
+            query = select(App.status, App.enable_api).where(App.id == resource.id, App.tenant_id == tenant_id)
+            row = session.execute(query.with_for_update().execution_options(populate_existing=True)).one_or_none()
+            if row is None:
+                return None
+            app_status, enable_api = row
+            return bool(app_status == "normal" and enable_api)
+        dataset = lock_dataset_row_for_child_write(session, tenant_id=tenant_id, dataset_id=resource.id)
+        return bool(dataset.enable_api) if dataset is not None else None
 
     @staticmethod
     def _generate_token(session: Session) -> str:
@@ -276,18 +295,41 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
         )
 
     @classmethod
-    def _access(cls, session: Session, token: ResourceAccessToken | None) -> ResourceAccessTokenAccess:
-        if token is None:
-            raise ResourceAccessTokenInvalidError("Resource access token is invalid.")
-        tenant = session.get(Tenant, token.tenant_id)
+    def _access(cls, session: Session, token_filter: ColumnElement[bool]) -> ResourceAccessTokenAccess:
+        """Read the token, bindings, and parent state from one database snapshot."""
+
         rows = session.execute(
-            select(ResourceAccessTokenRelation, App.id, App.status, App.enable_api, Dataset.id, Dataset.enable_api)
-            .outerjoin(App, (App.id == ResourceAccessTokenRelation.app_id) & (App.tenant_id == token.tenant_id))
-            .outerjoin(
-                Dataset, (Dataset.id == ResourceAccessTokenRelation.dataset_id) & (Dataset.tenant_id == token.tenant_id)
+            select(
+                ResourceAccessToken,
+                Tenant.status,
+                ResourceAccessTokenRelation,
+                App.id,
+                App.status,
+                App.enable_api,
+                Dataset.id,
+                Dataset.enable_api,
             )
-            .where(ResourceAccessTokenRelation.token_id == token.id)
-        )
+            .outerjoin(Tenant, Tenant.id == ResourceAccessToken.tenant_id)
+            .outerjoin(
+                ResourceAccessTokenRelation,
+                ResourceAccessTokenRelation.token_id == ResourceAccessToken.id,
+            )
+            .outerjoin(
+                App,
+                (App.id == ResourceAccessTokenRelation.app_id) & (App.tenant_id == ResourceAccessToken.tenant_id),
+            )
+            .outerjoin(
+                Dataset,
+                (Dataset.id == ResourceAccessTokenRelation.dataset_id)
+                & (Dataset.tenant_id == ResourceAccessToken.tenant_id),
+            )
+            .where(token_filter)
+            .order_by(ResourceAccessTokenRelation.id)
+        ).all()
+        if not rows:
+            raise ResourceAccessTokenInvalidError("Resource access token is invalid.")
+        token = rows[0][0]
+        tenant_status = rows[0][1]
         resources = tuple(
             BoundResource(
                 type=relation.resource_type,
@@ -299,11 +341,12 @@ class ResourceAccessTokenRepository(ResourceAccessTokenStore):
                 if relation.resource_type == ResourceAccessTokenResourceType.APP
                 else bool(dataset_enabled),
             )
-            for relation, app_id, app_status, app_enabled, dataset_id, dataset_enabled in rows
+            for _, _, relation, app_id, app_status, app_enabled, dataset_id, dataset_enabled in rows
+            if relation is not None
         )
-        return ResourceAccessTokenAccess(
-            token.id, token.tenant_id, tenant is not None and tenant.status == TenantStatus.NORMAL, resources
-        )
+        if not resources:
+            raise ResourceAccessTokenInvalidError("Resource access token is invalid.")
+        return ResourceAccessTokenAccess(token.id, token.tenant_id, tenant_status == TenantStatus.NORMAL, resources)
 
 
 class ResourceAccessTokenCleanupRepository(ResourceAccessTokenCleanupStore):
@@ -314,8 +357,12 @@ class ResourceAccessTokenCleanupRepository(ResourceAccessTokenCleanupStore):
     def delete_resource_relations(
         self, *, tenant_id: str, resource_type: ResourceAccessTokenResourceType, resource_id: str
     ) -> None:
-        """Join an existing resource-deletion transaction; never commit the caller's work."""
+        """Join a deletion transaction using parent -> token -> relation lock order."""
         session = self._session
+        resource = ResourceAccessTokenResource(type=resource_type, id=resource_id)
+        # If the parent still exists, serialize its deletion with new bindings.
+        # Cleanup tasks may replay after the parent is gone, so absence is valid.
+        ResourceAccessTokenRepository._lock_resource_parent(session, tenant_id, resource)
         field = (
             ResourceAccessTokenRelation.app_id
             if resource_type == ResourceAccessTokenResourceType.APP
@@ -324,12 +371,17 @@ class ResourceAccessTokenCleanupRepository(ResourceAccessTokenCleanupStore):
         token_ids = tuple(
             session.scalars(
                 select(ResourceAccessToken.id)
-                .join(ResourceAccessTokenRelation, ResourceAccessTokenRelation.token_id == ResourceAccessToken.id)
                 .where(
                     ResourceAccessToken.tenant_id == tenant_id,
-                    ResourceAccessTokenRelation.resource_type == resource_type,
-                    field == resource_id,
+                    ResourceAccessToken.id.in_(
+                        select(ResourceAccessTokenRelation.token_id).where(
+                            ResourceAccessTokenRelation.resource_type == resource_type,
+                            field == resource_id,
+                        )
+                    ),
                 )
+                .order_by(ResourceAccessToken.id)
+                .with_for_update()
             )
         )
         if not token_ids:

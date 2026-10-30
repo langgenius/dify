@@ -620,7 +620,7 @@ class TestWorkflowTrace:
             # object so the repository factory is reachable (the mocked repo never opens a session).
             patch("extensions.ext_database.db", MagicMock()),
             patch(
-                "repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository",
+                "repositories.workflow.factory.WorkflowRepositoryFactory.create_api_workflow_node_execution_repository",
                 return_value=mock_repo,
             ) as mock_create,
         ):

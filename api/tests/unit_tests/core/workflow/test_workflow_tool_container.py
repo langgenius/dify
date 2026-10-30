@@ -21,7 +21,7 @@ from core.tools.entities.tool_entities import ToolEntity, ToolIdentity
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
+from core.workflow.node_runtime import DifyToolFileManager, DifyToolNodeRuntime, build_knowledge_index_files
 from core.workflow.nodes.human_input.boundary import resolve_human_input_node_id
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
@@ -83,6 +83,11 @@ from graphon.runtime.container_state import create_container_run_state
 from graphon.runtime.execution import ROOT_FRAME_ID
 from graphon.variables.segments import ArrayFileSegment
 from graphon.variables.types import SegmentType
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import (
+    KnowledgeRetrievalTestNodeFactory,
+    make_knowledge_retriever,
+)
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context
 
 
@@ -152,9 +157,10 @@ def _workflow_tool_node(
             has_runtime_parameters=False,
         ),
         runtime=ToolRuntime(tenant_id="tenant", invoke_from=InvokeFrom.DEBUGGER),
+        knowledge_retrieval=None,
     )
     tool.prepare_container_inputs = lambda *_args, **_kwargs: (payload.inputs, [])
-    runtime = DifyToolNodeRuntime(init_params.run_context)
+    runtime = DifyToolNodeRuntime(init_params.run_context, knowledge_retrieval=make_knowledge_retriever())
     runtime.get_runtime = lambda **_kwargs: ToolRuntimeHandle(raw=tool)
     node = DifyWorkflowToolNode(
         node_id="tool",
@@ -168,14 +174,16 @@ def _workflow_tool_node(
     return node, runtime, payload
 
 
-def _outer_graph(node: DifyWorkflowToolNode) -> Graph:
+def _outer_graph(node: DifyWorkflowToolNode, *, knowledge_retrieval: KnowledgeRetriever) -> Graph:
     start = StartNode(
         node_id="outer-start",
         data=StartNodeData(title="Start", variables=[]),
         init_params=node.init_params,
         runtime_state=node.runtime_state,
     )
-    return Graph.new().add_root(start).add_node(node, from_node_id=start.id).build()
+    graph = Graph.new().add_root(start).add_node(node, from_node_id=start.id).build()
+    graph.node_factory = KnowledgeRetrievalTestNodeFactory(knowledge_retrieval)
+    return graph
 
 
 def test_workflow_tool_node_requests_child_container_and_resumes_successfully(mocker: MockerFixture) -> None:
@@ -337,7 +345,13 @@ def test_workflow_tool_node_resumes_empty_text_with_final_chunk_only() -> None:
 
 def test_node_factory_can_keep_workflow_tool_direct_for_single_step_debug() -> None:
     node, _, _ = _workflow_tool_node()
-    factory = DifyNodeFactory(node.init_params, node.runtime_state, use_workflow_tool_containers=True)
+    factory = DifyNodeFactory(
+        node.init_params,
+        node.runtime_state,
+        use_workflow_tool_containers=True,
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=build_knowledge_index_files(),
+    )
     assert (
         factory._resolve_node_class_for_factory(
             node_type=BuiltinNodeTypes.TOOL,
@@ -459,6 +473,7 @@ def _human_input_workflow_tool_source() -> WorkflowToolSource:
 def _container_handler(
     *,
     inputs: dict[str, object] | None = None,
+    knowledge_retrieval: KnowledgeRetriever | None = None,
 ) -> tuple[
     WorkflowToolContainerHandler,
     FrameRegistry,
@@ -478,7 +493,8 @@ def _container_handler(
         start_at=1,
     )
     parent_node, _, _ = _workflow_tool_node(parent_state)
-    parent_graph = _outer_graph(parent_node)
+    parent_knowledge_retrieval = knowledge_retrieval or make_knowledge_retriever()
+    parent_graph = _outer_graph(parent_node, knowledge_retrieval=parent_knowledge_retrieval)
     frame_registry = FrameRegistry()
     frame_registry.register(
         ExecutionFrame(
@@ -510,7 +526,10 @@ def _container_handler(
         )
     )
     return (
-        WorkflowToolContainerHandler(frame_registry, sources=source_repository),
+        WorkflowToolContainerHandler(
+            frame_registry,
+            sources=source_repository,
+        ),
         frame_registry,
         parent_state,
         request,
@@ -541,8 +560,12 @@ def _dispatch_next_node(
 
 
 def test_workflow_tool_handler_runs_child_graph_with_internal_name_collision() -> None:
-    handler, frame_registry, runtime_state, request, _ = _container_handler()
+    knowledge_retrieval = make_knowledge_retriever()
+    handler, frame_registry, runtime_state, request, _ = _container_handler(knowledge_retrieval=knowledge_retrieval)
     handler.handle_request(invocation_id="invocation", request=request)
+    child_factory = frame_registry["invocation:workflow-tool"].graph.node_factory
+    assert isinstance(child_factory, DifyNodeFactory)
+    assert child_factory.knowledge_retrieval is knowledge_retrieval
     frame_registry["invocation:workflow-tool"].state.variable_pool.add(
         ("__workflow_tool_container__", "failure"),
         {"legitimate": True},
@@ -589,7 +612,10 @@ def test_workflow_tool_handler_runs_child_graph_with_internal_name_collision() -
 
 
 def test_workflow_tool_handler_restores_child_failure() -> None:
-    handler, frame_registry, runtime_state, request, source_repository = _container_handler()
+    knowledge_retrieval = make_knowledge_retriever()
+    handler, frame_registry, runtime_state, request, source_repository = _container_handler(
+        knowledge_retrieval=knowledge_retrieval
+    )
     handler.handle_request(invocation_id="invocation", request=request)
     frame_id = "invocation:workflow-tool"
     frame = frame_registry[frame_id]
@@ -615,7 +641,10 @@ def test_workflow_tool_handler_restores_child_failure() -> None:
     runtime_state.put_container_frame(frame_state)
     frame_registry.remove(frame_id)
 
-    restored_handler = WorkflowToolContainerHandler(frame_registry, sources=source_repository)
+    restored_handler = WorkflowToolContainerHandler(
+        frame_registry,
+        sources=source_repository,
+    )
     restored_handler.restore_frame(frame_state)
     restored_handler.complete_frame_if_ready(frame_registry[frame_id])
 
@@ -740,7 +769,9 @@ def test_workflow_tool_persistence_keeps_source_container_metadata(
     _, frames, _, request, repository = _container_handler()
     persisted: list[NodeEvent] = []
     handler = WorkflowToolContainerHandler(
-        frames, sources=repository, event_listener_factory=lambda *_: persisted.append
+        frames,
+        sources=repository,
+        event_listener_factory=lambda *_: persisted.append,
     )
     handler.handle_request(invocation_id="invocation", request=request)
     event = NodeRunSucceededEvent(
@@ -880,6 +911,7 @@ def test_workflow_tool_failure_accounting_uses_outer_tool_policy(
         .add_node(end, source_handle="fail-branch" if tool_error_strategy == ErrorStrategy.FAIL_BRANCH else "source")
         .build()
     )
+    graph.node_factory = KnowledgeRetrievalTestNodeFactory(make_knowledge_retriever())
     persisted: list[NodeEvent] = []
     engine = Engine(
         graph=graph,
@@ -970,9 +1002,14 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
         start_at=1,
     )
     initial_node, _, _ = _workflow_tool_node(initial_state, app_id="intermediate-app")
-    initial_graph = _outer_graph(initial_node)
+    initial_knowledge_retrieval = make_knowledge_retriever()
+    initial_graph = _outer_graph(initial_node, knowledge_retrieval=initial_knowledge_retrieval)
     initial_owner_factory = DifyNodeFactory(
-        initial_node.init_params, initial_state, human_input_run_context=build_test_run_context(app_id="outer-app")
+        initial_node.init_params,
+        initial_state,
+        human_input_run_context=build_test_run_context(app_id="outer-app"),
+        knowledge_retrieval=initial_knowledge_retrieval,
+        knowledge_index_files=build_knowledge_index_files(),
     )
     initial_graph.node_factory = initial_owner_factory
     initial_events = list(
@@ -1022,9 +1059,14 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
         == "tool"
     )
     restored_node, _, _ = _workflow_tool_node(restored_state, app_id="intermediate-app")
-    restored_graph = _outer_graph(restored_node)
+    restored_knowledge_retrieval = make_knowledge_retriever()
+    restored_graph = _outer_graph(restored_node, knowledge_retrieval=restored_knowledge_retrieval)
     restored_owner_factory = DifyNodeFactory(
-        restored_node.init_params, restored_state, human_input_run_context=initial_owner_factory.human_input_run_context
+        restored_node.init_params,
+        restored_state,
+        human_input_run_context=initial_owner_factory.human_input_run_context,
+        knowledge_retrieval=restored_knowledge_retrieval,
+        knowledge_index_files=build_knowledge_index_files(),
     )
     restored_graph.node_factory = restored_owner_factory
     if outcome == "resumed":

@@ -28,29 +28,31 @@ from controllers.console.app.wraps import with_session
 from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import PipelineRunError
+from controllers.service_api.flask_admission import DatasetApiResource
 from controllers.service_api.schema import event_stream_response, json_or_event_stream_response, multipart_file_params
-from controllers.service_api.wraps import DatasetApiResource
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
+from enums.creator import CreatorUserRole
+from extensions.application_services.rag_pipeline import build_rag_pipeline_service
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs import helper
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_user
+from machinery.context import RequestContext
 from models import Account
 from models.dataset import Dataset, Pipeline
 from models.engine import db
+from services.entities.upload_file import FileUploadActor
 from services.feature_service import FeatureService
-from services.file_service import FileService
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
     DatasourceNodeRunApiEntity,
     DatasourceType,
     PipelineRunApiEntity,
 )
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
-from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
 class DatasourceNodeRunPayload(BaseModel):
@@ -172,9 +174,10 @@ class DatasourcePluginsApi(DatasetApiResource):
         "Datasource plugins retrieved successfully",
         service_api_ns.models[DatasourcePluginListResponse.__name__],
     )
-    def get(self, tenant_id: str, dataset_id: UUID):
+    def get(self, request_context: RequestContext, dataset_id: UUID):
         """Resource for getting datasource plugins."""
         dataset_id_str = str(dataset_id)
+        tenant_id = request_context.active_workspace_id
         # Verify dataset ownership
         stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str)
         dataset = db.session.scalar(stmt)
@@ -183,7 +186,7 @@ class DatasourcePluginsApi(DatasetApiResource):
 
         query = query_params_from_request(DatasourcePluginsQuery)
 
-        rag_pipeline_service = RagPipelineService(db.session())
+        rag_pipeline_service = build_rag_pipeline_service(session=db.session())
         datasource_plugins: list[dict[Any, Any]] = rag_pipeline_service.get_datasource_plugins(
             tenant_id=tenant_id,
             dataset_id=dataset_id_str,
@@ -223,9 +226,16 @@ class DatasourceNodeRunApi(DatasetApiResource):
     )
     @service_api_ns.expect(service_api_ns.models[DatasourceNodeRunPayload.__name__])
     @model_validate(DatasourceNodeRunPayload)
-    def post(self, payload: DatasourceNodeRunPayload, tenant_id: str, dataset_id: UUID, node_id: str):
+    def post(
+        self,
+        payload: DatasourceNodeRunPayload,
+        request_context: RequestContext,
+        dataset_id: UUID,
+        node_id: str,
+    ):
         """Resource for getting datasource plugins."""
         dataset_id_str = str(dataset_id)
+        tenant_id = request_context.active_workspace_id
         # Verify dataset ownership
         stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str)
         dataset = db.session.scalar(stmt)
@@ -233,7 +243,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
 
         assert isinstance(current_user, Account)
-        rag_pipeline_service: RagPipelineService = RagPipelineService(db.session())
+        rag_pipeline_service = build_rag_pipeline_service(session=db.session())
         pipeline: Pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         datasource_node_run_api_entity = DatasourceNodeRunApiEntity.model_validate(
             {
@@ -300,9 +310,10 @@ class PipelineRunApi(DatasetApiResource):
         service_api_ns.models[PipelineRunJsonResponse.__name__],
     )
     @with_session
-    def post(self, session: Session, tenant_id: str, dataset_id: UUID):
+    def post(self, session: Session, request_context: RequestContext, dataset_id: UUID):
         """Resource for running a rag pipeline."""
         dataset_id_str = str(dataset_id)
+        tenant_id = request_context.active_workspace_id
         # Verify dataset ownership
         stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str)
         dataset = session.scalar(stmt)
@@ -314,7 +325,7 @@ class PipelineRunApi(DatasetApiResource):
         if not isinstance(current_user, Account):
             raise Forbidden()
 
-        rag_pipeline_service = RagPipelineService(session)
+        rag_pipeline_service = build_rag_pipeline_service(session=session)
         pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         try:
             response: dict[Any, Any] | Generator[str, Any] = PipelineGenerateService.generate(
@@ -372,11 +383,12 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
         "File uploaded successfully",
         service_api_ns.models[PipelineUploadFileResponse.__name__],
     )
-    def post(self, tenant_id: str):
+    def post(self, request_context: RequestContext):
         """Upload a file for use in conversations.
 
         Accepts a single file upload via multipart/form-data.
         """
+        tenant_id = request_context.active_workspace_id
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -391,15 +403,13 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
         if not file.filename:
             raise FilenameNotExistsError
 
-        if not current_user:
-            raise ValueError("Invalid user account")
-
         try:
-            upload_file = FileService(db.engine).upload_file(
+            upload_file = application_services().files.upload_file(
+                actor=FileUploadActor(id=request_context.account_id, creator_role=CreatorUserRole.ACCOUNT),
+                tenant_id=tenant_id,
                 filename=file.filename,
                 content=file.stream.read(),
                 mimetype=file.mimetype,
-                user=current_user,
                 default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:

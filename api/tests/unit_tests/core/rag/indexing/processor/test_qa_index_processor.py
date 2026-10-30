@@ -1,6 +1,4 @@
 import logging
-from contextlib import closing
-from io import BytesIO
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import Mock, patch
@@ -9,7 +7,6 @@ import pytest
 from flask import Flask
 from sqlalchemy import event
 from sqlalchemy.orm import Session
-from werkzeug.datastructures import FileStorage
 
 from core.entities.knowledge_entities import PreviewDetail
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -30,6 +27,19 @@ class _ImmediateThread:
 
     def join(self) -> None:
         return None
+
+
+def _ignore_created_file(file_id: str) -> None:
+    del file_id
+
+
+class _StaticSplitter:
+    def __init__(self, documents: list[Document]) -> None:
+        self._documents = documents
+
+    def split_documents(self, documents: list[Document]) -> list[Document]:
+        del documents
+        return self._documents
 
 
 class TestQAIndexProcessor:
@@ -63,29 +73,26 @@ class TestQAIndexProcessor:
         segmentation = SimpleNamespace(max_tokens=256, chunk_overlap=10, separator="\n")
         return SimpleNamespace(segmentation=segmentation)
 
-    def test_extract_forwards_automatic_flag(self, processor: QAIndexProcessor, sqlite_session: Session) -> None:
-        extract_setting = Mock()
-        session = sqlite_session
-        expected_docs = [Document(page_content="chunk", metadata={})]
-
-        with patch("core.rag.index_processor.processor.qa_index_processor.ExtractProcessor.extract") as mock_extract:
-            mock_extract.return_value = expected_docs
-
-            docs = processor.extract(extract_setting, process_rule_mode="automatic", session=session)
-
-        assert docs == expected_docs
-        mock_extract.assert_called_once_with(extract_setting=extract_setting, is_automatic=True, session=session)
-
-    def test_transform_rejects_none_process_rule(self, processor: QAIndexProcessor, sqlite_session: Session) -> None:
+    def test_transform_rejects_empty_process_rule(self, processor: QAIndexProcessor, sqlite_session: Session) -> None:
         session = sqlite_session
         with pytest.raises(ValueError, match="No process rule found"):
-            processor.transform([Document(page_content="text", metadata={})], process_rule=None, session=session)
+            processor.transform(
+                [Document(page_content="text", metadata={})],
+                process_rule={},
+                tenant_id="tenant-1",
+                on_upload_file_created=_ignore_created_file,
+                session=session,
+            )
 
     def test_transform_rejects_missing_rules_key(self, processor: QAIndexProcessor, sqlite_session: Session) -> None:
         session = sqlite_session
         with pytest.raises(ValueError, match="No rules found in process rule"):
             processor.transform(
-                [Document(page_content="text", metadata={})], process_rule={"mode": "custom"}, session=session
+                [Document(page_content="text", metadata={})],
+                process_rule={"mode": "custom"},
+                tenant_id="tenant-1",
+                on_upload_file_created=Mock(),
+                session=session,
             )
 
     def test_transform_preview_calls_formatter_once(
@@ -94,8 +101,7 @@ class TestQAIndexProcessor:
         session = sqlite_session
         document = Document(page_content="raw text", metadata={"dataset_id": "dataset-1", "document_id": "doc-1"})
         split_node = Document(page_content=".question", metadata={})
-        splitter = Mock()
-        splitter.split_documents.return_value = [split_node]
+        splitter = _StaticSplitter([split_node])
 
         def _append_document(
             flask_app: Flask, tenant_id, document_node, all_qa_documents: list[Document], document_language
@@ -126,6 +132,7 @@ class TestQAIndexProcessor:
                 process_rule=process_rule,
                 preview=True,
                 tenant_id="tenant-1",
+                on_upload_file_created=_ignore_created_file,
                 doc_language="English",
                 session=session,
             )
@@ -143,8 +150,7 @@ class TestQAIndexProcessor:
             Document(page_content="doc-2", metadata={"document_id": "doc-2", "dataset_id": "dataset-1"}),
         ]
         split_node = Document(page_content="question", metadata={})
-        splitter = Mock()
-        splitter.split_documents.return_value = [split_node]
+        splitter = _StaticSplitter([split_node])
 
         def _append_document(flask_app: Flask, tenant_id, document_node, all_qa_documents, document_language):
             all_qa_documents.append(Document(page_content=f"Q-{document_node.page_content}", metadata={"answer": "A"}))
@@ -177,33 +183,12 @@ class TestQAIndexProcessor:
                 process_rule=process_rule,
                 preview=False,
                 tenant_id="tenant-1",
+                on_upload_file_created=_ignore_created_file,
                 session=session,
             )
 
         assert len(result) == 2
         assert mock_format.call_count == 2
-
-    def test_format_by_template_validates_file_type(self, processor: QAIndexProcessor) -> None:
-        with closing(FileStorage(stream=BytesIO(b"not csv"), filename="qa.txt")) as file:
-            with pytest.raises(ValueError, match="Only CSV files"):
-                processor.format_by_template(file)
-
-    def test_format_by_template_parses_csv_rows(self, processor: QAIndexProcessor) -> None:
-        with closing(FileStorage(stream=BytesIO(b"question,answer\nQ1,A1\nQ2,A2\n"), filename="qa.csv")) as file:
-            docs = processor.format_by_template(file)
-
-        assert [doc.page_content for doc in docs] == ["Q1", "Q2"]
-        assert [doc.metadata["answer"] for doc in docs] == ["A1", "A2"]
-
-    def test_format_by_template_raises_on_empty_csv(self, processor: QAIndexProcessor) -> None:
-        with closing(FileStorage(stream=BytesIO(b"question,answer\n"), filename="qa.csv")) as file:
-            with pytest.raises(ValueError, match="empty"):
-                processor.format_by_template(file)
-
-    def test_format_by_template_raises_on_invalid_csv(self, processor: QAIndexProcessor) -> None:
-        with closing(FileStorage(stream=BytesIO(b'question,answer\n"unterminated'), filename="qa.csv")) as file:
-            with pytest.raises(ValueError, match="Error tokenizing data"):
-                processor.format_by_template(file)
 
     def test_load_creates_vectors_for_high_quality_dataset(
         self, processor: QAIndexProcessor, dataset: Dataset, sqlite_session: Session

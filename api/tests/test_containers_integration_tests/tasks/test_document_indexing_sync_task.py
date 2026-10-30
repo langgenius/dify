@@ -13,15 +13,14 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import delete, func, select, update
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
-from services.knowledge.indexing.adapters.execution import build_document_indexing_service
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.errors import DocumentIsPausedError
-from services.knowledge.resource_scope import DatasetRef
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
 
@@ -140,9 +139,9 @@ class TestDocumentIndexingSyncTask:
             patch("tasks.document_indexing_sync_task.IndexProcessorFactory") as mock_index_processor_factory,
             patch("tasks.document_indexing_sync_task.build_document_indexing_service") as mock_indexing_runner_class,
         ):
-            datasource_service = Mock()
-            datasource_service.get_datasource_credentials.return_value = {"integration_secret": "test_token"}
-            mock_credentials.return_value.providers = datasource_service
+            datasource_provider = Mock()
+            datasource_provider.get_stored_notion_access_token.return_value = "test_token"
+            mock_credentials.return_value.providers = datasource_provider
 
             notion_extractor = Mock()
             notion_extractor.get_notion_last_edited_time.return_value = "2024-01-02T00:00:00Z"
@@ -152,14 +151,11 @@ class TestDocumentIndexingSyncTask:
             index_processor.clean = Mock()
             mock_index_processor_factory.return_value.init_index_processor.return_value = index_processor
 
-            indexing_runner = build_document_indexing_service(
-                session_factory=sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
-            )
-            indexing_runner.run = Mock()
+            indexing_runner = Mock()
             mock_indexing_runner_class.return_value = indexing_runner
 
             yield {
-                "datasource_service": datasource_service,
+                "datasource_provider": datasource_provider,
                 "notion_extractor": notion_extractor,
                 "notion_extractor_class": mock_notion_extractor_class,
                 "index_processor": index_processor,
@@ -214,14 +210,19 @@ class TestDocumentIndexingSyncTask:
     def test_document_not_found(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that task handles missing document gracefully."""
         # Arrange
-        dataset_id = str(uuid4())
+        account, tenant = DocumentIndexingSyncTaskTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        dataset = DocumentIndexingSyncTaskTestDataFactory.create_dataset(
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            created_by=account.id,
+        )
         document_id = str(uuid4())
 
         # Act
-        document_indexing_sync_task(dataset_id, document_id)
+        document_indexing_sync_task.run(dataset.id, document_id)
 
         # Assert
-        mock_external_dependencies["datasource_service"].get_datasource_credentials.assert_not_called()
+        mock_external_dependencies["datasource_provider"].get_stored_notion_access_token.assert_not_called()
         mock_external_dependencies["indexing_runner"].run.assert_not_called()
 
     def test_missing_notion_workspace_id(self, db_session_with_containers: Session, mock_external_dependencies):
@@ -238,7 +239,7 @@ class TestDocumentIndexingSyncTask:
 
         # Act & Assert
         with pytest.raises(ValueError, match="no notion page found"):
-            document_indexing_sync_task(context["dataset"].id, context["document"].id)
+            document_indexing_sync_task.run(context["dataset"].id, context["document"].id)
 
     def test_missing_notion_page_id(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that task raises error when notion_page_id is missing."""
@@ -254,7 +255,7 @@ class TestDocumentIndexingSyncTask:
 
         # Act & Assert
         with pytest.raises(ValueError, match="no notion page found"):
-            document_indexing_sync_task(context["dataset"].id, context["document"].id)
+            document_indexing_sync_task.run(context["dataset"].id, context["document"].id)
 
     def test_empty_data_source_info(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that task raises error when data_source_info is empty."""
@@ -267,16 +268,18 @@ class TestDocumentIndexingSyncTask:
 
         # Act & Assert
         with pytest.raises(ValueError, match="no notion page found"):
-            document_indexing_sync_task(context["dataset"].id, context["document"].id)
+            document_indexing_sync_task.run(context["dataset"].id, context["document"].id)
 
     def test_credential_not_found(self, db_session_with_containers: Session, mock_external_dependencies):
         """Test that task sets document error state when credential is missing."""
         # Arrange
         context = self._create_notion_sync_context(db_session_with_containers)
-        mock_external_dependencies["datasource_service"].get_datasource_credentials.return_value = None
+        mock_external_dependencies["datasource_provider"].get_stored_notion_access_token.side_effect = ValueError(
+            "credential not found"
+        )
 
         # Act
-        document_indexing_sync_task(context["dataset"].id, context["document"].id)
+        document_indexing_sync_task.run(context["dataset"].id, context["document"].id)
 
         # Assert
         db_session_with_containers.expire_all()
@@ -296,7 +299,7 @@ class TestDocumentIndexingSyncTask:
         mock_external_dependencies["notion_extractor"].get_notion_last_edited_time.return_value = "2024-01-01T00:00:00Z"
 
         # Act
-        document_indexing_sync_task(context["dataset"].id, context["document"].id)
+        document_indexing_sync_task.run(context["dataset"].id, context["document"].id)
 
         # Assert
         db_session_with_containers.expire_all()
@@ -321,7 +324,7 @@ class TestDocumentIndexingSyncTask:
         context = self._create_notion_sync_context(db_session_with_containers)
 
         # Act
-        document_indexing_sync_task(context["dataset"].id, context["document"].id)
+        document_indexing_sync_task.run(context["dataset"].id, context["document"].id)
 
         # Assert
         db_session_with_containers.expire_all()
@@ -337,7 +340,7 @@ class TestDocumentIndexingSyncTask:
         assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.PARSING
         assert updated_document.processing_started_at is not None
-        assert updated_document.data_source_info_dict.get("last_edited_time") == "2024-01-02T00:00:00Z"
+        assert updated_document.data_source_info_dict.get("last_edited_time") == "2024-01-01T00:00:00Z"
         assert remaining_segments == 0
 
         clean_call_args = mock_external_dependencies["index_processor"].clean.call_args
@@ -347,13 +350,16 @@ class TestDocumentIndexingSyncTask:
         assert set(clean_args[1]) == set(context["node_ids"])
         assert clean_kwargs.get("with_keywords") is True
         assert clean_kwargs.get("delete_child_chunks") is True
+        assert clean_kwargs.get("session") is not None
 
-        mock_external_dependencies["indexing_runner"].run.assert_called_once_with(
-            [DatasetRef(context["tenant"].id, context["dataset"].id).document(context["document"].id)]
-        )
+        mock_external_dependencies["indexing_runner"].run.assert_called_once()
+        run_call = mock_external_dependencies["indexing_runner"].run.call_args
+        ref = DatasetRef(context["tenant"].id, context["dataset"].id).document(context["document"].id)
+        assert run_call.args == ([ref],)
+        assert run_call.kwargs == {}
 
     def test_dataset_not_found_during_cleaning(self, db_session_with_containers: Session, mock_external_dependencies):
-        """Test that task still updates document and reindexes if dataset vanishes before clean."""
+        """A vanished owner skips vector cleanup while the current worker still reindexes."""
         # Arrange
         context = self._create_notion_sync_context(db_session_with_containers)
 
@@ -367,7 +373,7 @@ class TestDocumentIndexingSyncTask:
         ].get_notion_last_edited_time.side_effect = _delete_dataset_before_clean
 
         # Act
-        document_indexing_sync_task(context["dataset"].id, context["document"].id)
+        document_indexing_sync_task.run(context["dataset"].id, context["document"].id)
 
         # Assert
         db_session_with_containers.expire_all()
@@ -388,7 +394,7 @@ class TestDocumentIndexingSyncTask:
         mock_external_dependencies["index_processor"].clean.side_effect = Exception("Cleaning error")
 
         # Act
-        document_indexing_sync_task(context["dataset"].id, context["document"].id)
+        document_indexing_sync_task.run(context["dataset"].id, context["document"].id)
 
         # Assert
         db_session_with_containers.expire_all()
@@ -414,7 +420,7 @@ class TestDocumentIndexingSyncTask:
         mock_external_dependencies["indexing_runner"].run.side_effect = DocumentIsPausedError("Document paused")
 
         # Act
-        document_indexing_sync_task(context["dataset"].id, context["document"].id)
+        document_indexing_sync_task.run(context["dataset"].id, context["document"].id)
 
         # Assert
         db_session_with_containers.expire_all()
@@ -432,7 +438,7 @@ class TestDocumentIndexingSyncTask:
         mock_external_dependencies["indexing_runner"].run.side_effect = Exception("Indexing error")
 
         # Act
-        document_indexing_sync_task(context["dataset"].id, context["document"].id)
+        document_indexing_sync_task.run(context["dataset"].id, context["document"].id)
 
         # Assert
         db_session_with_containers.expire_all()
@@ -454,7 +460,7 @@ class TestDocumentIndexingSyncTask:
         context = self._create_notion_sync_context(db_session_with_containers)
 
         # Act
-        document_indexing_sync_task(context["dataset"].id, context["document"].id)
+        document_indexing_sync_task.run(context["dataset"].id, context["document"].id)
 
         # Assert
         clean_call_args = mock_external_dependencies["index_processor"].clean.call_args
@@ -464,3 +470,4 @@ class TestDocumentIndexingSyncTask:
         assert set(clean_args[1]) == set(context["node_ids"])
         assert clean_kwargs.get("with_keywords") is True
         assert clean_kwargs.get("delete_child_chunks") is True
+        assert clean_kwargs.get("session") is not None

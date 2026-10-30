@@ -301,7 +301,21 @@ class BillingService:
             payload["bucket"] = bucket
         if meta:
             payload["meta"] = meta
-        return _quota_commit_adapter.validate_python(cls._send_quota_request("POST", "/quota/commit", json=payload))
+        try:
+            return _quota_commit_adapter.validate_python(cls._send_quota_request("POST", "/quota/commit", json=payload))
+        except _BillingHTTPStatusError as error:
+            if error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
+                error.status_code >= 500
+            ):
+                raise BillingUpstreamUnavailableError from error
+            raise BillingUpstreamInvalidResponseError from error
+        except httpx.RequestError as error:
+            raise BillingUpstreamUnavailableError from error
+        except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
+            # The request may have committed even though its response could not
+            # be decoded. Keep the durable reservation pending and retry the
+            # idempotent settlement rather than claiming a terminal outcome.
+            raise BillingUpstreamUnavailableError from error
 
     @classmethod
     def quota_release(
@@ -315,7 +329,20 @@ class BillingService:
         }
         if bucket:
             payload["bucket"] = bucket
-        return _quota_release_adapter.validate_python(cls._send_quota_request("POST", "/quota/release", json=payload))
+        try:
+            return _quota_release_adapter.validate_python(
+                cls._send_quota_request("POST", "/quota/release", json=payload)
+            )
+        except _BillingHTTPStatusError as error:
+            if error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
+                error.status_code >= 500
+            ):
+                raise BillingUpstreamUnavailableError from error
+            raise BillingUpstreamInvalidResponseError from error
+        except httpx.RequestError as error:
+            raise BillingUpstreamUnavailableError from error
+        except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
+            raise BillingUpstreamUnavailableError from error
 
     @classmethod
     def quota_get_balance(cls, tenant_id: str, feature_key: str, bucket: str = "") -> QuotaBalanceResult:

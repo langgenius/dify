@@ -39,6 +39,8 @@ from controllers.openapi import bp as openapi_bp
 from controllers.openapi import workspaces as workspaces_module
 from controllers.openapi._errors import (
     ErrorBody,
+    MemberLicenseExceeded,
+    MemberLimitExceeded,
     OpenApiErrorCode,
 )
 from controllers.openapi._models import MemberInvitePayload, MemberListQuery, MemberRoleUpdatePayload
@@ -380,6 +382,43 @@ def test_invitation_quota_admission_preserves_error_contract(
     account_domain.delivery.check_invitation_quota.assert_called_once_with(admitted_bearer.workspace_id)
     assert account_domain.repository.find_by_email("new@example.com") is None
     account_domain.delivery.send.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("service_error", "http_error"),
+    [
+        (WorkspaceInvitationQuotaError(), MemberLimitExceeded),
+        (WorkspaceMemberLicenseQuotaError(), MemberLicenseExceeded),
+    ],
+)
+def test_invitation_quota_race_preserves_error_contract_in_handler(
+    account_domain: AccountDomain,
+    database_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    service_error: WorkspaceInvitationQuotaError,
+    http_error: type[Exception],
+) -> None:
+    workspace_id = str(uuid.uuid4())
+    account_id = uuid.uuid4()
+    _persist_workspace(
+        database_session,
+        workspace_id,
+        [(str(account_id), "caller@example.com", TenantAccountRole.OWNER, True)],
+    )
+    account_domain.delivery.check_invitation_quota.return_value = None
+
+    def fail_invitation(_request_context: object, **_kwargs: object) -> None:
+        raise service_error
+
+    monkeypatch.setattr(account_domain.invitations, "invite", fail_invitation)
+
+    with pytest.raises(http_error):
+        WorkspaceMembersApi().post.__handler__(
+            WorkspaceMembersApi(),
+            _context(database_session, account_id, workspace_id),
+            workspace_id=workspace_id,
+            body=_invite_body("new@example.com"),
+        )
 
 
 def test_invitation_permission_rejection_precedes_quota_lookup(

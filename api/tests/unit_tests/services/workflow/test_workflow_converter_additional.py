@@ -24,6 +24,7 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import Account, App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
+from services.errors.file import UploadFileReferenceNotFoundError
 from services.workflow import workflow_converter as converter_module
 from services.workflow.workflow_converter import WorkflowConverter
 
@@ -469,6 +470,54 @@ def test_convert_to_workflow_should_create_new_app_with_fallback_fields(
     assert sqlite_session.get(App, new_app.id) is new_app
     assert phase_events == ["commit", "signal", "commit"]
     send_mock.assert_called_once_with(new_app, account=account, session=sqlite_session)
+
+
+def test_convert_to_workflow_revalidates_new_image_icon(
+    converter: WorkflowConverter,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    app_model_config = AppModelConfig(app_id="source-app")
+    app_model_config.id = "config-1"
+    sqlite_session.add(app_model_config)
+    sqlite_session.flush()
+    workflow = Workflow(
+        tenant_id="tenant-1",
+        app_id="source-app",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph="{}",
+        features="{}",
+        created_by="account-1",
+        environment_variables=[],
+        conversation_variables=[],
+    )
+
+    def convert_app_model_config_to_workflow(
+        app_model: App,
+        app_model_config: AppModelConfig,
+        account_id: str,
+        session: Session,
+    ) -> Workflow:
+        del app_model, app_model_config, account_id, session
+        return workflow
+
+    monkeypatch.setattr(converter, "convert_app_model_config_to_workflow", convert_app_model_config_to_workflow)
+    app_model = _app_model(tenant_id="tenant-1", id="source-app", app_model_config_id="config-1")
+
+    with pytest.raises(UploadFileReferenceNotFoundError):
+        converter.convert_to_workflow(
+            app_model=app_model,
+            account=_account(id="account-1"),
+            name="Converted",
+            icon_type="image",
+            icon="removed-upload",
+            icon_background="#ffffff",
+            session=sqlite_session,
+        )
+    sqlite_session.rollback()
+
+    assert sqlite_session.scalars(select(App)).all() == []
 
 
 def test_convert_app_model_config_to_workflow_should_build_advanced_chat_graph_and_features(

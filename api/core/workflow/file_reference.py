@@ -6,13 +6,14 @@ where the JSON payload always contains ``record_id`` and may optionally carry
 download contracts require this opaque canonical format instead of raw record
 ids.
 
-This module intentionally exposes both strict and permissive helpers:
+This module intentionally supports both canonical and historical identities:
 
 - :func:`is_canonical_file_reference` is the strict validator for new
   canonical-only contracts.
-- :func:`parse_file_reference` and :func:`resolve_file_record_id` remain lenient
-  so historical rows and legacy payloads that stored raw ids or malformed
-  values can still be read.
+- :func:`parse_file_reference` and :func:`resolve_file_record_id` accept
+  historical raw ids, while rejecting canonical-prefixed values without a
+  valid record identity. Historical invalid ``storage_key`` metadata is ignored
+  because it must not hide an otherwise valid ``record_id``.
 
 Callers enforcing canonical-only behavior must not use the permissive helpers as
 validators.
@@ -22,7 +23,9 @@ from __future__ import annotations
 
 import base64
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any
 
 _FILE_REFERENCE_PREFIX = "dify-file-ref:"
 
@@ -49,9 +52,10 @@ def build_file_reference(*, record_id: str, storage_key: str | None = None) -> s
 def parse_file_reference(reference: str | None) -> FileReference | None:
     """Best-effort parse for canonical and historical file references.
 
-    This helper is intentionally lenient: when the input is a raw id or a
-    malformed canonical string, it falls back to treating the whole input as the
-    ``record_id`` so older persisted payloads remain readable.
+    Historical raw ids remain readable. Once a value uses the canonical prefix,
+    its base64, JSON object, and ``record_id`` must be valid. The optional
+    ``storage_key`` is compatibility metadata: non-string historical values are
+    ignored rather than invalidating the record identity.
     """
     if not reference:
         return None
@@ -61,17 +65,20 @@ def parse_file_reference(reference: str | None) -> FileReference | None:
 
     encoded_payload = reference.removeprefix(_FILE_REFERENCE_PREFIX)
     try:
-        payload = json.loads(base64.urlsafe_b64decode(encoded_payload.encode()))
-    except (ValueError, json.JSONDecodeError):
-        return FileReference(record_id=reference)
+        decoded_payload = base64.b64decode(encoded_payload.encode(), altchars=b"-_", validate=True)
+        payload = json.loads(decoded_payload)
+    except ValueError:
+        return None
+
+    if not isinstance(payload, Mapping):
+        return None
 
     record_id = payload.get("record_id")
     if not isinstance(record_id, str) or not record_id:
-        return FileReference(record_id=reference)
+        return None
 
-    storage_key = payload.get("storage_key")
-    if storage_key is not None and not isinstance(storage_key, str):
-        storage_key = None
+    encoded_storage_key = payload.get("storage_key")
+    storage_key = encoded_storage_key if isinstance(encoded_storage_key, str) else None
 
     return FileReference(record_id=record_id, storage_key=storage_key)
 
@@ -82,20 +89,28 @@ def is_canonical_file_reference(reference: str | None) -> bool:
     Use this when new contracts require ``dify-file-ref:...`` and raw record ids
     must be rejected.
     """
-    parsed_reference = parse_file_reference(reference)
-    if parsed_reference is None or reference is None:
+    if not reference or not reference.startswith(_FILE_REFERENCE_PREFIX):
         return False
-    return reference.startswith(_FILE_REFERENCE_PREFIX) and parsed_reference.record_id != reference
+    return parse_file_reference(reference) is not None
 
 
 def resolve_file_record_id(reference: str | None) -> str | None:
-    """Resolve one file reference back to a record id permissively.
+    """Resolve a canonical reference or historical raw id to its record id.
 
-    This is a compatibility helper, not a canonical-format validator.
-    Canonical-only call sites should validate with
-    :func:`is_canonical_file_reference` first.
+    Canonical-prefixed malformed values resolve to ``None``. Canonical-only call
+    sites should still validate with :func:`is_canonical_file_reference` first.
     """
     parsed_reference = parse_file_reference(reference)
     if parsed_reference is None:
         return None
     return parsed_reference.record_id
+
+
+def resolve_local_file_record_id(file_mapping: Mapping[str, Any]) -> str | None:
+    """Resolve the persisted UploadFile id from every supported local-file schema."""
+    real_file_id = file_mapping.get("real_file_id")
+    if isinstance(real_file_id, str) and real_file_id:
+        return real_file_id
+
+    reference = file_mapping.get("reference") or file_mapping.get("related_id")
+    return resolve_file_record_id(reference if isinstance(reference, str) else None)

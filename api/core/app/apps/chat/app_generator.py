@@ -3,7 +3,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, copy_current_request_context, current_app
 from pydantic import ValidationError
@@ -31,10 +31,16 @@ from models import Account
 from models.model import App, EndUser, load_annotation_reply_config
 from services.conversation_service import ConversationService
 
+if TYPE_CHECKING:
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
+
 logger = logging.getLogger(__name__)
 
 
 class ChatAppGenerator(MessageBasedAppGenerator):
+    def __init__(self, *, knowledge_retrieval: "KnowledgeRetriever") -> None:
+        self._knowledge_retrieval = knowledge_retrieval
+
     @overload
     def generate(
         self,
@@ -268,7 +274,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 message = self._get_message(message_id)
 
                 # chatbot app
-                runner = ChatAppRunner()
+                runner = ChatAppRunner(knowledge_retrieval=self._knowledge_retrieval)
                 with session_factory.create_session() as session:
                     runner.run(
                         application_generate_entity=application_generate_entity,

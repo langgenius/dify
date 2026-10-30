@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from redis.exceptions import RedisError
 from sqlalchemy import delete, select, update
 
 from core.db.session_factory import session_factory
@@ -17,15 +18,26 @@ from models.dataset import Document as DatasetDocument
 from models.enums import IndexingStatus, SegmentStatus
 from repositories.knowledge.dataset_read_repository import (
     get_dataset_doc_form,
-    get_document_dataset,
-    get_segment_child_chunks,
 )
-from repositories.knowledge.segment_read_adapter import get_segment_attachments
+from repositories.knowledge.document_query_repository import get_document_dataset
+from repositories.knowledge.segment_query_repository import get_segment_attachment_files, get_segment_child_chunks
+from services.knowledge.indexing.adapters.redis_lock import RedisKnowledgeIndexingLock
+from services.knowledge.indexing.locks import (
+    KnowledgeIndexingLease,
+    KnowledgeIndexingLeaseLostError,
+    KnowledgeIndexingLockBusyError,
+    document_index_lock_name,
+)
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="dataset")
+@shared_task(
+    queue="dataset",
+    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    retry_backoff=True,
+    max_retries=10,
+)
 def add_document_to_index_task(dataset_document_id: str):
     """
     Async Add document to index
@@ -33,6 +45,21 @@ def add_document_to_index_task(dataset_document_id: str):
 
     Usage: add_document_to_index_task.delay(dataset_document_id)
     """
+    locks = RedisKnowledgeIndexingLock(redis=redis_client)
+    with locks.hold(
+        document_index_lock_name(dataset_document_id),
+        timeout=600,
+        blocking_timeout=5,
+    ) as lease:
+        _add_document_to_index(dataset_document_id, lease=lease)
+        lease.assert_owned()
+        try:
+            redis_client.delete(f"document_{dataset_document_id}_indexing")
+        except Exception:
+            logger.warning("Failed to clear indexing cache for document %s", dataset_document_id, exc_info=True)
+
+
+def _add_document_to_index(dataset_document_id: str, *, lease: KnowledgeIndexingLease) -> None:
     logger.info(click.style(f"Start add document to index: {dataset_document_id}", fg="green"))
     start_at = time.perf_counter()
 
@@ -46,8 +73,9 @@ def add_document_to_index_task(dataset_document_id: str):
 
         if dataset_document.indexing_status != IndexingStatus.COMPLETED:
             return
-
-        indexing_cache_key = f"document_{dataset_document.id}_indexing"
+        if not dataset_document.enabled or dataset_document.archived:
+            logger.info(click.style(f"Document no longer requires index add: {dataset_document_id}", fg="yellow"))
+            return
 
         try:
             dataset = get_document_dataset(dataset_document, session=session)
@@ -92,12 +120,12 @@ def add_document_to_index_task(dataset_document_id: str):
                             child_documents.append(child_document)
                         document.children = child_documents
                 if dataset.is_multimodal:
-                    for attachment in get_segment_attachments(segment, session=session):
+                    for attachment in get_segment_attachment_files(segment, session=session):
                         multimodal_documents.append(
                             AttachmentDocument(
-                                page_content=attachment["name"],
+                                page_content=attachment.name,
                                 metadata={
-                                    "doc_id": attachment["id"],
+                                    "doc_id": attachment.id,
                                     "doc_hash": "",
                                     "document_id": segment.document_id,
                                     "dataset_id": segment.dataset_id,
@@ -109,7 +137,9 @@ def add_document_to_index_task(dataset_document_id: str):
 
             index_type = get_dataset_doc_form(dataset, session=session)
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
+            lease.assert_owned()
             index_processor.load(dataset, documents, multimodal_documents=multimodal_documents, session=session)
+            lease.assert_owned()
 
             # delete auto disable log
             session.execute(
@@ -130,10 +160,14 @@ def add_document_to_index_task(dataset_document_id: str):
             segment_ids_list = [segment.id for segment in segments]
             if segment_ids_list:
                 try:
+                    lease.assert_owned()
                     SummaryIndexAdapter.enable_summaries_for_segments(
                         dataset=dataset,
                         segment_ids=segment_ids_list,
                     )
+                    lease.assert_owned()
+                except KnowledgeIndexingLeaseLostError:
+                    raise
                 except Exception:
                     logger.warning("Failed to enable summaries for document %s", dataset_document.id, exc_info=True)
 
@@ -141,6 +175,9 @@ def add_document_to_index_task(dataset_document_id: str):
             logger.info(
                 click.style(f"Document added to index: {dataset_document.id} latency: {end_at - start_at}", fg="green")
             )
+        except KnowledgeIndexingLeaseLostError:
+            session.rollback()
+            raise
         except Exception as e:
             logger.exception("add document to index failed")
             dataset_document.enabled = False
@@ -148,5 +185,3 @@ def add_document_to_index_task(dataset_document_id: str):
             dataset_document.indexing_status = IndexingStatus.ERROR
             dataset_document.error = str(e)
             session.commit()
-        finally:
-            redis_client.delete(indexing_cache_key)

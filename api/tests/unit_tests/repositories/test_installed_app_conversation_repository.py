@@ -9,8 +9,9 @@ from sqlalchemy import Engine, event, inspect, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from enums.creator import CreatorUserRole
 from models.agent import AgentWorkingResourceStatus, AgentWorkspace, AgentWorkspaceOwnerType
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, InstalledApp, Message
 from models.web import PinnedConversation
 from repositories.installed_app_conversation_repository import SQLAlchemyInstalledAppConversationRepository

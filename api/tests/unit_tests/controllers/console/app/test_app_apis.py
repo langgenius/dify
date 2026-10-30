@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterator
+from dataclasses import dataclass
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -122,6 +123,33 @@ def _make_request_context() -> RequestContext:
     )
 
 
+class _AppGenerationBoundary:
+    def generate(self, **_kwargs: object) -> object:
+        raise AssertionError("the test must install its generation behavior")
+
+
+@dataclass(frozen=True)
+class _AppGenerationServices:
+    app_generation: _AppGenerationBoundary
+
+
+class _AverageInteractionStatistics:
+    def __init__(self) -> None:
+        self.calls: list[tuple[RequestContext, str, object | None, object | None, str]] = []
+
+    def get_average_app_interactions(
+        self,
+        context: RequestContext,
+        *,
+        app_id: str,
+        start_date: object | None,
+        end_date: object | None,
+        timezone: str,
+    ) -> list[dict[str, object]]:
+        self.calls.append((context, app_id, start_date, end_date, timezone))
+        return [{"date": "2024-01-04", "interactions": 2.5}]
+
+
 @pytest.fixture
 def database_app() -> Iterator[Flask]:
     app = Flask(__name__)
@@ -132,6 +160,14 @@ def database_app() -> Iterator[Flask]:
         Site.__table__.create(db.engine)
         WorkflowWebhookTrigger.__table__.create(db.engine)
         yield app
+
+
+@pytest.fixture
+def app_generation(monkeypatch: pytest.MonkeyPatch) -> _AppGenerationBoundary:
+    generator = _AppGenerationBoundary()
+    services = _AppGenerationServices(app_generation=generator)
+    monkeypatch.setattr(completion_module, "application_services", lambda: services)
+    return generator
 
 
 class TestCompletionEndpoints:
@@ -149,15 +185,23 @@ class TestCompletionEndpoints:
         )
         assert payload.query == "hi"
 
-    def test_completion_api_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
+    def test_completion_api_success(
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+        app_generation: _AppGenerationBoundary,
+    ) -> None:
         api = completion_module.CompletionMessageApi()
         method = unwrap(api.post)
 
-        monkeypatch.setattr(
-            completion_module.AppGenerateService,
-            "generate",
-            lambda **_kwargs: {"text": "ok"},
-        )
+        generate_call: dict[str, object] = {}
+
+        def generate(**kwargs: object) -> dict[str, str]:
+            generate_call.update(kwargs)
+            return {"text": "ok"}
+
+        monkeypatch.setattr(app_generation, "generate", generate)
         monkeypatch.setattr(
             completion_module.helper,
             "compact_generate_response",
@@ -177,15 +221,20 @@ class TestCompletionEndpoints:
             )
 
         assert resp == {"result": {"text": "ok"}}
+        assert "external_retrieval" not in generate_call
 
     def test_completion_api_conversation_not_exists(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+        app_generation: _AppGenerationBoundary,
     ) -> None:
         api = completion_module.CompletionMessageApi()
         method = unwrap(api.post)
 
         monkeypatch.setattr(
-            completion_module.AppGenerateService,
+            app_generation,
             "generate",
             lambda **_kwargs: (_ for _ in ()).throw(
                 completion_module.services.errors.conversation.ConversationNotExistsError()
@@ -206,13 +255,17 @@ class TestCompletionEndpoints:
             )
 
     def test_completion_api_provider_not_initialized(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+        app_generation: _AppGenerationBoundary,
     ) -> None:
         api = completion_module.CompletionMessageApi()
         method = unwrap(api.post)
 
         monkeypatch.setattr(
-            completion_module.AppGenerateService,
+            app_generation,
             "generate",
             lambda **_kwargs: (_ for _ in ()).throw(completion_module.ProviderTokenNotInitError("x")),
         )
@@ -231,13 +284,17 @@ class TestCompletionEndpoints:
             )
 
     def test_completion_api_quota_exceeded(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+        app_generation: _AppGenerationBoundary,
     ) -> None:
         api = completion_module.CompletionMessageApi()
         method = unwrap(api.post)
 
         monkeypatch.setattr(
-            completion_module.AppGenerateService,
+            app_generation,
             "generate",
             lambda **_kwargs: (_ for _ in ()).throw(completion_module.QuotaExceededError()),
         )
@@ -719,8 +776,7 @@ class TestWorkflowStatisticEndpoints:
         database_app: Flask,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        service = MagicMock()
-        service.get_average_app_interactions.return_value = [{"date": "2024-01-04", "interactions": 2.5}]
+        service = _AverageInteractionStatistics()
         monkeypatch.setattr(
             workflow_statistic_module,
             "application_services",
@@ -741,13 +797,7 @@ class TestWorkflowStatisticEndpoints:
             )
 
         assert response == {"data": [{"date": "2024-01-04", "interactions": 2.5}]}
-        service.get_average_app_interactions.assert_called_once_with(
-            request_context,
-            app_id="app-1",
-            start_date=None,
-            end_date=None,
-            timezone="UTC",
-        )
+        assert service.calls == [(request_context, "app-1", None, None, "UTC")]
 
     def test_workflow_statistic_invalid_time_range(self, monkeypatch: pytest.MonkeyPatch) -> None:
         account = _make_account()

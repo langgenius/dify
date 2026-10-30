@@ -34,13 +34,16 @@ from controllers.console.datasets.datasets import (
 )
 from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
+    DatasetConcurrentUpdateError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
 )
 from machinery.context import RequestContext
 from services.data_source.entities.notion_import import NotionPageType
+from services.data_source.entities.website import WebsiteJobSelection
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.datasets.application import DatasetApplicationService, DatasetListFilter
+from services.knowledge.datasets.contracts import DatasetConcurrentUpdateError as DatasetConcurrentUpdateFailure
 from services.knowledge.entities.indexing_estimate import (
     NotionEstimateSource,
     UploadFileEstimateSource,
@@ -72,6 +75,7 @@ def datasets(monkeypatch):
     monkeypatch.setattr(
         controller, "application_services", lambda: SimpleNamespace(knowledge=SimpleNamespace(datasets=service))
     )
+    monkeypatch.setattr(controller, "get_dataset_permission_keys", lambda _context, _dataset_id: [])
     return service
 
 
@@ -101,28 +105,43 @@ def test_scoped_reads_pass_context_and_map_access_errors(app, datasets, resource
 
 
 def test_list_parses_repeated_filters_and_serializes_page(app, datasets):
-    datasets.list_datasets.return_value = {"data": [], "page": 2, "limit": 3, "total": 4, "has_more": False}
+    datasets.list_accessible_datasets.return_value = {"data": [], "page": 2, "limit": 3, "total": 4, "has_more": False}
     with app.test_request_context("/?page=2&limit=3&ids=a&ids=b&tag_ids=x&tag_ids=y&include_all=true&keyword=term"):
         result, status = unwrap(DatasetListApi.get)(DatasetListApi(), CONTEXT)
-    datasets.list_datasets.assert_called_once_with(
+    datasets.list_accessible_datasets.assert_called_once_with(
         CONTEXT,
         DatasetListFilter(page=2, limit=3, ids=["a", "b"], tag_ids=["x", "y"], include_all=True, keyword="term"),
     )
     assert status == 200
-    assert result == datasets.list_datasets.return_value
+    assert result == datasets.list_accessible_datasets.return_value
 
 
 def test_patch_does_not_turn_omitted_fields_into_updates(datasets):
     datasets.update_dataset.side_effect = DatasetNotFoundError()
     with pytest.raises(NotFound):
         unwrap(DatasetApi.patch)(DatasetApi(), DatasetUpdatePayload(name="Changed"), CONTEXT, DATASET_ID)
-    datasets.update_dataset.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID), values={"name": "Changed"})
+    datasets.update_dataset.assert_called_once_with(
+        CONTEXT,
+        dataset_id=str(DATASET_ID),
+        values={"name": "Changed"},
+    )
+
+
+def test_patch_maps_concurrent_change_to_conflict(datasets: DatasetApplicationService) -> None:
+    datasets.update_dataset.side_effect = DatasetConcurrentUpdateFailure("changed")
+
+    with pytest.raises(DatasetConcurrentUpdateError) as error:
+        unwrap(DatasetApi.patch)(DatasetApi(), DatasetUpdatePayload(name="Changed"), CONTEXT, DATASET_ID)
+
+    assert error.value.code == 409
+    assert error.value.error_code == "dataset_concurrent_update"
 
 
 def test_duplicate_name_is_mapped_at_transport_on_create(datasets):
     datasets.create_dataset.side_effect = services.errors.dataset.DatasetNameDuplicateError()
     with pytest.raises(DatasetNameDuplicateError):
         unwrap(DatasetListApi.post)(DatasetListApi(), DatasetCreatePayload(name="Duplicate"), CONTEXT)
+    datasets.create_dataset.assert_called_once()
 
 
 def test_delete_success_returns_empty_204(datasets):
@@ -185,8 +204,16 @@ def test_new_estimate_sources_maps_each_supported_transport_shape() -> None:
     assert upload_sources == (UploadFileEstimateSource("file-1"), UploadFileEstimateSource("file-2"))
     assert notion_sources == (NotionEstimateSource("notion-workspace", "page-1", NotionPageType.PAGE, "credential-1"),)
     assert website_sources == (
-        WebsiteEstimateSource("firecrawl", "job-1", "https://example.com/a", only_main_content=True),
-        WebsiteEstimateSource("firecrawl", "job-1", "https://example.com/b", only_main_content=True),
+        WebsiteEstimateSource(
+            job=WebsiteJobSelection(provider="firecrawl", job_id="job-1"),
+            url="https://example.com/a",
+            only_main_content=True,
+        ),
+        WebsiteEstimateSource(
+            job=WebsiteJobSelection(provider="firecrawl", job_id="job-1"),
+            url="https://example.com/b",
+            only_main_content=True,
+        ),
     )
 
 
@@ -203,7 +230,13 @@ def test_website_estimate_parses_boolean_values(value: str | bool, expected: boo
             },
         }
     )
-    assert sources == (WebsiteEstimateSource("firecrawl", "job-1", "https://example.com", only_main_content=expected),)
+    assert sources == (
+        WebsiteEstimateSource(
+            job=WebsiteJobSelection(provider="firecrawl", job_id="job-1"),
+            url="https://example.com",
+            only_main_content=expected,
+        ),
+    )
 
 
 @pytest.mark.parametrize("values", [{"only_main_content": "invalid"}, {"urls": [42]}])

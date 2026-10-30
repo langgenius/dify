@@ -46,6 +46,7 @@ from models.model import App, AppMode, AppModelConfig, IconType, Site, load_anno
 from models.provider_ids import ModelProviderID
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.retirement_service import WorkflowAgentRetirementService
@@ -508,6 +509,12 @@ class AppService:
 
         session.add(app)
         session.flush()
+        if app.icon_type == IconType.IMAGE and app.icon:
+            lock_and_validate_owned_upload_files_in_session(
+                session,
+                tenant_id=tenant_id,
+                upload_file_ids=(app.icon,),
+            )
 
         if default_model_config:
             app_model_config = AppModelConfig(
@@ -697,6 +704,16 @@ class AppService:
         :return: App instance
         """
         assert current_user is not None
+        locked_app = session.scalar(
+            select(App)
+            .where(App.id == app.id, App.tenant_id == app.tenant_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if locked_app is None:
+            raise ValueError("App not found")
+        app = locked_app
+        previous_icon_id = app.icon if app.icon_type == IconType.IMAGE else None
         app.name = args["name"]
         app.description = args["description"]
         icon_type = args.get("icon_type")
@@ -704,6 +721,13 @@ class AppService:
 
         app.icon_type = resolved_icon_type
         app.icon = args["icon"]
+        current_icon_id = app.icon if app.icon_type == IconType.IMAGE else None
+        if current_icon_id and current_icon_id != previous_icon_id:
+            lock_and_validate_owned_upload_files_in_session(
+                session,
+                tenant_id=app.tenant_id,
+                upload_file_ids=(current_icon_id,),
+            )
         app.icon_background = args["icon_background"]
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
         app.max_active_requests = args.get("max_active_requests")

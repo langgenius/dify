@@ -19,16 +19,27 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.entities.queue_entities import QueueWorkflowSucceededEvent
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager
-from core.repositories import SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
-from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
+from models.enums import EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from services.file_adapters import build_file_service
 from services.workflow_run_agg import WorkflowRunAgg
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.unit_tests.model_factories import make_workflow
+
+
+def _generator() -> WorkflowAppGenerator:
+    return WorkflowAppGenerator(
+        execution_driver=WorkflowRunAgg.run,
+        knowledge_retrieval=make_knowledge_retriever(),
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -134,6 +145,7 @@ def _repositories(
             user=end_user,
             app_id=app.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=build_file_service(session_factory=sqlite_session_factory),
         ),
     )
 
@@ -172,7 +184,7 @@ def test_worker_executes_and_persists_a_workflow_through_the_injected_driver(
     queue = WorkflowAppQueueManager(entity.task_id, end_user.id, entity.invoke_from, AppMode.WORKFLOW)
     execution_repository, node_repository = _repositories(sqlite_session_factory, app_model, end_user)
 
-    WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)._generate_worker(
+    _generator()._generate_worker(
         flask_app=app,
         application_generate_entity=entity,
         queue_manager=queue,
@@ -250,7 +262,7 @@ def test_ensure_snippet_start_node_in_worker_applies_snippet_start_injection(
 def test_generate_includes_parent_trace_context_in_extras(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = _generator()
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
 
     monkeypatch.setattr(
@@ -265,9 +277,9 @@ def test_generate_includes_parent_trace_context_in_extras(
         "core.app.apps.workflow.app_generator.file_factory.build_from_mappings", lambda *args, **kwargs: []
     )
     repository_tenant_ids: dict[str, str] = {}
-    workflow_execution_factory = app_generator_module.DifyCoreRepositoryFactory.create_workflow_execution_repository
+    workflow_execution_factory = app_generator_module.WorkflowRepositoryFactory.create_workflow_execution_repository
     workflow_node_execution_factory = (
-        app_generator_module.DifyCoreRepositoryFactory.create_workflow_node_execution_repository
+        app_generator_module.WorkflowRepositoryFactory.create_workflow_node_execution_repository
     )
 
     def create_workflow_execution_repository(**kwargs):
@@ -279,11 +291,11 @@ def test_generate_includes_parent_trace_context_in_extras(
         return workflow_node_execution_factory(**kwargs)
 
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+        "core.app.apps.workflow.app_generator.WorkflowRepositoryFactory.create_workflow_execution_repository",
         create_workflow_execution_repository,
     )
     monkeypatch.setattr(
-        "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        "core.app.apps.workflow.app_generator.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
         create_workflow_node_execution_repository,
     )
     monkeypatch.setattr("core.app.apps.workflow.app_generator.db", SimpleNamespace(engine=sqlite_session.get_bind()))
@@ -336,7 +348,7 @@ def test_resume_delegates_to_generate(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = _generator()
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
     mock_generate = MagicMock(return_value="ok")
     monkeypatch.setattr(generator, "_generate", mock_generate)
@@ -383,7 +395,7 @@ def test_generate_forwards_pause_configuration_and_state(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = _generator()
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
 
     queue_manager = MagicMock()
@@ -475,7 +487,7 @@ def test_resume_path_runs_worker_with_runtime_state(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = _generator()
     app, workflow, end_user = _persist_generator_rows(sqlite_session)
     workflow_run = WorkflowRun(
         id="run",

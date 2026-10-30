@@ -1,5 +1,6 @@
 import time
 import uuid
+from unittest.mock import create_autospec
 from urllib.parse import urlencode
 
 import pytest
@@ -9,13 +10,14 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.helper.ssrf_proxy import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.node_runtime import DifyFileReferenceFactory
+from core.workflow.node_runtime import DifyFileReferenceFactory, build_knowledge_index_files
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.file.file_manager import file_manager
 from graphon.graph import Graph
 from graphon.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig, HttpRequestNodeData
 from graphon.runtime import RuntimeState, VariablePool
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from tests.workflow_test_utils import build_test_graph_init_params
 
 pytest_plugins = ("tests.integration_tests.workflow.nodes.__mock.http",)
@@ -72,6 +74,8 @@ def init_http_node(config: dict):
     node_factory = DifyNodeFactory(
         init_params=init_params,
         runtime_state=graph_runtime_state,
+        knowledge_retrieval=create_autospec(KnowledgeRetriever, instance=True, spec_set=True),
+        knowledge_index_files=build_knowledge_index_files(),
     )
 
     Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
@@ -721,6 +725,8 @@ def test_nested_object_variable_selector(setup_http_mock):
     node_factory = DifyNodeFactory(
         init_params=init_params,
         runtime_state=graph_runtime_state,
+        knowledge_retrieval=create_autospec(KnowledgeRetriever, instance=True, spec_set=True),
+        knowledge_index_files=build_knowledge_index_files(),
     )
 
     Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")

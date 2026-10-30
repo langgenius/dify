@@ -29,18 +29,35 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.file_reference import resolve_file_record_id
+from enums.creator import CreatorUserRole
 from extensions.ext_database import db
 from extensions.ext_redis import get_pubsub_broadcast_channel
+from graphon.file import File, FileTransferMethod
 from libs.broadcast_channel.channel import SupportsPreparedSubscription, Topic
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
+from models.enums import ConversationFromSource, MessageFileBelongsTo
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
+from services.file_reference_parser import trusted_upload_file_ids
 
 logger = logging.getLogger(__name__)
+
+
+def _input_upload_file_ids(value: object) -> set[str]:
+    if isinstance(value, File):
+        file_id = resolve_file_record_id(value.reference)
+        if file_id is None or value.transfer_method == FileTransferMethod.TOOL_FILE:
+            return set()
+        return {file_id}
+    if isinstance(value, Mapping):
+        return {file_id for item in value.values() for file_id in _input_upload_file_ids(item)}
+    if isinstance(value, (list, tuple)):
+        return {file_id for item in value for file_id in _input_upload_file_ids(item)}
+    return set()
 
 
 class MessageBasedAppGenerator(BaseAppGenerator):
@@ -165,6 +182,23 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
         created_new_conversation = conversation is None
         try:
+            resolved_file_ids = [
+                (file, resolve_file_record_id(file.reference)) for file in application_generate_entity.files
+            ]
+            upload_file_ids = {
+                file_id
+                for file, file_id in resolved_file_ids
+                if file_id is not None and file.transfer_method != FileTransferMethod.TOOL_FILE
+            }
+            upload_file_ids.update(_input_upload_file_ids(application_generate_entity.inputs))
+            upload_file_ids.update(trusted_upload_file_ids(application_generate_entity.inputs))
+            upload_file_ids.update(trusted_upload_file_ids(introduction or ""))
+            locked_upload_files = lock_and_validate_owned_upload_files_in_session(
+                session,
+                tenant_id=app_config.tenant_id,
+                upload_file_ids=tuple(sorted(upload_file_ids)),
+            )
+
             if not conversation:
                 conversation = Conversation(
                     app_id=app_config.app_id,
@@ -223,14 +257,16 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             session.refresh(message)
 
             message_files = []
-            for file in application_generate_entity.files:
+            for file, file_id in resolved_file_ids:
+                if file_id is not None and file.transfer_method != FileTransferMethod.TOOL_FILE:
+                    file_id = locked_upload_files[file_id].id
                 message_file = MessageFile(
                     message_id=message.id,
                     type=file.type,
                     transfer_method=file.transfer_method,
                     belongs_to=MessageFileBelongsTo.USER,
                     url=file.remote_url,
-                    upload_file_id=resolve_file_record_id(file.reference),
+                    upload_file_id=file_id,
                     created_by_role=(CreatorUserRole.ACCOUNT if account_id else CreatorUserRole.END_USER),
                     created_by=account_id or end_user_id or "",
                 )

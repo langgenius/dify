@@ -2,8 +2,8 @@
 
 from unittest.mock import Mock, create_autospec
 
+from enums.creator import CreatorUserRole
 from machinery.context import RequestContext
-from models.account import Account
 from services.file_service import FileService
 from services.workspace.gateways import WorkspaceFileGateway
 
@@ -17,7 +17,7 @@ def test_upload_uses_admitted_account_and_explicit_workspace() -> None:
     assert gateway.upload(context, filename="logo.png", content=b"image", mimetype="image/png") == "file-id"
 
     kwargs = files.upload_file.call_args.kwargs
-    assert isinstance(kwargs["user"], Account)
-    assert kwargs["user"].id == "account"
+    assert kwargs["actor"].id == "account"
+    assert kwargs["actor"].creator_role == CreatorUserRole.ACCOUNT
     assert kwargs["tenant_id"] == "workspace"
     assert kwargs["content"] == b"image"

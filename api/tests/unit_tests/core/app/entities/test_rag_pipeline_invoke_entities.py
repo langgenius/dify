@@ -13,5 +13,4 @@ class TestRagPipelineInvokeEntity:
         )
 
         assert entity.workflow_execution_id is None
-        assert entity.workflow_thread_pool_id is None
         assert entity.streaming is True

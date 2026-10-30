@@ -116,8 +116,9 @@ class Storage:
     def exists(self, filename):
         return self.storage_runner.exists(filename)
 
-    def delete(self, filename: str):
-        return self.storage_runner.delete(filename)
+    def delete(self, filename: str) -> None:
+        """Delete a stored object idempotently."""
+        self.storage_runner.delete(filename)
 
     def generate_presigned_url(
         self,

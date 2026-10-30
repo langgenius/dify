@@ -19,9 +19,10 @@ from core.app.layers.pause_state_persist_layer import (
     _AdvancedChatAppGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
 )
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from libs.broadcast_channel.redis.pubsub_channel import Topic
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository

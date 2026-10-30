@@ -6,12 +6,12 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
-from core.rag.entities import RetrievalSourceMetadata
 from core.workflow.nodes.human_input.pause_reason import PauseReason
 from graphon.entities import WorkflowStartReason
 from graphon.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from graphon.variables.segments import Segment
+from services.knowledge.entities.citation import RetrievalSourceMetadata
 
 
 class QueueEvent(StrEnum):

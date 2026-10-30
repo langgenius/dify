@@ -56,11 +56,13 @@ from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBa
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager
+from enums.creator import CreatorUserRole
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import ConversationFromSource
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from services.errors.file import UploadFileReferenceNotFoundError
 from tests.unit_tests.model_factories import make_upload_file
 
 
@@ -1397,6 +1399,27 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert trace_task.message_id == "msg"
         assert trace_task.kwargs["trace_session_id"] == "session-1"
         assert len(sent_payloads) == 1
+
+    def test_save_message_rejects_new_answer_reference_after_upload_was_removed(self, sqlite_session: Session) -> None:
+        conversation = _make_conversation(AppMode.CHAT)
+        message = _make_message()
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            queue_manager=_FakeQueueManager(),
+            conversation=conversation,
+            message=message,
+            stream=False,
+        )
+        _set_method(pipeline, "_model_config", _ModelConfigMode(mode="chat"))
+        pipeline._task_state.llm_result.message = AssistantPromptMessage(
+            content="![removed](/files/removed-upload/file-preview)"
+        )
+        sqlite_session.add_all([conversation, message])
+        sqlite_session.flush()
+
+        with pytest.raises(UploadFileReferenceNotFoundError):
+            pipeline._save_message(session=sqlite_session)
+        sqlite_session.rollback()
 
     def test_save_stopped_message_preserves_backend_reported_usage(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session

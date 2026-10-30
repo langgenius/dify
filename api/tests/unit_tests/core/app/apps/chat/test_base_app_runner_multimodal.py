@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
+from enums.creator import CreatorUserRole
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
-from models.enums import CreatorUserRole
 from models.model import MessageFile
 from models.tools import ToolFile
 

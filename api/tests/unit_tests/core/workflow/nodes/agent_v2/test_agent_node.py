@@ -75,6 +75,7 @@ from models.agent_config_entities import (
     WorkflowNodeJobConfig,
 )
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 @pytest.fixture(autouse=True)
@@ -1083,10 +1084,16 @@ def test_agent_routes_initialize_through_workflow_node_factory(
     enabled, error_strategy, expected_execution_type, config_overrides
 ):
     from core.workflow.node_factory import DifyNodeFactory
+    from core.workflow.node_runtime import build_knowledge_index_files
 
     config_overrides(AGENT_BACKEND_USE_FAKE=True)
     template = _node()
-    factory = DifyNodeFactory(template.init_params, template.runtime_state)
+    factory = DifyNodeFactory(
+        template.init_params,
+        template.runtime_state,
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=build_knowledge_index_files(),
+    )
     node_data = template.node_data.model_dump(mode="python", by_alias=True)
     node_data.update(
         agent_output_routes={

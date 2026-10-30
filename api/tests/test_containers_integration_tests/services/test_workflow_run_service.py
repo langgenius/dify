@@ -8,14 +8,15 @@ from faker import Faker
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from machinery.context import RequestContext
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import ConversationFromSource
 from models.model import (
     Message,
 )
 from models.workflow import WorkflowRun
-from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.app_service import AppService, CreateAppParams
 from services.workflow_run_service import WorkflowRunService
 from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
@@ -33,7 +34,7 @@ class TestWorkflowRunService:
         workflow_runs = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=session_factory)
         return WorkflowRunService(
             workflow_runs=workflow_runs,
-            node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            node_executions=WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(
                 session_maker=session_factory
             ),
         )

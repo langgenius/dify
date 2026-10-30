@@ -30,6 +30,7 @@ from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import ContainerAwaitRequest, ContainerRunResult
 from graphon.runtime import RuntimeState, VariablePool
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.unit_tests.core.workflow.test_workflow_tool_container import (
     _outer_graph,
     _workflow_tool_node,
@@ -99,10 +100,15 @@ def test_workflow_tool_tracing_survives_worker_handoff(
         source = _workflow_tool_source()
         sources = {source.workflow_id: source}
         engine = Engine(
-            graph=_outer_graph(tool),
+            graph=_outer_graph(tool, knowledge_retrieval=make_knowledge_retriever()),
             runtime_state=state,
             workers=2,
-            container_handler_factories=(partial(WorkflowToolContainerHandler, sources=sources),),
+            container_handler_factories=(
+                partial(
+                    WorkflowToolContainerHandler,
+                    sources=sources,
+                ),
+            ),
         )
         engine.add_layer(HandoffLayer())
         engine.add_layer(ObservabilityLayer())
@@ -133,7 +139,7 @@ def test_standalone_node_uses_worker_scoped_tracing_context(
 ) -> None:
     apply_config_overrides(monkeypatch, ENABLE_OTEL=True)
     tool, _, _ = _workflow_tool_node()
-    node = _outer_graph(tool).root_node
+    node = _outer_graph(tool, knowledge_retrieval=make_knowledge_retriever()).root_node
     tracer = tracer_provider_with_memory_exporter.get_tracer(__name__)
     with tracer.start_as_current_span("standalone") as parent:
         events = list(WorkflowEntry._run_node_with_layers(node))
@@ -166,7 +172,7 @@ def test_interleaved_snippets_restore_caller_flask_context(
             g._login_user = name
             request_id.set(name)
             tool, _, _ = _workflow_tool_node()
-            node = _outer_graph(tool).root_node
+            node = _outer_graph(tool, knowledge_retrieval=make_knowledge_retriever()).root_node
 
             def run_node() -> Generator[NodeRunStreamChunkEvent]:
                 observed.append((current_app.name, g._login_user, request_id.get()))

@@ -21,8 +21,9 @@ from core.app.entities.queue_entities import (
 )
 from core.app.entities.task_entities import StreamEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
-from models.enums import CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
+from models.enums import MessageStatus, WorkflowRunTriggeredFrom
 from models.execution_extra_content import HumanInputContent
 from models.model import AppMode, EndUser, Message
 from models.workflow import WorkflowRun

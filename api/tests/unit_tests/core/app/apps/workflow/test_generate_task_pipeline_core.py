@@ -48,11 +48,11 @@ from core.app.entities.task_entities import (
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
+from enums.creator import CreatorUserRole
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
-from models.enums import CreatorUserRole
 from models.model import AppMode, EndUser
 from models.workflow import Workflow, WorkflowAppLog
 from tests.unit_tests.model_factories import make_end_user, make_workflow

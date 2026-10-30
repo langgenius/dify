@@ -8,10 +8,11 @@ from sqlalchemy import Select, exists, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models.enums import ConversationFromSource, CreatorUserRole
+from enums.creator import CreatorUserRole
+from models.enums import ConversationFromSource
 from models.model import App, Conversation, InstalledApp, Message
 from models.web import PinnedConversation
-from repositories.conversation_lifecycle import retire_conversation
+from repositories.conversation.lifecycle import retire_conversation
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef

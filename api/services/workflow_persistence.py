@@ -14,7 +14,6 @@ from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, Work
 from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY, keep_agent_and_tool_ids
@@ -54,6 +53,7 @@ from services.workflow.inspector_events import (
 from services.workflow.inspector_events import (
     publish_workflow_completed as _inspector_publish_workflow_completed,
 )
+from services.workflow.persistence import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 
 
 @dataclass(slots=True)

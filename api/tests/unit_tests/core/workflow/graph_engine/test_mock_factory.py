@@ -31,6 +31,8 @@ from .test_mock_nodes import (
 
 if TYPE_CHECKING:
     from graphon.runtime import InitParams, RuntimeState
+    from services.file_service import UploadFileCreator
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
     from .test_mock_config import MockConfig
 
@@ -48,6 +50,8 @@ class MockNodeFactory(DifyNodeFactory):
         self,
         init_params: "InitParams",
         runtime_state: "RuntimeState",
+        knowledge_retrieval: "KnowledgeRetriever",
+        knowledge_index_files: "UploadFileCreator",
         mock_config: "MockConfig | None" = None,
     ) -> None:
         """
@@ -57,7 +61,12 @@ class MockNodeFactory(DifyNodeFactory):
         :param runtime_state: Graph runtime state
         :param mock_config: Optional mock configuration for customizing mock behavior
         """
-        super().__init__(init_params, runtime_state)
+        super().__init__(
+            init_params,
+            runtime_state,
+            knowledge_retrieval=knowledge_retrieval,
+            knowledge_index_files=knowledge_index_files,
+        )
         self.mock_config = mock_config
 
         # Map of node types that should be mocked
@@ -81,6 +90,8 @@ class MockNodeFactory(DifyNodeFactory):
         return MockNodeFactory(
             init_params=self.init_params,
             runtime_state=runtime_state,
+            knowledge_retrieval=self.knowledge_retrieval,
+            knowledge_index_files=self.knowledge_index_files,
             mock_config=self.mock_config,
         )
 

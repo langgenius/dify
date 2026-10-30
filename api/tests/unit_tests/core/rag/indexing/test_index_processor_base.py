@@ -1,27 +1,29 @@
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
-from types import SimpleNamespace
-from typing import override
+from typing import TYPE_CHECKING, override
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import httpx
 import pytest
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.entities.knowledge_entities import PreviewDetail
-from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from models.account import Account
 from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
+from services.entities.upload_file import FileUploadActor
 from tests.unit_tests.config_override import config_overrides_context
+
+if TYPE_CHECKING:
+    from core.model_manager import ModelInstance
 
 
 def _upload(
@@ -61,12 +63,30 @@ def _account() -> Account:
 
 class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
     @override
-    def extract(self, extract_setting, *, session, **kwargs):
-        return super().extract(extract_setting, session=session, **kwargs)
-
-    @override
-    def transform(self, documents, current_user=None, *, session, **kwargs):
-        return super().transform(documents, current_user=current_user, session=session, **kwargs)
+    def transform(
+        self,
+        documents: list[Document],
+        current_user: Account | None = None,
+        *,
+        process_rule: Mapping[str, object],
+        tenant_id: str,
+        on_upload_file_created: Callable[[str], None],
+        session: Session,
+        embedding_model_instance: "ModelInstance | None" = None,
+        doc_language: str = "English",
+        preview: bool = False,
+    ) -> list[Document]:
+        return super().transform(
+            documents,
+            current_user=current_user,
+            process_rule=process_rule,
+            tenant_id=tenant_id,
+            on_upload_file_created=on_upload_file_created,
+            session=session,
+            embedding_model_instance=embedding_model_instance,
+            doc_language=doc_language,
+            preview=preview,
+        )
 
     @override
     def generate_summary_preview(self, tenant_id, preview_texts, summary_index_setting, doc_language=None, *, session):
@@ -81,26 +101,42 @@ class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
     @override
     def load(
         self,
-        dataset,
-        documents,
-        multimodal_documents=None,
-        with_keywords=True,
+        dataset: Dataset,
+        documents: list[Document],
+        multimodal_documents: list[AttachmentDocument] | None = None,
+        with_keywords: bool = True,
         *,
-        session,
-        **kwargs,
-    ):
+        session: Session,
+    ) -> None:
         return super().load(
             dataset=dataset,
             documents=documents,
             multimodal_documents=multimodal_documents,
             with_keywords=with_keywords,
             session=session,
-            **kwargs,
         )
 
     @override
-    def clean(self, dataset, node_ids, with_keywords=True, *, session, **kwargs):
-        return super().clean(dataset=dataset, node_ids=node_ids, with_keywords=with_keywords, session=session, **kwargs)
+    def clean(
+        self,
+        dataset: Dataset,
+        node_ids: list[str] | None,
+        with_keywords: bool = True,
+        *,
+        session: Session,
+        delete_summaries: bool = False,
+        delete_child_chunks: bool = False,
+        precomputed_child_node_ids: list[str] | None = None,
+    ) -> None:
+        return super().clean(
+            dataset=dataset,
+            node_ids=node_ids,
+            with_keywords=with_keywords,
+            session=session,
+            delete_summaries=delete_summaries,
+            delete_child_chunks=delete_child_chunks,
+            precomputed_child_node_ids=precomputed_child_node_ids,
+        )
 
     @override
     def index(self, dataset, document, chunks, session):
@@ -114,15 +150,19 @@ class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
 class TestBaseIndexProcessor:
     @pytest.fixture
     def processor(self) -> _ForwardingBaseIndexProcessor:
-        return _ForwardingBaseIndexProcessor()
+        return _ForwardingBaseIndexProcessor(files=Mock())
 
     def test_abstract_methods_raise_not_implemented(
         self, processor: _ForwardingBaseIndexProcessor, unbound_session: Session
     ) -> None:
         with pytest.raises(NotImplementedError):
-            processor.extract(ExtractSetting(datasource_type="upload_file"), session=unbound_session)
-        with pytest.raises(NotImplementedError):
-            processor.transform([], session=unbound_session)
+            processor.transform(
+                [],
+                process_rule={},
+                tenant_id="tenant",
+                on_upload_file_created=lambda _file_id: None,
+                session=unbound_session,
+            )
         with pytest.raises(NotImplementedError):
             processor.generate_summary_preview(
                 "tenant", [PreviewDetail(content="c")], {"enable": False}, session=unbound_session
@@ -194,17 +234,19 @@ class TestBaseIndexProcessor:
         remote_upload = _persist_upload(sqlite_session, upload_id=str(uuid4()), name="remote.png")
         sqlite_session.commit()
         current_user = _account()
+        created_upload_file_ids: list[str] = []
 
         with (
             patch.object(processor, "_extract_markdown_images", return_value=images),
-            patch.object(processor, "_download_tool_file", return_value=tool_upload.id) as mock_tool_download,
-            patch.object(processor, "_download_image", return_value=remote_upload.id) as mock_image_download,
+            patch.object(processor, "_download_tool_file", return_value=tool_upload) as mock_tool_download,
+            patch.object(processor, "_download_image", return_value=remote_upload) as mock_image_download,
         ):
             files = processor._get_content_files(
                 document,
                 current_user=current_user,
                 tenant_id="tenant-1",
                 session=sqlite_session,
+                on_upload_file_created=created_upload_file_ids.append,
             )
 
         assert len(files) == 5
@@ -221,6 +263,7 @@ class TestBaseIndexProcessor:
             session=sqlite_session,
         )
         mock_image_download.assert_called_once()
+        assert created_upload_file_ids == [tool_upload.id, remote_upload.id]
 
     def test_get_content_files_skips_tool_and_remote_download_without_user(
         self, processor: _ForwardingBaseIndexProcessor, unbound_session: Session
@@ -302,7 +345,6 @@ class TestBaseIndexProcessor:
     def test_download_image_success_with_filename_from_content_disposition(
         self,
         processor: _ForwardingBaseIndexProcessor,
-        sqlite_engine: Engine,
         content_disposition: str,
         expected_filename: str,
     ) -> None:
@@ -317,23 +359,19 @@ class TestBaseIndexProcessor:
         upload_result = _upload(upload_id=str(uuid4()), name=expected_filename)
         current_user = _account()
 
-        with (
-            patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=response),
-            patch(
-                "core.rag.index_processor.index_processor_base.db",
-                SimpleNamespace(engine=sqlite_engine),
-            ),
-            patch("services.file_service.FileService") as mock_file_service,
-        ):
-            mock_file_service.return_value.upload_file.return_value = upload_result
-            upload_id = processor._download_image("https://example.com/test.png", current_user=current_user)
+        with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=response):
+            processor.files.upload_file.return_value = upload_result
+            uploaded = processor._download_image(
+                "https://example.com/test.png", current_user=current_user, tenant_id="tenant-1"
+            )
 
-        assert upload_id == upload_result.id
-        mock_file_service.return_value.upload_file.assert_called_once_with(
+        assert uploaded is upload_result
+        processor.files.upload_file.assert_called_once_with(
+            actor=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+            tenant_id="tenant-1",
             filename=expected_filename,
             content=b"data",
             mimetype="image/png",
-            user=current_user,
         )
 
     def test_download_image_validates_size_and_empty_content(self, processor: _ForwardingBaseIndexProcessor) -> None:
@@ -342,7 +380,12 @@ class TestBaseIndexProcessor:
         too_large.raise_for_status.return_value = None
 
         with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=too_large):
-            assert processor._download_image("https://example.com/too-large.png", current_user=_account()) is None
+            assert (
+                processor._download_image(
+                    "https://example.com/too-large.png", current_user=_account(), tenant_id="tenant-1"
+                )
+                is None
+            )
 
         empty = Mock()
         empty.headers = {"Content-Length": "0", "content-type": "image/png"}
@@ -350,16 +393,28 @@ class TestBaseIndexProcessor:
         empty.iter_bytes.return_value = []
 
         with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=empty):
-            assert processor._download_image("https://example.com/empty.png", current_user=_account()) is None
+            assert (
+                processor._download_image(
+                    "https://example.com/empty.png", current_user=_account(), tenant_id="tenant-1"
+                )
+                is None
+            )
 
     def test_download_image_limits_stream_size(self, processor: _ForwardingBaseIndexProcessor) -> None:
-        response = Mock()
-        response.headers = {"content-type": "image/png"}
-        response.raise_for_status.return_value = None
-        response.iter_bytes.return_value = [b"a" * (3 * 1024 * 1024)]
+        response = httpx.Response(
+            200,
+            headers={"content-type": "image/png"},
+            content=b"a" * (3 * 1024 * 1024),
+            request=httpx.Request("GET", "https://example.com/big-stream.png"),
+        )
 
         with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=response):
-            assert processor._download_image("https://example.com/big-stream.png", current_user=_account()) is None
+            assert (
+                processor._download_image(
+                    "https://example.com/big-stream.png", current_user=_account(), tenant_id="tenant-1"
+                )
+                is None
+            )
 
     def test_download_image_handles_timeout_request_and_unexpected_errors(
         self, processor: _ForwardingBaseIndexProcessor
@@ -370,19 +425,34 @@ class TestBaseIndexProcessor:
             "core.rag.index_processor.index_processor_base.remote_fetcher.make_request",
             side_effect=httpx.TimeoutException("timeout"),
         ):
-            assert processor._download_image("https://example.com/image.png", current_user=_account()) is None
+            assert (
+                processor._download_image(
+                    "https://example.com/image.png", current_user=_account(), tenant_id="tenant-1"
+                )
+                is None
+            )
 
         with patch(
             "core.rag.index_processor.index_processor_base.remote_fetcher.make_request",
             side_effect=httpx.RequestError("bad request", request=request),
         ):
-            assert processor._download_image("https://example.com/image.png", current_user=_account()) is None
+            assert (
+                processor._download_image(
+                    "https://example.com/image.png", current_user=_account(), tenant_id="tenant-1"
+                )
+                is None
+            )
 
         with patch(
             "core.rag.index_processor.index_processor_base.remote_fetcher.make_request",
             side_effect=RuntimeError("unexpected"),
         ):
-            assert processor._download_image("https://example.com/image.png", current_user=_account()) is None
+            assert (
+                processor._download_image(
+                    "https://example.com/image.png", current_user=_account(), tenant_id="tenant-1"
+                )
+                is None
+            )
 
     def test_download_tool_file_returns_none_when_not_found(
         self, processor: _ForwardingBaseIndexProcessor, sqlite_session: Session
@@ -398,7 +468,7 @@ class TestBaseIndexProcessor:
         )
 
     def test_download_tool_file_uploads_file_when_found(
-        self, processor: _ForwardingBaseIndexProcessor, sqlite_session: Session, sqlite_engine: Engine
+        self, processor: _ForwardingBaseIndexProcessor, sqlite_session: Session
     ) -> None:
         tool_file = ToolFile(
             user_id=str(uuid4()),
@@ -413,25 +483,27 @@ class TestBaseIndexProcessor:
         sqlite_session.commit()
         upload_result = _upload(upload_id=str(uuid4()), name="tool.png")
 
-        with (
-            patch(
-                "core.rag.index_processor.index_processor_base.db",
-                SimpleNamespace(engine=sqlite_engine),
-            ),
-            patch("core.rag.index_processor.index_processor_base.storage.load_once", return_value=b"blob") as mock_load,
-            patch("services.file_service.FileService") as mock_file_service,
-        ):
-            mock_file_service.return_value.upload_file.return_value = upload_result
+        with patch(
+            "core.rag.index_processor.index_processor_base.storage.load_once", return_value=b"blob"
+        ) as mock_load:
+            processor.files.upload_file.return_value = upload_result
+            current_user = _account()
             result = processor._download_tool_file(
                 tool_file.id,
-                current_user=_account(),
+                current_user=current_user,
                 tenant_id=tool_file.tenant_id,
                 session=sqlite_session,
             )
 
-        assert result == upload_result.id
+        assert result is upload_result
         mock_load.assert_called_once_with("k1")
-        mock_file_service.return_value.upload_file.assert_called_once()
+        processor.files.upload_file.assert_called_once_with(
+            actor=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
+            tenant_id=tool_file.tenant_id,
+            filename=tool_file.name,
+            content=b"blob",
+            mimetype=tool_file.mimetype,
+        )
 
     def test_download_tool_file_rejects_file_from_another_tenant(
         self, processor: _ForwardingBaseIndexProcessor, sqlite_session: Session

@@ -15,7 +15,7 @@ import sys
 import uuid
 from decimal import Decimal
 from inspect import unwrap
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
 from flask import Flask
@@ -45,6 +45,7 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import QuotaExceededError
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError as ProviderInvokeRateLimitError
 from models.base import TypeBase
@@ -58,6 +59,20 @@ from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, Wor
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
+
+
+@pytest.fixture(autouse=True)
+def app_generation(monkeypatch: pytest.MonkeyPatch) -> AppGenerateService:
+    service = AppGenerateService(knowledge_retrieval=make_knowledge_retriever())
+    application_services = create_autospec(ApplicationServices, instance=True, spec_set=True)
+    application_services.app_generation = service
+    monkeypatch.setattr(
+        sys.modules["controllers.service_api.app.completion"],
+        "application_services",
+        lambda: application_services,
+    )
+    return service
 
 
 @pytest.fixture
@@ -314,19 +329,21 @@ class TestAppModeValidation:
 class TestAppGenerateService:
     """Test AppGenerateService integration patterns."""
 
-    def test_generate_method_exists(self):
+    def test_generate_method_exists(self, app_generation: AppGenerateService) -> None:
         """Test that AppGenerateService.generate method exists."""
         assert hasattr(AppGenerateService, "generate")
-        assert callable(AppGenerateService.generate)
+        assert callable(app_generation.generate)
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_returns_response(self, mock_generate, orm_session: Session):
+    def test_generate_returns_response(
+        self, mock_generate: MagicMock, orm_session: Session, app_generation: AppGenerateService
+    ) -> None:
         """Test that generate returns expected response format."""
         expected = {"answer": "Hello!"}
         mock_generate.return_value = expected
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
 
-        result = AppGenerateService.generate(
+        result = app_generation.generate(
             app_model=app_model,
             user=end_user,
             args={"query": "Hi"},
@@ -338,13 +355,15 @@ class TestAppGenerateService:
         assert result == expected
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_conversation_not_exists(self, mock_generate, orm_session: Session):
+    def test_generate_raises_conversation_not_exists(
+        self, mock_generate: MagicMock, orm_session: Session, app_generation: AppGenerateService
+    ) -> None:
         """Test generate raises ConversationNotExistsError."""
         mock_generate.side_effect = services.errors.conversation.ConversationNotExistsError()
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
 
         with pytest.raises(services.errors.conversation.ConversationNotExistsError):
-            AppGenerateService.generate(
+            app_generation.generate(
                 app_model=app_model,
                 user=end_user,
                 args={},
@@ -354,13 +373,15 @@ class TestAppGenerateService:
             )
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_quota_exceeded(self, mock_generate, orm_session: Session):
+    def test_generate_raises_quota_exceeded(
+        self, mock_generate: MagicMock, orm_session: Session, app_generation: AppGenerateService
+    ) -> None:
         """Test generate raises QuotaExceededError."""
         mock_generate.side_effect = QuotaExceededError()
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
 
         with pytest.raises(QuotaExceededError):
-            AppGenerateService.generate(
+            app_generation.generate(
                 app_model=app_model,
                 user=end_user,
                 args={},
@@ -370,13 +391,15 @@ class TestAppGenerateService:
             )
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_invoke_error(self, mock_generate, orm_session: Session):
+    def test_generate_raises_invoke_error(
+        self, mock_generate: MagicMock, orm_session: Session, app_generation: AppGenerateService
+    ) -> None:
         """Test generate raises InvokeError."""
         mock_generate.side_effect = InvokeError("Model invocation failed")
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
 
         with pytest.raises(InvokeError):
-            AppGenerateService.generate(
+            app_generation.generate(
                 app_model=app_model,
                 user=end_user,
                 args={},
@@ -399,9 +422,13 @@ class TestCompletionControllerLogic:
         return app
 
     @patch("controllers.service_api.app.completion.service_api_ns")
-    @patch("controllers.service_api.app.completion.AppGenerateService")
+    @patch("services.app_generate_service.AppGenerateService.generate")
     def test_completion_api_post_success(
-        self, mock_generate_service, mock_service_api_ns, app: Flask, orm_session: Session
+        self,
+        mock_generate_service,
+        mock_service_api_ns,
+        app: Flask,
+        orm_session: Session,
     ):
         """Test CompletionApi.post success path."""
         from controllers.service_api.app.completion import CompletionApi
@@ -411,7 +438,7 @@ class TestCompletionControllerLogic:
 
         payload_dict = {"inputs": {"text": "hello"}, "response_mode": "blocking"}
         mock_service_api_ns.payload = payload_dict
-        mock_generate_service.generate.return_value = {"text": "response"}
+        mock_generate_service.return_value = {"text": "response"}
 
         with app.test_request_context():
             # Helper for compact_generate_response logic check
@@ -422,7 +449,8 @@ class TestCompletionControllerLogic:
                 response = unwrap(api.post)(api, orm_session, app_model, end_user)
 
                 assert response == {"text": "compacted"}
-                mock_generate_service.generate.assert_called_once()
+                mock_generate_service.assert_called_once()
+                assert "external_retrieval" not in mock_generate_service.call_args.kwargs
 
     @patch("controllers.service_api.app.completion.service_api_ns")
     def test_completion_api_post_wrong_app_mode(self, mock_service_api_ns, app: Flask, orm_session: Session):
@@ -436,8 +464,14 @@ class TestCompletionControllerLogic:
                 unwrap(CompletionApi().post)(CompletionApi(), orm_session, app_model, end_user)
 
     @patch("controllers.service_api.app.completion.service_api_ns")
-    @patch("controllers.service_api.app.completion.AppGenerateService")
-    def test_chat_api_post_success(self, mock_generate_service, mock_service_api_ns, app: Flask, orm_session: Session):
+    @patch("services.app_generate_service.AppGenerateService.generate")
+    def test_chat_api_post_success(
+        self,
+        mock_generate_service,
+        mock_service_api_ns,
+        app: Flask,
+        orm_session: Session,
+    ):
         """Test ChatApi.post success path."""
         from controllers.service_api.app.completion import ChatApi
 
@@ -445,7 +479,7 @@ class TestCompletionControllerLogic:
 
         payload_dict = {"inputs": {}, "query": "hello", "response_mode": "blocking"}
         mock_service_api_ns.payload = payload_dict
-        mock_generate_service.generate.return_value = {"text": "response"}
+        mock_generate_service.return_value = {"text": "response"}
 
         with app.test_request_context():
             with patch("controllers.service_api.app.completion.helper.compact_generate_response") as mock_compact:
@@ -454,6 +488,7 @@ class TestCompletionControllerLogic:
                 api = ChatApi()
                 response = unwrap(api.post)(api, orm_session, app_model, end_user)
                 assert response == {"text": "compacted"}
+                assert "external_retrieval" not in mock_generate_service.call_args.kwargs
 
     @patch("controllers.service_api.app.completion.service_api_ns")
     def test_chat_api_post_wrong_app_mode(self, mock_service_api_ns, app: Flask, orm_session: Session):
@@ -642,6 +677,7 @@ class TestChatApiController:
         deployment_edition: DeploymentEdition,
         plan: CloudPlan,
         workflow_id: str | None,
+        app_generation: AppGenerateService,
     ) -> None:
         completion_module = sys.modules["controllers.service_api.app.completion"]
         apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=deployment_edition)
@@ -649,7 +685,7 @@ class TestChatApiController:
         billing_get_info = Mock(return_value={"subscription": {"plan": plan}})
         generate = Mock(return_value={"result": "ok"})
         monkeypatch.setattr(BillingService, "get_info", billing_get_info)
-        monkeypatch.setattr(AppGenerateService, "generate", generate)
+        monkeypatch.setattr(app_generation, "generate", generate)
         monkeypatch.setattr(completion_module.helper, "compact_generate_response", lambda response: response)
 
         api = ChatApi()
@@ -664,6 +700,7 @@ class TestChatApiController:
 
         assert response == {"result": "ok"}
         generate.assert_called_once()
+        assert "external_retrieval" not in generate.call_args.kwargs
         if deployment_edition == DeploymentEdition.CLOUD and workflow_id:
             billing_get_info.assert_called_once_with(app_model.tenant_id, exclude_vector_space=True)
         else:

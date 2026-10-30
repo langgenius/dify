@@ -14,12 +14,13 @@ from uuid import uuid4
 
 import pytest
 
+from enums.creator import CreatorUserRole
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowExecutionStatus,
     WorkflowNodeExecutionStatus,
 )
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import (
     Workflow,
     WorkflowNodeExecutionModel,

@@ -35,7 +35,6 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from core.db.session_factory import session_factory
 from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
@@ -78,8 +77,8 @@ class SnippetUseCountResponse(ResponseModel):
 
 def _snippet_service(session: Session | None = None) -> SnippetService:
     if session is not None:
-        return SnippetService(session=session)
-    return SnippetService(session_factory.get_session_maker())
+        return application_services().snippets.with_session(session)
+    return application_services().snippets
 
 
 def _snippet_list_query_from_request() -> SnippetListQuery:
@@ -341,7 +340,7 @@ class CustomizedSnippetExportApi(Resource):
         # Get include_secret parameter
         query = SnippetExportQuery.model_validate(request.args.to_dict())
 
-        export_service = SnippetDslService(session)
+        export_service = SnippetDslService(session, snippets=application_services().snippets.with_session(session))
         try:
             result = export_service.export_snippet_dsl(
                 snippet=snippet,
@@ -383,7 +382,7 @@ class CustomizedSnippetImportApi(Resource):
     @model_validate(SnippetImportPayload)
     def post(self, req_data: SnippetImportPayload, session: Session, current_user: Account):
         """Import snippet from DSL."""
-        import_service = SnippetDslService(session)
+        import_service = SnippetDslService(session, snippets=application_services().snippets.with_session(session))
         result = import_service.import_snippet(
             account=current_user,
             import_mode=req_data.mode,
@@ -419,7 +418,7 @@ class CustomizedSnippetImportConfirmApi(Resource):
     @with_session
     def post(self, session: Session, current_user: Account, import_id: str):
         """Confirm a pending snippet import."""
-        import_service = SnippetDslService(session)
+        import_service = SnippetDslService(session, snippets=application_services().snippets.with_session(session))
         result = import_service.confirm_import(import_id=import_id, account=current_user)
 
         if result.status == ImportStatus.FAILED:
@@ -456,7 +455,7 @@ class CustomizedSnippetCheckDependenciesApi(Resource):
         if not snippet:
             raise NotFound("Snippet not found")
 
-        import_service = SnippetDslService(session)
+        import_service = SnippetDslService(session, snippets=application_services().snippets.with_session(session))
         result = import_service.check_dependencies(snippet=snippet)
 
         return result.model_dump(mode="json"), 200

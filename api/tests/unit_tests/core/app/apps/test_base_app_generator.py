@@ -2,13 +2,15 @@ import logging
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy import inspect
+from sqlalchemy import Engine, inspect
 from sqlalchemy.orm import Session
 
+import core.app.apps.base_app_generator as base_app_generator_module
 from core.app.apps.base_app_generator import BaseAppGenerator
+from enums.creator import CreatorUserRole
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
-from models import CreatorUserRole, Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
+from models import Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
 
 
 def _workflow_run(*, graph: str | None) -> WorkflowRun:
@@ -591,10 +593,15 @@ class TestBaseAppGeneratorExtras:
         assert "\n\n" in converted[0]
         assert converted[1] == "event: ping\n\n"
 
-    def test_get_draft_var_saver_factory_debugger(self):
+    def test_get_draft_var_saver_factory_debugger(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+    ) -> None:
         from core.app.entities.app_invoke_entities import InvokeFrom
         from models import Account
 
+        monkeypatch.setattr(type(base_app_generator_module.db), "engine", property(lambda _: sqlite_engine))
         base_app_generator = BaseAppGenerator()
         account = Account(name="Tester", email="tester@example.com")
         account.id = "account-id"

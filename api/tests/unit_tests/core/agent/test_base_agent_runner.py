@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from decimal import Decimal
+from unittest.mock import create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -34,14 +35,16 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
-from core.tools.utils.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
+from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool as DatasetQueryTool
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMUsage, PromptMessageTool
-from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
+from models.enums import ConversationFromSource, MessageFileBelongsTo
 from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.tool_fixtures import make_runtime_tool
 from tests.unit_tests.core.model_fixtures import make_model_config
@@ -194,13 +197,19 @@ def _dataset_tool(name: str) -> DatasetRetrieverTool:
     return DatasetRetrieverTool(
         entity=_tool_entity(name),
         runtime=ToolRuntime(tenant_id="tenant"),
-        retrieval_tool=DatasetMultiRetrieverTool(
+        retrieval_tool=DatasetQueryTool(
             tenant_id="tenant",
-            dataset_ids=[],
+            app_id="app1",
+            user_id="user",
+            user_from=CreatorUserRole.ACCOUNT.value,
+            dataset_id="dataset",
             return_resource=False,
             retriever_from="dev",
-            reranking_provider_name="",
-            reranking_model_name="",
+            knowledge_retrieval=create_autospec(KnowledgeRetriever, instance=True, spec_set=True),
+            retrieve_config=DatasetRetrieveConfigEntity(
+                retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE,
+            ),
+            metadata_inputs={},
         ),
     )
 
@@ -241,6 +250,7 @@ def runner(
 
     return BaseAgentRunner(
         execution_driver=WorkflowRunAgg.run,
+        knowledge_retrieval=create_autospec(KnowledgeRetriever, instance=True, spec_set=True),
         session=sqlite_session,
         tenant_id="tenant",
         application_generate_entity=_app_generate(app_config=app_config),
@@ -745,9 +755,11 @@ def test_init_uses_real_session_for_count_and_dependencies(
     )
     app_generate = _app_generate(app_config=app_config, files=["file1"])
     message = _message(message_id="msg1")
+    knowledge_retrieval = create_autospec(KnowledgeRetriever, instance=True, spec_set=True)
 
     initialized = BaseAgentRunner(
         execution_driver=WorkflowRunAgg.run,
+        knowledge_retrieval=knowledge_retrieval,
         session=sqlite_session,
         tenant_id="tenant",
         application_generate_entity=app_generate,
@@ -766,4 +778,5 @@ def test_init_uses_real_session_for_count_and_dependencies(
     assert initialized.dataset_tools == ["ds_tool"]
     assert initialized.agent_thought_count == 2
     assert initialized.history_prompt_messages == []
-    assert get_dataset_tools.call_args.kwargs["session"] is sqlite_session
+    assert get_dataset_tools.call_args.kwargs["knowledge_retrieval"] is knowledge_retrieval
+    assert "session" not in get_dataset_tools.call_args.kwargs

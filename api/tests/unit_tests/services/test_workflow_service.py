@@ -28,6 +28,7 @@ from core.repositories.celery_workflow_node_execution_repository import CeleryWo
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_runtime import build_knowledge_index_files
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from enums import DeploymentEdition
@@ -66,10 +67,11 @@ from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import BuiltinToolProvider, WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
-from repositories.factory import DifyAPIRepositoryFactory
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from services.file_adapters import build_file_service
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import (
     WorkflowService,
@@ -78,6 +80,7 @@ from services.workflow_service import (
     _rebuild_single_file,
     _setup_variable_pool,
 )
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -3276,7 +3279,7 @@ class TestWorkflowServiceDraftExecution:
             patch("services.workflow_service._setup_variable_pool"),
             patch("services.workflow_service.DraftVarLoader"),
             patch("services.workflow_service.WorkflowEntry.single_step_run") as mock_run,
-            patch("services.workflow_service.DifyCoreRepositoryFactory") as mock_repo_factory,
+            patch("services.workflow_service.WorkflowRepositoryFactory") as mock_repo_factory,
             patch("services.workflow_service.DraftVariableSaver") as mock_saver_cls,
             patch("services.workflow_service.storage"),
         ):
@@ -3306,6 +3309,7 @@ class TestWorkflowServiceDraftExecution:
             service._node_execution_service_repo.get_execution_by_id.return_value = mock_execution_record
 
             # Act
+            knowledge_retrieval = make_knowledge_retriever()
             result = service.run_draft_workflow_node(
                 app_model=app,
                 draft_workflow=draft_workflow,
@@ -3314,11 +3318,13 @@ class TestWorkflowServiceDraftExecution:
                 user_inputs={"key": "val"},
                 query="hi",
                 files=[],
+                knowledge_retrieval=knowledge_retrieval,
             )
 
             # Assert
             assert result is not None
             mock_run.assert_called_once()
+            assert mock_run.call_args.kwargs["knowledge_retrieval"] is knowledge_retrieval
             mock_repo.save_synchronously.assert_called_once()
             mock_saver_cls.return_value.save.assert_called_once()
 
@@ -3357,7 +3363,7 @@ class TestWorkflowServiceDraftExecution:
             patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
             patch("services.workflow_service.DraftVarLoader"),
             patch("services.workflow_service.WorkflowEntry.single_step_run") as mock_run,
-            patch("services.workflow_service.DifyCoreRepositoryFactory"),
+            patch("services.workflow_service.WorkflowRepositoryFactory"),
             patch("services.workflow_service.DraftVariableSaver"),
             patch("services.workflow_service.storage"),
         ):
@@ -3392,6 +3398,7 @@ class TestWorkflowServiceDraftExecution:
                 user_inputs={},
                 query="",
                 files=None,
+                knowledge_retrieval=make_knowledge_retriever(),
             )
 
             # Assert
@@ -3448,6 +3455,8 @@ class TestWorkflowServiceDraftExecution:
                 user_id=account.id,
             ),
             runtime_state=RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0),
+            knowledge_index_files=build_knowledge_index_files(),
+            knowledge_retrieval=make_knowledge_retriever(),
         ).create_node(
             {
                 "id": node_id,
@@ -3475,6 +3484,7 @@ class TestWorkflowServiceDraftExecution:
                 user=account,
                 app_id=app.id,
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+                files=build_file_service(session_factory=sessionmaker(sqlite_engine)),
             )
             if repository_type is LogstoreWorkflowNodeExecutionRepository:
                 config_overrides(
@@ -3484,7 +3494,7 @@ class TestWorkflowServiceDraftExecution:
                     )
                 )
                 service._node_execution_service_repo = (
-                    DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+                    WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(
                         session_maker=sessionmaker(sqlite_engine)
                     )
                 )
@@ -3543,7 +3553,7 @@ class TestWorkflowServiceDraftExecution:
                 side_effect=lambda **kwargs: (node, node_events(kwargs["variable_pool"])),
             ),
             patch(
-                "services.workflow_service.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                "services.workflow_service.WorkflowRepositoryFactory.create_workflow_node_execution_repository",
                 return_value=repository,
             ),
             patch("services.workflow_service.DraftVariableSaver"),
@@ -3553,7 +3563,12 @@ class TestWorkflowServiceDraftExecution:
             ) as async_save,
         ):
             result = service.run_draft_workflow_node(
-                app_model=app, draft_workflow=workflow, node_id=node_id, user_inputs={}, account=account
+                app_model=app,
+                draft_workflow=workflow,
+                node_id=node_id,
+                user_inputs={},
+                account=account,
+                knowledge_retrieval=make_knowledge_retriever(),
             )
 
         assert result.id == execution_id
@@ -3824,12 +3839,24 @@ class TestWorkflowServiceFreeNodeExecution:
 
     def test_run_free_workflow_node_success(self, service: WorkflowService) -> None:
         node_execution = MagicMock()
+        knowledge_retrieval = make_knowledge_retriever()
         with (
-            patch.object(service, "_handle_single_step_result", return_value=node_execution),
-            patch("services.workflow_service.WorkflowEntry.run_free_node"),
+            patch.object(service, "_handle_single_step_result", return_value=node_execution) as handle_result,
+            patch("services.workflow_service.WorkflowEntry.run_free_node") as run_free_node,
         ):
-            result = service.run_free_workflow_node({}, "tenant-1", "user-1", "node-1", {})
+            result = service.run_free_workflow_node(
+                {},
+                "tenant-1",
+                "user-1",
+                "node-1",
+                {},
+                knowledge_retrieval=knowledge_retrieval,
+            )
             assert result == node_execution
+            handle_result.call_args.kwargs["invoke_node_fn"]()
+
+        run_free_node.assert_called_once()
+        assert run_free_node.call_args.kwargs["knowledge_retrieval"] is knowledge_retrieval
 
     def test_validate_graph_structure_coexist_error(self, service: WorkflowService) -> None:
         graph = {

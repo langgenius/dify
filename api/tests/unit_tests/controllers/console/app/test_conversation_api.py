@@ -13,11 +13,11 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.app import conversation as conversation_module
 from core.app.entities.app_invoke_entities import InvokeFrom
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from models import Account, App, EndUser, Message, MessageAnnotation, MessageFeedback
 from models.enums import (
     ConversationFromSource,
-    CreatorUserRole,
     EndUserType,
     FeedbackFromSource,
     FeedbackRating,

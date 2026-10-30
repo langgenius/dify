@@ -1,6 +1,6 @@
 import pytest
 
-from models.enums import CreatorUserRole
+from enums.creator import CreatorUserRole
 
 
 def test_creator_user_role_missing_maps_hyphen_to_enum() -> None:

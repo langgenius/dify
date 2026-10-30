@@ -132,6 +132,15 @@ class SystemFeatureService:
         license_model.license_expiry_notice_enabled = dify_config.ENABLE_LICENSE_EXPIRY_NOTICE
         return license_model
 
+    @classmethod
+    def get_uncached_license(cls) -> feature_entities.LicenseModel:
+        """Return current license counters without the Enterprise info cache."""
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
+            return feature_entities.LicenseModel()
+        license_model = cls._build_license(EnterpriseService.get_uncached_info())
+        license_model.license_expiry_notice_enabled = dify_config.ENABLE_LICENSE_EXPIRY_NOTICE
+        return license_model
+
     @staticmethod
     def is_explore_banner_enabled() -> bool:
         return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ENABLE_EXPLORE_BANNER

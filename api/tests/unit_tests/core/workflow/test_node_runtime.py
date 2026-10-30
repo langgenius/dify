@@ -41,6 +41,7 @@ from core.workflow.node_runtime import (
     resolve_dify_run_context,
 )
 from core.workflow.nodes.human_input.entities import FileInputConfig, FileListInputConfig, HumanInputNodeData
+from enums.creator import CreatorUserRole
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMPollingStatus
@@ -54,9 +55,9 @@ from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle
 from graphon.variables.segments import ArrayFileSegment, FileSegment
 from models.base import TypeBase
 from models.dataset import SegmentAttachmentBinding
-from models.enums import CreatorUserRole
 from models.model import StorageType, UploadFile
 from models.tools import ToolFile
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_run_context
 
 
@@ -791,7 +792,11 @@ def test_dify_tool_node_runtime_injects_outer_workflow_run_id_for_workflow_tools
         ),
     )
 
-    runtime = node_runtime.DifyToolNodeRuntime(_build_run_context())
+    knowledge_retrieval = make_knowledge_retriever()
+    runtime = node_runtime.DifyToolNodeRuntime(
+        _build_run_context(),
+        knowledge_retrieval=knowledge_retrieval,
+    )
     node_data = ToolNodeData(
         title="Workflow Tool Node",
         desc=None,
@@ -818,6 +823,7 @@ def test_dify_tool_node_runtime_injects_outer_workflow_run_id_for_workflow_tools
     }
     assert runtime_tool.runtime.runtime_parameters == {}
     get_runtime.assert_called_once()
+    assert get_runtime.call_args.kwargs["knowledge_retrieval"] is knowledge_retrieval
 
 
 def test_dify_tool_node_runtime_stores_trace_session_id_for_workflow_tools(
@@ -836,7 +842,7 @@ def test_dify_tool_node_runtime_stores_trace_session_id_for_workflow_tools(
 
     run_context = _build_run_context()
     run_context[DIFY_RUN_CONTEXT_KEY].trace_session_id = "session-1"
-    runtime = node_runtime.DifyToolNodeRuntime(run_context)
+    runtime = node_runtime.DifyToolNodeRuntime(run_context, knowledge_retrieval=make_knowledge_retriever())
     node_data = ToolNodeData(
         title="Workflow Tool Node",
         desc=None,
@@ -868,7 +874,7 @@ def test_dify_tool_node_runtime_does_not_inject_outer_workflow_run_id_for_non_wo
     monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
     monkeypatch.setattr(node_runtime, "get_system_text", lambda _pool, _key: None)
 
-    runtime = node_runtime.DifyToolNodeRuntime(_build_run_context())
+    runtime = node_runtime.DifyToolNodeRuntime(_build_run_context(), knowledge_retrieval=make_knowledge_retriever())
     node_data = ToolNodeData(
         title="Builtin Tool Node",
         desc=None,
@@ -916,6 +922,7 @@ def test_dify_tool_node_runtime_builds_workflow_tool_container_payload(monkeypat
             has_runtime_parameters=False,
         ),
         runtime=ToolRuntime(tenant_id="tenant-id", invoke_from=InvokeFrom.DEBUGGER),
+        knowledge_retrieval=None,
     )
     prepared_parameters: list[Mapping[str, object]] = []
 
@@ -924,7 +931,7 @@ def test_dify_tool_node_runtime_builds_workflow_tool_container_payload(monkeypat
         return {"amount": Decimal("1.25")}, [{"id": "file-id", "name": "input.txt"}]
 
     monkeypatch.setattr(tool, "prepare_container_inputs", prepare_container_inputs)
-    runtime = DifyToolNodeRuntime(_build_run_context())
+    runtime = DifyToolNodeRuntime(_build_run_context(), knowledge_retrieval=make_knowledge_retriever())
 
     payload = runtime.build_workflow_tool_container_payload(
         tool_runtime=ToolRuntimeHandle(raw=tool),
@@ -947,7 +954,7 @@ def test_dify_tool_node_runtime_builds_workflow_tool_container_payload(monkeypat
 
 
 def test_dify_tool_node_runtime_rejects_non_workflow_tool_container_payload() -> None:
-    runtime = DifyToolNodeRuntime(_build_run_context())
+    runtime = DifyToolNodeRuntime(_build_run_context(), knowledge_retrieval=make_knowledge_retriever())
     with pytest.raises(ToolRuntimeResolutionError, match="resolved tool is not a Workflow Tool"):
         runtime.build_workflow_tool_container_payload(
             tool_runtime=ToolRuntimeHandle(raw=object()),

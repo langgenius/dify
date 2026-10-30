@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 import json
 from contextlib import contextmanager, nullcontext
+from dataclasses import dataclass
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -35,6 +36,24 @@ def _identity_workflow_encryption(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(workflow_module.encrypter, "encrypt_token", lambda *, tenant_id, token: token)
     monkeypatch.setattr(workflow_module.encrypter, "decrypt_token", lambda *, tenant_id, token: token)
+
+
+class _AppGenerationBoundary:
+    def generate(self, **_kwargs: object) -> object:
+        raise AssertionError("the test must install its generation behavior")
+
+
+@dataclass(frozen=True)
+class _AppGenerationServices:
+    app_generation: _AppGenerationBoundary
+
+
+@pytest.fixture
+def app_generation(monkeypatch: pytest.MonkeyPatch) -> _AppGenerationBoundary:
+    generator = _AppGenerationBoundary()
+    services = _AppGenerationServices(app_generation=generator)
+    monkeypatch.setattr(workflow_module, "application_services", lambda: services)
+    return generator
 
 
 def _account() -> Account:
@@ -1036,15 +1055,18 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(
 
 
 def test_advanced_chat_run_conversation_not_exists(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session: Session,
+    app_generation: _AppGenerationBoundary,
 ) -> None:
-    monkeypatch.setattr(
-        workflow_module.AppGenerateService,
-        "generate",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            workflow_module.services.errors.conversation.ConversationNotExistsError()
-        ),
-    )
+    generate_call: dict[str, object] = {}
+
+    def generate(**kwargs: object) -> None:
+        generate_call.update(kwargs)
+        raise workflow_module.services.errors.conversation.ConversationNotExistsError()
+
+    monkeypatch.setattr(app_generation, "generate", generate)
 
     api = workflow_module.AdvancedChatDraftWorkflowRunApi()
     handler = inspect.unwrap(api.post)
@@ -1057,6 +1079,8 @@ def test_advanced_chat_run_conversation_not_exists(
         payload = workflow_module.AdvancedChatWorkflowRunPayload.model_validate({"inputs": {}})
         with pytest.raises(NotFound):
             handler(api, payload, unbound_session, _account(), app_model=_app())
+
+    assert "external_retrieval" not in generate_call
 
 
 @pytest.mark.parametrize(

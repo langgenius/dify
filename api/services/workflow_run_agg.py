@@ -8,6 +8,7 @@ from dataclasses import replace
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
+from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -21,8 +22,8 @@ from core.app.layers.pause_state_persist_layer import (
     _AdvancedChatAppGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
 )
+from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.db.session_factory import session_factory
-from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.repositories.human_input_repository import HumanInputFormRecord, HumanInputFormSubmissionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.node_factory import DifyNodeFactory
@@ -53,11 +54,11 @@ from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file.runtime import use_workflow_file_runtime
 from graphon.runtime.container_state import CustomContainerRunState
-from repositories.factory import DifyAPIRepositoryFactory
-from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowPauseStoppedError
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
 from services.conversation_variable_updater import ConversationVariableUpdater
+from services.workflow.persistence import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from services.workflow_tool_source_service import WorkflowToolSnapshot, WorkflowToolSourceService
@@ -210,14 +211,8 @@ class WorkflowRunAgg:
                 workflow_node_execution_repository=workflow_node_execution_repository,
             )
         except ValueError as error:
-            entity = prepared.generate_entity
-            if isinstance(entity, RagPipelineGenerateEntity) and entity.document_id is not None:
-                SQLAlchemyDocumentRepository(session_factory=session_factory.get_session_maker()).mark_failed(
-                    workspace_id=entity.app_config.tenant_id,
-                    dataset_id=entity.dataset_id,
-                    document_id=entity.document_id,
-                    error=str(error),
-                )
+            if isinstance(runner, PipelineRunner):
+                runner.report_preparation_failure(str(error))
             raise
         with closing(aggregate.iter_events()) as events:
             for event in events:
@@ -274,8 +269,26 @@ class WorkflowRunAgg:
                     aborted = GraphRunAbortedEvent(reason="User requested stop")
                     for layer in self._application_layers:
                         layer.on_event(aborted)
+                    # The first stop call can only arm a RUNNING execution. The
+                    # aborted persistence above makes it terminal; retry once so
+                    # pending forms and any unpublished pause remnants are cleaned.
+                    self._api_run_repository().stop_paused_workflow_task(
+                        tenant_id=self._run_context.tenant_id,
+                        app_id=self._prepared.generate_entity.app_config.app_id,
+                        task_id=self._prepared.generate_entity.task_id,
+                        owner=None,
+                    )
                     yield aborted
                 else:
+                    for layer in self._application_layers:
+                        if isinstance(layer, TriggerPostLayer):
+                            try:
+                                layer.publish_pending_terminal()
+                            except Exception:
+                                # Pause and its snapshot are already committed.
+                                # Keep the layer's pending event for the caller;
+                                # projection failure must not fail the execution.
+                                logger.exception("Failed to publish committed workflow pause to trigger log")
                     yield paused_event
         except Exception as error:
             logger.exception("Workflow run orchestration failed")
@@ -306,7 +319,7 @@ class WorkflowRunAgg:
         factory = session_factory.get_session_maker() if config is None else config.session_factory
         if isinstance(factory, Engine):
             factory = sessionmaker(factory)
-        return DifyAPIRepositoryFactory.create_api_workflow_run_repository(factory)
+        return WorkflowRepositoryFactory.create_api_workflow_run_repository(factory)
 
     def _refresh_form_completions(self) -> None:
         pending = {key: reason for key, reason in self._pending_forms.items() if key not in self._published_form_ids}

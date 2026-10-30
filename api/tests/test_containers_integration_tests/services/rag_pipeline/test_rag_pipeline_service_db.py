@@ -18,6 +18,7 @@ import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.application_services.rag_pipeline import build_rag_pipeline_service
 from models import Account, Tenant
 from models.dataset import Dataset, Pipeline, PipelineCustomizedTemplate
 from models.enums import DataSourceType
@@ -47,16 +48,19 @@ class TestRagPipelineServiceGetPipeline:
     ) -> RagPipelineService:
         with (
             patch(
-                "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository",
+                "services.rag_pipeline.rag_pipeline.WorkflowRepositoryFactory.create_api_workflow_node_execution_repository",
                 return_value=None,
             ),
             patch(
-                "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+                "services.rag_pipeline.rag_pipeline.WorkflowRepositoryFactory.create_api_workflow_run_repository",
                 return_value=None,
             ),
         ):
             session_factory = sessionmaker(bind=flask_app_with_containers.extensions["sqlalchemy"].engine)
-            return RagPipelineService(db_session_with_containers, session_maker=session_factory)
+            return build_rag_pipeline_service(
+                session=db_session_with_containers,
+                database_client=session_factory,
+            )
 
     def _create_pipeline(self, db_session: Session, tenant_id: str, created_by: str) -> Pipeline:
         pipeline = Pipeline(

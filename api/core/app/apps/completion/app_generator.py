@@ -3,7 +3,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, copy_current_request_context, current_app
 from pydantic import ValidationError
@@ -32,10 +32,16 @@ from models.model import load_annotation_reply_config
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
 
+if TYPE_CHECKING:
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
+
 logger = logging.getLogger(__name__)
 
 
 class CompletionAppGenerator(MessageBasedAppGenerator):
+    def __init__(self, *, knowledge_retrieval: "KnowledgeRetriever") -> None:
+        self._knowledge_retrieval = knowledge_retrieval
+
     @overload
     def generate(
         self,
@@ -244,7 +250,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 message = self._get_message(message_id)
 
                 # chatbot app
-                runner = CompletionAppRunner()
+                runner = CompletionAppRunner(knowledge_retrieval=self._knowledge_retrieval)
                 with session_factory.create_session() as session:
                     runner.run(
                         application_generate_entity=application_generate_entity,

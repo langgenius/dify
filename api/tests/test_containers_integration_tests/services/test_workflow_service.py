@@ -12,9 +12,9 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from enums.creator import CreatorUserRole
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
 from models import Account, AccountStatus, App, TenantStatus, Workflow
-from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowType
 from services.workflow_ref_service import WorkflowRef

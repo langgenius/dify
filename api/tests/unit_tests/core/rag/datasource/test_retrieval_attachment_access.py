@@ -18,16 +18,15 @@ from core.app.file_access import (
     is_retriever_segment_access_granted,
 )
 from core.rag.datasource.retrieval_service import RetrievalService
-from core.rag.embedding.retrieval import RetrievalSegments
 from core.rag.models.document import Document as RagDocument
-from core.rag.retrieval import dataset_retrieval as dataset_retrieval_module
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from models import UploadFile
 from models.dataset import Dataset, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
-from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, SegmentStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
+from services.knowledge.retrieval.finalization import KnowledgeRetrievalFinalizer
+from services.knowledge.retrieval.records import RetrievalSegments
 
 
 def test_file_access_grants_ignore_empty_inputs_and_missing_scope() -> None:
@@ -53,7 +52,7 @@ def test_file_access_grants_ignore_empty_inputs_and_missing_scope() -> None:
 
 
 @pytest.mark.parametrize("sqlite_session", [(UploadFile, SegmentAttachmentBinding)], indirect=True)
-def test_segment_attachment_lookup_grants_returned_upload_files_to_current_scope(sqlite_session: Session) -> None:
+def test_segment_attachment_lookup_is_pure(sqlite_session: Session) -> None:
     tenant_id = str(uuid4())
     dataset_id = str(uuid4())
     upload_file_id = str(uuid4())
@@ -95,14 +94,18 @@ def test_segment_attachment_lookup_grants_returned_upload_files_to_current_scope
             dataset_refs=((tenant_id, dataset_id),),
             session=sqlite_session,
         )
+        current_scope = get_current_file_access_scope()
         scoped_stmt = DatabaseFileAccessController().apply_upload_file_filters(
             select(UploadFile).where(UploadFile.id == upload_file_id)
         )
 
     assert result[0]["attachment_id"] == upload_file_id
+    assert result[0]["attachment_info"]["source_url"] == ""
+    assert current_scope is not None
+    assert upload_file_id not in current_scope.granted_upload_file_ids
     whereclause = str(scoped_stmt.whereclause)
     assert "upload_files.created_by_role" in whereclause
-    assert "upload_files.id IN" in whereclause
+    assert "upload_files.id IN" not in whereclause
 
 
 @pytest.mark.parametrize("sqlite_session", [(UploadFile, SegmentAttachmentBinding)], indirect=True)
@@ -183,6 +186,7 @@ def test_knowledge_retrieval_grants_returned_segments_to_current_scope(
         doc_metadata={},
     )
     document.id = document_id
+    document.indexing_status = "completed"
     segment = DocumentSegment(
         tenant_id=tenant_id,
         dataset_id=dataset_id,
@@ -201,16 +205,12 @@ def test_knowledge_retrieval_grants_returned_segments_to_current_scope(
     sqlite_session.commit()
 
     record = RetrievalSegments(segment=segment, score=0.8)
-    retrieval = DatasetRetrieval()
-    monkeypatch.setattr(retrieval, "_check_knowledge_rate_limit", lambda tenant_id: None)
-    monkeypatch.setattr(retrieval, "_get_available_datasets", lambda tenant_id, dataset_ids: [dataset])
+    finalizer = KnowledgeRetrievalFinalizer(session_factory=sqlite_session_factory)
     monkeypatch.setattr(
-        retrieval,
-        "multiple_retrieve",
-        lambda **kwargs: [RagDocument(page_content="segment content", provider="dify")],
+        RetrievalService,
+        "format_retrieval_documents",
+        lambda _session, documents, **_kwargs: [record],
     )
-    monkeypatch.setattr(RetrievalService, "format_retrieval_documents", lambda _session, documents: [record])
-    monkeypatch.setattr(dataset_retrieval_module.session_factory, "create_session", sqlite_session_factory)
     scope = FileAccessScope(
         tenant_id=tenant_id,
         user_id=str(uuid4()),
@@ -219,20 +219,15 @@ def test_knowledge_retrieval_grants_returned_segments_to_current_scope(
     )
 
     with bind_file_access_scope(scope):
-        results = retrieval.knowledge_retrieval(
-            sqlite_session,
-            KnowledgeRetrievalRequest(
-                tenant_id=tenant_id,
-                user_id=str(uuid4()),
-                app_id=str(uuid4()),
-                user_from=UserFrom.END_USER.value,
-                dataset_ids=[dataset_id],
-                query="desktop picture",
-                retrieval_mode="multiple",
-            ),
+        result = finalizer.finalize_response(
+            candidates=[RagDocument(page_content="segment content", provider="dify")],
+            tenant_id=tenant_id,
+            dataset_ids=[dataset_id],
+            top_k=4,
+            retriever_from="workflow",
         )
         current_scope = get_current_file_access_scope()
 
-    assert results[0].metadata.segment_id == segment_id
+    assert result.sources[0].metadata.segment_id == segment_id
     assert current_scope is not None
     assert segment_id in current_scope.granted_retriever_segment_ids

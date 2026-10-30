@@ -24,6 +24,7 @@ from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.unit_tests.core.workflow.test_workflow_tool_container import (
     _outer_graph,
     _workflow_tool_node,
@@ -81,7 +82,7 @@ class TestWorkflowEntryInit:
         with config_overrides_context(WORKFLOW_MAX_EXECUTION_STEPS=2, GRAPH_ENGINE_MAX_WORKERS=1):
             entry = workflow_entry.WorkflowEntry(
                 graph_config=tool.init_params.graph_config,
-                graph=_outer_graph(tool),
+                graph=_outer_graph(tool, knowledge_retrieval=make_knowledge_retriever()),
                 call_depth=0,
                 graph_runtime_state=tool.runtime_state,
             )
@@ -194,6 +195,7 @@ class TestWorkflowEntrySingleStepRun:
                 user_inputs={},
                 variable_pool=sentinel.variable_pool,
                 execution_driver=None,
+                knowledge_retrieval=make_knowledge_retriever(),
             )
 
     def test_preloads_constructor_variables_before_creating_memory_node(self):
@@ -259,6 +261,7 @@ class TestWorkflowEntrySingleStepRun:
                 variable_pool=variable_pool,
                 variable_loader=variable_loader,
                 execution_driver=None,
+                knowledge_retrieval=make_knowledge_retriever(),
             )
 
         assert node.id == "node-id"
@@ -312,6 +315,7 @@ class TestWorkflowEntrySingleStepRun:
                 user_inputs={"question": "hello"},
                 variable_pool=sentinel.variable_pool,
                 execution_driver=None,
+                knowledge_retrieval=make_knowledge_retriever(),
             )
 
         assert node.id == "node-id"
@@ -380,6 +384,7 @@ class TestWorkflowEntrySingleStepRun:
                 user_inputs={"question": "hello"},
                 variable_pool=sentinel.variable_pool,
                 execution_driver=None,
+                knowledge_retrieval=make_knowledge_retriever(),
             )
 
         assert node.id == "node-id"
@@ -437,6 +442,7 @@ class TestWorkflowEntrySingleStepRun:
                     user_inputs={},
                     variable_pool=sentinel.variable_pool,
                     execution_driver=None,
+                    knowledge_retrieval=make_knowledge_retriever(),
                 )
 
 
@@ -470,6 +476,7 @@ class TestWorkflowEntryHelpers:
                 tenant_id="tenant-id",
                 user_id="user-id",
                 user_inputs={},
+                knowledge_retrieval=make_knowledge_retriever(),
             )
 
     def test_run_free_node_rejects_missing_node_class(self, monkeypatch: pytest.MonkeyPatch):
@@ -486,6 +493,7 @@ class TestWorkflowEntryHelpers:
                 tenant_id="tenant-id",
                 user_id="user-id",
                 user_inputs={},
+                knowledge_retrieval=make_knowledge_retriever(),
             )
 
     def test_run_free_node_uses_empty_mapping_when_selector_extraction_is_not_implemented(
@@ -507,10 +515,17 @@ class TestWorkflowEntryHelpers:
 
         dify_node_factory = MagicMock()
         dify_node_factory.create_node.return_value = FakeNode()
+        knowledge_retrieval = make_knowledge_retriever()
+        knowledge_index_files = workflow_entry.build_knowledge_index_files()
         monkeypatch.setattr(
             workflow_entry,
             "resolve_workflow_node_class",
             MagicMock(return_value=FakeNodeClass),
+        )
+        monkeypatch.setattr(
+            workflow_entry,
+            "build_knowledge_index_files",
+            lambda: knowledge_index_files,
         )
 
         with (
@@ -546,6 +561,7 @@ class TestWorkflowEntryHelpers:
                 tenant_id="tenant-id",
                 user_id="user-id",
                 user_inputs={"question": "hello"},
+                knowledge_retrieval=knowledge_retrieval,
             )
 
         assert node.id == "node-id"
@@ -567,6 +583,8 @@ class TestWorkflowEntryHelpers:
             ),
             run_context={"_dify": "context"},
             call_depth=0,
+            knowledge_retrieval=knowledge_retrieval,
+            knowledge_index_files=knowledge_index_files,
         )
         dify_node_factory_cls.assert_called_once_with(
             graph_init_context=sentinel.graph_init_context,
@@ -628,6 +646,7 @@ class TestWorkflowEntryHelpers:
                     tenant_id="tenant-id",
                     user_id="user-id",
                     user_inputs={"question": "hello"},
+                    knowledge_retrieval=make_knowledge_retriever(),
                 )
 
     def test_handle_special_values_serializes_nested_files(self):

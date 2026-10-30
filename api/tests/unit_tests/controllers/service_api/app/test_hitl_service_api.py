@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from typing import override
-from unittest.mock import ANY, MagicMock, Mock
+from unittest.mock import ANY, MagicMock, Mock, create_autospec
 
 import pytest
 from flask import Flask
@@ -38,18 +38,20 @@ from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormK
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
 from core.workflow.system_variables import build_system_variables
 from enums import DeploymentEdition
+from enums.creator import CreatorUserRole
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import to_utc_timestamp
 from models.account import Account
-from models.enums import CreatorUserRole, EndUserType, MessageStatus
+from models.enums import EndUserType, MessageStatus
 from models.human_input import HumanInputForm
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun, WorkflowType
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app_generate_service import AppGenerateService
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.workflow_event_snapshot_service import _build_snapshot_events
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -77,7 +79,7 @@ def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run, sqlite_eng
     workflow_events_module = sys.modules["controllers.service_api.app.workflow_events"]
     repo = SimpleNamespace(get_workflow_run_by_id_and_tenant_id=lambda **_kwargs: workflow_run)
     monkeypatch.setattr(
-        workflow_events_module.DifyAPIRepositoryFactory,
+        workflow_events_module.WorkflowRepositoryFactory,
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: repo,
     )
@@ -429,13 +431,20 @@ class TestHitlServiceApi:
         generator_instance = MagicMock()
         generator_instance.generate.return_value = {"result": "advanced-blocking"}
         generator_instance.convert_to_event_stream.side_effect = lambda payload: payload
-        monkeypatch.setattr(ags_module, "AdvancedChatAppGenerator", lambda **_kwargs: generator_instance)
+        generator_init_kwargs: dict[str, object] = {}
+
+        def make_generator(**kwargs: object) -> MagicMock:
+            generator_init_kwargs.update(kwargs)
+            return generator_instance
+
+        monkeypatch.setattr(ags_module, "AdvancedChatAppGenerator", make_generator)
 
         app_model = _app(app_id="app-id", tenant_id="tenant-id", mode=AppMode.ADVANCED_CHAT)
         user = _end_user(user_id="user-id", app_id="app-id", tenant_id="tenant-id")
+        knowledge_retrieval = create_autospec(KnowledgeRetriever, instance=True, spec_set=True)
 
         with sqlite_session_maker() as session:
-            result = AppGenerateService.generate(
+            result = AppGenerateService(knowledge_retrieval=knowledge_retrieval).generate(
                 session=session,
                 app_model=app_model,
                 user=user,
@@ -445,6 +454,7 @@ class TestHitlServiceApi:
             )
 
         assert result == {"result": "advanced-blocking"}
+        assert generator_init_kwargs["knowledge_retrieval"] is knowledge_retrieval
         call_kwargs = generator_instance.generate.call_args.kwargs
         assert call_kwargs["streaming"] is False
         assert call_kwargs["pause_state_config"] is not None

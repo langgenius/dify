@@ -46,6 +46,7 @@ from controllers.console.wraps import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.db.session_factory import session_factory
+from extensions.ext_application_services import application_services
 from fields.workflow_run_fields import (
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
@@ -75,7 +76,7 @@ logger = logging.getLogger(__name__)
 
 
 def _snippet_service() -> SnippetService:
-    return SnippetService(session_factory.get_session_maker())
+    return application_services().snippets
 
 
 class SnippetWorkflowResponse(WorkflowResponse):
@@ -642,14 +643,13 @@ class SnippetDraftNodeRunApi(Resource):
 
         files = SnippetGenerateService.parse_files(draft_workflow, req_data.files)
 
-        workflow_node_execution = SnippetGenerateService.run_draft_node(
+        workflow_node_execution = application_services().snippet_generation.run_draft_node(
             snippet=snippet,
             node_id=node_id,
             user_inputs=user_inputs,
             account=current_user,
             query=req_data.query,
             files=files,
-            session_maker=session_factory.get_session_maker(),
         )
 
         with session_factory.create_session() as session:
@@ -732,13 +732,12 @@ class SnippetDraftRunIterationNodeApi(Resource):
         args = req_data.model_dump(exclude_none=True)
 
         try:
-            response = SnippetGenerateService.generate_single_iteration(
+            response = application_services().snippet_generation.generate_single_iteration(
                 snippet=snippet,
                 user=current_user,
                 node_id=node_id,
                 args=args,
                 streaming=True,
-                session_maker=session_factory.get_session_maker(),
             )
 
             return helper.compact_generate_response(response)
@@ -783,13 +782,12 @@ class SnippetDraftRunLoopNodeApi(Resource):
         """
 
         try:
-            response = SnippetGenerateService.generate_single_loop(
+            response = application_services().snippet_generation.generate_single_loop(
                 snippet=snippet,
                 user=current_user,
                 node_id=node_id,
                 args=req_data,
                 streaming=True,
-                session_maker=session_factory.get_session_maker(),
             )
 
             return helper.compact_generate_response(response)
@@ -827,13 +825,12 @@ class SnippetDraftWorkflowRunApi(Resource):
         args = req_data.model_dump(exclude_none=True)
 
         try:
-            response = SnippetGenerateService.generate(
+            response = application_services().snippet_generation.generate(
                 snippet=snippet,
                 user=current_user,
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
                 streaming=True,
-                session_maker=session_factory.get_session_maker(),
             )
 
             return helper.compact_generate_response(response)

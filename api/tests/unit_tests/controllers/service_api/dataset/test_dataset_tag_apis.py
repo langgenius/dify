@@ -1,378 +1,177 @@
-"""Unit tests for Service API dataset tag controller behavior.
+"""Service API dataset tag controllers use the shared tag application service."""
 
-Service boundaries stay mocked, while users, tenants, and tags are real ORM objects
-persisted in SQLite. Controller database calls share that SQLite session so assertions
-cover the concrete objects and session passed across the controller boundary.
-"""
-
-import uuid
+from dataclasses import dataclass, field
 from inspect import unwrap
-from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 import pytest
-from flask import Flask, request
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
 
-from models.account import Account, Tenant, TenantAccountRole
-from models.enums import TagType
-from models.model import Tag
+from controllers.common.errors import NotFoundError
+from fields.service_api.dataset import (
+    TagBindingPayload,
+    TagCreatePayload,
+    TagDeletePayload,
+    TagUnbindingPayload,
+    TagUpdatePayload,
+)
+from machinery.context import RequestContext
+from services.tag_application_service import (
+    CreateTagInput,
+    TagBindingInput,
+    TagBindingTargetNotFoundError,
+    TagNameConflictError,
+    TagNotFoundError,
+    TagSummary,
+    UpdateTagInput,
+)
 
-TAG_MODEL_TABLES = (Account, Tenant, Tag)
-pytestmark = pytest.mark.parametrize("sqlite_session", [TAG_MODEL_TABLES], indirect=True)
+DATASET_ID = UUID("11111111-1111-4111-8111-111111111111")
+CONTEXT = RequestContext("request", None, "account", "workspace")
+
+
+@dataclass
+class TagServiceFake:
+    tags: tuple[TagSummary, ...] = (TagSummary("tag-1", "Tag", "knowledge", 2),)
+    error: Exception | None = None
+    calls: list[tuple[str, object]] = field(default_factory=list)
+
+    def _raise(self) -> None:
+        if self.error is not None:
+            raise self.error
+
+    def list_tags(self, context: RequestContext, tag_type: str) -> tuple[TagSummary, ...]:
+        self.calls.append(("list", (context, tag_type)))
+        return self.tags
+
+    def list_tags_by_target(self, context: RequestContext, target_id: str, tag_type: str) -> tuple[TagSummary, ...]:
+        self.calls.append(("bound", (context, target_id, tag_type)))
+        return self.tags
+
+    def create_tag(self, context: RequestContext, tag: CreateTagInput) -> TagSummary:
+        self.calls.append(("create", (context, tag)))
+        self._raise()
+        return self.tags[0]
+
+    def update_tag(
+        self,
+        context: RequestContext,
+        tag_id: str,
+        tag: UpdateTagInput,
+        *,
+        expected_type: str | None = None,
+    ) -> TagSummary:
+        self.calls.append(("update", (context, tag_id, tag, expected_type)))
+        self._raise()
+        return self.tags[0]
+
+    def delete_tag(self, context: RequestContext, tag_id: str, *, expected_type: str | None = None) -> None:
+        self.calls.append(("delete", (context, tag_id, expected_type)))
+        self._raise()
+
+    def create_bindings(self, context: RequestContext, binding: TagBindingInput) -> None:
+        self.calls.append(("bind", (context, binding)))
+        self._raise()
+
+    def delete_bindings(self, context: RequestContext, binding: TagBindingInput) -> None:
+        self.calls.append(("unbind", (context, binding)))
+        self._raise()
+
+
+@dataclass
+class ApplicationServicesFake:
+    tags: TagServiceFake
+    knowledge: object = None
 
 
 @pytest.fixture
-def controller_session(sqlite_session: Session) -> Session:
-    """Expose the shared SQLite session under the controller-focused fixture name."""
-    return sqlite_session
+def tags(monkeypatch: pytest.MonkeyPatch) -> TagServiceFake:
+    from controllers.service_api.dataset import dataset as controller
+
+    service = TagServiceFake()
+    monkeypatch.setattr(controller, "application_services", lambda: ApplicationServicesFake(service))
+    return service
 
 
-@pytest.fixture
-def tenant(controller_session: Session) -> Tenant:
-    tenant = Tenant(name="Dataset Tag API Tenant")
-    controller_session.add(tenant)
-    controller_session.flush()
-    return tenant
+def test_list_tags_uses_workspace_context(tags: TagServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DatasetTagsApi
+
+    response, status = DatasetTagsApi.get(DatasetTagsApi(), CONTEXT)
+
+    assert status == 200
+    assert response == [{"id": "tag-1", "name": "Tag", "type": "knowledge", "binding_count": "2"}]
+    assert tags.calls == [("list", (CONTEXT, "knowledge"))]
 
 
-@pytest.fixture
-def account(controller_session: Session, tenant: Tenant, monkeypatch: pytest.MonkeyPatch) -> Account:
-    account = Account(name="Dataset Tag API User", email=f"dataset-tag-api-{uuid.uuid4()}@example.com")
-    account.role = TenantAccountRole.OWNER
-    account._current_tenant = tenant
-    controller_session.add(account)
-    controller_session.flush()
+def test_create_and_update_tags_delegate_typed_commands(tags: TagServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DatasetTagsApi
 
-    # Inject the concrete account at the controller boundary without relying on Flask-Login globals.
-    from controllers.service_api.dataset import dataset as dataset_module
+    unwrap(DatasetTagsApi.post)(DatasetTagsApi(), TagCreatePayload(name="New"), CONTEXT)
+    unwrap(DatasetTagsApi.patch)(DatasetTagsApi(), TagUpdatePayload(tag_id="tag-1", name="Updated"), CONTEXT)
 
-    monkeypatch.setattr(dataset_module, "current_user", account)
-    return account
+    assert tags.calls == [
+        ("create", (CONTEXT, CreateTagInput("New", "knowledge"))),
+        ("update", (CONTEXT, "tag-1", UpdateTagInput("Updated"), "knowledge")),
+    ]
 
 
-def make_tag(
-    session: Session,
-    tenant: Tenant,
-    account: Account,
-    *,
-    id: str,
-    name: str,
-    binding_count: int | None = None,
-) -> Tag:
-    """Create and flush a real tag, optionally adding the aggregate count returned by TagService."""
+def test_delete_tag_enforces_knowledge_type(tags: TagServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DatasetTagsApi
 
-    tag = Tag(tenant_id=tenant.id, type=TagType.KNOWLEDGE, name=name, created_by=account.id)
-    tag.id = id
-    session.add(tag)
-    session.flush()
-    if binding_count is not None:
-        tag.__dict__["binding_count"] = binding_count
-    return tag
+    result = unwrap(DatasetTagsApi.delete)(DatasetTagsApi(), TagDeletePayload(tag_id="tag-1"), CONTEXT)
+
+    assert result == ("", 204)
+    assert tags.calls == [("delete", (CONTEXT, "tag-1", "knowledge"))]
 
 
-class TestDatasetTagsApiGet:
-    """Test suite for DatasetTagsApi.get() endpoint."""
+def test_create_tag_preserves_name_conflict_contract(tags: TagServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DatasetTagsApi
 
-    @patch("controllers.service_api.dataset.dataset.TagService")
-    def test_list_tags_success(
-        self,
-        mock_tag_svc: MagicMock,
-        app: Flask,
-        account: Account,
-        tenant: Tenant,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagsApi
-
-        tag = make_tag(controller_session, tenant, account, id="tag-1", name="Test Tag", binding_count=0)
-        mock_tag_svc.get_tags.return_value = [tag]
-
-        with app.test_request_context("/datasets/tags", method="GET"):
-            api = DatasetTagsApi()
-            response, status = unwrap(api.get)(api, controller_session, _=None)
-
-        assert status == 200
-        assert response == [{"id": "tag-1", "name": "Test Tag", "type": "knowledge", "binding_count": "0"}]
-        mock_tag_svc.get_tags.assert_called_once_with("knowledge", tenant.id, session=controller_session)
+    tags.error = TagNameConflictError()
+    with pytest.raises(ValueError, match="Tag name already exists"):
+        unwrap(DatasetTagsApi.post)(DatasetTagsApi(), TagCreatePayload(name="Duplicate"), CONTEXT)
 
 
-class TestDatasetTagsApiPost:
-    """Test suite for DatasetTagsApi.post() endpoint."""
+def test_delete_missing_tag_preserves_not_found_contract(tags: TagServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DatasetTagsApi
 
-    @patch("controllers.service_api.dataset.dataset.TagService")
-    def test_create_tag_success(
-        self,
-        mock_tag_svc: MagicMock,
-        app: Flask,
-        account: Account,
-        tenant: Tenant,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagsApi, TagCreatePayload
+    tags.error = TagNotFoundError()
+    with pytest.raises(NotFoundError) as error:
+        unwrap(DatasetTagsApi.delete)(DatasetTagsApi(), TagDeletePayload(tag_id="missing"), CONTEXT)
 
-        tag = make_tag(controller_session, tenant, account, id="tag-new", name="New Tag")
-        mock_tag_svc.save_tags.return_value = tag
-
-        with app.test_request_context(
-            "/datasets/tags",
-            method="POST",
-            json={"name": "New Tag"},
-        ):
-            api = DatasetTagsApi()
-            payload = TagCreatePayload.model_validate(request.get_json() or {})
-            response, status = unwrap(api.post)(api, payload, controller_session, _=None)
-
-        assert status == 200
-        assert response == {"id": "tag-new", "name": "New Tag", "type": "knowledge", "binding_count": "0"}
-        mock_tag_svc.save_tags.assert_called_once()
-
-    def test_create_tag_forbidden(self, app: Flask, account: Account) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagsApi
-
-        account.role = TenantAccountRole.NORMAL
-
-        with app.test_request_context(
-            "/datasets/tags",
-            method="POST",
-            json={"name": "New Tag"},
-        ):
-            api = DatasetTagsApi()
-            with pytest.raises(Forbidden):
-                api.post(_=None)
+    assert error.value.code == 404
+    assert error.value.error_code == "not_found"
+    assert error.value.description == "Tag not found"
 
 
-class TestDatasetTagsApiPatch:
-    """Test suite for DatasetTagsApi.patch() endpoint."""
+def test_binding_commands_use_knowledge_type(tags: TagServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DatasetTagBindingApi, DatasetTagUnbindingApi
 
-    @patch("controllers.service_api.dataset.dataset.TagService")
-    @patch("controllers.service_api.dataset.dataset.service_api_ns")
-    def test_update_tag_success(
-        self,
-        mock_service_api_ns: MagicMock,
-        mock_tag_svc: MagicMock,
-        app: Flask,
-        account: Account,
-        tenant: Tenant,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagsApi, TagUpdatePayload
+    unwrap(DatasetTagBindingApi.post)(
+        DatasetTagBindingApi(), TagBindingPayload(tag_ids=["tag-1"], target_id="dataset"), CONTEXT
+    )
+    unwrap(DatasetTagUnbindingApi.post)(
+        DatasetTagUnbindingApi(), TagUnbindingPayload(tag_id="tag-1", target_id="dataset"), CONTEXT
+    )
 
-        tag = make_tag(controller_session, tenant, account, id="tag-1", name="Updated Tag")
-        mock_tag_svc.update_tags.return_value = tag
-        mock_tag_svc.get_tag_binding_count.return_value = 5
-        mock_service_api_ns.payload = {"name": "Updated Tag", "tag_id": "tag-1"}
-
-        with app.test_request_context(
-            "/datasets/tags",
-            method="PATCH",
-            json={"name": "Updated Tag", "tag_id": "tag-1"},
-        ):
-            api = DatasetTagsApi()
-            payload = TagUpdatePayload.model_validate(request.get_json() or {})
-            response, status = unwrap(api.patch)(api, payload, controller_session, _=None)
-
-        assert status == 200
-        assert response == {"id": "tag-1", "name": "Updated Tag", "type": "knowledge", "binding_count": "5"}
-        mock_tag_svc.update_tags.assert_called_once()
-        update_payload, tag_id, session = mock_tag_svc.update_tags.call_args.args
-        assert update_payload.name == "Updated Tag"
-        assert tag_id == "tag-1"
-        assert session is controller_session
-
-    def test_update_tag_forbidden(self, app: Flask, account: Account) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagsApi
-
-        account.role = TenantAccountRole.NORMAL
-
-        with app.test_request_context(
-            "/datasets/tags",
-            method="PATCH",
-            json={"name": "Updated Tag", "tag_id": "tag-1"},
-        ):
-            api = DatasetTagsApi()
-            with pytest.raises(Forbidden):
-                api.patch(_=None)
+    command = TagBindingInput(("tag-1",), "dataset", "knowledge")
+    assert tags.calls == [("bind", (CONTEXT, command)), ("unbind", (CONTEXT, command))]
 
 
-class TestDatasetTagsApiDelete:
-    """Test suite for DatasetTagsApi.delete() endpoint."""
+def test_missing_binding_target_is_translated(tags: TagServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DatasetTagBindingApi
 
-    @pytest.mark.usefixtures("account")
-    @patch("controllers.service_api.dataset.dataset.TagService")
-    @patch("controllers.service_api.dataset.dataset.service_api_ns")
-    def test_delete_tag_success(
-        self,
-        mock_service_api_ns: MagicMock,
-        mock_tag_svc: MagicMock,
-        app: Flask,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagsApi, TagDeletePayload
-
-        mock_tag_svc.delete_tag.return_value = None
-        mock_service_api_ns.payload = {"tag_id": "tag-1"}
-
-        with app.test_request_context(
-            "/datasets/tags",
-            method="DELETE",
-            json={"tag_id": "tag-1"},
-        ):
-            api = DatasetTagsApi()
-            payload = TagDeletePayload.model_validate(request.get_json() or {})
-            result = unwrap(api.delete)(api, payload, controller_session, _=None)
-
-        assert result == ("", 204)
-        mock_tag_svc.delete_tag.assert_called_once_with("tag-1", controller_session, tag_type=TagType.KNOWLEDGE)
-
-
-class TestDatasetTagsBindingStatusApi:
-    """Test suite for DatasetTagsBindingStatusApi endpoints."""
-
-    @patch("controllers.service_api.dataset.dataset.TagService")
-    def test_get_dataset_tags_binding_status(
-        self,
-        mock_tag_svc: MagicMock,
-        app: Flask,
-        account: Account,
-        tenant: Tenant,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagsBindingStatusApi
-
-        tag = make_tag(controller_session, tenant, account, id="tag_1", name="Test Tag")
-        mock_tag_svc.get_tags_by_target_id.return_value = [tag]
-
-        with app.test_request_context("/", method="GET"):
-            api = DatasetTagsBindingStatusApi()
-            response, status_code = unwrap(api.get)(api, controller_session, tenant.id, dataset_id="dataset_123")
-
-        assert status_code == 200
-        assert response["data"] == [{"id": "tag_1", "name": "Test Tag"}]
-        assert response["total"] == 1
-        mock_tag_svc.get_tags_by_target_id.assert_called_once_with(
-            "knowledge", tenant.id, "dataset_123", controller_session
+    tags.error = TagBindingTargetNotFoundError("knowledge")
+    with pytest.raises(NotFoundError):
+        unwrap(DatasetTagBindingApi.post)(
+            DatasetTagBindingApi(), TagBindingPayload(tag_ids=["tag-1"], target_id="missing"), CONTEXT
         )
 
 
-class TestDatasetTagBindingApiPost:
-    """Test suite for DatasetTagBindingApi.post() endpoint."""
+def test_bound_tag_query_uses_target_and_workspace(tags: TagServiceFake) -> None:
+    from controllers.service_api.dataset.dataset import DatasetTagsBindingStatusApi
 
-    @pytest.mark.usefixtures("account")
-    @patch("controllers.service_api.dataset.dataset.TagService")
-    def test_bind_tags_success(
-        self,
-        mock_tag_svc: MagicMock,
-        app: Flask,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagBindingApi, TagBindingPayload
+    response, status = DatasetTagsBindingStatusApi.get(DatasetTagsBindingStatusApi(), CONTEXT, DATASET_ID)
 
-        mock_tag_svc.save_tag_binding.return_value = None
-
-        with app.test_request_context(
-            "/datasets/tags/binding",
-            method="POST",
-            json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
-        ):
-            api = DatasetTagBindingApi()
-            payload = TagBindingPayload.model_validate(request.get_json() or {})
-            result = unwrap(api.post)(api, payload, controller_session, _=None)
-
-        assert result == ("", 204)
-        from services.tag_service import TagBindingCreatePayload
-
-        mock_tag_svc.save_tag_binding.assert_called_once_with(
-            TagBindingCreatePayload(tag_ids=["tag-1"], target_id="ds-1", type=TagType.KNOWLEDGE),
-            controller_session,
-        )
-
-    def test_bind_tags_forbidden(self, app: Flask, account: Account) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagBindingApi
-
-        account.role = TenantAccountRole.NORMAL
-
-        with app.test_request_context(
-            "/datasets/tags/binding",
-            method="POST",
-            json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
-        ):
-            api = DatasetTagBindingApi()
-            with pytest.raises(Forbidden):
-                api.post(_=None)
-
-
-class TestDatasetTagUnbindingApiPost:
-    """Test suite for DatasetTagUnbindingApi.post() endpoint."""
-
-    @pytest.mark.usefixtures("account")
-    @patch("controllers.service_api.dataset.dataset.TagService")
-    def test_unbind_tag_success(
-        self,
-        mock_tag_svc: MagicMock,
-        app: Flask,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi, TagUnbindingPayload
-
-        mock_tag_svc.delete_tag_binding.return_value = None
-
-        with app.test_request_context(
-            "/datasets/tags/unbinding",
-            method="POST",
-            json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
-        ):
-            api = DatasetTagUnbindingApi()
-            payload = TagUnbindingPayload.model_validate(request.get_json() or {})
-            result = unwrap(api.post)(api, payload, controller_session, _=None)
-
-        assert result == ("", 204)
-        from services.tag_service import TagBindingDeletePayload
-
-        mock_tag_svc.delete_tag_binding.assert_called_once_with(
-            TagBindingDeletePayload(tag_ids=["tag-1"], target_id="ds-1", type=TagType.KNOWLEDGE),
-            controller_session,
-        )
-
-    @pytest.mark.usefixtures("account")
-    @patch("controllers.service_api.dataset.dataset.TagService")
-    def test_unbind_legacy_tag_id_success(
-        self,
-        mock_tag_svc: MagicMock,
-        app: Flask,
-        controller_session: Session,
-    ) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi, TagUnbindingPayload
-
-        mock_tag_svc.delete_tag_binding.return_value = None
-
-        with app.test_request_context(
-            "/datasets/tags/unbinding",
-            method="POST",
-            json={"tag_id": "tag-1", "target_id": "ds-1"},
-        ):
-            api = DatasetTagUnbindingApi()
-            payload = TagUnbindingPayload.model_validate(request.get_json() or {})
-            result = unwrap(api.post)(api, payload, controller_session, _=None)
-
-        assert result == ("", 204)
-        from services.tag_service import TagBindingDeletePayload
-
-        mock_tag_svc.delete_tag_binding.assert_called_once_with(
-            TagBindingDeletePayload(tag_ids=["tag-1"], target_id="ds-1", type=TagType.KNOWLEDGE),
-            controller_session,
-        )
-
-    def test_unbind_tag_forbidden(self, app: Flask, account: Account) -> None:
-        from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
-
-        account.role = TenantAccountRole.NORMAL
-
-        with app.test_request_context(
-            "/datasets/tags/unbinding",
-            method="POST",
-            json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
-        ):
-            api = DatasetTagUnbindingApi()
-            with pytest.raises(Forbidden):
-                api.post(_=None)
+    assert status == 200
+    assert response == {"data": [{"id": "tag-1", "name": "Tag"}], "total": 1}
+    assert tags.calls == [("bound", (CONTEXT, str(DATASET_ID), "knowledge"))]

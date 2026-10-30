@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from models.dataset import Dataset
 from models.enums import TagType
 from models.model import Tag, TagBinding
 from models.skill import Skill
@@ -18,7 +19,12 @@ from services.tag_application_service import (
 
 
 def _tag(tag_id: str, *, workspace_id: str, tag_type: TagType, name: str) -> Tag:
-    tag = Tag(tenant_id=workspace_id, type=tag_type, name=name, created_by="account-1")
+    tag = Tag(
+        tenant_id=workspace_id,
+        type=tag_type,
+        name=name,
+        created_by="account-1",
+    )
     tag.id = tag_id
     return tag
 
@@ -67,6 +73,56 @@ def test_list_tags_scopes_binding_counts_and_escapes_keyword(
     assert result == (("tag-1", "50% discount", "app", 1),)
 
 
+def test_list_tags_limits_visibility_and_counts_to_allowed_targets(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                _tag("shared", workspace_id="workspace-1", tag_type=TagType.KNOWLEDGE, name="Shared"),
+                _tag("hidden", workspace_id="workspace-1", tag_type=TagType.KNOWLEDGE, name="Hidden"),
+                _tag("unbound", workspace_id="workspace-1", tag_type=TagType.KNOWLEDGE, name="Unbound"),
+                TagBinding(tenant_id="workspace-1", tag_id="shared", target_id="allowed-1", created_by="account-1"),
+                TagBinding(tenant_id="workspace-1", tag_id="shared", target_id="allowed-2", created_by="account-1"),
+                TagBinding(tenant_id="workspace-1", tag_id="shared", target_id="outside", created_by="account-1"),
+                TagBinding(tenant_id="workspace-1", tag_id="hidden", target_id="outside", created_by="account-1"),
+            ]
+        )
+
+    repository = TagRepository(sqlite_session_factory)
+
+    result = repository.list_tags(
+        "workspace-1",
+        "knowledge",
+        None,
+        target_ids=frozenset({"allowed-1", "allowed-2"}),
+    )
+
+    assert result == (("shared", "Shared", "knowledge", 2),)
+    assert repository.list_tags("workspace-1", "knowledge", None, target_ids=frozenset()) == ()
+
+
+def test_list_tags_by_target_scopes_workspace_type_and_target(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                _tag("tag-1", workspace_id="workspace-1", tag_type=TagType.KNOWLEDGE, name="First"),
+                _tag("tag-2", workspace_id="workspace-1", tag_type=TagType.APP, name="App"),
+                _tag("tag-3", workspace_id="workspace-2", tag_type=TagType.KNOWLEDGE, name="Foreign"),
+                TagBinding(tenant_id="workspace-1", tag_id="tag-1", target_id="dataset-1", created_by="account-1"),
+                TagBinding(tenant_id="workspace-1", tag_id="tag-1", target_id="dataset-2", created_by="account-1"),
+                TagBinding(tenant_id="workspace-1", tag_id="tag-2", target_id="dataset-1", created_by="account-1"),
+                TagBinding(tenant_id="workspace-2", tag_id="tag-3", target_id="dataset-1", created_by="account-2"),
+            ]
+        )
+
+    result = TagRepository(sqlite_session_factory).list_tags_by_target("workspace-1", "dataset-1", "knowledge")
+
+    assert result == (("tag-1", "First", "knowledge", 1),)
+
+
 def test_tag_lifecycle_uses_owned_transactions_and_workspace_scope(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -100,6 +156,106 @@ def test_tag_lifecycle_uses_owned_transactions_and_workspace_scope(
     with sqlite_session_factory() as session:
         assert session.scalar(select(Tag.id).where(Tag.id == created.id)) is None
         assert session.scalar(select(TagBinding.id).where(TagBinding.tag_id == created.id)) is None
+
+
+def test_tag_name_conflicts_are_scoped_by_workspace_and_type(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    repository = TagRepository(sqlite_session_factory)
+    original = repository.create_tag("workspace-1", "account-1", CreateTagInput("Shared", "knowledge"))
+    renamed = repository.create_tag("workspace-1", "account-1", CreateTagInput("Rename me", "knowledge"))
+
+    with pytest.raises(TagNameConflictError):
+        repository.create_tag("workspace-1", "account-1", CreateTagInput("Shared", "knowledge"))
+    with pytest.raises(TagNameConflictError):
+        repository.update_tag("workspace-1", renamed.id, UpdateTagInput("Shared"))
+
+    assert repository.create_tag("workspace-2", "account-1", CreateTagInput("Shared", "knowledge")).name == "Shared"
+    assert repository.create_tag("workspace-1", "account-1", CreateTagInput("Shared", "app")).name == "Shared"
+    with sqlite_session_factory() as session:
+        assert session.get(Tag, original.id) is not None
+        unchanged = session.get(Tag, renamed.id)
+        assert unchanged is not None
+        assert unchanged.name == "Rename me"
+
+
+def test_skill_tag_identity_is_casefolded_without_changing_other_tag_types(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    repository = TagRepository(sqlite_session_factory)
+    skill_tag = repository.create_tag("workspace-1", "account-1", CreateTagInput("Shared", "skill"))
+
+    with pytest.raises(TagNameConflictError):
+        repository.create_tag("workspace-1", "account-1", CreateTagInput("shared", "skill"))
+
+    upper = repository.create_tag("workspace-1", "account-1", CreateTagInput("Shared", "knowledge"))
+    lower = repository.create_tag("workspace-1", "account-1", CreateTagInput("shared", "knowledge"))
+    spaced = repository.create_tag("workspace-1", "account-1", CreateTagInput("Shared ", "knowledge"))
+    assert len({upper.id, lower.id, spaced.id}) == 3
+    with sqlite_session_factory() as session:
+        persisted = session.get(Tag, skill_tag.id)
+        assert persisted is not None
+        assert persisted.name == "Shared"
+
+
+def test_skill_tag_identity_preserves_legacy_unicode_comparison(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    repository = TagRepository(sqlite_session_factory)
+    accented = repository.create_tag(
+        "workspace-1", "account-1", CreateTagInput("Cafe\N{COMBINING ACUTE ACCENT}", "skill")
+    )
+
+    composed = repository.create_tag(
+        "workspace-1", "account-1", CreateTagInput("Caf\N{LATIN SMALL LETTER E WITH ACUTE}", "skill")
+    )
+    unaccented = repository.create_tag("workspace-1", "account-1", CreateTagInput("Cafe", "skill"))
+    assert len({accented.id, composed.id, unaccented.id}) == 3
+
+
+def test_skill_tag_rename_updates_casefolded_identity(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    repository = TagRepository(sqlite_session_factory)
+    skill_tag = repository.create_tag("workspace-1", "account-1", CreateTagInput("Original", "skill"))
+
+    updated = repository.update_tag(
+        "workspace-1",
+        skill_tag.id,
+        UpdateTagInput("Renamed"),
+        expected_type="skill",
+    )
+
+    assert updated.name == "Renamed"
+    with pytest.raises(TagNameConflictError):
+        repository.create_tag("workspace-1", "account-1", CreateTagInput("RENAMED", "skill"))
+    with sqlite_session_factory() as session:
+        persisted = session.get(Tag, skill_tag.id)
+        assert persisted is not None
+        assert persisted.name == "Renamed"
+
+
+def test_update_and_delete_enforce_expected_tag_type_atomically(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(_tag("app-tag", workspace_id="workspace-1", tag_type=TagType.APP, name="App"))
+
+    repository = TagRepository(sqlite_session_factory)
+    with pytest.raises(TagNotFoundError):
+        repository.update_tag(
+            "workspace-1",
+            "app-tag",
+            UpdateTagInput("Changed"),
+            expected_type="knowledge",
+        )
+    with pytest.raises(TagNotFoundError):
+        repository.delete_tag("workspace-1", "app-tag", expected_type="knowledge")
+
+    with sqlite_session_factory() as session:
+        tag = session.get(Tag, "app-tag")
+        assert tag is not None
+        assert tag.name == "App"
 
 
 def test_binding_mutations_validate_target_type_and_workspace(
@@ -140,6 +296,36 @@ def test_binding_mutation_rejects_missing_target(sqlite_session_factory: session
             "account-1",
             TagBindingInput(("tag-1",), "missing", "snippet"),
         )
+
+
+def test_knowledge_binding_requires_a_tenant_owned_dataset(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                Dataset(id="dataset-1", tenant_id="workspace-1", name="Dataset", created_by="account-1"),
+                _tag("tag-1", workspace_id="workspace-1", tag_type=TagType.KNOWLEDGE, name="Knowledge"),
+            ]
+        )
+
+    repository = TagRepository(sqlite_session_factory)
+    with pytest.raises(TagBindingTargetNotFoundError, match="Dataset not found"):
+        repository.create_bindings(
+            "workspace-2",
+            "account-2",
+            TagBindingInput(("tag-1",), "dataset-1", "knowledge"),
+        )
+
+    repository.create_bindings(
+        "workspace-1",
+        "account-1",
+        TagBindingInput(("tag-1",), "dataset-1", "knowledge"),
+    )
+    with sqlite_session_factory() as session:
+        binding = session.scalar(select(TagBinding).where(TagBinding.target_id == "dataset-1"))
+        assert binding is not None
+        assert binding.tenant_id == "workspace-1"
 
 
 def test_binding_mutations_validate_skill_target(

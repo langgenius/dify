@@ -25,10 +25,11 @@ from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.event_selectors import PluginTriggerDebugEventPoller, WebhookTriggerDebugEventPoller
 from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
 from enums import DeploymentEdition
+from enums.creator import CreatorUserRole
 from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant
-from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
+from models.enums import AppTriggerStatus, AppTriggerType, WorkflowTriggerStatus
 from models.model import App
 from models.trigger import (
     AppTrigger,

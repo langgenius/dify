@@ -25,6 +25,7 @@ from controllers.web.error import (
 from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import SuggestedQuestionsResponse, WebMessageInfiniteScrollPagination, WebMessageListItem
@@ -33,7 +34,6 @@ from libs import helper
 from libs.external_api import error_responses
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
-from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
@@ -193,7 +193,7 @@ class MessageMoreLikeThisApi(WebApiResource):
         streaming = query.response_mode == "streaming"
 
         try:
-            response = AppGenerateService.generate_more_like_this(
+            response = application_services().app_generation.generate_more_like_this(
                 session=session,
                 app_model=app_model,
                 user=end_user,

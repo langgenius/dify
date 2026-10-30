@@ -63,7 +63,11 @@ Reviewers should reject a field when its owner, pre-authentication need, or cons
   - Example: `WorkflowRunDetailResponse`, `WorkflowRunNodeExecutionListResponse`.
 - Use `ListResponse` or `PaginationResponse` for wrapper responses.
   - Example: `WorkflowRunNodeExecutionListResponse`, `WorkflowRunPaginationResponse`.
-- Keep these models near the controller when they are endpoint-specific. Move them to `fields/*_fields.py` only when shared by multiple controllers.
+- Keep shared models in `fields/*_fields.py`. When an API surface has a dedicated schema package, place its
+  endpoint-specific models there: Service API dataset schemas use `fields/service_api/`, organized by domain.
+  Other endpoint-specific models may remain near their controller.
+- Schema modules under `fields/` must not import controllers. Preserve distinct API contracts when similarly named
+  models have different validation or serialization behavior.
 
 ## Registering Models For Swagger
 

@@ -10,13 +10,13 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
 
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from graphon.variables import VariableBase
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document
 from models.enums import (
     AppStatus,
-    CreatorUserRole,
     DataSourceType,
     DocumentCreatedFrom,
     EndUserType,

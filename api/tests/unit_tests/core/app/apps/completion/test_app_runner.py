@@ -1,4 +1,4 @@
-from collections.abc import Callable, Generator, Iterator
+from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
 
@@ -35,7 +35,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from graphon.file import FileUploadConfig
 from graphon.file.models import ImageConfig
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
@@ -45,7 +45,13 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, IconType, Message
-from services.knowledge.external.service import ExternalDatasetService
+from services.knowledge.entities.retrieval import (
+    KnowledgeRetrievalRequest,
+    KnowledgeRetrievalResult,
+    RetrievableDataset,
+    Source,
+    SourceMetadata,
+)
 from tests.unit_tests.core.model_fixtures import make_model_config
 
 APP_ID = "00000000-0000-0000-0000-000000000001"
@@ -85,6 +91,27 @@ class CallRecorder:
             return self.implementation(*args, **kwargs)
         if self.results is not None:
             return self.results.pop(0)
+        return self.result
+
+
+@dataclass
+class RecordingKnowledgeRetriever:
+    result: KnowledgeRetrievalResult = field(
+        default_factory=lambda: KnowledgeRetrievalResult(sources=[], usage=LLMUsage.empty_usage())
+    )
+    calls: list[tuple[KnowledgeRetrievalRequest, Mapping[str, object] | None]] = field(default_factory=list)
+
+    def list_datasets(self, *, tenant_id: str, dataset_ids: Sequence[str]) -> list[RetrievableDataset]:
+        del tenant_id, dataset_ids
+        return []
+
+    def retrieve(
+        self,
+        request: KnowledgeRetrievalRequest,
+        *,
+        request_metadata: Mapping[str, object] | None,
+    ) -> KnowledgeRetrievalResult:
+        self.calls.append((request, request_metadata))
         return self.result
 
 
@@ -164,8 +191,13 @@ def retrieval_app(sqlite_engine: Engine) -> Iterator[Flask]:
 
 
 @pytest.fixture
-def runner() -> CompletionAppRunner:
-    return CompletionAppRunner()
+def knowledge_retrieval() -> RecordingKnowledgeRetriever:
+    return RecordingKnowledgeRetriever()
+
+
+@pytest.fixture
+def runner(knowledge_retrieval: RecordingKnowledgeRetriever) -> CompletionAppRunner:
+    return CompletionAppRunner(knowledge_retrieval=knowledge_retrieval)
 
 
 def _build_app_config(
@@ -314,7 +346,7 @@ class TestCompletionAppRunner:
     def test_run_dataset_and_external_tools_flow(
         self,
         runner: CompletionAppRunner,
-        monkeypatch: pytest.MonkeyPatch,
+        knowledge_retrieval: RecordingKnowledgeRetriever,
         sqlite_session: Session,
         queue_manager: MessageBasedAppQueueManager,
         model_runtime: tuple[ProviderModelBundle, list[RecordedCall], list[str]],
@@ -358,20 +390,32 @@ class TestCompletionAppRunner:
         handle_invoke_result = CallRecorder()
         runner._handle_invoke_result = handle_invoke_result  # type: ignore[method-assign]
 
-        retrieval_calls: list[dict[str, object]] = []
-
-        def retrieve_external(**kwargs: object) -> list[dict[str, object]]:
-            retrieval_calls.append(kwargs)
-            return [{"content": "ctx", "metadata": {}, "score": 1.0, "title": "Document"}]
-
-        monkeypatch.setattr(ExternalDatasetService, "fetch_external_knowledge_retrieval", retrieve_external)
+        knowledge_retrieval.result = KnowledgeRetrievalResult(
+            sources=[
+                Source(
+                    metadata=SourceMetadata(
+                        dataset_id=dataset.id,
+                        dataset_name=dataset.name,
+                        document_id="doc",
+                        document_name="Document",
+                        data_source_type="upload_file",
+                        score=1.0,
+                    ),
+                    title="Document",
+                    content="ctx",
+                )
+            ],
+            usage=LLMUsage.empty_usage(),
+            context="ctx",
+        )
 
         runner.run(app_generate_entity, queue_manager, message, sqlite_session)
 
-        assert len(retrieval_calls) == 1
-        assert retrieval_calls[0]["query"] == "query_from_input"
-        assert retrieval_calls[0]["tenant_id"] == TENANT_ID
-        assert retrieval_calls[0]["dataset_id"] == dataset.id
+        assert len(knowledge_retrieval.calls) == 1
+        retrieval_request, _ = knowledge_retrieval.calls[0]
+        assert retrieval_request.query == "query_from_input"
+        assert retrieval_request.tenant_id == TENANT_ID
+        assert retrieval_request.dataset_ids == [dataset.id]
         assert organize_prompt_messages.calls[-1].kwargs["context"] == "ctx"
         assert organize_prompt_messages.calls[-1].kwargs["context_files"] == []
         assert len(handle_invoke_result.calls) == 1

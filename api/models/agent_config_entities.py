@@ -13,13 +13,13 @@ from pydantic import (
     model_validator,
 )
 
-from core.rag.entities.metadata_entities import (
-    ConditionValue,
-    SupportedComparisonOperator,
-)
 from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.file_reference import is_canonical_file_reference
 from graphon.file import FileTransferMethod, FileType
+from services.knowledge.entities.metadata import (
+    ConditionValue,
+    SupportedComparisonOperator,
+)
 
 
 class AgentKnowledgeQueryMode(StrEnum):

@@ -31,10 +31,11 @@ from core.ops.unified_trace.hierarchy import (
     execution_id,
     execution_metadata,
 )
-from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from models import Account
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from repositories.workflow.factory import WorkflowRepositoryFactory
+from services.file_adapters import build_file_service
 
 WorkflowExecutionLoader = Callable[[WorkflowTraceInfo], Sequence[WorkflowExecutionLike]]
 ServiceAccountResolver = Callable[[str], Account]
@@ -50,12 +51,13 @@ class RepositoryWorkflowExecutionLoader:
         app_id = trace_info.metadata.get("app_id")
         if not isinstance(app_id, str) or not app_id:
             raise ValueError("No app_id found in workflow trace metadata")
-        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=sessionmaker(bind=db.engine),
             tenant_id=trace_info.tenant_id,
             user=self._get_service_account(app_id),
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=build_file_service(session_factory=sessionmaker(bind=db.engine)),
         )
         return repository.get_by_workflow_execution(workflow_execution_id=trace_info.workflow_run_id)
 

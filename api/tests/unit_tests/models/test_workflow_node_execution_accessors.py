@@ -11,9 +11,10 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
+from enums.creator import CreatorUserRole
 from fields.workflow_run_fields import node_execution_response_source
 from models.account import Account
-from models.enums import CreatorUserRole, EndUserType
+from models.enums import EndUserType
 from models.model import EndUser
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 

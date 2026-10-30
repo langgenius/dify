@@ -11,11 +11,11 @@ from uuid import uuid4
 
 from configs import dify_config
 from core.db.session_factory import session_factory
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
 from services.agent.composer_validator import ComposerConfigValidator
@@ -30,7 +30,7 @@ from services.agent.roster_package_entities import AgentPackageResources, Packag
 from services.agent.roster_package_reader import RosterAgentPackageReader
 from services.agent.skill_package_service import SkillPackageError, SkillPackageService
 from services.entities.dsl_entities import DslImportWarning
-from services.file_service import FileService
+from services.file_upload_policy import file_size_limit
 
 
 class _Storage(Protocol):
@@ -64,7 +64,7 @@ class AgentPackageResourceImporter:
         for resource in resources.files:
             filename = file_refs[resource.id].name
             extension = cls._extension(filename)
-            limit = FileService.file_size_limit(extension=extension)
+            limit = file_size_limit(extension=extension)
             if resource.size > limit:
                 raise InvalidRosterAgentPackageError(
                     f"Roster Agent package file {filename!r} exceeds its file size limit"

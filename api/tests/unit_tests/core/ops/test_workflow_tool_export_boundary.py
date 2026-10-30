@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 
 from core.ops.entities.trace_entity import WorkflowTraceInfo
 from core.ops.unified_trace.trace_builder import CanonicalTraceBuilder, RepositoryWorkflowExecutionLoader
+from enums.creator import CreatorUserRole
 from extensions.ext_database import db
 from models import Account
-from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
 

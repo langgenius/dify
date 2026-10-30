@@ -75,18 +75,20 @@ class TestDatasourceProviderService:
         [
             ("cred", {"integration_secret": "saved-token"}, "env-token", "saved-token"),
             (None, {"integration_secret": "default-token"}, "env-token", "env-token"),
-            ("cred", {}, "env-token", "env-token"),
+            ("cred", {}, "env-token", None),
             ("cred", {}, None, None),
+            ("", {}, "env-token", None),
             (None, {}, None, None),
         ],
     )
-    def test_stored_notion_access_token_resolves_saved_credential_or_fallback(
+    def test_stored_notion_access_token_falls_back_only_when_credential_id_is_absent(
         self, service, config_overrides, credential_id, credentials, integration_token, expected
     ):
         config_overrides(NOTION_INTEGRATION_TOKEN=integration_token)
         with patch.object(service, "get_datasource_credentials", return_value=credentials) as resolve:
             if expected is None:
-                with pytest.raises(ValueError, match="Must specify `integration_token`"):
+                message = "Must specify `integration_token`" if credential_id is None else "Stored Notion credential"
+                with pytest.raises(ValueError, match=message):
                     service.get_stored_notion_access_token(tenant_id="tenant", credential_id=credential_id)
             else:
                 assert (

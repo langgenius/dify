@@ -134,6 +134,8 @@ def _source(
             status=AgentStatus.ACTIVE,
             created_by="account-1",
         )
+        session.add_all([upload, agent])
+        session.flush()
         soul = AgentSoulConfig.model_validate(
             {
                 "prompt": {"system_prompt": f"Bound snapshot {index}"},
@@ -173,7 +175,7 @@ def _source(
             node_job_config={"workflow_prompt": f"Job {index}"},
             created_by="account-1",
         )
-        session.add_all([upload, agent, snapshot, active, binding])
+        session.add_all([snapshot, active, binding])
         if index == 1:
             workspace_archive = _tool_file(
                 session, storage, "tools/workspace.zip", _skill("workspace", "Workspace skill")

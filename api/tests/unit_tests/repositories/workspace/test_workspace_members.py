@@ -1,12 +1,15 @@
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 
-from sqlalchemy import Engine, event
+import pytest
+from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models.dataset import Dataset
 from repositories.workspace.workspace_repository import WorkspaceRepository
+from services.errors.base import NoPermissionError
 from services.workspace.contracts import WorkspaceMemberRecord, WorkspaceMemberRole, WorkspaceMemberRoleSubject
 from services.workspace.member_service import WorkspaceMemberQueryService
 
@@ -213,7 +216,12 @@ def test_member_queries_observe_committed_roles_and_release_session_before_role_
     event.listen(sqlite_engine, "checkin", checkin)
     try:
         repository = WorkspaceRepository(sqlite_session_factory)
-        repository.update_member_role(workspace_id="workspace", account_id="member", role=TenantAccountRole.EDITOR)
+        repository.update_member_role(
+            workspace_id="workspace",
+            actor_account_id="actor",
+            account_id="member",
+            role=TenantAccountRole.EDITOR,
+        )
         service = WorkspaceMemberQueryService(members=repository, roles=RoleResolver())
         result = service.list_current(RequestContext("request", None, "actor", "workspace"))
         assert result[0].role == "editor"
@@ -222,6 +230,107 @@ def test_member_queries_observe_committed_roles_and_release_session_before_role_
     finally:
         event.remove(sqlite_engine, "checkout", checkout)
         event.remove(sqlite_engine, "checkin", checkin)
+
+
+def test_owner_transfer_rechecks_the_actor_after_the_workspace_lock(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    created_at = datetime(2026, 1, 1)
+    with sqlite_session_factory.begin() as session:
+        session.add(make_tenant("workspace"))
+        for account_id, role in (
+            ("owner", TenantAccountRole.OWNER),
+            ("first-target", TenantAccountRole.NORMAL),
+            ("second-target", TenantAccountRole.NORMAL),
+        ):
+            session.add(make_account(account_id, status=AccountStatus.ACTIVE, created_at=created_at))
+            session.add(TenantAccountJoin(tenant_id="workspace", account_id=account_id, role=role))
+
+    repository = WorkspaceRepository(sqlite_session_factory)
+    repository.update_member_role(
+        workspace_id="workspace",
+        actor_account_id="owner",
+        account_id="first-target",
+        role=TenantAccountRole.OWNER,
+    )
+    with pytest.raises(NoPermissionError, match="current workspace owner"):
+        repository.update_member_role(
+            workspace_id="workspace",
+            actor_account_id="owner",
+            account_id="second-target",
+            role=TenantAccountRole.OWNER,
+        )
+
+    with sqlite_session_factory() as session:
+        owners = session.scalars(
+            select(TenantAccountJoin.account_id).where(
+                TenantAccountJoin.tenant_id == "workspace",
+                TenantAccountJoin.role == TenantAccountRole.OWNER,
+            )
+        ).all()
+    assert owners == ["first-target"]
+
+
+def test_member_removal_rejects_a_target_promoted_after_the_caller_precheck(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    created_at = datetime(2026, 1, 1)
+    with sqlite_session_factory.begin() as session:
+        session.add(make_tenant("workspace"))
+        for account_id, role in (
+            ("owner", TenantAccountRole.OWNER),
+            ("admin", TenantAccountRole.ADMIN),
+            ("member", TenantAccountRole.NORMAL),
+        ):
+            session.add(make_account(account_id, status=AccountStatus.ACTIVE, created_at=created_at))
+            session.add(TenantAccountJoin(tenant_id="workspace", account_id=account_id, role=role))
+        session.add(
+            Dataset(
+                id="dataset",
+                tenant_id="workspace",
+                name="Dataset",
+                created_by="member",
+                maintainer="member",
+            )
+        )
+
+    repository = WorkspaceRepository(sqlite_session_factory)
+    assert repository.get_legacy_role(workspace_id="workspace", account_id="member") == TenantAccountRole.NORMAL
+    assert repository.owner_id("workspace") == "owner"
+
+    repository.update_member_role(
+        workspace_id="workspace",
+        actor_account_id="owner",
+        account_id="member",
+        role=TenantAccountRole.OWNER,
+    )
+
+    with pytest.raises(NoPermissionError, match="owner cannot be removed"):
+        repository.remove_member(
+            workspace_id="workspace",
+            account_id="member",
+            operator_account_id="admin",
+            require_privileged_operator=True,
+        )
+
+    with sqlite_session_factory() as session:
+        owner_ids = session.scalars(
+            select(TenantAccountJoin.account_id).where(
+                TenantAccountJoin.tenant_id == "workspace",
+                TenantAccountJoin.role == TenantAccountRole.OWNER,
+            )
+        ).all()
+        member_membership = session.scalar(
+            select(TenantAccountJoin.id).where(
+                TenantAccountJoin.tenant_id == "workspace",
+                TenantAccountJoin.account_id == "member",
+            )
+        )
+        dataset_maintainer = session.scalar(select(Dataset.maintainer).where(Dataset.id == "dataset"))
+
+    assert owner_ids == ["member"]
+    assert member_membership is not None
+    assert dataset_maintainer == "member"
 
 
 def test_get_legacy_role_is_scoped_to_workspace_and_account(

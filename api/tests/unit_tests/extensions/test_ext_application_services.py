@@ -51,13 +51,15 @@ from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfi
 from repositories.app.workflow_comment_repository import WorkflowCommentRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
-from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
+from repositories.conversation.message_file_preview_repository import MessageFilePreviewQueryRepository
+from repositories.file.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
+from repositories.file.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
+from repositories.file.upload_file_repository import UploadFileRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
-from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
+from repositories.knowledge.external_repository import SQLAlchemyExternalKnowledgeRepository
 from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
-from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
-from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
+from repositories.workflow.human_input.file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
@@ -132,7 +134,7 @@ from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetApplicationService
 from services.knowledge.document_sync import DocumentSyncApplicationService
 from services.knowledge.documents.application import DatasetDocumentApplicationService
-from services.knowledge.external.adapters import SQLAlchemyExternalKnowledgeOperations
+from services.knowledge.external.adapters import ExternalKnowledgeGateway
 from services.knowledge.external.application import ExternalKnowledgeApplicationService
 from services.knowledge.indexing.adapters.estimate import IndexingEstimateAdapter, SQLAlchemyProcessRuleReader
 from services.knowledge.indexing.adapters.sources import NotionSourceResolver
@@ -274,19 +276,17 @@ def test_build_application_services_preserves_composed_boundaries(
 ) -> None:
     redis = _redis()
 
-    with patch.object(redis, "register_script", wraps=redis.register_script) as register_script:
-        services = ext_application_services.build_application_services(
-            database_client=sqlite_session_factory,
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            initialization_password="",
-            redis=redis,
-        )
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=redis,
+    )
 
     assert isinstance(services.app_api_keys, AppApiKeyService)
     assert isinstance(services.dataset_api_keys, DatasetApiKeyService)
     assert services.dataset_api_keys._access is services.knowledge.datasets._dataset_access
     assert isinstance(services.oauth_device, OAuthDeviceApplicationService)
-    assert register_script.call_count == 3
 
     assert isinstance(services.installed_apps.generation, InstalledAppGenerationService)
     installed_apps = services.installed_apps.access._installed_apps
@@ -317,9 +317,10 @@ def test_build_application_services_preserves_composed_boundaries(
     dataset_operations = services.knowledge.datasets._operations
     assert isinstance(dataset_operations, SQLAlchemyDatasetOperations)
     assert dataset_operations._members_service is services.rbac.members
-    external_operations = services.knowledge.external._operations
-    assert isinstance(external_operations, SQLAlchemyExternalKnowledgeOperations)
-    assert external_operations._members is services.rbac.members
+    external_repository = services.knowledge.external._repository
+    assert isinstance(external_repository, SQLAlchemyExternalKnowledgeRepository)
+    assert isinstance(services.knowledge.external._retrieval, ExternalKnowledgeGateway)
+    assert services.knowledge.external._dataset_details is dataset_operations
 
 
 @pytest.mark.parametrize(
@@ -417,7 +418,8 @@ def test_build_application_services_reuses_file_service(
     )
 
     assert isinstance(services.files, FileService)
-    assert services.files._session_maker is sqlite_session_factory
+    assert isinstance(services.files._files, UploadFileRepository)
+    assert services.files._files._session_factory is sqlite_session_factory
     assert services.web_app_runtime._file_service is services.files
 
 

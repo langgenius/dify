@@ -25,6 +25,7 @@ from models.agent_config_entities import (
     WorkflowPreviousNodeOutputRef,
 )
 from models.workflow import Workflow
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.prompt_mentions import (
     extract_workflow_node_output_selectors,
@@ -36,6 +37,7 @@ from services.entities.agent_entities import (
     ComposerSoulLockPayload,
     ComposerVariant,
 )
+from services.file_reference_parser import added_trusted_upload_file_ids, trusted_upload_file_ids
 
 
 class _InlineAgentUnavailableError(ValueError):
@@ -246,12 +248,14 @@ class WorkflowAgentPublishService:
         agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(draft_workflow.graph_dict))
         existing_bindings = list(
             session.scalars(
-                select(WorkflowAgentNodeBinding).where(
+                select(WorkflowAgentNodeBinding)
+                .where(
                     WorkflowAgentNodeBinding.tenant_id == draft_workflow.tenant_id,
                     WorkflowAgentNodeBinding.app_id == draft_workflow.app_id,
                     WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
                     WorkflowAgentNodeBinding.workflow_version == cls._DRAFT_WORKFLOW_VERSION,
                 )
+                .with_for_update()
             ).all()
         )
         existing_by_node_id = {binding.node_id: binding for binding in existing_bindings}
@@ -337,6 +341,7 @@ class WorkflowAgentPublishService:
             existing_binding=existing_binding,
             node_data=node_data,
         )
+        previous_node_job = existing_binding.node_job_config_dict if existing_binding is not None else None
 
         if binding_type == WorkflowAgentBindingType.ROSTER_AGENT.value:
             agent, current_snapshot_id = cls._resolve_roster_agent_graph_binding(
@@ -401,6 +406,17 @@ class WorkflowAgentPublishService:
         binding.agent_id = agent.id
         binding.current_snapshot_id = current_snapshot_id
         binding.updated_by = account_id
+        session.flush()
+        added_file_ids = added_trusted_upload_file_ids(
+            previous=previous_node_job,
+            current=binding.node_job_config_dict,
+        )
+        if added_file_ids:
+            lock_and_validate_owned_upload_files_in_session(
+                session,
+                tenant_id=draft_workflow.tenant_id,
+                upload_file_ids=tuple(added_file_ids),
+            )
 
     @classmethod
     def _resolve_existing_inline_binding_agent(
@@ -626,6 +642,7 @@ class WorkflowAgentPublishService:
         if not bindings:
             return
 
+        copied_file_ids: set[str] = set()
         for binding in bindings:
             current_snapshot_id = binding.current_snapshot_id
             if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT and binding.agent_id:
@@ -649,6 +666,14 @@ class WorkflowAgentPublishService:
                 updated_by=binding.updated_by,
             )
             session.add(copied)
+            copied_file_ids.update(trusted_upload_file_ids(copied.node_job_config_dict))
+        session.flush()
+        if copied_file_ids:
+            lock_and_validate_owned_upload_files_in_session(
+                session,
+                tenant_id=draft_workflow.tenant_id,
+                upload_file_ids=tuple(copied_file_ids),
+            )
 
     @classmethod
     def restore_agent_node_bindings_to_draft(
@@ -682,6 +707,7 @@ class WorkflowAgentPublishService:
                 WorkflowAgentNodeBinding.workflow_version == source_workflow.version,
             )
         ).all()
+        restored_file_ids: set[str] = set()
         for source in source_bindings:
             if source.binding_type == WorkflowAgentBindingType.ROSTER_AGENT and source.agent_id:
                 cls._resolve_roster_agent_graph_binding(
@@ -717,20 +743,26 @@ class WorkflowAgentPublishService:
                         account_id=account_id,
                     )
                     agent_id = agent.id
-            session.add(
-                WorkflowAgentNodeBinding(
-                    tenant_id=draft_workflow.tenant_id,
-                    app_id=draft_workflow.app_id,
-                    workflow_id=draft_workflow.id,
-                    workflow_version=cls._DRAFT_WORKFLOW_VERSION,
-                    node_id=source.node_id,
-                    binding_type=source.binding_type,
-                    agent_id=agent_id,
-                    current_snapshot_id=snapshot_id,
-                    node_job_config=WorkflowNodeJobConfig.model_validate(source.node_job_config_dict),
-                    created_by=account_id,
-                    updated_by=account_id,
-                )
+            restored = WorkflowAgentNodeBinding(
+                tenant_id=draft_workflow.tenant_id,
+                app_id=draft_workflow.app_id,
+                workflow_id=draft_workflow.id,
+                workflow_version=cls._DRAFT_WORKFLOW_VERSION,
+                node_id=source.node_id,
+                binding_type=source.binding_type,
+                agent_id=agent_id,
+                current_snapshot_id=snapshot_id,
+                node_job_config=WorkflowNodeJobConfig.model_validate(source.node_job_config_dict),
+                created_by=account_id,
+                updated_by=account_id,
             )
+            session.add(restored)
+            restored_file_ids.update(trusted_upload_file_ids(restored.node_job_config_dict))
         session.flush()
+        if restored_file_ids:
+            lock_and_validate_owned_upload_files_in_session(
+                session,
+                tenant_id=draft_workflow.tenant_id,
+                upload_file_ids=tuple(restored_file_ids),
+            )
         return retirement_candidates

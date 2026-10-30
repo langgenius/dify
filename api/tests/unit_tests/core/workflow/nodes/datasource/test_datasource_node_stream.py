@@ -12,12 +12,14 @@ from sqlalchemy.orm import sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_runtime import build_knowledge_index_files
 from core.workflow.nodes.datasource.datasource_node import DatasourceNode
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult, StreamCompletedEvent
 from graphon.runtime import RuntimeState, VariablePool
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -82,7 +84,12 @@ def test_node_integration_minimal_stream(mocker: MockerFixture, sqlite_engine: E
             "core.workflow.node_factory.build_data_source_credentials",
             return_value=SimpleNamespace(providers=SimpleNamespace(get_datasource_credentials=load_credentials)),
         )
-        factory = DifyNodeFactory(init_params=graph_init_params, runtime_state=graph_runtime_state)
+        factory = DifyNodeFactory(
+            init_params=graph_init_params,
+            runtime_state=graph_runtime_state,
+            knowledge_retrieval=make_knowledge_retriever(),
+            knowledge_index_files=build_knowledge_index_files(),
+        )
         node = factory.create_node({"id": "n", "data": node_data.model_dump()})
         build_credentials.assert_called_once_with(database_client=database_client)
         assert isinstance(node, DatasourceNode)

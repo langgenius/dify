@@ -54,6 +54,7 @@ from models.agent import AgentScope, WorkflowAgentBindingType, WorkflowAgentNode
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AgentPackage, make_agent_app_dsl
 from services.agent.dsl_service import AgentDslService, is_agent_v2_graph
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
@@ -665,6 +666,10 @@ class AppDslService:
         if target_tenant_id is None:
             raise ValueError("Current tenant is not set")
 
+        previous_image_icon_id: str | None = None
+        if app is not None:
+            previous_image_icon_id = app.icon if app.icon_type == IconType.IMAGE else None
+
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
         resolved_icon_type: IconType
@@ -681,6 +686,28 @@ class AppDslService:
         ):
             resolved_icon_type = DEFAULT_ICON_TYPE
             icon = DEFAULT_ICON
+
+        current_image_icon_id = icon if resolved_icon_type == IconType.IMAGE else None
+        if current_image_icon_id is not None and current_image_icon_id != previous_image_icon_id:
+            if app is not None:
+                locked_app = self._session.scalar(
+                    select(App)
+                    .where(App.id == app.id, App.tenant_id == target_tenant_id)
+                    .with_for_update()
+                    .execution_options(populate_existing=True)
+                )
+                if locked_app is None:
+                    raise ValueError("App not found")
+                app = locked_app
+                previous_image_icon_id = app.icon if app.icon_type == IconType.IMAGE else None
+            if current_image_icon_id == previous_image_icon_id:
+                current_image_icon_id = None
+        if current_image_icon_id is not None:
+            lock_and_validate_owned_upload_files_in_session(
+                self._session,
+                tenant_id=target_tenant_id,
+                upload_file_ids=(current_image_icon_id,),
+            )
 
         if app:
             # Update existing app

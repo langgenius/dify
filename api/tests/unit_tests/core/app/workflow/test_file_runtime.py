@@ -19,12 +19,12 @@ from core.app.workflow import file_runtime
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
 from core.workflow.file_reference import build_file_reference
 from dify_app import DifyApp
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.file.runtime import peek_workflow_file_runtime, use_workflow_file_runtime
 from models import ToolFile, UploadFile
 from models.base import TypeBase
-from models.enums import CreatorUserRole
 
 
 @pytest.fixture

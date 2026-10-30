@@ -40,6 +40,7 @@ from core.workflow.variable_prefixes import (
     SYSTEM_VARIABLE_NODE_ID,
 )
 from enums import WorkflowKind
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
@@ -74,7 +75,7 @@ from libs import helper
 from .account import Account
 from .base import Base, DefaultFieldsDCMixin, TypeBase
 from .engine import db
-from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
+from .enums import DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 
 # UploadFile and workflow execution offload use TypeBase, so importing the class object keeps
 # relationship joins explicit where the related execution model still uses Base.
@@ -1361,10 +1362,10 @@ class WorkflowAppLog(TypeBase):
         if self.workflow_run_id:
             from sqlalchemy.orm import sessionmaker
 
-            from repositories.factory import DifyAPIRepositoryFactory
+            from repositories.workflow.factory import WorkflowRepositoryFactory
 
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-            repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+            repo = WorkflowRepositoryFactory.create_api_workflow_run_repository(session_maker)
             return repo.get_workflow_run_by_id_without_tenant(run_id=self.workflow_run_id)
 
         return None

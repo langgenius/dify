@@ -104,6 +104,12 @@ class ForbiddenError(BaseHTTPException):
     description = "You don't have the permission to access the requested resource."
 
 
+class ConflictError(BaseHTTPException):
+    error_code = "conflict"
+    code = HTTPStatus.CONFLICT
+    description = "The resource changed while the request was being processed. Please retry."
+
+
 class InternalServerError(BaseHTTPException):
     """Expose a safe response while retaining the original exception in server logs."""
 
@@ -113,6 +119,12 @@ class InternalServerError(BaseHTTPException):
         "The server encountered an internal error and was unable to complete your request. "
         "Either the server is overloaded or there is an error in the application."
     )
+
+
+class ServiceUnavailableError(BaseHTTPException):
+    error_code = "service_unavailable"
+    code = HTTPStatus.SERVICE_UNAVAILABLE
+    description = "The service is temporarily unavailable. Please retry later."
 
 
 class InvalidArgumentError(BaseHTTPException):

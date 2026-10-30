@@ -323,11 +323,11 @@ def test_existing_mcp_keeps_normal_large_payload_and_response(mcp_client: MCPCli
     app = App(id="existing-app", tenant_id="tenant")
     session.scalar.side_effect = [server, app, server, app]
     mocker.patch.object(mcp.MCPAppApi, "_get_user_input_form", return_value=[])
-    expected_body = b'{"id":2,"jsonrpc":"2.0","result":{}}'
+    expected_body = b'{"jsonrpc": "2.0", "id": 2, "result": {}}'
     process = mocker.patch.object(
         mcp.MCPAppApi,
-        "_process_mcp_message",
-        return_value=Response(expected_body, status=200, content_type="application/json"),
+        "_handle_request",
+        return_value=Response(expected_body, content_type="application/json"),
     )
     payload = {
         "jsonrpc": "2.0",
@@ -414,7 +414,11 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
     mocker.patch.object(maker, "begin", side_effect=begin)
     monkeypatch.setattr(mcp.session_factory, "get_session_maker", lambda: maker)
     form = mocker.patch.object(mcp.MCPAppApi, "_get_user_input_form", return_value=[])
-    process = mocker.patch.object(mcp.MCPAppApi, "_process_mcp_message", return_value=Response("ok", status=200))
+    process = mocker.patch.object(
+        mcp.MCPAppApi,
+        "_handle_request",
+        return_value=Response('{"jsonrpc":"2.0","id":1,"result":{}}', content_type="application/json"),
+    )
     original_error = mcp.mcp_server_not_found_response
 
     def error_response() -> Response:

@@ -7,6 +7,7 @@ from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.engine_events import GraphRunPausedEvent
 from graphon.entities.pause_reason import HitlRequired
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 class _DummyQueueManager:
@@ -33,7 +34,11 @@ class _DummyWorkflowEntry:
 
 def test_handle_pause_event_enqueues_email_task(monkeypatch: pytest.MonkeyPatch):
     queue_manager = _DummyQueueManager()
-    runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app-id")
+    runner = WorkflowBasedAppRunner(
+        queue_manager=queue_manager,
+        knowledge_retrieval=make_knowledge_retriever(),
+        app_id="app-id",
+    )
     workflow_entry = _DummyWorkflowEntry()
 
     graph_reason = HitlRequired(session_id="form-123", node_id="node-1", node_title="Review")

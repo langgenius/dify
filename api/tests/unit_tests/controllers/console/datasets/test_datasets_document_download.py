@@ -19,16 +19,29 @@ from controllers.console.datasets import datasets_document as controller
 from machinery.context import RequestContext
 from models.dataset import Dataset, Document
 from models.model import UploadFile
+from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from services.file_adapters import build_file_service
 from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess
-from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
-from services.knowledge.documents.application import DatasetDocumentApplicationService
+from services.knowledge.documents.adapters import DocumentResponsePresentationAdapter, SQLAlchemyDocumentOperations
+from services.knowledge.documents.application import (
+    DatasetCreatorAccess,
+    DatasetDocumentApplicationService,
+    DocumentCreationGateway,
+    DocumentDatasetRepository,
+    DocumentLifecycleCache,
+    DocumentModelConfigurationGateway,
+    DocumentSourceAuthorization,
+    DocumentTaskDispatcher,
+    DocumentUploads,
+)
+from services.knowledge.indexing.locks import KnowledgeIndexingLock
 
 CONTEXT = RequestContext("request-1", None, "actor-1", "tenant-1")
 DOC_ID = str(UUID(int=1))
 FILE_ID = str(UUID(int=2))
 
 
-def _document(**values):
+def _document(**values: object) -> Document:
     return Document(
         **{
             "id": DOC_ID,
@@ -47,7 +60,7 @@ def _document(**values):
 
 
 @pytest.fixture(autouse=True)
-def downloads(monkeypatch, sqlite_session_factory):
+def downloads(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory):
     with sqlite_session_factory.begin() as session:
         session.add(Dataset(id="dataset-1", tenant_id="tenant-1", name="Dataset", created_by="actor-1"))
         session.add(_document())
@@ -68,10 +81,25 @@ def downloads(monkeypatch, sqlite_session_factory):
         session.add(upload)
     access = create_autospec(DatasetAccess, instance=True, spec_set=True)
     access.require_accessible.return_value = AccessibleDataset("dataset-1", "tenant-1")
+    document_repository = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
     documents = DatasetDocumentApplicationService(
         dataset_access=access,
-        operations=SQLAlchemyDocumentOperations(session_factory=sqlite_session_factory),
-        metadata_schema={},
+        operations=SQLAlchemyDocumentOperations(
+            session_factory=sqlite_session_factory,
+            documents=document_repository,
+            files=build_file_service(session_factory=sqlite_session_factory),
+        ),
+        datasets=create_autospec(DocumentDatasetRepository, instance=True, spec_set=True),
+        documents=document_repository,
+        uploads=create_autospec(DocumentUploads, instance=True, spec_set=True),
+        indexing_locks=create_autospec(KnowledgeIndexingLock, instance=True, spec_set=True),
+        lifecycle_cache=create_autospec(DocumentLifecycleCache, instance=True, spec_set=True),
+        model_configuration=create_autospec(DocumentModelConfigurationGateway, instance=True, spec_set=True),
+        creation=create_autospec(DocumentCreationGateway, instance=True, spec_set=True),
+        source_authorization=create_autospec(DocumentSourceAuthorization, instance=True, spec_set=True),
+        creator_access=create_autospec(DatasetCreatorAccess, instance=True, spec_set=True),
+        tasks=create_autospec(DocumentTaskDispatcher, instance=True, spec_set=True),
+        presenter=DocumentResponsePresentationAdapter(),
     )
     monkeypatch.setattr(
         controller, "application_services", lambda: SimpleNamespace(knowledge=SimpleNamespace(documents=documents))
@@ -80,7 +108,7 @@ def downloads(monkeypatch, sqlite_session_factory):
 
 
 def test_document_download_returns_signed_url(app, monkeypatch):
-    from services.knowledge import dataset_service
+    from services.knowledge.documents import adapters
 
     signed = []
 
@@ -88,7 +116,7 @@ def test_document_download_returns_signed_url(app, monkeypatch):
         signed.append(kwargs)
         return "https://files.example/download"
 
-    monkeypatch.setattr(dataset_service.file_helpers, "get_signed_file_url", sign)
+    monkeypatch.setattr(adapters.file_helpers, "get_signed_file_url", sign)
     with app.test_request_context("/"):
         result = unwrap(controller.DocumentDownloadApi.get)(
             controller.DocumentDownloadApi(), CONTEXT, "dataset-1", DOC_ID
@@ -124,7 +152,7 @@ def test_cross_tenant_upload_file_is_not_signed(app, sqlite_session_factory):
 
 
 def test_zip_is_readable_and_cleanup_waits_for_response_close(app, monkeypatch, sqlite_engine):
-    from services import file_service
+    from services import file_adapters
 
     paths = []
     checked_out = set()
@@ -135,17 +163,16 @@ def test_zip_is_readable_and_cleanup_waits_for_response_close(app, monkeypatch, 
     def checkin(_connection, record):
         checked_out.discard(record)
 
-    def load(key, *, stream):
+    def load_stream(key):
         assert not checked_out, "storage I/O must run after the read transaction closes"
         assert key == "key-1"
-        assert stream is True
         return iter([b"hello"])
 
     def send(path, **kwargs):
         paths.append(Path(path))
         return send_file(path, **kwargs)
 
-    monkeypatch.setattr(file_service.storage, "load", load)
+    monkeypatch.setattr(file_adapters.storage, "load_stream", load_stream)
     monkeypatch.setattr(controller, "send_file", send)
     event.listen(sqlite_engine, "checkout", checkout)
     event.listen(sqlite_engine, "checkin", checkin)
@@ -166,10 +193,10 @@ def test_zip_is_readable_and_cleanup_waits_for_response_close(app, monkeypatch, 
 
 
 def test_zip_cleanup_when_response_creation_fails(app, monkeypatch):
-    from services import file_service
+    from services import file_adapters
 
     paths = []
-    monkeypatch.setattr(file_service.storage, "load", lambda *_args, **_kwargs: iter([b"hello"]))
+    monkeypatch.setattr(file_adapters.storage, "load_stream", lambda _key: iter([b"hello"]))
 
     def fail_send(path, **_kwargs):
         paths.append(Path(path))

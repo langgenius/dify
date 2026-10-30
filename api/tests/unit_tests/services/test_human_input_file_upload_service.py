@@ -3,21 +3,23 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import timedelta
 from types import SimpleNamespace
-from typing import cast
+from typing import cast, override
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 import services.human_input_file_upload_service as service_module
 from core.workflow.human_input_adapter import DeliveryMethodType
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin
-from models.enums import CreatorUserRole, EndUserType
+from models.enums import EndUserType
 from models.human_input import (
     HumanInputDelivery,
     HumanInputForm,
@@ -27,7 +29,10 @@ from models.human_input import (
     RecipientType,
 )
 from models.model import App, AppMode, EndUser, UploadFile
-from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.workflow.human_input.file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
+from services.entities.upload_file import FileUploadActor, UploadFileRecord
+from services.file_service import FileService
 from services.human_input_file_upload_service import (
     HITL_UPLOAD_TOKEN_PREFIX,
     HumanInputFileUploadRepository,
@@ -37,7 +42,7 @@ from services.human_input_file_upload_service import (
     InvalidUploadTokenError,
 )
 from services.human_input_service import FormNotFoundError, FormSubmittedError
-from services.remote_file_service import RemoteFileUploadResult
+from services.remote_file_service import RemoteFileService, RemoteFileUploadResult
 
 
 def _active_form(
@@ -62,6 +67,104 @@ def _active_form(
 
 
 type UploadRepositoryFactory = Callable[[HumanInputUploadFormRecord | None], SQLAlchemyHumanInputFileUploadRepository]
+
+
+class _RecordingFiles(FileService):
+    def __init__(self, upload: UploadFileRecord) -> None:
+        self.upload = upload
+        self.deleted: list[tuple[str, str]] = []
+
+    @override
+    def upload_file(
+        self,
+        *,
+        actor: FileUploadActor,
+        tenant_id: str,
+        filename: str,
+        content: bytes,
+        mimetype: str,
+        allowed_extensions: frozenset[str] | None = None,
+        source_url: str = "",
+        default_file_size_limit: int | None = None,
+    ) -> UploadFileRecord:
+        del actor, tenant_id, filename, content, mimetype, allowed_extensions, source_url, default_file_size_limit
+        return self.upload
+
+    @override
+    def delete_file(self, *, tenant_id: str, file_id: str) -> None:
+        self.deleted.append((tenant_id, file_id))
+
+
+class _RecordingRemoteFiles(RemoteFileService):
+    def __init__(self, upload: RemoteFileUploadResult) -> None:
+        self.upload = upload
+
+    @override
+    def upload_from_url(
+        self,
+        *,
+        url: str,
+        actor: FileUploadActor,
+        tenant_id: str,
+    ) -> RemoteFileUploadResult:
+        del url, actor, tenant_id
+        return self.upload
+
+
+class _CommitUnknownUploads:
+    def get_form_by_recipient_token(self, form_token: str) -> HumanInputUploadFormRecord | None:
+        raise AssertionError(f"unexpected form token lookup: {form_token}")
+
+    def create_upload_token(self, *, form: HumanInputUploadFormRecord, upload_token: str) -> None:
+        raise AssertionError(f"unexpected upload token creation: {form.form_id}, {upload_token}")
+
+    def get_upload_grant(self, upload_token: str) -> None:
+        raise AssertionError(f"unexpected upload grant lookup: {upload_token}")
+
+    def get_upload_owner(
+        self,
+        *,
+        owner_id: str,
+        owner_role: CreatorUserRole,
+        tenant_id: str,
+        app_id: str,
+    ) -> None:
+        raise AssertionError(f"unexpected upload owner lookup: {owner_id}, {owner_role}, {tenant_id}, {app_id}")
+
+    def get_delivery_test_upload_owner(self, *, tenant_id: str, app_id: str) -> None:
+        raise AssertionError(f"unexpected delivery owner lookup: {tenant_id}, {app_id}")
+
+    def add_file(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        form_id: str,
+        recipient_id: str,
+        upload_token_id: str,
+        file_id: str,
+        validate_form: Callable[[HumanInputUploadFormRecord], None],
+    ) -> None:
+        del tenant_id, app_id, form_id, recipient_id, upload_token_id, file_id, validate_form
+        raise SQLAlchemyError("commit outcome unknown")
+
+
+def _upload_record(file_id: str = "file-1") -> UploadFileRecord:
+    return UploadFileRecord(
+        id=file_id,
+        tenant_id="tenant-1",
+        storage_type=StorageType.LOCAL,
+        key="sample.txt",
+        name="sample.txt",
+        size=7,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="owner-1",
+        created_at=naive_utc_now(),
+        hash=None,
+        source_url="",
+    )
 
 
 @pytest.fixture
@@ -159,6 +262,14 @@ def _assert_file_link(session_factory: sessionmaker[Session]) -> None:
         )
 
 
+def _persist_upload(
+    session_factory: sessionmaker[Session],
+    upload_file: UploadFile,
+) -> None:
+    with session_factory.begin() as session:
+        session.add(upload_file)
+
+
 def _upload_context() -> HumanInputUploadContext:
     return HumanInputUploadContext(
         tenant_id="tenant-1",
@@ -173,9 +284,9 @@ def _upload_context() -> HumanInputUploadContext:
 def _create_service(
     *,
     uploads: HumanInputFileUploadRepository,
-    workflow_runs: MagicMock | None = None,
-    files: MagicMock | None = None,
-    remote_files: MagicMock | None = None,
+    workflow_runs: APIWorkflowRunRepository | None = None,
+    files: FileService | None = None,
+    remote_files: RemoteFileService | None = None,
 ) -> HumanInputFileUploadService:
     return HumanInputFileUploadService(
         uploads=uploads,
@@ -183,6 +294,23 @@ def _create_service(
         files=files if files is not None else MagicMock(),
         remote_files=remote_files if remote_files is not None else MagicMock(),
     )
+
+
+def _upload_created_file(
+    service: HumanInputFileUploadService,
+    *,
+    context: HumanInputUploadContext,
+    remote: bool,
+) -> None:
+    if remote:
+        service.upload_remote_file(context=context, url="https://example.com/sample.txt")
+    else:
+        service.upload_local_file(
+            context=context,
+            filename="sample.txt",
+            content=b"content",
+            mimetype="text/plain",
+        )
 
 
 def test_issue_upload_token_persists_repository_record(
@@ -304,9 +432,11 @@ def test_upload_local_file_records_the_form_file_link(
     )
     upload_file.id = "file-1"
     files.upload_file.return_value = upload_file
+    _persist_upload(sqlite_session_factory, upload_file)
     context = _upload_context()
 
-    result = _create_service(uploads=uploads, files=files).upload_local_file(
+    service = _create_service(uploads=uploads, files=files)
+    result = service.upload_local_file(
         context=context,
         filename="sample.txt",
         content=b"content",
@@ -318,15 +448,8 @@ def test_upload_local_file_records_the_form_file_link(
         filename="sample.txt",
         content=b"content",
         mimetype="text/plain",
-        user=context.owner,
-        source=None,
-    )
-    cast(MagicMock, uploads.add_file).assert_called_once_with(
+        actor=FileUploadActor(id=context.owner.id, creator_role=CreatorUserRole.ACCOUNT),
         tenant_id="tenant-1",
-        app_id="app-1",
-        form_id="form-1",
-        upload_token_id="token-1",
-        file_id="file-1",
     )
     _assert_file_link(sqlite_session_factory)
 
@@ -347,9 +470,25 @@ def test_upload_remote_file_records_the_form_file_link(
         created_at=naive_utc_now(),
     )
     remote_files.upload_from_url.return_value = upload_file
+    persisted_upload = UploadFile(
+        tenant_id="tenant-1",
+        storage_type=StorageType.LOCAL,
+        key="sample.txt",
+        name="sample.txt",
+        size=7,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="owner-1",
+        created_at=upload_file.created_at,
+        used=False,
+    )
+    persisted_upload.id = upload_file.id
+    _persist_upload(sqlite_session_factory, persisted_upload)
     context = _upload_context()
 
-    result = _create_service(uploads=uploads, remote_files=remote_files).upload_remote_file(
+    service = _create_service(uploads=uploads, remote_files=remote_files)
+    result = service.upload_remote_file(
         context=context,
         url="https://example.com/sample.txt",
     )
@@ -357,13 +496,65 @@ def test_upload_remote_file_records_the_form_file_link(
     assert result is upload_file
     remote_files.upload_from_url.assert_called_once_with(
         url="https://example.com/sample.txt",
-        user=context.owner,
-    )
-    cast(MagicMock, uploads.add_file).assert_called_once_with(
+        actor=FileUploadActor(id=context.owner.id, creator_role=CreatorUserRole.ACCOUNT),
         tenant_id="tenant-1",
-        app_id="app-1",
-        form_id="form-1",
-        upload_token_id="token-1",
-        file_id="file-1",
     )
     _assert_file_link(sqlite_session_factory)
+
+
+@pytest.mark.parametrize("remote", [False, True], ids=["local", "remote"])
+def test_upload_reclaims_file_when_final_owner_check_definitively_rejects(
+    upload_repository: UploadRepositoryFactory,
+    sqlite_session_factory: sessionmaker[Session],
+    remote: bool,
+) -> None:
+    uploads = upload_repository(_active_form())
+    files = _RecordingFiles(_upload_record())
+    remote_files = _RecordingRemoteFiles(
+        RemoteFileUploadResult(
+            id="file-1",
+            name="sample.txt",
+            size=7,
+            extension="txt",
+            url="https://example.com/sample.txt",
+            mime_type="text/plain",
+            created_by="owner-1",
+            created_at=naive_utc_now(),
+        )
+    )
+    context = _upload_context()
+
+    with sqlite_session_factory.begin() as session:
+        token = session.get_one(HumanInputFormUploadToken, "token-1")
+        session.delete(token)
+
+    service = _create_service(uploads=uploads, files=files, remote_files=remote_files)
+    with pytest.raises(InvalidUploadTokenError):
+        _upload_created_file(service, context=context, remote=remote)
+
+    assert files.deleted == [("tenant-1", "file-1")]
+
+
+@pytest.mark.parametrize("remote", [False, True], ids=["local", "remote"])
+def test_upload_does_not_reclaim_after_unknown_database_failure(remote: bool) -> None:
+    uploads = _CommitUnknownUploads()
+    files = _RecordingFiles(_upload_record())
+    remote_files = _RecordingRemoteFiles(
+        RemoteFileUploadResult(
+            id="file-1",
+            name="sample.txt",
+            size=7,
+            extension="txt",
+            url="https://example.com/sample.txt",
+            mime_type="text/plain",
+            created_by="owner-1",
+            created_at=naive_utc_now(),
+        )
+    )
+    context = _upload_context()
+
+    service = _create_service(uploads=uploads, files=files, remote_files=remote_files)
+    with pytest.raises(SQLAlchemyError, match="commit outcome unknown"):
+        _upload_created_file(service, context=context, remote=remote)
+
+    assert files.deleted == []

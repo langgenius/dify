@@ -23,9 +23,10 @@ from core.moderation.base import ModerationAction, ModerationInputsResult
 from core.ops.exceptions import TraceProviderNotInstalledError
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager, TraceTask, TraceTaskName
 from core.rag.models.document import Document as RetrievalDocument
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FileTransferMethod, FileType
-from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
+from models.enums import ConversationFromSource, MessageStatus, WorkflowRunTriggeredFrom
 from models.model import (
     App,
     AppMode,

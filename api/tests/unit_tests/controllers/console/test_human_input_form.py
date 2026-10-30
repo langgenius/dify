@@ -19,7 +19,7 @@ from controllers.console import human_input_form as human_input_form_module
 from controllers.console.human_input_form import (
     ConsoleHumanInputFormApi,
     ConsoleWorkflowEventsApi,
-    DifyAPIRepositoryFactory,
+    WorkflowRepositoryFactory,
     WorkflowResponseConverter,
     _jsonify_form_definition,
 )
@@ -27,9 +27,10 @@ from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.human_input_policy import HumanInputSurface
 from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
 from core.workflow.nodes.human_input.enums import ValueSourceType
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import Account
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import RecipientType
 from models.model import App, AppMode
 from models.workflow import WorkflowRun
@@ -295,7 +296,7 @@ def test_workflow_events_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) 
             return None
 
     monkeypatch.setattr(
-        DifyAPIRepositoryFactory,
+        WorkflowRepositoryFactory,
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )
@@ -316,7 +317,7 @@ def test_workflow_events_requires_account(app: Flask, monkeypatch: pytest.Monkey
             return workflow_run
 
     monkeypatch.setattr(
-        DifyAPIRepositoryFactory,
+        WorkflowRepositoryFactory,
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )
@@ -337,7 +338,7 @@ def test_workflow_events_requires_creator(app: Flask, monkeypatch: pytest.Monkey
             return workflow_run
 
     monkeypatch.setattr(
-        DifyAPIRepositoryFactory,
+        WorkflowRepositoryFactory,
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )
@@ -364,7 +365,7 @@ def test_workflow_events_finished(app: Flask, monkeypatch: pytest.MonkeyPatch) -
     )
 
     monkeypatch.setattr(
-        DifyAPIRepositoryFactory,
+        WorkflowRepositoryFactory,
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )
@@ -439,7 +440,7 @@ def test_workflow_events_snapshot_can_continue_across_pauses(
         return snapshot_events()
 
     monkeypatch.setattr(
-        DifyAPIRepositoryFactory,
+        WorkflowRepositoryFactory,
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )

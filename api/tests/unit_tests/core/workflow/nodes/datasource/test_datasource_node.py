@@ -1,6 +1,8 @@
+import pytest
 from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
+from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.datasource.datasource_node import DatasourceNode
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from graphon.enums import WorkflowNodeExecutionStatus
@@ -98,3 +100,65 @@ def test_datasource_node_delegates_to_manager_stream(mocker: MockerFixture):
     evts = list(node._run())
     assert isinstance(evts[0], StreamChunkEvent)
     assert isinstance(evts[-1], StreamCompletedEvent)
+
+
+@pytest.mark.parametrize(
+    ("datasource_info", "expected_file_id"),
+    [
+        ({"name": "file", "real_file_id": "real-file"}, "real-file"),
+        (
+            {
+                "name": "file",
+                "real_file_id": "real-file",
+                "reference": build_file_reference(record_id="reference-file"),
+                "related_id": "related-file",
+            },
+            "real-file",
+        ),
+    ],
+)
+def test_local_file_uses_shared_persisted_reference_precedence(
+    mocker: MockerFixture,
+    datasource_info: dict[str, str],
+    expected_file_id: str,
+) -> None:
+    sys_vars = {
+        "sys": {
+            "datasource_type": "local_file",
+            "datasource_info": datasource_info,
+        }
+    }
+    fetched: list[tuple[str, str]] = []
+
+    class _Mgr:
+        @classmethod
+        def get_icon_url(cls, **_: object) -> str:
+            return "icon"
+
+        @classmethod
+        def get_upload_file_by_id(cls, *, file_id: str, tenant_id: str) -> dict[str, str]:
+            fetched.append((file_id, tenant_id))
+            return {"id": file_id}
+
+    mocker.patch("core.workflow.nodes.datasource.datasource_node.DatasourceManager", new=_Mgr)
+    node = DatasourceNode(
+        node_id="n",
+        data=DatasourceNodeData(
+            type="datasource",
+            version="1",
+            title="Datasource",
+            provider_type="plugin",
+            provider_name="p",
+            plugin_id="plug",
+            datasource_name="ds",
+        ),
+        init_params=_GraphParams(),
+        runtime_state=_GraphState(_VarPool(sys_vars)),
+        datasource_credentials=lambda _tenant, _provider, _plugin, _credential: {},
+    )
+
+    events = list(node._run())
+
+    assert fetched == [(expected_file_id, "t1")]
+    assert len(events) == 1
+    assert isinstance(events[0], StreamCompletedEvent)

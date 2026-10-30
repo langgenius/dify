@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from inspect import unwrap
 from typing import TYPE_CHECKING, cast
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from flask import Flask
@@ -38,19 +39,19 @@ from services.data_source.entities.oauth import DataSourceBindingSummary
 from services.data_source.notion_import_application_service import NotionImportApplicationService
 from services.knowledge.dataset_access import DatasetAccessRecord, DatasetAccessService, DatasetAccessSnapshot
 from services.knowledge.document_sync import DocumentSyncApplicationService, SyncDocumentRecord
+from services.knowledge.documents.application import DocumentTaskDispatcher
 from services.knowledge.entities.indexing_estimate import (
     NewSourcesEstimateCommand,
     NotionEstimateSource,
 )
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
+from services.knowledge.indexing.contracts import DatasetEstimateRecord, EstimateDocumentRecord
 from services.knowledge.indexing.estimate import (
-    DatasetEstimateRecord,
-    EstimateDocumentRecord,
     EstimateSourceNotFoundError,
     IndexingEstimateCredentialUnavailableError,
     IndexingEstimateExecutionError,
     IndexingEstimateProviderUnavailableError,
 )
-from services.knowledge.resource_scope import DatasetRef, DocumentRef
 from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 if TYPE_CHECKING:
@@ -126,6 +127,7 @@ class OwnerWorkspaceRoles:
 class KnowledgeDocuments:
     bound_page_ids: frozenset[str] = frozenset()
     active_refs: tuple[DocumentRef, ...] = ()
+    sync_calls: list[DocumentRef] = field(default_factory=list)
 
     def list_bound_notion_page_ids(self, dataset_ref: DatasetRef) -> frozenset[str]:
         assert dataset_ref == DatasetRef(TENANT_ID, DATASET_ID)
@@ -162,6 +164,9 @@ class KnowledgeDocuments:
         if document_ref.document_id != DOCUMENT_ID:
             return None
         return SyncDocumentRecord(id=DOCUMENT_ID, data_source_type="notion_import")
+
+    def sync_notion(self, ref: DocumentRef) -> None:
+        self.sync_calls.append(ref)
 
 
 @dataclass
@@ -205,14 +210,6 @@ class RecordingEstimateService:
         return IndexingEstimate(total_segments=3, preview=[])
 
 
-@dataclass
-class RecordingDispatcher:
-    calls: list[tuple[str, str]] = field(default_factory=list)
-
-    def dispatch(self, *, dataset_id: str, document_id: str) -> None:
-        self.calls.append((dataset_id, document_id))
-
-
 @dataclass(frozen=True)
 class DataSourceApplicationServices:
     bindings: DataSourceBindingApplicationService
@@ -238,7 +235,8 @@ class ControllerCollaborators:
     bindings: RecordingBindingStore
     notion_source: RecordingNotionSource
     estimates: RecordingEstimateService
-    dispatcher: RecordingDispatcher
+    documents: KnowledgeDocuments
+    tasks: Mock
 
 
 @dataclass
@@ -316,7 +314,7 @@ def collaborators(
         )
     )
     estimates = RecordingEstimateService()
-    dispatcher = RecordingDispatcher()
+    tasks = create_autospec(DocumentTaskDispatcher, instance=True, spec_set=True)
     app.extensions["application_services"] = ApplicationServiceRegistry(
         data_sources=DataSourceApplicationServices(
             bindings=DataSourceBindingApplicationService(bindings=bindings),
@@ -331,7 +329,7 @@ def collaborators(
             document_sync=DocumentSyncApplicationService(
                 dataset_access=dataset_access,
                 documents=documents,
-                dispatcher=dispatcher,
+                tasks=tasks,
             ),
             indexing_estimates=estimates,
         ),
@@ -342,7 +340,8 @@ def collaborators(
         bindings=bindings,
         notion_source=notion_source,
         estimates=estimates,
-        dispatcher=dispatcher,
+        documents=documents,
+        tasks=tasks,
     )
 
 
@@ -576,7 +575,12 @@ def test_sync_routes_dispatch_only_application_selected_documents(collaborators:
     assert dataset_response.get_json() == {"result": "success"}
     assert document_response.status_code == 200
     assert document_response.get_json() == {"result": "success"}
-    assert collaborators.dispatcher.calls == [(DATASET_ID, DOCUMENT_ID), (DATASET_ID, DOCUMENT_ID)]
+    assert collaborators.documents.sync_calls == [
+        DatasetRef(TENANT_ID, DATASET_ID).document(DOCUMENT_ID),
+        DatasetRef(TENANT_ID, DATASET_ID).document(DOCUMENT_ID),
+    ]
+    dispatched_refs = [call.args[0] for call in collaborators.tasks.sync_notion.call_args_list]
+    assert dispatched_refs == collaborators.documents.sync_calls
 
 
 def test_sync_route_does_not_dispatch_cross_workspace_dataset(collaborators: ControllerCollaborators) -> None:
@@ -584,7 +588,8 @@ def test_sync_route_does_not_dispatch_cross_workspace_dataset(collaborators: Con
 
     assert response.status_code == 404
     assert response.get_json()["code"] == "not_found"
-    assert collaborators.dispatcher.calls == []
+    assert collaborators.documents.sync_calls == []
+    collaborators.tasks.sync_notion.assert_not_called()
 
 
 @pytest.mark.parametrize(

@@ -4,12 +4,14 @@ import os
 import sys
 import types
 from collections import UserDict
+from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Protocol, cast, override
 from unittest.mock import MagicMock, patch
 
 import pytest
+from qdrant_client.http.models import HasIdCondition, Record
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
@@ -24,6 +26,13 @@ class ScrollMock(Protocol):
     call_count: int
 
     def assert_not_called(self) -> None: ...
+
+
+@dataclass(frozen=True, slots=True)
+class _ScoredPoint:
+    payload: dict[str, object]
+    score: float
+    vector: list[float]
 
 
 def _build_fake_qdrant_modules():
@@ -120,6 +129,7 @@ def _build_fake_qdrant_modules():
     qdrant_http_models.MatchValue = MatchValue
     qdrant_http_models.MatchAny = MatchAny
     qdrant_http_models.MatchText = MatchText
+    qdrant_http_models.HasIdCondition = HasIdCondition
     qdrant_http_exceptions.UnexpectedResponse = UnexpectedResponseError
 
     qdrant_http.models = qdrant_http_models
@@ -254,7 +264,9 @@ def test_delete_and_exists_paths(qdrant_module):
     vector._client.get_collections.return_value = SimpleNamespace(collections=[SimpleNamespace(name="other")])
     assert vector.text_exists("id-1") is False
     vector._client.get_collections.return_value = SimpleNamespace(collections=[SimpleNamespace(name="collection_1")])
-    vector._client.retrieve.return_value = [{"id": "id-1"}]
+    vector._client.retrieve.return_value = [
+        Record(id="123e4567-e89b-12d3-a456-426614174000", payload={"group_id": "group-1"})
+    ]
     assert vector.text_exists("id-1") is True
 
 
@@ -302,6 +314,46 @@ def test_search_and_helper_methods(qdrant_module):
         "metadata",
     )
     assert doc.page_content == "doc"
+
+
+def test_qdrant_legacy_attachment_requires_the_unfiltered_compatibility_pool(qdrant_module) -> None:
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+    legacy_point = _ScoredPoint(
+        payload={
+            "page_content": "shared attachment",
+            "metadata": {
+                "document_id": "deleted-owner-a",
+                "doc_id": "shared-file-f",
+                "doc_type": "image",
+            },
+        },
+        score=0.9,
+        vector=[0.1],
+    )
+
+    def apply_qdrant_filter(*, query_filter, **_kwargs):
+        legacy_metadata = cast(dict[str, object], legacy_point.payload["metadata"])
+        document_filter = next(
+            (condition.match.any for condition in query_filter.must if condition.key == "metadata.document_id"),
+            None,
+        )
+        if document_filter is not None and legacy_metadata["document_id"] not in document_filter:
+            return []
+        return [legacy_point]
+
+    vector._client.search.side_effect = apply_qdrant_filter
+
+    assert (
+        vector.search_by_vector(
+            [0.1],
+            top_k=2,
+            score_threshold=0.0,
+            document_ids_filter=["document-b", "shared-file-f"],
+        )
+        == []
+    )
+    fallback = vector.search_by_vector([0.1], top_k=2, score_threshold=0.0)
+    assert [document.metadata["doc_id"] for document in fallback] == ["shared-file-f"]
 
 
 def test_qdrant_full_text_search_does_not_starve_later_keywords(qdrant_module: types.ModuleType) -> None:

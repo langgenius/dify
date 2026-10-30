@@ -15,7 +15,7 @@ import httpx
 import pytest
 
 from core.plugin.impl.endpoint import PluginEndpointClient
-from core.plugin.impl.exc import PluginDaemonInternalServerError
+from core.plugin.impl.exc import PluginDaemonInternalServerError, PluginDaemonUnauthorizedError
 
 
 @pytest.fixture(autouse=True)
@@ -293,13 +293,10 @@ class TestPluginEndpointClientDelete:
         with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
             with pytest.raises(
-                Exception, match="req_id:  PluginDaemonUnauthorizedError: unauthorized access"
-            ) as exc_info:
+                PluginDaemonUnauthorizedError, match="PluginDaemonUnauthorizedError: unauthorized access"
+            ):
                 endpoint_client.delete_endpoint(
                     tenant_id=tenant_id,
                     user_id=user_id,
                     endpoint_id=endpoint_id,
                 )
-
-            # Assert - should not return True for unauthorized errors
-            assert exc_info.value.__class__.__name__ == "PluginDaemonUnauthorizedError"

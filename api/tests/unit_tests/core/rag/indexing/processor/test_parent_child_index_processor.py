@@ -18,6 +18,28 @@ from models.enums import DataSourceType
 from tests.unit_tests.config_override import config_overrides_context
 
 
+def _ignore_created_file(file_id: str) -> None:
+    del file_id
+
+
+class _StaticSplitter:
+    def __init__(self, documents: list[Document]) -> None:
+        self._documents = documents
+
+    def split_documents(self, documents: list[Document]) -> list[Document]:
+        del documents
+        return self._documents
+
+
+class _RecordingFuture:
+    def __init__(self) -> None:
+        self.cancel_count = 0
+
+    def cancel(self) -> bool:
+        self.cancel_count += 1
+        return True
+
+
 class TestParentChildIndexProcessor:
     session: Session
     session_factory: sessionmaker[Session]
@@ -77,28 +99,25 @@ class TestParentChildIndexProcessor:
             parent_mode=ParentMode.FULL_DOC, segmentation=None, subchunk_segmentation=self._segmentation()
         )
 
-    def test_extract_forwards_automatic_flag(self, processor: ParentChildIndexProcessor) -> None:
-        extract_setting = Mock()
-        session = self.session
-        expected = [Document(page_content="chunk", metadata={})]
-
-        with patch(
-            "core.rag.index_processor.processor.parent_child_index_processor.ExtractProcessor.extract"
-        ) as mock_extract:
-            mock_extract.return_value = expected
-            documents = processor.extract(extract_setting, process_rule_mode="hierarchical", session=session)
-
-        assert documents == expected
-        mock_extract.assert_called_once_with(extract_setting=extract_setting, is_automatic=True, session=session)
-
     def test_transform_validates_process_rule(self, processor: ParentChildIndexProcessor) -> None:
         session = self.session
+        on_file_created = Mock()
         with pytest.raises(ValueError, match="No process rule found"):
-            processor.transform([Document(page_content="text", metadata={})], process_rule=None, session=session)
+            processor.transform(
+                [Document(page_content="text", metadata={})],
+                process_rule={},
+                tenant_id="tenant-1",
+                on_upload_file_created=on_file_created,
+                session=session,
+            )
 
         with pytest.raises(ValueError, match="No rules found in process rule"):
             processor.transform(
-                [Document(page_content="text", metadata={})], process_rule={"mode": "custom"}, session=session
+                [Document(page_content="text", metadata={})],
+                process_rule={"mode": "custom"},
+                tenant_id="tenant-1",
+                on_upload_file_created=on_file_created,
+                session=session,
             )
 
     def test_transform_paragraph_requires_segmentation(self, processor: ParentChildIndexProcessor) -> None:
@@ -111,6 +130,8 @@ class TestParentChildIndexProcessor:
                 processor.transform(
                     [Document(page_content="text", metadata={})],
                     process_rule={"mode": "custom", "rules": {"enabled": True}},
+                    tenant_id="tenant-1",
+                    on_upload_file_created=Mock(),
                     session=self.session,
                 )
 
@@ -122,6 +143,7 @@ class TestParentChildIndexProcessor:
         ]
         parent_document = Document(page_content="source", metadata={"dataset_id": "dataset-1", "document_id": "doc-1"})
         child_docs = [ChildDocument(page_content="child-1", metadata={"dataset_id": "dataset-1"})]
+        on_file_created = Mock()
 
         with (
             patch(
@@ -139,7 +161,7 @@ class TestParentChildIndexProcessor:
             ),
             patch.object(
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="image", metadata={})]
-            ),
+            ) as get_content_files,
             patch.object(processor, "split_child_nodes", return_value=child_docs),
         ):
             result = processor.transform(
@@ -148,12 +170,14 @@ class TestParentChildIndexProcessor:
                 preview=False,
                 tenant_id="tenant-1",
                 session=self.session,
+                on_upload_file_created=on_file_created,
             )
 
         assert len(result) == 1
         assert result[0].page_content == "parent"
         assert result[0].children == child_docs
         assert result[0].attachments is not None
+        assert get_content_files.call_args.kwargs["on_upload_file_created"] is on_file_created
 
     def test_transform_preview_returns_after_ten_parent_chunks(self, processor: ParentChildIndexProcessor) -> None:
         splitter = Mock()
@@ -185,6 +209,7 @@ class TestParentChildIndexProcessor:
                 process_rule={"mode": "custom", "rules": {"enabled": True}},
                 preview=True,
                 tenant_id="tenant-1",
+                on_upload_file_created=_ignore_created_file,
                 session=self.session,
             )
 
@@ -196,6 +221,7 @@ class TestParentChildIndexProcessor:
             Document(page_content="second", metadata={"dataset_id": "dataset-1", "document_id": "doc-1"}),
         ]
         child_docs = [ChildDocument(page_content=f"child-{i}", metadata={}) for i in range(5)]
+        on_file_created = _ignore_created_file
 
         with (
             patch(
@@ -204,7 +230,7 @@ class TestParentChildIndexProcessor:
             ),
             patch.object(
                 processor, "_get_content_files", return_value=[AttachmentDocument(page_content="image", metadata={})]
-            ),
+            ) as get_content_files,
             patch.object(processor, "split_child_nodes", return_value=child_docs),
             patch(
                 "core.rag.index_processor.processor.parent_child_index_processor.helper.generate_text_hash",
@@ -218,11 +244,13 @@ class TestParentChildIndexProcessor:
                 preview=True,
                 tenant_id="tenant-1",
                 session=self.session,
+                on_upload_file_created=on_file_created,
             )
 
         assert len(result) == 1
         assert len(result[0].children or []) == 2
         assert result[0].attachments is not None
+        assert get_content_files.call_args.kwargs["on_upload_file_created"] is on_file_created
 
     def test_load_creates_vectors_for_child_docs(self, processor: ParentChildIndexProcessor, dataset: Dataset) -> None:
         parent_doc = Document(
@@ -370,11 +398,12 @@ class TestParentChildIndexProcessor:
 
     def test_split_child_nodes_generates_child_documents(self, processor: ParentChildIndexProcessor) -> None:
         rules = Rule(subchunk_segmentation=Segmentation(max_tokens=200, chunk_overlap=10, separator="\n"))
-        splitter = Mock()
-        splitter.split_documents.return_value = [
-            Document(page_content=".child-1", metadata={}),
-            Document(page_content=" ", metadata={}),
-        ]
+        splitter = _StaticSplitter(
+            [
+                Document(page_content=".child-1", metadata={}),
+                Document(page_content=" ", metadata={}),
+            ]
+        )
 
         with (
             patch.object(processor, "_get_splitter", return_value=splitter),
@@ -582,7 +611,7 @@ class TestParentChildIndexProcessor:
         self, processor: ParentChildIndexProcessor, fake_executor_cls: type
     ) -> None:
         preview_texts = [PreviewDetail(content="chunk-1")]
-        future = Mock()
+        future = _RecordingFuture()
         executor = fake_executor_cls(future)
 
         with (
@@ -592,4 +621,4 @@ class TestParentChildIndexProcessor:
             with pytest.raises(ValueError, match="timeout"):
                 processor.generate_summary_preview("tenant-1", preview_texts, {"enable": True}, session=self.session)
 
-        future.cancel.assert_called_once()
+        assert future.cancel_count == 1

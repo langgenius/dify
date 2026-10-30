@@ -9,9 +9,9 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
-from core.repositories.factory import OrderConfig
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
@@ -22,12 +22,31 @@ from graphon.variables.segments import ArrayFileSegment, ArrayObjectSegment, Str
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser, Tenant, WorkflowNodeExecutionModel
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from services.file_adapters import build_file_service
 from tasks.workflow_node_execution_tasks import (
     save_workflow_node_execution_task,
     save_workflow_node_executions_task,
 )
 
 RESOURCE_TENANT_ID = "resource-tenant-id"
+
+
+def _repository(
+    *,
+    session_factory: sessionmaker[Session],
+    tenant_id: str,
+    user: Account | EndUser,
+    app_id: str | None,
+    triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
+) -> CeleryWorkflowNodeExecutionRepository:
+    return CeleryWorkflowNodeExecutionRepository(
+        session_factory=session_factory,
+        tenant_id=tenant_id,
+        user=user,
+        app_id=app_id,
+        triggered_from=triggered_from,
+        files=build_file_service(session_factory=session_factory),
+    )
 
 
 @pytest.fixture
@@ -75,7 +94,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
     def test_async_save_preserves_typed_cache_and_plain_history(
         self, writer, sqlite_session_factory, account, sample_workflow_node_execution
     ):
-        repo = CeleryWorkflowNodeExecutionRepository(
+        repo = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=account,
@@ -126,7 +145,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         assert isinstance(cached.outputs["json"], ArrayObjectSegment)
         assert cached.outputs["literal_object"] == literal_object
 
-        history_repo = CeleryWorkflowNodeExecutionRepository(
+        history_repo = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=account,
@@ -141,7 +160,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
     def test_trace_read_keeps_source_nodes_out_of_runtime_cache(
         self, sqlite_session_factory, end_user, sample_workflow_node_execution
     ):
-        caller = CeleryWorkflowNodeExecutionRepository(
+        caller = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=end_user,
@@ -167,7 +186,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
     def test_workflow_tool_scope_keeps_async_backend_and_isolates_same_app_history(
         self, mock_task, sqlite_session_factory, end_user, sample_workflow_node_execution
     ):
-        caller = CeleryWorkflowNodeExecutionRepository(
+        caller = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=end_user,
@@ -206,7 +225,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         app_id = "test-app-id"
         triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
 
-        repo = CeleryWorkflowNodeExecutionRepository(
+        repo = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=account,
@@ -222,7 +241,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
 
     def test_init_with_cache_initialized(self, sqlite_session_factory, account):
         """Test repository initialization with cache properly initialized."""
-        repo = CeleryWorkflowNodeExecutionRepository(
+        repo = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=account,
@@ -235,7 +254,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
 
     def test_init_with_end_user(self, sqlite_session_factory, end_user):
         """Test repository initialization with EndUser."""
-        repo = CeleryWorkflowNodeExecutionRepository(
+        repo = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=end_user,
@@ -252,7 +271,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         user.id = str(uuid4())
 
         with pytest.raises(ValueError, match="tenant_id is required"):
-            CeleryWorkflowNodeExecutionRepository(
+            _repository(
                 session_factory=sqlite_session_factory,
                 tenant_id="",
                 user=user,
@@ -264,7 +283,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         user = Account(name="Test Account", email="test@example.com")
         user.id = str(uuid4())
 
-        repo = CeleryWorkflowNodeExecutionRepository(
+        repo = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=user,
@@ -280,7 +299,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         self, mock_task, sqlite_session_factory, account, sample_workflow_node_execution
     ):
         """Test that save operation caches execution and queues a Celery task."""
-        repo = CeleryWorkflowNodeExecutionRepository(
+        repo = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=account,
@@ -314,7 +333,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
     def test_save_synchronously_uses_sql_repository_without_queueing(
         self, sqlite_session_factory, account, sample_workflow_node_execution
     ):
-        repo = CeleryWorkflowNodeExecutionRepository(
+        repo = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=account,
@@ -335,7 +354,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         """Test that save operation handles Celery task failures."""
         mock_task.delay.side_effect = Exception("Celery is down")
 
-        repo = CeleryWorkflowNodeExecutionRepository(
+        repo = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=account,
@@ -351,7 +370,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         self, mock_task, sqlite_session_factory, account, sample_workflow_node_execution
     ):
         """Test that get_by_workflow_execution retrieves executions from cache."""
-        repo = CeleryWorkflowNodeExecutionRepository(
+        repo = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=account,
@@ -363,18 +382,16 @@ class TestCeleryWorkflowNodeExecutionRepository:
         repo.save(sample_workflow_node_execution)
 
         workflow_execution_id = sample_workflow_node_execution.workflow_execution_id
-        order_config = OrderConfig(order_by=["index"], order_direction="asc")
-
-        result = repo.get_by_workflow_execution(workflow_execution_id, order_config)
+        result = repo.get_by_workflow_execution(workflow_execution_id)
 
         # Verify results were retrieved from cache
         assert len(result) == 1
         assert result[0].id == sample_workflow_node_execution.id
         assert result[0] is sample_workflow_node_execution
 
-    def test_get_by_workflow_execution_without_order_config(self, sqlite_session_factory, account):
-        """Test get_by_workflow_execution without order configuration."""
-        repo = CeleryWorkflowNodeExecutionRepository(
+    def test_get_by_workflow_execution_empty(self, sqlite_session_factory, account):
+        """Test get_by_workflow_execution when nothing has been stored."""
+        repo = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=account,
@@ -390,7 +407,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
     def test_get_by_workflow_execution_loads_persisted_executions_on_cache_miss(
         self, sqlite_session_factory, account, sample_workflow_node_execution
     ):
-        repo = CeleryWorkflowNodeExecutionRepository(
+        repo = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=account,
@@ -412,7 +429,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
     def test_get_by_workflow_execution_merges_database_and_newer_cache(
         self, mock_task, sqlite_session_factory, account, sample_workflow_node_execution
     ):
-        repo = CeleryWorkflowNodeExecutionRepository(
+        repo = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=account,
@@ -433,18 +450,18 @@ class TestCeleryWorkflowNodeExecutionRepository:
         repo._sql_repository = Mock()
         repo._sql_repository.get_by_workflow_execution.return_value = [persisted_current, historical]
 
-        result = repo.get_by_workflow_execution(
-            sample_workflow_node_execution.workflow_execution_id,
-            OrderConfig(order_by=["index"], order_direction="asc"),
-        )
+        result = repo.get_by_workflow_execution(sample_workflow_node_execution.workflow_execution_id)
 
-        assert [execution.id for execution in result] == [historical.id, sample_workflow_node_execution.id]
-        assert result[1] is sample_workflow_node_execution
+        assert {execution.id for execution in result} == {historical.id, sample_workflow_node_execution.id}
+        assert (
+            next(execution for execution in result if execution.id == sample_workflow_node_execution.id)
+            is sample_workflow_node_execution
+        )
 
     @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
     def test_cache_operations(self, mock_task, sqlite_session_factory, account, sample_workflow_node_execution):
         """Test cache operations work correctly."""
-        repo = CeleryWorkflowNodeExecutionRepository(
+        repo = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=account,
@@ -466,7 +483,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
     @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
     def test_multiple_executions_same_workflow(self, mock_task, sqlite_session_factory, account):
         """Test multiple executions for the same workflow."""
-        repo = CeleryWorkflowNodeExecutionRepository(
+        repo = _repository(
             session_factory=sqlite_session_factory,
             tenant_id=RESOURCE_TENANT_ID,
             user=account,
@@ -514,61 +531,3 @@ class TestCeleryWorkflowNodeExecutionRepository:
         # Test retrieval
         result = repo.get_by_workflow_execution(workflow_execution_id)
         assert len(result) == 2
-
-    @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
-    def test_ordering_functionality(self, mock_task, sqlite_session_factory, account):
-        """Test ordering functionality works correctly."""
-        repo = CeleryWorkflowNodeExecutionRepository(
-            session_factory=sqlite_session_factory,
-            tenant_id=account.current_tenant_id,
-            user=account,
-            app_id="test-app",
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-        )
-
-        # Create executions with different indices
-        workflow_execution_id = str(uuid4())
-        exec1 = WorkflowNodeExecution(
-            id=str(uuid4()),
-            node_execution_id=str(uuid4()),
-            workflow_id=str(uuid4()),
-            workflow_execution_id=workflow_execution_id,
-            index=2,
-            node_id="node2",
-            node_type=BuiltinNodeTypes.START,
-            title="Node 2",
-            inputs={},
-            status=WorkflowNodeExecutionStatus.RUNNING,
-            created_at=naive_utc_now(),
-        )
-        exec2 = WorkflowNodeExecution(
-            id=str(uuid4()),
-            node_execution_id=str(uuid4()),
-            workflow_id=str(uuid4()),
-            workflow_execution_id=workflow_execution_id,
-            index=1,
-            node_id="node1",
-            node_type=BuiltinNodeTypes.LLM,
-            title="Node 1",
-            inputs={},
-            status=WorkflowNodeExecutionStatus.RUNNING,
-            created_at=naive_utc_now(),
-        )
-
-        # Save in random order
-        repo.save(exec1)
-        repo.save(exec2)
-
-        # Test ascending order
-        order_config = OrderConfig(order_by=["index"], order_direction="asc")
-        result = repo.get_by_workflow_execution(workflow_execution_id, order_config)
-        assert len(result) == 2
-        assert result[0].index == 1
-        assert result[1].index == 2
-
-        # Test descending order
-        order_config = OrderConfig(order_by=["index"], order_direction="desc")
-        result = repo.get_by_workflow_execution(workflow_execution_id, order_config)
-        assert len(result) == 2
-        assert result[0].index == 2
-        assert result[1].index == 1

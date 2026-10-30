@@ -983,6 +983,22 @@ class TestCreatorDatasetAccess:
         assert mock_send.call_count == (1 if failure_stage == "sync" else 2)
         assert "Failed to sync creator access" in caplog.text
 
+    @pytest.mark.parametrize("failure_stage", ["sync", "append"])
+    def test_strict_remote_failures_propagate(
+        self,
+        mock_send: MagicMock,
+        config_overrides: Callable[..., None],
+        failure_stage: str,
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        error = RuntimeError("RBAC unavailable")
+        mock_send.side_effect = [error] if failure_stage == "sync" else [{"data": [self.binding()]}, error]
+
+        with pytest.raises(RuntimeError, match="RBAC unavailable"):
+            svc.sync_creator_access_policy_member_bindings("tenant-1", "creator-1", "dataset", "dataset-1")
+
+        assert mock_send.call_count == (1 if failure_stage == "sync" else 2)
+
     def test_only_matching_policies_are_appended_once(
         self, mock_send: MagicMock, config_overrides: Callable[..., None]
     ) -> None:

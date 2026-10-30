@@ -16,13 +16,15 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 from core.tools.tool_manager import ToolManager
+from enums.creator import CreatorUserRole
 from events.app_event import app_was_updated
+from extensions.storage.storage_type import StorageType
 from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.agent import Agent, AgentConfigSnapshot, AgentStatus
 from models.agent_config_entities import AgentSoulConfig
-from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp, Site
+from models.model import App, AppMode, AppModelConfig, IconType, InstalledApp, Site, UploadFile
 from models.provider import TenantDefaultModel
 from models.provider_ids import GenericProviderID
 from models.tools import ApiToolProvider
@@ -66,6 +68,24 @@ from services.model_provider.service import ModelProviderService
 
 CONTEXT = RequestContext("request", "trace", "actor", "workspace")
 RECORD = AppRecord(id="app", name="Example", mode_compatible_with_agent="chat")
+
+
+def _image_upload(*, file_id: str, tenant_id: str, created_by: str) -> UploadFile:
+    upload = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=f"upload_files/{tenant_id}/{file_id}.png",
+        name="icon.png",
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=created_by,
+        created_at=datetime(2026, 1, 1),
+        used=True,
+    )
+    upload.id = file_id
+    return upload
 
 
 @dataclass
@@ -910,18 +930,34 @@ def test_detail_tool_enrichment_releases_database_before_plugin_io(
 def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operation: str, commit_fails: bool) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     context = RequestContext("request", None, str(uuid4()), str(uuid4()))
+    old_icon_id = str(uuid4())
+    new_icon_id = str(uuid4())
     with factory.begin() as session:
         app = App(
             tenant_id=context.active_workspace_id,
             name="Before",
             mode=AppMode.COMPLETION,
             icon_type=IconType.IMAGE,
-            icon="old",
+            icon=old_icon_id,
             icon_background="#fff",
             enable_site=False,
             enable_api=False,
         )
-        session.add(app)
+        session.add_all(
+            [
+                app,
+                _image_upload(
+                    file_id=old_icon_id,
+                    tenant_id=context.active_workspace_id,
+                    created_by=context.account_id,
+                ),
+                _image_upload(
+                    file_id=new_icon_id,
+                    tenant_id=context.active_workspace_id,
+                    created_by=context.account_id,
+                ),
+            ]
+        )
     service = ConsoleAppService(
         apps=ConsoleAppRepository(session_factory=factory),
         access=Access(),
@@ -947,7 +983,7 @@ def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operatio
             assert persisted.updated_by == context.account_id
             assert (persisted.name, persisted.icon, persisted.enable_site) == (
                 "After" if operation == "rename" else "Before",
-                "new" if operation == "icon" else "old",
+                new_icon_id if operation == "icon" else old_icon_id,
                 operation == "site",
             )
             assert persisted.icon_type == "image"
@@ -960,7 +996,7 @@ def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operatio
         if operation == "rename":
             return service.rename(context, app.id, "After")
         if operation == "icon":
-            return service.update_icon(context, app.id, icon="new", icon_background="#000", icon_type=None)
+            return service.update_icon(context, app.id, icon=new_icon_id, icon_background="#000", icon_type=None)
         return service.set_site_enabled(context, app.id, True)
 
     app_was_updated.connect(after_update)
@@ -975,7 +1011,7 @@ def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operatio
             with factory() as read:
                 persisted = read.get(App, app.id)
                 assert persisted is not None
-                assert (persisted.name, persisted.icon, persisted.enable_site) == ("Before", "old", False)
+                assert (persisted.name, persisted.icon, persisted.enable_site) == ("Before", old_icon_id, False)
             assert signals == []
         else:
             result = update()

@@ -1,5 +1,6 @@
 import json
 from collections.abc import Generator
+from unittest.mock import create_autospec
 from uuid import uuid4
 
 import pytest
@@ -17,6 +18,7 @@ from services.errors.conversation import ConversationCompletedError, Conversatio
 from services.errors.llm import InvokeRateLimitError
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationService
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
     _Harness,
@@ -359,7 +361,16 @@ def test_chat_conversation_preflight_returns_404_before_starting_generation_and_
         installed_apps=_InstalledAppServices(
             generation=InstalledAppGenerationService(
                 usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
-                runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
+                runtime=AppGenerateServiceRuntime(
+                    session_factory=sqlite_session_factory,
+                    app_generation=AppGenerateService(
+                        knowledge_retrieval=create_autospec(
+                            KnowledgeRetriever,
+                            instance=True,
+                            spec_set=True,
+                        )
+                    ),
+                ),
             )
         )
     )

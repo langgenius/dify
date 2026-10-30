@@ -22,6 +22,7 @@ from models.agent import (
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
     AgentDebugConversation,
+    AgentIconType,
     AgentKind,
     AgentScope,
     AgentSource,
@@ -34,6 +35,7 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
 from models.workflow import Workflow
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
@@ -48,6 +50,7 @@ from services.app.agent_app_contracts import AgentReferencingWorkflow
 from services.app_service import AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
+from services.file_reference_parser import added_trusted_upload_file_ids
 from services.rbac_agent_access_service import initialize_agent_rbac_access
 from services.system_feature_service import SystemFeatureService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
@@ -80,6 +83,32 @@ class AgentRosterService:
 
     def __init__(self, session: Any):
         self._session = session
+
+    @staticmethod
+    def _image_icon_id(*, icon_type: object, icon: str | None) -> str | None:
+        icon_type_value = getattr(icon_type, "value", icon_type)
+        return icon if icon_type_value == AgentIconType.IMAGE.value and icon else None
+
+    def _lock_new_agent_file_references(
+        self,
+        *,
+        tenant_id: str,
+        previous_icon_id: str | None = None,
+        current_icon_type: object = None,
+        current_icon: str | None = None,
+        previous_config: object = None,
+        current_config: object = None,
+    ) -> None:
+        current_icon_id = self._image_icon_id(icon_type=current_icon_type, icon=current_icon)
+        file_ids = added_trusted_upload_file_ids(previous=previous_config, current=current_config)
+        if current_icon_id is not None and current_icon_id != previous_icon_id:
+            file_ids.add(current_icon_id)
+        if file_ids:
+            lock_and_validate_owned_upload_files_in_session(
+                self._session,
+                tenant_id=tenant_id,
+                upload_file_ids=tuple(file_ids),
+            )
 
     @staticmethod
     def serialize_agent(
@@ -348,6 +377,13 @@ class AgentRosterService:
         self._session.add(agent)
         self._session.flush()
 
+        self._lock_new_agent_file_references(
+            tenant_id=tenant_id,
+            current_icon_type=payload.icon_type,
+            current_icon=payload.icon,
+            current_config=payload.agent_soul.model_dump(mode="json"),
+        )
+
         version = AgentConfigSnapshot(
             tenant_id=tenant_id,
             agent_id=agent.id,
@@ -421,6 +457,13 @@ class AgentRosterService:
         self._session.add(agent)
         self._session.flush()
 
+        self._lock_new_agent_file_references(
+            tenant_id=tenant_id,
+            current_icon_type=icon_type,
+            current_icon=icon,
+            current_config=soul.model_dump(mode="json"),
+        )
+
         version = AgentConfigSnapshot(
             tenant_id=tenant_id,
             agent_id=agent.id,
@@ -491,6 +534,11 @@ class AgentRosterService:
         app.updated_by = account_id
         self._session.add(app)
         self._session.flush()
+        self._lock_new_agent_file_references(
+            tenant_id=tenant_id,
+            current_icon_type=app.icon_type,
+            current_icon=app.icon,
+        )
 
         app_model_config = AppModelConfig(app_id=app.id, created_by=account_id, updated_by=account_id)
         self._session.add(app_model_config)
@@ -1204,7 +1252,14 @@ class AgentRosterService:
             version_id=target_agent.active_config_snapshot_id,
         )
 
-        target_version.config_snapshot = AgentSoulConfig.model_validate(source_version.config_snapshot_dict)
+        self._session.refresh(target_version, with_for_update=True)
+        target_soul = AgentSoulConfig.model_validate(source_version.config_snapshot_dict)
+        self._lock_new_agent_file_references(
+            tenant_id=tenant_id,
+            previous_config=target_version.config_snapshot_dict,
+            current_config=target_soul.model_dump(mode="json"),
+        )
+        target_version.config_snapshot = target_soul
         target_version.summary = source_version.summary
         target_version.version_note = source_version.version_note
         target_version.created_by = account_id
@@ -1288,13 +1343,31 @@ class AgentRosterService:
     def update_roster_agent(
         self, *, tenant_id: str, agent_id: str, account_id: str, payload: RosterAgentUpdatePayload
     ) -> dict[str, Any]:
-        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        agent = self._session.scalar(
+            select(Agent)
+            .where(
+                Agent.tenant_id == tenant_id,
+                Agent.id == agent_id,
+                Agent.scope == AgentScope.ROSTER,
+            )
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if agent is None:
+            raise AgentNotFoundError()
         if agent.status == AgentStatus.ARCHIVED:
             raise AgentArchivedError()
 
+        previous_icon_id = self._image_icon_id(icon_type=agent.icon_type, icon=agent.icon)
         update_data = payload.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(agent, key, value)
+        self._lock_new_agent_file_references(
+            tenant_id=tenant_id,
+            previous_icon_id=previous_icon_id,
+            current_icon_type=agent.icon_type,
+            current_icon=agent.icon,
+        )
         agent.updated_by = account_id
 
         try:
@@ -1472,6 +1545,7 @@ class AgentRosterService:
             )
             .limit(1)
         )
+        restored_soul = AgentSoulConfig.model_validate(version.config_snapshot_dict)
         if draft is None:
             draft = AgentConfigDraft(
                 tenant_id=tenant_id,
@@ -1481,11 +1555,22 @@ class AgentRosterService:
                 draft_owner_key="",
                 created_by=account_id,
                 home_snapshot_id=version.home_snapshot_id,
+                config_snapshot=restored_soul,
             )
             self._session.add(draft)
+            self._session.flush()
+            previous_config: object = None
+        else:
+            self._session.refresh(draft, with_for_update=True)
+            previous_config = draft.config_snapshot_dict
+        self._lock_new_agent_file_references(
+            tenant_id=tenant_id,
+            previous_config=previous_config,
+            current_config=restored_soul.model_dump(mode="json"),
+        )
         draft.base_snapshot_id = version.id
         draft.home_snapshot_id = version.home_snapshot_id
-        draft.config_snapshot = AgentSoulConfig.model_validate(version.config_snapshot_dict)
+        draft.config_snapshot = restored_soul
         draft.updated_by = account_id
         agent.active_config_is_published = version.id == agent.active_config_snapshot_id
         agent.updated_by = account_id

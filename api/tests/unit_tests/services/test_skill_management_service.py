@@ -147,6 +147,19 @@ def _seed_agent() -> None:
         account = Account(name="Li Wei", email="li.wei@example.com")
         account.id = USER
         session.add(account)
+        for file_id in ("tool-file-1", "old-skill-file"):
+            tool_file = ToolFile(
+                user_id=USER,
+                tenant_id=TENANT,
+                conversation_id=None,
+                file_key=f"tools/{file_id}.zip",
+                mimetype="application/zip",
+                name=f"{file_id}.zip",
+                size=1,
+                original_url=None,
+            )
+            tool_file.id = file_id
+            session.add(tool_file)
         session.add(
             App(
                 id="66666666-6666-6666-6666-666666666666",
@@ -329,7 +342,14 @@ def test_list_tags_returns_distinct_tags_with_counts() -> None:
         payload=SkillCreatePayload(name="empty-tags"),
     )
     with session_factory.create_session() as session:
-        session.add(Tag(tenant_id=TENANT, type=TagType.SKILL, name="unbound", created_by=USER))
+        session.add(
+            Tag(
+                tenant_id=TENANT,
+                type=TagType.SKILL,
+                name="unbound",
+                created_by=USER,
+            )
+        )
         session.commit()
 
     result = service.list_tags(tenant_id=TENANT)

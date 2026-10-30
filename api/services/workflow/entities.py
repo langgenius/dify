@@ -98,12 +98,6 @@ class WorkflowTaskData(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-class WorkflowResumeTaskData(BaseModel):
-    """Payload for workflow resumption tasks."""
-
-    workflow_run_id: str
-
-
 class AsyncTriggerExecutionResult(BaseModel):
     """Result from async trigger-based workflow execution"""
 
@@ -150,22 +144,3 @@ class TriggerLogResponse(BaseModel):
     finished_at: str | None = None
 
     model_config = ConfigDict(use_enum_values=True)
-
-
-class WorkflowScheduleCFSPlanEntity(BaseModel):
-    """
-    CFS plan entity.
-    Ensure each workflow run inside Dify is associated with a CFS(Completely Fair Scheduler) plan.
-
-    """
-
-    class Strategy(StrEnum):
-        """
-        CFS plan strategy.
-        """
-
-        TimeSlice = "time-slice"  # time-slice based plan
-        Nop = "nop"  # no plan, just run the workflow
-
-    schedule_strategy: Strategy
-    granularity: int = Field(default=-1)  # -1 means infinite

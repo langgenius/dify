@@ -8,9 +8,10 @@ from typing import override
 
 import pytest
 from sqlalchemy import Engine, delete, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
@@ -22,9 +23,9 @@ from graphon.variables.variables import StringVariable
 from libs import datetime_utils
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, WorkflowNodeExecutionModel
+from services.file_adapters import build_file_service
 from services.workflow_draft_variable_service import (
     DraftVariableSaver,
     DraftVarLoader,
@@ -336,6 +337,7 @@ class TestDraftVariableLoader(unittest.TestCase):
                     node_type=BuiltinNodeTypes.LLM,  # Use a real node type
                     node_execution_id=node_execution_id,
                     user=account,
+                    files=build_file_service(session_factory=sessionmaker(bind=self._engine, expire_on_commit=False)),
                 )
 
                 # Save the variable - this will trigger offloading due to large size

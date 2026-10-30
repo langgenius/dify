@@ -38,6 +38,7 @@ from graphon.nodes.template_transform import TemplateTransformNode
 from graphon.nodes.tool import ToolNode
 from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
 from tests.unit_tests.core.model_fixtures import make_model_instance
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 if TYPE_CHECKING:
     from graphon.runtime import InitParams, RuntimeState
@@ -98,7 +99,10 @@ class MockNodeMixin:
 
         if isinstance(self, _ToolNode):
             kwargs.setdefault("tool_file_manager", DifyToolFileManager(run_context))
-            kwargs.setdefault("runtime", DifyToolNodeRuntime(init_params.run_context))
+            kwargs.setdefault(
+                "runtime",
+                DifyToolNodeRuntime(init_params.run_context, knowledge_retrieval=make_knowledge_retriever()),
+            )
 
         if isinstance(self, AgentNode):
             presentation_provider = MagicMock()

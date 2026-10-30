@@ -40,7 +40,7 @@ from models.human_input import (
     HumanInputFormRecipient,
     RecipientType,
 )
-from repositories.human_input_errors import FormAlreadyHandledError
+from services.errors.human_input import FormAlreadyHandledError
 
 
 @pytest.fixture
@@ -667,7 +667,7 @@ def test_mark_timeout_already_timed_out_returns_record(repository_session: Sessi
     assert record.status == HumanInputFormStatus.TIMEOUT
 
 
-def test_mark_timeout_submitted_raises_form_not_found(repository_session: Session) -> None:
+def test_mark_timeout_submitted_raises_already_handled(repository_session: Session) -> None:
     form = _persist_form(
         repository_session,
         form_id="f",
@@ -675,8 +675,13 @@ def test_mark_timeout_submitted_raises_form_not_found(repository_session: Sessio
         status=HumanInputFormStatus.SUBMITTED,
     )
     repo = HumanInputFormSubmissionRepository()
-    with pytest.raises(FormNotFoundError, match="form already submitted"):
+    with pytest.raises(FormAlreadyHandledError) as error:
         repo.mark_timeout(form_id=form.id, timeout_status=HumanInputFormStatus.EXPIRED)
+    assert error.value.status == HumanInputFormStatus.SUBMITTED
+    repository_session.expire_all()
+    persisted = repository_session.get(HumanInputForm, form.id)
+    assert persisted is not None
+    assert persisted.status == HumanInputFormStatus.SUBMITTED
 
 
 def test_mark_timeout_updates_fields(repository_session: Session) -> None:

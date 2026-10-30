@@ -18,13 +18,14 @@ from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 TABLES = (AppModelConfig, Conversation, Message)
 
 
 @pytest.fixture
 def generator(mocker: MockerFixture):
-    gen = CompletionAppGenerator()
+    gen = CompletionAppGenerator(knowledge_retrieval=make_knowledge_retriever())
 
     mocker.patch.object(module, "copy_current_request_context", side_effect=lambda fn: fn)
 

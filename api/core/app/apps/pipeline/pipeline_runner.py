@@ -1,6 +1,7 @@
 import logging
 import time
-from typing import Protocol, cast, override
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Protocol, cast, override
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -17,6 +18,7 @@ from core.app.entities.app_invoke_entities import (
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import create_session
 from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
+from core.workflow.nodes.knowledge_index.protocols import SUMMARY_INDEX_SERVICE_CONTEXT_KEY, SummaryIndexServiceProtocol
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -29,6 +31,10 @@ from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariable
 from models.dataset import Dataset, Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
+from services.file_service import UploadFileCreator
+
+if TYPE_CHECKING:
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +43,22 @@ class PipelineDocumentStore(Protocol):
     """Knowledge state required by a pipeline run, with explicit session ownership."""
 
     def get_pipeline_dataset(self, pipeline: Pipeline, *, session: Session) -> Dataset | None: ...
+
+    def next_document_position(
+        self,
+        session: Session,
+        *,
+        workspace_id: str,
+        dataset_id: str,
+    ) -> int: ...
+
+    def lock_new_upload_file_references(
+        self,
+        session: Session,
+        *,
+        workspace_id: str,
+        payloads: Sequence[Mapping[str, object]],
+    ) -> None: ...
 
     def exists(self, *, workspace_id: str, dataset_id: str, document_id: str) -> bool: ...
 
@@ -56,6 +78,9 @@ class PipelineRunner(WorkflowBasedAppRunner):
         workflow: Workflow,
         system_user_id: str,
         documents: PipelineDocumentStore,
+        knowledge_retrieval: "KnowledgeRetriever",
+        summary_index_service: SummaryIndexServiceProtocol,
+        files: UploadFileCreator,
         workflow_thread_pool_id: str | None = None,
         execution_driver: WorkflowRunDriver | None = None,
     ) -> None:
@@ -66,6 +91,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         """
         super().__init__(
             queue_manager=queue_manager,
+            knowledge_retrieval=knowledge_retrieval,
             execution_driver=execution_driver,
             variable_loader=variable_loader,
             app_id=application_generate_entity.app_config.app_id,
@@ -75,6 +101,8 @@ class PipelineRunner(WorkflowBasedAppRunner):
         self._workflow = workflow
         self._sys_user_id = system_user_id
         self._documents = documents
+        self._summary_index_service = summary_index_service
+        self._files = files
 
     def _get_app_id(self) -> str:
         return self.application_generate_entity.app_config.app_id
@@ -238,6 +266,18 @@ class PipelineRunner(WorkflowBasedAppRunner):
         )
         super().handle_event(workflow_entry, event, **kwargs)
 
+    def report_preparation_failure(self, error: str) -> None:
+        """Report a setup failure through the document state owner."""
+        document_id = self._document_id
+        if document_id is None:
+            return
+        self._documents.mark_failed(
+            workspace_id=self._dataset_workspace_id,
+            dataset_id=self._dataset_id,
+            document_id=document_id,
+            error=error,
+        )
+
     def get_workflow(self, session: Session, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
         """
         Get workflow
@@ -295,6 +335,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         # graph_config["edges"] = real_edges
         # init graph
         # Create explicit graph init context for Graph.init.
+        extra_context: dict[str, object] = {SUMMARY_INDEX_SERVICE_CONTEXT_KEY: self._summary_index_service}
         run_context = build_dify_run_context(
             tenant_id=workflow.tenant_id,
             app_id=self._app_id,
@@ -302,8 +343,11 @@ class PipelineRunner(WorkflowBasedAppRunner):
             user_from=user_from,
             invoke_from=invoke_from,
             app_type=CreditUsageAppType.RAG_PIPELINE,
+            extra_context=extra_context,
         )
         graph_init_context = DifyGraphInitContext(
+            knowledge_retrieval=self._knowledge_retrieval,
+            knowledge_index_files=self._files,
             execution_driver=self._execution_driver,
             workflow_id=workflow.id,
             graph_config=graph_config,

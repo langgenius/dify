@@ -7,12 +7,9 @@ from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.plugin.wraps import get_user_tenant, plugin_data
 from controllers.inner_api.wraps import plugin_inner_api_only
-from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
-from core.plugin.backwards_invocation.base import BaseBackwardsInvocationResponse
+from core.plugin.backwards_invocation.base import BaseBackwardsInvocation, BaseBackwardsInvocationResponse
 from core.plugin.backwards_invocation.encrypt import PluginEncrypter
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
-from core.plugin.backwards_invocation.node import PluginNodeBackwardsInvocation
-from core.plugin.backwards_invocation.tool import PluginToolBackwardsInvocation
 from core.plugin.entities.request import (
     RequestFetchAppInfo,
     RequestInvokeApp,
@@ -40,7 +37,6 @@ from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser
 from services.file_request_service import FileRequestService
-from services.workflow_run_agg import WorkflowRunAgg
 
 
 @inner_api_ns.route("/invoke/llm")
@@ -244,9 +240,8 @@ class PluginInvokeToolApi(Resource):
     @with_session
     def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTool):
         def generator():
-            return PluginToolBackwardsInvocation.convert_to_event_stream(
-                PluginToolBackwardsInvocation.invoke_tool(
-                    execution_driver=WorkflowRunAgg.run,
+            return BaseBackwardsInvocation.convert_to_event_stream(
+                application_services().plugin_tools.invoke_tool(
                     session=session,
                     tenant_id=tenant_model.id,
                     user_id=user_model.id,
@@ -280,7 +275,7 @@ class PluginInvokeParameterExtractorNodeApi(Resource):
         try:
             return jsonable_encoder(
                 BaseBackwardsInvocationResponse(
-                    data=PluginNodeBackwardsInvocation.invoke_parameter_extractor(
+                    data=application_services().plugin_nodes.invoke_parameter_extractor(
                         tenant_id=tenant_model.id,
                         user_id=user_model.id,
                         parameters=payload.parameters,
@@ -313,7 +308,7 @@ class PluginInvokeQuestionClassifierNodeApi(Resource):
         try:
             return jsonable_encoder(
                 BaseBackwardsInvocationResponse(
-                    data=PluginNodeBackwardsInvocation.invoke_question_classifier(
+                    data=application_services().plugin_nodes.invoke_question_classifier(
                         tenant_id=tenant_model.id,
                         user_id=user_model.id,
                         query=payload.query,
@@ -344,8 +339,7 @@ class PluginInvokeAppApi(Resource):
     )
     @with_session
     def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
-        response = PluginAppBackwardsInvocation.invoke_app(
-            execution_driver=WorkflowRunAgg.run,
+        response = application_services().plugin_apps.invoke_app(
             session=session,
             app_id=payload.app_id,
             user_id=user_model.id,
@@ -355,10 +349,9 @@ class PluginInvokeAppApi(Resource):
             stream=payload.response_mode == "streaming",
             inputs=payload.inputs,
             files=payload.files,
-            end_users=application_services().app_scoped_end_users.commands,
         )
 
-        return length_prefixed_response(0xF, PluginAppBackwardsInvocation.convert_to_event_stream(response))
+        return length_prefixed_response(0xF, BaseBackwardsInvocation.convert_to_event_stream(response))
 
 
 @inner_api_ns.route("/invoke/encrypt")
@@ -509,5 +502,5 @@ class PluginFetchAppInfoApi(Resource):
     )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestFetchAppInfo):
         return BaseBackwardsInvocationResponse(
-            data=PluginAppBackwardsInvocation.fetch_app_info(payload.app_id, tenant_model.id)
+            data=application_services().plugin_apps.fetch_app_info(payload.app_id, tenant_model.id)
         ).model_dump()

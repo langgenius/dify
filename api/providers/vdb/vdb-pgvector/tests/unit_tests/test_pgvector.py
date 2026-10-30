@@ -1,14 +1,56 @@
 import json
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from types import SimpleNamespace
+from typing import Any, override
 from unittest.mock import MagicMock, patch
 
 import dify_vdb_pgvector.pgvector as pgvector_module
 import pytest
 from dify_vdb_pgvector.pgvector import PGVector, PGVectorConfig
 
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from models.dataset import Dataset
+
+
+class _UnusedEmbeddings(Embeddings):
+    @override
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        del texts
+        raise AssertionError("factory must not use embeddings")
+
+    @override
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
+        del multimodel_documents
+        raise AssertionError("factory must not use embeddings")
+
+    @override
+    def embed_query(self, text: str) -> list[float]:
+        del text
+        raise AssertionError("factory must not use embeddings")
+
+    @override
+    def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
+        del multimodel_document
+        raise AssertionError("factory must not use embeddings")
+
+
+class _RecordingSearchCursor:
+    def __init__(self, rows: list[tuple[dict[str, object], str, float]]) -> None:
+        self._rows = rows
+        self.executed_sql: list[str] = []
+
+    def __iter__(self) -> Iterator[tuple[dict[str, object], str, float]]:
+        return iter(self._rows)
+
+    def execute(self, query: str, parameters: object = None) -> None:
+        del parameters
+        self.executed_sql.append(query)
+
+    def replace_rows(self, rows: list[tuple[dict[str, object], str, float]]) -> None:
+        self._rows = rows
+        self.executed_sql.clear()
 
 
 class TestPGVector:
@@ -420,6 +462,30 @@ def test_text_get_and_delete_methods():
     assert any("DROP TABLE IF EXISTS embedding_collection_1" in sql for sql in executed_sql)
 
 
+def test_text_exists_treats_missing_collection_as_empty_and_recovers_connection(monkeypatch: pytest.MonkeyPatch):
+    vector = PGVector.__new__(PGVector)
+    vector.table_name = "embedding_collection_1"
+    pool = MagicMock()
+    connection = MagicMock()
+    cursor = MagicMock()
+    pool.getconn.return_value = connection
+    connection.cursor.return_value = cursor
+    cursor.connection = connection
+    vector.pool = pool
+
+    class _UndefinedTableError(Exception):
+        pass
+
+    monkeypatch.setattr(pgvector_module.psycopg2.errors, "UndefinedTable", _UndefinedTableError)
+    cursor.execute.side_effect = _UndefinedTableError("missing collection")
+
+    assert vector.text_exists("first-image") is False
+    connection.rollback.assert_called_once_with()
+    connection.commit.assert_called_once_with()
+    cursor.close.assert_called_once_with()
+    pool.putconn.assert_called_once_with(connection)
+
+
 def test_delete_by_ids_handles_empty_undefined_table_and_generic_exception(monkeypatch: pytest.MonkeyPatch):
     vector = PGVector.__new__(PGVector)
     vector.table_name = "embedding_collection_1"
@@ -470,11 +536,10 @@ def test_search_by_vector_supports_filter_and_threshold():
 def test_search_by_full_text_branches_for_bigm_and_standard():
     vector = PGVector.__new__(PGVector)
     vector.table_name = "embedding_collection_1"
-    cursor = MagicMock()
-    cursor.__iter__.return_value = iter([({"doc_id": "1"}, "text-1", 0.7)])
+    cursor = _RecordingSearchCursor([({"doc_id": "1"}, "text-1", 0.7)])
 
     @contextmanager
-    def _cursor_ctx():
+    def _cursor_ctx() -> Generator[_RecordingSearchCursor]:
         yield cursor
 
     vector._get_cursor = _cursor_ctx
@@ -486,15 +551,14 @@ def test_search_by_full_text_branches_for_bigm_and_standard():
     docs = vector.search_by_full_text("hello world", top_k=2, document_ids_filter=["d-1"])
     assert len(docs) == 1
     assert docs[0].metadata["score"] == pytest.approx(0.7)
-    standard_sql = cursor.execute.call_args.args[0]
+    [standard_sql] = cursor.executed_sql
     assert "to_tsvector(text) @@ plainto_tsquery(%s)" in standard_sql
 
-    cursor.execute.reset_mock()
-    cursor.__iter__.return_value = iter([({"doc_id": "2"}, "text-2", 0.6)])
+    cursor.replace_rows([({"doc_id": "2"}, "text-2", 0.6)])
     vector.pg_bigm = True
     vector.search_by_full_text("hello world", top_k=2, document_ids_filter=["d-2"])
-    assert "SET pg_bigm.similarity_limit TO 0.000001" in cursor.execute.call_args_list[0].args[0]
-    assert "bigm_similarity" in cursor.execute.call_args_list[1].args[0]
+    assert "SET pg_bigm.similarity_limit TO 0.000001" in cursor.executed_sql[0]
+    assert "bigm_similarity" in cursor.executed_sql[1]
 
 
 def test_pgvector_factory_initializes_expected_collection_name(monkeypatch: pytest.MonkeyPatch):
@@ -514,9 +578,10 @@ def test_pgvector_factory_initializes_expected_collection_name(monkeypatch: pyte
     monkeypatch.setattr(pgvector_module.dify_config, "PGVECTOR_MAX_CONNECTION", 5)
     monkeypatch.setattr(pgvector_module.dify_config, "PGVECTOR_PG_BIGM", False)
 
+    embeddings = _UnusedEmbeddings()
     with patch.object(pgvector_module, "PGVector", return_value="vector") as vector_cls:
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock(), session=None)
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock(), session=None)
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=embeddings, session=None)
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=embeddings, session=None)
 
     assert result_1 == "vector"
     assert result_2 == "vector"

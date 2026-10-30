@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.human_input_adapter import DeliveryMethodType
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums.creator import CreatorUserRole
 from graphon.file import FileTransferMethod, FileType
 from models import (
     AgentDebugConversation,
@@ -30,15 +32,15 @@ from models.agent import AgentConfigDraftType
 from models.enums import (
     ConversationFromSource,
     ConversationStatus,
-    CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
     MessageChainType,
 )
 from models.human_input import HumanInputDelivery, HumanInputFormRecipient, RecipientType
+from models.model import UploadFile
 from models.tools import ToolConversationVariables, ToolFile
 from tasks.delete_conversation_task import _cleanup_conversation_related_data, sweep_deleted_conversations
-from tests.unit_tests.model_factories import make_conversation, make_message
+from tests.unit_tests.model_factories import make_app, make_conversation, make_message, make_upload_file
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
@@ -90,6 +92,64 @@ def _tool_file(*, name: str, conversation_id: str | None = CONVERSATION_ID) -> T
         name=name,
         size=5,
     )
+
+
+def _persist_hitl_upload(session: Session, *, upload_file_id: str, key: str) -> tuple[str, str]:
+    form = HumanInputForm(
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        workflow_run_id=None,
+        conversation_id=CONVERSATION_ID,
+        form_kind=HumanInputFormKind.RUNTIME,
+        node_id="ask-human",
+        form_definition="{}",
+        rendered_content="form",
+        status=HumanInputFormStatus.WAITING,
+        expiration_time=datetime.now(UTC) + timedelta(hours=1),
+    )
+    session.add(form)
+    session.flush()
+    delivery = HumanInputDelivery(
+        form_id=form.id,
+        delivery_method_type=DeliveryMethodType.WEBAPP,
+        delivery_config_id=None,
+        channel_payload="{}",
+    )
+    session.add(delivery)
+    session.flush()
+    recipient = HumanInputFormRecipient(
+        form_id=form.id,
+        delivery_id=delivery.id,
+        recipient_type=RecipientType.CONSOLE,
+        recipient_payload="{}",
+    )
+    session.add(recipient)
+    session.flush()
+    upload_token = HumanInputFormUploadToken(
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        form_id=form.id,
+        recipient_id=recipient.id,
+        token=f"upload-token-{upload_file_id}",
+    )
+    upload_file = make_upload_file(
+        file_id=upload_file_id,
+        tenant_id=TENANT_ID,
+        key=key,
+        created_by=ACCOUNT_ID,
+    )
+    session.add_all([upload_token, upload_file])
+    session.flush()
+    link = HumanInputFormUploadFile(
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        form_id=form.id,
+        upload_file_id=upload_file.id,
+        upload_token_id=upload_token.id,
+    )
+    session.add(link)
+    session.commit()
+    return form.id, link.id
 
 
 def test_cleanup_removes_owned_resources(sqlite_session: Session) -> None:
@@ -254,6 +314,78 @@ def test_cleanup_storage_failure_retains_marker_and_file_key(sqlite_session: Ses
     assert persisted_conversation is not None
     assert persisted_conversation.is_deleted is True
     assert sqlite_session.get(ToolFile, tool_file.id) is not None
+
+
+def test_cleanup_reclaims_files_after_removing_hitl_links(sqlite_session: Session) -> None:
+    upload_file_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    upload_key = f"uploads/{upload_file_id}"
+    sqlite_session.add(_conversation(CONVERSATION_ID, deleted=True))
+    form_id, link_id = _persist_hitl_upload(sqlite_session, upload_file_id=upload_file_id, key=upload_key)
+
+    with patch("tasks.delete_conversation_task.storage") as storage_mock:
+        assert _cleanup_conversation_related_data(CONVERSATION_ID) is True
+
+    storage_mock.delete.assert_called_once_with(upload_key)
+    sqlite_session.expire_all()
+    assert sqlite_session.get(HumanInputFormUploadFile, link_id) is None
+    assert sqlite_session.get(HumanInputForm, form_id) is None
+    assert sqlite_session.get(UploadFile, upload_file_id) is None
+
+
+@pytest.mark.parametrize("shared", [False, True])
+def test_cleanup_checks_submitted_upload_after_removing_all_conversation_owners(
+    sqlite_session: Session, shared: bool
+) -> None:
+    upload_file_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    upload_key = f"uploads/{upload_file_id}"
+    file_value = {"type": "image", "transfer_method": "local_file", "upload_file_id": upload_file_id}
+    conversation = _conversation(CONVERSATION_ID, deleted=True)
+    conversation._inputs = {"image": file_value}
+    message = _message()
+    message.answer = f"![image](/files/{upload_file_id}/image-preview)"
+    sqlite_session.add_all([make_app(app_id=APP_ID, tenant_id=TENANT_ID), conversation, message])
+    form_id, link_id = _persist_hitl_upload(sqlite_session, upload_file_id=upload_file_id, key=upload_key)
+    form = sqlite_session.get_one(HumanInputForm, form_id)
+    form.status = HumanInputFormStatus.SUBMITTED
+    form.submitted_data = json.dumps({"image": file_value})
+    if shared:
+        other = _conversation(OTHER_CONVERSATION_ID, deleted=False)
+        other._inputs = {"image": file_value}
+        sqlite_session.add(other)
+    sqlite_session.commit()
+
+    with patch("tasks.delete_conversation_task.storage") as storage_mock:
+        assert _cleanup_conversation_related_data(CONVERSATION_ID) is True
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(HumanInputForm, form_id) is None
+    assert sqlite_session.get(HumanInputFormUploadFile, link_id) is None
+    assert sqlite_session.get(Message, MESSAGE_ID) is None
+    assert sqlite_session.get(Conversation, CONVERSATION_ID) is None
+    if shared:
+        assert sqlite_session.get(UploadFile, upload_file_id) is not None
+        storage_mock.delete.assert_not_called()
+    else:
+        assert sqlite_session.get(UploadFile, upload_file_id) is None
+        storage_mock.delete.assert_called_once_with(upload_key)
+
+
+def test_cleanup_hitl_storage_failure_does_not_restore_committed_owner_links(sqlite_session: Session) -> None:
+    upload_file_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+    upload_key = f"uploads/{upload_file_id}"
+    sqlite_session.add(_conversation(CONVERSATION_ID, deleted=True))
+    form_id, link_id = _persist_hitl_upload(sqlite_session, upload_file_id=upload_file_id, key=upload_key)
+
+    with patch("tasks.delete_conversation_task.storage") as storage_mock:
+        storage_mock.delete.side_effect = RuntimeError("storage unavailable")
+        storage_mock.exists.return_value = True
+        assert _cleanup_conversation_related_data(CONVERSATION_ID) is True
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(Conversation, CONVERSATION_ID) is None
+    assert sqlite_session.get(HumanInputFormUploadFile, link_id) is None
+    assert sqlite_session.get(HumanInputForm, form_id) is None
+    assert sqlite_session.get(UploadFile, upload_file_id) is None
 
 
 def test_cleanup_skips_active_conversation(sqlite_session: Session) -> None:

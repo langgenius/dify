@@ -15,6 +15,7 @@ from pydantic import ValidationError
 from core.file import remote_fetcher
 from core.helper import ssrf_proxy
 from core.tools.tool_file_manager import ToolFileManager, resolve_extension
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import Storage
 from models.model import EndUser
 from services.entities.file_grant_entities import (
@@ -29,9 +30,11 @@ from services.entities.file_grant_entities import (
     StoredProducedFile,
     StoredUpload,
 )
+from services.entities.upload_file import FileUploadActor
 from services.errors.file import FileTooLargeError
 from services.errors.file_grant import EndUserNotFoundError
 from services.file_service import FileService
+from services.file_upload_policy import file_size_limit
 
 FILE_GRANT_AUDIENCE = "dify-files"
 FILE_CONTENT_AUDIENCE = "dify-files-content"
@@ -165,7 +168,7 @@ class FileGrantFileGateway:
         if not self._subject_exists(context):
             raise EndUserNotFoundError(context.end_user_id)
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
-        limit = FileService.file_size_limit(extension=extension)
+        limit = file_size_limit(extension=extension)
         content = stream.read(limit + 1)
         if len(content) > limit:
             raise FileTooLargeError(f"File size exceeded. The limit is {limit} bytes.")
@@ -192,7 +195,8 @@ class FileGrantFileGateway:
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=end_user,
+            actor=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
+            tenant_id=context.tenant_id,
             source_url=source_url,
         )
         return StoredUpload(
@@ -216,7 +220,7 @@ class FileGrantFileGateway:
         mimetype: str,
     ) -> StoredProducedFile:
         extension = resolve_extension(filename=filename, mimetype=mimetype).lstrip(".").lower()
-        limit = FileService.file_size_limit(extension=extension)
+        limit = file_size_limit(extension=extension)
         content = stream.read(limit + 1)
         if len(content) > limit:
             raise FileTooLargeError(f"File size exceeded. The limit is {limit} bytes.")
@@ -262,7 +266,7 @@ class FileGrantRemoteFileGateway:
                 return None
 
             filename, extension, mimetype = self._file_info(metadata)
-            limit = FileService.file_size_limit(extension=extension)
+            limit = file_size_limit(extension=extension)
             declared_size = self._declared_size(metadata)
             if declared_size is not None and declared_size > limit:
                 metadata.close()

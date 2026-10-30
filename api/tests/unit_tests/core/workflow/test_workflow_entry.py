@@ -17,6 +17,7 @@ from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
 from models.workflow import Workflow, WorkflowType
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 @pytest.fixture(autouse=True)
@@ -191,6 +192,7 @@ class TestWorkflowEntry:
             user_inputs=inputs,
             variable_pool=variable_pool,
             execution_driver=None,
+            knowledge_retrieval=make_knowledge_retriever(),
         )
 
         variable = variable_pool.get(["source", "value"])
@@ -294,6 +296,7 @@ class TestWorkflowEntry:
             user_inputs={},
             variable_pool=variable_pool,
             execution_driver=None,
+            knowledge_retrieval=make_knowledge_retriever(),
         )
 
         # Assert

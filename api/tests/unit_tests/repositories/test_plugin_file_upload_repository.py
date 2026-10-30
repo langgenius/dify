@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from models.account import Account, AccountStatus, TenantAccountJoin
 from models.enums import EndUserType
 from models.model import EndUser
-from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
+from repositories.file.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 
 
 def _account(account_id: str) -> Account:

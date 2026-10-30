@@ -46,7 +46,7 @@ class TestDataSourceContentPreviewApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.datasource_content_preview.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.datasource_content_preview.build_rag_pipeline_service",
                 return_value=service_instance,
             ),
         ):
@@ -105,7 +105,7 @@ class TestDataSourceContentPreviewApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.datasource_content_preview.RagPipelineService",
+                "controllers.console.datasets.rag_pipeline.datasource_content_preview.build_rag_pipeline_service",
                 return_value=service_instance,
             ),
         ):

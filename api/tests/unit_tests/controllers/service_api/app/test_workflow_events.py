@@ -16,8 +16,9 @@ from werkzeug.exceptions import NotFound
 
 from controllers.service_api.app.error import NotWorkflowAppError
 from controllers.service_api.app.workflow_events import WorkflowEventsApi
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
-from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
+from models.enums import EndUserType, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun, WorkflowType
 
@@ -74,7 +75,7 @@ def _mock_repo_for_run(monkeypatch: pytest.MonkeyPatch, workflow_run, sqlite_eng
     workflow_events_module = sys.modules["controllers.service_api.app.workflow_events"]
     repo = SimpleNamespace(get_workflow_run_by_id_and_tenant_id=lambda **_kwargs: workflow_run)
     monkeypatch.setattr(
-        workflow_events_module.DifyAPIRepositoryFactory,
+        workflow_events_module.WorkflowRepositoryFactory,
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: repo,
     )

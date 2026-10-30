@@ -2,9 +2,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from enums.creator import CreatorUserRole
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
-from models.enums import CreatorUserRole
 from models.model import App, EndUser
 from models.web import PinnedConversation
 from services.conversation_service import ConversationService

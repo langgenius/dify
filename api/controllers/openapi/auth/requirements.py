@@ -34,10 +34,10 @@ from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
 from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject, Subject
 from enums import DeploymentEdition
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import application_services
 from models import AppMode
 from models.account import TenantAccountRole, TenantPluginInstallPermission
-from models.enums import CreatorUserRole
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 from services.entities.feature_entities import LicenseStatus
 from services.errors.workspace import WorkspaceInvitationQuotaError, WorkspaceMemberLicenseQuotaError

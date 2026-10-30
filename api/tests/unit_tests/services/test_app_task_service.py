@@ -15,9 +15,10 @@ import core.app.apps.execution_coordinator as coordinator_module
 import services.app_task_service as task_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from enums.creator import CreatorUserRole
 from extensions.ext_redis import RedisClientWrapper
 from graphon.enums import WorkflowExecutionStatus
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import WorkflowPause, WorkflowRun

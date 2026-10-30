@@ -4,7 +4,17 @@ import pytest
 from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
+from models.account import (
+    Account,
+    AccountIntegrate,
+    AccountStatus,
+    InvitationCode,
+    InvitationCodeStatus,
+    Tenant,
+    TenantAccountJoin,
+    TenantAccountRole,
+    TenantStatus,
+)
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from services.account_email import normalize_email
@@ -13,6 +23,7 @@ from services.entities.account_login_entities import (
     AccountSessionPreparation,
     PasswordLoginCompletion,
 )
+from tests.unit_tests.model_factories import make_upload_file
 
 
 def _persist_account(session: Session) -> Account:
@@ -28,15 +39,53 @@ def _persist_account(session: Session) -> Account:
     return account
 
 
+@pytest.mark.parametrize(
+    ("workspace_status", "role", "identity_exists"),
+    [
+        (TenantStatus.NORMAL, TenantAccountRole.OWNER, True),
+        (TenantStatus.ARCHIVE, TenantAccountRole.OWNER, False),
+        (TenantStatus.NORMAL, TenantAccountRole.ADMIN, False),
+    ],
+)
+def test_workspace_identity_requires_an_active_owner_membership(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    workspace_status: TenantStatus,
+    role: TenantAccountRole,
+    identity_exists: bool,
+) -> None:
+    account = _persist_account(sqlite_session)
+    workspace = Tenant(name="Workspace", status=workspace_status)
+    workspace.id = "workspace-1"
+    sqlite_session.add_all(
+        [
+            workspace,
+            TenantAccountJoin(tenant_id=workspace.id, account_id=account.id, role=role),
+        ]
+    )
+    sqlite_session.commit()
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    identity = repository.get_workspace_identity(account.id, workspace.id)
+
+    assert (identity is not None) is identity_exists
+    if identity is not None:
+        assert identity.current_tenant_id == workspace.id
+        assert identity.role == TenantAccountRole.OWNER
+
+
 def test_update_profile_persists_multiple_fields(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     _persist_account(sqlite_session)
+    sqlite_session.add(make_upload_file(file_id="avatar-file", tenant_id="workspace-1"))
+    sqlite_session.commit()
     repository = SQLAlchemyAccountRepository(sqlite_session_factory)
 
     result = repository.update_profile(
         "account-1",
+        "workspace-1",
         AccountProfileChanges(
             name="Updated",
             avatar="avatar-file",
@@ -74,6 +123,7 @@ def test_update_profile_rolls_back_on_error(
     with pytest.raises(RuntimeError, match="abort update"):
         repository.update_profile(
             "account-1",
+            "workspace-1",
             AccountProfileChanges(name="Should Roll Back"),
         )
 

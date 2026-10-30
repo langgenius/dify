@@ -175,9 +175,11 @@ function setup({
 
 beforeEach(() => {
   api.replace.mockReset()
-  api.crawl.mockReset().mockResolvedValue({ job_id: 'crawl-job' })
+  api.crawl.mockReset().mockResolvedValue({ job_id: 'crawl-job', status: 'active' })
   api.crawlStatus.mockReset().mockResolvedValue({
+    job_id: 'crawl-job',
     status: 'completed',
+    current: 1,
     total: 1,
     data: [
       {

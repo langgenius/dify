@@ -1,356 +1,357 @@
-"""Exercise document creation with real SQL and assertions at external boundaries."""
-
-from collections.abc import Callable, Generator, Iterator
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import datetime
-from unittest.mock import Mock
+from typing import cast
 
 import pytest
-from redis.exceptions import LockNotOwnedError
-from sqlalchemy import Engine, event, select
-from sqlalchemy.orm import Session, sessionmaker
 
-from core.model_manager import ModelInstance
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from enums import CloudPlan
 from machinery.context import RequestContext
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import IndexingStatus, SegmentStatus
-from services.document_indexing_proxy.batch_indexing_base import BatchDocumentIndexingProxy
-from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
-from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
-from services.entities.feature_entities import FeatureModel
-from services.errors.file import FileNotExistsError
-from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
-from services.knowledge.resource_scope import DatasetRef
-from tests.unit_tests.model_factories import make_upload_file
+from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess
+from services.knowledge.documents.adapters import DocumentResponsePresentationAdapter
+from services.knowledge.documents.application import (
+    DatasetCreatorAccess,
+    DatasetDocumentApplicationService,
+    DocumentCreationGateway,
+    DocumentDatasetRepository,
+    DocumentLifecycleCache,
+    DocumentModelConfigurationGateway,
+    DocumentOperations,
+    DocumentRepository,
+    DocumentSourceAuthorization,
+    DocumentTaskDispatcher,
+    DocumentUploads,
+)
+from services.knowledge.documents.contracts import (
+    DocumentBatchCleanupJob,
+    DocumentCleanupJob,
+    DocumentCreationDataset,
+    DocumentCreationDefaults,
+    DocumentCreationEnvironment,
+    DocumentCreationLimits,
+    DocumentCreationProjection,
+    DocumentDatasetProjection,
+    DocumentIndexingJobs,
+    DocumentReadProjection,
+    DocumentState,
+    DocumentWriteConfig,
+)
+from services.knowledge.documents.creation import build_document_write_config
+from services.knowledge.entities.datasets import DatasetCleanupRecord
+from services.knowledge.entities.knowledge_entities import KnowledgeConfig
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
+from services.knowledge.indexing.locks import KnowledgeIndexingLock
 
-CONTEXT = RequestContext("request", None, "actor", "tenant")
-REF = DatasetRef("tenant", "dataset")
+CONTEXT = RequestContext("request-1", None, "actor-1", "tenant-1")
+REF = DatasetRef("tenant-1", "dataset-1")
 
 
-def settings(**values: object) -> dict[str, object]:
+def _creation_projection() -> DocumentCreationProjection:
+    now = datetime(2024, 1, 1)
+    document = DocumentReadProjection(
+        id="document-1",
+        tenant_id=REF.tenant_id,
+        dataset_id=REF.dataset_id,
+        position=1,
+        data_source_type="upload_file",
+        data_source_info={},
+        dataset_process_rule_id=None,
+        name="Document",
+        created_from="web",
+        created_by=CONTEXT.account_id,
+        created_at=now,
+        updated_at=now,
+        tokens=None,
+        indexing_status="waiting",
+        error=None,
+        enabled=True,
+        disabled_at=None,
+        disabled_by=None,
+        archived=False,
+        display_status="queuing",
+        word_count=None,
+        doc_form="text_model",
+        need_summary=False,
+        completed_segments=None,
+        total_segments=None,
+        summary_index_status=None,
+        hit_count=0,
+        source_file=None,
+        metadata=(),
+        doc_metadata={},
+        built_in_enabled=False,
+        uploader_name=None,
+        process_rule=None,
+    )
+    return DocumentCreationProjection(
+        dataset=DocumentDatasetProjection(
+            id=REF.dataset_id,
+            name="Dataset",
+            description=None,
+            permission="only_me",
+            data_source_type="upload_file",
+            indexing_technique="economy",
+            created_by=CONTEXT.account_id,
+            created_at=now,
+        ),
+        documents=(document,),
+        batch="batch-1",
+    )
+
+
+def _settings() -> dict[str, object]:
     return {
         "indexing_technique": "economy",
         "process_rule": {"mode": "automatic"},
-        "data_source": {"info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": ["file"]}}},
-        **values,
+        "data_source": {
+            "info_list": {
+                "data_source_type": "upload_file",
+                "file_info_list": {"file_ids": ["file-1"]},
+            }
+        },
     }
 
 
-@pytest.fixture
-def operations(
-    sqlite_session_factory: sessionmaker[Session], config_overrides: Callable[..., None]
-) -> SQLAlchemyDocumentOperations:
-    config_overrides(DEPLOYMENT_EDITION="CLOUD", RBAC_ENABLED=False)
-    with sqlite_session_factory.begin() as session:
-        actor = Account(name="Actor", email="actor@example.com")
-        actor.id = "actor"
-        tenant = Tenant(name="Tenant")
-        tenant.id = "tenant"
-        session.add_all(
-            [
-                actor,
-                tenant,
-                TenantAccountJoin(tenant_id="tenant", account_id="actor", role=TenantAccountRole.OWNER),
-                Dataset(
-                    id="dataset", tenant_id="tenant", name="Dataset", created_by="actor", indexing_technique="economy"
-                ),
-                make_upload_file(file_id="file", tenant_id="tenant", name="example.txt", created_by="actor"),
-                make_upload_file(file_id="foreign-file", tenant_id="foreign", name="foreign.txt"),
-            ]
+class _DatasetAccess:
+    def require_accessible(self, context: RequestContext, dataset_id: str) -> AccessibleDataset:
+        assert context == CONTEXT
+        assert dataset_id == REF.dataset_id
+        return AccessibleDataset(id=dataset_id, workspace_id=context.active_workspace_id)
+
+
+@dataclass
+class _Datasets:
+    defaults: DocumentCreationDefaults = field(
+        default_factory=lambda: DocumentCreationDefaults(
+            provider="vendor", chunk_structure="text_model", indexing_technique="economy"
         )
-    return SQLAlchemyDocumentOperations(session_factory=sqlite_session_factory)
+    )
+
+    def get_document_creation_defaults(self, ref: DatasetRef) -> DocumentCreationDefaults:
+        assert ref == REF
+        return self.defaults
 
 
-@pytest.fixture
-def outside_transaction(sqlite_engine: Engine) -> Iterator[Callable[[], None]]:
-    active: set[int] = set()
+@dataclass
+class _Documents:
+    events: list[str]
+    fail_persistence: bool = False
+    deleted_documents: list[DocumentRef] = field(default_factory=list)
+    deleted_batches: list[tuple[DatasetRef, tuple[str, ...]]] = field(default_factory=list)
 
-    def begin(connection: object) -> None:
-        active.add(id(connection))
+    def get_creation_dataset(
+        self,
+        ref: DatasetRef,
+        *,
+        actor_id: str,
+        doc_form: str,
+        indexing_technique: str | None,
+    ) -> DocumentCreationDataset:
+        assert (ref, actor_id, doc_form, indexing_technique) == (REF, "actor-1", "text_model", "economy")
+        return DocumentCreationDataset(
+            tenant_id=ref.tenant_id,
+            indexing_technique="economy",
+            embedding_model=None,
+            embedding_model_provider=None,
+        )
 
-    def end(connection: object) -> None:
-        active.discard(id(connection))
+    def persist_creation(
+        self, ref: DatasetRef, config: object, **kwargs: object
+    ) -> tuple[DocumentCreationProjection, DocumentIndexingJobs]:
+        del config
+        assert ref == REF
+        assert kwargs["actor_id"] == "actor-1"
+        self.events.append("persist")
+        if self.fail_persistence:
+            raise RuntimeError("commit failed")
+        return (
+            _creation_projection(),
+            DocumentIndexingJobs(dataset=ref, created=("document-1",)),
+        )
 
-    def check() -> None:
-        assert not active, "External I/O must not hold an open database transaction"
+    def get_state(self, ref: DocumentRef) -> DocumentState | None:
+        if ref.dataset != REF:
+            return None
+        return DocumentState(
+            id=ref.document_id,
+            archived=False,
+            indexing_status="completed",
+            is_paused=False,
+            data_source_type="upload_file",
+            doc_form="text_model",
+            need_summary=False,
+        )
 
-    listeners = [("begin", begin), ("commit", end), ("rollback", end)]
-    for name, callback in listeners:
-        event.listen(sqlite_engine, name, callback)
-    yield check
-    for name, callback in listeners:
-        event.remove(sqlite_engine, name, callback)
+    def delete_document(self, ref: DocumentRef) -> DocumentCleanupJob:
+        self.deleted_documents.append(ref)
+        return DocumentCleanupJob(ref.document_id, ref.dataset.dataset_id, "text_model", "file-1")
+
+    def delete_documents(self, ref: DatasetRef, document_ids: Sequence[str]) -> DocumentBatchCleanupJob:
+        self.deleted_batches.append((ref, tuple(document_ids)))
+        return DocumentBatchCleanupJob(tuple(document_ids), ref.dataset_id, "text_model", ("file-2", "file-3"))
 
 
-@pytest.fixture
-def external_calls(
-    monkeypatch: pytest.MonkeyPatch,
-    outside_transaction: Callable[[], None],
-    sqlite_session_factory: sessionmaker[Session],
-) -> list[tuple[str, tuple[str, ...]]]:
-    calls: list[tuple[str, tuple[str, ...]]] = []
+class _Creation:
+    def load_environment(self, tenant_id: str) -> DocumentCreationEnvironment:
+        assert tenant_id == "tenant-1"
+        return DocumentCreationEnvironment(
+            limits=DocumentCreationLimits(
+                enabled=False,
+                sandbox=False,
+                batch_upload_limit=100,
+                upload_quota_limit=0,
+                upload_quota_size=0,
+            ),
+            priority_indexing=True,
+            initial_permission="only_me",
+        )
 
-    def features(_tenant_id: str, *, exclude_vector_space: bool) -> FeatureModel:
-        outside_transaction()
-        assert exclude_vector_space is True
-        result = FeatureModel()
-        result.billing.subscription.plan = CloudPlan.PROFESSIONAL
-        return result
+    def resolve_default_embedding_model(self, tenant_id: str) -> object:
+        raise AssertionError(f"unexpected default embedding lookup for {tenant_id}")
 
+    def validate_dataset_model(self, dataset: DocumentCreationDataset) -> None:
+        raise AssertionError(f"unexpected dataset model validation for {dataset}")
+
+
+class _SourceAuthorization:
+    def authorize(self, context: RequestContext, config: KnowledgeConfig) -> DocumentWriteConfig:
+        assert context == CONTEXT
+        return build_document_write_config(config)
+
+    def validate_stored_website(self, context: RequestContext, source_info: Mapping[str, object]) -> None:
+        del context, source_info
+
+
+@dataclass
+class _Tasks:
+    events: list[str]
+    dispatched: list[tuple[DocumentIndexingJobs, bool]] = field(default_factory=list)
+    cleanups: list[tuple[DatasetRef, DocumentCleanupJob | DocumentBatchCleanupJob]] = field(default_factory=list)
+    dataset_cleanups: list[DatasetCleanupRecord] = field(default_factory=list)
+
+    def dispatch_indexing(self, jobs: DocumentIndexingJobs, *, priority: bool) -> None:
+        self.events.append("dispatch")
+        self.dispatched.append((jobs, priority))
+
+    def cleanup(self, ref: DatasetRef, cleanup: DocumentCleanupJob | DocumentBatchCleanupJob) -> None:
+        self.cleanups.append((ref, cleanup))
+
+    def cleanup_dataset(self, cleanup: DatasetCleanupRecord) -> None:
+        self.dataset_cleanups.append(cleanup)
+
+
+class _Lock:
     @contextmanager
-    def lock(_name: str, *, timeout: int) -> Generator[None]:
-        outside_transaction()
-        assert timeout == 600
+    def hold(self, _name: str, **_kwargs: object) -> Generator[None]:
         yield
-        outside_transaction()
 
-    def dispatched(kind: str, dataset_id: str, document_ids: tuple[str, ...]) -> None:
-        outside_transaction()
-        with sqlite_session_factory() as session:
-            for document_id in document_ids:
-                document = session.get(Document, document_id)
-                assert document is not None
-                assert document.dataset_id == dataset_id
-                if kind != "clean":
-                    assert document.indexing_status == IndexingStatus.WAITING
-        calls.append((kind, document_ids))
 
-    def create(proxy: BatchDocumentIndexingProxy) -> None:
-        dispatched("create", proxy._dataset_id, tuple(proxy._document_ids))
+@dataclass
+class _Uploads:
+    uploaded: list[tuple[str, str]] = field(default_factory=list)
 
-    def duplicate(proxy: BatchDocumentIndexingProxy) -> None:
-        dispatched("duplicate", proxy._dataset_id, tuple(proxy._document_ids))
+    def upload_text(self, context: RequestContext, *, name: str, text: str) -> str:
+        assert context == CONTEXT
+        self.uploaded.append((name, text))
+        return "uploaded-text"
 
-    monkeypatch.setattr("services.knowledge.dataset_service.FeatureService.get_features", features)
-    monkeypatch.setattr("services.knowledge.documents.adapters.redis_client.lock", lock)
-    monkeypatch.setattr(DocumentIndexingTaskProxy, "delay", create)
-    monkeypatch.setattr(DuplicateDocumentIndexingTaskProxy, "delay", duplicate)
-    monkeypatch.setattr(
-        "services.knowledge.dataset_service.document_indexing_update_task.delay",
-        lambda dataset_id, document_id: dispatched("update", dataset_id, (document_id,)),
+
+class _CreatorAccess:
+    def initialize_creator_access(self, context: RequestContext, *, dataset_id: str) -> None:
+        del context, dataset_id
+
+
+def _service(
+    *,
+    documents: _Documents,
+    tasks: _Tasks,
+    uploads: _Uploads | None = None,
+) -> DatasetDocumentApplicationService:
+    return DatasetDocumentApplicationService(
+        dataset_access=cast(DatasetAccess, _DatasetAccess()),
+        datasets=cast(DocumentDatasetRepository, _Datasets()),
+        documents=cast(DocumentRepository, documents),
+        operations=cast(DocumentOperations, object()),
+        uploads=cast(DocumentUploads, uploads or _Uploads()),
+        indexing_locks=cast(KnowledgeIndexingLock, _Lock()),
+        lifecycle_cache=cast(DocumentLifecycleCache, object()),
+        model_configuration=cast(DocumentModelConfigurationGateway, object()),
+        creation=cast(DocumentCreationGateway, _Creation()),
+        source_authorization=cast(DocumentSourceAuthorization, _SourceAuthorization()),
+        creator_access=cast(DatasetCreatorAccess, _CreatorAccess()),
+        tasks=cast(DocumentTaskDispatcher, tasks),
+        presenter=DocumentResponsePresentationAdapter(),
     )
-    monkeypatch.setattr(
-        "services.knowledge.dataset_service.clean_notion_document_task.delay",
-        lambda document_ids, dataset_id: dispatched("clean", dataset_id, tuple(document_ids)),
+
+
+def test_creation_dispatches_repository_jobs_only_after_persistence_returns() -> None:
+    events: list[str] = []
+    documents = _Documents(events)
+    tasks = _Tasks(events)
+
+    result = _service(documents=documents, tasks=tasks).create_documents(
+        CONTEXT, dataset_id="dataset-1", settings=_settings()
     )
-    return calls
+
+    assert result["documents"][0]["id"] == "document-1"
+    assert result["batch"] == "batch-1"
+    assert events == ["persist", "dispatch"]
+    assert tasks.dispatched == [(DocumentIndexingJobs(dataset=REF, created=("document-1",)), True)]
 
 
-@pytest.mark.parametrize("initialize", [False, True])
-def test_upload_preserves_response_and_commits_before_dispatch(
-    operations: SQLAlchemyDocumentOperations,
-    external_calls: list[tuple[str, tuple[str, ...]]],
-    sqlite_session_factory: sessionmaker[Session],
-    initialize: bool,
-) -> None:
-    result = (
-        operations.initialize_dataset(CONTEXT, settings())
-        if initialize
-        else operations.create_documents(CONTEXT, REF, settings())
-    )
-    (document,) = result["documents"]
-    assert document["name"] == "example.txt"
-    assert document["data_source_info_dict"] == {"upload_file_id": "file"}
-    assert document["indexing_status"] == "waiting"
-    assert result["batch"]
-    assert external_calls == [("create", (document["id"],))]
-    with sqlite_session_factory() as session:
-        dataset = session.get(Dataset, result["dataset"]["id"])
-        assert dataset is not None
-        assert dataset.tenant_id == "tenant"
-        assert dataset.name == ("example.txt..." if initialize else "Dataset")
-        assert dataset.permission == "only_me"
+def test_creation_does_not_dispatch_when_persistence_fails() -> None:
+    events: list[str] = []
+    documents = _Documents(events, fail_persistence=True)
+    tasks = _Tasks(events)
 
-
-def test_duplicate_upload_reuses_document_and_dispatches_duplicate_job(
-    operations: SQLAlchemyDocumentOperations, external_calls: list[tuple[str, tuple[str, ...]]]
-) -> None:
-    first = operations.create_documents(CONTEXT, REF, settings())
-    second = operations.create_documents(CONTEXT, REF, settings())
-    first_id = first["documents"][0]["id"]
-    assert second["documents"][0]["id"] == first_id
-    assert external_calls == [("create", (first_id,)), ("duplicate", (first_id,))]
-
-
-def test_reprocess_checks_model_outside_transaction_and_preserves_segment_reset(
-    operations: SQLAlchemyDocumentOperations,
-    external_calls: list[tuple[str, tuple[str, ...]]],
-    outside_transaction: Callable[[], None],
-    sqlite_session_factory: sessionmaker[Session],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    created = operations.create_documents(CONTEXT, REF, settings())
-    document_id = created["documents"][0]["id"]
-    with sqlite_session_factory.begin() as session:
-        document = session.get(Document, document_id)
-        assert document is not None
-        document.indexing_status = IndexingStatus.COMPLETED
-        document.completed_at = datetime(2026, 1, 1)
-        dataset = session.get(Dataset, REF.dataset_id)
-        assert dataset is not None
-        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
-        dataset.embedding_model = "embedding"
-        dataset.embedding_model_provider = "provider"
-        session.add(
-            DocumentSegment(
-                tenant_id="tenant",
-                dataset_id="dataset",
-                document_id=document_id,
-                position=1,
-                content="content",
-                word_count=1,
-                tokens=1,
-                created_by="actor",
-                status=SegmentStatus.COMPLETED,
-            )
-        )
-    manager = Mock()
-    manager.get_model_instance.side_effect = lambda **_kwargs: outside_transaction()
-    monkeypatch.setattr("services.knowledge.dataset_service.ModelManager.for_tenant", lambda **_kwargs: manager)
-    result = operations.create_documents(CONTEXT, REF, settings(original_document_id=document_id, name="Renamed"))
-    assert result["documents"][0]["id"] == document_id
-    assert result["documents"][0]["name"] == "Renamed"
-    assert result["batch"] == created["batch"]
-    assert external_calls[-1] == ("update", (document_id,))
-    manager.get_model_instance.assert_called_once()
-    with sqlite_session_factory() as session:
-        segment = session.scalar(select(DocumentSegment).where(DocumentSegment.document_id == document_id))
-        assert segment is not None
-        assert segment.status == SegmentStatus.RE_SEGMENT
-
-
-def test_first_high_quality_upload_resolves_default_model_without_transaction(
-    operations: SQLAlchemyDocumentOperations,
-    external_calls: list[tuple[str, tuple[str, ...]]],
-    outside_transaction: Callable[[], None],
-    sqlite_session_factory: sessionmaker[Session],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    with sqlite_session_factory.begin() as session:
-        dataset = session.get(Dataset, REF.dataset_id)
-        assert dataset is not None
-        dataset.indexing_technique = None
-
-    def model(**_kwargs: object) -> ModelInstance:
-        outside_transaction()
-        instance = object.__new__(ModelInstance)
-        instance.model_name = "default-embedding"
-        instance.provider = "default-provider"
-        return instance
-
-    manager = Mock()
-    manager.get_default_model_instance.side_effect = model
-    monkeypatch.setattr("services.knowledge.dataset_service.ModelManager.for_tenant", lambda **_kwargs: manager)
-    operations.create_documents(CONTEXT, REF, settings(indexing_technique="high_quality"))
-    with sqlite_session_factory() as session:
-        dataset = session.get(Dataset, REF.dataset_id)
-        assert dataset is not None
-        assert dataset.embedding_model == "default-embedding"
-        assert dataset.embedding_model_provider == "default-provider"
-        assert dataset.collection_binding_id is not None
-    assert len(external_calls) == 1
-
-
-def test_foreign_upload_is_rejected_without_dispatch(
-    operations: SQLAlchemyDocumentOperations, external_calls: list[tuple[str, tuple[str, ...]]]
-) -> None:
-    config = settings(
-        data_source={"info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": ["foreign-file"]}}}
-    )
-    with pytest.raises(FileNotExistsError):
-        operations.create_documents(CONTEXT, REF, config)
-    assert external_calls == []
-
-
-def test_notion_removal_is_dispatched_after_new_documents_commit(
-    operations: SQLAlchemyDocumentOperations, external_calls: list[tuple[str, tuple[str, ...]]]
-) -> None:
-    def notion(page_id: str) -> dict[str, object]:
-        return settings(
-            data_source={
-                "info_list": {
-                    "data_source_type": "notion_import",
-                    "notion_info_list": [
-                        {
-                            "credential_id": "credential",
-                            "workspace_id": "workspace",
-                            "pages": [{"page_id": page_id, "page_name": page_id, "type": "page"}],
-                        }
-                    ],
-                }
-            }
+    with pytest.raises(RuntimeError, match="commit failed"):
+        _service(documents=documents, tasks=tasks).create_documents(
+            CONTEXT, dataset_id="dataset-1", settings=_settings()
         )
 
-    first = operations.create_documents(CONTEXT, REF, notion("old-page"))
-    old_id = first["documents"][0]["id"]
-    operations.create_documents(CONTEXT, REF, notion("new-page"))
-    assert external_calls[-2] == ("clean", (old_id,))
-    assert external_calls[-1][0] == "create"
-    assert old_id not in external_calls[-1][1]
+    assert events == ["persist"]
+    assert tasks.dispatched == []
 
 
-def test_cloud_quota_rejection_does_not_create_documents_or_dispatch(
-    operations: SQLAlchemyDocumentOperations,
-    external_calls: list[tuple[str, tuple[str, ...]]],
-    sqlite_session_factory: sessionmaker[Session],
-    config_overrides: Callable[..., None],
-) -> None:
-    config_overrides(BATCH_UPLOAD_LIMIT=0)
-    with pytest.raises(ValueError, match="batch upload limit"):
-        operations.create_documents(CONTEXT, REF, settings())
-    assert external_calls == []
-    with sqlite_session_factory() as session:
-        assert session.scalar(select(Document.id)) is None
+def test_text_creation_uploads_first_then_dispatches_persisted_job() -> None:
+    events: list[str] = []
+    uploads = _Uploads()
+    documents = _Documents(events)
+    tasks = _Tasks(events)
+    settings: Mapping[str, object] = {
+        "indexing_technique": "economy",
+        "process_rule": {"mode": "automatic"},
+    }
+
+    result = _service(documents=documents, tasks=tasks, uploads=uploads).create_by_text(
+        CONTEXT,
+        dataset_id="dataset-1",
+        name="Guide",
+        text="contents",
+        settings=settings,
+    )
+
+    assert result["batch"] == "batch-1"
+    assert uploads.uploaded == [("Guide", "contents")]
+    assert events == ["persist", "dispatch"]
 
 
-def test_response_read_failure_still_dispatches_already_committed_documents(
-    operations: SQLAlchemyDocumentOperations,
-    external_calls: list[tuple[str, tuple[str, ...]]],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    response = Mock(side_effect=ValueError("response read failed"))
-    monkeypatch.setattr("services.knowledge.documents.adapters._created_response", response)
-    with pytest.raises(ValueError, match="response read failed"):
-        operations.create_documents(CONTEXT, REF, settings())
-    assert len(external_calls) == 1
-    assert external_calls[0][0] == "create"
+def test_deletion_dispatches_repository_cleanup_snapshots() -> None:
+    events: list[str] = []
+    documents = _Documents(events)
+    tasks = _Tasks(events)
+    service = _service(documents=documents, tasks=tasks)
 
+    service.delete_document(CONTEXT, dataset_id="dataset-1", document_id="document-1")
+    service.delete_documents(CONTEXT, dataset_id="dataset-1", document_ids=["document-2", "document-3"])
 
-def test_lost_creation_lock_keeps_empty_batch_response(
-    operations: SQLAlchemyDocumentOperations,
-    external_calls: list[tuple[str, tuple[str, ...]]],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    @contextmanager
-    def lock(_name: str, **_kwargs: object) -> Generator[None]:
-        raise LockNotOwnedError("lock lost")
-        yield  # pragma: no cover
-
-    monkeypatch.setattr("services.knowledge.documents.adapters.redis_client.lock", lock)
-    result = operations.create_documents(CONTEXT, REF, settings())
-    assert result["documents"] == []
-    assert result["batch"]
-    assert result["dataset"]["id"] == REF.dataset_id
-    assert external_calls == []
-
-
-def test_billing_http_boundary_does_not_hold_a_transaction(
-    operations: SQLAlchemyDocumentOperations,
-    outside_transaction: Callable[[], None],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    class StopBeforeNetworkError(Exception):
-        pass
-
-    def request(_method: str, url: str, **_kwargs: object) -> None:
-        assert url.endswith("/subscription/info")
-        outside_transaction()
-        raise StopBeforeNetworkError()
-
-    monkeypatch.setattr("services.billing_service._http_client.request", request)
-    with pytest.raises(StopBeforeNetworkError):
-        operations.create_documents(CONTEXT, REF, settings())
-    outside_transaction()
+    assert documents.deleted_documents == [REF.document("document-1")]
+    assert documents.deleted_batches == [(REF, ("document-2", "document-3"))]
+    assert tasks.dispatched == []
+    assert tasks.cleanups == [
+        (REF, DocumentCleanupJob("document-1", "dataset-1", "text_model", "file-1")),
+        (
+            REF,
+            DocumentBatchCleanupJob(("document-2", "document-3"), "dataset-1", "text_model", ("file-2", "file-3")),
+        ),
+    ]

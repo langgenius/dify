@@ -18,14 +18,13 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import WorkflowFinishStreamResponse
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from enums.creator import CreatorUserRole
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
 from libs.datetime_utils import to_utc_timestamp
 from models import Account, EndUser, WorkflowRun
-from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
@@ -35,6 +34,8 @@ from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
     WorkflowTaskOwnerMismatchError,
 )
+from repositories.workflow.factory import WorkflowRepositoryFactory
+from services.file_adapters import build_file_service
 
 logger = logging.getLogger(__name__)
 
@@ -271,7 +272,7 @@ class AppTaskService:
         # history through the configured backend without holding its run lock.
         user = Account(name="", email="") if run.created_by_role == CreatorUserRole.ACCOUNT else EndUser()
         user.id = run.created_by
-        repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+        repository = WorkflowRepositoryFactory.create_workflow_execution_repository(
             session_factory=sessionmaker(bind=db.engine),
             tenant_id=run.tenant_id,
             user=user,
@@ -310,6 +311,7 @@ class AppTaskService:
                 )
                 .distinct()
             ).all()
+        files = build_file_service(session_factory=factory)
         for app_id, triggered_from in scopes:
             source = SQLAlchemyWorkflowNodeExecutionRepository(
                 session_factory=factory,
@@ -317,6 +319,7 @@ class AppTaskService:
                 user=user,
                 app_id=app_id,
                 triggered_from=triggered_from,
+                files=files,
             )
             stopped_nodes = [
                 execution
@@ -325,12 +328,13 @@ class AppTaskService:
                 and execution.finished_at == run.finished_at
                 and execution.error == run.error
             ]
-            target = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+            target = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=factory,
                 tenant_id=run.tenant_id,
                 user=user,
                 app_id=app_id,
                 triggered_from=triggered_from,
+                files=files,
             )
             target.save_many(stopped_nodes)
 

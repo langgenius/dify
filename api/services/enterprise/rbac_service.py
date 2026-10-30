@@ -87,60 +87,74 @@ def _resource_id_params(resource_type: RBACResourceType | str, resource_id: str)
     return {"resource_type": resolved.value, resolved.route.id_param: resource_id.strip()}
 
 
+def sync_creator_access_policy_member_bindings(
+    tenant_id: str,
+    account_id: str,
+    resource_type: RBACResourceType | str,
+    resource_id: str,
+) -> None:
+    """Create the creator bindings required for immediate resource access.
+
+    Callers that cannot return a usable resource without creator access should
+    use this strict variant and compensate their resource write on failure.
+    """
+    if not dify_config.RBAC_ENABLED:
+        return
+    bindings = RBACService.AccessPolicies.sync_creator_access_policy_member_bindings(
+        tenant_id,
+        account_id,
+        resource_type=resource_type,
+        resource_id=resource_id,
+    )
+    if resource_type in (RBACResourceType.APP, RBACResourceType.DATASET):
+        policy_ids = sorted(
+            {
+                binding.access_policy_id
+                for binding in bindings
+                if binding.tenant_id == tenant_id
+                and binding.resource_type == resource_type
+                and binding.resource_id == resource_id
+                and binding.account_id == account_id
+                and binding.access_policy_id
+            }
+        )
+        if not policy_ids:
+            raise ValueError("Creator sync returned no matching resource policy binding")
+        # Policy bindings alone do not satisfy the resource whitelist gate.
+        # Append the returned creator policies without replacing other members or policies.
+        if resource_type == RBACResourceType.APP:
+            RBACService.AppAccess.append_whitelist_members_batch(
+                tenant_id,
+                account_id,
+                [
+                    AppendAppWhitelistMembersBatchItem(
+                        app_id=resource_id, account_ids=[account_id], policy_id=policy_id
+                    )
+                    for policy_id in policy_ids
+                ],
+            )
+        else:
+            RBACService.DatasetAccess.append_whitelist_members_batch(
+                tenant_id,
+                account_id,
+                [
+                    AppendDatasetWhitelistMembersBatchItem(
+                        dataset_id=resource_id, account_ids=[account_id], policy_id=policy_id
+                    )
+                    for policy_id in policy_ids
+                ],
+            )
+
+
 def try_sync_creator_access_policy_member_bindings(
     tenant_id: str,
     account_id: str,
     resource_type: RBACResourceType | str,
     resource_id: str,
 ) -> None:
-    """Best-effort creator bindings, including app and dataset whitelist visibility gates."""
-    if not dify_config.RBAC_ENABLED:
-        return
+    """Best-effort creator bindings for legacy callers that cannot compensate."""
     try:
-        bindings = RBACService.AccessPolicies.sync_creator_access_policy_member_bindings(
-            tenant_id,
-            account_id,
-            resource_type=resource_type,
-            resource_id=resource_id,
-        )
-        if resource_type in (RBACResourceType.APP, RBACResourceType.DATASET):
-            policy_ids = sorted(
-                {
-                    binding.access_policy_id
-                    for binding in bindings
-                    if binding.tenant_id == tenant_id
-                    and binding.resource_type == resource_type
-                    and binding.resource_id == resource_id
-                    and binding.account_id == account_id
-                    and binding.access_policy_id
-                }
-            )
-            if not policy_ids:
-                raise ValueError("Creator sync returned no matching resource policy binding")
-            # Policy bindings alone do not satisfy the resource whitelist gate.
-            # Append the returned creator policies without replacing other members or policies.
-            if resource_type == RBACResourceType.APP:
-                RBACService.AppAccess.append_whitelist_members_batch(
-                    tenant_id,
-                    account_id,
-                    [
-                        AppendAppWhitelistMembersBatchItem(
-                            app_id=resource_id, account_ids=[account_id], policy_id=policy_id
-                        )
-                        for policy_id in policy_ids
-                    ],
-                )
-            else:
-                RBACService.DatasetAccess.append_whitelist_members_batch(
-                    tenant_id,
-                    account_id,
-                    [
-                        AppendDatasetWhitelistMembersBatchItem(
-                            dataset_id=resource_id, account_ids=[account_id], policy_id=policy_id
-                        )
-                        for policy_id in policy_ids
-                    ],
-                )
+        sync_creator_access_policy_member_bindings(tenant_id, account_id, resource_type, resource_id)
     except Exception:
         logger.warning(
             "Failed to sync creator access policy member binding for "

@@ -118,6 +118,20 @@ class _FormStateRejectingUploads:
         raise AssertionError("upload must not run after the token check failed")
 
 
+class _FinalOwnerRejectingUploads:
+    def __init__(self, context: HumanInputUploadContext) -> None:
+        self._context = context
+
+    def validate_upload_token(self, _upload_token: str) -> HumanInputUploadContext:
+        return self._context
+
+    def upload_local_file(self, **_: object) -> UploadFile:
+        raise InvalidUploadTokenError()
+
+    def upload_remote_file(self, **_: object) -> RemoteFileUploadResult:
+        raise InvalidUploadTokenError()
+
+
 def _patch_upload_service(monkeypatch: pytest.MonkeyPatch, service: object) -> None:
     monkeypatch.setattr(
         upload_module,
@@ -259,6 +273,27 @@ def test_remote_upload_validates_token_before_fetching_remote_url(monkeypatch: p
             HumanInputFileUploadApi().post()
 
     service.upload_remote_file.assert_not_called()
+
+
+@pytest.mark.parametrize("remote", [False, True], ids=["local", "remote"])
+def test_upload_maps_final_owner_rejection_to_forbidden(
+    monkeypatch: pytest.MonkeyPatch,
+    app: Flask,
+    remote: bool,
+) -> None:
+    service = _FinalOwnerRejectingUploads(_upload_context())
+    data = {"url": "https://example.com/file.txt"} if remote else {"file": (BytesIO(b"content"), "sample.txt")}
+    _patch_upload_service(monkeypatch, service)
+
+    with app.test_request_context(
+        "/api/human-input-forms/files",
+        method="POST",
+        headers={"Authorization": "Bearer hitl_upload_token-1"},
+        data=data,
+        content_type="multipart/form-data",
+    ):
+        with pytest.raises(InvalidUploadTokenForbiddenError):
+            HumanInputFileUploadApi().post()
 
 
 def test_remote_upload_delegates_to_human_input_upload_service(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:

@@ -17,10 +17,11 @@ import json
 import sys
 import uuid
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import pytest
 from flask import Flask
@@ -45,15 +46,18 @@ from controllers.service_api.app.workflow import (
     WorkflowTaskStopApi,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from enums import CloudPlan, DeploymentEdition
+from enums import (
+    CloudPlan,
+    DeploymentEdition,
+)
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError as ProviderInvokeRateLimitError
 from models import Account
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
-from services.app_generate_service import AppGenerateService
 from services.billing_service import BillingService
 from services.errors.app import (
     IsDraftWorkflowError,
@@ -64,6 +68,28 @@ from services.errors.app import (
 )
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+
+
+class _AppGenerationBoundary:
+    def generate(self, **_kwargs: object) -> object:
+        raise AssertionError("the test must install its generation behavior")
+
+
+@dataclass(frozen=True)
+class _AppGenerationServices:
+    app_generation: _AppGenerationBoundary
+
+
+@pytest.fixture(autouse=True)
+def app_generation(monkeypatch: pytest.MonkeyPatch) -> _AppGenerationBoundary:
+    generator = _AppGenerationBoundary()
+    application_services = _AppGenerationServices(app_generation=generator)
+    monkeypatch.setattr(
+        sys.modules["controllers.service_api.app.workflow"],
+        "application_services",
+        lambda: application_services,
+    )
+    return generator
 
 
 def _default_workflow_inputs() -> dict[str, object]:
@@ -221,10 +247,19 @@ def _expected_workflow_log_pagination_payload() -> dict[str, object]:
     }
 
 
-def _stub_workflow_app_logs(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    workflow_app_logs = MagicMock()
-    workflow_app_logs.list_logs.return_value = _expected_workflow_log_pagination_payload()
-    services = SimpleNamespace(workflow_app_logs=workflow_app_logs)
+class _WorkflowAppLogsBoundary:
+    def list_logs(self, **_kwargs: object) -> dict[str, object]:
+        return _expected_workflow_log_pagination_payload()
+
+
+@dataclass(frozen=True)
+class _WorkflowLogServices:
+    workflow_app_logs: _WorkflowAppLogsBoundary
+
+
+def _stub_workflow_app_logs(monkeypatch: pytest.MonkeyPatch) -> _WorkflowAppLogsBoundary:
+    workflow_app_logs = _WorkflowAppLogsBoundary()
+    services = _WorkflowLogServices(workflow_app_logs=workflow_app_logs)
     monkeypatch.setattr(
         sys.modules["controllers.service_api.app.workflow"],
         "application_services",
@@ -383,9 +418,9 @@ class TestWorkflowRunRepository:
         run = _make_workflow_run(run_id=str(uuid.uuid4()))
         sqlite_session.add(run)
         sqlite_session.commit()
-        from repositories.factory import DifyAPIRepositoryFactory
+        from repositories.workflow.factory import WorkflowRepositoryFactory
 
-        repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+        repo = WorkflowRepositoryFactory.create_api_workflow_run_repository(
             sessionmaker(bind=sqlite_engine, expire_on_commit=False)
         )
 
@@ -462,13 +497,14 @@ class TestWorkflowRunApi:
         http_error: type[InvokeRateLimitHttpError | CompletionRequestError],
         status_code: int,
         error_code: str,
+        app_generation: _AppGenerationBoundary,
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         monkeypatch.setattr(
             BillingService, "get_info", Mock(return_value={"subscription": {"plan": CloudPlan.PROFESSIONAL}})
         )
         generate = Mock(side_effect=source_error("rate limit reached"))
-        monkeypatch.setattr(AppGenerateService, "generate", generate)
+        monkeypatch.setattr(app_generation, "generate", generate)
 
         api = api_class()
         handler = unwrap(api.post)
@@ -492,9 +528,10 @@ class TestWorkflowRunApi:
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
+        app_generation: _AppGenerationBoundary,
     ) -> None:
         monkeypatch.setattr(
-            AppGenerateService,
+            app_generation,
             "generate",
             Mock(side_effect=TriggerWorkflowServiceModeUnavailableServiceError()),
         )
@@ -519,6 +556,7 @@ class TestWorkflowRunApi:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
         config_overrides: Callable[..., None],
+        app_generation: _AppGenerationBoundary,
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         sys.modules["controllers.service_api.app.workflow"]
@@ -526,7 +564,7 @@ class TestWorkflowRunApi:
         billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock(return_value={"result": "ok"})
         monkeypatch.setattr(BillingService, "get_info", billing_get_info)
-        monkeypatch.setattr(AppGenerateService, "generate", generate)
+        monkeypatch.setattr(app_generation, "generate", generate)
 
         api = WorkflowRunApi()
         handler = unwrap(api.post)
@@ -542,6 +580,7 @@ class TestWorkflowRunApi:
         assert response.get_json() == {"result": "ok"}
         billing_get_info.assert_not_called()
         generate.assert_called_once()
+        assert "external_retrieval" not in generate.call_args.kwargs
 
 
 class TestWorkflowRunByIdApi:
@@ -550,9 +589,10 @@ class TestWorkflowRunByIdApi:
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
+        app_generation: _AppGenerationBoundary,
     ) -> None:
         monkeypatch.setattr(
-            AppGenerateService,
+            app_generation,
             "generate",
             Mock(side_effect=TriggerWorkflowServiceModeUnavailableServiceError()),
         )
@@ -578,6 +618,7 @@ class TestWorkflowRunByIdApi:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
         config_overrides: Callable[..., None],
+        app_generation: _AppGenerationBoundary,
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         sys.modules["controllers.service_api.app.workflow"]
@@ -585,7 +626,7 @@ class TestWorkflowRunByIdApi:
         billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
         generate = Mock()
         monkeypatch.setattr(BillingService, "get_info", billing_get_info)
-        monkeypatch.setattr(AppGenerateService, "generate", generate)
+        monkeypatch.setattr(app_generation, "generate", generate)
 
         api = WorkflowRunByIdApi()
         handler = unwrap(api.post)
@@ -630,13 +671,14 @@ class TestWorkflowRunByIdApi:
         plan: CloudPlan,
         sqlite_session: Session,
         config_overrides: Callable[..., None],
+        app_generation: _AppGenerationBoundary,
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=deployment_edition)
 
         billing_get_info = Mock(return_value={"subscription": {"plan": plan}})
         generate = Mock(return_value={"result": "ok"})
         monkeypatch.setattr(BillingService, "get_info", billing_get_info)
-        monkeypatch.setattr(AppGenerateService, "generate", generate)
+        monkeypatch.setattr(app_generation, "generate", generate)
 
         api = WorkflowRunByIdApi()
         handler = unwrap(api.post)
@@ -653,6 +695,7 @@ class TestWorkflowRunByIdApi:
 
         assert response.get_json() == {"result": "ok"}
         generate.assert_called_once()
+        assert "external_retrieval" not in generate.call_args.kwargs
         if deployment_edition == DeploymentEdition.CLOUD:
             billing_get_info.assert_called_once_with(app_model.tenant_id, exclude_vector_space=True)
         else:
@@ -665,11 +708,12 @@ class TestWorkflowRunByIdApi:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
         config_overrides: Callable[..., None],
+        app_generation: _AppGenerationBoundary,
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         sys.modules["controllers.service_api.app.workflow"]
         monkeypatch.setattr(
-            AppGenerateService,
+            app_generation,
             "generate",
             lambda *_args, **_kwargs: (_ for _ in ()).throw(WorkflowNotFoundError("missing")),
         )
@@ -690,11 +734,12 @@ class TestWorkflowRunByIdApi:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
         config_overrides: Callable[..., None],
+        app_generation: _AppGenerationBoundary,
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         sys.modules["controllers.service_api.app.workflow"]
         monkeypatch.setattr(
-            AppGenerateService,
+            app_generation,
             "generate",
             lambda *_args, **_kwargs: (_ for _ in ()).throw(IsDraftWorkflowError("draft")),
         )

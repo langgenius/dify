@@ -19,21 +19,26 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
-from core.repositories.factory import OrderConfig
 from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     SQLAlchemyWorkflowNodeExecutionRepository,
     _deterministic_json_dump,
     _filter_by_offload_type,
     _find_first,
+    _InputsOutputsTruncationResult,
     _replace_or_append_offload,
 )
+from core.workflow.file_reference import build_file_reference
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
+from enums.creator import CreatorUserRole
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from models import Account, EndUser
-from models.enums import CreatorUserRole, ExecutionOffLoadType
+from models.enums import ExecutionOffLoadType
 from models.model import UploadFile
+from models.tools import ToolFile
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
+from services.errors.file import UploadFileReferenceNotFoundError
+from services.file_adapters import build_file_service
 from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
 
 
@@ -106,7 +111,7 @@ def _execution(
 
 
 def _repository(
-    monkeypatch: pytest.MonkeyPatch,
+    _monkeypatch: pytest.MonkeyPatch,
     factory: sessionmaker[Session] | Engine,
     *,
     tenant_id: str = "tenant-1",
@@ -114,16 +119,14 @@ def _repository(
     user: Account | EndUser | None = None,
     triggered_from: WorkflowNodeExecutionTriggeredFrom | None = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
 ) -> SQLAlchemyWorkflowNodeExecutionRepository:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_args: SimpleNamespace(upload_file=Mock()),
-    )
+    file_session_factory = sessionmaker(bind=factory) if isinstance(factory, Engine) else factory
     return SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=factory,
         tenant_id=tenant_id,
         user=user or _account(tenant_id=tenant_id),
         app_id=app_id,
         triggered_from=triggered_from,
+        files=build_file_service(session_factory=file_session_factory),
     )
 
 
@@ -179,11 +182,8 @@ def test_workflow_tool_scope_isolates_execution_history_with_same_tenant_and_cre
         )
 
 
-def test_init_rejects_invalid_factory_and_missing_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_args: SimpleNamespace(upload_file=Mock()),
-    )
+def test_init_rejects_invalid_factory_and_missing_tenant() -> None:
+    files = build_file_service(session_factory=sessionmaker())
     with pytest.raises(ValueError, match="Invalid session_factory type"):
         SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=object(),  # type: ignore[arg-type]
@@ -191,6 +191,7 @@ def test_init_rejects_invalid_factory_and_missing_tenant(monkeypatch: pytest.Mon
             user=_account(),
             app_id=None,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=files,
         )
     user = _account()
     user._current_tenant = None
@@ -201,6 +202,7 @@ def test_init_rejects_invalid_factory_and_missing_tenant(monkeypatch: pytest.Mon
             user=user,
             app_id=None,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=files,
         )
 
 
@@ -322,6 +324,37 @@ def test_save_inserts_and_updates_persisted_execution(
     assert repo._node_execution_cache[execution.node_execution_id].id == execution.id
 
 
+def test_save_many_persists_agent_tool_file_output(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    tool_file = ToolFile(
+        user_id="user-1",
+        tenant_id="tenant-1",
+        conversation_id=None,
+        file_key="tool-output/report.pdf",
+        mimetype="application/pdf",
+        name="report.pdf",
+        size=42,
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add(tool_file)
+
+    output = {
+        "report": {
+            "transfer_method": "tool_file",
+            "reference": build_file_reference(record_id=tool_file.id),
+        }
+    }
+    execution = _execution(outputs=output)
+
+    _repository(monkeypatch, sqlite_session_factory).save_many([execution])
+
+    with sqlite_session_factory() as session:
+        persisted = session.get(WorkflowNodeExecutionModel, execution.id)
+        assert persisted is not None
+        assert persisted.outputs_dict == output
+
+
 def test_save_owned_session_rolls_back_failed_insert(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: Engine,
@@ -415,6 +448,8 @@ def test_save_execution_data_persists_each_truncation_offload(
     )
     result = SimpleNamespace(truncated_value={"large": "truncated"}, offload=offload)
     monkeypatch.setattr(repo, "_truncate_and_upload", lambda values, *_args: result if values else None)
+    with sqlite_session_factory.begin() as session:
+        session.add(make_upload_file(file_id="file-1", tenant_id="tenant-1"))
     repo.save_execution_data(execution)
     with sqlite_session_factory() as session:
         persisted = session.get(WorkflowNodeExecutionModel, execution.id)
@@ -427,7 +462,40 @@ def test_save_execution_data_persists_each_truncation_offload(
     assert read_truncated(execution) == {"large": "truncated"}
 
 
-def test_get_by_workflow_run_filters_tenant_app_trigger_and_paused_and_orders(
+def test_save_execution_data_locks_reference_hidden_by_truncation(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    repo = _repository(monkeypatch, sqlite_session_factory)
+    execution = _execution(inputs={"value": "before"})
+    repo.save(execution)
+    missing_file_id = "missing-upload"
+    execution.inputs = {
+        "large": "value",
+        "file": {
+            "transfer_method": "local_file",
+            "reference": build_file_reference(record_id=missing_file_id),
+        },
+    }
+    offload = WorkflowNodeExecutionOffload(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        node_execution_id=execution.id,
+        type_=ExecutionOffLoadType.INPUTS,
+        file_id="offload-file",
+    )
+    result = _InputsOutputsTruncationResult(truncated_value={"large": "truncated"}, offload=offload)
+    monkeypatch.setattr(repo, "_truncate_and_upload", lambda values, *_args: result if values else None)
+    with sqlite_session_factory.begin() as session:
+        session.add(make_upload_file(file_id="offload-file", tenant_id="tenant-1"))
+
+    with pytest.raises(UploadFileReferenceNotFoundError) as error:
+        repo.save_execution_data(execution)
+
+    assert error.value.missing_file_ids == (missing_file_id,)
+
+
+def test_get_by_workflow_run_filters_tenant_app_trigger_and_paused(
     monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
     repo = _repository(monkeypatch, sqlite_session_factory)
@@ -453,21 +521,12 @@ def test_get_by_workflow_run_filters_tenant_app_trigger_and_paused_and_orders(
         triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
     ).save(_execution(execution_id="single-step", node_execution_id="single-step"))
 
-    models = repo.get_db_models_by_workflow_run(
-        "run-1",
-        OrderConfig(order_by=["missing", "index"], order_direction="desc"),
-    )
-    assert [model.id for model in models] == ["two", "one"]
+    models = repo.get_db_models_by_workflow_run("run-1")
+    assert {model.id for model in models} == {"two", "one"}
     assert set(repo._node_execution_cache) >= {"node-one", "node-two"}
     assert repo.get_db_models_by_workflow_run("missing-run") == []
     no_app_repo = _repository(monkeypatch, sqlite_session_factory, app_id=None)
-    assert (
-        no_app_repo.get_db_models_by_workflow_run(
-            "missing-run",
-            OrderConfig(order_by=["missing"], order_direction="asc"),
-        )
-        == []
-    )
+    assert no_app_repo.get_db_models_by_workflow_run("missing-run") == []
 
 
 def test_get_by_workflow_execution_maps_real_rows_to_domain(
@@ -475,7 +534,7 @@ def test_get_by_workflow_execution_maps_real_rows_to_domain(
 ) -> None:
     repo = _repository(monkeypatch, sqlite_session_factory)
     repo.save(_execution(inputs={"input": 1}, outputs={"output": 2}))
-    domains = repo.get_by_workflow_execution("run-1", OrderConfig(order_by=["index"], order_direction="asc"))
+    domains = repo.get_by_workflow_execution("run-1")
     assert len(domains) == 1
     assert domains[0].inputs == {"input": 1}
     assert domains[0].outputs == {"output": 2}
@@ -495,6 +554,7 @@ def test_resume_history_includes_paused_nodes_without_changing_default_reads(
         user=user,
         app_id="app-1",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        files=build_file_service(session_factory=sqlite_session_factory),
     )
     writer.save_synchronously(_execution(execution_id="finished", node_execution_id="finished"))
     paused = _execution(execution_id="paused", node_execution_id="paused", status=WorkflowNodeExecutionStatus.PAUSED)
@@ -508,6 +568,7 @@ def test_resume_history_includes_paused_nodes_without_changing_default_reads(
         user=user,
         app_id="app-1",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        files=build_file_service(session_factory=sqlite_session_factory),
     )
     source_reader = reader.for_workflow_tool("app-1")
     assert {node.id for node in reader.get_by_workflow_execution("run-1")} == {"finished"}
@@ -595,7 +656,7 @@ def test_truncate_and_upload_keeps_file_boundary_mocked(
     uploaded.id = "file-1"
     repo = _repository(monkeypatch, sqlite_session_factory)
     upload_file = Mock(return_value=uploaded)
-    monkeypatch.setattr(repo._file_service, "upload_file", upload_file)
+    monkeypatch.setattr(repo._files, "upload_file", upload_file)
 
     class Truncator:
         def truncate_variable_mapping(self, _value: Any) -> tuple[dict[str, bool], bool]:
@@ -609,7 +670,7 @@ def test_truncate_and_upload_keeps_file_boundary_mocked(
         filename="node_execution_execution-1_inputs.json",
         content=b'{"value": 1}',
         mimetype="application/json",
-        user=repo._user,
+        actor=repo._file_actor,
         tenant_id="tenant-1",
     )
     assert result.offload.file_id == "file-1"

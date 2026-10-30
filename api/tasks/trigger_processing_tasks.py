@@ -27,11 +27,11 @@ from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from enums import QuotaType
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import application_services
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import (
     AppTriggerType,
-    CreatorUserRole,
     EndUserType,
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
@@ -40,6 +40,7 @@ from models.model import App, EndUser
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger, WorkflowTriggerLog
 from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun
+from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
 from services.async_workflow_service import AsyncWorkflowService
 from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaService, unlimited
@@ -183,6 +184,11 @@ def _record_trigger_failure_log(
         created_at=now,
         finished_at=now,
         exceptions_count=0,
+    )
+    lock_new_workflow_upload_file_references(
+        session,
+        tenant_id=workflow.tenant_id,
+        current_payloads=(workflow_run.graph, workflow_run.inputs, workflow_run.outputs),
     )
     session.add(workflow_run)
     session.flush()

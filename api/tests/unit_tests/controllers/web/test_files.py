@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
+from constants import DOCUMENT_EXTENSIONS
 from controllers.common.errors import (
     BlockedFileExtensionError,
     FilenameNotExistsError,
@@ -17,8 +18,8 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.web.files import FileApi
+from enums.creator import CreatorUserRole
 from libs.exception import BaseHTTPException
-from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser, UploadFile
 from services.errors import file as file_errors
 from tests.unit_tests.model_factories import make_end_user, make_upload_file
@@ -106,13 +107,16 @@ class TestFileApi:
         assert result["id"] == "file-1"
         assert result["name"] == "test.txt"
         assert result["tenant_id"] == app_model.tenant_id
-        file_service.upload_file.assert_called_once_with(
-            filename="test.txt",
-            content=b"content",
-            mimetype="text/plain",
-            user=end_user,
-            source=expected_source,
-        )
+        file_service.upload_file.assert_called_once()
+        kwargs = file_service.upload_file.call_args.kwargs
+        assert kwargs["filename"] == "test.txt"
+        assert kwargs["content"] == b"content"
+        assert kwargs["mimetype"] == "text/plain"
+        assert kwargs["actor"].id == end_user.id
+        assert kwargs["actor"].creator_role == CreatorUserRole.END_USER
+        assert kwargs["tenant_id"] == app_model.tenant_id
+        expected_extensions = frozenset(DOCUMENT_EXTENSIONS) if expected_source == "datasets" else None
+        assert kwargs["allowed_extensions"] == expected_extensions
 
     @pytest.mark.parametrize(
         ("service_error", "expected_error", "expected_status", "expected_code", "expected_message"),

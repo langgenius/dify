@@ -31,6 +31,7 @@ from models.human_input import HumanInputForm, HumanInputFormRecipient, Recipien
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowType
 from tests.unit_tests.core.app.apps.test_workflow_app_runner_core import _workflow_entry
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 class _RecordingWorkflowAppRunner(WorkflowAppRunner):
@@ -110,6 +111,7 @@ def _build_runner():
     return _RecordingWorkflowAppRunner(
         application_generate_entity=app_entity,
         queue_manager=queue_manager,
+        knowledge_retrieval=make_knowledge_retriever(),
         variable_loader=MagicMock(),
         workflow=workflow,
         system_user_id="sys-user",

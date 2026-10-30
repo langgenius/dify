@@ -11,7 +11,7 @@ from models.dataset import Dataset, Document, Pipeline
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 
 
@@ -109,27 +109,29 @@ def test_get_max_active_requests_returns_zero_when_all_unlimited(
 
 
 @pytest.mark.parametrize(
-    ("invoke_from", "workflow", "expected_error"),
+    ("invoke_from", "persist_workflow", "expected_error"),
     [
-        (InvokeFrom.DEBUGGER, None, "Workflow not initialized"),
-        (InvokeFrom.WEB_APP, None, "Workflow not published"),
-        (InvokeFrom.DEBUGGER, _make_workflow(), None),
+        (InvokeFrom.DEBUGGER, False, "Workflow not initialized"),
+        (InvokeFrom.WEB_APP, False, "Workflow not published"),
+        (InvokeFrom.DEBUGGER, True, None),
+        (InvokeFrom.WEB_APP, True, None),
     ],
 )
-def test_get_workflow(mocker: MockerFixture, invoke_from, workflow, expected_error, sqlite_session: Session) -> None:
-    rag_pipeline_service_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.RagPipelineService")
-    rag_pipeline_service = rag_pipeline_service_cls.return_value
-    rag_pipeline_service.get_draft_workflow.return_value = workflow
-    rag_pipeline_service.get_published_workflow.return_value = workflow
-
+def test_get_workflow(invoke_from, persist_workflow, expected_error, sqlite_session: Session) -> None:
     pipeline = _make_pipeline()
-    session = sqlite_session
+    workflow = _make_workflow()
+    if persist_workflow:
+        if invoke_from != InvokeFrom.DEBUGGER:
+            workflow.version = "published"
+            pipeline.workflow_id = workflow.id
+        sqlite_session.add_all([pipeline, workflow])
+        sqlite_session.flush()
 
     if expected_error:
         with pytest.raises(ValueError, match=expected_error):
-            PipelineGenerateService._get_workflow(pipeline, invoke_from, session)
+            PipelineGenerateService._get_workflow(pipeline, invoke_from, sqlite_session)
     else:
-        result = PipelineGenerateService._get_workflow(pipeline, invoke_from, session)
+        result = PipelineGenerateService._get_workflow(pipeline, invoke_from, sqlite_session)
         assert result == workflow
 
 

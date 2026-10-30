@@ -70,7 +70,7 @@ class DatasourceProviderService:
         self.provider_manager = PluginDatasourceManager()
 
     def get_stored_notion_access_token(self, *, tenant_id: str, credential_id: str | None) -> str:
-        """Resolve a stored Notion credential with the configured integration fallback."""
+        """Resolve a saved Notion credential, or the integration token for legacy sources without an ID."""
 
         def load_token(saved_id: str) -> str:
             credentials = self.get_datasource_credentials(

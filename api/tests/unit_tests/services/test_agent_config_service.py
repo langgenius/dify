@@ -10,8 +10,10 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from models.agent import (
     Agent,
@@ -28,7 +30,6 @@ from models.agent_config_entities import (
     AgentFileRefConfig,
     AgentSoulConfig,
 )
-from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
 from services.agent.skill_package_service import SkillPackageError
@@ -350,7 +351,17 @@ def test_push_accepts_tenant_scoped_tool_file_sources_from_different_upload_owne
         name="alpha.zip",
     )
     skill_source.id = SKILL_FILE
-    sqlite_session.add_all([file_source, skill_source])
+    normalized_skill = ToolFile(
+        tenant_id=TENANT,
+        user_id=USER,
+        conversation_id=None,
+        size=321,
+        mimetype="application/zip",
+        file_key="normalized-skill-key",
+        name="alpha.zip",
+    )
+    normalized_skill.id = NORMALIZED_SKILL_FILE
+    sqlite_session.add_all([file_source, skill_source, normalized_skill])
     sqlite_session.commit()
     skill_ref = AgentConfigSkillRefConfig(
         name="alpha",
@@ -400,21 +411,161 @@ def test_push_accepts_tenant_scoped_tool_file_sources_from_different_upload_owne
 
 
 @pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, ToolFile)], indirect=True)
-def test_request_download_signs_config_tool_files_without_rechecking_end_user_owner(
+def test_push_normalizes_and_adopts_skill_tool_file_in_the_config_transaction(
     sqlite_session: Session,
 ) -> None:
-    soul = _soul(
-        config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="tool_file", file_id=TOOL_FILE)],
-        config_skills=[AgentConfigSkillRefConfig(name="alpha", file_id=SKILL_FILE)],
-    )
     _persist_target(
         sqlite_session,
         _draft(
             version_id=BUILD_DRAFT,
             draft_type=AgentConfigDraftType.DEBUG_BUILD,
             account_id=USER,
-            soul=soul,
         ),
+    )
+    source = ToolFile(
+        tenant_id=TENANT,
+        user_id=END_USER,
+        conversation_id=None,
+        size=7,
+        mimetype="application/zip",
+        file_key="source-skill-key",
+        name="research.zip",
+    )
+    source.id = SKILL_FILE
+    sqlite_session.add(source)
+    sqlite_session.commit()
+    archive = _zip_bytes({"SKILL.md": b"---\nname: research\ndescription: Research skill.\n---\n# Research\n"})
+    concurrent_sessions = sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+
+    def load_after_concurrent_config_change(_file_key: str) -> bytes:
+        with concurrent_sessions() as concurrent_session:
+            concurrent_draft = concurrent_session.get_one(AgentConfigDraft, BUILD_DRAFT)
+            concurrent_soul = concurrent_draft.config_snapshot.model_copy(deep=True)
+            concurrent_soul.config_note = "written while skill normalization was preparing"
+            concurrent_draft.config_snapshot = concurrent_soul
+            concurrent_session.commit()
+        return archive
+
+    with (
+        patch(f"{MODULE}.storage.load_once", side_effect=load_after_concurrent_config_change),
+        patch("core.tools.tool_file_manager.storage") as create_storage,
+    ):
+        manifest = _service(sqlite_session).push(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            user_id=USER,
+            config_version_id=BUILD_DRAFT,
+            config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+            payload=ConfigPushPayload.model_validate(
+                {
+                    "skills": [
+                        {
+                            "name": "research",
+                            "file_ref": {"kind": "tool_file", "id": source.id},
+                        }
+                    ]
+                }
+            ),
+        )
+
+    skills = manifest["skills"]
+    assert isinstance(skills, dict)
+    items = skills["items"]
+    assert isinstance(items, list)
+    normalized_id = items[0]["file_id"]
+    assert isinstance(normalized_id, str)
+    assert normalized_id != source.id
+    sqlite_session.expire_all()
+    sqlite_session.get_one(ToolFile, normalized_id)
+    persisted_draft = sqlite_session.get_one(AgentConfigDraft, BUILD_DRAFT)
+    assert persisted_draft.config_snapshot.config_note == "written while skill normalization was preparing"
+    create_storage.save.assert_called_once()
+
+
+@pytest.mark.parametrize("owner_change", ["delete", "reassign"])
+@pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, ToolFile)], indirect=True)
+def test_push_does_not_adopt_normalized_skill_after_target_ownership_changes(
+    sqlite_session: Session,
+    owner_change: str,
+) -> None:
+    _persist_target(
+        sqlite_session,
+        _draft(
+            version_id=BUILD_DRAFT,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id=USER,
+        ),
+    )
+    source = ToolFile(
+        tenant_id=TENANT,
+        user_id=END_USER,
+        conversation_id=None,
+        size=7,
+        mimetype="application/zip",
+        file_key="source-skill-key",
+        name="research.zip",
+    )
+    source.id = SKILL_FILE
+    sqlite_session.add(source)
+    sqlite_session.commit()
+    archive = _zip_bytes({"SKILL.md": b"---\nname: research\ndescription: Research skill.\n---\n# Research\n"})
+    concurrent_sessions = sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+
+    def change_target_owner(_file_key: str, _archive: bytes) -> None:
+        with concurrent_sessions.begin() as concurrent_session:
+            if owner_change == "delete":
+                concurrent_session.execute(delete(AgentConfigDraft).where(AgentConfigDraft.id == BUILD_DRAFT))
+            else:
+                concurrent_session.execute(
+                    update(AgentConfigDraft)
+                    .where(AgentConfigDraft.id == BUILD_DRAFT)
+                    .values(account_id=OTHER_TENANT, draft_owner_key=OTHER_TENANT)
+                )
+
+    with (
+        patch(f"{MODULE}.storage.load_once", return_value=archive),
+        patch(
+            "core.tools.tool_file_manager.storage.save",
+            side_effect=change_target_owner,
+        ),
+    ):
+        with pytest.raises(AgentConfigServiceError) as exc_info:
+            _service(sqlite_session).push(
+                tenant_id=TENANT,
+                agent_id=AGENT,
+                user_id=USER,
+                config_version_id=BUILD_DRAFT,
+                config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+                payload=ConfigPushPayload.model_validate(
+                    {
+                        "skills": [
+                            {
+                                "name": "research",
+                                "file_ref": {"kind": "tool_file", "id": source.id},
+                            }
+                        ]
+                    }
+                ),
+            )
+
+    assert exc_info.value.code == "config_version_not_found"
+    sqlite_session.expire_all()
+    pending = sqlite_session.scalar(
+        select(ToolFile).where(
+            ToolFile.tenant_id == TENANT,
+            ToolFile.id != source.id,
+        )
+    )
+    assert pending is not None
+
+
+@pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, ToolFile)], indirect=True)
+def test_request_download_signs_config_tool_files_without_rechecking_end_user_owner(
+    sqlite_session: Session,
+) -> None:
+    soul = _soul(
+        config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="tool_file", file_id=TOOL_FILE)],
+        config_skills=[AgentConfigSkillRefConfig(name="alpha", file_id=SKILL_FILE)],
     )
     guide = ToolFile(
         tenant_id=TENANT,
@@ -438,6 +589,15 @@ def test_request_download_signs_config_tool_files_without_rechecking_end_user_ow
     skill.id = SKILL_FILE
     sqlite_session.add_all([guide, skill])
     sqlite_session.commit()
+    _persist_target(
+        sqlite_session,
+        _draft(
+            version_id=BUILD_DRAFT,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id=USER,
+            soul=soul,
+        ),
+    )
     service = _service(sqlite_session)
 
     file_download = service.request_download(
@@ -475,7 +635,6 @@ def test_request_download_signs_tenant_scoped_config_upload_file(sqlite_session:
     soul = _soul(
         config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="upload_file", file_id=UPLOAD_FILE)]
     )
-    _persist_target(sqlite_session, _draft(soul=soul))
     upload_file = UploadFile(
         tenant_id=TENANT,
         storage_type=StorageType.LOCAL,
@@ -492,6 +651,7 @@ def test_request_download_signs_tenant_scoped_config_upload_file(sqlite_session:
     upload_file.id = UPLOAD_FILE
     sqlite_session.add(upload_file)
     sqlite_session.commit()
+    _persist_target(sqlite_session, _draft(soul=soul))
 
     result = _service(sqlite_session).request_download(
         tenant_id=TENANT,
@@ -511,7 +671,6 @@ def test_request_download_signs_tenant_scoped_config_upload_file(sqlite_session:
 @pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, ToolFile)], indirect=True)
 def test_request_download_rejects_config_source_from_another_tenant(sqlite_session: Session) -> None:
     soul = _soul(config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="tool_file", file_id=TOOL_FILE)])
-    _persist_target(sqlite_session, _draft(soul=soul))
     source = ToolFile(
         tenant_id=OTHER_TENANT,
         user_id=END_USER,
@@ -522,7 +681,19 @@ def test_request_download_rejects_config_source_from_another_tenant(sqlite_sessi
         name="guide.txt",
     )
     source.id = TOOL_FILE
-    sqlite_session.add(source)
+    sqlite_session.add_all([_agent(), source])
+    sqlite_session.commit()
+    sqlite_session.execute(
+        insert(AgentConfigDraft).values(
+            id=DRAFT,
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            draft_owner_key="",
+            config_snapshot=soul,
+        )
+    )
     sqlite_session.commit()
 
     with pytest.raises(AgentConfigServiceError) as exc_info:
@@ -643,16 +814,41 @@ def test_upload_skill_for_console_maps_package_validation_failures(sqlite_sessio
     assert persisted.config_snapshot.config_skills == []
 
 
+@pytest.mark.parametrize("sqlite_session", [(*AGENT_CONFIG_TABLES, ToolFile)], indirect=True)
+def test_upload_skill_for_console_persists_normalized_file(
+    sqlite_session: Session,
+) -> None:
+    _persist_target(sqlite_session, _draft())
+    archive = _zip_bytes({"SKILL.md": b"---\nname: research\ndescription: Research skill.\n---\n# Research\n"})
+
+    with patch("core.tools.tool_file_manager.storage") as create_storage:
+        response = _service(sqlite_session).upload_skill_for_console(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            user_id=USER,
+            config_version_id=DRAFT,
+            config_version_kind=AgentConfigVersionKind.DRAFT,
+            content=archive,
+            filename="research.zip",
+        )
+
+    skill = response["skill"]
+    assert isinstance(skill, dict)
+    tool_file_id = skill["file_id"]
+    assert isinstance(tool_file_id, str)
+    sqlite_session.expire_all()
+    sqlite_session.get_one(ToolFile, tool_file_id)
+    create_storage.save.assert_called_once()
+
+
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_apply_skill_updates_rejects_non_tool_file_refs(sqlite_session: Session) -> None:
+def test_snapshot_skill_updates_rejects_non_tool_file_refs(sqlite_session: Session) -> None:
     service = AgentConfigService()
 
     with pytest.raises(AgentConfigServiceError, match="tool files") as exc_info:
-        service._apply_skill_updates(
+        service._snapshot_skill_update_sources(
             sqlite_session,
             tenant_id=TENANT,
-            user_id=USER,
-            current=[],
             updates=[
                 ConfigPushSkillItem.model_validate(
                     {"name": "alpha", "file_ref": {"kind": "upload_file", "id": "upload-1"}}
@@ -671,7 +867,7 @@ def test_apply_skill_updates_rejects_non_tool_file_refs(sqlite_session: Session)
     ],
 )
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_apply_skill_updates_maps_normalizer_failures(
+def test_normalize_skill_updates_maps_normalizer_failures(
     error_code: str,
     message: str,
     sqlite_session: Session,
@@ -696,17 +892,20 @@ def test_apply_skill_updates_maps_normalizer_failures(
             side_effect=SkillPackageError(error_code, message, status_code=400),
         ),
     ):
+        sources = service._snapshot_skill_update_sources(
+            sqlite_session,
+            tenant_id=TENANT,
+            updates=[
+                ConfigPushSkillItem.model_validate(
+                    {"name": "alpha", "file_ref": {"kind": "tool_file", "id": "tool-file-1"}}
+                )
+            ],
+        )
         with pytest.raises(AgentConfigServiceError, match=message) as exc_info:
-            service._apply_skill_updates(
-                sqlite_session,
+            service._normalize_skill_updates(
                 tenant_id=TENANT,
                 user_id=USER,
-                current=[],
-                updates=[
-                    ConfigPushSkillItem.model_validate(
-                        {"name": "alpha", "file_ref": {"kind": "tool_file", "id": "tool-file-1"}}
-                    )
-                ],
+                sources=sources,
             )
 
     assert exc_info.value.code == error_code

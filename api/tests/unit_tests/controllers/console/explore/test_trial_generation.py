@@ -25,12 +25,12 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from enums import DeploymentEdition
+from enums.creator import CreatorUserRole
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.external_api import ExternalApi
 from models import Account, AccountTrialAppRecord, App, AppMode, Tenant, TrialApp
 from models.account import AccountStatus
-from models.enums import CreatorUserRole
 from repositories.trial_app_repository import TrialAppRepository
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError

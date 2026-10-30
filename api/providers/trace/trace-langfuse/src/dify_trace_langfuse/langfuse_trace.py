@@ -31,7 +31,6 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.utils import filter_none_values
-from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_langfuse.config import LangfuseConfig
 from dify_trace_langfuse.entities.langfuse_trace_entity import (
     GenerationUsage,
@@ -45,6 +44,8 @@ from extensions.ext_database import db
 from graphon.enums import BuiltinNodeTypes
 from models import EndUser, WorkflowNodeExecutionTriggeredFrom
 from models.enums import MessageStatus
+from repositories.workflow.factory import WorkflowRepositoryFactory
+from services.file_adapters import build_file_service
 
 logger = logging.getLogger(__name__)
 
@@ -177,12 +178,13 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         service_account = self.get_service_account_with_tenant(app_id)
 
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=trace_info.tenant_id,
             user=service_account,
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=build_file_service(session_factory=session_factory),
         )
 
         # Get all executions for this workflow run

@@ -4,6 +4,10 @@ from typing import Any, Protocol, TypedDict
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
+
+SUMMARY_INDEX_SERVICE_CONTEXT_KEY = "_dify_summary_index_service"
+
 
 class IndexingResultDict(TypedDict):
     dataset_id: str
@@ -44,7 +48,7 @@ class IndexProcessorProtocol(Protocol):
         original_document_id: str,
         chunks: Mapping[str, Any],
         batch: Any,
-        summary_index_setting: dict[str, Any] | None = None,
+        summary_index_setting: SummaryIndexSettingDict | None = None,
         *,
         session: Session,
     ) -> IndexingResultDict: ...
@@ -55,7 +59,7 @@ class IndexProcessorProtocol(Protocol):
         dataset_id: str,
         document_id: str,
         chunk_structure: str,
-        summary_index_setting: dict[str, Any] | None,
+        summary_index_setting: SummaryIndexSettingDict | None,
         *,
         session: Session,
     ) -> Preview: ...
@@ -63,5 +67,9 @@ class IndexProcessorProtocol(Protocol):
 
 class SummaryIndexServiceProtocol(Protocol):
     def generate_and_vectorize_summary(
-        self, dataset_id: str, document_id: str, is_preview: bool, summary_index_setting: dict[str, Any] | None = None
+        self,
+        dataset_id: str,
+        document_id: str,
+        is_preview: bool,
+        summary_index_setting: SummaryIndexSettingDict | None = None,
     ) -> None: ...

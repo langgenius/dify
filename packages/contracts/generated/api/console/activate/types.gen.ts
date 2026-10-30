@@ -27,6 +27,11 @@ export type EmailDomainSuspendedError = ErrorResponse & {
   status: 400
 }
 
+export type LimitExceededError = ErrorResponse & {
+  code: 'limit_exceeded'
+  status: 400
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -68,7 +73,7 @@ export type PostActivateData = {
 }
 
 export type PostActivateErrors = {
-  400: AccountInFreezeError | EmailDomainSuspendedError | ErrorResponse
+  400: AccountInFreezeError | EmailDomainSuspendedError | LimitExceededError | ErrorResponse
   403: AlreadyActivateError | InvitationAccountMismatchError | ErrorResponse
   default: ErrorResponse
 }

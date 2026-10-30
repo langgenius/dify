@@ -102,6 +102,7 @@ class WorkflowToolSourceService:
                     workflow_call_depth=0,
                     entity=definition.entity.model_copy(deep=True),
                     runtime=ToolRuntime(tenant_id=tenant_id),
+                    knowledge_retrieval=None,
                     label=definition.label,
                 )
 

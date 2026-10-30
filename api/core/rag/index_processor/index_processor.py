@@ -16,6 +16,7 @@ from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.protocols import IndexingResultDict, Preview, PreviewItem, QaPreview
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import SegmentStatus
+from services.file_service import UploadFileCreator
 from services.vector_space_admission_service import VectorSpaceAdmissionService
 
 from .processor.paragraph_index_processor import ParagraphIndexProcessor
@@ -28,8 +29,9 @@ logger = logging.getLogger(__name__)
 class IndexProcessorFactory:
     """Select the processor for a document's index structure."""
 
-    def __init__(self, index_type: str | None):
+    def __init__(self, index_type: str | None, *, files: UploadFileCreator | None = None):
         self._index_type = index_type
+        self._files = files
 
     def init_index_processor(self) -> BaseIndexProcessor:
         """Create a processor for a supported index type."""
@@ -37,18 +39,21 @@ class IndexProcessorFactory:
             raise ValueError("Index type must be specified.")
 
         if self._index_type == IndexStructureType.PARAGRAPH_INDEX:
-            return ParagraphIndexProcessor()
+            return ParagraphIndexProcessor(files=self._files)
         elif self._index_type == IndexStructureType.QA_INDEX:
-            return QAIndexProcessor()
+            return QAIndexProcessor(files=self._files)
         elif self._index_type == IndexStructureType.PARENT_CHILD_INDEX:
-            return ParentChildIndexProcessor()
+            return ParentChildIndexProcessor(files=self._files)
         else:
             raise ValueError(f"Index type {self._index_type} is not supported.")
 
 
 class IndexProcessor:
+    def __init__(self, *, files: UploadFileCreator | None = None) -> None:
+        self._files = files
+
     def format_preview(self, chunk_structure: str, chunks: Any) -> Preview:
-        index_processor = IndexProcessorFactory(chunk_structure).init_index_processor()
+        index_processor = IndexProcessorFactory(chunk_structure, files=self._files).init_index_processor()
         preview = index_processor.format_preview(chunks)
         data = Preview(
             chunk_structure=preview["chunk_structure"],
@@ -112,7 +117,7 @@ class IndexProcessor:
             summary_index_setting = dataset.summary_index_setting
         index_node_ids = []
 
-        index_processor = IndexProcessorFactory(dataset.chunk_structure).init_index_processor()
+        index_processor = IndexProcessorFactory(dataset.chunk_structure, files=self._files).init_index_processor()
         if original_document_id:
             segments = session.scalars(
                 select(DocumentSegment).where(

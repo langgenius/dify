@@ -48,6 +48,7 @@ jobs:
       web-changed: ${{ steps.changes.outputs.web }}
       vdb-changed: ${{ steps.changes.outputs.vdb }}
       migration-changed: ${{ steps.changes.outputs.migration }}
+      mysql-transaction-changed: ${{ steps.changes.outputs.mysql-transaction }}
       sandbox-runtime-changed: ${{ steps.changes.outputs.sandbox-runtime }}
       dify-agent-changed: ${{ steps.changes.outputs.dify-agent }}
       python-style-changed: ${{ steps.changes.outputs.python-style }}
@@ -129,7 +130,7 @@ jobs:
               - 'api/tests/integration_tests/vdb/**'
               - 'api/conftest.py'
               - 'api/tests/pytest_dify.py'
-              - 'api/providers/vdb/*/tests/**'
+              - 'api/providers/vdb/**'
               - '.github/workflows/vdb-tests.yml'
               - 'docker/.env.example'
               - 'docker/envs/middleware.env.example'
@@ -159,6 +160,69 @@ jobs:
               - 'api/migrations/**'
               - 'api/.env.example'
               - '.github/workflows/db-migration-test.yml'
+              - 'docker/.env.example'
+              - 'docker/envs/middleware.env.example'
+              - 'docker/docker-compose.middleware.yaml'
+              - 'docker/docker-compose-template.yaml'
+              - 'docker/generate_docker_compose'
+              - 'docker/ssrf_proxy/**'
+              - 'docker/volumes/sandbox/conf/**'
+            mysql-transaction:
+              - '.github/workflows/main-ci.yml'
+              - 'api/migrations/**'
+              - 'api/models/**'
+              - 'api/repositories/**'
+              - 'api/services/knowledge/**'
+              - 'api/services/file_service.py'
+              - 'api/services/file_adapters.py'
+              - 'api/services/file_reference_parser.py'
+              - 'api/services/workflow/persistence.py'
+              - 'api/services/errors/human_input.py'
+              - 'api/core/app/apps/message_based_app_generator.py'
+              - 'api/core/app/apps/advanced_chat/app_runner.py'
+              - 'api/core/app/apps/advanced_chat/generate_task_pipeline.py'
+              - 'api/core/app/apps/pipeline/pipeline_generator.py'
+              - 'api/core/app/apps/pipeline/pipeline_runner.py'
+              - 'api/core/app/task_pipeline/easy_ui_based_generate_task_pipeline.py'
+              - 'api/core/app/layers/trigger_post_layer.py'
+              - 'api/core/repositories/sqlalchemy_workflow_execution_repository.py'
+              - 'api/core/repositories/sqlalchemy_workflow_node_execution_repository.py'
+              - 'api/core/repositories/human_input_repository.py'
+              - 'api/core/rag/datasource/keyword/jieba/**'
+              - 'api/core/rag/docstore/dataset_docstore.py'
+              - 'api/services/conversation_service.py'
+              - 'api/services/conversation_variable_updater.py'
+              - 'api/services/workflow_draft_variable_service.py'
+              - 'api/services/workflow_service.py'
+              - 'api/services/app_service.py'
+              - 'api/services/app_dsl_service.py'
+              - 'api/services/snippet_service.py'
+              - 'api/services/snippet_dsl_service.py'
+              - 'api/services/agent_config_service.py'
+              - 'api/services/agent/composer_service.py'
+              - 'api/services/agent/dsl_service.py'
+              - 'api/services/agent/roster_package_importer.py'
+              - 'api/services/agent/roster_service.py'
+              - 'api/services/agent/workflow_publish_service.py'
+              - 'api/services/agent/workspace_service.py'
+              - 'api/services/tools/mcp_tools_manage_service.py'
+              - 'api/services/rag_pipeline/rag_pipeline.py'
+              - 'api/services/rag_pipeline/rag_pipeline_dsl_service.py'
+              - 'api/services/rag_pipeline/rag_pipeline_transform_service.py'
+              - 'api/services/workflow/workflow_converter.py'
+              - 'api/services/human_input_file_upload_service.py'
+              - 'api/services/human_input_service.py'
+              - 'api/tasks/clean_dataset_task.py'
+              - 'api/tasks/clean_document_task.py'
+              - 'api/tasks/async_workflow_tasks.py'
+              - 'api/tests/mysql_integration_tests/**'
+              - 'api/conftest.py'
+              - 'api/tests/pytest_dify.py'
+              - 'api/tests/unit_tests/model_factories.py'
+              - 'api/pyproject.toml'
+              - 'api/uv.lock'
+              - 'api/.env.example'
+              - '.github/workflows/mysql-transaction-tests.yml'
               - 'docker/.env.example'
               - 'docker/envs/middleware.env.example'
               - 'docker/docker-compose.middleware.yaml'
@@ -567,6 +631,59 @@ jobs:
 
           if [[ "$TESTS_CHANGED" == 'false' && "$RUN_RESULT" == 'skipped' ]]; then
             echo "DB migration tests were skipped because no migration-related files changed."
+            exit 0
+          fi
+
+          echo "Unexpected test state: changed=$TESTS_CHANGED, result=$RUN_RESULT" >&2
+          exit 1
+
+  mysql-transaction-tests-run:
+    name: Run MySQL Transaction Tests
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.mysql-transaction-changed == 'true'
+    uses: ./.github/workflows/mysql-transaction-tests.yml
+
+  mysql-transaction-tests:
+    name: MySQL Transaction Tests
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
+      - mysql-transaction-tests-run
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Finalize MySQL Transaction Tests status
+        env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.mysql-transaction-changed }}
+          RUN_RESULT: ${{ needs.mysql-transaction-tests-run.result }}
+          PRE_JOB_RESULT: ${{ needs.pre_job.result }}
+          CHANGES_RESULT: ${{ needs.check-changes.result }}
+        run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "MySQL transaction tests were skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
+          if [[ "$PRE_JOB_RESULT" != 'success' || "$CHANGES_RESULT" != 'success' ]]; then
+            echo "Cannot finalize tests: duplicate check=$PRE_JOB_RESULT, change detection=$CHANGES_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'true' ]]; then
+            if [[ "$RUN_RESULT" == 'success' ]]; then
+              echo "MySQL transaction tests ran successfully."
+              exit 0
+            fi
+
+            echo "MySQL transaction tests were required but finished with result: $RUN_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'false' && "$RUN_RESULT" == 'skipped' ]]; then
+            echo "MySQL transaction tests were skipped because no MySQL transaction-related files changed."
             exit 0
           fi
 

@@ -1,13 +1,13 @@
 """Membership and invitation behavior across the application/persistence boundary."""
 
-from collections.abc import Callable
-from contextlib import nullcontext
+from collections.abc import Callable, Generator
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
 from unittest.mock import Mock, create_autospec
 
 import pytest
-from sqlalchemy import event, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from enums import DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
@@ -17,6 +17,7 @@ from models.dataset import Dataset
 from models.model import App
 from services.account.adapters import RedisInvitationTokenStore
 from services.account_errors import AccountNotFoundError
+from services.enterprise import account_deletion_sync
 from services.enterprise.rbac_service import RBACService
 from services.entities.account_entities import AccountSnapshot
 from services.entities.feature_entities import FeatureModel, LicenseLimitationModel, LicenseModel
@@ -37,7 +38,11 @@ from services.errors.workspace import (
 from services.feature_service import FeatureService
 from services.rbac.contracts import MemberRolesResponse, Paginated, RBACRole
 from services.system_feature_service import SystemFeatureService
-from services.workspace.contracts import OwnerTransferToken
+from services.workspace import gateways
+from services.workspace.contracts import (
+    OwnerTransferToken,
+    WorkspaceMemberRemoval,
+)
 from services.workspace.gateways import (
     DeploymentWorkspaceMemberAccessGateway,
     WorkspaceInvitationGateway,
@@ -122,8 +127,116 @@ def test_removal_deletes_only_orphaned_pending_accounts(
     account_domain.members.remove(workspace_id, member_id, owner_id)
     assert (sqlite_session.get(Account, member_id) is None) == deleted
     assert account_domain.members.get_role(workspace_id, member_id) is None
+    account_domain.access.revoke_pending_invitations.assert_called_once_with(workspace_id, member_id)
     account_domain.access.member_removed.assert_called_once()
     assert account_domain.access.member_removed.call_args.args[1].account_deleted == deleted
+
+
+def test_removal_retry_replays_external_cleanup_without_revoking_again(
+    account_domain: AccountDomain, members: tuple[str, str, str]
+) -> None:
+    workspace_id, owner_id, member_id = members
+    revoked = False
+    admission_held = False
+    finalization_attempts = 0
+
+    @contextmanager
+    def acquire_admission(_workspace_id: str) -> Generator[object]:
+        nonlocal admission_held
+        assert not admission_held
+        admission_held = True
+        try:
+            yield object()
+        finally:
+            admission_held = False
+
+    def revoke_pending_invitations(_workspace_id: str, _account_id: str) -> None:
+        nonlocal revoked
+        assert admission_held
+        revoked = True
+
+    def member_removed(_workspace_id: str, _removal: WorkspaceMemberRemoval) -> None:
+        nonlocal finalization_attempts
+        assert admission_held
+        finalization_attempts += 1
+        if finalization_attempts == 1:
+            raise RuntimeError("billing unavailable")
+
+    account_domain.access.acquire_invitation_admission.side_effect = acquire_admission
+    account_domain.access.revoke_pending_invitations.side_effect = revoke_pending_invitations
+    account_domain.access.can_replay_member_removal.side_effect = lambda *_args: admission_held and revoked
+    account_domain.access.member_removed.side_effect = member_removed
+
+    with pytest.raises(RuntimeError, match="billing unavailable"):
+        account_domain.members.remove(workspace_id, member_id, owner_id)
+    account_domain.members.remove(workspace_id, member_id, owner_id)
+
+    account_domain.access.revoke_pending_invitations.assert_called_once_with(workspace_id, member_id)
+    assert account_domain.access.member_removed.call_count == 2
+    assert account_domain.members.get_role(workspace_id, member_id) is None
+
+
+def test_removal_retry_does_not_revoke_or_clean_up_after_a_new_invitation(
+    account_domain: AccountDomain, members: tuple[str, str, str]
+) -> None:
+    workspace_id, owner_id, member_id = members
+    subject_revoked = False
+
+    def revoke_pending_invitations(_workspace_id: str, _account_id: str) -> None:
+        nonlocal subject_revoked
+        subject_revoked = True
+
+    account_domain.access.revoke_pending_invitations.side_effect = revoke_pending_invitations
+    account_domain.access.can_replay_member_removal.side_effect = lambda *_args: subject_revoked
+    account_domain.access.member_removed.side_effect = RuntimeError("RBAC unavailable")
+
+    with pytest.raises(RuntimeError, match="RBAC unavailable"):
+        account_domain.members.remove(workspace_id, member_id, owner_id)
+    subject_revoked = False  # A later invitation starts a new subject lifecycle.
+
+    with pytest.raises(MemberNotInTenantError):
+        account_domain.members.remove(workspace_id, member_id, owner_id)
+
+    account_domain.access.revoke_pending_invitations.assert_called_once_with(workspace_id, member_id)
+    account_domain.access.member_removed.assert_called_once()
+
+
+def test_removal_retry_replays_cleanup_after_the_pending_account_was_deleted(
+    account_domain: AccountDomain,
+    sqlite_session: Session,
+    members: tuple[str, str, str],
+) -> None:
+    workspace_id, owner_id, member_id = members
+    member = sqlite_session.get(Account, member_id)
+    assert member is not None
+    member.status = AccountStatus.PENDING
+    sqlite_session.commit()
+    revoked = False
+    finalizations: list[WorkspaceMemberRemoval] = []
+
+    def revoke_pending_invitations(_workspace_id: str, _account_id: str) -> None:
+        nonlocal revoked
+        revoked = True
+
+    def member_removed(_workspace_id: str, removal: WorkspaceMemberRemoval) -> None:
+        finalizations.append(removal)
+        if len(finalizations) == 1:
+            raise RuntimeError("enterprise unavailable")
+
+    account_domain.access.revoke_pending_invitations.side_effect = revoke_pending_invitations
+    account_domain.access.can_replay_member_removal.side_effect = lambda *_args: revoked
+    account_domain.access.member_removed.side_effect = member_removed
+
+    with pytest.raises(RuntimeError, match="enterprise unavailable"):
+        account_domain.members.remove(workspace_id, member_id, owner_id)
+    sqlite_session.expire_all()
+    assert sqlite_session.get(Account, member_id) is None
+
+    account_domain.members.remove(workspace_id, member_id, owner_id)
+
+    assert len(finalizations) == 2
+    assert finalizations[1] == WorkspaceMemberRemoval(account_id=member_id, email="", account_deleted=True)
+    account_domain.access.revoke_pending_invitations.assert_called_once_with(workspace_id, member_id)
 
 
 @pytest.mark.parametrize("action", ["add", "remove", "update"])
@@ -172,7 +285,9 @@ def test_role_policy_prevents_persistence_and_rbac_changes(
     role: str,
 ) -> None:
     config_overrides(DATASET_OPERATOR_ENABLED=False)
-    account_domain.access.ensure_role_enabled.side_effect = DeploymentWorkspaceMemberAccessGateway().ensure_role_enabled
+    account_domain.access.ensure_role_enabled.side_effect = DeploymentWorkspaceMemberAccessGateway(
+        invitations=create_autospec(RedisInvitationTokenStore, instance=True)
+    ).ensure_role_enabled
     workspace_id, owner_id, member_id = members
 
     with pytest.raises(InvalidWorkspaceMemberRoleError):
@@ -214,7 +329,6 @@ def test_rbac_member_removal_uses_permissions_and_owner_protection(
     account_domain.access.rbac_enabled = True
     account_domain.access.permission_keys.return_value = {"workspace.member.manage"} if permission else set()
     account_domain.access.is_owner.return_value = owner
-    account_domain.access.owner_id.return_value = owner_id
     if allowed:
         account_domain.members.remove(workspace_id, member_id, owner_id)
         assert account_domain.members.get_role(workspace_id, member_id) is None
@@ -224,7 +338,7 @@ def test_rbac_member_removal_uses_permissions_and_owner_protection(
 
 
 def test_new_invitation_normalizes_email_and_sets_current_workspace(
-    account_domain: AccountDomain, members: tuple[str, str, str]
+    account_domain: AccountDomain, members: tuple[str, str, str], sqlite_session: Session
 ) -> None:
     workspace_id, owner_id, _ = members
     result = account_domain.invitations.invite(
@@ -234,6 +348,7 @@ def test_new_invitation_normalizes_email_and_sets_current_workspace(
     assert result.email == "new@example.com"
     assert result.workspace_id == workspace_id
     assert result.role == "editor"
+    account_domain.delivery.acquire.assert_called_once_with(workspace_id)
     invitee = account_domain.repository.find_by_email("new@example.com")
     assert invitee is not None
     assert result.account_id == invitee.id
@@ -245,6 +360,24 @@ def test_new_invitation_normalizes_email_and_sets_current_workspace(
     invitation = account_domain.delivery.create.call_args.args[0]
     assert invitation.requires_setup is True
     assert invitation.email == "new@example.com"
+    assert list(sqlite_session.scalars(select(Tenant.id))) == [workspace_id]
+
+
+def test_bulk_invitation_deduplicates_equivalent_normalized_emails(
+    account_domain: AccountDomain, members: tuple[str, str, str]
+) -> None:
+    workspace_id, owner_id, _ = members
+
+    results = account_domain.invitations.invite_many(
+        RequestContext("request", None, owner_id, workspace_id),
+        emails=["User.Name+first@Gmail.com", "username@gmail.com"],
+        language="en-US",
+        role="normal",
+    )
+
+    assert [(result.email, result.status) for result in results] == [("user.name+first@gmail.com", "success")]
+    account_domain.delivery.create.assert_called_once()
+    account_domain.delivery.send.assert_called_once()
 
 
 def test_active_invitee_must_accept_before_joining(
@@ -310,6 +443,35 @@ def test_removal_transfers_maintainers_only_in_the_target_workspace(
     sqlite_session.expire_all()
     assert [app.maintainer for app in apps] == [owner_id, member_id]
     assert [dataset.maintainer for dataset in datasets] == [owner_id, member_id]
+    assert account_domain.members.get_role(workspace_id, owner_id) == TenantAccountRole.OWNER
+
+
+def test_rbac_authorized_normal_member_can_remove_another_member(
+    account_domain: AccountDomain,
+    members: tuple[str, str, str],
+    sqlite_session: Session,
+) -> None:
+    workspace_id, _, member_id = members
+    operator = Account(name="RBAC manager", email="rbac-manager@example.com")
+    sqlite_session.add_all(
+        [
+            operator,
+            TenantAccountJoin(
+                account_id=operator.id,
+                tenant_id=workspace_id,
+                role=TenantAccountRole.NORMAL,
+            ),
+        ]
+    )
+    sqlite_session.commit()
+
+    account_domain.access.rbac_enabled = True
+    account_domain.access.permission_keys.return_value = {"workspace.member.manage"}
+    account_domain.access.is_owner.return_value = False
+
+    account_domain.members.remove(workspace_id, member_id, operator.id)
+
+    assert account_domain.members.get_role(workspace_id, member_id) is None
 
 
 def test_community_invitation_continues_after_a_historical_duplicate_email(
@@ -396,6 +558,8 @@ def test_bulk_invitation_retains_partial_results_under_workspace_lock(
     ]
     assert results[-1].message == "Mail unavailable"
     account_domain.delivery.acquire.assert_called_once_with(workspace_id)
+    assert account_domain.repository.find_by_email("new@example.com") is not None
+    assert account_domain.repository.find_by_email("failed@example.com") is not None
 
 
 @pytest.fixture
@@ -507,7 +671,6 @@ def test_owner_transfer_reports_missing_workspace(
             service.transfer(context, member_id=member_id, token="challenge")
     challenges.send_confirmation.assert_not_called()
     challenges.notify.assert_not_called()
-    assert account_domain.members.get_role(workspace_id, owner_id) == TenantAccountRole.OWNER
 
 
 def test_rbac_transfer_failure_leaves_local_owner_unchanged(
@@ -516,7 +679,7 @@ def test_rbac_transfer_failure_leaves_local_owner_unchanged(
 ) -> None:
     workspace_id, owner_id, member_id = members
     account_domain.access.rbac_enabled = True
-    account_domain.access.is_owner.side_effect = lambda _workspace_id, _actor_id, member_id: member_id == owner_id
+    account_domain.access.is_owner.side_effect = lambda _workspace_id, _actor_id, subject_id: subject_id == owner_id
     account_domain.access.transfer_owner.side_effect = RuntimeError("RBAC unavailable")
     with pytest.raises(RuntimeError, match="RBAC unavailable"):
         account_domain.members.update_role(workspace_id, member_id, "owner", owner_id)
@@ -558,7 +721,9 @@ def rbac_access(
     members: tuple[str, str, str],
 ) -> tuple[DeploymentWorkspaceMemberAccessGateway, RecordedRoleAssignments]:
     config_overrides(RBAC_ENABLED=True, DATASET_OPERATOR_ENABLED=True)
-    gateway = DeploymentWorkspaceMemberAccessGateway()
+    gateway = DeploymentWorkspaceMemberAccessGateway(
+        invitations=create_autospec(RedisInvitationTokenStore, instance=True)
+    )
     roles = [
         RBACRole(id=f"role-{tag}", name=tag, type="", category="global_system_default", role_tag=tag, is_builtin=True)
         for tag in [*(role.value for role in TenantAccountRole), "no_access"]
@@ -577,6 +742,89 @@ def rbac_access(
     replace = RecordedRoleAssignments()
     monkeypatch.setattr(RBACService.MemberRoles, "replace", replace)
     return gateway, replace
+
+
+def test_member_removal_attempts_every_external_finalizer_after_a_failure(
+    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, RecordedRoleAssignments],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    access, _ = rbac_access
+    attempts: list[str] = []
+
+    def invalidate_billing(_workspace_id: str) -> None:
+        attempts.append("billing")
+        raise RuntimeError("billing unavailable")
+
+    def sync_enterprise(**_kwargs: object) -> bool:
+        attempts.append("enterprise")
+        raise RuntimeError("enterprise unavailable")
+
+    def delete_rbac_bindings(*, tenant_id: str, account_id: str) -> None:
+        assert (tenant_id, account_id) == ("workspace-1", "account-1")
+        attempts.append("rbac")
+
+    monkeypatch.setattr(gateways.BillingService, "clean_billing_info_cache", invalidate_billing)
+    monkeypatch.setattr(account_deletion_sync, "sync_workspace_member_removal", sync_enterprise)
+    monkeypatch.setattr(RBACService.MemberRoles, "delete_rbac_bindings", delete_rbac_bindings)
+
+    with pytest.raises(RuntimeError, match="billing unavailable"):
+        access.member_removed(
+            "workspace-1",
+            WorkspaceMemberRemoval(account_id="account-1", email="member@example.com", account_deleted=False),
+        )
+
+    assert attempts == ["billing", "enterprise", "rbac"]
+
+
+def test_enterprise_false_result_is_replayed_after_committed_member_removal(
+    account_domain: AccountDomain,
+    members: tuple[str, str, str],
+    rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, RecordedRoleAssignments],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    workspace_id, owner_id, member_id = members
+    access, _ = rbac_access
+    invitations = access._invitations
+    revocations: list[tuple[str, str]] = []
+    monkeypatch.setattr(invitations, "acquire_workspace_admission", lambda _workspace_id: nullcontext(object()))
+    monkeypatch.setattr(invitations, "is_subject_revoked", lambda _workspace_id, _account_id: True)
+    monkeypatch.setattr(
+        invitations,
+        "revoke_subject",
+        lambda revoked_workspace_id, revoked_account_id: revocations.append((revoked_workspace_id, revoked_account_id)),
+    )
+    monkeypatch.setattr(access, "permission_keys", lambda _workspace_id, _actor_id: {"workspace.member.manage"})
+    sync_results = iter((False, True))
+    sync_attempts: list[str] = []
+    rbac_deletions: list[tuple[str, str]] = []
+
+    def sync_enterprise(*, workspace_id: str, member_id: str, source: str) -> bool:
+        assert source == "workspace_member_removed"
+        sync_attempts.append(f"{workspace_id}:{member_id}")
+        return next(sync_results)
+
+    def delete_rbac_bindings(*, tenant_id: str, account_id: str) -> None:
+        rbac_deletions.append((tenant_id, account_id))
+
+    monkeypatch.setattr(account_deletion_sync, "sync_workspace_member_removal", sync_enterprise)
+    monkeypatch.setattr(RBACService.MemberRoles, "delete_rbac_bindings", delete_rbac_bindings)
+    service = WorkspaceMemberService(
+        workspaces=account_domain.workspaces,
+        accounts=account_domain.repository,
+        access=access,
+    )
+
+    with pytest.raises(RuntimeError, match="Enterprise workspace member removal sync did not complete"):
+        service.remove(workspace_id, member_id, owner_id)
+    service.remove(workspace_id, member_id, owner_id)
+
+    assert revocations == [(workspace_id, member_id)]
+    assert sync_attempts == [f"{workspace_id}:{member_id}", f"{workspace_id}:{member_id}"]
+    assert rbac_deletions == [(workspace_id, member_id), (workspace_id, member_id)]
 
 
 @pytest.mark.parametrize(
@@ -620,7 +868,9 @@ def test_rbac_invitation_assigns_requested_role(
 
     monkeypatch.setattr(sync_joined_workspace_member_rbac_access_task, "delay", sync)
     member_service = WorkspaceMemberService(
-        workspaces=account_domain.workspaces, accounts=account_domain.repository, access=access
+        workspaces=account_domain.workspaces,
+        accounts=account_domain.repository,
+        access=access,
     )
     invitations = WorkspaceInvitationService(
         accounts=account_domain.accounts,
@@ -648,15 +898,7 @@ def test_rbac_invitation_assigns_requested_role(
         assert assignments[0].account_id == owner_id
         assert assignments[0].member_account_id == invited.id
         assert assignments[0].role_ids == ["custom-role-id"]
-        if status is None:
-            # Registration also provisions the invitee's own workspace.
-            assert len(replace.calls) == 2
-            personal_workspace = replace.calls[0]
-            assert personal_workspace.tenant_id != workspace_id
-            assert personal_workspace.member_account_id == invited.id
-            assert personal_workspace.role_ids == ["role-owner"]
-        else:
-            assert len(replace.calls) == 1
+        assert len(replace.calls) == 1
     if status == AccountStatus.ACTIVE:
         assert results[0].status == "already_member"
         account_domain.delivery.create.assert_not_called()
@@ -699,7 +941,9 @@ def test_rbac_role_managers_cannot_demote_owner(
     sqlite_session.commit()
     gateway, replace = rbac_access
     service = WorkspaceMemberService(
-        workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+        workspaces=account_domain.workspaces,
+        accounts=account_domain.repository,
+        access=gateway,
     )
 
     with pytest.raises(NoPermissionError):
@@ -755,7 +999,9 @@ def test_rbac_normal_role_manager_can_update_another_non_owner(
     sqlite_session.commit()
     gateway, replace = rbac_access
     service = WorkspaceMemberService(
-        workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+        workspaces=account_domain.workspaces,
+        accounts=account_domain.repository,
+        access=gateway,
     )
 
     service.update_role(workspace_id, target.id, "editor", operator_id)
@@ -788,7 +1034,9 @@ def test_rbac_role_update_assigns_requested_role_and_synchronizes_membership(
     sqlite_session.commit()
     gateway, replace = rbac_access
     service = WorkspaceMemberService(
-        workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+        workspaces=account_domain.workspaces,
+        accounts=account_domain.repository,
+        access=gateway,
     )
     if remote_fails:
         replace.failure = RuntimeError("RBAC unavailable")
@@ -834,7 +1082,9 @@ def test_rbac_owner_transfer_preserves_other_roles_and_updates_both_memberships(
 
     monkeypatch.setattr(RBACService.MemberRoles, "get", get_roles)
     service = WorkspaceMemberService(
-        workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+        workspaces=account_domain.workspaces,
+        accounts=account_domain.repository,
+        access=gateway,
     )
 
     service.update_role(workspace_id, member_id, "owner", owner_id)
@@ -847,84 +1097,40 @@ def test_rbac_owner_transfer_preserves_other_roles_and_updates_both_memberships(
     assert service.get_role(workspace_id, member_id) == TenantAccountRole.OWNER
 
 
-@pytest.mark.parametrize("operation", ["demote_new_owner", "transfer_to_another_member"])
-def test_rbac_owner_is_protected_after_local_transfer_commit_fails(
-    account_domain: AccountDomain,
+def test_rbac_owner_reconciliation_skips_writes_when_remote_state_matches(
     members: tuple[str, str, str],
-    sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
     rbac_access: tuple[DeploymentWorkspaceMemberAccessGateway, RecordedRoleAssignments],
     monkeypatch: pytest.MonkeyPatch,
-    operation: str,
 ) -> None:
     workspace_id, old_owner_id, new_owner_id = members
-    third_member = Account(name="Third", email="third@example.com")
-    sqlite_session.add_all(
-        [
-            third_member,
-            TenantAccountJoin(tenant_id=workspace_id, account_id=third_member.id, role=TenantAccountRole.NORMAL),
-        ]
-    )
-    sqlite_session.commit()
     gateway, replace = rbac_access
-    owner_role = RBACRole(
-        id="role-owner", name="Owner", type="", category="global_system_default", role_tag="owner", is_builtin=True
+    normal_role = RBACRole(
+        id="role-normal",
+        name="Normal",
+        type="",
+        category="global_system_default",
+        role_tag="normal",
+        is_builtin=True,
     )
-    custom_role = RBACRole(id="custom-manager", name="Role manager", type="")
-    remote_roles = {old_owner_id: [owner_role, custom_role], new_owner_id: [], third_member.id: []}
-    roles_by_id = {role.id: role for role in [owner_role, custom_role]}
+    owner_role = RBACRole(
+        id="role-owner",
+        name="Owner",
+        type="",
+        category="global_system_default",
+        role_tag="owner",
+        is_builtin=True,
+    )
 
     def get_roles(tenant_id: str, account_id: str | None, member_account_id: str) -> MemberRolesResponse:
         del tenant_id, account_id
-        return MemberRolesResponse(account_id=member_account_id, roles=remote_roles[member_account_id])
-
-    def replace_roles(*, tenant_id: str, account_id: str, member_account_id: str, role_ids: list[str]) -> None:
-        del tenant_id, account_id
-        remote_roles[member_account_id] = [
-            roles_by_id.get(role_id, RBACRole(id=role_id, name=role_id, type="")) for role_id in role_ids
-        ]
-
-    def fail_commit(session: Session) -> None:
-        session.flush()
-        raise RuntimeError("Membership commit failed")
+        roles = [owner_role] if member_account_id == new_owner_id else [normal_role]
+        return MemberRolesResponse(account_id=member_account_id, roles=roles)
 
     monkeypatch.setattr(RBACService.MemberRoles, "get", get_roles)
-    monkeypatch.setattr(
-        gateway,
-        "owner_id",
-        lambda _workspace_id, _actor_id: next(
-            member_id for member_id, roles in remote_roles.items() if owner_role in roles
-        ),
-    )
-    replace.on_apply = replace_roles
-    service = WorkspaceMemberService(
-        workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
-    )
 
-    event.listen(sqlite_session_factory, "before_commit", fail_commit)
-    try:
-        with pytest.raises(RuntimeError, match="Membership commit failed"):
-            service.update_role(workspace_id, new_owner_id, "owner", old_owner_id)
-    finally:
-        event.remove(sqlite_session_factory, "before_commit", fail_commit)
-
-    assert remote_roles[old_owner_id] == [custom_role]
-    assert remote_roles[new_owner_id] == [owner_role]
-    assert service.get_role(workspace_id, old_owner_id) == TenantAccountRole.OWNER
-    assert service.get_role(workspace_id, new_owner_id) == TenantAccountRole.NORMAL
-    replace.calls.clear()
-
-    target_id, role = (new_owner_id, "editor") if operation == "demote_new_owner" else (third_member.id, "owner")
-    with pytest.raises(NoPermissionError):
-        service.update_role(workspace_id, target_id, role, old_owner_id)
+    gateway.reconcile_owner(workspace_id, old_owner_id, new_owner_id, actor_id=None)
 
     assert replace.calls == []
-    assert remote_roles[old_owner_id] == [custom_role]
-    assert remote_roles[new_owner_id] == [owner_role]
-    assert remote_roles[third_member.id] == []
-    assert service.get_role(workspace_id, old_owner_id) == TenantAccountRole.OWNER
-    assert service.get_role(workspace_id, new_owner_id) == TenantAccountRole.NORMAL
-    assert service.get_role(workspace_id, third_member.id) == TenantAccountRole.NORMAL
 
 
 @pytest.mark.parametrize("new_role", ["editor", "owner"])
@@ -946,7 +1152,9 @@ def test_rbac_owner_lookup_failure_prevents_role_changes(
 
     monkeypatch.setattr(RBACService.MemberRoles, "get", get_roles)
     service = WorkspaceMemberService(
-        workspaces=account_domain.workspaces, accounts=account_domain.repository, access=gateway
+        workspaces=account_domain.workspaces,
+        accounts=account_domain.repository,
+        access=gateway,
     )
 
     with pytest.raises(RuntimeError, match="RBAC unavailable"):

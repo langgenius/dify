@@ -13,15 +13,11 @@ All tests use mocking to avoid external dependencies and ensure fast, reliable e
 Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
-import json
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Mapping
 from unittest.mock import Mock, patch
-from uuid import uuid4
 
 import httpx
 import pytest
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
@@ -33,190 +29,36 @@ from core.datasource.entities.datasource_entities import (
 from core.datasource.online_document.online_document_provider import (
     OnlineDocumentDatasourcePluginProviderController,
 )
-from core.rag.extractor import notion_extractor as notion_extractor_module
-from core.rag.extractor.entity.extract_setting import StoredDocumentExtractionInput
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.models.document import Document
 from core.tools.entities.common_entities import I18nObject
-from extensions.application_services.data_sources import build_data_source_credentials
-from models.base import TypeBase
-from models.dataset import Document as DocumentModel
-from models.enums import DataSourceType, DocumentCreatedFrom
-
-
-@pytest.fixture
-def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
-    """Bind a real session for Notion document metadata persistence."""
-
-    TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[DocumentModel.__tablename__]])
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        monkeypatch.setattr(notion_extractor_module.db, "session", session)
-        yield session
-
-
-@pytest.fixture
-def persisted_document(database: Session) -> DocumentModel:
-    document = DocumentModel(
-        id=str(uuid4()),
-        tenant_id=str(uuid4()),
-        dataset_id=str(uuid4()),
-        position=1,
-        data_source_type=DataSourceType.NOTION_IMPORT,
-        data_source_info=json.dumps({"last_edited_time": "2024-01-01T00:00:00.000Z"}),
-        batch="batch",
-        name="Notion page",
-        created_from=DocumentCreatedFrom.WEB,
-        created_by=str(uuid4()),
-    )
-    database.add(document)
-    database.commit()
-    return document
-
-
-def _extraction_input(document: DocumentModel) -> StoredDocumentExtractionInput:
-    """Detach the values the extractor needs, as the indexing source adapter does."""
-    return StoredDocumentExtractionInput(
-        id=document.id,
-        tenant_id=document.tenant_id,
-        dataset_id=document.dataset_id,
-        data_source_info_dict=document.data_source_info_dict,
-    )
 
 
 class TestNotionExtractorAuthentication:
-    """Tests for Notion authentication handling.
+    """The extractor accepts only an already-authorized access token."""
 
-    Covers:
-    - OAuth token authentication
-    - Integration token fallback
-    - Credential retrieval from database
-    - Missing credential error handling
-    """
-
-    @pytest.fixture
-    def mock_document_model(self) -> StoredDocumentExtractionInput:
-        """Create detached document values with persisted-format Notion metadata."""
-        return StoredDocumentExtractionInput(
-            id="test-doc-id",
-            tenant_id="tenant-789",
-            dataset_id="dataset-id",
-            data_source_info_dict={"last_edited_time": "2024-01-01T00:00:00.000Z"},
-        )
-
-    def test_init_with_explicit_token(self, mock_document_model: StoredDocumentExtractionInput) -> None:
+    def test_init_with_explicit_token(self) -> None:
         """Test NotionExtractor initialization with explicit access token."""
         # Arrange & Act
         extractor = NotionExtractor(
-            notion_workspace_id="workspace-123",
             notion_obj_id="page-456",
             notion_page_type="page",
-            tenant_id="tenant-789",
             notion_access_token="explicit-token-abc",
-            document_model=mock_document_model,
-            notion_token_loader=lambda: "token",
         )
 
         # Assert
         assert extractor._notion_access_token == "explicit-token-abc"
-        assert extractor._notion_workspace_id == "workspace-123"
         assert extractor._notion_obj_id == "page-456"
         assert extractor._notion_page_type == "page"
 
-    @patch("services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials")
-    def test_init_with_credential_id(
-        self,
-        get_credentials: Mock,
-        mock_document_model: StoredDocumentExtractionInput,
-        sqlite_session_factory: sessionmaker[Session],
-    ) -> None:
-        """Test NotionExtractor initialization with credential ID retrieval."""
-        # Arrange
-        providers = build_data_source_credentials(database_client=sqlite_session_factory).providers
-        get_credentials.return_value = {"integration_secret": "credential-token-xyz"}
-
-        # Act
-        extractor = NotionExtractor(
-            notion_workspace_id="workspace-123",
-            notion_obj_id="page-456",
-            notion_page_type="page",
-            tenant_id="tenant-789",
-            credential_id="cred-123",
-            document_model=mock_document_model,
-            notion_token_loader=lambda: providers.get_stored_notion_access_token(
-                tenant_id="tenant-789", credential_id="cred-123"
-            ),
-        )
-
-        # Assert
-        assert extractor._notion_access_token == "credential-token-xyz"
-        get_credentials.assert_called_once_with(
-            tenant_id="tenant-789",
-            credential_id="cred-123",
-            provider="notion_datasource",
-            plugin_id="langgenius/notion_datasource",
-        )
-
-    @patch("services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials")
-    def test_init_with_integration_token_fallback(
-        self,
-        mock_get_token: Mock,
-        mock_document_model: StoredDocumentExtractionInput,
-        config_overrides: Callable[..., None],
-        sqlite_session_factory: sessionmaker[Session],
-    ) -> None:
-        """Test NotionExtractor falls back to integration token when credential not found."""
-        # Arrange
-        mock_get_token.side_effect = Exception("No credential id found")
-        config_overrides(NOTION_INTEGRATION_TOKEN="integration-token-fallback")
-        providers = build_data_source_credentials(database_client=sqlite_session_factory).providers
-
-        # Act
-        extractor = NotionExtractor(
-            notion_workspace_id="workspace-123",
-            notion_obj_id="page-456",
-            notion_page_type="page",
-            tenant_id="tenant-789",
-            credential_id=None,
-            document_model=mock_document_model,
-            notion_token_loader=lambda: providers.get_stored_notion_access_token(
-                tenant_id="tenant-789", credential_id=None
-            ),
-        )
-
-        # Assert
-        assert extractor._notion_access_token == "integration-token-fallback"
-
-    @patch("services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials")
-    def test_init_missing_credentials_raises_error(
-        self,
-        mock_get_token: Mock,
-        mock_document_model: StoredDocumentExtractionInput,
-        config_overrides: Callable[..., None],
-        sqlite_session_factory: sessionmaker[Session],
-    ) -> None:
-        """Test NotionExtractor raises error when no credentials available."""
-        # Arrange
-        mock_get_token.side_effect = Exception("No credential id found")
-        config_overrides(NOTION_INTEGRATION_TOKEN=None)
-        providers = build_data_source_credentials(database_client=sqlite_session_factory).providers
-
-        # Act & Assert
-        with pytest.raises(
-            ValueError,
-            match=("Must specify `integration_token` or set environment variable `NOTION_INTEGRATION_TOKEN`\\."),
-        ) as exc_info:
+    @pytest.mark.parametrize("token", ["", None])
+    def test_init_rejects_missing_resolved_token(self, token: str | None) -> None:
+        with pytest.raises(ValueError, match="Notion access token is required"):
             NotionExtractor(
-                notion_workspace_id="workspace-123",
                 notion_obj_id="page-456",
                 notion_page_type="page",
-                tenant_id="tenant-789",
-                credential_id=None,
-                document_model=mock_document_model,
-                notion_token_loader=lambda: providers.get_stored_notion_access_token(
-                    tenant_id="tenant-789", credential_id=None
-                ),
+                notion_access_token=token,  # type: ignore[arg-type]
             )
-        assert "Must specify `integration_token`" in str(exc_info.value)
 
 
 class TestNotionExtractorPageRetrieval:
@@ -233,12 +75,9 @@ class TestNotionExtractorPageRetrieval:
     def extractor(self) -> NotionExtractor:
         """Create a NotionExtractor instance for testing."""
         return NotionExtractor(
-            notion_workspace_id="workspace-123",
             notion_obj_id="page-456",
             notion_page_type="page",
-            tenant_id="tenant-789",
             notion_access_token="test-token",
-            notion_token_loader=lambda: "token",
         )
 
     def _create_response(self, data: Mapping[str, object], status_code: int = 200) -> httpx.Response:
@@ -430,12 +269,9 @@ class TestNotionExtractorDatabaseRetrieval:
     def extractor(self) -> NotionExtractor:
         """Create a NotionExtractor instance for testing."""
         return NotionExtractor(
-            notion_workspace_id="workspace-123",
             notion_obj_id="database-789",
             notion_page_type="database",
-            tenant_id="tenant-789",
             notion_access_token="test-token",
-            notion_token_loader=lambda: "token",
         )
 
     def _create_database_page(self, page_id: str, properties: Mapping[str, Mapping[str, object]]) -> dict[str, object]:
@@ -636,12 +472,9 @@ class TestNotionExtractorTableParsing:
     def extractor(self) -> NotionExtractor:
         """Create a NotionExtractor instance for testing."""
         return NotionExtractor(
-            notion_workspace_id="workspace-123",
             notion_obj_id="page-456",
             notion_page_type="page",
-            tenant_id="tenant-789",
             notion_access_token="test-token",
-            notion_token_loader=lambda: "token",
         )
 
     @patch("httpx.request")
@@ -772,43 +605,25 @@ class TestNotionExtractorLastEditedTime:
     Covers:
     - Page last edited time retrieval
     - Database last edited time retrieval
-    - Document model update
+    - Source version lookup independent of content extraction
     """
 
     @pytest.fixture
-    def mock_document_model(self) -> StoredDocumentExtractionInput:
-        """Create detached document values with persisted-format Notion metadata."""
-        return StoredDocumentExtractionInput(
-            id="test-doc-id",
-            tenant_id="tenant-789",
-            dataset_id="dataset-id",
-            data_source_info_dict={"last_edited_time": "2024-01-01T00:00:00.000Z"},
-        )
-
-    @pytest.fixture
-    def extractor_page(self, mock_document_model: StoredDocumentExtractionInput) -> NotionExtractor:
+    def extractor_page(self) -> NotionExtractor:
         """Create a NotionExtractor instance for page testing."""
         return NotionExtractor(
-            notion_workspace_id="workspace-123",
             notion_obj_id="page-456",
             notion_page_type="page",
-            tenant_id="tenant-789",
             notion_access_token="test-token",
-            document_model=mock_document_model,
-            notion_token_loader=lambda: "token",
         )
 
     @pytest.fixture
-    def extractor_database(self, mock_document_model: StoredDocumentExtractionInput) -> NotionExtractor:
+    def extractor_database(self) -> NotionExtractor:
         """Create a NotionExtractor instance for database testing."""
         return NotionExtractor(
-            notion_workspace_id="workspace-123",
             notion_obj_id="database-789",
             notion_page_type="database",
-            tenant_id="tenant-789",
             notion_access_token="test-token",
-            document_model=mock_document_model,
-            notion_token_loader=lambda: "token",
         )
 
     @patch("httpx.request")
@@ -855,36 +670,6 @@ class TestNotionExtractorLastEditedTime:
         call_args = mock_request.call_args
         assert "databases/database-789" in call_args[0][1]
 
-    @patch("httpx.request")
-    def test_update_last_edited_time(
-        self,
-        mock_request: Mock,
-        extractor_page: NotionExtractor,
-        database: Session,
-        persisted_document: DocumentModel,
-    ) -> None:
-        """Test updating document model with last edited time."""
-        # Arrange
-        mock_response_data = {
-            "object": "page",
-            "id": "page-456",
-            "last_edited_time": "2024-11-27T18:00:00.000Z",
-        }
-        mock_response = httpx.Response(200, json=mock_response_data)
-        mock_request.return_value = mock_response
-
-        # Act
-        extractor_page.update_last_edited_time(_extraction_input(persisted_document))
-
-        # Assert
-        database.expire(persisted_document)
-        assert persisted_document.data_source_info_dict["last_edited_time"] == "2024-11-27T18:00:00.000Z"
-
-    def test_update_last_edited_time_no_document(self, extractor_page: NotionExtractor) -> None:
-        """Test update_last_edited_time with None document model."""
-        # Act & Assert - should not raise error
-        extractor_page.update_last_edited_time(None)
-
 
 class TestNotionExtractorIntegration:
     """Integration tests for complete extraction workflow.
@@ -896,38 +681,18 @@ class TestNotionExtractorIntegration:
     - Error handling in extract method
     """
 
-    @pytest.fixture
-    def mock_document_model(self) -> StoredDocumentExtractionInput:
-        """Create detached document values with persisted-format Notion metadata."""
-        return StoredDocumentExtractionInput(
-            id="test-doc-id",
-            tenant_id="tenant-789",
-            dataset_id="dataset-id",
-            data_source_info_dict={"last_edited_time": "2024-01-01T00:00:00.000Z"},
-        )
-
     @patch("httpx.request")
     def test_extract_page_complete_workflow(
-        self, mock_request: Mock, database: Session, persisted_document: DocumentModel
+        self,
+        mock_request: Mock,
     ) -> None:
         """Test complete page extraction workflow."""
         # Arrange
         extractor = NotionExtractor(
-            notion_workspace_id="workspace-123",
             notion_obj_id="page-456",
             notion_page_type="page",
-            tenant_id="tenant-789",
             notion_access_token="test-token",
-            document_model=_extraction_input(persisted_document),
-            notion_token_loader=lambda: "token",
         )
-
-        # Mock last edited time request
-        last_edited_response_data = {
-            "object": "page",
-            "last_edited_time": "2024-11-27T20:00:00.000Z",
-        }
-        last_edited_response = httpx.Response(200, json=last_edited_response_data)
 
         # Mock block data request
         block_response_data = {
@@ -959,7 +724,7 @@ class TestNotionExtractorIntegration:
         }
         block_response = httpx.Response(200, json=block_response_data)
 
-        mock_request.side_effect = [last_edited_response, block_response]
+        mock_request.return_value = block_response
 
         # Act
         documents = extractor.extract()
@@ -969,37 +734,19 @@ class TestNotionExtractorIntegration:
         assert isinstance(documents[0], Document)
         assert "# Test Page" in documents[0].page_content
         assert "Test content" in documents[0].page_content
-        database.expire(persisted_document)
-        assert persisted_document.data_source_info_dict["last_edited_time"] == "2024-11-27T20:00:00.000Z"
 
     @patch("httpx.post")
-    @patch("httpx.request")
     def test_extract_database_complete_workflow(
         self,
-        mock_request: Mock,
         mock_post: Mock,
-        database: Session,
-        persisted_document: DocumentModel,
     ) -> None:
         """Test complete database extraction workflow."""
         # Arrange
         extractor = NotionExtractor(
-            notion_workspace_id="workspace-123",
             notion_obj_id="database-789",
             notion_page_type="database",
-            tenant_id="tenant-789",
             notion_access_token="test-token",
-            document_model=_extraction_input(persisted_document),
-            notion_token_loader=lambda: "token",
         )
-
-        # Mock last edited time request
-        last_edited_response_data = {
-            "object": "database",
-            "last_edited_time": "2024-11-27T20:00:00.000Z",
-        }
-        last_edited_response = httpx.Response(200, json=last_edited_response_data)
-        mock_request.return_value = last_edited_response
 
         # Mock database query request
         database_response_data = {
@@ -1029,19 +776,14 @@ class TestNotionExtractorIntegration:
         assert isinstance(documents[0], Document)
         assert "Name:Item 1" in documents[0].page_content
         assert "Status:Active" in documents[0].page_content
-        database.expire(persisted_document)
-        assert persisted_document.data_source_info_dict["last_edited_time"] == "2024-11-27T20:00:00.000Z"
 
     def test_extract_invalid_page_type(self) -> None:
         """Test extract with invalid page type."""
         # Arrange
         extractor = NotionExtractor(
-            notion_workspace_id="workspace-123",
             notion_obj_id="invalid-456",
             notion_page_type="invalid_type",
-            tenant_id="tenant-789",
             notion_access_token="test-token",
-            notion_token_loader=lambda: "token",
         )
 
         # Act & Assert
@@ -1063,12 +805,9 @@ class TestNotionExtractorReadBlock:
     def extractor(self) -> NotionExtractor:
         """Create a NotionExtractor instance for testing."""
         return NotionExtractor(
-            notion_workspace_id="workspace-123",
             notion_obj_id="page-456",
             notion_page_type="page",
-            tenant_id="tenant-789",
             notion_access_token="test-token",
-            notion_token_loader=lambda: "token",
         )
 
     @patch("httpx.request")
@@ -1231,12 +970,9 @@ class TestNotionExtractorAdvancedBlockTypes:
             NotionExtractor: Configured extractor with test credentials
         """
         return NotionExtractor(
-            notion_workspace_id="workspace-123",
             notion_obj_id="page-456",
             notion_page_type="page",
-            tenant_id="tenant-789",
             notion_access_token="test-token",
-            notion_token_loader=lambda: "token",
         )
 
     def _create_block_with_rich_text(
@@ -1403,12 +1139,9 @@ class TestNotionExtractorDatabaseAdvanced:
             NotionExtractor: Configured extractor for database operations
         """
         return NotionExtractor(
-            notion_workspace_id="workspace-123",
             notion_obj_id="database-789",
             notion_page_type="database",
-            tenant_id="tenant-789",
             notion_access_token="test-token",
-            notion_token_loader=lambda: "token",
         )
 
     def _create_database_page_with_properties(
@@ -1603,12 +1336,9 @@ class TestNotionExtractorErrorScenarios:
             NotionExtractor: Configured extractor for error scenarios
         """
         return NotionExtractor(
-            notion_workspace_id="workspace-123",
             notion_obj_id="page-456",
             notion_page_type="page",
-            tenant_id="tenant-789",
             notion_access_token="test-token",
-            notion_token_loader=lambda: "token",
         )
 
     @pytest.mark.parametrize(
@@ -1751,12 +1481,9 @@ class TestNotionExtractorTableAdvanced:
             NotionExtractor: Configured extractor for table operations
         """
         return NotionExtractor(
-            notion_workspace_id="workspace-123",
             notion_obj_id="page-456",
             notion_page_type="page",
-            tenant_id="tenant-789",
             notion_access_token="test-token",
-            notion_token_loader=lambda: "token",
         )
 
     @patch("httpx.request")

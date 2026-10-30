@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from flask import Flask
@@ -7,6 +7,7 @@ from werkzeug.exceptions import BadRequest
 from controllers.service_api.app import completion as completion_module
 from controllers.service_api.app import workflow as workflow_module
 from core.helper.trace_id_helper import get_trace_session_id
+from extensions.ext_application_services import ApplicationServices
 from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
 from tests.unit_tests.model_factories import make_app, make_end_user
@@ -49,16 +50,28 @@ def _end_user() -> EndUser:
     return make_end_user(end_user_id="user-1", end_user_type=EndUserType.SERVICE_API)
 
 
-def _assert_generate_trace_session_id(mock_generate_service: MagicMock, expected: str) -> None:
+@pytest.fixture
+def app_generation(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    application_services = create_autospec(ApplicationServices, instance=True, spec_set=True)
+    monkeypatch.setattr(completion_module, "application_services", lambda: application_services)
+    monkeypatch.setattr(workflow_module, "application_services", lambda: application_services)
+    return application_services.app_generation
+
+
+def _assert_generate_trace_session_id(
+    mock_generate_service: MagicMock,
+    expected: str,
+) -> None:
     _, kwargs = mock_generate_service.generate.call_args
     assert kwargs["args"]["trace_session_id"] == expected
+    assert "external_retrieval" not in kwargs
 
 
-@patch("controllers.service_api.app.completion.AppGenerateService")
+@patch("controllers.service_api.app.completion.application_services")
 @patch("controllers.service_api.app.completion.service_api_ns")
 def test_chat_api_rejects_invalid_highest_priority_query_trace_session_id_without_generating(
     mock_service_api_ns: MagicMock,
-    mock_generate_service: MagicMock,
+    mock_application_services: MagicMock,
     app: Flask,
 ):
     payload = {"inputs": {}, "query": "hello", "trace_session_id": "body-session"}
@@ -76,14 +89,14 @@ def test_chat_api_rejects_invalid_highest_priority_query_trace_session_id_withou
                 _end_user(),
             )
 
-    mock_generate_service.generate.assert_not_called()
+    mock_application_services.return_value.app_generation.generate.assert_not_called()
 
 
-@patch("controllers.service_api.app.workflow.AppGenerateService")
+@patch("controllers.service_api.app.workflow.application_services")
 @patch("controllers.service_api.app.workflow.service_api_ns")
 def test_workflow_run_api_rejects_invalid_highest_priority_body_trace_session_id_without_generating(
     mock_service_api_ns: MagicMock,
-    mock_generate_service: MagicMock,
+    mock_application_services: MagicMock,
     app: Flask,
 ):
     payload = {"inputs": {}, "trace_session_id": 123}
@@ -97,21 +110,20 @@ def test_workflow_run_api_rejects_invalid_highest_priority_body_trace_session_id
                 _end_user(),
             )
 
-    mock_generate_service.generate.assert_not_called()
+    mock_application_services.return_value.app_generation.generate.assert_not_called()
 
 
 @patch("controllers.service_api.app.completion.helper.compact_generate_response", return_value={"answer": "ok"})
-@patch("controllers.service_api.app.completion.AppGenerateService")
 @patch("controllers.service_api.app.completion.service_api_ns")
 def test_completion_api_passes_header_trace_session_id_when_body_value_is_invalid_lower_priority(
     mock_service_api_ns: MagicMock,
-    mock_generate_service: MagicMock,
     mock_compact: MagicMock,
     app: Flask,
+    app_generation: MagicMock,
 ):
     payload = {"inputs": {}, "trace_session_id": 123}
     mock_service_api_ns.payload = payload
-    mock_generate_service.generate.return_value = "response"
+    app_generation.generate.return_value = "response"
 
     with app.test_request_context(
         "/completion-messages",
@@ -126,21 +138,20 @@ def test_completion_api_passes_header_trace_session_id_when_body_value_is_invali
         )
 
     assert response == {"answer": "ok"}
-    _assert_generate_trace_session_id(mock_generate_service, "header-session")
+    _assert_generate_trace_session_id(app_generation, "header-session")
 
 
 @patch("controllers.service_api.app.completion.helper.compact_generate_response", return_value={"answer": "ok"})
-@patch("controllers.service_api.app.completion.AppGenerateService")
 @patch("controllers.service_api.app.completion.service_api_ns")
 def test_chat_api_passes_query_trace_session_id_when_body_value_is_invalid_lower_priority(
     mock_service_api_ns: MagicMock,
-    mock_generate_service: MagicMock,
     mock_compact: MagicMock,
     app: Flask,
+    app_generation: MagicMock,
 ):
     payload = {"inputs": {}, "query": "hello", "trace_session_id": 123}
     mock_service_api_ns.payload = payload
-    mock_generate_service.generate.return_value = "response"
+    app_generation.generate.return_value = "response"
 
     with app.test_request_context(
         "/chat-messages?trace_session_id=query-session",
@@ -154,21 +165,20 @@ def test_chat_api_passes_query_trace_session_id_when_body_value_is_invalid_lower
         )
 
     assert response == {"answer": "ok"}
-    _assert_generate_trace_session_id(mock_generate_service, "query-session")
+    _assert_generate_trace_session_id(app_generation, "query-session")
 
 
 @patch("controllers.service_api.app.workflow.helper.compact_generate_response", return_value={"result": "ok"})
-@patch("controllers.service_api.app.workflow.AppGenerateService")
 @patch("controllers.service_api.app.workflow.service_api_ns")
 def test_workflow_run_api_passes_body_trace_session_id(
     mock_service_api_ns: MagicMock,
-    mock_generate_service: MagicMock,
     mock_compact: MagicMock,
     app: Flask,
+    app_generation: MagicMock,
 ):
     payload = {"inputs": {}, "trace_session_id": " body-session "}
     mock_service_api_ns.payload = payload
-    mock_generate_service.generate.return_value = "response"
+    app_generation.generate.return_value = "response"
 
     with app.test_request_context("/workflows/run", method="POST", json=payload):
         response = workflow_module.WorkflowRunApi().post.__wrapped__(
@@ -178,4 +188,4 @@ def test_workflow_run_api_passes_body_trace_session_id(
         )
 
     assert response == {"result": "ok"}
-    _assert_generate_trace_session_id(mock_generate_service, "body-session")
+    _assert_generate_trace_session_id(app_generation, "body-session")

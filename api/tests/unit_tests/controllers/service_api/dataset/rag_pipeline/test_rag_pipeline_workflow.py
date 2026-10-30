@@ -19,6 +19,7 @@ Strategy:
 
 import io
 import uuid
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -51,14 +52,15 @@ from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
 )
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
+from machinery.context import RequestContext
 from models.account import Account
 from models.dataset import Dataset, Pipeline
-from models.enums import CreatorUserRole
-from models.model import UploadFile
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
 from services.data_source.provider_service import DatasourceProviderService
+from services.entities.upload_file import FileUploadActor, UploadFileRecord
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.errors.file import UnsupportedFileTypeError
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
@@ -87,6 +89,63 @@ def _persist_pipeline(session: Session, *, tenant_id: str) -> Pipeline:
     session.add(pipeline)
     session.commit()
     return pipeline
+
+
+def _request_context(tenant_id: str, *, account_id: str = "account-1") -> RequestContext:
+    return RequestContext("request-1", "trace-1", account_id, tenant_id)
+
+
+@dataclass(frozen=True)
+class _UploadCall:
+    actor: FileUploadActor
+    tenant_id: str
+    filename: str
+    content: bytes
+    mimetype: str
+    allowed_extensions: frozenset[str] | None
+    source_url: str
+    default_file_size_limit: int | None
+
+
+@dataclass
+class _UploadFiles:
+    result: UploadFileRecord | None = None
+    error: Exception | None = None
+    calls: list[_UploadCall] = field(default_factory=list)
+
+    def upload_file(
+        self,
+        *,
+        actor: FileUploadActor,
+        tenant_id: str,
+        filename: str,
+        content: bytes,
+        mimetype: str,
+        allowed_extensions: frozenset[str] | None = None,
+        source_url: str = "",
+        default_file_size_limit: int | None = None,
+    ) -> UploadFileRecord:
+        self.calls.append(
+            _UploadCall(
+                actor=actor,
+                tenant_id=tenant_id,
+                filename=filename,
+                content=content,
+                mimetype=mimetype,
+                allowed_extensions=allowed_extensions,
+                source_url=source_url,
+                default_file_size_limit=default_file_size_limit,
+            )
+        )
+        if self.error is not None:
+            raise self.error
+        assert self.result is not None
+        return self.result
+
+
+@dataclass(frozen=True)
+class _FileApplicationServices:
+    files: _UploadFiles
 
 
 @pytest.fixture(autouse=True)
@@ -276,8 +335,8 @@ class TestPipelineFileUploadResponse:
             "created_at": "2024-01-01T00:00:00Z",
         }
 
-        for field in expected_fields:
-            assert field in mock_response
+        for field_name in expected_fields:
+            assert field_name in mock_response
 
 
 class TestPipelineNodeExecution:
@@ -434,7 +493,7 @@ class TestDatasourcePluginsApiGet:
     an inline dataset query, so no ``db`` patching is needed.
     """
 
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service")
     def test_get_plugins_success(self, mock_svc_cls, app: Flask, sqlite_session: Session):
         """Test successful retrieval of datasource plugins."""
         tenant_id = str(uuid.uuid4())
@@ -459,7 +518,7 @@ class TestDatasourcePluginsApiGet:
 
         with app.test_request_context("/datasets/test/pipeline/datasource-plugins?is_published=true"):
             api = DatasourcePluginsApi()
-            response, status = api.get(tenant_id=tenant_id, dataset_id=dataset_id)
+            response, status = api.get(request_context=_request_context(tenant_id), dataset_id=uuid.UUID(dataset_id))
 
         assert status == 200
         assert response == datasource_plugins
@@ -471,7 +530,7 @@ class TestDatasourcePluginsApiGet:
             datasource_providers=workflow_module.application_services().data_sources.providers,
         )
 
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service")
     def test_get_plugins_parses_false_is_published_query(self, mock_svc_cls, app: Flask, sqlite_session: Session):
         """Test false query string is parsed as boolean False."""
         tenant_id = str(uuid.uuid4())
@@ -484,7 +543,7 @@ class TestDatasourcePluginsApiGet:
 
         with app.test_request_context("/datasets/test/pipeline/datasource-plugins?is_published=false"):
             api = DatasourcePluginsApi()
-            response, status = api.get(tenant_id=tenant_id, dataset_id=dataset_id)
+            response, status = api.get(request_context=_request_context(tenant_id), dataset_id=uuid.UUID(dataset_id))
 
         assert status == 200
         assert response == []
@@ -505,9 +564,9 @@ class TestDatasourcePluginsApiGet:
         with app.test_request_context("/datasets/test/pipeline/datasource-plugins"):
             api = DatasourcePluginsApi()
             with pytest.raises(NotFound):
-                api.get(tenant_id=tenant_id, dataset_id=dataset_id)
+                api.get(request_context=_request_context(tenant_id), dataset_id=uuid.UUID(dataset_id))
 
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service")
     def test_get_plugins_empty_list(self, mock_svc_cls, app: Flask, sqlite_session: Session):
         """Test empty plugin list."""
         tenant_id = str(uuid.uuid4())
@@ -519,7 +578,7 @@ class TestDatasourcePluginsApiGet:
 
         with app.test_request_context("/datasets/test/pipeline/datasource-plugins"):
             api = DatasourcePluginsApi()
-            response, status = api.get(tenant_id=tenant_id, dataset_id=dataset_id)
+            response, status = api.get(request_context=_request_context(tenant_id), dataset_id=uuid.UUID(dataset_id))
 
         assert status == 200
         assert response == []
@@ -542,7 +601,7 @@ class TestDatasourceNodeRunApiPost:
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
         new_callable=lambda: Account(name="Test Account", email="test@example.com"),
     )
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service")
     def test_post_success(
         self,
         mock_svc_cls,
@@ -578,7 +637,9 @@ class TestDatasourceNodeRunApiPost:
             },
         ):
             api = DatasourceNodeRunApi()
-            response = api.post(tenant_id=tenant_id, dataset_id=dataset_id, node_id=node_id)
+            response = api.post(
+                request_context=_request_context(tenant_id), dataset_id=uuid.UUID(dataset_id), node_id=node_id
+            )
 
         assert response == {"result": "ok"}
         mock_svc_instance.get_pipeline.assert_called_once_with(tenant_id=tenant_id, dataset_id=dataset_id)
@@ -596,8 +657,13 @@ class TestDatasourceNodeRunApiPost:
             json={"inputs": {}, "datasource_type": "online_document", "is_published": True},
         ):
             api = DatasourceNodeRunApi()
+            tenant_id = str(uuid.uuid4())
             with pytest.raises(NotFound):
-                api.post(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()), node_id="n1")
+                api.post(
+                    request_context=_request_context(tenant_id),
+                    dataset_id=uuid.uuid4(),
+                    node_id="n1",
+                )
 
     @patch(
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
@@ -616,7 +682,7 @@ class TestDatasourceNodeRunApiPost:
         ):
             api = DatasourceNodeRunApi()
             with pytest.raises(AssertionError):
-                api.post(tenant_id=tenant_id, dataset_id=dataset_id, node_id="n1")
+                api.post(request_context=_request_context(tenant_id), dataset_id=uuid.UUID(dataset_id), node_id="n1")
 
 
 class TestPipelineRunApiPost:
@@ -628,7 +694,7 @@ class TestPipelineRunApiPost:
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
         new_callable=lambda: Account(name="Test Account", email="test@example.com"),
     )
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.build_rag_pipeline_service")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
     def test_post_success_streaming(
         self,
@@ -666,10 +732,10 @@ class TestPipelineRunApiPost:
 
         with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
             api = PipelineRunApi()
-            response = api.post.__wrapped__(api, sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
+            response = api.post.__wrapped__(api, sqlite_session, _request_context(tenant_id), uuid.UUID(dataset_id))
 
         assert response == {"result": "ok"}
-        mock_svc_cls.assert_called_once_with(sqlite_session)
+        mock_svc_cls.assert_called_once_with(session=sqlite_session)
         mock_gen_svc.generate.assert_called_once()
         assert mock_gen_svc.generate.call_args.kwargs["generator"] is pipeline_application
         assert mock_gen_svc.generate.call_args.kwargs["session"] is sqlite_session
@@ -682,8 +748,8 @@ class TestPipelineRunApiPost:
                 api.post.__wrapped__(
                     api,
                     sqlite_session,
-                    tenant_id=str(uuid.uuid4()),
-                    dataset_id=str(uuid.uuid4()),
+                    _request_context(str(uuid.uuid4())),
+                    uuid.uuid4(),
                 )
 
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user", new="not_account")
@@ -708,39 +774,36 @@ class TestPipelineRunApiPost:
                 api.post.__wrapped__(
                     api,
                     sqlite_session,
-                    tenant_id=tenant_id,
-                    dataset_id=dataset_id,
+                    _request_context(tenant_id),
+                    uuid.UUID(dataset_id),
                 )
 
 
 class TestFileUploadApiPost:
     """Tests for KnowledgebasePipelineFileUploadApi.post()."""
 
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FileService")
-    @patch(
-        "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
-        new_callable=lambda: Account(name="Upload User", email="upload@example.com"),
-    )
-    def test_upload_success(self, current_account, mock_file_svc_cls, app: Flask, sqlite_engine):
+    def test_upload_success(self, app: Flask):
         """Test successful file upload."""
-        current_account.id = str(uuid.uuid4())
-        upload = UploadFile(
-            tenant_id=str(uuid.uuid4()),
-            storage_type=StorageType.LOCAL,
+        tenant_id = str(uuid.uuid4())
+        account_id = str(uuid.uuid4())
+        upload = UploadFileRecord(
+            id=str(uuid.uuid4()),
+            tenant_id=tenant_id,
+            storage_type=StorageType.LOCAL.value,
             key="pipeline/doc.pdf",
             name="doc.pdf",
             size=1024,
             extension="pdf",
             mime_type="application/pdf",
             created_by_role=CreatorUserRole.ACCOUNT,
-            created_by=current_account.id,
+            created_by=account_id,
             created_at=datetime(2024, 1, 1, tzinfo=UTC),
+            hash=None,
+            source_url="",
             used=False,
         )
 
-        mock_file_svc_instance = Mock()
-        mock_file_svc_instance.upload_file.return_value = upload
-        mock_file_svc_cls.return_value = mock_file_svc_instance
+        files = _UploadFiles(result=upload)
 
         file_data = FileStorage(
             stream=io.BytesIO(b"fake pdf content"),
@@ -749,7 +812,8 @@ class TestFileUploadApiPost:
         )
 
         with (
-            patch.object(workflow_module, "db", SimpleNamespace(engine=sqlite_engine)),
+            patch.object(workflow_module, "application_services", return_value=_FileApplicationServices(files=files)),
+            patch.object(workflow_module.FeatureService, "get_knowledge_file_size_limit", return_value=15),
             app.test_request_context(
                 "/datasets/pipeline/file-upload",
                 method="POST",
@@ -757,26 +821,33 @@ class TestFileUploadApiPost:
                 data={"file": file_data},
             ),
         ):
-            response, status = KnowledgebasePipelineFileUploadApi().post(tenant_id=str(uuid.uuid4()))
+            response, status = KnowledgebasePipelineFileUploadApi().post(
+                request_context=_request_context(tenant_id, account_id=account_id)
+            )
 
         assert status == 201
         assert response["name"] == "doc.pdf"
         assert response["extension"] == "pdf"
+        assert files.calls == [
+            _UploadCall(
+                actor=FileUploadActor(id=account_id, creator_role=CreatorUserRole.ACCOUNT),
+                tenant_id=tenant_id,
+                filename="doc.pdf",
+                content=b"fake pdf content",
+                mimetype="application/pdf",
+                allowed_extensions=None,
+                source_url="",
+                default_file_size_limit=15,
+            )
+        ]
 
     @patch(
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FeatureService"
         ".get_knowledge_file_size_limit",
         return_value=15,
     )
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FileService")
-    @patch(
-        "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
-        new_callable=lambda: Account(name="Upload User", email="upload@example.com"),
-    )
-    def test_upload_file_too_large_returns_http_413(
-        self, current_account, mock_file_svc_cls, mock_get_limit, app: Flask, sqlite_engine
-    ):
-        mock_file_svc_cls.return_value.upload_file.side_effect = FileTooLargeServiceError()
+    def test_upload_file_too_large_returns_http_413(self, mock_get_limit, app: Flask):
+        files = _UploadFiles(error=FileTooLargeServiceError())
         file_data = FileStorage(
             stream=io.BytesIO(b"oversized content"),
             filename="doc.pdf",
@@ -784,7 +855,7 @@ class TestFileUploadApiPost:
         )
 
         with (
-            patch.object(workflow_module, "db", SimpleNamespace(engine=sqlite_engine)),
+            patch.object(workflow_module, "application_services", return_value=_FileApplicationServices(files=files)),
             app.test_request_context(
                 "/datasets/pipeline/file-upload",
                 method="POST",
@@ -793,23 +864,16 @@ class TestFileUploadApiPost:
             ),
         ):
             with pytest.raises(FileTooLargeHTTPError) as exc_info:
-                KnowledgebasePipelineFileUploadApi().post(tenant_id="tenant-1")
+                KnowledgebasePipelineFileUploadApi().post(request_context=_request_context("tenant-1"))
 
         assert exc_info.value.code == 413
         assert exc_info.value.error_code == "file_too_large"
         mock_get_limit.assert_called_once_with("tenant-1")
 
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FileService")
-    @patch(
-        "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
-        new_callable=lambda: Account(name="Upload User", email="upload@example.com"),
-    )
-    def test_upload_unsupported_file_type_returns_http_415(
-        self, current_account, mock_file_svc_cls, app: Flask, sqlite_engine
-    ):
+    def test_upload_unsupported_file_type_returns_http_415(self, app: Flask):
         # Regression: the service error once shadowed the HTTP error of the same name,
         # so this surfaced as a 400 `invalid_param` instead of the documented 415.
-        mock_file_svc_cls.return_value.upload_file.side_effect = UnsupportedFileTypeError()
+        files = _UploadFiles(error=UnsupportedFileTypeError())
         file_data = FileStorage(
             stream=io.BytesIO(b"binary"),
             filename="doc.exe",
@@ -817,7 +881,7 @@ class TestFileUploadApiPost:
         )
 
         with (
-            patch.object(workflow_module, "db", SimpleNamespace(engine=sqlite_engine)),
+            patch.object(workflow_module, "application_services", return_value=_FileApplicationServices(files=files)),
             patch.object(workflow_module.FeatureService, "get_knowledge_file_size_limit", return_value=15),
             app.test_request_context(
                 "/datasets/pipeline/file-upload",
@@ -827,7 +891,7 @@ class TestFileUploadApiPost:
             ),
         ):
             with pytest.raises(UnsupportedFileTypeHTTPError) as exc_info:
-                KnowledgebasePipelineFileUploadApi().post(tenant_id="tenant-1")
+                KnowledgebasePipelineFileUploadApi().post(request_context=_request_context("tenant-1"))
 
         assert exc_info.value.code == 415
         assert exc_info.value.error_code == "unsupported_file_type"
@@ -841,4 +905,4 @@ class TestFileUploadApiPost:
         ):
             api = KnowledgebasePipelineFileUploadApi()
             with pytest.raises(NoFileUploadedError):
-                api.post(tenant_id=str(uuid.uuid4()))
+                api.post(request_context=_request_context(str(uuid.uuid4())))

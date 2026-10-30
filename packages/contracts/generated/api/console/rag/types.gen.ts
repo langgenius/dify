@@ -368,6 +368,11 @@ export type RagPipelineWorkflowPublishResponse = {
   result: string
 }
 
+export type DatasetConcurrentUpdateError = ErrorResponse & {
+  code: 'dataset_concurrent_update'
+  status: 409
+}
+
 export type DatasourceContentPreviewPayload = {
   credential_id?: string | null
   datasource_type: string
@@ -2075,6 +2080,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishData = {
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishErrors = {
   404: PipelineNotFoundError | ErrorResponse
+  409: DatasetConcurrentUpdateError | ErrorResponse
   default: ErrorResponse
 }
 

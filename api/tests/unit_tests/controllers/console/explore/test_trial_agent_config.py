@@ -19,6 +19,7 @@ from werkzeug.test import TestResponse
 from controllers.console.app import agent_config_inspector as inspector
 from controllers.console.app import preview_admission
 from controllers.console.explore import trial
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import StorageType
 from libs.external_api import ExternalApi
 from models.agent import (
@@ -32,7 +33,6 @@ from models.agent import (
     AgentSource,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import CreatorUserRole
 from models.model import App, AppMode, RecommendedApp, UploadFile
 from models.tools import ToolFile
 from repositories.app_preview_query_repository import AppPreviewQueryRepository

@@ -32,14 +32,16 @@ from controllers.files.appdeploy_files import (
     ProducedFileApi,
 )
 from controllers.files.wraps import FileGrantInvalidError, GrantedFileNotFoundError
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import _build_file_grant_service
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
-from models.enums import CreatorUserRole, EndUserType
+from models.enums import EndUserType
 from models.model import EndUser, UploadFile
 from models.tools import ToolFile
 from services.entities.file_grant_entities import FileGrantContext, FileGrantScope, FileKind, RemoteFile
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
+from services.file_adapters import build_file_service
 from services.file_grant_gateways import FILE_CONTENT_AUDIENCE, FileGrantFileGateway
 from services.file_grant_service import MAX_FILE_GRANT_REFS, FileGrantService
 from tests.unit_tests.file_grant_test_utils import issue_file_grant
@@ -101,12 +103,17 @@ def granted_config(config_overrides: Callable[..., None]) -> None:
         FILES_URL="https://files.example.com",
         INTERNAL_FILES_URL="http://dify-api.dify.svc:5001",
         FILES_ACCESS_TIMEOUT=300,
+        inner_UPLOAD_FILE_EXTENSION_BLACKLIST="exe",
     )
 
 
 @pytest.fixture
 def sqlite_db(sqlite_engine: Engine) -> Iterator[FileGrantService]:
-    service = _build_file_grant_service(database_client=sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    service = _build_file_grant_service(
+        database_client=factory,
+        files=build_file_service(session_factory=factory),
+    )
     services = SimpleNamespace(file_grants=service)
     with (
         patch(f"{CONTROLLER_MODULE}.application_services", return_value=services),
@@ -321,11 +328,7 @@ def test_upload_applies_the_shared_per_extension_size_limit(
 
 
 @pytest.mark.usefixtures("sqlite_db")
-def test_upload_rejects_a_blacklisted_extension(
-    app: Flask, end_user: EndUser, config_overrides: Callable[..., None]
-) -> None:
-    config_overrides(inner_UPLOAD_FILE_EXTENSION_BLACKLIST="exe")
-
+def test_upload_rejects_a_blacklisted_extension(app: Flask, end_user: EndUser) -> None:
     with app.test_request_context(
         "/files/appdeploy/upload",
         method="POST",
@@ -408,7 +411,8 @@ def test_remote_upload_fetches_through_the_ssrf_safe_fetcher(
     kwargs = upload_file.call_args.kwargs
     assert kwargs["source_url"] == url
     assert kwargs["content"] == b"pdf-bytes"
-    assert kwargs["user"].id == end_user.id
+    assert kwargs["actor"].id == end_user.id
+    assert kwargs["actor"].creator_role == CreatorUserRole.END_USER
 
 
 def test_remote_upload_answers_in_the_upload_shape_plus_dify_s_url_key(

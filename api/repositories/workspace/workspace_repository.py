@@ -4,7 +4,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import replace
 from typing import override
 
-from sqlalchemy import func, select, update
+from sqlalchemy import Select, func, select, update
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
@@ -26,13 +27,16 @@ from models.dataset import Dataset
 from models.enums import ProviderQuotaType
 from models.model import App
 from repositories.account.repository import SQLAlchemyAccountRepository
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthWorkspaceQuery
 from services.account_ports import AccountWorkspaceMembershipQuery, AccountWorkspaceSnapshotQuery
 from services.app.query_service import DiscoveryWorkspaces
 from services.entities.account_access_entities import AccountWorkspaceSnapshot
+from services.errors.base import NoPermissionError, PersistenceCommitOutcomeUnknownError
 from services.errors.workspace import (
     MemberNotInTenantError,
+    WorkspaceAlreadyHasOwnerError,
     WorkspaceNotFoundError,
     WorkspaceNotLinkedError,
     WorkspaceOwnerNotFoundError,
@@ -86,6 +90,7 @@ class WorkspaceRepository(
         owner_id: str | None,
         account: AccountCreation | None = None,
         only_if_no_active_workspace: bool = False,
+        before_commit: Callable[[], None],
     ) -> CreatedWorkspace | None:
         """Commit the account, workspace, membership and defaults as one aggregate.
 
@@ -94,63 +99,106 @@ class WorkspaceRepository(
         this transaction: private-key writes and RBAC bindings cannot be rolled
         back locally, so a competing sign-in must skip before creating either.
         The application supplies these external actions; this repository only
-        controls when they can run. Notifications run after this method commits.
+        controls when they can run. ``before_commit`` verifies any admission
+        lease after the aggregate flushes and immediately before commit.
+        Notifications run after this method commits.
         """
-        with self._session_factory.begin() as session:
-            if account is not None:
-                owner_id = SQLAlchemyAccountRepository.add(account, session=session).id
-            elif owner_id is not None:
-                owner = session.get(Account, owner_id, with_for_update=only_if_no_active_workspace)
-                if owner is None:
-                    raise WorkspaceOwnerNotFoundError()
-            if (
-                only_if_no_active_workspace
-                and session.scalar(
-                    select(Tenant.id)
-                    .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
-                    .where(TenantAccountJoin.account_id == owner_id, Tenant.status == TenantStatus.NORMAL)
-                    .limit(1)
+        with self._session_factory() as session:
+            try:
+                result = self._prepare_provisioning(
+                    session,
+                    prepare,
+                    owner_id=owner_id,
+                    account=account,
+                    only_if_no_active_workspace=only_if_no_active_workspace,
+                    before_commit=before_commit,
                 )
-                is not None
-            ):
+            except BaseException:
+                session.rollback()
+                raise
+            if result is None:
+                session.rollback()
                 return None
-            creation = prepare()
-            tenant = Tenant(name=creation.name, encrypt_public_key=creation.encrypt_public_key)
-            tenant.id = creation.id
-            session.add(tenant)
-            if owner_id is not None:
-                session.add(TenantAccountJoin(tenant_id=tenant.id, account_id=owner_id, role=TenantAccountRole.OWNER))
-            for category, setting in creation.plugin_upgrade_settings.items():
-                session.add(
-                    TenantPluginAutoUpgradeStrategy(
-                        tenant_id=tenant.id,
-                        category=TenantPluginAutoUpgradeCategory(category),
-                        strategy_setting=TenantPluginAutoUpgradeStrategySetting(setting),
-                        upgrade_time_of_day=creation.plugin_upgrade_time,
-                        upgrade_mode=TenantPluginAutoUpgradeMode.EXCLUDE,
-                        exclude_plugins=[],
-                        include_plugins=[],
-                    )
-                )
+            try:
+                session.commit()
+            except DBAPIError as error:
+                if error.connection_invalidated:
+                    raise PersistenceCommitOutcomeUnknownError from error
+                session.rollback()
+                raise
+            except BaseException as error:
+                # SQLAlchemy invokes after_commit listeners inside commit(). A
+                # plain RuntimeError here can therefore mean the aggregate is
+                # already durable. Only pre-commit failures and database errors
+                # with a live connection have a known rollback outcome.
+                raise PersistenceCommitOutcomeUnknownError from error
+            return result
+
+    @staticmethod
+    def _prepare_provisioning(
+        session: Session,
+        prepare: Callable[[], WorkspaceCreation],
+        *,
+        owner_id: str | None,
+        account: AccountCreation | None,
+        only_if_no_active_workspace: bool,
+        before_commit: Callable[[], None],
+    ) -> CreatedWorkspace | None:
+        if account is not None:
+            owner_id = SQLAlchemyAccountRepository.add(account, session=session).id
+        elif owner_id is not None:
+            owner = session.get(Account, owner_id, with_for_update=only_if_no_active_workspace)
+            if owner is None:
+                raise WorkspaceOwnerNotFoundError()
+        if (
+            only_if_no_active_workspace
+            and session.scalar(
+                select(Tenant.id)
+                .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+                .where(TenantAccountJoin.account_id == owner_id, Tenant.status == TenantStatus.NORMAL)
+                .limit(1)
+            )
+            is not None
+        ):
+            return None
+        creation = prepare()
+        tenant = Tenant(name=creation.name, encrypt_public_key=creation.encrypt_public_key)
+        tenant.id = creation.id
+        session.add(tenant)
+        if owner_id is not None:
+            session.add(TenantAccountJoin(tenant_id=tenant.id, account_id=owner_id, role=TenantAccountRole.OWNER))
+        for category, setting in creation.plugin_upgrade_settings.items():
             session.add(
-                TenantCreditPool(
+                TenantPluginAutoUpgradeStrategy(
                     tenant_id=tenant.id,
-                    quota_limit=creation.trial_credits,
-                    quota_used=0,
-                    pool_type=ProviderQuotaType.TRIAL,
+                    category=TenantPluginAutoUpgradeCategory(category),
+                    strategy_setting=TenantPluginAutoUpgradeStrategySetting(setting),
+                    upgrade_time_of_day=creation.plugin_upgrade_time,
+                    upgrade_mode=TenantPluginAutoUpgradeMode.EXCLUDE,
+                    exclude_plugins=[],
+                    include_plugins=[],
                 )
             )
-            session.flush()
-            return CreatedWorkspace(
-                tenant.id,
-                tenant.name,
-                tenant.plan,
-                tenant.status.value,
-                tenant.created_at,
-                tenant.updated_at,
-                tenant.encrypt_public_key,
-                dict(tenant.custom_config_dict),
+        session.add(
+            TenantCreditPool(
+                tenant_id=tenant.id,
+                quota_limit=creation.trial_credits,
+                quota_used=0,
+                pool_type=ProviderQuotaType.TRIAL,
             )
+        )
+        session.flush()
+        before_commit()
+        return CreatedWorkspace(
+            tenant.id,
+            tenant.name,
+            tenant.plan,
+            tenant.status.value,
+            tenant.created_at,
+            tenant.updated_at,
+            tenant.encrypt_public_key,
+            dict(tenant.custom_config_dict),
+        )
 
     @override
     def list_for_account(self, account_id: str) -> tuple[WorkspaceRecord, ...]:
@@ -448,13 +496,31 @@ class WorkspaceRepository(
 
     def owner_id(self, workspace_id: str) -> str | None:
         with self._session_factory() as session:
+            return session.scalar(self._owner_id_query(workspace_id))
+
+    def active_owner_id(self, workspace_id: str) -> str | None:
+        with self._session_factory() as session:
             return session.scalar(
-                select(TenantAccountJoin.account_id)
-                .where(TenantAccountJoin.tenant_id == workspace_id, TenantAccountJoin.role == TenantAccountRole.OWNER)
-                .limit(1)
+                self._owner_id_query(workspace_id)
+                .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
+                .where(Tenant.status == TenantStatus.NORMAL)
             )
 
-    def upsert_member(self, *, workspace_id: str, account_id: str, role: TenantAccountRole) -> WorkspaceMemberWrite:
+    @staticmethod
+    def _owner_id_query(workspace_id: str) -> Select[tuple[str]]:
+        return (
+            select(TenantAccountJoin.account_id)
+            .where(TenantAccountJoin.tenant_id == workspace_id, TenantAccountJoin.role == TenantAccountRole.OWNER)
+            .limit(1)
+        )
+
+    def upsert_member(
+        self,
+        *,
+        workspace_id: str,
+        account_id: str,
+        role: TenantAccountRole,
+    ) -> WorkspaceMemberWrite:
         with self._session_factory.begin() as session:
             account = session.get(Account, account_id)
             if account is None:
@@ -469,18 +535,80 @@ class WorkspaceRepository(
                 session.add(TenantAccountJoin(tenant_id=workspace_id, account_id=account_id, role=role))
             else:
                 membership.role = role
+            if role == TenantAccountRole.OWNER:
+                owner_id = session.scalar(
+                    select(TenantAccountJoin.account_id)
+                    .where(
+                        TenantAccountJoin.tenant_id == workspace_id,
+                        TenantAccountJoin.role == TenantAccountRole.OWNER,
+                        TenantAccountJoin.account_id != account_id,
+                    )
+                    .limit(1)
+                )
+                if owner_id is not None:
+                    raise WorkspaceAlreadyHasOwnerError("Tenant already has an owner.")
             return WorkspaceMemberWrite(workspace_id, account_id, role.value, account.status.value, created)
 
-    def remove_member(self, *, workspace_id: str, account_id: str, owner_id: str) -> WorkspaceMemberRemoval:
+    def remove_member(
+        self,
+        *,
+        workspace_id: str,
+        account_id: str,
+        operator_account_id: str,
+        require_privileged_operator: bool,
+    ) -> WorkspaceMemberRemoval:
         with self._session_factory.begin() as session:
-            account = session.get(Account, account_id)
-            membership = session.scalar(
-                select(TenantAccountJoin)
-                .where(TenantAccountJoin.tenant_id == workspace_id, TenantAccountJoin.account_id == account_id)
-                .limit(1)
+            workspace = session.scalar(
+                select(Tenant)
+                .where(Tenant.id == workspace_id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
             )
+            if workspace is None:
+                raise WorkspaceNotFoundError()
+            account = session.get(Account, account_id)
+            memberships = tuple(
+                session.scalars(
+                    select(TenantAccountJoin)
+                    .where(
+                        TenantAccountJoin.tenant_id == workspace_id,
+                        TenantAccountJoin.account_id.in_(tuple(sorted({operator_account_id, account_id}))),
+                    )
+                    .order_by(TenantAccountJoin.id)
+                    .with_for_update()
+                    .execution_options(populate_existing=True)
+                )
+            )
+            membership_by_account = {membership.account_id: membership for membership in memberships}
+            membership = membership_by_account.get(account_id)
             if account is None or membership is None:
                 raise MemberNotInTenantError("Member not in tenant.")
+            operator_membership = membership_by_account.get(operator_account_id)
+            if operator_membership is None:
+                raise NoPermissionError("Operator is no longer a workspace member.")
+            if require_privileged_operator and operator_membership.role not in {
+                TenantAccountRole.OWNER,
+                TenantAccountRole.ADMIN,
+            }:
+                raise NoPermissionError("Operator no longer has permission to remove members.")
+            if membership.role == TenantAccountRole.OWNER:
+                raise NoPermissionError("The workspace owner cannot be removed.")
+
+            owner_ids = tuple(
+                session.scalars(
+                    select(TenantAccountJoin.account_id)
+                    .where(
+                        TenantAccountJoin.tenant_id == workspace_id,
+                        TenantAccountJoin.role == TenantAccountRole.OWNER,
+                    )
+                    .order_by(TenantAccountJoin.id)
+                    .with_for_update()
+                    .execution_options(populate_existing=True)
+                )
+            )
+            if len(owner_ids) != 1:
+                raise ValueError(f"Workspace owner not found for tenant {workspace_id}.")
+            owner_id = owner_ids[0]
             session.execute(
                 update(App)
                 .where(App.tenant_id == workspace_id, App.maintainer == account_id)
@@ -500,25 +628,59 @@ class WorkspaceRepository(
                 session.delete(account)
             return WorkspaceMemberRemoval(account_id, email, delete_account)
 
-    def update_member_role(self, *, workspace_id: str, account_id: str, role: TenantAccountRole) -> None:
+    def update_member_role(
+        self,
+        *,
+        workspace_id: str,
+        actor_account_id: str,
+        account_id: str,
+        role: TenantAccountRole,
+    ) -> None:
         with self._session_factory.begin() as session:
-            membership = session.scalar(
-                select(TenantAccountJoin)
-                .where(TenantAccountJoin.tenant_id == workspace_id, TenantAccountJoin.account_id == account_id)
-                .limit(1)
+            workspace = session.scalar(
+                select(Tenant)
+                .where(Tenant.id == workspace_id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
             )
+            if workspace is None:
+                raise WorkspaceNotFoundError()
+
+            memberships = tuple(
+                session.scalars(
+                    select(TenantAccountJoin)
+                    .where(
+                        TenantAccountJoin.tenant_id == workspace_id,
+                        TenantAccountJoin.account_id.in_(tuple(sorted({actor_account_id, account_id}))),
+                    )
+                    .order_by(TenantAccountJoin.id)
+                    .with_for_update()
+                    .execution_options(populate_existing=True)
+                )
+            )
+            membership_by_account = {membership.account_id: membership for membership in memberships}
+            membership = membership_by_account.get(account_id)
             if membership is None:
                 raise MemberNotInTenantError("Member not in tenant.")
             if role == TenantAccountRole.OWNER:
-                owner = session.scalar(
-                    select(TenantAccountJoin)
-                    .where(
-                        TenantAccountJoin.tenant_id == workspace_id, TenantAccountJoin.role == TenantAccountRole.OWNER
+                actor_membership = membership_by_account.get(actor_account_id)
+                if actor_membership is None or actor_membership.role != TenantAccountRole.OWNER:
+                    raise NoPermissionError("Only the current workspace owner can transfer ownership.")
+                owners = tuple(
+                    session.scalars(
+                        select(TenantAccountJoin)
+                        .where(
+                            TenantAccountJoin.tenant_id == workspace_id,
+                            TenantAccountJoin.role == TenantAccountRole.OWNER,
+                        )
+                        .order_by(TenantAccountJoin.id)
+                        .with_for_update()
+                        .execution_options(populate_existing=True)
                     )
-                    .limit(1)
                 )
-                if owner:
-                    owner.role = TenantAccountRole.NORMAL
+                if len(owners) != 1 or owners[0].account_id != actor_account_id:
+                    raise NoPermissionError("Workspace ownership changed before the transfer completed.")
+                actor_membership.role = TenantAccountRole.NORMAL
             membership.role = role
 
     def list_member_ids(self, workspace_id: str, *, offset: int, limit: int) -> tuple[str, ...]:
@@ -557,10 +719,17 @@ class WorkspaceRepository(
         self, *, workspace_id: str, account_id: str, changes: WorkspaceCustomConfig
     ) -> WorkspaceSnapshot:
         with self._session_factory.begin() as session:
-            tenant = session.get(Tenant, workspace_id)
+            tenant = session.scalar(select(Tenant).where(Tenant.id == workspace_id).with_for_update())
             if tenant is None:
                 raise WorkspaceNotFoundError()
             snapshot = self._account_snapshot(session, tenant, account_id)
+            previous_logo_id = snapshot.custom_config.replace_webapp_logo
+            if changes.replace_webapp_logo and changes.replace_webapp_logo != previous_logo_id:
+                lock_and_validate_owned_upload_files_in_session(
+                    session,
+                    tenant_id=workspace_id,
+                    upload_file_ids=(changes.replace_webapp_logo,),
+                )
             tenant.custom_config_dict = {
                 "remove_webapp_brand": changes.remove_webapp_brand,
                 "replace_webapp_logo": changes.replace_webapp_logo,

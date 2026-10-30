@@ -8,9 +8,10 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowNodeExecutionStatus
-from models.enums import CreatorUserRole, ExecutionOffLoadType
+from models.enums import ExecutionOffLoadType
 from models.model import UploadFile
 from models.workflow import (
     WorkflowNodeExecutionModel,

@@ -13,12 +13,9 @@ def _mock_response(data: dict[str, object]) -> mock.Mock:
 
 def _extractor() -> notion_extractor.NotionExtractor:
     return notion_extractor.NotionExtractor(
-        notion_workspace_id="ws",
         notion_obj_id="obj",
         notion_page_type="page",
-        tenant_id="tenant",
         notion_access_token="token",
-        notion_token_loader=lambda: "token",
     )
 
 

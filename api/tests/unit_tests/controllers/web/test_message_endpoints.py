@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -11,6 +12,7 @@ from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload
+from controllers.web import message as message_module
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
     NotChatAppError,
@@ -23,9 +25,24 @@ from controllers.web.message import (
     MessageSuggestedQuestionApi,
 )
 from models.model import App, AppMode, EndUser
+from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.unit_tests.model_factories import make_end_user
+
+
+@dataclass(frozen=True, slots=True)
+class _ApplicationServicesStub:
+    app_generation: AppGenerateService
+
+
+@pytest.fixture(autouse=True)
+def app_generation(monkeypatch: pytest.MonkeyPatch) -> AppGenerateService:
+    service = AppGenerateService(knowledge_retrieval=make_knowledge_retriever())
+    services = _ApplicationServicesStub(app_generation=service)
+    monkeypatch.setattr(message_module, "application_services", lambda: services)
+    return service
 
 
 def _chat_app() -> App:
@@ -98,8 +115,13 @@ class TestMessageMoreLikeThisApi:
                 _more_like_this_get(MessageMoreLikeThisApi(), query, session, _chat_app(), _end_user(), msg_id)
 
     @patch("controllers.web.message.helper.compact_generate_response", return_value={"answer": "similar"})
-    @patch("controllers.web.message.AppGenerateService.generate_more_like_this")
-    def test_happy_path(self, mock_gen: MagicMock, mock_compact: MagicMock, app: Flask) -> None:
+    @patch("services.app_generate_service.AppGenerateService.generate_more_like_this")
+    def test_happy_path(
+        self,
+        mock_gen: MagicMock,
+        mock_compact: MagicMock,
+        app: Flask,
+    ) -> None:
         msg_id = uuid4()
         mock_gen.return_value = "response"
         query = MessageMoreLikeThisQuery.model_validate({"response_mode": "blocking"})
@@ -111,9 +133,10 @@ class TestMessageMoreLikeThisApi:
             )
 
         assert result == {"answer": "similar"}
+        assert "external_retrieval" not in mock_gen.call_args.kwargs
 
     @patch(
-        "controllers.web.message.AppGenerateService.generate_more_like_this",
+        "services.app_generate_service.AppGenerateService.generate_more_like_this",
         side_effect=MessageNotExistsError(),
     )
     def test_message_not_found(self, mock_gen: MagicMock, app: Flask) -> None:
@@ -125,7 +148,7 @@ class TestMessageMoreLikeThisApi:
                 _more_like_this_get(MessageMoreLikeThisApi(), query, session, _completion_app(), _end_user(), msg_id)
 
     @patch(
-        "controllers.web.message.AppGenerateService.generate_more_like_this",
+        "services.app_generate_service.AppGenerateService.generate_more_like_this",
         side_effect=MoreLikeThisDisabledError(),
     )
     def test_feature_disabled(self, mock_gen: MagicMock, app: Flask) -> None:

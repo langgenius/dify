@@ -2,34 +2,39 @@ import dataclasses
 import json
 import secrets
 import uuid
-from unittest.mock import Mock, patch
+from dataclasses import dataclass, field
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session
 
+from core.workflow.file_reference import build_file_reference
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
-from graphon.enums import BuiltinNodeTypes
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account
-from models.enums import CreatorUserRole, DraftVariableType
+from models.enums import DraftVariableType
 from models.model import UploadFile
 from models.workflow import (
     Workflow,
     WorkflowDraftVariable,
     WorkflowDraftVariableFile,
     WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
     is_system_variable_editable,
 )
+from services.entities.upload_file import FileUploadActor
 from services.variable_truncator import TruncationResult
 from services.workflow_draft_variable_service import (
     DraftVariableSaver,
@@ -43,6 +48,62 @@ pytestmark = [
     pytest.mark.usefixtures("sqlite_session"),
     pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True),
 ]
+
+
+@dataclass(frozen=True)
+class _UploadRequest:
+    actor: FileUploadActor
+    tenant_id: str
+    filename: str
+    content: bytes
+    mimetype: str
+
+
+@dataclass
+class _UploadFileCreator:
+    result: UploadFile | None = None
+    calls: list[_UploadRequest] = field(default_factory=list)
+
+    def upload_file(
+        self,
+        *,
+        actor: FileUploadActor,
+        tenant_id: str,
+        filename: str,
+        content: bytes,
+        mimetype: str,
+        allowed_extensions: frozenset[str] | None = None,
+        source_url: str = "",
+        default_file_size_limit: int | None = None,
+    ) -> UploadFile:
+        del allowed_extensions, source_url, default_file_size_limit
+        self.calls.append(_UploadRequest(actor, tenant_id, filename, content, mimetype))
+        if self.result is None:
+            raise AssertionError("this test does not expect a file upload")
+        return self.result
+
+
+def _execution_with_outputs(outputs: dict[str, object]) -> WorkflowNodeExecutionModel:
+    return WorkflowNodeExecutionModel(
+        id="exec-id",
+        tenant_id="test-tenant-id",
+        app_id="test-app-id",
+        workflow_id="test-workflow-id",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        workflow_run_id="test-workflow-run-id",
+        index=1,
+        node_execution_id="test-node-execution-id",
+        node_id="test_node_id",
+        node_type=BuiltinNodeTypes.LLM,
+        title="Test Node",
+        inputs="{}",
+        process_data="{}",
+        outputs=json.dumps(outputs),
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        elapsed_time=1.0,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="test-user-id",
+    )
 
 
 class TestDraftVariableSaver:
@@ -62,6 +123,7 @@ class TestDraftVariableSaver:
             node_type=BuiltinNodeTypes.START,
             node_execution_id="test_execution_id",
             user=mock_user,
+            files=_UploadFileCreator(),
         )
         assert saver._should_variable_be_visible("123_456", BuiltinNodeTypes.IF_ELSE, "output") is False
         assert saver._should_variable_be_visible("123", BuiltinNodeTypes.START, "output") is True
@@ -125,6 +187,7 @@ class TestDraftVariableSaver:
             node_type=BuiltinNodeTypes.START,
             node_execution_id="test_execution_id",
             user=mock_user,
+            files=_UploadFileCreator(),
         )
         for idx, c in enumerate(cases, 1):
             fail_msg = f"Test case {c.name} failed, index={idx}"
@@ -143,6 +206,7 @@ class TestDraftVariableSaver:
             node_type=BuiltinNodeTypes.START,
             node_execution_id="exec-1",
             user=mock_user,
+            files=_UploadFileCreator(),
         )
         rebuilt_file = File(
             file_id="file-1",
@@ -185,6 +249,7 @@ class TestDraftVariableSaver:
             node_type=BuiltinNodeTypes.LLM,
             node_execution_id="test-execution-id",
             user=mock_user,
+            files=_UploadFileCreator(),
         )
 
     def test_draft_saver_with_small_variables(self, draft_saver: DraftVariableSaver):
@@ -214,25 +279,22 @@ class TestDraftVariableSaver:
                 upload_file_id=str(uuidv7()),
             )
             mock_draft_var_file.id = str(uuidv7())
+            referenced_file_id = str(uuidv7())
+            original_segment = StringSegment(value=build_file_reference(record_id=referenced_file_id))
 
             _mock_try_offload.return_value = mock_segment, mock_draft_var_file
-            draft_var = draft_saver._create_draft_variable(name="small_var", value=mock_segment, visible=True)
+            draft_var = draft_saver._create_draft_variable(name="small_var", value=original_segment, visible=True)
 
             # Should not have large variable metadata
             assert draft_var.file_id == mock_draft_var_file.id
+            assert set(draft_var.__dict__["_pending_upload_file_reference_ids"]) == {
+                mock_draft_var_file.upload_file_id,
+                referenced_file_id,
+            }
 
     def test_try_offload_large_variable_uses_resource_tenant(self, sqlite_session: Session):
         mock_user = Account(name="Test Account", email="test@example.com")
         mock_user.id = "test-user-id"
-        saver = DraftVariableSaver(
-            session=sqlite_session,
-            tenant_id="app-tenant-id",
-            app_id="test-app-id",
-            node_id="test-node-id",
-            node_type=BuiltinNodeTypes.LLM,
-            node_execution_id="test-execution-id",
-            user=mock_user,
-        )
         upload_file = UploadFile(
             tenant_id="app-tenant-id",
             storage_type=StorageType.LOCAL,
@@ -248,20 +310,27 @@ class TestDraftVariableSaver:
         )
         sqlite_session.add(upload_file)
         sqlite_session.commit()
+        files = _UploadFileCreator(upload_file)
+        saver = DraftVariableSaver(
+            session=sqlite_session,
+            tenant_id="app-tenant-id",
+            app_id="test-app-id",
+            node_id="test-node-id",
+            node_type=BuiltinNodeTypes.LLM,
+            node_execution_id="test-execution-id",
+            user=mock_user,
+            files=files,
+        )
         truncation_result = TruncationResult(result=StringSegment(value="..."), truncated=True)
 
-        with (
-            patch(
-                "services.workflow_draft_variable_service.VariableTruncator.truncate", return_value=truncation_result
-            ),
-            patch("services.workflow_draft_variable_service.FileService") as file_service_class,
+        with patch(
+            "services.workflow_draft_variable_service.VariableTruncator.truncate", return_value=truncation_result
         ):
-            file_service_class.return_value.upload_file.return_value = upload_file
             result = saver._try_offload_large_variable("large_var", StringSegment(value="large value"))
 
         assert result is not None
         _, variable_file = result
-        assert file_service_class.return_value.upload_file.call_args.kwargs["tenant_id"] == "app-tenant-id"
+        assert [call.tenant_id for call in files.calls] == ["app-tenant-id"]
         assert variable_file.tenant_id == "app-tenant-id"
         sqlite_session.expire_all()
         stored_variable_file = sqlite_session.get(WorkflowDraftVariableFile, variable_file.id)
@@ -297,6 +366,7 @@ class TestDraftVariableSaver:
             node_type=BuiltinNodeTypes.START,
             node_execution_id="exec-id",
             user=mock_user,
+            files=_UploadFileCreator(),
         )
 
         outputs = {
@@ -332,6 +402,7 @@ class TestDraftVariableSaver:
             node_type=BuiltinNodeTypes.START,
             node_execution_id="exec-id",
             user=mock_user,
+            files=_UploadFileCreator(),
         )
 
         saver.save(
@@ -491,11 +562,7 @@ class TestWorkflowDraftVariableService:
         """Reset a node variable from its execution output and flush the restored value."""
         service = WorkflowDraftVariableService(sqlite_session)
 
-        execution = WorkflowNodeExecutionModel(outputs=json.dumps({"test_var": "output_value"}))
-
-        # Mock the repository to return the execution record
-        service._api_node_execution_repo = Mock()
-        service._api_node_execution_repo.get_execution_by_id.return_value = execution
+        execution = _execution_with_outputs({"test_var": "output_value"})
 
         test_app_id = self._get_test_app_id()
         workflow = self._create_test_workflow(test_app_id)
@@ -505,7 +572,7 @@ class TestWorkflowDraftVariableService:
         variable = WorkflowDraftVariable.new_node_variable(
             app_id=test_app_id, node_id="test_node_id", name="test_var", value=test_value, node_execution_id="exec-id"
         )
-        sqlite_session.add(variable)
+        sqlite_session.add_all([execution, variable])
         sqlite_session.commit()
 
         # Mock workflow methods
@@ -564,11 +631,9 @@ class TestWorkflowDraftVariableService:
         sqlite_session.add(variable)
         sqlite_session.commit()
 
-        execution = WorkflowNodeExecutionModel(outputs=json.dumps({"sys.files": "[]"}))
-
-        # Mock the repository to return the execution record
-        service._api_node_execution_repo = Mock()
-        service._api_node_execution_repo.get_execution_by_id.return_value = execution
+        execution = _execution_with_outputs({"sys.files": "[]"})
+        sqlite_session.add(execution)
+        sqlite_session.commit()
 
         with patch.object(sqlite_session, "flush", wraps=sqlite_session.flush) as flush:
             result = service._reset_node_var_or_sys_var(workflow, variable)
@@ -597,11 +662,9 @@ class TestWorkflowDraftVariableService:
         sqlite_session.add(variable)
         sqlite_session.commit()
 
-        execution = WorkflowNodeExecutionModel(outputs=json.dumps({"sys.query": "reset query"}))
-
-        # Mock the repository to return the execution record
-        service._api_node_execution_repo = Mock()
-        service._api_node_execution_repo.get_execution_by_id.return_value = execution
+        execution = _execution_with_outputs({"sys.query": "reset query"})
+        sqlite_session.add(execution)
+        sqlite_session.commit()
 
         with patch.object(sqlite_session, "flush", wraps=sqlite_session.flush) as flush:
             result = service._reset_node_var_or_sys_var(workflow, variable)

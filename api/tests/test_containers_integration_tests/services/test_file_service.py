@@ -1,882 +1,295 @@
+"""Integration coverage for FileService persistence and compensation boundaries."""
+
+from __future__ import annotations
+
 import hashlib
-from io import BytesIO
-from unittest.mock import create_autospec, patch
+from collections.abc import Iterator
+from dataclasses import dataclass, field
+from uuid import uuid4
 
 import pytest
-from faker import Faker
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+from sqlalchemy import event, func, select
+from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
-from extensions.storage.storage_type import StorageType
-from models import Account, Tenant
-from models.enums import CreatorUserRole, EndUserType
-from models.model import EndUser, UploadFile
-from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
+from enums.creator import CreatorUserRole
+from models.model import UploadFile
+from services import file_adapters
+from services.entities.upload_file import FileUploadActor, UploadFileRecord
+from services.errors.file import FileNotExistsError, FileTooLargeError, UnsupportedFileTypeError
 from services.file_service import FileService
 
 
-class TestFileService:
-    """Integration tests for FileService using testcontainers."""
+@dataclass
+class _Storage:
+    blobs: dict[str, bytes] = field(default_factory=dict)
+    saved: list[tuple[str, bytes]] = field(default_factory=list)
+    deleted: list[str] = field(default_factory=list)
+    fail_after_save: bool = False
 
-    @pytest.fixture
-    def engine(self, db_session_with_containers: Session):
-        bind = db_session_with_containers.get_bind()
-        assert isinstance(bind, Engine)
-        return bind
+    def save(self, filename: str, data: bytes) -> None:
+        self.blobs[filename] = data
+        self.saved.append((filename, data))
+        if self.fail_after_save:
+            raise OSError("storage response lost")
 
-    @pytest.fixture
-    def mock_external_service_dependencies(self):
-        """Mock setup for external service dependencies."""
-        with (
-            patch("services.file_service.storage") as mock_storage,
-            patch("services.file_service.file_helpers") as mock_file_helpers,
-            patch("services.file_service.ExtractProcessor") as mock_extract_processor,
-        ):
-            # Setup default mock returns
-            mock_storage.save.return_value = None
-            mock_storage.load.return_value = BytesIO(b"mock file content")
-            mock_file_helpers.get_signed_file_url.return_value = "https://example.com/signed-url"
-            mock_extract_processor.load_from_upload_file.return_value = "extracted text content"
+    def load_once(self, filename: str) -> bytes:
+        return self.blobs[filename]
 
-            yield {
-                "storage": mock_storage,
-                "file_helpers": mock_file_helpers,
-                "extract_processor": mock_extract_processor,
-            }
+    def load_stream(self, filename: str) -> Iterator[bytes]:
+        return iter((self.blobs[filename],))
 
-    def _create_test_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Helper method to create a test account for testing.
+    def generate_presigned_url(self, filename: str, *, expires_in: int, content_type: str | None = None) -> str:
+        del expires_in, content_type
+        return f"https://storage.example/{filename}"
 
-        Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
-            mock_external_service_dependencies: Mock dependencies
+    def delete(self, filename: str) -> None:
+        self.deleted.append(filename)
+        self.blobs.pop(filename, None)
 
-        Returns:
-            Account: Created account instance
-        """
-        fake = Faker()
 
-        # Create account
-        account = Account(
-            email=fake.email(),
-            name=fake.name(),
-            interface_language="en-US",
-            status="active",
+@dataclass
+class _Signer:
+    calls: list[str] = field(default_factory=list)
+
+    def __call__(self, *, upload_file_id: str) -> str:
+        self.calls.append(upload_file_id)
+        return f"https://files.example/{upload_file_id}"
+
+
+@dataclass
+class _Extractor:
+    content: str = "extracted text"
+    calls: list[UploadFileRecord] = field(default_factory=list)
+
+    def __call__(self, file: UploadFileRecord) -> str:
+        self.calls.append(file)
+        return self.content
+
+
+@dataclass(frozen=True)
+class _Harness:
+    service: FileService
+    storage: _Storage
+    signer: _Signer
+    extractor: _Extractor
+    sessions: sessionmaker[Session]
+
+
+class _CommitOutcomeUnknownSession(Session):
+    pass
+
+
+def _build_harness(
+    monkeypatch: pytest.MonkeyPatch,
+    sessions: sessionmaker[Session],
+    *,
+    storage: _Storage | None = None,
+) -> _Harness:
+    storage = storage or _Storage()
+    signer = _Signer()
+    extractor = _Extractor()
+    monkeypatch.setattr(file_adapters, "storage", storage)
+    monkeypatch.setattr(file_adapters.file_helpers, "get_signed_file_url", signer)
+    monkeypatch.setattr(file_adapters, "_extract_text", extractor)
+    return _Harness(
+        service=file_adapters.build_file_service(session_factory=sessions),
+        storage=storage,
+        signer=signer,
+        extractor=extractor,
+        sessions=sessions,
+    )
+
+
+@pytest.fixture
+def file_service_harness(
+    monkeypatch: pytest.MonkeyPatch,
+    db_session_with_containers: Session,
+) -> _Harness:
+    return _build_harness(
+        monkeypatch,
+        sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False),
+    )
+
+
+@pytest.mark.parametrize("creator_role", [CreatorUserRole.ACCOUNT, CreatorUserRole.END_USER])
+def test_upload_persists_explicit_tenant_and_creator_owner(
+    file_service_harness: _Harness,
+    creator_role: CreatorUserRole,
+) -> None:
+    tenant_id = str(uuid4())
+    actor = FileUploadActor(id=str(uuid4()), creator_role=creator_role)
+    content = b"file contents"
+
+    result = file_service_harness.service.upload_file(
+        actor=actor,
+        tenant_id=tenant_id,
+        filename="Guide.PDF",
+        content=content,
+        mimetype="application/pdf",
+    )
+
+    with file_service_harness.sessions() as verification:
+        persisted = verification.get(UploadFile, result.id)
+        assert persisted is not None
+        assert persisted.tenant_id == tenant_id
+        assert persisted.created_by == actor.id
+        assert persisted.created_by_role == creator_role
+        assert persisted.name == "Guide.PDF"
+        assert persisted.extension == "pdf"
+        assert persisted.hash == hashlib.sha3_256(content).hexdigest()
+    assert file_service_harness.storage.blobs[result.key] == content
+    assert result.source_url == f"https://files.example/{result.id}"
+    assert file_service_harness.signer.calls == [result.id]
+
+
+def test_upload_text_persists_used_owner_metadata(file_service_harness: _Harness) -> None:
+    tenant_id = str(uuid4())
+    actor = FileUploadActor(id=str(uuid4()), creator_role=CreatorUserRole.ACCOUNT)
+
+    result = file_service_harness.service.upload_text(
+        actor=actor,
+        tenant_id=tenant_id,
+        text="文档 🚀",
+        text_name="generated.txt",
+    )
+
+    with file_service_harness.sessions() as verification:
+        persisted = verification.get(UploadFile, result.id)
+        assert persisted is not None
+        assert persisted.used is True
+        assert persisted.used_by == actor.id
+        assert persisted.used_at is not None
+        assert persisted.hash is None
+    assert file_service_harness.storage.blobs[result.key] == "文档 🚀".encode()
+
+
+@pytest.mark.parametrize(("tenant_id", "actor_id"), [("", "actor-id"), ("tenant-id", "")])
+def test_upload_rejects_missing_owner_before_side_effects(
+    file_service_harness: _Harness,
+    tenant_id: str,
+    actor_id: str,
+) -> None:
+    with pytest.raises(ValueError, match="tenant and creator identity"):
+        file_service_harness.service.upload_file(
+            actor=FileUploadActor(id=actor_id, creator_role=CreatorUserRole.ACCOUNT),
+            tenant_id=tenant_id,
+            filename="guide.txt",
+            content=b"contents",
+            mimetype="text/plain",
         )
 
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+    assert file_service_harness.storage.saved == []
+    with file_service_harness.sessions() as verification:
+        assert verification.scalar(select(func.count()).select_from(UploadFile)) == 0
 
-        # Create tenant for the account
-        tenant = Tenant(
-            name=fake.company(),
-            status="normal",
-        )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
 
-        # Create tenant-account join
-        from models.account import TenantAccountJoin, TenantAccountRole
+def test_storage_failure_compensates_blob_without_publishing_metadata(
+    file_service_harness: _Harness,
+) -> None:
+    file_service_harness.storage.fail_after_save = True
 
-        join = TenantAccountJoin(
-            tenant_id=tenant.id,
-            account_id=account.id,
-            role=TenantAccountRole.OWNER,
-            current=True,
-        )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
-
-        # Set current tenant for account
-        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
-
-        return account
-
-    def _create_test_end_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Helper method to create a test end user for testing.
-
-        Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
-            mock_external_service_dependencies: Mock dependencies
-
-        Returns:
-            EndUser: Created end user instance
-        """
-        fake = Faker()
-
-        end_user = EndUser(
-            tenant_id=str(fake.uuid4()),
-            type=EndUserType.BROWSER,
-            name=fake.name(),
-            is_anonymous=False,
-            session_id=fake.uuid4(),
+    with pytest.raises(OSError, match="storage response lost"):
+        file_service_harness.service.upload_file(
+            actor=FileUploadActor(id=str(uuid4()), creator_role=CreatorUserRole.ACCOUNT),
+            tenant_id=str(uuid4()),
+            filename="guide.txt",
+            content=b"contents",
+            mimetype="text/plain",
         )
 
-        db_session_with_containers.add(end_user)
-        db_session_with_containers.commit()
+    [(key, _)] = file_service_harness.storage.saved
+    assert file_service_harness.storage.deleted == [key]
+    assert key not in file_service_harness.storage.blobs
+    with file_service_harness.sessions() as verification:
+        assert verification.scalar(select(func.count()).select_from(UploadFile)) == 0
 
-        return end_user
 
-    def _create_test_upload_file(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, account
-    ):
-        """
-        Helper method to create a test upload file for testing.
+def test_committed_metadata_is_preserved_when_commit_outcome_is_reported_unknown(
+    monkeypatch: pytest.MonkeyPatch,
+    db_session_with_containers: Session,
+) -> None:
+    engine = db_session_with_containers.get_bind()
+    unknown_sessions: sessionmaker[Session] = sessionmaker(
+        bind=engine,
+        class_=_CommitOutcomeUnknownSession,
+        expire_on_commit=False,
+    )
+    harness = _build_harness(monkeypatch, unknown_sessions)
 
-        Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
-            mock_external_service_dependencies: Mock dependencies
-            account: Account instance
+    def report_unknown_outcome(_session: Session) -> None:
+        raise RuntimeError("commit outcome unknown")
 
-        Returns:
-            UploadFile: Created upload file instance
-        """
-        fake = Faker()
-
-        upload_file = UploadFile(
-            tenant_id=account.current_tenant_id if hasattr(account, "current_tenant_id") else str(fake.uuid4()),
-            storage_type=StorageType.LOCAL,
-            key=f"upload_files/test/{fake.uuid4()}.txt",
-            name="test_file.txt",
-            size=1024,
-            extension="txt",
-            mime_type="text/plain",
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by=account.id,
-            created_at=fake.date_time(),
-            used=False,
-            hash=hashlib.sha3_256(b"test content").hexdigest(),
-            source_url="",
-        )
-
-        db_session_with_containers.add(upload_file)
-        db_session_with_containers.commit()
-
-        return upload_file
-
-    # Test upload_file method
-    def test_upload_file_success(self, db_session_with_containers: Session, engine, mock_external_service_dependencies):
-        """
-        Test successful file upload with valid parameters.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        filename = "test_document.pdf"
-        content = b"test file content"
-        mimetype = "application/pdf"
-
-        upload_file = FileService(engine).upload_file(
-            filename=filename,
-            content=content,
-            mimetype=mimetype,
-            user=account,
-        )
-
-        assert upload_file is not None
-        assert upload_file.name == filename
-        assert upload_file.size == len(content)
-        assert upload_file.extension == "pdf"
-        assert upload_file.mime_type == mimetype
-        assert upload_file.created_by == account.id
-        assert upload_file.created_by_role == CreatorUserRole.ACCOUNT
-        assert upload_file.used is False
-        assert upload_file.hash == hashlib.sha3_256(content).hexdigest()
-
-        # Verify storage was called
-        mock_external_service_dependencies["storage"].save.assert_called_once()
-
-        assert upload_file.id is not None
-
-    def test_upload_file_with_end_user(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with end user instead of account.
-        """
-
-        end_user = self._create_test_end_user(db_session_with_containers, mock_external_service_dependencies)
-
-        filename = "test_image.jpg"
-        content = b"test image content"
-        mimetype = "image/jpeg"
-
-        upload_file = FileService(engine).upload_file(
-            filename=filename,
-            content=content,
-            mimetype=mimetype,
-            user=end_user,
-        )
-
-        assert upload_file is not None
-        assert upload_file.created_by == end_user.id
-        assert upload_file.created_by_role == CreatorUserRole.END_USER
-
-    def test_upload_file_with_datasets_source(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with datasets source parameter.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        filename = "test_document.pdf"
-        content = b"test file content"
-        mimetype = "application/pdf"
-
-        upload_file = FileService(engine).upload_file(
-            filename=filename,
-            content=content,
-            mimetype=mimetype,
-            user=account,
-            source="datasets",
-            source_url="https://example.com/source",
-        )
-
-        assert upload_file is not None
-        assert upload_file.source_url == "https://example.com/source"
-
-    def test_upload_file_invalid_filename_characters(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with invalid filename characters.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        filename = "test/file<name>.txt"
-        content = b"test content"
-        mimetype = "text/plain"
-
-        with pytest.raises(ValueError, match="Filename contains invalid characters"):
-            FileService(engine).upload_file(
-                filename=filename,
-                content=content,
-                mimetype=mimetype,
-                user=account,
+    event.listen(_CommitOutcomeUnknownSession, "after_commit", report_unknown_outcome)
+    try:
+        with pytest.raises(RuntimeError, match="commit outcome unknown"):
+            harness.service.upload_file(
+                actor=FileUploadActor(id=str(uuid4()), creator_role=CreatorUserRole.ACCOUNT),
+                tenant_id=str(uuid4()),
+                filename="guide.txt",
+                content=b"contents",
+                mimetype="text/plain",
             )
+    finally:
+        event.remove(_CommitOutcomeUnknownSession, "after_commit", report_unknown_outcome)
 
-    def test_upload_file_allows_regular_punctuation_in_filename(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload allows punctuation that is safe when stored as metadata.
-        """
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
+    [(key, _)] = harness.storage.saved
+    assert harness.storage.deleted == []
+    assert harness.storage.blobs[key] == b"contents"
+    with Session(bind=engine) as verification:
+        persisted = verification.scalar(select(UploadFile).where(UploadFile.key == key))
+        assert persisted is not None
 
-        filename = 'candidate?resume for "dify"<final>|v2:.txt'
-        content = b"test content"
-        mimetype = "text/plain"
 
-        upload_file = FileService(engine).upload_file(
-            filename=filename,
-            content=content,
-            mimetype=mimetype,
-            user=account,
+def test_file_reads_are_tenant_scoped_and_preview_uses_persisted_record(
+    file_service_harness: _Harness,
+) -> None:
+    tenant_id = str(uuid4())
+    result = file_service_harness.service.upload_file(
+        actor=FileUploadActor(id=str(uuid4()), creator_role=CreatorUserRole.ACCOUNT),
+        tenant_id=tenant_id,
+        filename="manual.pdf",
+        content=b"pdf",
+        mimetype="application/pdf",
+    )
+    file_service_harness.extractor.content = "x" * 4000
+
+    assert file_service_harness.service.get_file_preview(result.id, tenant_id) == "x" * 3000
+    [extracted] = file_service_harness.extractor.calls
+    assert extracted.id == result.id
+    assert extracted.tenant_id == tenant_id
+    with pytest.raises(FileNotExistsError, match="File not found"):
+        file_service_harness.service.get_file(tenant_id=str(uuid4()), file_id=result.id)
+
+
+def test_upload_policy_rejects_invalid_source_before_persistence(file_service_harness: _Harness) -> None:
+    actor = FileUploadActor(id=str(uuid4()), creator_role=CreatorUserRole.ACCOUNT)
+    tenant_id = str(uuid4())
+
+    with pytest.raises(ValueError, match="invalid characters"):
+        file_service_harness.service.upload_file(
+            actor=actor,
+            tenant_id=tenant_id,
+            filename="directory/guide.txt",
+            content=b"contents",
+            mimetype="text/plain",
+        )
+    with pytest.raises(UnsupportedFileTypeError):
+        file_service_harness.service.upload_file(
+            actor=actor,
+            tenant_id=tenant_id,
+            filename="guide.jpg",
+            content=b"contents",
+            mimetype="image/jpeg",
+            allowed_extensions=frozenset({"pdf"}),
+        )
+    with pytest.raises(FileTooLargeError):
+        file_service_harness.service.upload_file(
+            actor=actor,
+            tenant_id=tenant_id,
+            filename="guide.txt",
+            content=b"x",
+            mimetype="text/plain",
+            default_file_size_limit=0,
         )
 
-        assert upload_file.name == filename
-
-    def test_upload_file_filename_too_long(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with filename that exceeds length limit.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Create a filename longer than 200 characters
-        long_name = "a" * 250
-        filename = f"{long_name}.txt"
-        content = b"test content"
-        mimetype = "text/plain"
-
-        upload_file = FileService(engine).upload_file(
-            filename=filename,
-            content=content,
-            mimetype=mimetype,
-            user=account,
-        )
-
-        # Verify filename was truncated (the logic truncates the base name to 200 chars + extension)
-        # So the total length should be <= 200 + len(extension) + 1 (for the dot)
-        assert len(upload_file.name) <= 200 + len(upload_file.extension) + 1
-        assert upload_file.name.endswith(".txt")
-        # Verify the base name was truncated
-        base_name = upload_file.name[:-4]  # Remove .txt
-        assert len(base_name) <= 200
-
-    def test_upload_file_datasets_unsupported_type(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload for datasets with unsupported file type.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        filename = "test_image.jpg"
-        content = b"test content"
-        mimetype = "image/jpeg"
-
-        with pytest.raises(UnsupportedFileTypeError):
-            FileService(engine).upload_file(
-                filename=filename,
-                content=content,
-                mimetype=mimetype,
-                user=account,
-                source="datasets",
-            )
-
-    def test_upload_file_too_large(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with file size exceeding limit.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        filename = "large_image.jpg"
-        # Create content larger than the limit
-        content = b"x" * (dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024 + 1)
-        mimetype = "image/jpeg"
-
-        with pytest.raises(FileTooLargeError):
-            FileService(engine).upload_file(
-                filename=filename,
-                content=content,
-                mimetype=mimetype,
-                user=account,
-            )
-
-    # Test is_file_size_within_limit method
-    def test_is_file_size_within_limit_image_success(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file size check for image files within limit.
-        """
-        extension = "jpg"
-        file_size = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024  # Exactly at limit
-
-        result = FileService(engine).is_file_size_within_limit(extension=extension, file_size=file_size)
-
-        assert result is True
-
-    def test_is_file_size_within_limit_video_success(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file size check for video files within limit.
-        """
-        extension = "mp4"
-        file_size = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT * 1024 * 1024  # Exactly at limit
-
-        result = FileService(engine).is_file_size_within_limit(extension=extension, file_size=file_size)
-
-        assert result is True
-
-    def test_is_file_size_within_limit_audio_success(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file size check for audio files within limit.
-        """
-        extension = "mp3"
-        file_size = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024  # Exactly at limit
-
-        result = FileService(engine).is_file_size_within_limit(extension=extension, file_size=file_size)
-
-        assert result is True
-
-    def test_is_file_size_within_limit_document_success(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file size check for document files within limit.
-        """
-        extension = "pdf"
-        file_size = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024  # Exactly at limit
-
-        result = FileService(engine).is_file_size_within_limit(extension=extension, file_size=file_size)
-
-        assert result is True
-
-    def test_is_file_size_within_limit_image_exceeded(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file size check for image files exceeding limit.
-        """
-        extension = "jpg"
-        file_size = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024 + 1  # Exceeds limit
-
-        result = FileService(engine).is_file_size_within_limit(extension=extension, file_size=file_size)
-
-        assert result is False
-
-    def test_is_file_size_within_limit_unknown_extension(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file size check for unknown file extension.
-        """
-        extension = "xyz"
-        file_size = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024  # Uses default limit
-
-        result = FileService(engine).is_file_size_within_limit(extension=extension, file_size=file_size)
-
-        assert result is True
-
-    # Test upload_text method
-    def test_upload_text_success(self, db_session_with_containers: Session, engine, mock_external_service_dependencies):
-        """
-        Test successful text upload.
-        """
-        fake = Faker()
-        text = "This is a test text content"
-        text_name = "test_text.txt"
-
-        # Mock current_user using create_autospec
-        mock_current_user = create_autospec(Account, instance=True)
-        mock_current_user.current_tenant_id = str(fake.uuid4())
-        mock_current_user.id = str(fake.uuid4())
-
-        upload_file = FileService(engine).upload_text(
-            text=text,
-            text_name=text_name,
-            user_id=mock_current_user.id,
-            tenant_id=mock_current_user.current_tenant_id,
-        )
-
-        assert upload_file is not None
-        assert upload_file.name == text_name
-        assert upload_file.size == len(text)
-        assert upload_file.extension == "txt"
-        assert upload_file.mime_type == "text/plain"
-        assert upload_file.used is True
-        assert upload_file.used_by == mock_current_user.id
-
-        # Verify storage was called
-        mock_external_service_dependencies["storage"].save.assert_called_once()
-
-    def test_upload_text_name_too_long(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test text upload with name that exceeds length limit.
-        """
-        fake = Faker()
-        text = "test content"
-        long_name = "a" * 250  # Longer than 200 characters
-
-        # Mock current_user using create_autospec
-        mock_current_user = create_autospec(Account, instance=True)
-        mock_current_user.current_tenant_id = str(fake.uuid4())
-        mock_current_user.id = str(fake.uuid4())
-
-        upload_file = FileService(engine).upload_text(
-            text=text,
-            text_name=long_name,
-            user_id=mock_current_user.id,
-            tenant_id=mock_current_user.current_tenant_id,
-        )
-
-        # Verify name was truncated
-        assert len(upload_file.name) <= 200
-        assert upload_file.name == "a" * 200
-
-    # Test get_file_preview method
-    def test_get_file_preview_success(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test successful file preview generation.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-        upload_file = self._create_test_upload_file(
-            db_session_with_containers, mock_external_service_dependencies, account
-        )
-
-        # Update file to have document extension
-        upload_file.extension = "pdf"
-
-        db_session_with_containers.commit()
-
-        result = FileService(engine).get_file_preview(file_id=upload_file.id, tenant_id=upload_file.tenant_id)
-
-        assert result == "extracted text content"
-        mock_external_service_dependencies["extract_processor"].load_from_upload_file.assert_called_once()
-
-    def test_get_file_preview_file_not_found(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file preview with non-existent file.
-        """
-        fake = Faker()
-        non_existent_id = str(fake.uuid4())
-
-        with pytest.raises(NotFound, match="File not found"):
-            FileService(engine).get_file_preview(file_id=non_existent_id, tenant_id=str(fake.uuid4()))
-
-    def test_get_file_preview_unsupported_file_type(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file preview with unsupported file type.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-        upload_file = self._create_test_upload_file(
-            db_session_with_containers, mock_external_service_dependencies, account
-        )
-
-        # Update file to have non-document extension
-        upload_file.extension = "jpg"
-
-        db_session_with_containers.commit()
-
-        with pytest.raises(UnsupportedFileTypeError):
-            FileService(engine).get_file_preview(file_id=upload_file.id, tenant_id=upload_file.tenant_id)
-
-    def test_get_file_preview_text_truncation(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file preview with text that exceeds preview limit.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-        upload_file = self._create_test_upload_file(
-            db_session_with_containers, mock_external_service_dependencies, account
-        )
-
-        # Update file to have document extension
-        upload_file.extension = "pdf"
-
-        db_session_with_containers.commit()
-
-        # Mock long text content
-        long_text = "x" * 5000  # Longer than PREVIEW_WORDS_LIMIT
-        mock_external_service_dependencies["extract_processor"].load_from_upload_file.return_value = long_text
-
-        result = FileService(engine).get_file_preview(file_id=upload_file.id, tenant_id=upload_file.tenant_id)
-
-        assert len(result) == 3000  # PREVIEW_WORDS_LIMIT
-        assert result == "x" * 3000
-
-    # Test edge cases and boundary conditions
-    def test_upload_file_empty_content(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with empty content.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        filename = "empty.txt"
-        content = b""
-        mimetype = "text/plain"
-
-        upload_file = FileService(engine).upload_file(
-            filename=filename,
-            content=content,
-            mimetype=mimetype,
-            user=account,
-        )
-
-        assert upload_file is not None
-        assert upload_file.size == 0
-
-    def test_upload_file_special_characters_in_name(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with special characters in filename (but valid ones).
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        filename = "test-file_with_underscores_and.dots.txt"
-        content = b"test content"
-        mimetype = "text/plain"
-
-        upload_file = FileService(engine).upload_file(
-            filename=filename,
-            content=content,
-            mimetype=mimetype,
-            user=account,
-        )
-
-        assert upload_file is not None
-        assert upload_file.name == filename
-
-    def test_upload_file_different_case_extensions(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with different case extensions.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        filename = "test.PDF"
-        content = b"test content"
-        mimetype = "application/pdf"
-
-        upload_file = FileService(engine).upload_file(
-            filename=filename,
-            content=content,
-            mimetype=mimetype,
-            user=account,
-        )
-
-        assert upload_file is not None
-        assert upload_file.extension == "pdf"  # Should be converted to lowercase
-
-    def test_upload_text_empty_text(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test text upload with empty text.
-        """
-        fake = Faker()
-        text = ""
-        text_name = "empty.txt"
-
-        # Mock current_user using create_autospec
-        mock_current_user = create_autospec(Account, instance=True)
-        mock_current_user.current_tenant_id = str(fake.uuid4())
-        mock_current_user.id = str(fake.uuid4())
-
-        upload_file = FileService(engine).upload_text(
-            text=text,
-            text_name=text_name,
-            user_id=mock_current_user.id,
-            tenant_id=mock_current_user.current_tenant_id,
-        )
-
-        assert upload_file is not None
-        assert upload_file.size == 0
-
-    def test_file_size_limits_edge_cases(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file size limits with edge case values.
-        """
-        # Test exactly at limit
-        for extension, limit_config in [
-            ("jpg", dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT),
-            ("mp4", dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT),
-            ("mp3", dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT),
-            ("pdf", dify_config.UPLOAD_FILE_SIZE_LIMIT),
-        ]:
-            file_size = limit_config * 1024 * 1024
-            result = FileService(engine).is_file_size_within_limit(extension=extension, file_size=file_size)
-            assert result is True
-
-            # Test one byte over limit
-            file_size = limit_config * 1024 * 1024 + 1
-            result = FileService(engine).is_file_size_within_limit(extension=extension, file_size=file_size)
-            assert result is False
-
-    def test_upload_file_with_source_url(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with source URL that gets overridden by signed URL.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        filename = "test.pdf"
-        content = b"test content"
-        mimetype = "application/pdf"
-        source_url = "https://original-source.com/file.pdf"
-
-        upload_file = FileService(engine).upload_file(
-            filename=filename,
-            content=content,
-            mimetype=mimetype,
-            user=account,
-            source_url=source_url,
-        )
-
-        # When source_url is provided, it should be preserved
-        assert upload_file.source_url == source_url
-
-        # The signed URL should only be set when source_url is empty
-        # Let's test that scenario
-        upload_file2 = FileService(engine).upload_file(
-            filename="test2.pdf",
-            content=b"test content 2",
-            mimetype="application/pdf",
-            user=account,
-            source_url="",  # Empty source_url
-        )
-
-        # Should have the signed URL when source_url is empty
-        assert upload_file2.source_url == "https://example.com/signed-url"
-
-    # Test file extension blacklist
-    def test_upload_file_blocked_extension(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with blocked extension.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Mock blacklist configuration by patching the inner field
-        with patch.object(dify_config, "inner_UPLOAD_FILE_EXTENSION_BLACKLIST", "exe,bat,sh"):
-            filename = "malware.exe"
-            content = b"test content"
-            mimetype = "application/x-msdownload"
-
-            with pytest.raises(BlockedFileExtensionError):
-                FileService(engine).upload_file(
-                    filename=filename,
-                    content=content,
-                    mimetype=mimetype,
-                    user=account,
-                )
-
-    def test_upload_file_blocked_extension_case_insensitive(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with blocked extension (case insensitive).
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Mock blacklist configuration by patching the inner field
-        with patch.object(dify_config, "inner_UPLOAD_FILE_EXTENSION_BLACKLIST", "exe,bat"):
-            # Test with uppercase extension
-            filename = "malware.EXE"
-            content = b"test content"
-            mimetype = "application/x-msdownload"
-
-            with pytest.raises(BlockedFileExtensionError):
-                FileService(engine).upload_file(
-                    filename=filename,
-                    content=content,
-                    mimetype=mimetype,
-                    user=account,
-                )
-
-    def test_upload_file_not_in_blacklist(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with extension not in blacklist.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Mock blacklist configuration by patching the inner field
-        with patch.object(dify_config, "inner_UPLOAD_FILE_EXTENSION_BLACKLIST", "exe,bat,sh"):
-            filename = "document.pdf"
-            content = b"test content"
-            mimetype = "application/pdf"
-
-            upload_file = FileService(engine).upload_file(
-                filename=filename,
-                content=content,
-                mimetype=mimetype,
-                user=account,
-            )
-
-            assert upload_file is not None
-            assert upload_file.name == filename
-            assert upload_file.extension == "pdf"
-
-    def test_upload_file_empty_blacklist(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with empty blacklist (default behavior).
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Mock empty blacklist configuration by patching the inner field
-        with patch.object(dify_config, "inner_UPLOAD_FILE_EXTENSION_BLACKLIST", ""):
-            # Should allow all file types when blacklist is empty
-            filename = "script.sh"
-            content = b"#!/bin/bash\necho test"
-            mimetype = "application/x-sh"
-
-            upload_file = FileService(engine).upload_file(
-                filename=filename,
-                content=content,
-                mimetype=mimetype,
-                user=account,
-            )
-
-            assert upload_file is not None
-            assert upload_file.extension == "sh"
-
-    def test_upload_file_multiple_blocked_extensions(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with multiple blocked extensions.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Mock blacklist with multiple extensions by patching the inner field
-        blacklist_str = "exe,bat,cmd,com,scr,vbs,ps1,msi,dll"
-        with patch.object(dify_config, "inner_UPLOAD_FILE_EXTENSION_BLACKLIST", blacklist_str):
-            for ext in blacklist_str.split(","):
-                filename = f"malware.{ext}"
-                content = b"test content"
-                mimetype = "application/octet-stream"
-
-                with pytest.raises(BlockedFileExtensionError):
-                    FileService(engine).upload_file(
-                        filename=filename,
-                        content=content,
-                        mimetype=mimetype,
-                        user=account,
-                    )
-
-    def test_upload_file_no_extension_with_blacklist(
-        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
-    ):
-        """
-        Test file upload with no extension when blacklist is configured.
-        """
-
-        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Mock blacklist configuration by patching the inner field
-        with patch.object(dify_config, "inner_UPLOAD_FILE_EXTENSION_BLACKLIST", "exe,bat"):
-            # Files with no extension should not be blocked
-            filename = "README"
-            content = b"test content"
-            mimetype = "text/plain"
-
-            upload_file = FileService(engine).upload_file(
-                filename=filename,
-                content=content,
-                mimetype=mimetype,
-                user=account,
-            )
-
-            assert upload_file is not None
-            assert upload_file.extension == ""
+    assert file_service_harness.storage.saved == []

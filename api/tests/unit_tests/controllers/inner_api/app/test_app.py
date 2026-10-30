@@ -24,6 +24,7 @@ from controllers.inner_api.app.app import (
     EnterpriseAppList,
     EnterpriseAppPaginationResponse,
 )
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from models import Account, App, Tenant
 from models.account import AccountStatus
@@ -41,7 +42,6 @@ from models.enums import (
     AppTriggerStatus,
     AppTriggerType,
     ConversationFromSource,
-    CreatorUserRole,
     CustomizeTokenStrategy,
     InvokeFrom,
     MessageStatus,

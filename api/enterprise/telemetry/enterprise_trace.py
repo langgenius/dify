@@ -305,13 +305,13 @@ class EnterpriseOtelTrace:
 
         from extensions.ext_database import db
         from graphon.enums import WorkflowNodeExecutionMetadataKey
-        from repositories.factory import DifyAPIRepositoryFactory
+        from repositories.workflow.factory import WorkflowRepositoryFactory
 
         metadata = self._metadata(workflow_info)
         tenant_id, app_id, user_id = self._context_ids(workflow_info, metadata)
 
         try:
-            repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            repository = WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(
                 sessionmaker(bind=db.engine, expire_on_commit=False)
             )
             rows = repository.get_executions_by_workflow_run(

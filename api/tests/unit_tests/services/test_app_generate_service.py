@@ -17,7 +17,7 @@ import threading
 import uuid
 from collections.abc import Callable
 from contextlib import contextmanager
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -36,6 +36,7 @@ from services.errors.app import (
     WorkflowIdFormatError,
     WorkflowNotFoundError,
 )
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 
 # ---------------------------------------------------------------------------
@@ -97,8 +98,9 @@ def _make_user() -> Account:
 
 class _RealSessionTest:
     @pytest.fixture(autouse=True)
-    def _bind_unbound_session(self, unbound_session: Session) -> None:
+    def _bind_unbound_session(self, unbound_session: Session, mocker: MockerFixture) -> None:
         self.session = unbound_session
+        self.knowledge_retrieval = create_autospec(KnowledgeRetriever, instance=True, spec_set=True)
 
 
 def _make_workflow(
@@ -308,6 +310,10 @@ class TestGenerate(_RealSessionTest):
 
     # -- COMPLETION ---------------------------------------------------------
     def test_completion_mode(self, mocker: MockerFixture):
+        constructor = mocker.patch(
+            "services.app_generate_service.CompletionAppGenerator.__init__",
+            return_value=None,
+        )
         gen_spy = mocker.patch(
             "services.app_generate_service.CompletionAppGenerator.generate",
             return_value={"result": "ok"},
@@ -316,7 +322,7 @@ class TestGenerate(_RealSessionTest):
             "services.app_generate_service.CompletionAppGenerator.convert_to_event_stream",
             side_effect=lambda x: x,
         )
-        result = AppGenerateService.generate(
+        result = AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
             app_model=_make_app(AppMode.COMPLETION),
             user=_make_user(),
             args={"inputs": {}},
@@ -326,9 +332,14 @@ class TestGenerate(_RealSessionTest):
         )
         assert result == {"result": "ok"}
         gen_spy.assert_called_once()
+        assert constructor.call_args.kwargs["knowledge_retrieval"] is self.knowledge_retrieval
 
     # -- AGENT_CHAT via mode ------------------------------------------------
     def test_agent_chat_mode(self, mocker: MockerFixture):
+        constructor = mocker.patch(
+            "services.app_generate_service.AgentChatAppGenerator.__init__",
+            return_value=None,
+        )
         gen_spy = mocker.patch(
             "services.app_generate_service.AgentChatAppGenerator.generate",
             return_value={"result": "agent"},
@@ -337,7 +348,7 @@ class TestGenerate(_RealSessionTest):
             "services.app_generate_service.AgentChatAppGenerator.convert_to_event_stream",
             side_effect=lambda x: x,
         )
-        result = AppGenerateService.generate(
+        result = AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
             app_model=_make_app(AppMode.AGENT_CHAT),
             user=_make_user(),
             args={"inputs": {}},
@@ -347,6 +358,7 @@ class TestGenerate(_RealSessionTest):
         )
         assert result == {"result": "agent"}
         gen_spy.assert_called_once()
+        assert constructor.call_args.kwargs["knowledge_retrieval"] is self.knowledge_retrieval
 
     # -- AGENT_CHAT via is_agent flag (non-AGENT_CHAT mode) -----------------
     def test_agent_via_is_agent_flag(self, mocker: MockerFixture):
@@ -361,7 +373,7 @@ class TestGenerate(_RealSessionTest):
         app = _make_app(AppMode.CHAT)
         is_agent = mocker.patch.object(App, "is_agent_with_session", return_value=True)
         session = self.session
-        result = AppGenerateService.generate(
+        result = AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
             app_model=app,
             user=_make_user(),
             args={"inputs": {}},
@@ -385,7 +397,7 @@ class TestGenerate(_RealSessionTest):
         )
         session = self.session
 
-        result = AppGenerateService.generate(
+        result = AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
             app_model=_make_app(AppMode.AGENT),
             user=_make_user(),
             args={"inputs": {}},
@@ -399,6 +411,10 @@ class TestGenerate(_RealSessionTest):
 
     # -- CHAT ---------------------------------------------------------------
     def test_chat_mode(self, mocker: MockerFixture):
+        constructor = mocker.patch(
+            "services.app_generate_service.ChatAppGenerator.__init__",
+            return_value=None,
+        )
         gen_spy = mocker.patch(
             "services.app_generate_service.ChatAppGenerator.generate",
             return_value={"result": "chat"},
@@ -408,7 +424,7 @@ class TestGenerate(_RealSessionTest):
             side_effect=lambda x: x,
         )
         app = _make_app(AppMode.CHAT)
-        result = AppGenerateService.generate(
+        result = AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
             app_model=app,
             user=_make_user(),
             args={"inputs": {}},
@@ -418,11 +434,16 @@ class TestGenerate(_RealSessionTest):
         )
         assert result == {"result": "chat"}
         gen_spy.assert_called_once()
+        assert constructor.call_args.kwargs["knowledge_retrieval"] is self.knowledge_retrieval
 
     # -- ADVANCED_CHAT blocking ---------------------------------------------
     def test_advanced_chat_blocking(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+        constructor = mocker.patch(
+            "services.app_generate_service.AdvancedChatAppGenerator.__init__",
+            return_value=None,
+        )
 
         retrieve_spy = mocker.patch("services.app_generate_service.AdvancedChatAppGenerator.retrieve_events")
         gen_spy = mocker.patch(
@@ -435,7 +456,7 @@ class TestGenerate(_RealSessionTest):
         )
 
         session = self.session
-        result = AppGenerateService.generate(
+        result = AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
             app_model=_make_app(AppMode.ADVANCED_CHAT),
             user=_make_user(),
             args={"workflow_id": None, "query": "hi", "inputs": {}},
@@ -447,6 +468,7 @@ class TestGenerate(_RealSessionTest):
         call_kwargs = gen_spy.call_args.kwargs
         assert call_kwargs.get("streaming") is False
         assert call_kwargs["session"] is session
+        assert constructor.call_args.kwargs["knowledge_retrieval"] is self.knowledge_retrieval
         retrieve_spy.assert_not_called()
 
     # -- ADVANCED_CHAT streaming --------------------------------------------
@@ -464,7 +486,7 @@ class TestGenerate(_RealSessionTest):
             return_value=iter([]),
         )
 
-        AppGenerateService.generate(
+        AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
             app_model=_make_app(AppMode.ADVANCED_CHAT),
             user=_make_user(),
             args={"workflow_id": None, "query": "hi", "inputs": {}},
@@ -484,6 +506,10 @@ class TestGenerate(_RealSessionTest):
     def test_workflow_blocking(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+        constructor = mocker.patch(
+            "services.app_generate_service.WorkflowAppGenerator.__init__",
+            return_value=None,
+        )
         gen_spy = mocker.patch(
             "services.app_generate_service.WorkflowAppGenerator.generate",
             return_value={"result": "workflow-blocking"},
@@ -494,7 +520,7 @@ class TestGenerate(_RealSessionTest):
         )
 
         session = self.session
-        result = AppGenerateService.generate(
+        result = AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
             app_model=_make_app(AppMode.WORKFLOW),
             user=_make_user(),
             args={"inputs": {}},
@@ -504,6 +530,7 @@ class TestGenerate(_RealSessionTest):
         )
         assert result == {"result": "workflow-blocking"}
         call_kwargs = gen_spy.call_args.kwargs
+        assert constructor.call_args.kwargs["knowledge_retrieval"] is self.knowledge_retrieval
         assert call_kwargs.get("pause_state_config") is not None
         assert call_kwargs["pause_state_config"].state_owner_user_id == "owner-id"
 
@@ -523,7 +550,7 @@ class TestGenerate(_RealSessionTest):
         generate = mocker.patch("services.app_generate_service.WorkflowAppGenerator.generate")
 
         with pytest.raises(TriggerWorkflowServiceModeUnavailableError):
-            AppGenerateService.generate(
+            AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
                 app_model=_make_app(AppMode.WORKFLOW),
                 user=_make_user(),
                 args={"inputs": {}},
@@ -546,7 +573,7 @@ class TestGenerate(_RealSessionTest):
             side_effect=lambda value: value,
         )
 
-        result = AppGenerateService.generate(
+        result = AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
             app_model=_make_app(AppMode.WORKFLOW),
             user=_make_user(),
             args={"inputs": {}},
@@ -573,7 +600,7 @@ class TestGenerate(_RealSessionTest):
         app = _make_app(AppMode.WORKFLOW)
         session = MagicMock()
 
-        result = AppGenerateService.generate(
+        result = AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
             app_model=app,
             user=_make_user(),
             args={"inputs": {}, "workflow_id": workflow_id},
@@ -604,7 +631,7 @@ class TestGenerate(_RealSessionTest):
             side_effect=lambda x: x,
         )
 
-        AppGenerateService.generate(
+        AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
             app_model=_make_app(AppMode.WORKFLOW),
             user=_make_user(),
             args={"inputs": {}},
@@ -623,7 +650,7 @@ class TestGenerate(_RealSessionTest):
     def test_invalid_mode_raises(self, mocker: MockerFixture):
         app = _make_app("invalid-mode")
         with pytest.raises(ValueError, match="Invalid app mode"):
-            AppGenerateService.generate(
+            AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
                 app_model=app,
                 user=_make_user(),
                 args={},
@@ -661,7 +688,7 @@ class TestGenerateBilling(_RealSessionTest):
             side_effect=lambda x: x,
         )
 
-        AppGenerateService.generate(
+        AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
             app_model=_make_app(AppMode.COMPLETION),
             user=_make_user(),
             args={"inputs": {}},
@@ -685,7 +712,7 @@ class TestGenerateBilling(_RealSessionTest):
         )
 
         with pytest.raises(InvokeRateLimitError):
-            AppGenerateService.generate(
+            AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
                 app_model=_make_app(AppMode.COMPLETION),
                 user=_make_user(),
                 args={"inputs": {}},
@@ -713,7 +740,7 @@ class TestGenerateBilling(_RealSessionTest):
         )
 
         with pytest.raises(RuntimeError, match="boom"):
-            AppGenerateService.generate(
+            AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
                 app_model=_make_app(AppMode.COMPLETION),
                 user=_make_user(),
                 args={"inputs": {}},
@@ -745,7 +772,7 @@ class TestGenerateBilling(_RealSessionTest):
             side_effect=lambda x: x,
         )
 
-        AppGenerateService.generate(
+        AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
             app_model=_make_app(AppMode.COMPLETION),
             user=_make_user(),
             args={"inputs": {}},
@@ -776,7 +803,7 @@ class TestGenerateBilling(_RealSessionTest):
         )
 
         with pytest.raises(RuntimeError, match="boom"):
-            AppGenerateService.generate(
+            AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
                 app_model=_make_app(AppMode.COMPLETION),
                 user=_make_user(),
                 args={"inputs": {}},
@@ -810,7 +837,7 @@ class TestGenerateBilling(_RealSessionTest):
         )
 
         with pytest.raises(RuntimeError, match="boom"):
-            AppGenerateService.generate(
+            AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate(
                 app_model=_make_app(AppMode.COMPLETION),
                 user=_make_user(),
                 args={"inputs": {}},
@@ -917,6 +944,10 @@ class TestGenerateSingleIteration(_RealSessionTest):
     def test_advanced_chat_mode(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+        constructor = mocker.patch(
+            "services.app_generate_service.AdvancedChatAppGenerator.__init__",
+            return_value=None,
+        )
         mocker.patch(
             "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
             side_effect=lambda x: x,
@@ -927,7 +958,7 @@ class TestGenerateSingleIteration(_RealSessionTest):
         )
         app = _make_app(AppMode.ADVANCED_CHAT)
         session = self.session
-        result = AppGenerateService.generate_single_iteration(
+        result = AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate_single_iteration(
             app_model=app,
             user=_make_user(),
             node_id="n1",
@@ -935,12 +966,17 @@ class TestGenerateSingleIteration(_RealSessionTest):
             session=session,
         )
         iter_spy.assert_called_once()
+        assert constructor.call_args.kwargs["knowledge_retrieval"] is self.knowledge_retrieval
         assert iter_spy.call_args.kwargs["session"] is session
         assert result == {"event": "iteration"}
 
     def test_workflow_mode(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+        constructor = mocker.patch(
+            "services.app_generate_service.WorkflowAppGenerator.__init__",
+            return_value=None,
+        )
         mocker.patch(
             "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
             side_effect=lambda x: x,
@@ -951,7 +987,7 @@ class TestGenerateSingleIteration(_RealSessionTest):
         )
         app = _make_app(AppMode.WORKFLOW)
         session = self.session
-        result = AppGenerateService.generate_single_iteration(
+        result = AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate_single_iteration(
             app_model=app,
             user=_make_user(),
             node_id="n1",
@@ -959,14 +995,19 @@ class TestGenerateSingleIteration(_RealSessionTest):
             session=session,
         )
         iter_spy.assert_called_once()
+        assert constructor.call_args.kwargs["knowledge_retrieval"] is self.knowledge_retrieval
         assert iter_spy.call_args.kwargs["session"] is session
         assert result == {"event": "wf-iteration"}
 
     def test_invalid_mode_raises(self, mocker: MockerFixture):
         app = _make_app(AppMode.CHAT)
         with pytest.raises(ValueError, match="Invalid app mode"):
-            AppGenerateService.generate_single_iteration(
-                app_model=app, user=_make_user(), node_id="n1", args={}, session=self.session
+            AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate_single_iteration(
+                app_model=app,
+                user=_make_user(),
+                node_id="n1",
+                args={},
+                session=self.session,
             )
 
 
@@ -977,6 +1018,10 @@ class TestGenerateSingleLoop(_RealSessionTest):
     def test_advanced_chat_mode(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+        constructor = mocker.patch(
+            "services.app_generate_service.AdvancedChatAppGenerator.__init__",
+            return_value=None,
+        )
         mocker.patch(
             "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
             side_effect=lambda x: x,
@@ -987,7 +1032,7 @@ class TestGenerateSingleLoop(_RealSessionTest):
         )
         app = _make_app(AppMode.ADVANCED_CHAT)
         session = self.session
-        result = AppGenerateService.generate_single_loop(
+        result = AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate_single_loop(
             app_model=app,
             user=_make_user(),
             node_id="n1",
@@ -995,12 +1040,17 @@ class TestGenerateSingleLoop(_RealSessionTest):
             session=session,
         )
         loop_spy.assert_called_once()
+        assert constructor.call_args.kwargs["knowledge_retrieval"] is self.knowledge_retrieval
         assert loop_spy.call_args.kwargs["session"] is session
         assert result == {"event": "loop"}
 
     def test_workflow_mode(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+        constructor = mocker.patch(
+            "services.app_generate_service.WorkflowAppGenerator.__init__",
+            return_value=None,
+        )
         mocker.patch(
             "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
             side_effect=lambda x: x,
@@ -1011,7 +1061,7 @@ class TestGenerateSingleLoop(_RealSessionTest):
         )
         app = _make_app(AppMode.WORKFLOW)
         session = self.session
-        result = AppGenerateService.generate_single_loop(
+        result = AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate_single_loop(
             app_model=app,
             user=_make_user(),
             node_id="n1",
@@ -1019,14 +1069,19 @@ class TestGenerateSingleLoop(_RealSessionTest):
             session=session,
         )
         loop_spy.assert_called_once()
+        assert constructor.call_args.kwargs["knowledge_retrieval"] is self.knowledge_retrieval
         assert loop_spy.call_args.kwargs["session"] is session
         assert result == {"event": "wf-loop"}
 
     def test_invalid_mode_raises(self, mocker: MockerFixture):
         app = _make_app(AppMode.COMPLETION)
         with pytest.raises(ValueError, match="Invalid app mode"):
-            AppGenerateService.generate_single_loop(
-                app_model=app, user=_make_user(), node_id="n1", args=MagicMock(), session=self.session
+            AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate_single_loop(
+                app_model=app,
+                user=_make_user(),
+                node_id="n1",
+                args=MagicMock(),
+                session=self.session,
             )
 
 
@@ -1035,12 +1090,16 @@ class TestGenerateSingleLoop(_RealSessionTest):
 # ---------------------------------------------------------------------------
 class TestGenerateMoreLikeThis(_RealSessionTest):
     def test_delegates_to_completion_generator(self, mocker: MockerFixture):
+        constructor = mocker.patch(
+            "services.app_generate_service.CompletionAppGenerator.__init__",
+            return_value=None,
+        )
         gen_spy = mocker.patch(
             "services.app_generate_service.CompletionAppGenerator.generate_more_like_this",
             return_value={"result": "similar"},
         )
         session = self.session
-        result = AppGenerateService.generate_more_like_this(
+        result = AppGenerateService(knowledge_retrieval=self.knowledge_retrieval).generate_more_like_this(
             app_model=_make_app(AppMode.COMPLETION),
             user=_make_user(),
             message_id="msg-1",
@@ -1049,6 +1108,7 @@ class TestGenerateMoreLikeThis(_RealSessionTest):
             streaming=True,
         )
         assert result == {"result": "similar"}
+        assert constructor.call_args.kwargs["knowledge_retrieval"] is self.knowledge_retrieval
         gen_spy.assert_called_once()
         assert gen_spy.call_args.kwargs["session"] is session
         assert gen_spy.call_args.kwargs["stream"] is True

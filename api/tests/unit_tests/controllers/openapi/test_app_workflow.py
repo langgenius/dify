@@ -1,6 +1,7 @@
 import json
 import uuid
 from collections.abc import Callable, Sequence
+from dataclasses import replace
 from datetime import datetime
 from io import BytesIO
 from typing import Protocol, cast
@@ -55,8 +56,11 @@ from models.account import Account, Tenant
 from models.enums import AppStatus
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowType
+from services.entities.upload_file import FileUploadActor
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.workflow.graph_diff import draft_token
 from services.workflow_service import WorkflowService
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 WORKSPACE_ID = "00000000-0000-4000-8000-000000000001"
 APP_ID = "00000000-0000-4000-8000-000000000002"
@@ -75,6 +79,20 @@ def _identity_secret_encryption(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep secret variables readable without the workspace key provider."""
     monkeypatch.setattr(encrypter, "encrypt_token", lambda **kwargs: kwargs["token"])
     monkeypatch.setattr(encrypter, "decrypt_token", lambda **kwargs: kwargs["token"])
+
+
+@pytest.fixture
+def knowledge_retrieval(
+    monkeypatch: pytest.MonkeyPatch,
+    account_application_services: ApplicationServices,
+) -> KnowledgeRetriever:
+    port = make_knowledge_retriever()
+    services = replace(
+        account_application_services,
+        knowledge=replace(account_application_services.knowledge, retrieval=port),
+    )
+    monkeypatch.setattr(app_workflow, "application_services", lambda: services)
+    return port
 
 
 def _app_context(session: Session, **view_args: str) -> Context:
@@ -398,15 +416,24 @@ def _upload_part() -> FileStorage:
 
 
 def test_run_draft_node_merges_local_files_into_the_inputs(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    knowledge_retrieval: KnowledgeRetriever,
 ) -> None:
     service = _workflow_service(monkeypatch, sqlite_session_factory)
     ctx = _app_context(sqlite_session)
     _add_draft(sqlite_session, graph=_code_node_graph("n1"))
     merges: list[tuple[object, ...]] = []
 
-    def merge_files(inputs: object, files: object, caller: object) -> dict[str, object]:
-        merges.append((inputs, files, caller))
+    def merge_files(
+        inputs: object,
+        files: object,
+        *,
+        actor: FileUploadActor,
+        tenant_id: str,
+    ) -> dict[str, object]:
+        merges.append((inputs, files, actor, tenant_id))
         return {"x": 1, "doc": {"id": "file-1"}}
 
     node_runs: list[dict[str, object]] = []
@@ -417,8 +444,16 @@ def test_run_draft_node_merges_local_files_into_the_inputs(
 
     run_draft_node(ctx, "n1", inputs={"x": 1}, query="", files=parts)
 
-    assert merges == [({"x": 1}, parts, ctx.caller)]
+    assert merges == [
+        (
+            {"x": 1},
+            parts,
+            FileUploadActor(id=ctx.caller.id, creator_role=ctx.subject.caller_role),
+            ctx.workspace.id,
+        )
+    ]
     assert [run["user_inputs"] for run in node_runs] == [{"x": 1, "doc": {"id": "file-1"}}]
+    assert node_runs[0]["knowledge_retrieval"] is knowledge_retrieval
 
 
 def test_node_run_payloads_take_files_as_multipart_parts() -> None:
@@ -433,6 +468,7 @@ def test_run_draft_node_ends_the_read_transaction_before_uploading(
     sqlite_session_factory: sessionmaker[Session],
     with_files: bool,
     ends_transaction: bool,
+    knowledge_retrieval: KnowledgeRetriever,
 ) -> None:
     service = _workflow_service(monkeypatch, sqlite_session_factory)
     ctx = _app_context(sqlite_session)
@@ -440,18 +476,20 @@ def test_run_draft_node_ends_the_read_transaction_before_uploading(
     names: list[str] = []
     monkeypatch.setattr(app_workflow, "end_read_transaction", lambda _session: names.append("end"))
 
-    def merge_files(inputs: dict[str, object], *_args: object) -> dict[str, object]:
+    def merge_files(inputs: dict[str, object], *_args: object, **_kwargs: object) -> dict[str, object]:
         names.append("merge")
         return inputs
 
     monkeypatch.setattr(app_workflow, "merge_files", merge_files)
-    monkeypatch.setattr(service, "run_draft_workflow_node", lambda **_kwargs: None)
+    node_runs: list[dict[str, object]] = []
+    monkeypatch.setattr(service, "run_draft_workflow_node", lambda **kwargs: node_runs.append(kwargs))
     monkeypatch.setattr(app_workflow, "node_execution_response_source", lambda *_args, **_kwargs: {"id": "e-1"})
     files: UploadParts | None = {"doc": _upload_part()} if with_files else None
 
     run_draft_node(ctx, "n1", inputs={}, query="", files=files)
 
     assert names == (["end", "merge"] if ends_transaction else ["merge"])
+    assert node_runs[0]["knowledge_retrieval"] is knowledge_retrieval
 
 
 def _branch_skipping_graph() -> str:

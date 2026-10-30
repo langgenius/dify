@@ -12,8 +12,8 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import DocumentSegment
 from models.enums import IndexingStatus, SegmentStatus
-from repositories.knowledge.dataset_read_repository import (
-    get_dataset_doc_form,
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
+from repositories.knowledge.segment_query_repository import (
     get_segment_dataset,
     get_segment_document,
 )

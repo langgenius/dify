@@ -5,7 +5,9 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_runtime import build_knowledge_index_files
 from graphon.enums import BuiltinNodeTypes
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 class DummyNode:
@@ -75,6 +77,8 @@ class TestDifyNodeFactory:
         return DifyNodeFactory(
             init_params=SimpleNamespace(run_context=run_context),
             runtime_state=SimpleNamespace(),
+            knowledge_retrieval=make_knowledge_retriever(),
+            knowledge_index_files=build_knowledge_index_files(),
         )
 
     def test_create_node_unknown_type(self):
@@ -154,7 +158,9 @@ class TestDifyNodeFactory:
         node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}})
 
         assert isinstance(node, DummyKnowledgeRetrievalNode)
-        assert node.kwargs == {}
+        assert node.kwargs == {
+            "retrieval": factory.knowledge_retrieval,
+        }
 
     def test_create_node_document_extractor_branch(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory()

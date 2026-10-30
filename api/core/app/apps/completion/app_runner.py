@@ -16,11 +16,12 @@ from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCa
 from core.db.session_factory import create_session
 from core.model_manager import ModelManager
 from core.moderation.base import ModerationError
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from graphon.file import File
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.model import App, Message
+from services.knowledge.retrieval.app_retrieval import retrieve_app_context
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,9 @@ class CompletionAppRunner(AppRunner):
     """
     Completion Application Runner
     """
+
+    def __init__(self, *, knowledge_retrieval: KnowledgeRetriever) -> None:
+        self._knowledge_retrieval = knowledge_retrieval
 
     def run(
         self,
@@ -119,28 +123,19 @@ class CompletionAppRunner(AppRunner):
         context = None
         context_files: list[File] = []
         if app_config.dataset and app_config.dataset.dataset_ids:
-            hit_callback = DatasetIndexToolCallbackHandler(
-                queue_manager,
-                app_record.id,
-                message.id,
-                application_generate_entity.user_id,
-                application_generate_entity.invoke_from,
-            )
+            hit_callback = DatasetIndexToolCallbackHandler(queue_manager)
 
             dataset_config = app_config.dataset
             if dataset_config and dataset_config.retrieve_config.query_variable:
                 query = inputs.get(dataset_config.retrieve_config.query_variable, "")
 
-            dataset_retrieval = DatasetRetrieval(application_generate_entity)
-            context, retrieved_files = dataset_retrieval.retrieve(
-                session=session,
+            context, context_files = retrieve_app_context(
+                knowledge_retrieval=self._knowledge_retrieval,
+                application_generate_entity=application_generate_entity,
                 app_id=app_record.id,
-                user_id=application_generate_entity.user_id,
                 tenant_id=app_record.tenant_id,
-                model_config=application_generate_entity.model_conf,
-                config=dataset_config,
+                dataset_config=dataset_config,
                 query=query or "",
-                invoke_from=application_generate_entity.invoke_from,
                 show_retrieve_source=app_config.additional_features.show_retrieve_source
                 if app_config.additional_features
                 else False,
@@ -153,7 +148,6 @@ class CompletionAppRunner(AppRunner):
                     .get("enabled", False)
                 ),
             )
-            context_files = retrieved_files or []
 
         session.commit()
         session.close()

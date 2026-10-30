@@ -7,20 +7,20 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from core.repositories.factory import WorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from enums.creator import CreatorUserRole
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import (
     Account,
-    CreatorUserRole,
     EndUser,
 )
 from models.enums import WorkflowRunTriggeredFrom
 from repositories.entities.workflow_execution import WorkflowExecution as TimedWorkflowExecution
 from repositories.workflow_run_control import get_stopped_workflow_run
+from services.workflow.persistence import WorkflowExecutionRepository
 
 logger = logging.getLogger(__name__)
 

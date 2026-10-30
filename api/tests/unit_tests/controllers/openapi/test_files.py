@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.errors import (
@@ -14,12 +15,15 @@ from controllers.common.errors import (
 from controllers.openapi._models import FileUploadPayload
 from controllers.openapi._multipart import body_from_request
 from controllers.openapi._upload import file_fields
+from controllers.openapi.auth.context import Context
 from controllers.openapi.files import AppFileUploadApi
+from enums.creator import CreatorUserRole
 from libs.exception import BaseHTTPException
 from models import Account
 from services.errors.file import BlockedFileExtensionError as ServiceBlockedFileExtensionError
 from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
+from tests.unit_tests.controllers.openapi.auth._world import account_subject, make_tenant
 
 
 def _caller() -> Account:
@@ -50,7 +54,16 @@ def _file_service(monkeypatch: pytest.MonkeyPatch) -> Mock:
     return service
 
 
-def test_upload_uses_injected_file_service(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def _context(caller: Account, session: Session) -> Context:
+    context = Context(account_subject(), session, {})
+    context._caller = caller
+    context._workspace = make_tenant(tenant_id="tenant-1")
+    return context
+
+
+def test_upload_uses_injected_file_service(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     service = _file_service(monkeypatch)
     service.upload_file.return_value = _upload_result()
     caller = _caller()
@@ -62,15 +75,17 @@ def test_upload_uses_injected_file_service(app: Flask, monkeypatch: pytest.Monke
         content_type="multipart/form-data",
     ):
         api = AppFileUploadApi()
-        result = api.post.__handler__(api, SimpleNamespace(caller=caller, session=Mock()), app_id="app-1", body=_body())
+        result = api.post.__handler__(api, _context(caller, sqlite_session), app_id="app-1", body=_body())
 
     assert result.id == "00000000-0000-0000-0000-000000000001"
-    service.upload_file.assert_called_once_with(
-        filename="note.txt",
-        content=b"hello",
-        mimetype="text/plain",
-        user=caller,
-    )
+    service.upload_file.assert_called_once()
+    kwargs = service.upload_file.call_args.kwargs
+    assert kwargs["filename"] == "note.txt"
+    assert kwargs["content"] == b"hello"
+    assert kwargs["mimetype"] == "text/plain"
+    assert kwargs["actor"].id == caller.id
+    assert kwargs["actor"].creator_role == CreatorUserRole.ACCOUNT
+    assert kwargs["tenant_id"] == "tenant-1"
 
 
 @pytest.mark.parametrize(
@@ -96,6 +111,7 @@ def test_upload_uses_injected_file_service(app: Flask, monkeypatch: pytest.Monke
 def test_upload_preserves_specific_file_errors(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
     service_error: ValueError,
     controller_error: type[BaseHTTPException],
     status: int,
@@ -113,7 +129,7 @@ def test_upload_preserves_specific_file_errors(
     ):
         api = AppFileUploadApi()
         with pytest.raises(controller_error) as error_info:
-            api.post.__handler__(api, SimpleNamespace(caller=_caller(), session=Mock()), app_id="app-1", body=_body())
+            api.post.__handler__(api, _context(_caller(), sqlite_session), app_id="app-1", body=_body())
 
     assert error_info.value.code == status
     assert error_info.value.error_code == error_code
@@ -121,7 +137,9 @@ def test_upload_preserves_specific_file_errors(
     assert error_info.value.__cause__ is service_error
 
 
-def test_upload_maps_other_value_errors_to_bad_request(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_upload_maps_other_value_errors_to_bad_request(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     service = _file_service(monkeypatch)
     service_error = ValueError("Filename contains invalid characters")
     service.upload_file.side_effect = service_error
@@ -134,7 +152,7 @@ def test_upload_maps_other_value_errors_to_bad_request(app: Flask, monkeypatch: 
     ):
         api = AppFileUploadApi()
         with pytest.raises(BadRequest) as error_info:
-            api.post.__handler__(api, SimpleNamespace(caller=_caller(), session=Mock()), app_id="app-1", body=_body())
+            api.post.__handler__(api, _context(_caller(), sqlite_session), app_id="app-1", body=_body())
 
     assert error_info.value.description == str(service_error)
     assert error_info.value.__cause__ is service_error

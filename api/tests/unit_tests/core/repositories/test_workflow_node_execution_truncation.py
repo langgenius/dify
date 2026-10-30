@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.repositories.sqlalchemy_workflow_node_execution_repository import (
@@ -25,6 +25,7 @@ from graphon.enums import BuiltinNodeTypes
 from models import Account, Tenant, WorkflowNodeExecutionTriggeredFrom
 from models.enums import ExecutionOffLoadType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
+from services.file_adapters import build_file_service
 
 
 @dataclass
@@ -136,12 +137,14 @@ class TestSQLAlchemyWorkflowNodeExecutionRepositoryTruncation:
 
     def create_repository(self, sqlite_engine: Engine) -> SQLAlchemyWorkflowNodeExecutionRepository:
         """Create a repository backed by the test's isolated SQLite engine."""
+        repository_session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=sqlite_engine,
             tenant_id="test-tenant-id",
             user=mock_user(),
             app_id="test-app-id",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=build_file_service(session_factory=repository_session_factory),
         )
         with repository._session_factory() as session:
             assert isinstance(session, Session)

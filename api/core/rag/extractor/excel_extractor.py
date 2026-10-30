@@ -1,9 +1,9 @@
 """Excel document extractor used for RAG ingestion.
 
 Supports cell hyperlinks for both `.xls` and `.xlsx`, and embedded worksheet images
-for `.xlsx` files by converting them into markdown image links. Embedded images are
-stored with deterministic keys derived from the source upload file and anchor cell so
-retries can safely reuse the same assets.
+for `.xlsx` files by converting them into markdown image links. Each extraction owns
+distinct storage objects, while duplicate images at the same anchor within that
+extraction share one upload.
 """
 
 import hashlib
@@ -14,17 +14,10 @@ from typing import TypedDict, override
 
 import pandas as pd
 from openpyxl import load_workbook
-from sqlalchemy import select
 
-from configs import dify_config
-from core.db.session_factory import session_factory
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
-from extensions.ext_storage import storage
-from extensions.storage.storage_type import StorageType
-from libs.datetime_utils import naive_utc_now
-from models.enums import CreatorUserRole
-from models.model import UploadFile
+from services.extraction.contracts import ExtractedImage, ImageWriter
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +31,7 @@ class Candidate(TypedDict):
 class SheetImageCandidate(TypedDict):
     anchor: tuple[int, int]
     content_hash: str
-    file_key: str
+    identity_key: str
     image_bytes: bytes
     image_ext: str
 
@@ -53,26 +46,21 @@ class ExcelExtractor(BaseExtractor):
     _file_path: str
     _encoding: str | None
     _autodetect_encoding: bool
-    _tenant_id: str | None
-    _user_id: str | None
-    _source_file_id: str | None
+    _image_writer: ImageWriter | None
 
     def __init__(
         self,
         file_path: str,
-        tenant_id: str | None = None,
-        user_id: str | None = None,
-        source_file_id: str | None = None,
         encoding: str | None = None,
         autodetect_encoding: bool = False,
+        *,
+        image_writer: ImageWriter | None = None,
     ):
         """Initialize with file path."""
         self._file_path = file_path
-        self._tenant_id = tenant_id
-        self._user_id = user_id
-        self._source_file_id = source_file_id
         self._encoding = encoding
         self._autodetect_encoding = autodetect_encoding
+        self._image_writer = image_writer
 
     @override
     def extract(self) -> list[Document]:
@@ -90,11 +78,15 @@ class ExcelExtractor(BaseExtractor):
                     if not column_map:
                         continue
                     start_row = header_row_idx + 1
-                    sheet_image_map = self._extract_images_from_sheet(
-                        sheet_name=sheet_name,
-                        sheet=sheet,
-                        valid_columns={column_idx + 1 for column_idx in column_map},
-                        min_row=start_row,
+                    sheet_image_map = (
+                        self._extract_images_from_sheet(
+                            sheet_name=sheet_name,
+                            sheet=sheet,
+                            valid_columns={column_idx + 1 for column_idx in column_map},
+                            min_row=start_row,
+                        )
+                        if self._image_writer is not None
+                        else {}
                     )
                     for row in sheet.iter_rows(min_row=start_row, max_col=max_col_idx, values_only=False):
                         page_content = []
@@ -161,11 +153,10 @@ class ExcelExtractor(BaseExtractor):
         """
         Extract embedded worksheet images and map them to their anchor cell.
 
-        Images are stored with deterministic keys derived from the source upload file,
-        sheet, anchor cell, and content hash so retried tasks can reuse the same
-        UploadFile rows and storage objects.
+        Duplicate images at the same anchor share one upload within this extraction.
+        Physical ownership is delegated to the caller-provided image writer.
         """
-        if not self._tenant_id or not self._user_id or not self._source_file_id:
+        if self._image_writer is None:
             return {}
 
         images = getattr(sheet, "_images", None) or []
@@ -195,7 +186,7 @@ class ExcelExtractor(BaseExtractor):
                 {
                     "anchor": (anchor_row, anchor_column),
                     "content_hash": content_hash,
-                    "file_key": self._build_image_file_key(
+                    "identity_key": self._build_image_identity_key(
                         sheet_name=sheet_name,
                         anchor_row=anchor_row,
                         anchor_column=anchor_column,
@@ -211,50 +202,21 @@ class ExcelExtractor(BaseExtractor):
             return {}
 
         image_map: dict[tuple[int, int], list[str]] = {}
-        base_url = dify_config.FILES_URL
-        candidate_keys = sorted({candidate["file_key"] for candidate in image_candidates})
-
-        with session_factory.create_session() as session:
-            existing_upload_files = session.scalars(
-                select(UploadFile).where(
-                    UploadFile.tenant_id == self._tenant_id,
-                    UploadFile.key.in_(candidate_keys),
+        preview_urls_by_identity: dict[str, str] = {}
+        for candidate in image_candidates:
+            identity_key = candidate["identity_key"]
+            preview_url = preview_urls_by_identity.get(identity_key)
+            if preview_url is None:
+                mime_type, _ = mimetypes.guess_type(f"image.{candidate['image_ext']}")
+                image = ExtractedImage(
+                    content=candidate["image_bytes"],
+                    extension=candidate["image_ext"],
+                    mime_type=mime_type or "",
                 )
-            ).all()
-            upload_files_by_key = {upload_file.key: upload_file for upload_file in existing_upload_files}
-            new_upload_files: list[UploadFile] = []
+                preview_url = self._image_writer.write(image).preview_url
+                preview_urls_by_identity[identity_key] = preview_url
 
-            for candidate in image_candidates:
-                upload_file = upload_files_by_key.get(candidate["file_key"])
-                if upload_file is None:
-                    storage.save(candidate["file_key"], candidate["image_bytes"])
-                    mime_type, _ = mimetypes.guess_type(candidate["file_key"])
-                    upload_file = UploadFile(
-                        tenant_id=self._tenant_id,
-                        storage_type=StorageType(dify_config.STORAGE_TYPE),
-                        key=candidate["file_key"],
-                        name=candidate["file_key"],
-                        size=len(candidate["image_bytes"]),
-                        extension=candidate["image_ext"],
-                        mime_type=mime_type or "",
-                        created_by=self._user_id,
-                        created_by_role=CreatorUserRole.ACCOUNT,
-                        created_at=naive_utc_now(),
-                        used=True,
-                        used_by=self._user_id,
-                        used_at=naive_utc_now(),
-                        hash=candidate["content_hash"],
-                    )
-                    upload_files_by_key[candidate["file_key"]] = upload_file
-                    new_upload_files.append(upload_file)
-
-                image_map.setdefault(candidate["anchor"], []).append(
-                    f"![image]({base_url}/files/{upload_file.id}/file-preview)"
-                )
-
-            if new_upload_files:
-                session.add_all(new_upload_files)
-                session.commit()
+            image_map.setdefault(candidate["anchor"], []).append(f"![image]({preview_url})")
 
         return image_map
 
@@ -263,8 +225,8 @@ class ExcelExtractor(BaseExtractor):
         """Return a stable content hash for extracted image bytes."""
         return hashlib.sha256(image_bytes).hexdigest()
 
-    def _build_image_file_key(
-        self,
+    @staticmethod
+    def _build_image_identity_key(
         *,
         sheet_name: str,
         anchor_row: int,
@@ -272,16 +234,10 @@ class ExcelExtractor(BaseExtractor):
         content_hash: str,
         image_ext: str,
     ) -> str:
-        """Build a deterministic storage key for an embedded worksheet image."""
-        assert self._tenant_id is not None, "tenant_id is required for image extraction"
-        assert self._source_file_id is not None, "source_file_id is required for image extraction"
-
+        """Build a deterministic identity used to deduplicate images within one extraction."""
         normalized_ext = image_ext.strip().lower()
         sheet_hash = hashlib.sha256(sheet_name.encode("utf-8")).hexdigest()[:16]
-        return (
-            f"image_files/{self._tenant_id}/{self._source_file_id}/"
-            f"{sheet_hash}_r{anchor_row}_c{anchor_column}_{content_hash}.{normalized_ext}"
-        )
+        return f"{sheet_hash}_r{anchor_row}_c{anchor_column}_{content_hash}.{normalized_ext}"
 
     def _get_image_bytes(self, image) -> bytes | None:
         """Return embedded image bytes from an openpyxl image object."""

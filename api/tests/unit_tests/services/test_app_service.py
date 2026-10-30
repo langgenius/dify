@@ -12,6 +12,8 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition
+from enums.creator import CreatorUserRole
+from extensions.storage.storage_type import StorageType
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -26,7 +28,7 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.model import App, AppMode, AppModelConfig, IconType
+from models.model import App, AppMode, AppModelConfig, IconType, UploadFile
 from models.provider import TenantDefaultModel
 from models.workflow import Workflow, WorkflowType
 from repositories.app.console_repository import ConsoleAppRepository
@@ -127,6 +129,25 @@ def _persist_agent_app(
     session.add_all([app, agent])
     session.commit()
     return app, agent
+
+
+def _persist_image_upload(session: Session, *, tenant_id: str) -> str:
+    upload = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=f"upload_files/{tenant_id}/{uuid4()}.png",
+        name="icon.png",
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=str(uuid4()),
+        created_at=datetime(2026, 1, 1),
+        used=True,
+    )
+    session.add(upload)
+    session.commit()
+    return upload.id
 
 
 class TestCreateAppTransactionBoundary:
@@ -685,6 +706,7 @@ class TestAgentAppType:
     def test_update_agent_app_syncs_backing_agent_identity(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)
         account_id = str(uuid4())
+        icon_file_id = _persist_image_upload(sqlite_session, tenant_id=app.tenant_id)
 
         with (
             patch("services.app_service.current_user", _account_identity(account_id)),
@@ -697,7 +719,7 @@ class TestAgentAppType:
                     "description": "agent app",
                     "role": "research assistant",
                     "icon_type": "image",
-                    "icon": "file-id",
+                    "icon": icon_file_id,
                     "icon_background": "#123456",
                     "use_icon_as_answer_icon": False,
                     "max_active_requests": 0,
@@ -710,13 +732,14 @@ class TestAgentAppType:
         assert backing_agent.description == "agent app"
         assert backing_agent.role == "research assistant"
         assert backing_agent.icon_type == AgentIconType.IMAGE
-        assert backing_agent.icon == "file-id"
+        assert backing_agent.icon == icon_file_id
         assert backing_agent.icon_background == "#123456"
         assert backing_agent.updated_by == account_id
         assert backing_agent.updated_at == updated_app.updated_at
 
     def test_update_agent_app_preserves_role_when_args_omit_it(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)
+        icon_file_id = _persist_image_upload(sqlite_session, tenant_id=app.tenant_id)
 
         with (
             patch("services.app_service.current_user", _account_identity(str(uuid4()))),
@@ -728,7 +751,7 @@ class TestAgentAppType:
                     "name": "Iris",
                     "description": "agent app",
                     "icon_type": "image",
-                    "icon": "file-id",
+                    "icon": icon_file_id,
                     "icon_background": "#123456",
                     "use_icon_as_answer_icon": False,
                     "max_active_requests": 0,
@@ -740,6 +763,7 @@ class TestAgentAppType:
 
     def test_update_agent_app_clears_role_when_args_set_empty_string(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)
+        icon_file_id = _persist_image_upload(sqlite_session, tenant_id=app.tenant_id)
 
         with (
             patch("services.app_service.current_user", _account_identity(str(uuid4()))),
@@ -752,7 +776,7 @@ class TestAgentAppType:
                     "description": "agent app",
                     "role": "",
                     "icon_type": "image",
-                    "icon": "file-id",
+                    "icon": icon_file_id,
                     "icon_background": "#123456",
                     "use_icon_as_answer_icon": False,
                     "max_active_requests": 0,
@@ -955,6 +979,7 @@ class TestAgentAppType:
         retire_unowned.assert_not_called()
         enqueue_collection.assert_not_called()
         enqueue_app_cleanup.assert_not_called()
+        sqlite_session.rollback()
 
     def test_delete_workflow_app_releases_all_bindings_before_retirement(self, sqlite_session: Session):
         app = _persist_app(sqlite_session, tenant_id=str(uuid4()))

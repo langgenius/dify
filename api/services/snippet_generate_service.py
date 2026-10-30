@@ -37,6 +37,7 @@ from models import Account
 from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowNodeExecutionModel
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.snippet_service import SnippetService
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
@@ -85,6 +86,19 @@ class SnippetGenerateService:
     # Specific ID for the injected virtual Start node so it can be recognised
     _VIRTUAL_START_NODE_ID = SNIPPET_VIRTUAL_START_NODE_ID
 
+    def __init__(
+        self,
+        *,
+        snippets: SnippetService,
+        workflows: WorkflowService,
+        session_factory: sessionmaker[Session],
+        knowledge_retrieval: KnowledgeRetriever,
+    ) -> None:
+        self._snippets = snippets
+        self._workflows = workflows
+        self._sessions = session_factory
+        self._knowledge_retrieval = knowledge_retrieval
+
     @classmethod
     def _is_virtual_start_event(cls, message: Mapping[str, Any] | str) -> bool:
         """
@@ -129,15 +143,13 @@ class SnippetGenerateService:
 
         return _stream()
 
-    @classmethod
     def generate(
-        cls,
+        self,
         snippet: CustomizedSnippet,
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
-        session_maker: sessionmaker[Session] | None = None,
     ) -> Mapping[str, Any] | Generator[str]:
         """
         Run a snippet's draft workflow.
@@ -158,18 +170,19 @@ class SnippetGenerateService:
         :return: Blocking response mapping or SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
-        snippet_service = SnippetService(session_maker)
-        workflow = snippet_service.get_draft_workflow(snippet=snippet)
+        workflow = self._snippets.get_draft_workflow(snippet=snippet)
         if not workflow:
             raise ValueError("Workflow not initialized")
 
         # Inject a virtual Start node when the graph doesn't have one.
-        workflow = cls._ensure_start_node(workflow, snippet)
+        workflow = self._ensure_start_node(workflow, snippet)
 
         # Adapt snippet to App-like interface for WorkflowAppGenerator
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        response = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+        response = WorkflowAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=self._knowledge_retrieval
+        ).generate(
             app_model=app_proxy,
             workflow=workflow,
             user=user,
@@ -179,51 +192,7 @@ class SnippetGenerateService:
             call_depth=0,
         )
 
-        return WorkflowAppGenerator.convert_to_event_stream(cls._filter_virtual_start_events(response))
-
-    @classmethod
-    def run_published(
-        cls,
-        snippet: CustomizedSnippet,
-        user: Account | EndUser,
-        args: Mapping[str, Any],
-        invoke_from: InvokeFrom,
-        session_maker: sessionmaker[Session] | None = None,
-    ) -> Mapping[str, Any]:
-        """
-        Run a snippet's published workflow in non-streaming (blocking) mode.
-
-        Similar to :meth:`generate` but targets the published workflow instead
-        of the draft, and returns the raw blocking response without SSE
-        wrapping. Designed for programmatic callers that need direct workflow outputs.
-
-        :param snippet: CustomizedSnippet instance (must be published)
-        :param user: Account or EndUser initiating the run
-        :param args: Workflow inputs (must include "inputs" key)
-        :param invoke_from: Source of invocation
-        :return: Blocking response mapping with workflow outputs
-        :raises ValueError: If the snippet has no published workflow
-        """
-        snippet_service = SnippetService(session_maker)
-        workflow = snippet_service.get_published_workflow(snippet)
-        if not workflow:
-            raise ValueError("No published workflow found for snippet")
-
-        # Inject a virtual Start node when the graph doesn't have one.
-        workflow = cls._ensure_start_node(workflow, snippet)
-
-        app_proxy = cast(App, _SnippetAsApp(snippet))
-
-        response = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
-            app_model=app_proxy,
-            workflow=workflow,
-            user=user,
-            args=args,
-            invoke_from=invoke_from,
-            streaming=False,
-            call_depth=0,
-        )
-        return response
+        return WorkflowAppGenerator.convert_to_event_stream(self._filter_virtual_start_events(response))
 
     @classmethod
     def ensure_start_node_for_worker(cls, workflow: Workflow, snippet: CustomizedSnippet) -> Workflow:
@@ -331,16 +300,14 @@ class SnippetGenerateService:
             "edges": [*edges, *new_edges],
         }
 
-    @classmethod
     def run_draft_node(
-        cls,
+        self,
         snippet: CustomizedSnippet,
         node_id: str,
         user_inputs: Mapping[str, Any],
         account: Account,
         query: str = "",
         files: Sequence[File] | None = None,
-        session_maker: sessionmaker[Session] | None = None,
     ) -> WorkflowNodeExecutionModel:
         """
         Run a single node in a snippet's draft workflow (single-step debugging).
@@ -357,15 +324,14 @@ class SnippetGenerateService:
         :return: WorkflowNodeExecutionModel with execution results
         :raises ValueError: If the snippet has no draft workflow
         """
-        snippet_service = SnippetService(session_maker)
-        draft_workflow = snippet_service.get_draft_workflow(snippet=snippet)
+        draft_workflow = self._snippets.get_draft_workflow(snippet=snippet)
         if not draft_workflow:
             raise ValueError("Workflow not initialized")
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        workflow_service = WorkflowService()
-        return workflow_service.run_draft_workflow_node(
+        return self._workflows.run_draft_workflow_node(
+            knowledge_retrieval=self._knowledge_retrieval,
             app_model=app_proxy,
             draft_workflow=draft_workflow,
             node_id=node_id,
@@ -375,16 +341,13 @@ class SnippetGenerateService:
             files=files,
         )
 
-    @classmethod
     def generate_single_iteration(
-        cls,
+        self,
         snippet: CustomizedSnippet,
         user: Account | EndUser,
         node_id: str,
         args: Mapping[str, Any],
         streaming: bool = True,
-        *,
-        session_maker: sessionmaker[Session],
     ) -> Mapping[str, Any] | Generator[str]:
         """
         Run a single iteration node in a snippet's draft workflow.
@@ -398,20 +361,20 @@ class SnippetGenerateService:
         :param node_id: ID of the iteration node to run
         :param args: Dict containing 'inputs' key with iteration input data
         :param streaming: Whether to stream the response (should be True)
-        :param session_maker: Factory for the synchronous database work before worker startup
         :return: SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
-        snippet_service = SnippetService(session_maker)
-        workflow = snippet_service.get_draft_workflow(snippet=snippet)
+        workflow = self._snippets.get_draft_workflow(snippet=snippet)
         if not workflow:
             raise ValueError("Workflow not initialized")
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        with session_maker() as session:
+        with self._sessions() as session:
             return WorkflowAppGenerator.convert_to_event_stream(
-                WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_iteration_generate(
+                WorkflowAppGenerator(
+                    execution_driver=WorkflowRunAgg.run, knowledge_retrieval=self._knowledge_retrieval
+                ).single_iteration_generate(
                     app_model=app_proxy,
                     workflow=workflow,
                     node_id=node_id,
@@ -422,16 +385,13 @@ class SnippetGenerateService:
                 )
             )
 
-    @classmethod
     def generate_single_loop(
-        cls,
+        self,
         snippet: CustomizedSnippet,
         user: Account | EndUser,
         node_id: str,
         args: Any,
         streaming: bool = True,
-        *,
-        session_maker: sessionmaker[Session],
     ) -> Mapping[str, Any] | Generator[str]:
         """
         Run a single loop node in a snippet's draft workflow.
@@ -445,20 +405,20 @@ class SnippetGenerateService:
         :param node_id: ID of the loop node to run
         :param args: Pydantic model with 'inputs' attribute containing loop input data
         :param streaming: Whether to stream the response (should be True)
-        :param session_maker: Factory for the synchronous database work before worker startup
         :return: SSE streaming generator
         :raises ValueError: If the snippet has no draft workflow
         """
-        snippet_service = SnippetService(session_maker)
-        workflow = snippet_service.get_draft_workflow(snippet=snippet)
+        workflow = self._snippets.get_draft_workflow(snippet=snippet)
         if not workflow:
             raise ValueError("Workflow not initialized")
 
         app_proxy = cast(App, _SnippetAsApp(snippet))
 
-        with session_maker() as session:
+        with self._sessions() as session:
             return WorkflowAppGenerator.convert_to_event_stream(
-                WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).single_loop_generate(
+                WorkflowAppGenerator(
+                    execution_driver=WorkflowRunAgg.run, knowledge_retrieval=self._knowledge_retrieval
+                ).single_loop_generate(
                     app_model=app_proxy,
                     workflow=workflow,
                     node_id=node_id,

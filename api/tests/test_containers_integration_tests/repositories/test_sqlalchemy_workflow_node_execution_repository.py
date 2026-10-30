@@ -10,8 +10,8 @@ from uuid import uuid4
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.repositories.factory import OrderConfig
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from enums.creator import CreatorUserRole
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -20,7 +20,6 @@ from graphon.enums import (
 )
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.account import Account, Tenant
-from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
 
@@ -171,7 +170,7 @@ class TestSave:
 
 
 class TestGetByWorkflowExecution:
-    def test_returns_executions_ordered(self, db_session_with_containers: Session) -> None:
+    def test_returns_executions(self, db_session_with_containers: Session) -> None:
         account = _create_account_with_tenant(db_session_with_containers)
         tenant_id = account.current_tenant_id
         app_id = str(uuid4())
@@ -199,15 +198,10 @@ class TestGetByWorkflowExecution:
         )
         db_session_with_containers.commit()
 
-        order_config = OrderConfig(order_by=["index"], order_direction="desc")
-        result = repo.get_by_workflow_execution(
-            workflow_execution_id=workflow_run_id,
-            order_config=order_config,
-        )
+        result = repo.get_by_workflow_execution(workflow_execution_id=workflow_run_id)
 
         assert len(result) == 2
-        assert result[0].index == 2
-        assert result[1].index == 1
+        assert {execution.index for execution in result} == {1, 2}
         assert all(isinstance(r, WorkflowNodeExecution) for r in result)
 
     def test_excludes_paused_executions(self, db_session_with_containers: Session) -> None:

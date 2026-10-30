@@ -7,9 +7,10 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from enums.creator import CreatorUserRole
 from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
-from models import Account, CreatorUserRole, EndUser, Tenant, WorkflowRun
+from models import Account, EndUser, Tenant, WorkflowRun
 from models.enums import EndUserType, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.entities.workflow_execution import WorkflowExecution as TimedWorkflowExecution

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
@@ -11,6 +12,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
+from controllers.web import completion as completion_module
 from controllers.web.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
 from controllers.web.error import (
     AgentNotPublishedError,
@@ -25,7 +27,22 @@ from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.model import App, AppMode, EndUser
+from services.app_generate_service import AppGenerateService
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.unit_tests.model_factories import make_app, make_end_user
+
+
+@dataclass(frozen=True, slots=True)
+class _ApplicationServicesStub:
+    app_generation: AppGenerateService
+
+
+@pytest.fixture(autouse=True)
+def app_generation(monkeypatch: pytest.MonkeyPatch) -> AppGenerateService:
+    service = AppGenerateService(knowledge_retrieval=make_knowledge_retriever())
+    services = _ApplicationServicesStub(app_generation=service)
+    monkeypatch.setattr(completion_module, "application_services", lambda: services)
+    return service
 
 
 def _app(mode: AppMode) -> App:
@@ -59,7 +76,7 @@ def test_unexpected_generation_error_hides_internal_details(
 ) -> None:
     error = RuntimeError("internal provider failure")
     with (
-        patch("controllers.web.completion.AppGenerateService.generate", side_effect=error),
+        patch("services.app_generate_service.AppGenerateService.generate", side_effect=error),
         app.test_request_context(path, method="POST", json={"inputs": {}, "query": "hello"}),
         pytest.raises(InternalServerError) as exc_info,
     ):
@@ -80,9 +97,15 @@ class TestCompletionApi:
                 CompletionApi().post(_chat_app(), _end_user())
 
     @patch("controllers.web.completion.helper.compact_generate_response", return_value={"answer": "hi"})
-    @patch("controllers.web.completion.AppGenerateService.generate")
+    @patch("services.app_generate_service.AppGenerateService.generate")
     @patch("controllers.web.completion.web_ns")
-    def test_happy_path(self, mock_ns: MagicMock, mock_gen: MagicMock, mock_compact: MagicMock, app: Flask) -> None:
+    def test_happy_path(
+        self,
+        mock_ns: MagicMock,
+        mock_gen: MagicMock,
+        mock_compact: MagicMock,
+        app: Flask,
+    ) -> None:
         mock_ns.payload = {"inputs": {}, "query": "test"}
         mock_gen.return_value = "response-obj"
 
@@ -90,9 +113,10 @@ class TestCompletionApi:
             result = CompletionApi().post(_completion_app(), _end_user())
 
         assert result == {"answer": "hi"}
+        assert "external_retrieval" not in mock_gen.call_args.kwargs
 
     @patch(
-        "controllers.web.completion.AppGenerateService.generate",
+        "services.app_generate_service.AppGenerateService.generate",
         side_effect=ProviderTokenNotInitError(description="not init"),
     )
     @patch("controllers.web.completion.web_ns")
@@ -104,7 +128,7 @@ class TestCompletionApi:
                 CompletionApi().post(_completion_app(), _end_user())
 
     @patch(
-        "controllers.web.completion.AppGenerateService.generate",
+        "services.app_generate_service.AppGenerateService.generate",
         side_effect=QuotaExceededError(),
     )
     @patch("controllers.web.completion.web_ns")
@@ -116,7 +140,7 @@ class TestCompletionApi:
                 CompletionApi().post(_completion_app(), _end_user())
 
     @patch(
-        "controllers.web.completion.AppGenerateService.generate",
+        "services.app_generate_service.AppGenerateService.generate",
         side_effect=ModelCurrentlyNotSupportError(),
     )
     @patch("controllers.web.completion.web_ns")
@@ -156,9 +180,15 @@ class TestChatApi:
                 ChatApi().post(_completion_app(), _end_user())
 
     @patch("controllers.web.completion.helper.compact_generate_response", return_value={"answer": "reply"})
-    @patch("controllers.web.completion.AppGenerateService.generate")
+    @patch("services.app_generate_service.AppGenerateService.generate")
     @patch("controllers.web.completion.web_ns")
-    def test_happy_path(self, mock_ns: MagicMock, mock_gen: MagicMock, mock_compact: MagicMock, app: Flask) -> None:
+    def test_happy_path(
+        self,
+        mock_ns: MagicMock,
+        mock_gen: MagicMock,
+        mock_compact: MagicMock,
+        app: Flask,
+    ) -> None:
         mock_ns.payload = {"inputs": {}, "query": "hi"}
         mock_gen.return_value = "response"
 
@@ -166,9 +196,10 @@ class TestChatApi:
             result = ChatApi().post(_chat_app(), _end_user())
 
         assert result == {"answer": "reply"}
+        assert "external_retrieval" not in mock_gen.call_args.kwargs
 
     @patch(
-        "controllers.web.completion.AppGenerateService.generate",
+        "services.app_generate_service.AppGenerateService.generate",
         side_effect=InvokeError(description="rate limit"),
     )
     @patch("controllers.web.completion.web_ns")
@@ -180,7 +211,7 @@ class TestChatApi:
                 ChatApi().post(_chat_app(), _end_user())
 
     @patch(
-        "controllers.web.completion.AppGenerateService.generate",
+        "services.app_generate_service.AppGenerateService.generate",
         side_effect=AgentAppNotPublishedError("Agent has not been published"),
     )
     @patch("controllers.web.completion.web_ns")
@@ -192,7 +223,7 @@ class TestChatApi:
             with pytest.raises(AgentNotPublishedError):
                 ChatApi().post(app_model, _end_user())
 
-    @patch("controllers.web.completion.AppGenerateService.generate", return_value="response")
+    @patch("services.app_generate_service.AppGenerateService.generate", return_value="response")
     @patch("controllers.web.completion.ConversationService.get_conversation")
     @patch("controllers.web.completion.web_ns")
     def test_conversation_validation_uses_request_session(
@@ -210,6 +241,7 @@ class TestChatApi:
             unwrap(ChatApi.post)(ChatApi(), session, _chat_app(), _end_user())
 
         assert mock_get_conversation.call_args.kwargs["session"] is session
+        assert "external_retrieval" not in mock_generate.call_args.kwargs
 
 
 # ---------------------------------------------------------------------------

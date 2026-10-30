@@ -25,6 +25,7 @@ from models import Account
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 @dataclass(frozen=True)
@@ -75,7 +76,10 @@ def generator(
     assert agent_records[0].id == "conv"
     # Keep trace configuration lookup and initialization real, but do not schedule background timers.
     monkeypatch.setattr(TraceQueueManager, "start_timer", lambda _manager: None)
-    return AgentChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+    return AgentChatAppGenerator(
+        execution_driver=WorkflowRunAgg.run,
+        knowledge_retrieval=make_knowledge_retriever(),
+    )
 
 
 @pytest.fixture

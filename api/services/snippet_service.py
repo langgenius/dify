@@ -37,7 +37,10 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
-from repositories.factory import DifyAPIRepositoryFactory
+from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
+from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -60,6 +63,13 @@ SNIPPET_FORBIDDEN_NODE_TYPES: frozenset[str] = frozenset(
 )
 
 
+def snippet_image_upload_file_id(icon_info: object) -> str | None:
+    if not isinstance(icon_info, Mapping) or icon_info.get("icon_type") != "image":
+        return None
+    icon = icon_info.get("icon")
+    return icon if isinstance(icon, str) and icon else None
+
+
 class SnippetService:
     """Service for managing customized snippets."""
 
@@ -67,7 +77,10 @@ class SnippetService:
         self,
         session_maker: sessionmaker[Session] | Session | None = None,
         session: Session | None = None,
-    ):
+        *,
+        node_executions: DifyAPIWorkflowNodeExecutionRepository,
+        workflow_runs: APIWorkflowRunRepository,
+    ) -> None:
         """Initialize SnippetService with repository dependencies."""
         if isinstance(session_maker, Session):
             session = session_maker
@@ -78,10 +91,16 @@ class SnippetService:
             raise ValueError("SnippetService requires a session or session_maker.")
         self._session = session
         self._session_maker = session_maker
-        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
-            session_maker
+        self._node_execution_service_repo = node_executions
+        self._workflow_run_repo = workflow_runs
+
+    def with_session(self, session: Session) -> "SnippetService":
+        """Bind this service's transaction ownership to a caller-provided session."""
+        return SnippetService(
+            session=session,
+            node_executions=self._node_execution_service_repo,
+            workflow_runs=self._workflow_run_repo,
         )
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     @contextmanager
     def _session_scope(self) -> Generator[Session]:
@@ -319,6 +338,14 @@ class SnippetService:
 
         with self._session_scope() as session:
             session.add(snippet)
+            session.flush()
+            image_file_id = snippet_image_upload_file_id(icon_info)
+            if image_file_id is not None:
+                lock_and_validate_owned_upload_files_in_session(
+                    session,
+                    tenant_id=tenant_id,
+                    upload_file_ids=(image_file_id,),
+                )
             self._commit_if_owned(session)
 
         return snippet
@@ -340,6 +367,17 @@ class SnippetService:
         :param data: Dictionary of fields to update
         :return: Updated CustomizedSnippet
         """
+        locked = session.scalar(
+            select(CustomizedSnippet)
+            .where(CustomizedSnippet.id == snippet.id, CustomizedSnippet.tenant_id == snippet.tenant_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if locked is None:
+            raise ValueError("Snippet not found")
+        snippet = locked
+        previous_image_id = snippet_image_upload_file_id(snippet.icon_info)
+
         if "name" in data:
             snippet.name = data["name"]
 
@@ -347,6 +385,13 @@ class SnippetService:
             snippet.description = data["description"]
 
         if "icon_info" in data:
+            current_image_id = snippet_image_upload_file_id(data["icon_info"])
+            if current_image_id is not None and current_image_id != previous_image_id:
+                lock_and_validate_owned_upload_files_in_session(
+                    session,
+                    tenant_id=snippet.tenant_id,
+                    upload_file_ids=(current_image_id,),
+                )
             snippet.icon_info = data["icon_info"]
 
         snippet.updated_by = account_id
@@ -500,6 +545,20 @@ class SnippetService:
             )
             return session.scalar(stmt)
 
+    def _lock_draft_workflow(self, session: Session, snippet: CustomizedSnippet) -> Workflow | None:
+        """Read the persisted draft before changing its file-bearing payloads."""
+        return session.scalar(
+            select(Workflow)
+            .where(
+                Workflow.tenant_id == snippet.tenant_id,
+                Workflow.app_id == snippet.id,
+                self._snippet_kind_filter(),
+                Workflow.version == Workflow.VERSION_DRAFT,
+            )
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+
     def get_published_workflow(self, snippet: CustomizedSnippet) -> Workflow | None:
         """
         Get published workflow for snippet.
@@ -568,45 +627,51 @@ class SnippetService:
         """
         SnippetService.validate_snippet_graph_forbidden_nodes(graph)
 
-        workflow = self.get_draft_workflow(snippet=snippet)
-
-        if workflow and workflow.unique_hash != unique_hash:
-            raise WorkflowHashNotEqualError()
-
-        # Create draft workflow if not found
-        if not workflow:
-            workflow = Workflow(
-                tenant_id=snippet.tenant_id,
-                app_id=snippet.id,
-                features="{}",
-                type=WorkflowType.WORKFLOW,
-                kind=WorkflowKind.SNIPPET,
-                version="draft",
-                graph=json.dumps(graph),
-                created_by=account.id,
-                environment_variables=[],
-                conversation_variables=[],
-            )
-        else:
-            # Update existing draft workflow
-            workflow.graph = json.dumps(graph)
-            workflow.type = WorkflowType.WORKFLOW
-            workflow.kind = WorkflowKind.SNIPPET
-            workflow.updated_by = account.id
-            workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
-            workflow.environment_variables = []
-            workflow.conversation_variables = []
-
-        # Update snippet's input_fields if provided
-        if input_fields is not None:
-            snippet.input_fields = json.dumps(input_fields)
-            snippet.updated_by = account.id
-            snippet.updated_at = datetime.now(UTC).replace(tzinfo=None)
-
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
         retirement_candidates: set[str] = set()
         with self._session_scope() as session:
+            workflow = self._lock_draft_workflow(session, snippet)
+            if workflow and workflow.unique_hash != unique_hash:
+                raise WorkflowHashNotEqualError()
+
+            previous_payloads = (workflow.graph, workflow._conversation_variables) if workflow else ()
+            serialized_graph = json.dumps(graph)
+            # Validate before dirtying a bound Workflow. The file lookup can
+            # autoflush, so the proposed graph must not be persisted beforehand.
+            lock_new_workflow_upload_file_references(
+                session,
+                tenant_id=snippet.tenant_id,
+                previous_payloads=previous_payloads,
+                current_payloads=(serialized_graph,),
+            )
+            if workflow is None:
+                workflow = Workflow(
+                    tenant_id=snippet.tenant_id,
+                    app_id=snippet.id,
+                    features="{}",
+                    type=WorkflowType.WORKFLOW,
+                    kind=WorkflowKind.SNIPPET,
+                    version=Workflow.VERSION_DRAFT,
+                    graph=serialized_graph,
+                    created_by=account.id,
+                    environment_variables=[],
+                    conversation_variables=[],
+                )
+            else:
+                workflow.graph = serialized_graph
+                workflow.type = WorkflowType.WORKFLOW
+                workflow.kind = WorkflowKind.SNIPPET
+                workflow.updated_by = account.id
+                workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+                workflow.environment_variables = []
+                workflow.conversation_variables = []
+
+            if input_fields is not None:
+                snippet.input_fields = json.dumps(input_fields)
+                snippet.updated_by = account.id
+                snippet.updated_at = datetime.now(UTC).replace(tzinfo=None)
+
             session.add(workflow)
             session.add(snippet)
             if sync_agent_bindings:
@@ -653,17 +718,23 @@ class SnippetService:
 
         SnippetService.validate_snippet_graph_forbidden_nodes(source_workflow.graph_dict)
 
-        draft_workflow = self.get_draft_workflow(snippet=snippet)
-        draft_workflow, _is_new_draft = apply_published_workflow_snapshot_to_draft(
-            tenant_id=snippet.tenant_id,
-            app_id=snippet.id,
-            source_workflow=source_workflow,
-            draft_workflow=draft_workflow,
-            account=account,
-            updated_at_factory=lambda: datetime.now(UTC).replace(tzinfo=None),
-        )
-
         with self._session_scope() as session:
+            draft_workflow = self._lock_draft_workflow(session, snippet)
+            previous_payloads = (draft_workflow.graph, draft_workflow._conversation_variables) if draft_workflow else ()
+            lock_new_workflow_upload_file_references(
+                session,
+                tenant_id=snippet.tenant_id,
+                previous_payloads=previous_payloads,
+                current_payloads=(source_workflow.graph, source_workflow._conversation_variables),
+            )
+            draft_workflow, _is_new_draft = apply_published_workflow_snapshot_to_draft(
+                tenant_id=snippet.tenant_id,
+                app_id=snippet.id,
+                source_workflow=source_workflow,
+                draft_workflow=draft_workflow,
+                account=account,
+                updated_at_factory=lambda: datetime.now(UTC).replace(tzinfo=None),
+            )
             session.add(draft_workflow)
             session.flush()
             from services.agent.workflow_publish_service import WorkflowAgentPublishService
@@ -699,11 +770,15 @@ class SnippetService:
         :return: Published Workflow
         :raises ValueError: If no draft workflow exists
         """
-        draft_workflow_stmt = select(Workflow).where(
-            Workflow.tenant_id == snippet.tenant_id,
-            Workflow.app_id == snippet.id,
-            self._snippet_kind_filter(),
-            Workflow.version == "draft",
+        draft_workflow_stmt = (
+            select(Workflow)
+            .where(
+                Workflow.tenant_id == snippet.tenant_id,
+                Workflow.app_id == snippet.id,
+                self._snippet_kind_filter(),
+                Workflow.version == "draft",
+            )
+            .with_for_update()
         )
         draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
@@ -738,6 +813,11 @@ class SnippetService:
             conversation_variables=[],
             rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
             kind=WorkflowKind.SNIPPET.value,
+        )
+        lock_new_workflow_upload_file_references(
+            session,
+            tenant_id=snippet.tenant_id,
+            current_payloads=(workflow.graph, workflow._conversation_variables),
         )
         session.add(workflow)
         WorkflowAgentPublishService.copy_agent_node_bindings_to_published(

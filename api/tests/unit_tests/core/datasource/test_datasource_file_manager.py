@@ -8,8 +8,8 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.datasource.datasource_file_manager import DatasourceFileManager
+from enums.creator import CreatorUserRole
 from graphon.file import FileTransferMethod, FileType
-from models.enums import CreatorUserRole
 from models.model import MessageFile, UploadFile
 from models.tools import ToolFile
 from tests.unit_tests.model_factories import make_upload_file

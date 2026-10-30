@@ -4,7 +4,7 @@ import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager, nullcontext
-from typing import Any, final
+from typing import TYPE_CHECKING, Any, Protocol, cast, final
 
 from configs import dify_config
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -16,7 +16,7 @@ from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
 )
 from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
-from core.workflow.node_runtime import resolve_dify_run_context
+from core.workflow.node_runtime import build_knowledge_index_files, resolve_dify_run_context
 from core.workflow.nodes.human_input.boundary import human_input_container_selector
 from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.snippet_start import get_compatible_start_aliases
@@ -58,6 +58,9 @@ from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 
 from .workflow_tool_container_types import WorkflowToolContainerPayload
 
+if TYPE_CHECKING:
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
+
 logger = logging.getLogger(__name__)
 
 _file_access_controller = DatabaseFileAccessController()
@@ -74,6 +77,11 @@ _CONTAINER_METADATA_KEYS = frozenset(
 )
 
 type WorkflowToolEventListenerFactory = Callable[[WorkflowToolSource, str, str], Callable[[NodeEvent], None]]
+
+
+class _KnowledgeRetrievalNodeFactory(Protocol):
+    @property
+    def knowledge_retrieval(self) -> KnowledgeRetriever: ...
 
 
 def _save_workflow_tool_event(event: NodeEvent, listeners: Mapping[str, Callable[[NodeEvent], None]]) -> None:
@@ -335,11 +343,18 @@ class WorkflowToolContainerHandler:
             update={"app_id": source.app_id, "workflow_tool_invocation_id": run_state.invocation_id}
         )
         parent_factory = parent_frame.graph.node_factory
+        knowledge_retrieval = cast(_KnowledgeRetrievalNodeFactory, parent_factory).knowledge_retrieval
         graph_init_context = DifyGraphInitContext(
             workflow_id=source.workflow_id,
             graph_config=graph_config,
             run_context=source_run_context,
             call_depth=payload.call_depth,
+            knowledge_retrieval=knowledge_retrieval,
+            knowledge_index_files=(
+                parent_factory.knowledge_index_files
+                if isinstance(parent_factory, DifyNodeFactory)
+                else build_knowledge_index_files()
+            ),
             execution_driver=parent_factory.execution_driver if isinstance(parent_factory, DifyNodeFactory) else None,
         )
         human_input_run_context = (

@@ -8,7 +8,8 @@ handler tests use inspect.unwrap() to bypass them.
 """
 
 import inspect
-from unittest.mock import MagicMock, patch
+from dataclasses import dataclass
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from flask import Flask
@@ -33,8 +34,10 @@ from controllers.inner_api.plugin.plugin import (
     PluginInvokeTTSApi,
     PluginUploadFileRequestApi,
 )
+from core.plugin.entities.request import RequestInvokeApp
 from core.workflow.file_reference import build_file_reference
 from models import Account, Tenant
+from services.plugin.app_invocation import PluginAppInvocationService
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_tenant
 
@@ -47,6 +50,11 @@ def _user() -> Account:
     user = Account(name="Test User", email="user@example.com")
     user.id = "user-id"
     return user
+
+
+@dataclass(frozen=True, slots=True)
+class _ApplicationServicesStub:
+    plugin_apps: PluginAppInvocationService
 
 
 def _extract_raw_post(cls):
@@ -204,6 +212,56 @@ class TestPluginInvokeAppApi:
     def test_has_post_method(self, api_instance):
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
+
+    def test_post_uses_composed_app_invocation_service(
+        self,
+        api_instance: PluginInvokeAppApi,
+        app: Flask,
+    ) -> None:
+        session = create_autospec(Session, instance=True, spec_set=True)
+        plugin_apps = create_autospec(PluginAppInvocationService, instance=True, spec_set=True)
+        services = _ApplicationServicesStub(plugin_apps=plugin_apps)
+        payload = RequestInvokeApp(
+            app_id="app-id",
+            conversation_id="conversation-id",
+            query="query",
+            response_mode="streaming",
+            inputs={"input": "value"},
+            files=[],
+        )
+        response = {"answer": "ok"}
+        event_stream = iter([b"event"])
+        encoded_response = object()
+
+        with (
+            patch.object(plugin_module, "application_services", return_value=services),
+            patch.object(
+                plugin_apps,
+                "invoke_app",
+                return_value=response,
+            ) as invoke_app,
+            patch.object(
+                plugin_module.BaseBackwardsInvocation,
+                "convert_to_event_stream",
+                return_value=event_stream,
+            ) as convert_to_event_stream,
+            patch.object(plugin_module, "length_prefixed_response", return_value=encoded_response) as encode,
+        ):
+            raw_post = _extract_raw_post(PluginInvokeAppApi)
+            result = raw_post(
+                api_instance,
+                session=session,
+                user_model=_user(),
+                tenant_model=_tenant(),
+                payload=payload,
+            )
+
+        assert result is encoded_response
+        assert invoke_app.call_args.kwargs["session"] is session
+        assert invoke_app.call_args.kwargs["app_id"] == "app-id"
+        assert "knowledge_retrieval" not in invoke_app.call_args.kwargs
+        convert_to_event_stream.assert_called_once_with(response)
+        encode.assert_called_once_with(0xF, event_stream)
 
 
 class TestPluginInvokeEncryptApi:
@@ -396,20 +454,28 @@ class TestPluginFetchAppInfoApi:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
-    @patch("controllers.inner_api.plugin.plugin.PluginAppBackwardsInvocation")
-    def test_post_returns_app_info(self, mock_invocation, api_instance, app: Flask):
+    def test_post_returns_app_info(self, api_instance, app: Flask):
         """Test that post() fetches app info and returns it"""
         # Arrange
-        mock_invocation.fetch_app_info.return_value = {"app_name": "My App", "mode": "chat"}
+        plugin_apps = create_autospec(PluginAppInvocationService, instance=True, spec_set=True)
+        services = _ApplicationServicesStub(plugin_apps=plugin_apps)
         tenant = _tenant()
         user = _user()
         mock_payload = MagicMock()
         mock_payload.app_id = "app-123"
 
         # Act
-        raw_post = _extract_raw_post(PluginFetchAppInfoApi)
-        result = raw_post(api_instance, user_model=user, tenant_model=tenant, payload=mock_payload)
+        with (
+            patch.object(plugin_module, "application_services", return_value=services),
+            patch.object(
+                plugin_apps,
+                "fetch_app_info",
+                return_value={"app_name": "My App", "mode": "chat"},
+            ) as fetch_app_info,
+        ):
+            raw_post = _extract_raw_post(PluginFetchAppInfoApi)
+            result = raw_post(api_instance, user_model=user, tenant_model=tenant, payload=mock_payload)
 
         # Assert
-        mock_invocation.fetch_app_info.assert_called_once_with("app-123", "tenant-id")
+        fetch_app_info.assert_called_once_with("app-123", "tenant-id")
         assert result["data"] == {"app_name": "My App", "mode": "chat"}

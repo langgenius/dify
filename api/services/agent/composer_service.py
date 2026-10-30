@@ -33,6 +33,7 @@ from models.agent_config_entities import (
     effective_declared_outputs as _effective_declared_outputs,
 )
 from models.workflow import Workflow
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.dsl_entities import make_portable_agent_soul
@@ -65,6 +66,7 @@ from services.entities.agent_entities import (
     ComposerVariant,
     WorkflowNodeJobConfig,
 )
+from services.file_reference_parser import added_trusted_upload_file_ids
 from services.skill_management_service import SkillManagementService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
@@ -80,6 +82,30 @@ _PUBLISH_SAVE_STRATEGIES = frozenset(
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _image_upload_file_id(*, icon_type: object, icon: str | None) -> str | None:
+    icon_type_value = getattr(icon_type, "value", icon_type)
+    return icon if icon_type_value == AgentIconType.IMAGE.value and icon else None
+
+
+def _lock_added_agent_upload_files(
+    *,
+    session: Session,
+    tenant_id: str,
+    previous: object = None,
+    current: object = None,
+    image_icon_id: str | None = None,
+) -> None:
+    file_ids = added_trusted_upload_file_ids(previous=previous, current=current)
+    if image_icon_id:
+        file_ids.add(image_icon_id)
+    if file_ids:
+        lock_and_validate_owned_upload_files_in_session(
+            session,
+            tenant_id=tenant_id,
+            upload_file_ids=tuple(file_ids),
+        )
 
 
 def _backfill_cli_tool_ids(agent_soul: AgentSoulConfig | None) -> None:
@@ -128,7 +154,10 @@ class AgentComposerService:
     ) -> dict[str, Any]:
         workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
         binding = cls._get_workflow_binding(
-            session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id
+            session=session,
+            tenant_id=tenant_id,
+            workflow_id=workflow.id,
+            node_id=node_id,
         )
         if not binding:
             if snapshot_id:
@@ -207,8 +236,13 @@ class AgentComposerService:
             cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=payload.agent_soul)
         workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
         binding = cls._get_workflow_binding(
-            session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id
+            session=session,
+            tenant_id=tenant_id,
+            workflow_id=workflow.id,
+            node_id=node_id,
+            for_update=True,
         )
+        previous_node_job = binding.node_job_config_dict if binding is not None else None
         retirement_candidates = (
             {binding.agent_id}
             if binding is not None
@@ -262,6 +296,16 @@ class AgentComposerService:
                     payload=payload,
                 )
 
+        added_node_job_file_ids = added_trusted_upload_file_ids(
+            previous=previous_node_job,
+            current=binding.node_job_config_dict,
+        )
+        if added_node_job_file_ids:
+            lock_and_validate_owned_upload_files_in_session(
+                session,
+                tenant_id=tenant_id,
+                upload_file_ids=tuple(added_node_job_file_ids),
+            )
         session.flush()
         agent = cls._get_agent_if_present(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
         version_id = (
@@ -786,6 +830,8 @@ class AgentComposerService:
         )
         if build_draft is not None and not force:
             return cls._serialize_build_draft_state(build_draft), None
+        if build_draft is not None:
+            session.refresh(build_draft, with_for_update=True)
         retired_binding_id: str | None = None
         if build_draft is not None and build_draft.agent_workspace_binding_id is not None:
             cls._validate_active_build_draft_binding(
@@ -802,6 +848,7 @@ class AgentComposerService:
             if retired_binding_id is None:
                 raise AgentBuildSandboxNotFoundError()
             build_draft.agent_workspace_binding_id = None
+        build_soul = AgentSoulConfig.model_validate(normal_draft.config_snapshot_dict)
         if build_draft is None:
             build_draft = AgentConfigDraft(
                 tenant_id=tenant_id,
@@ -810,11 +857,22 @@ class AgentComposerService:
                 account_id=account_id,
                 draft_owner_key=account_id,
                 created_by=account_id,
+                config_snapshot=build_soul,
             )
             session.add(build_draft)
+            session.flush()
+            previous_payload: object = None
+        else:
+            previous_payload = build_draft.config_snapshot_dict
+        _lock_added_agent_upload_files(
+            session=session,
+            tenant_id=tenant_id,
+            previous=previous_payload,
+            current=build_soul.model_dump(mode="json"),
+        )
         build_draft.base_snapshot_id = normal_draft.base_snapshot_id
         build_draft.home_snapshot_id = normal_draft.home_snapshot_id
-        build_draft.config_snapshot = AgentSoulConfig.model_validate(normal_draft.config_snapshot_dict)
+        build_draft.config_snapshot = build_soul
         build_draft.updated_by = account_id
         session.flush()
         return cls._serialize_build_draft_state(build_draft), retired_binding_id
@@ -1449,6 +1507,8 @@ class AgentComposerService:
                     account_id=None,
                 )
                 if normal_draft is not None and cls._rebase_workflow_only_normal_draft(
+                    session=session,
+                    tenant_id=tenant_id,
                     agent=agent,
                     draft=normal_draft,
                     snapshot=version,
@@ -1599,6 +1659,7 @@ class AgentComposerService:
             operation=AgentConfigRevisionOperation.SAVE_NEW_VERSION,
             version_note=payload.version_note,
             home_snapshot_id=current_snapshot.home_snapshot_id,
+            previous_snapshot_id=current_snapshot.id,
         )
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
         agent.active_config_snapshot_id = version.id
@@ -1779,6 +1840,11 @@ class AgentComposerService:
         )
         session.add(agent)
         session.flush()
+        _lock_added_agent_upload_files(
+            session=session,
+            tenant_id=tenant_id,
+            image_icon_id=_image_upload_file_id(icon_type=icon_type, icon=icon),
+        )
         version = cls._create_config_version(
             session=session,
             tenant_id=tenant_id,
@@ -1888,6 +1954,17 @@ class AgentComposerService:
         )
         session.add(version)
         session.flush()
+        previous_payload: object = None
+        if previous_snapshot_id is not None:
+            previous_snapshot = session.get(AgentConfigSnapshot, previous_snapshot_id)
+            if previous_snapshot is not None:
+                previous_payload = previous_snapshot.config_snapshot_dict
+        _lock_added_agent_upload_files(
+            session=session,
+            tenant_id=tenant_id,
+            previous=previous_payload,
+            current=agent_soul.model_dump(mode="json"),
+        )
         revision = AgentConfigRevision(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -2005,6 +2082,8 @@ class AgentComposerService:
     @staticmethod
     def _rebase_workflow_only_normal_draft(
         *,
+        session: Session,
+        tenant_id: str,
         agent: Agent,
         draft: AgentConfigDraft,
         snapshot: AgentConfigSnapshot,
@@ -2021,9 +2100,17 @@ class AgentComposerService:
             or snapshot.id != agent.active_config_snapshot_id
         ):
             return False
+        session.refresh(draft, with_for_update=True)
+        rebased_soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+        _lock_added_agent_upload_files(
+            session=session,
+            tenant_id=tenant_id,
+            previous=draft.config_snapshot_dict,
+            current=rebased_soul.model_dump(mode="json"),
+        )
         draft.base_snapshot_id = snapshot.id
         draft.home_snapshot_id = snapshot.home_snapshot_id
-        draft.config_snapshot = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+        draft.config_snapshot = rebased_soul
         draft.updated_by = updated_by
         return True
 
@@ -2065,6 +2152,8 @@ class AgentComposerService:
                 if active_snapshot is None:
                     raise AgentVersionNotFoundError()
                 if cls._rebase_workflow_only_normal_draft(
+                    session=session,
+                    tenant_id=tenant_id,
                     agent=agent,
                     draft=draft,
                     snapshot=active_snapshot,
@@ -2118,6 +2207,13 @@ class AgentComposerService:
             account_id=account_id,
             created_by=account_id_for_audit,
         )
+        session.refresh(draft, with_for_update=True)
+        _lock_added_agent_upload_files(
+            session=session,
+            tenant_id=tenant_id,
+            previous=draft.config_snapshot_dict,
+            current=agent_soul.model_dump(mode="json"),
+        )
         draft.config_snapshot = agent_soul
         if base_snapshot_id is not None:
             draft.base_snapshot_id = base_snapshot_id
@@ -2170,13 +2266,19 @@ class AgentComposerService:
 
     @classmethod
     def _get_workflow_binding(
-        cls, *, session: Session, tenant_id: str, workflow_id: str, node_id: str
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        workflow_id: str,
+        node_id: str,
+        for_update: bool = False,
     ) -> WorkflowAgentNodeBinding | None:
         # Composer always operates against the draft workflow row, so this lookup
         # is scoped to ``workflow_version="draft"``. Published bindings are
         # materialized by WorkflowAgentPublishService.copy_agent_node_bindings_to_published
         # and are not edited through the Composer.
-        return session.scalar(
+        statement = (
             select(WorkflowAgentNodeBinding)
             .where(
                 WorkflowAgentNodeBinding.tenant_id == tenant_id,
@@ -2186,6 +2288,9 @@ class AgentComposerService:
             )
             .limit(1)
         )
+        if for_update:
+            statement = statement.with_for_update().execution_options(populate_existing=True)
+        return session.scalar(statement)
 
     @classmethod
     def _require_binding(cls, binding: WorkflowAgentNodeBinding | None) -> WorkflowAgentNodeBinding:

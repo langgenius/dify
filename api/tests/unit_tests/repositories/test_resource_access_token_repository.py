@@ -402,3 +402,21 @@ def test_cleanup_cannot_delete_another_workspaces_token(
         )
     assert sqlite_session.get(ResourceAccessToken, created.token_id) is not None
     assert sqlite_session.get(ResourceAccessTokenRelation, created.rows[0].relation_id) is not None
+
+
+def test_orphan_token_cannot_authenticate(sqlite_session: Session, service: ResourceAccessTokenService) -> None:
+    from services.auth.resource_access_token_contracts import ResourceAccessTokenInvalidError
+
+    tenant, owner = _workspace(sqlite_session)
+    token = ResourceAccessToken(
+        tenant_id=tenant.id,
+        name="orphaned credential",
+        created_by=owner.id,
+        token=f"sk-{uuid4()}",
+        track_id=uuid4().hex,
+    )
+    sqlite_session.add(token)
+    sqlite_session.commit()
+
+    with pytest.raises(ResourceAccessTokenInvalidError):
+        service.authenticate(token.token)

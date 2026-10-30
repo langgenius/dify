@@ -16,9 +16,10 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorage
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun, WorkflowRunArchiveBundle, WorkflowType
 from services.retention.workflow_run.archive_paid_plan_workflow_run import (
     ArchiveResult,

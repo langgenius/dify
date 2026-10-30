@@ -24,6 +24,7 @@ from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from graphon.nodes.tool.exc import ToolRuntimeInvocationError
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
 from graphon.runtime import VariablePool
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 
@@ -47,7 +48,9 @@ def runtime(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> DifyToolN
         call_depth=0,
     )
     session_maker = sessionmaker(sqlite_engine, expire_on_commit=False)
-    return DifyToolNodeRuntime(init_params.run_context, session_maker=session_maker)
+    return DifyToolNodeRuntime(
+        init_params.run_context, session_maker=session_maker, knowledge_retrieval=make_knowledge_retriever()
+    )
 
 
 def _build_tool_node_data() -> ToolNodeData:

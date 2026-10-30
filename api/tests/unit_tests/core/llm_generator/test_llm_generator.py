@@ -20,12 +20,13 @@ from core.model_context import get_credit_usage_metadata
 from core.model_manager import ModelManager
 from core.plugin.impl.base import _get_plugin_daemon_request_timeout
 from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import ConversationFromSource
 from models.model import App, AppMode, Message
 from models.workflow import (
     Workflow,

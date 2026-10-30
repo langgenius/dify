@@ -54,6 +54,7 @@ from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapt
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
+from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from core.workflow.workflow_tool_node import DifyWorkflowToolNode
@@ -77,11 +78,13 @@ from graphon.nodes.question_classifier.entities import QuestionClassifierNodeDat
 from graphon.nodes.tool.entities import ToolProviderType
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
+from services.file_service import UploadFileCreator
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
     from core.tools.workflow_as_tool.tool import WorkflowTool
     from graphon.runtime import InitParams, RuntimeState
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 LATEST_VERSION = "latest"
 _START_NODE_TYPES: frozenset[NodeType] = frozenset(
@@ -102,6 +105,8 @@ class DifyGraphInitContext:
     graph_config: Mapping[str, Any]
     run_context: Mapping[str, Any]
     call_depth: int
+    knowledge_retrieval: "KnowledgeRetriever"
+    knowledge_index_files: UploadFileCreator
     execution_driver: "WorkflowRunDriver | None" = None
 
     def to_graph_init_params(self) -> "InitParams":
@@ -320,12 +325,14 @@ class DifyNodeFactory(NodeFactory):
         use_workflow_tool_containers: bool = True,
         workflow_tools: dict[str, "WorkflowTool"] | None = None,
     ) -> "DifyNodeFactory":
-        """Bridge Dify's explicit init context into the current `graphon` API."""
+        """Construct the node factory from the graph's explicit runtime dependencies."""
         return cls(
             init_params=graph_init_context.to_graph_init_params(),
             runtime_state=runtime_state,
             human_input_run_context=human_input_run_context,
             use_workflow_tool_containers=use_workflow_tool_containers,
+            knowledge_retrieval=graph_init_context.knowledge_retrieval,
+            knowledge_index_files=graph_init_context.knowledge_index_files,
             execution_driver=graph_init_context.execution_driver,
             workflow_tools=workflow_tools,
         )
@@ -334,6 +341,8 @@ class DifyNodeFactory(NodeFactory):
         self,
         init_params: "InitParams",
         runtime_state: "RuntimeState",
+        knowledge_retrieval: "KnowledgeRetriever",
+        knowledge_index_files: UploadFileCreator,
         human_input_run_context: Mapping[str, Any] | DifyRunContext | None = None,
         use_workflow_tool_containers: bool = True,
         workflow_tools: dict[str, "WorkflowTool"] | None = None,
@@ -341,6 +350,8 @@ class DifyNodeFactory(NodeFactory):
     ) -> None:
         self.init_params = init_params
         self.runtime_state = runtime_state
+        self._knowledge_retrieval = knowledge_retrieval
+        self._knowledge_index_files = knowledge_index_files
         self._dify_context = self._resolve_dify_context(init_params.run_context)
         self._use_workflow_tool_containers = use_workflow_tool_containers
         self._execution_driver = execution_driver
@@ -392,7 +403,10 @@ class DifyNodeFactory(NodeFactory):
         )
         self.workflow_tools = workflow_tools if workflow_tools is not None else {}
         self._tool_runtime = DifyToolNodeRuntime(
-            self._dify_context, execution_driver=execution_driver, workflow_tools=self.workflow_tools
+            self._dify_context,
+            knowledge_retrieval=knowledge_retrieval,
+            execution_driver=execution_driver,
+            workflow_tools=self.workflow_tools,
         )
         self._http_request_file_manager = file_manager
         self._document_extractor_unstructured_api_config = UnstructuredApiConfig(
@@ -420,6 +434,8 @@ class DifyNodeFactory(NodeFactory):
         return DifyNodeFactory(
             init_params=self.init_params,
             runtime_state=runtime_state,
+            knowledge_retrieval=self._knowledge_retrieval,
+            knowledge_index_files=self._knowledge_index_files,
             human_input_run_context=self._human_input_run_context,
             use_workflow_tool_containers=self._use_workflow_tool_containers,
             workflow_tools=self.workflow_tools,
@@ -435,6 +451,14 @@ class DifyNodeFactory(NodeFactory):
     @property
     def execution_driver(self) -> "WorkflowRunDriver | None":
         return self._execution_driver
+
+    @property
+    def knowledge_retrieval(self) -> "KnowledgeRetriever":
+        return self._knowledge_retrieval
+
+    @property
+    def knowledge_index_files(self) -> UploadFileCreator:
+        return self._knowledge_index_files
 
     @property
     def human_input_run_context(self) -> DifyRunContext:
@@ -510,6 +534,12 @@ class DifyNodeFactory(NodeFactory):
             BuiltinNodeTypes.DOCUMENT_EXTRACTOR: lambda: {
                 "unstructured_api_config": self._document_extractor_unstructured_api_config,
                 "http_client": self._remote_file_http_client,
+            },
+            BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: lambda: {
+                "retrieval": self._knowledge_retrieval,
+            },
+            KNOWLEDGE_INDEX_NODE_TYPE: lambda: {
+                "files": self._knowledge_index_files,
             },
             BuiltinNodeTypes.QUESTION_CLASSIFIER: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,

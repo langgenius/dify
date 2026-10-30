@@ -16,12 +16,13 @@ from core.workflow.human_input_adapter import DeliveryMethodType
 from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import storage
 from graphon.entities import WorkflowExecution
 from graphon.entities.pause_reason import HitlRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.human_input import (
     BackstageRecipientPayload,
     HumanInputDelivery,

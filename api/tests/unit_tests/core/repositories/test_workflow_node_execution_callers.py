@@ -8,7 +8,6 @@ from kombu.serialization import dumps, loads
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
-from core.repositories.factory import WorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_execution import WorkflowNodeExecution
 from extensions.logstore.aliyun_logstore import AliyunLogStore
@@ -18,7 +17,9 @@ from extensions.logstore.repositories.logstore_workflow_node_execution_repositor
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
-from repositories.factory import DifyAPIRepositoryFactory
+from repositories.workflow.factory import WorkflowRepositoryFactory
+from services.file_adapters import build_file_service
+from services.workflow.persistence import WorkflowNodeExecutionRepository
 from tasks.workflow_node_execution_tasks import save_workflow_node_execution_task
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account, make_upload_file
@@ -30,8 +31,14 @@ def test_caller_locators_survive_storage_round_trip_and_updates(
 ) -> None:
     apply_config_overrides(monkeypatch, LOGSTORE_DUAL_WRITE_ENABLED=False)
     logstore_records: list[dict[str, str]] = []
+    files = build_file_service(session_factory=sqlite_session_factory)
     sql = SQLAlchemyWorkflowNodeExecutionRepository(
-        sqlite_session_factory, "tenant", make_account(), "source-app", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+        sqlite_session_factory,
+        "tenant",
+        make_account(),
+        "source-app",
+        WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+        files,
     )
     execution = WorkflowNodeExecution(
         id=str(uuid4()),
@@ -60,6 +67,7 @@ def test_caller_locators_survive_storage_round_trip_and_updates(
             make_account(),
             "source-app",
             WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+            files,
         )
     elif backend == "logstore":
         monkeypatch.setattr(AliyunLogStore, "_instance", None)
@@ -77,6 +85,7 @@ def test_caller_locators_survive_storage_round_trip_and_updates(
             make_account(),
             "source-app",
             WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+            files,
         )
     else:
         repository = sql
@@ -99,7 +108,7 @@ def test_caller_locators_survive_storage_round_trip_and_updates(
                 "LogstoreAPIWorkflowNodeExecutionRepository"
             ),
         )
-        api_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sqlite_session_factory)
+        api_repository = WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(sqlite_session_factory)
         model = api_repository.get_execution_by_id(execution.id, "tenant")
     else:
         restored = sql.get_by_workflow_execution("root-run")[0]
@@ -124,7 +133,12 @@ def test_sql_offload_preserves_caller_locators(
         monkeypatch, WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE=32, WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH=8
     )
     repository = SQLAlchemyWorkflowNodeExecutionRepository(
-        sqlite_session_factory, "tenant", make_account(), "source-app", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
+        sqlite_session_factory,
+        "tenant",
+        make_account(),
+        "source-app",
+        WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+        build_file_service(session_factory=sqlite_session_factory),
     )
     stored_content: dict[str, bytes] = {}
 
@@ -135,7 +149,7 @@ def test_sql_offload_preserves_caller_locators(
         stored_content[file.key] = content
         return file
 
-    monkeypatch.setattr(repository._file_service, "upload_file", upload_file)
+    monkeypatch.setattr(repository._files, "upload_file", upload_file)
     monkeypatch.setattr(
         "core.repositories.sqlalchemy_workflow_node_execution_repository.storage.load", stored_content.__getitem__
     )

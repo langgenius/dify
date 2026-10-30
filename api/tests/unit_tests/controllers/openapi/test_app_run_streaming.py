@@ -8,7 +8,7 @@ import uuid
 from dataclasses import replace
 from io import BytesIO
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 from flask import Flask
@@ -31,21 +31,40 @@ from controllers.openapi._models import (
 from controllers.openapi.app_run import AdvancedChatRunApi, AppRunTaskStopApi, ChatRunApi, CompletionRunApi
 from controllers.openapi.auth.subjects import Subject, subject_from_auth
 from core.app.entities.app_invoke_entities import InvokeFrom
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import ApplicationServices
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from graphon.file import FileType
 from libs.oauth_bearer import AuthContext
-from models import Account
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models import Account, Tenant
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser, UploadFile
 from models.workflow import WorkflowRun
+from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskControlService
+from services.entities.upload_file import FileUploadActor
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from tests.unit_tests.model_factories import make_upload_file
 from tests.unit_tests.services.test_app_task_service import _StopRedis
 
 _TEST_APP_ID = str(uuid.uuid4())
 _TEST_TENANT_ID = str(uuid.uuid4())
 _TEST_ACCOUNT_ID = str(uuid.uuid4())
+
+
+@pytest.fixture
+def knowledge_retrieval(
+    monkeypatch: pytest.MonkeyPatch,
+    account_application_services: ApplicationServices,
+) -> KnowledgeRetriever:
+    port = create_autospec(KnowledgeRetriever, instance=True, spec_set=True)
+    services = replace(
+        account_application_services,
+        knowledge=replace(account_application_services.knowledge, retrieval=port),
+        app_generation=AppGenerateService(knowledge_retrieval=port),
+    )
+    monkeypatch.setattr(app_run, "application_services", lambda: services)
+    return port
 
 
 def _make_app() -> App:
@@ -187,26 +206,29 @@ class _SealableContext:
 
 def _generate_stub(monkeypatch: pytest.MonkeyPatch, chunks: list[str]) -> Mock:
     generate_mock = Mock(return_value=iter(chunks))
-
-    class GenerateService:
-        generate = generate_mock
-
-    monkeypatch.setattr(sys.modules["controllers.openapi.app_run"], "AppGenerateService", GenerateService)
+    monkeypatch.setattr(app_run.application_services().app_generation, "generate", generate_mock)
     return generate_mock
 
 
 def _ctx(mode: AppMode, session: Session | Mock | None = None) -> _SealableContext:
     app_model = _make_app()
     app_model.mode = mode
+    workspace = Tenant(name="OpenAPI workspace")
+    workspace.id = _TEST_TENANT_ID
     return _SealableContext(
         app=app_model,
         caller=_make_account(),
         session=session or Session(),
         subject=_subject(),
+        workspace=workspace,
     )
 
 
-def test_run_reads_everything_off_the_context_before_streaming(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_run_reads_everything_off_the_context_before_streaming(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    knowledge_retrieval: KnowledgeRetriever,
+):
     generate_mock = _generate_stub(monkeypatch, ["event: a\n\n", "event: b\n\n"])
     session = Mock()
     ctx = _ctx(AppMode.ADVANCED_CHAT, session)
@@ -219,10 +241,16 @@ def test_run_reads_everything_off_the_context_before_streaming(app: Flask, monke
 
     assert body == "event: a\n\nevent: b\n\n"
     assert generate_mock.call_args.kwargs["streaming"] is True
+    assert app_run.application_services().knowledge.retrieval is knowledge_retrieval
+    assert "knowledge_retrieval" not in generate_mock.call_args.kwargs
     session.commit.assert_not_called()
 
 
-def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_per_mode_route_refuses_an_app_of_another_mode(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    knowledge_retrieval: KnowledgeRetriever,
+):
     generate_mock = _generate_stub(monkeypatch, [])
     api = ChatRunApi()
     body = ChatRunPayload(inputs={}, query="hi")
@@ -233,7 +261,10 @@ def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: 
 
 
 def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    knowledge_retrieval: KnowledgeRetriever,
 ):
     generate_mock = _generate_stub(monkeypatch, [])
     upload_service = Mock()
@@ -241,8 +272,12 @@ def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(
     sqlite_session.begin()
     event.listen(sqlite_session, "after_commit", lambda _session: operations.append("commit"))
 
-    def upload_file(*, filename: str, content: bytes, mimetype: str, user: Account) -> UploadFile:
+    def upload_file(
+        *, filename: str, content: bytes, mimetype: str, actor: FileUploadActor, tenant_id: str
+    ) -> UploadFile:
         assert not sqlite_session.in_transaction()
+        assert actor == FileUploadActor(id=_TEST_ACCOUNT_ID, creator_role=CreatorUserRole.ACCOUNT)
+        assert tenant_id == _TEST_TENANT_ID
         operations.append("upload")
         return make_upload_file(
             file_id=f"uf-{filename}",
@@ -274,13 +309,19 @@ def test_run_hands_the_generator_file_mappings_for_inputs_and_attachments(
     assert args["files"] == [{"transfer_method": "local_file", "upload_file_id": "uf-p.jpg", "type": FileType.IMAGE}]
     assert args["query"] == ""
     assert {"attachments", "auto_generate_name"}.isdisjoint(args)
+    assert app_run.application_services().knowledge.retrieval is knowledge_retrieval
+    assert "knowledge_retrieval" not in generate_mock.call_args.kwargs
 
 
-def test_chat_route_hints_the_reply_on_message_end(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_chat_route_hints_the_reply_on_message_end(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    knowledge_retrieval: KnowledgeRetriever,
+):
     message = 'data: {"event": "message", "answer": "hi"}\n\n'
     end = {"event": "message_end", "conversation_id": "c1", "message_id": "m1", "created_at": 1, "id": "m1"}
     end["task_id"] = "t1"
-    _generate_stub(monkeypatch, [message, f"data: {json.dumps(end)}\n\n"])
+    generate_mock = _generate_stub(monkeypatch, [message, f"data: {json.dumps(end)}\n\n"])
     api = ChatRunApi()
     body = ChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
@@ -294,16 +335,24 @@ def test_chat_route_hints_the_reply_on_message_end(app: Flask, monkeypatch: pyte
             "input": {"app_id": _TEST_APP_ID, "conversation_id": "c1", "query": None, "inputs": {}},
         }
     ]
+    assert app_run.application_services().knowledge.retrieval is knowledge_retrieval
+    assert "knowledge_retrieval" not in generate_mock.call_args.kwargs
 
 
-def test_chat_route_passes_a_message_end_without_conversation_through(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_chat_route_passes_a_message_end_without_conversation_through(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    knowledge_retrieval: KnowledgeRetriever,
+):
     end = 'data: {"event": "message_end", "message_id": "m1", "created_at": 1, "id": "m1", "task_id": "t1"}\n\n'
-    _generate_stub(monkeypatch, [end])
+    generate_mock = _generate_stub(monkeypatch, [end])
     api = ChatRunApi()
     body = ChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
         response = api.post.__handler__(api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body)
         assert list(response.response) == [end]
+    assert app_run.application_services().knowledge.retrieval is knowledge_retrieval
+    assert "knowledge_retrieval" not in generate_mock.call_args.kwargs
 
 
 def test_draft_runs_do_not_hint_the_form_submit_op() -> None:

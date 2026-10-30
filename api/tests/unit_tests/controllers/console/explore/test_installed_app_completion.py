@@ -24,6 +24,7 @@ from tests.unit_tests.controllers.console.explore.test_installed_app_admission i
     _set_app_mode,
     harness,
 )
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 __all__ = ["harness"]
 
@@ -404,11 +405,15 @@ def test_resource_removed_after_admission_is_revalidated_before_generation(
             session.delete(resource)
 
     harness.state.permission_action = delete_resource
+    app_generation = AppGenerateService(knowledge_retrieval=make_knowledge_retriever())
     services = _Services(
         installed_apps=_InstalledAppServices(
             generation=InstalledAppGenerationService(
                 usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
-                runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
+                runtime=AppGenerateServiceRuntime(
+                    session_factory=sqlite_session_factory,
+                    app_generation=app_generation,
+                ),
             )
         )
     )
@@ -417,7 +422,7 @@ def test_resource_removed_after_admission_is_revalidated_before_generation(
     def generate(**_kwargs: object) -> GenerationResponse:
         pytest.fail("Removed app or installation must be rejected before generation")
 
-    monkeypatch.setattr(AppGenerateService, "generate", generate)
+    monkeypatch.setattr(app_generation, "generate", generate)
 
     response = harness.app.test_client().post(_url(harness), json={"inputs": {}})
 

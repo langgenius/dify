@@ -5,10 +5,12 @@ from unittest.mock import MagicMock, create_autospec, patch
 from uuid import UUID
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.rbac import DatasetByDocument, DatasetId, RBACPermission
+from controllers.console import bp as console_blueprint
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets import datasets_document as controller
 from controllers.console.datasets.datasets_document import (
@@ -26,7 +28,6 @@ from controllers.console.datasets.datasets_document import (
     DocumentMetadataUpdatePayload,
     DocumentPauseApi,
     DocumentPipelineExecutionLogApi,
-    DocumentProcessingApi,
     DocumentRecoverApi,
     DocumentRenameApi,
     DocumentRenamePayload,
@@ -54,10 +55,10 @@ from services.knowledge.documents.application import (
     DocumentArchivedError,
     DocumentIndexingStateError,
     DocumentInvalidActionError,
-    DocumentListFilter,
     DocumentNotFoundError,
     DocumentProviderError,
 )
+from services.knowledge.documents.contracts import DocumentListFilter
 from services.knowledge.indexing.estimate import (
     EstimateDocumentAlreadyFinishedError,
     EstimateDocumentNotFoundError,
@@ -82,6 +83,24 @@ def documents(monkeypatch):
     )
     monkeypatch.setattr(controller, "check_knowledge_rate_limit", lambda: None)
     return documents
+
+
+def test_document_processing_only_registers_static_handlers() -> None:
+    route_app = Flask(__name__)
+    route_app.register_blueprint(console_blueprint)
+    adapter = route_app.url_map.bind("")
+    base_path = f"/console/api/datasets/{DS}/documents/{DOC}/processing"
+
+    for action, expected_endpoint in (
+        ("pause", "console.console_document_pause_api"),
+        ("resume", "console.console_document_recover_api"),
+    ):
+        endpoint, values = adapter.match(f"{base_path}/{action}", method="PATCH")
+        assert endpoint == expected_endpoint
+        assert values == {"dataset_id": DS, "document_id": DOC}
+
+    with pytest.raises(NotFound):
+        adapter.match(f"{base_path}/invalid", method="PATCH")
 
 
 def test_process_rule_authorizes_document_dataset_before_read(app, documents):
@@ -168,12 +187,6 @@ def test_default_process_rule_does_not_require_dataset_permission(app, documents
             DocumentBatchDownloadZipApi.post,
             lambda service: service.build_download_zip,
             {"dataset_id": DS},
-        ),
-        (
-            DocumentProcessingApi,
-            DocumentProcessingApi.patch,
-            lambda service: service.update_processing,
-            {"dataset_id": DS, "document_id": DOC, "action": "pause"},
         ),
         (
             DocumentMetadataApi,
@@ -279,6 +292,8 @@ def test_document_detail_metadata_projection_and_raw_source(app, documents, meta
         "doc_type": "others",
         "doc_metadata": [],
         "name": "Name",
+        "enabled": True,
+        "error": "provider unavailable",
         "data_source_info": {"file_path": "/path/to/local/file"},
         "data_source_detail_dict": {},
     }
@@ -292,6 +307,8 @@ def test_document_detail_metadata_projection_and_raw_source(app, documents, meta
         assert response == {"id": str(DOC), "doc_type": "others", "doc_metadata": []}
     else:
         assert response["data_source_info"] == {"file_path": "/path/to/local/file"}
+        assert response["enabled"] is True
+        assert response["error"] == "provider unavailable"
         assert ("doc_metadata" in response) is (metadata == "all")
 
 
@@ -321,12 +338,6 @@ def test_no_content_mutations_return_empty_204(app, resource, verb, kwargs):
 @pytest.mark.parametrize(
     ("resource", "verb", "operation", "kwargs"),
     [
-        (
-            DocumentProcessingApi,
-            DocumentProcessingApi.patch,
-            lambda service: service.update_processing,
-            {"document_id": DOC, "action": "resume"},
-        ),
         (DocumentStatusApi, DocumentStatusApi.patch, lambda service: service.change_status, {"action": "disable"}),
         (
             WebsiteDocumentSyncApi,
@@ -396,6 +407,7 @@ def test_indexing_status_keeps_timestamps_counts_and_error_fields(app, documents
         ),
     }
     value["processing_started_at"] = datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC)
+    value["error"] = "provider unavailable"
     batch = resource is DocumentBatchIndexingStatusApi
     operation = documents.get_batch_indexing_status if batch else documents.get_indexing_status
     operation.return_value = {"data": [value]} if batch else value
@@ -408,6 +420,7 @@ def test_indexing_status_keeps_timestamps_counts_and_error_fields(app, documents
         )
     row = response["data"][0] if batch else response
     assert row["indexing_status"] == "paused"
+    assert row["error"] == "provider unavailable"
     assert row["processing_started_at"] == 1704067200
     assert row["completed_segments"] == 2
     assert row["total_segments"] == 3
@@ -425,7 +438,7 @@ def test_indexing_status_keeps_timestamps_counts_and_error_fields(app, documents
             DocumentProviderError("provider", kind="uninitialized"),
             ProviderNotInitializeError,
         ),
-        (controller._raise_document_action_error, DocumentInvalidActionError("invalid"), InvalidActionError),
+        (controller._raise_document_indexing_error, DocumentInvalidActionError("invalid"), InvalidActionError),
         (controller._raise_document_status_error, DocumentInvalidActionError("invalid"), InvalidActionError),
         (controller._raise_document_status_error, DocumentIndexingStateError("indexing"), DocumentIndexingError),
         (controller._raise_document_archive_error, DocumentArchivedError(), ArchivedDocumentImmutableError),

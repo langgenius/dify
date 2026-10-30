@@ -1,17 +1,20 @@
 from __future__ import annotations
 
+import logging
 import secrets
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Protocol
 
 from configs import dify_config
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums.creator import CreatorUserRole
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.account import Account
-from models.enums import CreatorUserRole
-from models.model import EndUser, UploadFile
+from models.model import EndUser
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from services.entities.upload_file import FileUploadActor, UploadFileRecord
 from services.file_service import FileService
 from services.human_input_service import FormExpiredError, FormNotFoundError, FormSubmittedError
 from services.remote_file_service import RemoteFileService, RemoteFileUploadResult
@@ -19,6 +22,8 @@ from services.remote_file_service import RemoteFileService, RemoteFileUploadResu
 HITL_UPLOAD_TOKEN_PREFIX = "hitl_upload_"
 _TOKEN_RANDOM_BYTES = 32
 _TOKEN_GENERATION_ATTEMPTS = 10
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -85,8 +90,10 @@ class HumanInputFileUploadRepository(Protocol):
         tenant_id: str,
         app_id: str,
         form_id: str,
+        recipient_id: str,
         upload_token_id: str,
         file_id: str,
+        validate_form: Callable[[HumanInputUploadFormRecord], None],
     ) -> None: ...
 
 
@@ -155,8 +162,10 @@ class HumanInputFileUploadService:
             tenant_id=context.tenant_id,
             app_id=context.app_id,
             form_id=context.form_id,
+            recipient_id=context.recipient_id,
             upload_token_id=context.upload_token_id,
             file_id=file_id,
+            validate_form=self._ensure_form_active,
         )
 
     def upload_local_file(
@@ -166,15 +175,23 @@ class HumanInputFileUploadService:
         filename: str,
         content: bytes,
         mimetype: str,
-    ) -> UploadFile:
+    ) -> UploadFileRecord:
+        actor = FileUploadActor(
+            id=context.owner.id,
+            creator_role=CreatorUserRole.ACCOUNT if isinstance(context.owner, Account) else CreatorUserRole.END_USER,
+        )
         upload_file = self._files.upload_file(
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=context.owner,
-            source=None,
+            actor=actor,
+            tenant_id=context.tenant_id,
         )
-        self.record_upload_file(context=context, file_id=upload_file.id)
+        try:
+            self.record_upload_file(context=context, file_id=upload_file.id)
+        except (InvalidUploadTokenError, FormExpiredError, FormSubmittedError):
+            self._reclaim_definite_publication_failure(context=context, file_id=upload_file.id)
+            raise
         return upload_file
 
     def upload_remote_file(
@@ -183,12 +200,35 @@ class HumanInputFileUploadService:
         context: HumanInputUploadContext,
         url: str,
     ) -> RemoteFileUploadResult:
+        actor = FileUploadActor(
+            id=context.owner.id,
+            creator_role=CreatorUserRole.ACCOUNT if isinstance(context.owner, Account) else CreatorUserRole.END_USER,
+        )
         upload_file = self._remote_files.upload_from_url(
             url=url,
-            user=context.owner,
+            actor=actor,
+            tenant_id=context.tenant_id,
         )
-        self.record_upload_file(context=context, file_id=upload_file.id)
+        try:
+            self.record_upload_file(context=context, file_id=upload_file.id)
+        except (InvalidUploadTokenError, FormExpiredError, FormSubmittedError):
+            self._reclaim_definite_publication_failure(context=context, file_id=upload_file.id)
+            raise
         return upload_file
+
+    def _reclaim_definite_publication_failure(self, *, context: HumanInputUploadContext, file_id: str) -> None:
+        """Reclaim a created file only when link publication definitely did not commit.
+
+        Repository owner/state errors are raised before the form-file link is
+        staged. Generic database errors are intentionally not handled here:
+        their commit result may be unknown, and the global liveness check must
+        not race a link that could already be durable.
+        """
+
+        try:
+            self._files.delete_file(tenant_id=context.tenant_id, file_id=file_id)
+        except Exception:
+            logger.exception("Failed to reclaim rejected HITL upload file %s", file_id)
 
     def _generate_unique_upload_token(self) -> str:
         return f"{HITL_UPLOAD_TOKEN_PREFIX}{secrets.token_urlsafe(_TOKEN_RANDOM_BYTES)}"

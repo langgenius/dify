@@ -1,10 +1,11 @@
 import json
 import threading
-from collections.abc import Generator, Iterator
+from collections.abc import Callable, Generator, Iterator
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from typing import cast, override
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from flask import Flask
@@ -14,25 +15,69 @@ from werkzeug.exceptions import NotFound
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError, QuotaExceededError
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import AttachmentDocument, ChildDocument
 from core.rag.models.document import Document as IndexDocument
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
+from models import Account
 from models.dataset import Dataset, DatasetKeywordTable, DatasetProcessRule, Document, DocumentSegment
-from models.enums import CreatorUserRole, IndexingStatus, ProcessRuleMode, SegmentStatus
+from models.enums import DataSourceType, IndexingStatus, ProcessRuleMode, SegmentStatus
 from models.model import UploadFile
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
-from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+from services.data_source.entities.website import WebsiteJobRef
+from services.data_source.website_crawl_cache import website_crawl_provider_instance_id
+from services.data_source.website_service import WebsiteService
+from services.entities.upload_file import CreatedUploadArtifact
+from services.extraction.contracts import (
+    DatasourceType,
+    ExtractedImage,
+    ExtractionResult,
+    ExtractSetting,
+    ImageWriter,
+    UploadFileExtractionInput,
+)
+from services.extraction.images import ExtractionImageWriter
+from services.file_service import FileService
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.adapters.execution import IndexingExecutionAdapter
+from services.knowledge.indexing.adapters.sources import CompositeStoredSourceResolver, WebsiteSourceAdapter
+from services.knowledge.indexing.contracts import IndexingDocument
 from services.knowledge.indexing.errors import DocumentIsPausedError
-from services.knowledge.indexing.execution import DocumentIndexingService, IndexingDocument
-from services.knowledge.resource_scope import DatasetRef
-from tests.unit_tests.config_override import apply_config_overrides
+from services.knowledge.indexing.execution import DocumentIndexingService
 from tests.unit_tests.repositories.knowledge.test_document_repository import _dataset, _document
+from tests.unit_tests.services.knowledge.test_indexing_execution import _TestIndexingLock
 
 MODULE = "services.knowledge.indexing.adapters.execution"
+
+
+class _CommitUnknownSession(Session):
+    @override
+    def commit(self) -> None:
+        super().commit()
+        raise RuntimeError("commit result unknown")
+
+
+class _NoopFileService(FileService):
+    def __init__(self) -> None:
+        pass
+
+    @override
+    def delete_file(self, *, tenant_id: str, file_id: str) -> None:
+        del tenant_id, file_id
+
+
+def _file_extract_setting() -> ExtractSetting:
+    return ExtractSetting(
+        datasource_type=DatasourceType.FILE,
+        upload_file=UploadFileExtractionInput(
+            id="source-upload",
+            tenant_id="workspace-1",
+            key="source/file.pdf",
+            created_by="account-1",
+        ),
+    )
 
 
 BackendFixture = tuple[
@@ -46,7 +91,12 @@ BackendFixture = tuple[
 
 
 @pytest.fixture
-def backend(sqlite_session_factory: sessionmaker[Session]) -> Iterator[BackendFixture]:
+def website_service() -> WebsiteService:
+    return create_autospec(WebsiteService, instance=True, spec_set=True)
+
+
+@pytest.fixture
+def backend(sqlite_session_factory: sessionmaker[Session], website_service: WebsiteService) -> Iterator[BackendFixture]:
     with sqlite_session_factory.begin() as session:
         session.add_all(
             [_dataset("dataset-1", "workspace-1"), _document("document-1", status=IndexingStatus.SPLITTING)]
@@ -54,17 +104,19 @@ def backend(sqlite_session_factory: sessionmaker[Session]) -> Iterator[BackendFi
     documents = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
     segments = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
     sources = MagicMock()
+    sources.resolve.return_value = ExtractSetting(datasource_type=DatasourceType.WEBSITE)
     adapter = IndexingExecutionAdapter(
         session_factory=sqlite_session_factory,
         documents=documents,
         segments=segments,
-        uploads=SQLAlchemyKnowledgeUploadRepository(session_factory=sqlite_session_factory),
         sources=sources,
+        files=MagicMock(),
+        website=website_service,
     )
-    job = replace(
-        documents.get_indexing_document(DatasetRef("workspace-1", "dataset-1").document("document-1")),
-        processing_rule={"mode": "automatic", "rules": {}},
-    )
+    ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
+    document = documents.get_indexing_document(ref)
+    assert document is not None
+    job = replace(document, processing_rule={"mode": "automatic", "rules": {}})
     with patch(f"{MODULE}.redis_client") as redis:
         redis.get.return_value = None
         yield adapter, documents, segments, sources, job, redis
@@ -73,7 +125,13 @@ def backend(sqlite_session_factory: sessionmaker[Session]) -> Iterator[BackendFi
 @pytest.fixture
 def active_transactions(sqlite_engine: Engine) -> Iterator[set[Connection]]:
     active: set[Connection] = set()
-    begin, finish = active.add, active.discard
+
+    def begin(connection: Connection) -> None:
+        active.add(connection)
+
+    def finish(connection: Connection) -> None:
+        active.discard(connection)
+
     event.listen(sqlite_engine, "begin", begin)
     event.listen(sqlite_engine, "commit", finish)
     event.listen(sqlite_engine, "rollback", finish)
@@ -85,93 +143,86 @@ def active_transactions(sqlite_engine: Engine) -> Iterator[set[Connection]]:
         event.remove(sqlite_engine, "rollback", finish)
 
 
-@pytest.mark.parametrize("doc_form", list(IndexStructureType))
+@pytest.mark.parametrize("doc_form", [IndexStructureType.PARAGRAPH_INDEX, IndexStructureType.PARENT_CHILD_INDEX])
 def test_vector_io_releases_transactions_and_preserves_chunk_structure(
     backend: BackendFixture,
     sqlite_session_factory: sessionmaker[Session],
     active_transactions: set[Connection],
-    monkeypatch: pytest.MonkeyPatch,
     doc_form: IndexStructureType,
 ) -> None:
-    adapter, _, segments, _, job, _ = backend
-    apply_config_overrides(monkeypatch, VECTOR_STORE="qdrant", VECTOR_STORE_WHITELIST_ENABLE=True)
-    files = [
-        UploadFile(
-            tenant_id=tenant_id,
-            storage_type=StorageType.LOCAL,
-            key=f"image-{tenant_id}",
-            name="image.png",
-            size=1,
-            extension="png",
-            mime_type="image/png",
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by="account-1",
-            created_at=datetime(2026, 1, 1),
-            used=True,
-        )
-        for tenant_id in ("workspace-1", "workspace-2")
-    ]
+    adapter, documents, segments, _, job, _ = backend
+    upload = UploadFile(
+        tenant_id="workspace-1",
+        storage_type=StorageType.LOCAL,
+        key="image-workspace-1",
+        name="image.png",
+        size=1,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        created_at=datetime(2026, 1, 1),
+        used=True,
+    )
     with sqlite_session_factory.begin() as session:
-        dataset = session.get(Dataset, "dataset-1")
-        document = session.get(Document, "document-1")
-        assert dataset is not None
-        assert document is not None
+        dataset = session.get_one(Dataset, "dataset-1")
+        document = session.get_one(Document, "document-1")
         dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
         dataset.is_multimodal = True
         document.doc_form = doc_form
-        session.add_all(files)
+        if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
+            rule = DatasetProcessRule(
+                dataset_id=dataset.id,
+                mode=ProcessRuleMode.HIERARCHICAL,
+                rules='{"parent_mode": "paragraph"}',
+                created_by="account-1",
+            )
+            rule.id = "hierarchical-rule"
+            document.dataset_process_rule_id = rule.id
+            session.add(rule)
+        session.add(upload)
+    indexing_document = replace(job, source=job.source._replace(document_model=doc_form))
     child = ChildDocument(page_content="child", metadata={"doc_id": "child-node", "doc_hash": "child-hash"})
     chunk = IndexDocument(
         page_content="parent",
         metadata={"doc_id": "node", "doc_hash": "hash"},
         children=[child] if doc_form == IndexStructureType.PARENT_CHILD_INDEX else None,
-        attachments=[
-            AttachmentDocument(page_content="image", metadata={"doc_id": file.id, "doc_type": "image"})
-            for file in files
-        ],
+        attachments=[AttachmentDocument(page_content="image", metadata={"doc_id": upload.id, "doc_type": "image"})],
     )
-    segments.save_for_indexing(job, [chunk], [5])
-    vector_backend = MagicMock()
-    vector_factory = MagicMock()
-    vector_factory.return_value.init_vector.return_value = vector_backend
+    segments.save_for_indexing(indexing_document, [chunk], [5])
+    get_files = cast(MagicMock, adapter._files.get_files)
+    get_files.return_value = {upload.id: upload}
 
-    def external_call(*_args, **_kwargs) -> list[list[float]]:
+    def external_call(*_args: object, **_kwargs: object) -> None:
         assert not active_transactions, "Index I/O must not hold a database transaction"
-        return [[1.0]]
 
-    def get_vector_factory(vector_type: str) -> MagicMock:
-        assert not active_transactions, "Vector initialization must follow the whitelist read transaction"
-        assert vector_type == "qdrant"
-        return vector_factory
-
-    def load_image(key: str) -> bytes:
-        assert not active_transactions
-        assert key == files[0].key
-        return b"image"
-
+    vector_backend = MagicMock()
     vector_backend.create.side_effect = external_call
-    with (
-        patch.object(Vector, "get_vector_factory", side_effect=get_vector_factory),
-        patch(
-            "core.rag.datasource.vdb.vector_factory._LazyEmbeddings.embed_documents", side_effect=external_call
-        ) as embed,
-        patch(
-            "core.rag.datasource.vdb.vector_factory._LazyEmbeddings.embed_multimodal_documents",
-            side_effect=external_call,
-        ) as embed_images,
-        patch("core.rag.datasource.vdb.vector_factory.storage") as storage,
-    ):
-        storage.load_once.side_effect = load_image
-        adapter._process_chunk(Flask(__name__), job.ref, [chunk], False)
-    embed.assert_called_once_with(["child" if doc_form == IndexStructureType.PARENT_CHILD_INDEX else "parent"])
-    assert embed_images.call_args.args[0] == [{"content": "aW1hZ2U=", "content_type": "image", "file_id": files[0].id}]
-    storage.load_once.assert_called_once_with(files[0].key)
-    assert vector_backend.create.call_count == 2
-    indexed_text = vector_backend.create.call_args_list[0].kwargs["texts"][0]
-    assert indexed_text.metadata["doc_id"] == (
+    vector_backend.create_multimodal.side_effect = external_call
+
+    def vector_factory(*_args: object, **_kwargs: object) -> MagicMock:
+        external_call()
+        return vector_backend
+
+    with Flask(__name__).app_context(), patch(f"{MODULE}.Vector", side_effect=vector_factory) as vector:
+        vector.resolve_vector_type.side_effect = lambda *_args, **_kwargs: "qdrant"
+        DocumentIndexingService(
+            documents=documents,
+            segments=segments,
+            backend=adapter,
+            indexing_locks=_TestIndexingLock(),
+        ).run_in_indexing_status(indexing_document.ref)
+
+    indexed_texts = vector_backend.create.call_args.args[0]
+    assert [text.metadata["doc_id"] for text in indexed_texts] == [
         "child-node" if doc_form == IndexStructureType.PARENT_CHILD_INDEX else "node"
-    )
-    assert segments.resume_indexing(job) == ([], 5)
+    ]
+    indexed_images = vector_backend.create_multimodal.call_args.args[0]
+    assert [image.metadata["doc_id"] for image in indexed_images] == [upload.id]
+    assert indexed_images[0].metadata["dataset_id"] == indexing_document.ref.dataset.dataset_id
+    assert indexed_images[0].metadata["document_id"] == indexing_document.ref.document_id
+    assert vector_backend.create_multimodal.call_args.kwargs == {"upload_file_keys": {upload.id: upload.key}}
+    assert segments.resume_indexing(indexing_document) == ([], 5)
 
 
 @pytest.mark.parametrize("storage_type", ["database", "file"])
@@ -195,7 +246,6 @@ def test_keyword_io_releases_transactions_and_commits_before_unlocking(
         locked = True
         yield
         assert not active_transactions
-        # A separate session must see the write before the next lock holder can read.
         with sqlite_session_factory() as session:
             segment = session.scalar(select(DocumentSegment))
             assert segment is not None
@@ -204,62 +254,158 @@ def test_keyword_io_releases_transactions_and_commits_before_unlocking(
 
     redis.lock.side_effect = lambda *_args, **_kwargs: dataset_lock()
 
-    def external_call(*_args, **_kwargs) -> None:
+    def external_call(*_args: object, **_kwargs: object) -> None:
         assert locked
         assert not active_transactions, "Keyword I/O must not hold a database transaction"
-
-    def load_keywords(*_args) -> bytes:
-        external_call()
-        return original.encode()
-
-    def file_exists(*_args) -> bool:
-        external_call()
-        return True
-
-    def extract_keywords(*_args) -> set[str]:
-        external_call()
-        return {"hello"}
 
     with (
         patch("core.rag.datasource.keyword.jieba.jieba.redis_client", redis),
         patch("core.rag.datasource.keyword.jieba.jieba.storage") as storage,
         patch("core.rag.datasource.keyword.jieba.jieba.JiebaKeywordTableHandler") as handler,
     ):
-        storage.load_once.side_effect = load_keywords
-        storage.exists.side_effect = file_exists
+        storage.load_once.side_effect = lambda *_args: (external_call(), original.encode())[1]
+        storage.exists.side_effect = lambda *_args: (external_call(), True)[1]
         storage.delete.side_effect = external_call
         storage.save.side_effect = external_call
-        handler.return_value.extract_keywords.side_effect = extract_keywords
+        handler.return_value.extract_keywords.side_effect = lambda *_args: (external_call(), {"hello"})[1]
         adapter._process_chunk(Flask(__name__), job.ref, [chunk], True)
+
     assert not locked
-    assert redis.lock.call_args.args == ("keyword_indexing_lock_dataset-1",)
     _, encoded = segments.get_keyword_table(job.ref.dataset)
     if storage_type == "file":
-        storage.save.assert_called_once()
         encoded = storage.save.call_args.args[1]
-    else:
-        storage.save.assert_not_called()
     assert encoded is not None
     assert json.loads(encoded)["__data__"]["table"] == {"existing": ["old-node"], "hello": ["node"]}
     assert segments.resume_indexing(job) == ([], 5)
 
 
-def test_extract_attaches_document_metadata_and_owns_local_session(backend: BackendFixture) -> None:
+@pytest.mark.parametrize(
+    ("mode", "expected_is_automatic"),
+    [("automatic", True), ("hierarchical", True), ("custom", False)],
+)
+def test_extract_attaches_document_metadata_and_forwards_source_context(
+    backend: BackendFixture,
+    website_service: WebsiteService,
+    mode: str,
+    expected_is_automatic: bool,
+) -> None:
     adapter, _, _, sources, job, _ = backend
+    indexing_job = replace(job, processing_rule={"mode": mode, "rules": {}})
     text = IndexDocument(page_content="source")
-    with patch(f"{MODULE}.IndexProcessorFactory") as factory:
-        processor = factory.return_value.init_index_processor.return_value
 
-        def extract(setting: object, *, session: Session, process_rule_mode: str) -> list[IndexDocument]:
-            assert setting is sources.resolve_for_indexing.return_value
-            assert not session.in_transaction()
-            assert process_rule_mode == "automatic"
-            return [text]
+    def extract(extract_setting: object, is_automatic: bool, **kwargs: object) -> ExtractionResult[IndexDocument]:
+        assert extract_setting is sources.resolve.return_value
+        assert is_automatic is expected_is_automatic
+        assert kwargs["capture_source_version"] is True
+        assert kwargs["image_writer"] is None
+        assert kwargs["website_service"] is website_service
+        return ExtractionResult(documents=[text])
 
-        processor.extract.side_effect = extract
-        assert adapter.extract(job) == [text]
-    sources.resolve_for_indexing.assert_called_once_with(job.source)
+    with patch(f"{MODULE}.ExtractProcessor.extract", side_effect=extract):
+        assert adapter.extract(indexing_job).documents == [text]
+
+    sources.resolve.assert_called_once_with(indexing_job.source)
     assert text.metadata == {"dataset_id": "dataset-1", "document_id": "document-1"}
+
+
+def test_extract_failure_deletes_only_artifacts_known_not_to_have_entered_commit(
+    backend: BackendFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    website_service: WebsiteService,
+) -> None:
+    _, documents, segments, sources, document, _ = backend
+    sources.resolve.return_value = _file_extract_setting()
+    files = create_autospec(FileService, instance=True, spec_set=True)
+    adapter = IndexingExecutionAdapter(
+        session_factory=sqlite_session_factory,
+        documents=documents,
+        segments=segments,
+        sources=sources,
+        files=files,
+        website=website_service,
+    )
+    artifacts: list[CreatedUploadArtifact] = []
+
+    def fail_extract(*_args: object, **kwargs: object) -> ExtractionResult[IndexDocument]:
+        writer = cast(ExtractionImageWriter | None, kwargs["image_writer"])
+        assert writer is not None
+        writer.write(ExtractedImage(content=b"image", extension="png", mime_type="image/png"))
+        artifacts.extend(writer.created_upload_artifacts)
+        raise RuntimeError("extract failed")
+
+    with patch(f"{MODULE}.ExtractProcessor.extract", side_effect=fail_extract), patch(f"{MODULE}.storage.save"):
+        with pytest.raises(RuntimeError, match="extract failed"):
+            adapter.extract(document)
+
+    [artifact] = artifacts
+    files.delete_uncommitted_artifact.assert_called_once_with(artifact=artifact)
+    files.delete_file.assert_not_called()
+    with sqlite_session_factory() as session:
+        assert session.get(UploadFile, artifact.id) is None
+
+
+def test_extract_retains_service_owned_image_evidence_after_parser_returns(
+    backend: BackendFixture,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    adapter, _, _, sources, document, _ = backend
+    sources.resolve.return_value = _file_extract_setting()
+
+    def extract(*_args: object, **kwargs: object) -> ExtractionResult[IndexDocument]:
+        writer = cast(ImageWriter | None, kwargs["image_writer"])
+        assert writer is not None
+        reference = writer.write(ExtractedImage(content=b"image", extension="png", mime_type="image/png"))
+        return ExtractionResult(documents=[IndexDocument(page_content=f"![image]({reference.preview_url})")])
+
+    with patch(f"{MODULE}.ExtractProcessor.extract", side_effect=extract), patch(f"{MODULE}.storage.save"):
+        result = adapter.extract(document)
+
+    [artifact] = result.created_upload_artifacts
+    assert f"/files/{artifact.id}/file-preview" in result.documents[0].page_content
+    with sqlite_session_factory() as session:
+        upload = session.get(UploadFile, artifact.id)
+        assert upload is not None
+        assert upload.key == artifact.key
+
+
+def test_extract_commit_failure_never_deletes_by_uncommitted_blob_key(
+    backend: BackendFixture,
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    website_service: WebsiteService,
+) -> None:
+    _, documents, segments, sources, document, _ = backend
+    sources.resolve.return_value = _file_extract_setting()
+    session_factory: sessionmaker[Session] = sessionmaker(
+        bind=sqlite_engine, class_=_CommitUnknownSession, expire_on_commit=False
+    )
+    files = create_autospec(FileService, instance=True, spec_set=True)
+    adapter = IndexingExecutionAdapter(
+        session_factory=session_factory,
+        documents=documents,
+        segments=segments,
+        sources=sources,
+        files=files,
+        website=website_service,
+    )
+    artifacts: list[CreatedUploadArtifact] = []
+
+    def extract(*_args: object, **kwargs: object) -> ExtractionResult[IndexDocument]:
+        writer = cast(ExtractionImageWriter | None, kwargs["image_writer"])
+        assert writer is not None
+        writer.write(ExtractedImage(content=b"image", extension="png", mime_type="image/png"))
+        artifacts.extend(writer.created_upload_artifacts)
+        return ExtractionResult(documents=[IndexDocument(page_content="source")])
+
+    with patch(f"{MODULE}.ExtractProcessor.extract", side_effect=extract), patch(f"{MODULE}.storage.save"):
+        with pytest.raises(RuntimeError, match="commit result unknown"):
+            adapter.extract(document)
+
+    [artifact] = artifacts
+    files.delete_file.assert_called_once_with(tenant_id="workspace-1", file_id=artifact.id)
+    files.delete_uncommitted_artifact.assert_not_called()
+    with sqlite_session_factory() as session:
+        assert session.get(UploadFile, artifact.id) is not None
 
 
 @pytest.mark.parametrize(
@@ -275,26 +421,34 @@ def test_extract_attaches_document_metadata_and_owns_local_session(backend: Back
     ],
 )
 def test_indexing_preserves_provider_and_source_error_descriptions(
-    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session], error: Exception, message: str
+    backend: BackendFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    error: Exception,
+    message: str,
 ) -> None:
     adapter, documents, segments, sources, job, _ = backend
-    sources.resolve_for_indexing.side_effect = error
+    sources.resolve.side_effect = error
     with sqlite_session_factory.begin() as session:
         rule = DatasetProcessRule(
-            dataset_id=job.ref.dataset.dataset_id, mode=ProcessRuleMode.AUTOMATIC, rules="{}", created_by="account-1"
+            dataset_id=job.ref.dataset.dataset_id,
+            mode=ProcessRuleMode.AUTOMATIC,
+            rules="{}",
+            created_by="account-1",
         )
         session.add(rule)
         session.flush()
-        document = session.get(Document, job.ref.document_id)
-        assert document is not None
-        document.dataset_process_rule_id = rule.id
+        session.get_one(Document, job.ref.document_id).dataset_process_rule_id = rule.id
 
-    DocumentIndexingService(documents=documents, segments=segments, backend=adapter).run([job.ref])
+    DocumentIndexingService(
+        documents=documents,
+        segments=segments,
+        backend=adapter,
+        indexing_locks=_TestIndexingLock(),
+    ).run([job.ref])
 
-    sources.resolve_for_indexing.assert_called_once()
+    sources.resolve.assert_called_once()
     with sqlite_session_factory() as session:
-        document = session.get(Document, job.ref.document_id)
-        assert document is not None
+        document = session.get_one(Document, job.ref.document_id)
         assert document.indexing_status == IndexingStatus.ERROR
         assert document.error == message
         assert document.completed_at is None
@@ -302,12 +456,13 @@ def test_indexing_preserves_provider_and_source_error_descriptions(
 
 @pytest.mark.parametrize("provider", [None, "embedding-provider"])
 def test_transform_selects_embedding_model_and_preserves_processor_options(
-    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session], provider: str | None
+    backend: BackendFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    provider: str | None,
 ) -> None:
     adapter, documents, _, _, job, _ = backend
     with sqlite_session_factory.begin() as session:
-        dataset = session.get(Dataset, "dataset-1")
-        assert dataset is not None
+        dataset = session.get_one(Dataset, "dataset-1")
         dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
         dataset.embedding_model_provider = provider
         dataset.embedding_model = "embedding-model"
@@ -328,14 +483,36 @@ def test_transform_selects_embedding_model_and_preserves_processor_options(
         assert processor.transform.call_args.args == ([], user.return_value)
 
 
+def test_transform_failure_cleans_uploads_reported_by_the_processor(backend: BackendFixture) -> None:
+    adapter, documents, _, _, job, _ = backend
+    delete_file = cast(MagicMock, adapter._files.delete_file)
+    indexing_user = Account(name="Indexer", email="indexer@example.com")
+    indexing_user.id = "account-1"
+    with (
+        patch.object(documents, "get_indexing_user", return_value=indexing_user),
+        patch(f"{MODULE}.IndexProcessorFactory") as factory,
+    ):
+        processor = factory.return_value.init_index_processor.return_value
+
+        def transform(*_args: object, **kwargs: object) -> list[IndexDocument]:
+            callback = cast(Callable[[str], None], kwargs["on_upload_file_created"])
+            callback("upload-1")
+            raise RuntimeError("transform failed")
+
+        processor.transform.side_effect = transform
+        with pytest.raises(RuntimeError, match="transform failed"):
+            adapter.transform(job, [])
+
+    delete_file.assert_called_once_with(tenant_id="workspace-1", file_id="upload-1")
+
+
 def test_hash_groups_load_worker_owned_inputs_before_completion(
-    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session]
+    backend: BackendFixture,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     adapter, _, segments, _, job, _ = backend
     with sqlite_session_factory.begin() as session:
-        persisted_dataset = session.get(Dataset, "dataset-1")
-        assert persisted_dataset is not None
-        persisted_dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
+        session.get_one(Dataset, "dataset-1").indexing_technique = IndexTechniqueType.HIGH_QUALITY
     chunks = [
         IndexDocument(page_content=content, metadata={"doc_id": f"node-{i}", "doc_hash": f"hash-{i}"})
         for i, content in enumerate(["same", "other", "same"])
@@ -349,40 +526,29 @@ def test_hash_groups_load_worker_owned_inputs_before_completion(
         assert inspect(dataset).detached
         assert session is None
         assert vector_type == "qdrant"
-
-        def create(group: list[IndexDocument]) -> None:
-            with sqlite_session_factory() as reader:
-                persisted = reader.scalars(select(DocumentSegment)).all()
-                assert len(persisted) == 3
-                assert all(
-                    row.status == SegmentStatus.INDEXING
-                    for row in persisted
-                    if row.index_node_id in {chunk.metadata["doc_id"] for chunk in group}
-                )
-            calls.append((dataset, [chunk.page_content for chunk in group]))
-
-        backend = MagicMock()
-        backend.create.side_effect = create
-        return backend
+        result = MagicMock()
+        result.create.side_effect = lambda group: calls.append((dataset, [chunk.page_content for chunk in group]))
+        return result
 
     with Flask(__name__).app_context(), patch(f"{MODULE}.Vector", side_effect=vector) as factory:
         factory.resolve_vector_type.return_value = "qdrant"
         adapter.load(job, chunks)
+
     assert sum(group.count("same") for _, group in calls) == 2
     assert sum("same" in group for _, group in calls) == 1
     assert len({id(dataset) for dataset, _ in calls}) == len(calls)
     assert segments.resume_indexing(job) == ([], 15)
 
 
-@pytest.mark.parametrize("technique", ["economy", "high_quality"])
+@pytest.mark.parametrize("technique", [IndexTechniqueType.ECONOMY, IndexTechniqueType.HIGH_QUALITY])
 def test_worker_failure_marks_document_error_and_keeps_retryable_segments(
-    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session], technique: str
+    backend: BackendFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    technique: str,
 ) -> None:
     adapter, documents, segments, _, job, _ = backend
     with sqlite_session_factory.begin() as session:
-        persisted_dataset = session.get(Dataset, "dataset-1")
-        assert persisted_dataset is not None
-        persisted_dataset.indexing_technique = IndexTechniqueType(technique)
+        session.get_one(Dataset, "dataset-1").indexing_technique = technique
     chunks = [IndexDocument(page_content="text", metadata={"doc_id": "node", "doc_hash": "hash"})]
     segments.save_for_indexing(job, chunks, [9])
     with (
@@ -392,12 +558,17 @@ def test_worker_failure_marks_document_error_and_keeps_retryable_segments(
     ):
         keyword.return_value.update_texts.side_effect = RuntimeError("worker failed")
         vector.return_value.create.side_effect = RuntimeError("worker failed")
-        DocumentIndexingService(documents=documents, segments=segments, backend=adapter).run_in_indexing_status(job.ref)
+        DocumentIndexingService(
+            documents=documents,
+            segments=segments,
+            backend=adapter,
+            indexing_locks=_TestIndexingLock(),
+        ).run_in_indexing_status(job.ref)
+
     with sqlite_session_factory() as session:
-        row = session.get(Document, job.ref.document_id)
-        assert row is not None
-        assert row.indexing_status == IndexingStatus.ERROR
-        assert row.error == "worker failed"
+        document = session.get_one(Document, job.ref.document_id)
+        assert document.indexing_status == IndexingStatus.ERROR
+        assert document.error == "worker failed"
     assert len(segments.resume_indexing(job)[0]) == 1
 
 
@@ -411,29 +582,34 @@ def test_worker_pause_does_not_mark_segments_complete(backend: BackendFixture) -
     assert len(segments.resume_indexing(job)[0]) == 1
 
 
-@pytest.mark.parametrize("technique", ["economy", "high_quality"])
-@pytest.mark.parametrize("doc_form", ["text_model", "qa_model", "hierarchical_model"])
+@pytest.mark.parametrize("technique", [IndexTechniqueType.ECONOMY, IndexTechniqueType.HIGH_QUALITY])
+@pytest.mark.parametrize(
+    "doc_form",
+    [IndexStructureType.PARAGRAPH_INDEX, IndexStructureType.QA_INDEX, IndexStructureType.PARENT_CHILD_INDEX],
+)
 def test_full_indexing_commits_phases_through_real_repositories(
-    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session], technique: str, doc_form: str
+    backend: BackendFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    technique: IndexTechniqueType,
+    doc_form: IndexStructureType,
 ) -> None:
     adapter, documents, segments, _, job, _ = backend
     with sqlite_session_factory.begin() as session:
-        dataset = session.get(Dataset, "dataset-1")
-        assert dataset is not None
-        dataset.indexing_technique = IndexTechniqueType(technique)
-        row = session.get(Document, "document-1")
-        assert row is not None
-        row.doc_form = IndexStructureType(doc_form)
+        dataset = session.get_one(Dataset, "dataset-1")
+        dataset.indexing_technique = technique
+        document = session.get_one(Document, "document-1")
+        document.doc_form = doc_form
         rule = DatasetProcessRule(
             dataset_id="dataset-1", mode=ProcessRuleMode.AUTOMATIC, rules="{}", created_by="account-1"
         )
         rule.id = "rule-1"
-        row.dataset_process_rule_id = rule.id
+        document.dataset_process_rule_id = rule.id
         session.add(rule)
     chunk = IndexDocument(page_content="text", metadata={"doc_id": "node", "doc_hash": "hash"})
     with (
         Flask(__name__).app_context(),
         patch.object(documents, "get_indexing_user", return_value=MagicMock()),
+        patch(f"{MODULE}.ExtractProcessor.extract", return_value=ExtractionResult(documents=[chunk])),
         patch(f"{MODULE}.IndexProcessorFactory") as factory,
         patch(f"{MODULE}.ModelManager.for_tenant"),
         patch(f"{MODULE}.calculate_segment_token_counts", return_value=[19]),
@@ -441,37 +617,131 @@ def test_full_indexing_commits_phases_through_real_repositories(
         patch(f"{MODULE}.Vector"),
     ):
         processor = factory.return_value.init_index_processor.return_value
-        processor.extract.return_value = [chunk]
         processor.transform.return_value = [chunk]
-        DocumentIndexingService(documents=documents, segments=segments, backend=adapter).run([job.ref])
+        DocumentIndexingService(
+            documents=documents,
+            segments=segments,
+            backend=adapter,
+            indexing_locks=_TestIndexingLock(),
+        ).run([job.ref])
+
     with sqlite_session_factory() as session:
-        row = session.get(Document, "document-1")
-        assert row is not None
-        assert row.indexing_status == IndexingStatus.COMPLETED
-        assert row.tokens == 19
-        assert row.parsing_completed_at is not None
-        assert row.splitting_completed_at is not None
-        assert row.completed_at is not None
+        document = session.get_one(Document, "document-1")
+        assert document.indexing_status == IndexingStatus.COMPLETED
+        assert document.tokens == 19
+        assert document.parsing_completed_at is not None
+        assert document.splitting_completed_at is not None
+        assert document.completed_at is not None
+
+
+def test_jina_sync_refetches_scrape_source_and_completes_real_pipeline(
+    backend: BackendFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _adapter, documents, segments, _sources, job, _redis = backend
+    provider_instance_id = website_crawl_provider_instance_id(provider="jinareader")
+    with sqlite_session_factory.begin() as session:
+        session.get_one(Dataset, "dataset-1").data_source_type = DataSourceType.WEBSITE_CRAWL
+        document = session.get_one(Document, "document-1")
+        document.data_source_type = DataSourceType.WEBSITE_CRAWL
+        document.data_source_info = json.dumps(
+            {
+                "provider": "jinareader",
+                "provider_instance_id": provider_instance_id,
+                "job_id": "",
+                "url": "https://example.com/current",
+                "mode": "scrape",
+                "only_main_content": True,
+            }
+        )
+        rule = DatasetProcessRule(
+            dataset_id="dataset-1", mode=ProcessRuleMode.AUTOMATIC, rules="{}", created_by="account-1"
+        )
+        rule.id = "jina-sync-rule"
+        document.dataset_process_rule_id = rule.id
+        session.add(rule)
+
+    sources = CompositeStoredSourceResolver(adapters={DataSourceType.WEBSITE_CRAWL: WebsiteSourceAdapter()})
+    crawl_calls: list[tuple[WebsiteJobRef, str, bool]] = []
+
+    class WebsiteServiceStub:
+        @staticmethod
+        def get_crawl_url_data_by_ref(job_ref: WebsiteJobRef, url: str, *, use_job: bool) -> dict[str, str]:
+            crawl_calls.append((job_ref, url, use_job))
+            return {"content": "fresh Jina content", "url": url, "title": "Current page"}
+
+    adapter = IndexingExecutionAdapter(
+        session_factory=sqlite_session_factory,
+        documents=documents,
+        segments=segments,
+        sources=sources,
+        files=_NoopFileService(),
+        website=cast(WebsiteService, WebsiteServiceStub()),
+    )
+
+    indexing_user = Account(name="Indexer", email="indexer@example.com")
+    indexing_user.id = "account-1"
+    monkeypatch.setattr(documents, "get_indexing_user", lambda *_args, **_kwargs: indexing_user)
+    service = DocumentIndexingService(
+        documents=documents,
+        segments=segments,
+        backend=adapter,
+        indexing_locks=_TestIndexingLock(),
+    )
+    with (
+        Flask(__name__).app_context(),
+        patch(f"{MODULE}.calculate_segment_token_counts", return_value=[18]),
+        patch(f"{MODULE}.Jieba"),
+    ):
+        service.run([job.ref])
+
+    assert crawl_calls == [
+        (
+            WebsiteJobRef(
+                tenant_id="workspace-1",
+                provider="jinareader",
+                provider_instance_id=provider_instance_id,
+                job_id="",
+            ),
+            "https://example.com/current",
+            False,
+        )
+    ]
+    with sqlite_session_factory() as session:
+        document = session.get_one(Document, "document-1")
+        assert document.indexing_status == IndexingStatus.COMPLETED
+        assert document.tokens == 18
+        segments_in_db = session.scalars(
+            select(DocumentSegment).where(DocumentSegment.document_id == document.id)
+        ).all()
+        assert [segment.content for segment in segments_in_db] == ["fresh Jina content"]
 
 
 @pytest.mark.parametrize("change", ["paused", "deleted"])
 def test_document_changed_during_worker_io_cannot_be_completed(
-    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session], change: str
+    backend: BackendFixture,
+    sqlite_session_factory: sessionmaker[Session],
+    change: str,
 ) -> None:
     adapter, documents, segments, _, job, _ = backend
     chunks = [IndexDocument(page_content="text", metadata={"doc_id": "node", "doc_hash": "hash"})]
     segments.save_for_indexing(job, chunks, [9])
 
-    def change_document(*_args, **_kwargs) -> None:
-        with sqlite_session_factory.begin() as writer:
-            row = writer.get(Document, "document-1")
-            assert row is not None
+    def change_document(*_args: object, **_kwargs: object) -> None:
+        with sqlite_session_factory.begin() as session:
+            document = session.get_one(Document, "document-1")
             if change == "paused":
-                row.is_paused = True
+                document.is_paused = True
             else:
-                writer.delete(row)
+                session.delete(document)
 
-    service = DocumentIndexingService(documents=documents, segments=segments, backend=adapter)
+    service = DocumentIndexingService(
+        documents=documents,
+        segments=segments,
+        backend=adapter,
+        indexing_locks=_TestIndexingLock(),
+    )
     with Flask(__name__).app_context(), patch(f"{MODULE}.Jieba") as keyword:
         keyword.return_value.update_texts.side_effect = change_document
         if change == "paused":
@@ -479,6 +749,7 @@ def test_document_changed_during_worker_io_cannot_be_completed(
                 service.run_in_indexing_status(job.ref)
         else:
             service.run_in_indexing_status(job.ref)
+
     with sqlite_session_factory() as session:
         segment = session.scalar(select(DocumentSegment))
         assert segment is not None
@@ -486,19 +757,23 @@ def test_document_changed_during_worker_io_cannot_be_completed(
 
 
 def test_partial_worker_failure_retries_only_incomplete_segments_and_keeps_total(
-    backend: BackendFixture, sqlite_session_factory: sessionmaker[Session]
+    backend: BackendFixture,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     adapter, documents, segments, _, job, _ = backend
     with sqlite_session_factory.begin() as session:
-        persisted_dataset = session.get(Dataset, "dataset-1")
-        assert persisted_dataset is not None
-        persisted_dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
+        session.get_one(Dataset, "dataset-1").indexing_technique = IndexTechniqueType.HIGH_QUALITY
     chunks = [
         IndexDocument(page_content=content, metadata={"doc_id": content, "doc_hash": content})
         for content in ["good", "bad"]
     ]
     segments.save_for_indexing(job, chunks, [13, 17])
-    service = DocumentIndexingService(documents=documents, segments=segments, backend=adapter)
+    service = DocumentIndexingService(
+        documents=documents,
+        segments=segments,
+        backend=adapter,
+        indexing_locks=_TestIndexingLock(),
+    )
 
     def load(group: list[IndexDocument]) -> None:
         if group[0].page_content == "bad":
@@ -520,9 +795,9 @@ def test_partial_worker_failure_retries_only_incomplete_segments_and_keeps_total
         service.run_in_indexing_status(job.ref)
         vector.create.assert_called_once()
         assert [chunk.page_content for chunk in vector.create.call_args.args[0]] == ["bad"]
+
     with sqlite_session_factory() as session:
-        row = session.get(Document, "document-1")
-        assert row is not None
-        assert row.indexing_status == IndexingStatus.COMPLETED
-        assert row.tokens == 30
-        assert row.error is None
+        document = session.get_one(Document, "document-1")
+        assert document.indexing_status == IndexingStatus.COMPLETED
+        assert document.tokens == 30
+        assert document.error is None

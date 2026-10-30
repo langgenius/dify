@@ -9,7 +9,8 @@ import pytest
 from sqlalchemy import Engine, event, inspect, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.enums import ConversationFromSource, CreatorUserRole, FeedbackFromSource, FeedbackRating
+from enums.creator import CreatorUserRole
+from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, Conversation, InstalledApp, Message, MessageAgentThought, MessageFeedback
 from repositories.installed_app_message_repository import SQLAlchemyInstalledAppMessageRepository
 from services.errors.conversation import ConversationNotExistsError

@@ -1,8 +1,11 @@
 """Workspace policies and notifications with only external clients replaced."""
 
 from collections.abc import Callable
+from threading import Event
+from typing import cast
 from unittest.mock import Mock, create_autospec
 
+import httpx
 import pytest
 
 from enums import DeploymentEdition
@@ -20,6 +23,100 @@ from tests.unit_tests.account_domain import AccountDomain
 def invitations() -> gateways.WorkspaceInvitationGateway:
     redis = create_autospec(RedisClientWrapper, instance=True)
     return gateways.WorkspaceInvitationGateway(tokens=RedisInvitationTokenStore(redis=redis), redis=redis)
+
+
+def test_workspace_owner_binding_retries_transient_rbac_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    attempts: list[str] = []
+    monkeypatch.setattr(
+        gateways.DeploymentWorkspaceMemberAccessGateway,
+        "_role_id",
+        lambda _workspace_id, _account_id, _tag: "owner-role",
+    )
+
+    def replace(**kwargs: object) -> object:
+        attempts.append(str(kwargs["tenant_id"]))
+        if len(attempts) == 1:
+            raise httpx.ConnectError("temporary RBAC failure")
+        return object()
+
+    monkeypatch.setattr(gateways.RBACService.MemberRoles, "replace", replace)
+
+    gateways.WorkspaceProvisioningEffectsGateway().bind_owner("workspace", "account")
+
+    assert attempts == ["workspace", "workspace"]
+
+
+def test_workspace_quota_guard_renews_and_releases_owned_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    renewed = Event()
+    calls: list[tuple[object, ...]] = []
+
+    class Lock:
+        def acquire(self) -> bool:
+            calls.append(("acquire",))
+            return True
+
+        def owned(self) -> bool:
+            calls.append(("owned",))
+            return True
+
+        def reacquire(self) -> bool:
+            calls.append(("renew",))
+            renewed.set()
+            return True
+
+        def release(self) -> None:
+            calls.append(("release",))
+
+    class Redis:
+        def lock(self, name: str, *, timeout: int, blocking_timeout: int, thread_local: bool) -> Lock:
+            calls.append(("lock", name, timeout, blocking_timeout, thread_local))
+            return Lock()
+
+    monkeypatch.setattr(gateways, "_WORKSPACE_QUOTA_LOCK_RENEW_INTERVAL_SECONDS", 0.001)
+    guard = gateways.RedisWorkspaceQuotaGuard(redis=cast(RedisClientWrapper, Redis()))
+
+    with guard.acquire() as assert_owned:
+        assert renewed.wait(timeout=1)
+        assert_owned()
+
+    assert calls[0] == ("lock", "workspace:creation:quota", 60, 300, False)
+    assert ("renew",) in calls
+    assert calls[-1] == ("release",)
+
+
+def test_workspace_creation_capacity_bypasses_cached_enterprise_usage(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    snapshot_values: tuple[dict[str, object], ...] = (
+        {"License": {"workspaces": {"enabled": True, "limit": 1, "used": 0}}},
+        {"License": {"workspaces": {"enabled": True, "limit": 1, "used": 1}}},
+    )
+    snapshots = iter(snapshot_values)
+    uncached_queries = 0
+
+    def get_uncached_info() -> dict[str, object]:
+        nonlocal uncached_queries
+        uncached_queries += 1
+        return next(snapshots)
+
+    monkeypatch.setattr(gateways.EnterpriseService, "get_uncached_info", get_uncached_info)
+    gateways.EnterpriseService.get_info.cache_clear()
+    try:
+        # Prime the production five-second cache with the pre-commit usage.
+        assert gateways.SystemFeatureService.get_license().workspaces.is_available()
+
+        # The creation policy is reused inside the global quota guard, where it
+        # must observe the first request's newly committed workspace.
+        assert not gateways.DeploymentWorkspaceCreationPolicy().has_workspace_capacity()
+        assert uncached_queries == 2
+    finally:
+        gateways.EnterpriseService.get_info.cache_clear()
 
 
 @pytest.mark.parametrize("allowed", [True, False])

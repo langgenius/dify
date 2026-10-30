@@ -1,195 +1,264 @@
-import types
-from unittest.mock import create_autospec
+from collections.abc import Mapping
+from contextlib import AbstractContextManager
+from types import TracebackType
+from typing import Never, cast
 
 import pytest
-from redis.exceptions import LockNotOwnedError
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
 
-from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models.account import Account, Tenant
-from models.dataset import Dataset, DatasetProcessRule, Document, DocumentSegment
-from models.enums import ProcessRuleMode
-from services.knowledge.dataset_service import DocumentService, SegmentService
-from services.knowledge.entities.knowledge_entities import DataSource, InfoList, KnowledgeConfig
-from services.knowledge.segments.application import SegmentMutationService
+from machinery.context import RequestContext
+from models.enums import DocumentCreatedFrom
+from services.knowledge.dataset_access import DatasetAccess
+from services.knowledge.documents.adapters import DocumentResponsePresentationAdapter
+from services.knowledge.documents.application import (
+    DatasetCreatorAccess,
+    DatasetDocumentApplicationService,
+    DocumentDatasetRepository,
+    DocumentLifecycleCache,
+    DocumentModelConfigurationGateway,
+    DocumentOperations,
+    DocumentRepository,
+    DocumentTaskDispatcher,
+    DocumentUploads,
+)
+from services.knowledge.documents.contracts import DocumentCreationGateway, DocumentWriteConfig
+from services.knowledge.entities.knowledge_entities import KnowledgeConfig
+from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge.indexing.locks import KnowledgeIndexingLease, KnowledgeIndexingLeaseLostError
 
-TENANT_ID = "11111111-1111-1111-1111-111111111111"
-USER_ID = "22222222-2222-2222-2222-222222222222"
-DATASET_ID = "33333333-3333-3333-3333-333333333333"
-DOCUMENT_ID = "44444444-4444-4444-4444-444444444444"
+
+class _Lease:
+    @property
+    def token(self) -> str:
+        return "lease-token"
+
+    def assert_owned(self) -> None:
+        return None
+
+    def renew(self) -> bool:
+        return True
+
+    def release(self) -> bool:
+        return True
 
 
-class FakeLock:
-    """Lock that always fails on enter with LockNotOwnedError."""
-
-    def __enter__(self) -> None:
-        raise LockNotOwnedError("simulated")
+class _ReleaseLostContext(AbstractContextManager[KnowledgeIndexingLease]):
+    def __enter__(self) -> KnowledgeIndexingLease:
+        return _Lease()
 
     def __exit__(
-        self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: types.TracebackType | None
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ) -> bool:
-        # Normal contextmanager signature; return False so exceptions propagate
+        del exc_value, traceback
+        if exc_type is None:
+            raise KnowledgeIndexingLeaseLostError("simulated release race")
         return False
 
 
-@pytest.fixture
-def fake_current_user(monkeypatch: pytest.MonkeyPatch) -> Account:
-    tenant = Tenant(name="Test Tenant")
-    tenant.id = TENANT_ID
-    user = Account(name="Test User", email="test@example.com")
-    user.id = USER_ID
-    user._current_tenant = tenant
-    monkeypatch.setattr("services.knowledge.dataset_service.current_user", user)
-    return user
+class _RecordingIndexingLock:
+    def __init__(self, *, calls: list[str] | None = None) -> None:
+        self.hold_calls: list[tuple[str, int, str | None, float]] = []
+        self._calls = calls
+
+    def try_acquire(self, name: str, *, timeout: int) -> KnowledgeIndexingLease | None:
+        raise AssertionError(f"Unexpected try_acquire({name!r}, timeout={timeout!r})")
+
+    def try_acquire_handoff(
+        self,
+        name: str,
+        *,
+        timeout: int,
+        owner_id: str,
+    ) -> KnowledgeIndexingLease | None:
+        raise AssertionError(f"Unexpected try_acquire_handoff({name!r}, timeout={timeout!r}, owner_id={owner_id!r})")
+
+    def hold(
+        self,
+        name: str,
+        *,
+        timeout: int,
+        expected_token: str | None = None,
+        blocking_timeout: float = 0,
+    ) -> AbstractContextManager[KnowledgeIndexingLease]:
+        self.hold_calls.append((name, timeout, expected_token, blocking_timeout))
+        if self._calls is not None:
+            self._calls.append("lock")
+        return _ReleaseLostContext()
+
+    def hold_handoff(
+        self,
+        name: str,
+        *,
+        timeout: int,
+        owner_id: str,
+        blocking_timeout: float = 0,
+    ) -> AbstractContextManager[KnowledgeIndexingLease]:
+        raise AssertionError(
+            "Unexpected hold_handoff("
+            f"{name!r}, timeout={timeout!r}, owner_id={owner_id!r}, blocking_timeout={blocking_timeout!r})"
+        )
 
 
-@pytest.fixture
-def fake_features(monkeypatch: pytest.MonkeyPatch) -> types.SimpleNamespace:
-    features = types.SimpleNamespace(
-        billing=types.SimpleNamespace(subscription=types.SimpleNamespace(plan="ENTERPRISE")),
-        documents_upload_quota=types.SimpleNamespace(limit=10_000, size=0),
-    )
-    monkeypatch.setattr(
-        "services.knowledge.dataset_service.FeatureService.get_features",
-        lambda _tenant_id, **_kwargs: features,
-    )
-    return features
+class _SourceAuthorization:
+    def __init__(self, calls: list[str] | None = None) -> None:
+        self._calls = calls
+
+    def authorize(self, context: RequestContext, config: KnowledgeConfig) -> DocumentWriteConfig:
+        del context
+        if self._calls is not None:
+            self._calls.append("authorize")
+        return DocumentWriteConfig(
+            original_document_id=config.original_document_id,
+            duplicate=config.duplicate,
+            indexing_technique=config.indexing_technique,
+            data_source=None,
+            process_rule=None,
+            retrieval_model=None,
+            summary_index_setting=None,
+            doc_form=config.doc_form,
+            doc_language=config.doc_language,
+            embedding_model=config.embedding_model,
+            embedding_model_provider=config.embedding_model_provider,
+            name=config.name,
+            is_multimodal=config.is_multimodal,
+        )
+
+    def validate_stored_website(self, context: RequestContext, source_info: Mapping[str, object]) -> None:
+        del context, source_info
+        raise AssertionError("Unexpected stored website validation")
 
 
-@pytest.fixture
-def fake_lock(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Patch redis_client.lock to always raise LockNotOwnedError on enter."""
-
-    def _fake_lock(*_args: object, **_kwargs: object) -> FakeLock:
-        return FakeLock()
-
-    # DatasetService imports redis_client directly from extensions.ext_redis
-    monkeypatch.setattr("services.knowledge.dataset_service.redis_client.lock", _fake_lock)
+class _UnexpectedDependency:
+    def __getattr__(self, name: str) -> Never:
+        raise AssertionError(f"Unexpected dependency call: {name}")
 
 
-# ---------------------------------------------------------------------------
-# 1. Knowledge Pipeline document creation (save_document_with_dataset_id)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize("sqlite_session", [(Account, Tenant, Dataset, DatasetProcessRule, Document)], indirect=True)
-@pytest.mark.usefixtures("fake_features", "fake_lock")
-def test_save_document_with_dataset_id_ignores_lock_not_owned(
-    monkeypatch: pytest.MonkeyPatch,
-    fake_current_user: Account,
-    sqlite_session: Session,
-) -> None:
-    # Arrange
-    dataset = Dataset(
-        id=DATASET_ID,
-        tenant_id=TENANT_ID,
-        name="Test Dataset",
-        description="",
-        created_by=USER_ID,
-        data_source_type="upload_file",
-        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
-    )
-    process_rule = DatasetProcessRule(
-        dataset_id=DATASET_ID,
-        mode=ProcessRuleMode.AUTOMATIC,
-        rules=None,
-        created_by=USER_ID,
-    )
-    sqlite_session.add_all([fake_current_user._current_tenant, fake_current_user, dataset, process_rule])
-    sqlite_session.commit()
-
-    knowledge_config = KnowledgeConfig(
-        doc_form=IndexStructureType.QA_INDEX,
-        original_document_id=None,  # go into "new document" branch
-        data_source=DataSource(info_list=InfoList(data_source_type="upload_file")),
-        indexing_technique="high_quality",
+def _config(*, original_document_id: str | None = None) -> KnowledgeConfig:
+    return KnowledgeConfig(
+        original_document_id=original_document_id,
         duplicate=False,
-        doc_language="en",
+        indexing_technique="economy",
+        data_source=None,
+        process_rule=None,
+        retrieval_model=None,
+        summary_index_setting=None,
+        doc_form="text_model",
+        doc_language="English",
+        embedding_model=None,
+        embedding_model_provider=None,
+        name=None,
+        is_multimodal=False,
     )
 
-    account = fake_current_user
 
-    # Avoid touching real doc_form logic
-    monkeypatch.setattr(
-        "services.knowledge.dataset_service.DatasetService.check_doc_form", lambda *_args, **_kwargs: None
+def _service(
+    lock: _RecordingIndexingLock, *, authorization_calls: list[str] | None = None
+) -> DatasetDocumentApplicationService:
+    unused = _UnexpectedDependency()
+    return DatasetDocumentApplicationService(
+        dataset_access=cast(DatasetAccess, unused),
+        datasets=cast(DocumentDatasetRepository, unused),
+        documents=cast(DocumentRepository, unused),
+        operations=cast(DocumentOperations, unused),
+        uploads=cast(DocumentUploads, unused),
+        indexing_locks=lock,
+        lifecycle_cache=cast(DocumentLifecycleCache, unused),
+        model_configuration=cast(DocumentModelConfigurationGateway, unused),
+        creation=cast(DocumentCreationGateway, unused),
+        source_authorization=_SourceAuthorization(authorization_calls),
+        creator_access=cast(DatasetCreatorAccess, unused),
+        tasks=cast(DocumentTaskDispatcher, unused),
+        presenter=DocumentResponsePresentationAdapter(),
     )
 
-    # Act: this would hit the redis lock, whose __enter__ raises LockNotOwnedError.
-    # Our implementation should catch it and still return (documents, batch).
-    documents, batch = DocumentService.save_document_with_dataset_id(
-        dataset=dataset,
-        knowledge_config=knowledge_config,
-        account=account,
-        dataset_process_rule=process_rule,
-        session=sqlite_session,
-    )
 
-    # Assert
-    # We mainly care that:
-    # - No exception is raised
-    # - The function returns a sensible tuple
-    assert documents == []
-    assert batch
-    assert not sqlite_session.in_transaction()
-    assert sqlite_session.scalar(select(func.count(Document.id))) == 0
-    assert sqlite_session.get(DatasetProcessRule, process_rule.id) is process_rule
-
-
-# ---------------------------------------------------------------------------
-# 2. Single-segment creation (add_segment)
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
-# 3. Multi-segment creation (multi_create_segment)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize("sqlite_session", [(Account, Tenant, Dataset, Document, DocumentSegment)], indirect=True)
-@pytest.mark.usefixtures("fake_lock")
-def test_multi_create_segment_ignores_lock_not_owned(
-    fake_current_user: Account,
-    sqlite_session: Session,
+def test_new_document_creation_keeps_committed_result_when_lease_is_lost_on_release(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Arrange
-    dataset = Dataset(
-        id=DATASET_ID,
-        tenant_id=TENANT_ID,
-        name="Test Dataset",
-        description="",
-        created_by=USER_ID,
-        indexing_technique=IndexTechniqueType.ECONOMY,
-    )
-    document = Document(
-        id=DOCUMENT_ID,
-        tenant_id=TENANT_ID,
-        dataset_id=DATASET_ID,
-        position=1,
-        data_source_type="upload_file",
-        data_source_info="{}",
-        batch="batch-1",
-        name="Test Document",
-        created_from="web",
-        created_by=USER_ID,
-        word_count=0,
-        doc_form=IndexStructureType.QA_INDEX,
-    )
-    sqlite_session.add_all([fake_current_user._current_tenant, fake_current_user, dataset, document])
-    sqlite_session.commit()
+    locks = _RecordingIndexingLock()
+    service = _service(locks)
+    persisted: dict[str, object] = {"documents": [{"id": "document-1"}], "batch": "batch-1"}
+    persist_calls: list[bool] = []
 
-    mutations = create_autospec(SegmentMutationService, instance=True)
-    result = SegmentService.multi_create_segment(
-        segments=[{"content": "question", "answer": "answer", "keywords": ["key"]}],
-        document=document,
-        dataset=dataset,
-        session=sqlite_session,
-        mutations=mutations,
+    def persist(*_args: object, **_kwargs: object) -> dict[str, object]:
+        persist_calls.append(True)
+        return persisted
+
+    monkeypatch.setattr(service, "_persist_creation", persist)
+
+    result = service._run_creation(
+        RequestContext("request-1", None, "actor-1", "tenant-1"),
+        DatasetRef("tenant-1", "dataset-1"),
+        _config(),
+        initialize=False,
+        created_from=DocumentCreatedFrom.API,
+        priority=False,
     )
 
-    assert result is None
-    mutations.index_segments.assert_not_called()
-    assert not sqlite_session.in_transaction()
-    assert sqlite_session.scalar(select(func.count(DocumentSegment.id))) == 0
-    sqlite_session.refresh(document)
-    assert document.word_count == 0
+    assert result is persisted
+    assert locks.hold_calls == [("add_document_lock_dataset_id_dataset-1", 600, None, 600)]
+    assert persist_calls == [True]
+
+
+def test_new_document_source_is_authorized_before_acquiring_the_dataset_lock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+    locks = _RecordingIndexingLock(calls=calls)
+    service = _service(locks, authorization_calls=calls)
+
+    def persist(*_args: object, **_kwargs: object) -> dict[str, object]:
+        return {"documents": [], "batch": "batch"}
+
+    monkeypatch.setattr(service, "_persist_creation", persist)
+
+    service._run_creation(
+        RequestContext("request-1", None, "actor-1", "tenant-1"),
+        DatasetRef("tenant-1", "dataset-1"),
+        _config(),
+        initialize=False,
+        created_from=DocumentCreatedFrom.API,
+        priority=False,
+    )
+
+    assert calls == ["authorize", "lock"]
+
+
+def test_document_update_does_not_suppress_a_lease_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _service(_RecordingIndexingLock())
+
+    def persist(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise KnowledgeIndexingLeaseLostError("lost before persistence")
+
+    monkeypatch.setattr(service, "_persist_creation", persist)
+
+    with pytest.raises(KnowledgeIndexingLeaseLostError, match="lost before persistence"):
+        service._run_creation(
+            RequestContext("request-1", None, "actor-1", "tenant-1"),
+            DatasetRef("tenant-1", "dataset-1"),
+            _config(original_document_id="document-1"),
+            initialize=False,
+            created_from=DocumentCreatedFrom.API,
+            priority=False,
+        )
+
+
+def test_creation_failure_remains_the_primary_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _service(_RecordingIndexingLock())
+
+    def persist(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise RuntimeError("response construction failed")
+
+    monkeypatch.setattr(service, "_persist_creation", persist)
+
+    with pytest.raises(RuntimeError, match="response construction failed"):
+        service._run_creation(
+            RequestContext("request-1", None, "actor-1", "tenant-1"),
+            DatasetRef("tenant-1", "dataset-1"),
+            _config(),
+            initialize=False,
+            created_from=DocumentCreatedFrom.API,
+            priority=False,
+        )

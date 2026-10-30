@@ -12,7 +12,7 @@ from extensions.ext_storage import Storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.tools import ToolFile
-from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
+from repositories.file.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from services.errors.file import FileTooLargeError
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import (
