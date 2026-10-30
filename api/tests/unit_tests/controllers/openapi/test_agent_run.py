@@ -22,7 +22,7 @@ from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
     CheckRBACPermission,
-    CheckScope,
+    CheckScopeEarly,
     CheckSubject,
     CheckWorkspaceMember,
     CheckWorkspaceRole,
@@ -190,9 +190,9 @@ def test_unpublished_agent_run_hints_the_draft(app: Flask, monkeypatch: pytest.M
 
 _ACCOUNT_ONLY = CheckSubject(allowed=(AccountSubject,))
 _SHARED_GUARDS = (
-    CheckAppApiEnabled(),
     CheckWorkspaceMember(),
-    CheckScope(Scope.APPS_RUN),
+    CheckScopeEarly(Scope.APPS_RUN),
+    CheckAppApiEnabled(),
     CheckRBACPermission(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())),
 )
 

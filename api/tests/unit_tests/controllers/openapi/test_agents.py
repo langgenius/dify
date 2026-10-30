@@ -21,7 +21,7 @@ from controllers.openapi.agents import AgentDescribeApi
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckRBACPermission,
-    CheckScope,
+    CheckScopeEarly,
     CheckSubject,
     CheckWorkspaceMember,
 )
@@ -372,9 +372,9 @@ def test_describe_agent_declares_its_guards() -> None:
     spec = cast(EndpointOwner, AgentDescribeApi.get).__spec__
     expected = (
         CheckSubject(allowed=(AccountSubject,)),
-        CheckAppApiEnabled(),
         CheckWorkspaceMember(),
-        CheckScope(Scope.APPS_READ),
+        CheckScopeEarly(Scope.APPS_READ),
+        CheckAppApiEnabled(),
         CheckRBACPermission(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())),
     )
 

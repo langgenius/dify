@@ -7567,7 +7567,9 @@ def test_describe_openapi_roster_agent_maps_the_entry(openapi_roster: Session, k
     app = openapi_roster.get(App, f"app-{key}")
     assert app is not None
 
-    entry = AgentRosterService(openapi_roster).describe_openapi_roster_agent(tenant_id="tenant-1", app=app)
+    entry = AgentRosterService(openapi_roster).describe_openapi_roster_agent(
+        tenant_id="tenant-1", agent_id=f"agent-{key}", app=app
+    )
 
     assert (entry.agent_id, entry.app_id, entry.name, entry.published, entry.service_api_enabled) == (
         f"agent-{key}",
@@ -7578,12 +7580,40 @@ def test_describe_openapi_roster_agent_maps_the_entry(openapi_roster: Session, k
     )
 
 
-def test_describe_openapi_roster_agent_refuses_an_app_without_a_roster_agent(openapi_roster: Session) -> None:
+@pytest.mark.parametrize(
+    ("agent_id", "tenant_id"),
+    [("agent-workflow-only", "tenant-1"), ("agent-missing", "tenant-1"), ("agent-published", "tenant-2")],
+    ids=["workflow-only", "missing", "other-workspace"],
+)
+def test_describe_openapi_roster_agent_refuses_an_agent_that_is_not_a_roster_app(
+    openapi_roster: Session, agent_id: str, tenant_id: str
+) -> None:
     app = openapi_roster.get(App, "app-workflow-only")
     assert app is not None
 
     with pytest.raises(AgentNotFoundError):
-        AgentRosterService(openapi_roster).describe_openapi_roster_agent(tenant_id="tenant-1", app=app)
+        AgentRosterService(openapi_roster).describe_openapi_roster_agent(
+            tenant_id=tenant_id, agent_id=agent_id, app=app
+        )
+
+
+def test_describe_openapi_roster_agent_reads_the_agent_it_is_given_not_another_on_the_same_app(
+    openapi_roster: Session,
+) -> None:
+    app = openapi_roster.get(App, "app-published")
+    assert app is not None
+    twin = _agent(
+        agent_id="agent-twin", name="Twin", scope=AgentScope.ROSTER, source=AgentSource.AGENT_APP, app_id=app.id
+    )
+    twin.role = "twin-role"
+    openapi_roster.add(twin)
+    openapi_roster.commit()
+
+    entry = AgentRosterService(openapi_roster).describe_openapi_roster_agent(
+        tenant_id="tenant-1", agent_id="agent-twin", app=app
+    )
+
+    assert (entry.agent_id, entry.role) == ("agent-twin", "twin-role")
 
 
 def test_describe_openapi_roster_agent_writes_nothing(openapi_roster: Session) -> None:
@@ -7592,7 +7622,9 @@ def test_describe_openapi_roster_agent_writes_nothing(openapi_roster: Session) -
     conversations = select(AgentDebugConversation)
     before = openapi_roster.scalars(conversations).all()
 
-    AgentRosterService(openapi_roster).describe_openapi_roster_agent(tenant_id="tenant-1", app=app)
+    AgentRosterService(openapi_roster).describe_openapi_roster_agent(
+        tenant_id="tenant-1", agent_id="agent-published", app=app
+    )
 
     assert not openapi_roster.new
     assert not openapi_roster.dirty
