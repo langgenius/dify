@@ -237,7 +237,8 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     from extensions.ext_database import db
 
     merge_revision = "f9a3c62de418"
-    current_head = "4a62d9b7e013"
+    current_head = "5b73e0c8f124"
+    material_head = "4a62d9b7e013"
     coordination_head = "e832a94f210b"
     knowledge_fs_head = "b9d3f7a5c102"
     builder_merge_head = "d41e6b8c2a75"
@@ -254,7 +255,10 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     config.set_main_option("script_location", str(Path(__file__).parents[5] / "migrations"))
     scripts = ScriptDirectory.from_config(config)
     assert scripts.get_heads() == [current_head]
-    material_revision = scripts.get_revision(current_head)
+    writer_revision = scripts.get_revision(current_head)
+    assert writer_revision is not None
+    assert writer_revision.down_revision == material_head
+    material_revision = scripts.get_revision(material_head)
     assert material_revision is not None
     assert material_revision.down_revision == "3f51c8a6d902"
     policy_revision = scripts.get_revision("3f51c8a6d902")
@@ -430,6 +434,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             include_workflow_tasks: bool = False,
             include_draft_coordination: bool = False,
             include_builder_context: bool = False,
+            include_workflow_writer: bool = False,
         ) -> dict[str, _TableWitness]:
             inspector = inspect(connection)
             expected_tables = {*tables, "alembic_version"}
@@ -439,6 +444,8 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
                 expected_tables.add("workflow_draft_coordination")
             if include_builder_context:
                 expected_tables.update({"dify_builder_cognition_policies", "dify_builder_material"})
+            if include_workflow_writer:
+                expected_tables.add("dify_builder_workflow_writers")
             if include_archive:
                 expected_tables.add("workflow_run_archive_bundles")
             if include_native:
@@ -649,7 +656,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
 
         # The official branch has its own migration qualification. With both
         # parents applied, the merge consolidates version rows; its two new
-        # Builder descendants add empty context tables without altering history.
+        # Builder descendants add empty context/ownership tables without altering history.
         parents = MigrationContext.configure(connection, opts={"version_table_schema": schema})
         parents.stamp(scripts, coordination_head)
         parents.stamp(scripts, knowledge_fs_head)
@@ -659,6 +666,29 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         assert archive_witness() == archive_before
         assert connection.scalar(text("SELECT count(*) FROM dify_builder_cognition_policies")) == 0
         assert connection.scalar(text("SELECT count(*) FROM dify_builder_material")) == 0
+        assert connection.scalar(text("SELECT count(*) FROM dify_builder_workflow_writers")) == 0
+        writer_inspector = inspect(connection)
+        assert writer_inspector.get_pk_constraint("dify_builder_workflow_writers", schema=schema)[
+            "constrained_columns"
+        ] == [
+            "tenant_id",
+            "app_id",
+        ]
+        assert {
+            column["name"] for column in writer_inspector.get_columns("dify_builder_workflow_writers", schema=schema)
+        } == {
+            "tenant_id",
+            "app_id",
+            "session_id",
+            "token",
+            "generation",
+            "expires_at",
+        }
+        assert {
+            index["name"] for index in writer_inspector.get_indexes("dify_builder_workflow_writers", schema=schema)
+        } == {
+            "builder_workflow_writer_session_idx",
+        }
         assert (
             witness(
                 include_archive=True,
@@ -669,6 +699,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
                 include_workflow_tasks=True,
                 include_draft_coordination=True,
                 include_builder_context=True,
+                include_workflow_writer=True,
             )
             == before_continuation
         )
