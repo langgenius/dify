@@ -283,6 +283,17 @@ def test_describe_agent_shows_the_inputs_of_its_published_version(
     assert body["input_schema"]["properties"]["inputs"]["required"] == ["topic"]
 
 
+def test_describe_agent_names_an_undashed_id_like_the_dashed_one(
+    admitted_bearer: AdmittedWorld, sqlite_session: Session
+) -> None:
+    app_id = _persist_agent(admitted_bearer, sqlite_session, PublishState.CLEAN)
+
+    body = _describe(admitted_bearer, agent_id=uuid.UUID(AGENT_ID).hex).get_json()
+
+    assert body["info"] == _info(app_id, published=True)
+    assert [hint["input"] for hint in body["hints"]] == [hint["input"] for hint in _hints(admitted_bearer, "run.agent")]
+
+
 def test_describe_agent_without_a_published_version_hints_the_draft(
     admitted_bearer: AdmittedWorld, sqlite_session: Session
 ) -> None:
