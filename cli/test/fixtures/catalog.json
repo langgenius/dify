@@ -1995,6 +1995,118 @@
       "method": "POST",
       "path": "/openapi/v1/workspaces/{workspace_id}/apps/packages",
       "summary": "Import an app from a .ifpkg package or an unpacked package folder"
+    },
+    "get.agent": {
+      "bind": {
+        "limit": "query",
+        "name": "query",
+        "page": "query",
+        "published": "query",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "limit": {},
+          "name": {},
+          "page": {},
+          "published": {},
+          "workspace_id": {}
+        },
+        "required": ["workspace_id"]
+      },
+      "internal": false,
+      "kind": "list",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/agents",
+      "summary": "List the Agents you can see in a workspace"
+    },
+    "describe.agent": {
+      "bind": {
+        "agent_id": "path",
+        "fields": "query",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "agent_id": {},
+          "fields": {},
+          "workspace_id": {}
+        },
+        "required": ["agent_id", "workspace_id"]
+      },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/workspaces/{workspace_id}/agents/{agent_id}",
+      "summary": "Describe an Agent: its info and the inputs a run takes"
+    },
+    "run.agent": {
+      "bind": {
+        "agent_id": "path",
+        "attachments": "file",
+        "auto_generate_name": "body",
+        "conversation_id": "body",
+        "files": "file",
+        "inputs": "body",
+        "query": "body",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "agent_id": {},
+          "attachments": {},
+          "auto_generate_name": {},
+          "conversation_id": {},
+          "files": {},
+          "inputs": {},
+          "query": {},
+          "workspace_id": {}
+        },
+        "required": ["agent_id", "workspace_id", "query"]
+      },
+      "internal": false,
+      "kind": "sse",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/agents/{agent_id}:run",
+      "summary": "Run a published Agent; streams message events"
+    },
+    "test.agent": {
+      "bind": {
+        "agent_id": "path",
+        "attachments": "file",
+        "auto_generate_name": "body",
+        "conversation_id": "body",
+        "files": "file",
+        "inputs": "body",
+        "query": "body",
+        "workspace_id": "path"
+      },
+      "deprecated": false,
+      "input": {
+        "type": "object",
+        "properties": {
+          "agent_id": {},
+          "attachments": {},
+          "auto_generate_name": {},
+          "conversation_id": {},
+          "files": {},
+          "inputs": {},
+          "query": {},
+          "workspace_id": {}
+        },
+        "required": ["agent_id", "workspace_id", "query"]
+      },
+      "internal": false,
+      "kind": "sse",
+      "method": "POST",
+      "path": "/openapi/v1/workspaces/{workspace_id}/agents/{agent_id}:test",
+      "summary": "Run an Agent's draft; streams message events"
     }
   }
 }
