@@ -25,6 +25,7 @@ from controllers.openapi.auth.requirements import (
 )
 from controllers.openapi.auth.spec import EndpointSpec
 from controllers.openapi.auth.subjects import AccountSubject
+from core.app.app_config.common.parameters_mapping import AppParametersDict
 from extensions.ext_application_services import ApplicationServices
 from models.agent import (
     Agent,
@@ -39,6 +40,7 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig
 from models.model import AppMode
 from services.agent.roster_service import AgentRosterService
+from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
 from tests.helpers.unit.model_factories import make_app
 from tests.unit_tests.controllers.openapi.auth.test_requirements import _canonical
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
@@ -238,16 +240,30 @@ def _describe(world: AdmittedWorld, query: str = "", agent_id: str = AGENT_ID) -
     )
 
 
+def _info(app_id: str, *, published: bool, updated_at: str) -> dict[str, object]:
+    return AgentDescribeInfo(
+        agent_id=AGENT_ID,
+        app_id=app_id,
+        name="Support desk",
+        description="",
+        role="triage",
+        published=published,
+        updated_at=updated_at,
+        service_api_enabled=True,
+    ).model_dump()
+
+
+def _hints(world: AdmittedWorld, op: str) -> list[dict[str, object]]:
+    return [{"op": op, "input": {"workspace_id": world.workspace_id, "agent_id": AGENT_ID}}]
+
+
 @pytest.mark.parametrize(
-    ("state", "published", "runnable"),
-    [
-        (PublishState.CLEAN, True, True),
-        (PublishState.EDITED, False, True),
-        (PublishState.NEVER, False, False),
-    ],
+    ("state", "published"),
+    [(PublishState.CLEAN, True), (PublishState.EDITED, False)],
+    ids=["clean", "edited-since-publish"],
 )
 def test_describe_agent_shows_the_inputs_of_its_published_version(
-    admitted_bearer: AdmittedWorld, sqlite_session: Session, state: str, published: bool, runnable: bool
+    admitted_bearer: AdmittedWorld, sqlite_session: Session, state: str, published: bool
 ) -> None:
     app_id = _persist_agent(admitted_bearer, sqlite_session, state)
 
@@ -255,25 +271,42 @@ def test_describe_agent_shows_the_inputs_of_its_published_version(
 
     body = response.get_json()
     assert response.status_code == 200
-    assert AgentDescribeInfo.model_validate(body["info"]).model_dump() == {
-        "agent_id": AGENT_ID,
-        "app_id": app_id,
-        "name": "Support desk",
-        "description": "",
-        "role": "triage",
-        "published": published,
-        "updated_at": body["info"]["updated_at"],
-        "service_api_enabled": True,
-    }
-    target = {"workspace_id": admitted_bearer.workspace_id, "agent_id": AGENT_ID}
-    expected_hint = {"op": "run.agent" if runnable else "test.agent", "input": target}
-    assert [{key: hint[key] for key in expected_hint} for hint in body["hints"]] == [expected_hint]
-    if runnable:
-        assert [row["text-input"]["variable"] for row in body["parameters"]["user_input_form"]] == ["topic"]
-        assert body["input_schema"]["required"] == ["query", "inputs"]
-        assert body["input_schema"]["properties"]["inputs"]["required"] == ["topic"]
-    else:
-        assert (body["parameters"], body["input_schema"]) == (None, None)
+    assert body["info"] == _info(app_id, published=published, updated_at=body["info"]["updated_at"])
+    assert [{key: hint[key] for key in ("op", "input")} for hint in body["hints"]] == _hints(
+        admitted_bearer, "run.agent"
+    )
+    assert [row["text-input"]["variable"] for row in body["parameters"]["user_input_form"]] == ["topic"]
+    assert body["input_schema"]["required"] == ["query", "inputs"]
+    assert body["input_schema"]["properties"]["inputs"]["required"] == ["topic"]
+
+
+def test_describe_agent_without_a_published_version_hints_the_draft(
+    admitted_bearer: AdmittedWorld, sqlite_session: Session
+) -> None:
+    app_id = _persist_agent(admitted_bearer, sqlite_session, PublishState.NEVER)
+
+    body = _describe(admitted_bearer).get_json()
+
+    assert body["info"] == _info(app_id, published=False, updated_at=body["info"]["updated_at"])
+    assert (body["parameters"], body["input_schema"]) == (None, None)
+    assert [{key: hint[key] for key in ("op", "input")} for hint in body["hints"]] == _hints(
+        admitted_bearer, "test.agent"
+    )
+
+
+def test_describe_agent_whose_definition_is_unavailable_is_refused(
+    admitted_bearer: AdmittedWorld, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _persist_agent(admitted_bearer, sqlite_session, PublishState.CLEAN)
+
+    def unavailable(_service: AppDefinitionQueryService, _app_id: str) -> AppParametersDict:
+        raise AppDefinitionUnavailableError
+
+    monkeypatch.setattr(AppDefinitionQueryService, "get_public_parameters", unavailable)
+
+    response = _describe(admitted_bearer)
+
+    assert (response.status_code, response.get_json()["code"]) == (400, "app_unavailable")
 
 
 def test_describe_agent_keeps_only_the_requested_blocks(

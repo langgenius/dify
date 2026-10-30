@@ -35,12 +35,13 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceMember,
 )
 from controllers.openapi.auth.subjects import AccountSubject
+from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import AppParametersDict
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response
 from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService, RosterAgentEntry
-from services.app_definition_query_service import AppDefinitionNotPublishedError
+from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
 
 
 def _row(entry: RosterAgentEntry) -> AgentListRow:
@@ -98,6 +99,8 @@ def _published_parameters(app_id: str) -> AppParametersDict | None:
         return application_services().app_definitions.get_public_parameters(app_id)
     except AppDefinitionNotPublishedError:
         return None
+    except AppDefinitionUnavailableError:
+        raise AppUnavailableError() from None
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/agents/<string:agent_id>")
@@ -129,20 +132,17 @@ class AgentDescribeApi(Resource):
             raise NotFound("agent not found") from error
 
         parameters = _published_parameters(ctx.app.id)
+        target = {"workspace_id": workspace_id, "agent_id": agent_id}
         response = AgentDescribeResponse()
         if wants_block(query.fields, "info"):
             response.info = _describe_info(entry)
-        if parameters is not None and wants_block(query.fields, "parameters"):
-            response.parameters = dump_response(Parameters, parameters)
-        if parameters is not None and wants_block(query.fields, "input_schema"):
-            response.input_schema = build_input_schema(ctx.app.mode, parameters["user_input_form"])
+        if parameters is None:
+            response.hints = [Hint(summary="Run this Agent's draft", op=op_of(AgentTestApi.post), input=target)]
+            return response
 
-        view = AgentRunApi if parameters is not None else AgentTestApi
-        response.hints = [
-            Hint(
-                summary="Run this Agent" if parameters is not None else "Run this Agent's draft",
-                op=op_of(view.post),
-                input={"workspace_id": workspace_id, "agent_id": agent_id},
-            )
-        ]
+        if wants_block(query.fields, "parameters"):
+            response.parameters = dump_response(Parameters, parameters)
+        if wants_block(query.fields, "input_schema"):
+            response.input_schema = build_input_schema(ctx.app.mode, parameters["user_input_form"])
+        response.hints = [Hint(summary="Run this Agent", op=op_of(AgentRunApi.post), input=target)]
         return response
