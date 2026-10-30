@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import io
+from collections.abc import Callable
+from inspect import signature
 from inspect import unwrap as inspect_unwrap
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask, request
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import RequestEntityTooLarge
 
+import controllers.console.workspace.skills as skills_module
 from configs import dify_config
 from controllers.console.workspace.skills import (
     _MULTIPART_ENVELOPE_BYTES,
@@ -37,6 +43,25 @@ def request_context() -> RequestContext:
     )
 
 
+def _unwrap_with_session[ReturnT](func: Callable[..., ReturnT]) -> Callable[..., ReturnT]:
+    """Mirror the module-local helper in test_skills.py.
+
+    The controller methods take an injected ``session`` after unwrapping, so a
+    direct call with only (self, request_context) raises TypeError and never
+    reaches the code under test.
+    """
+    unwrapped = cast(Callable[..., ReturnT], inspect_unwrap(func))
+    parameters = list(signature(unwrapped).parameters.values())
+    if len(parameters) > 1 and parameters[1].name == "session":
+
+        def invoke(*args: object, **kwargs: object) -> ReturnT:
+            with Session() as session:
+                return unwrapped(args[0], session, *args[1:], **kwargs)
+
+        return invoke
+    return unwrapped
+
+
 def _run(
     app: Flask,
     api: object,
@@ -45,10 +70,11 @@ def _run(
 ) -> tuple[object, int | None, MagicMock]:
     """Drive the handler far enough to install the cap, then report it.
 
-    The service is patched out so the assertions are about the route's own
-    read, not about storage.
+    The service is patched out so the assertions are about the route's own read,
+    not about storage. The cap is captured while the request context is still
+    active: Flask rebinds ``request`` when the context exits.
     """
-    method = inspect_unwrap(api.post)  # type: ignore[attr-defined]
+    method = _unwrap_with_session(api.post)  # type: ignore[attr-defined]
     with (
         app.test_request_context("/", method="POST", data=data, content_type="multipart/form-data"),
         patch("controllers.console.workspace.skills.SkillManagementService") as service_cls,
@@ -59,7 +85,7 @@ def _run(
         outcome: object = None
         try:
             outcome = method(api, request_context)
-        except Exception as error:  # the oversized case is expected to raise
+        except Exception as error:
             outcome = error
         return outcome, request.max_content_length, service
 
@@ -71,16 +97,18 @@ def test_skill_import_caps_the_body_before_reading_the_archive(app: Flask, reque
     documents what the process has already buffered.
     """
     api = WorkspaceSkillImportApi()
-    _, cap, _ = _run(app, api, request_context, {"file": (io.BytesIO(b"zip"), "skill.zip")})
+    outcome, cap, _ = _run(app, api, request_context, {"file": (io.BytesIO(b"zip"), "skill.zip")})
 
+    assert not isinstance(outcome, Exception), f"legal body refused: {outcome!r}"
     assert cap == _skill_archive_bytes() + _MULTIPART_ENVELOPE_BYTES
 
 
 def test_skill_file_upload_caps_the_body_before_reading_the_file(app: Flask, request_context: RequestContext) -> None:
     """upload_file checks the per-extension limit after file.stream.read()."""
     api = WorkspaceSkillFileUploadApi()
-    _, cap, _ = _run(app, api, request_context, {"file": (io.BytesIO(b"text"), "policy.md")})
+    outcome, cap, _ = _run(app, api, request_context, {"file": (io.BytesIO(b"text"), "policy.md")})
 
+    assert not isinstance(outcome, Exception), f"legal body refused: {outcome!r}"
     assert cap == _max_draft_file_bytes() + _MULTIPART_ENVELOPE_BYTES
 
 
@@ -106,12 +134,12 @@ def test_skill_import_request_over_the_cap_is_refused(
 ) -> None:
     """An oversized archive must fail the read that crosses the cap."""
     monkeypatch.setattr(dify_config, "UPLOAD_SKILL_FILE_SIZE_LIMIT", 1)
-    monkeypatch.setattr("controllers.console.workspace.skills._MULTIPART_ENVELOPE_BYTES", 1)
+    monkeypatch.setattr(skills_module, "_MULTIPART_ENVELOPE_BYTES", 1)
     api = WorkspaceSkillImportApi()
     oversized = b"x" * (2 * 1024 * 1024)
 
-    outcome, _, service = _run(app, api, request_context, {"file": (io.BytesIO(oversized), "skill.zip")})
+    outcome, cap, service = _run(app, api, request_context, {"file": (io.BytesIO(oversized), "skill.zip")})
 
-    assert isinstance(outcome, Exception), "an oversized archive must not reach the service"
-    assert "too large" in str(outcome).lower()
+    assert isinstance(outcome, RequestEntityTooLarge)
+    assert cap == 1024 * 1024 + 1
     service.import_skill.assert_not_called()
