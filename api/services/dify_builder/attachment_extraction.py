@@ -7,7 +7,7 @@ No parser follows links, performs OCR, writes derivatives or invokes providers.
 import hashlib
 import io
 import zipfile
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -187,6 +187,5 @@ def extract_local_context(
     except Exception:
         return ExtractedContext("rejected", reason="malformed_file")
     finally:
-        close = getattr(chunks, "close", None)
-        if close is not None:
-            close()
+        if isinstance(chunks, Generator):
+            chunks.close()
