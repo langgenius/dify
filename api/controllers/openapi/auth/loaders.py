@@ -11,6 +11,8 @@ from extensions.ext_application_services import application_services
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
 from models.model import App, EndUser
+from services.agent.errors import AgentNotFoundError
+from services.agent.roster_service import AgentRosterService
 from services.app_service import AppService
 
 
@@ -18,6 +20,7 @@ class PathParam(StrEnum):
     """The route path parameters the auth layer reads."""
 
     APP_ID = "app_id"
+    AGENT_ID = "agent_id"
     WORKSPACE_ID = "workspace_id"
     FORM_TOKEN = "form_token"
 
@@ -81,17 +84,31 @@ def _path_param(ctx: Context, name: str) -> str:
         ) from caught_error
 
 
-def _fetch_app(ctx: Context) -> App:
-    raw = _path_param(ctx, PathParam.APP_ID)
+def _canonical_uuid(raw: str, not_found: str) -> str:
     try:
-        # Canonical dashed form, so a bare-hex path parameter names the same app.
-        app_id = str(uuid.UUID(raw))
+        # Canonical dashed form, so a bare-hex path parameter names the same row.
+        return str(uuid.UUID(raw))
     except ValueError as caught_error:
-        raise NotFound("app not found") from caught_error
+        raise NotFound(not_found) from caught_error
+
+
+def _fetch_app(ctx: Context) -> App:
+    if PathParam.APP_ID not in ctx.view_args and PathParam.AGENT_ID in ctx.view_args:
+        return _fetch_agent_app(ctx)
+    app_id = _canonical_uuid(_path_param(ctx, PathParam.APP_ID), "app not found")
     app = AppService.get_app_by_id(app_id, ctx.session)
     if not app or app.status != AppStatus.NORMAL:
         raise NotFound("app not found")
     return app
+
+
+def _fetch_agent_app(ctx: Context) -> App:
+    agent_id = _canonical_uuid(_path_param(ctx, PathParam.AGENT_ID), "agent not found")
+    workspace = load_workspace(ctx)
+    try:
+        return AgentRosterService(ctx.session).get_agent_app_model(tenant_id=str(workspace.id), agent_id=agent_id)
+    except AgentNotFoundError as caught_error:
+        raise NotFound("agent not found") from caught_error
 
 
 def _fetch_workspace(ctx: Context) -> Tenant:
