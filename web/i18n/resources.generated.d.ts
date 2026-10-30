@@ -1811,8 +1811,6 @@ export default interface Resources {
     'operation.confirmAction': 'Please confirm your action.'
     'operation.copied': 'Copied'
     'operation.copy': 'Copy'
-    'operation.copyErrorDetails': 'Copy error details'
-    'operation.copyErrorFailed': 'Copy failed. Retry'
     'operation.copyImage': 'Copy Image'
     'operation.create': 'Create'
     'operation.deSelectAll': 'Deselect All'
