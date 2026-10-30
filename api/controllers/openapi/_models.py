@@ -111,8 +111,7 @@ class AgentListQuery(PageQuery):
     published: bool | None = Field(
         None,
         description=(
-            "true lists Agents whose latest edits are published; "
-            "false lists Agents never published or edited since their last publish"
+            "true lists Agents that have a published version a run can use; false lists Agents that have none yet"
         ),
     )
 
@@ -123,8 +122,10 @@ class AgentListRow(BaseModel):
     name: str
     description: str
     role: str
-    published: bool = Field(description="true when the Agent has a published version and no edits since")
-    updated_at: str | None = None
+    published: bool = Field(
+        description="true when the Agent has a published version a run can use, even if its draft was edited since"
+    )
+    updated_at: str
 
 
 class AgentListResponse(PaginationEnvelope[AgentListRow]):
