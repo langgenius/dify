@@ -21,7 +21,7 @@ import re
 import xml.etree.ElementTree as ET
 import zipfile
 from base64 import b64encode
-from collections.abc import Generator, Mapping
+from collections.abc import Collection, Generator, Mapping
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -2428,6 +2428,19 @@ class SkillManagementService:
                 config_snapshot_id=config_snapshot_id,
             )
         ]
+
+    def published_version_ids(self, *, tenant_id: str, names: Collection[str]) -> dict[str, str | None]:
+        """The latest published version id of each named workspace Skill, None for one never published.
+
+        Names with no Skill in the workspace are left out.
+        """
+        with self._session_scope() as session:
+            rows = session.execute(
+                select(Skill.name, Skill.latest_published_version_id).where(
+                    Skill.tenant_id == tenant_id, Skill.name.in_(names)
+                )
+            )
+            return dict(rows.tuples().all())
 
     def list_runtime_agent_skill_archives(
         self,

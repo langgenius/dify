@@ -24,10 +24,15 @@ from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from models.agent import WorkflowAgentBindingType
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import App, AppMode
-from models.skill import Skill
 from models.tools import ToolLabelBinding, WorkflowToolProvider
 from models.workflow import Workflow
-from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AGENT_PACKAGE_REF_KEY, AgentPackage
+from services.agent.dsl_entities import (
+    AGENT_BINDING_DSL_KEY,
+    AGENT_BINDING_TYPE_KEY,
+    AGENT_NODE_JOB_DSL_KEY,
+    AGENT_PACKAGE_REF_KEY,
+    AgentPackage,
+)
 from services.agent.errors import (
     InvalidRosterAgentPackageError,
     RosterAgentPackageTooLargeError,
@@ -54,6 +59,7 @@ from services.dsl_content import DSL_MAX_SIZE
 from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import AppDslExportData, DslImportWarning, ImportStatus, PackagedWorkflowTool
 from services.entities.site_dsl import SiteDsl
+from services.skill_management_service import SkillManagementService
 from services.workflow_tool_references import iter_workflow_tool_references
 
 _COPY_CHUNK_SIZE = 1024 * 1024
@@ -139,13 +145,7 @@ class PreparedAppPackage(PreparedPackageArchive):
         names = {skill.name for agent in self.agents.values() for skill in agent.workspace_skills}
         if not names:
             return
-        with session_factory.create_session() as session:
-            rows = session.execute(
-                select(Skill.name, Skill.latest_published_version_id).where(
-                    Skill.tenant_id == tenant_id, Skill.name.in_(names)
-                )
-            )
-            versions = dict(rows.tuples().all())
+        versions = SkillManagementService().published_version_ids(tenant_id=tenant_id, names=names)
         problems = dict.fromkeys(names - versions.keys(), WorkspaceSkillProblem.NOT_FOUND)
         problems.update(
             dict.fromkeys(
@@ -156,7 +156,7 @@ class PreparedAppPackage(PreparedPackageArchive):
             raise WorkspaceSkillUnavailableError(problems)
 
     def materialize_agents(
-        self, *, tenant_id: str, account_id: str, link_workspace_skills: bool = False
+        self, *, tenant_id: str, account_id: str, link_workspace_skills: bool
     ) -> tuple[dict[str, Any], list[DslImportWarning]]:
         importer = AgentPackageResourceImporter()
         # Validate every Agent before uploading any resource.
@@ -397,8 +397,8 @@ class AppPackageService(RosterAgentPackageReader):
             agents = {ref: AgentPackage.model_validate(value) for ref, value in packages.items()}
             references: set[str] = set()
             for _, node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(data["workflow"]["graph"]):
-                binding = node_data["agent_binding"]
-                binding_type = WorkflowAgentBindingType(binding["binding_type"])
+                binding = node_data[AGENT_BINDING_DSL_KEY]
+                binding_type = WorkflowAgentBindingType(binding[AGENT_BINDING_TYPE_KEY])
                 if accept_roster_references:
                     if cls._is_roster_reference(binding):
                         cls._validate_roster_reference(binding, node_data)
@@ -431,7 +431,7 @@ class AppPackageService(RosterAgentPackageReader):
         node_ids = [
             node_id
             for node_id, node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph)
-            if cls._is_roster_reference(node_data.get("agent_binding"))
+            if cls._is_roster_reference(node_data.get(AGENT_BINDING_DSL_KEY))
         ]
         if node_ids:
             raise RosterReferenceNotAcceptedError(node_ids)
@@ -440,7 +440,7 @@ class AppPackageService(RosterAgentPackageReader):
     def _is_roster_reference(binding: object) -> bool:
         if not isinstance(binding, Mapping):
             return False
-        if binding.get("binding_type") != WorkflowAgentBindingType.ROSTER_AGENT:
+        if binding.get(AGENT_BINDING_TYPE_KEY) != WorkflowAgentBindingType.ROSTER_AGENT:
             return False
         return binding.get(AGENT_PACKAGE_REF_KEY) is None
 

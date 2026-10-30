@@ -82,7 +82,7 @@ class AgentPackageResourceImporter:
         agent_package: AgentPackage,
         tenant_id: str,
         account_id: str,
-        link_workspace_skills: bool = False,
+        link_workspace_skills: bool,
     ) -> tuple[AgentPackage, list[DslImportWarning]]:
         return self.materialize_resources(
             read_member=lambda path, limit: self._reader.read_member_bytes(archive, path, max_bytes=limit),
