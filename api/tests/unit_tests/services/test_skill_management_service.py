@@ -8,7 +8,7 @@ import zipfile
 from collections.abc import Generator
 from types import SimpleNamespace
 from typing import cast, override
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -41,7 +41,14 @@ from models.agent_config_entities import (
 )
 from models.enums import TagType
 from models.model import App, AppMode, IconType, Tag, TagBinding
-from models.skill import AgentSkillBinding, Skill, SkillDraftFile, SkillVersion, SkillVersionManifest
+from models.skill import (
+    AgentSkillBinding,
+    AgentSkillBindingSnapshot,
+    Skill,
+    SkillDraftFile,
+    SkillVersion,
+    SkillVersionManifest,
+)
 from models.tools import ToolFile
 from services.skill_management_service import (
     SkillAssistAttachmentPayload,
@@ -3560,15 +3567,20 @@ def test_assistant_error_message_exposes_provider_description_without_prefix() -
 
 
 def test_runtime_agent_skills_use_published_identity_when_draft_metadata_changed() -> None:
-    skill = SimpleNamespace(
-        id="skill-1",
+    skill_id, version_id, file_id, snapshot_id = (str(uuid4()) for _ in range(4))
+    skill = Skill(
+        id=skill_id,
         tenant_id=TENANT,
         name="jietouanhao-peidui2",
+        display_name="Draft name",
         description="draft description",
+        latest_published_version_id=version_id,
     )
-    version = SimpleNamespace(
-        id="version-1",
-        archive_tool_file_id="archive-1",
+    version = SkillVersion(
+        id=version_id,
+        skill_id=skill_id,
+        version_number=1,
+        archive_tool_file_id=file_id,
         archive_size=10,
         hash_code="hash-1",
         manifest=SkillVersionManifest(
@@ -3578,26 +3590,47 @@ def test_runtime_agent_skills_use_published_identity_when_draft_metadata_changed
             description="published description",
         ),
     )
-    binding = SimpleNamespace(priority=0)
-    tool_file = SimpleNamespace(file_key="tools/archive-1.zip")
-    session = MagicMock()
-    session.execute.return_value = [(binding, skill, version, tool_file)]
+    binding = AgentSkillBindingSnapshot(
+        tenant_id=TENANT, agent_id=AGENT, config_snapshot_id=snapshot_id, skill_id=skill_id, priority=0
+    )
+    tool_file = ToolFile(
+        tenant_id=TENANT,
+        user_id=USER,
+        conversation_id=None,
+        file_key="tools/archive-1.zip",
+        mimetype="application/zip",
+        name="archive.zip",
+        size=10,
+    )
+    tool_file.id = file_id
+    with session_factory.create_session() as session:
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        agent.active_config_snapshot_id = snapshot_id
+        session.add_all([skill, version, binding, tool_file])
+        session.commit()
 
-    with patch("services.skill_management_service.session_factory.create_session") as create_session:
-        create_session.return_value.__enter__.return_value = session
-        result = SkillManagementService().list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT)
+    result = SkillManagementService().list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT)
 
     assert result == [
         {
-            "id": "skill-1",
+            "id": skill_id,
             "name": "jietouanhao-peidui",
-            "file_id": "archive-1",
+            "file_id": file_id,
             "description": "published description",
             "size": 10,
             "hash": "hash-1",
             "mime_type": "application/zip",
         }
     ]
+
+    with session_factory.create_session() as session:
+        stored_file = session.get(ToolFile, file_id)
+        assert stored_file is not None
+        stored_file.tenant_id = str(uuid4())
+        session.commit()
+
+    assert SkillManagementService().list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT) == []
 
 
 def test_agent_skill_binding_changes_require_agent_publish_before_runtime_load() -> None:
