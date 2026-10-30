@@ -20,6 +20,23 @@ from machinery.context import RequestContext
 _UPLOAD_FILE_OK = {"id": "tool-file-1", "name": "policy.md", "mime_type": "text/markdown", "size": 1, "hash": "h"}
 
 
+@pytest.fixture
+def app() -> Flask:
+    flask_app = Flask("test_skill_upload_body_cap")
+    flask_app.config["TESTING"] = True
+    return flask_app
+
+
+@pytest.fixture
+def request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id=None,
+        account_id="user-1",
+        active_workspace_id="tenant-1",
+    )
+
+
 def _run(
     app: Flask,
     api: object,
