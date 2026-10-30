@@ -11,7 +11,7 @@ import yaml
 from flask import Flask, Response, request
 from flask_restx import Resource
 from pydantic import ValidationError
-from sqlalchemy import Engine, delete, func, select
+from sqlalchemy import Engine, delete, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest, NotFound
@@ -1202,12 +1202,13 @@ def test_package_import_refuses_links_to_missing_skills_before_any_write(
 ) -> None:
     storage = _package_storage(monkeypatch, sqlite_engine)
     source = _source(sqlite_session, storage, app_id=_OVERWRITTEN_APP_ID)
-    _bind_second_workspace_skill(sqlite_session, storage)
+    _bind_second_workspace_skill(sqlite_session, storage, agent=2)
     _add_workflow_tool(sqlite_session, source)
     context = _owner_context(sqlite_session, source.tenant_id)
     source_graph = _draft(sqlite_session, source.id).graph_dict
     _exported, folder = _export_folder(source)
-    sqlite_session.execute(delete(Skill))
+    sqlite_session.execute(delete(Skill).where(Skill.name == "second"))
+    sqlite_session.execute(update(Skill).values(latest_published_version_id=None))
     sqlite_session.commit()
     apps = sqlite_session.scalar(select(func.count()).select_from(App))
 
@@ -1225,14 +1226,18 @@ def test_package_import_refuses_links_to_missing_skills_before_any_write(
     body = OpenApiErrorFormatter().finalize(exc_info.value, {"message": exc_info.value.description}, 400)
     assert (body["status"], body["code"]) == (400, OpenApiErrorCode.APP_PACKAGE_INVALID)
     assert body["hint"] == (
-        "Import each missing skill into the Skill Hub first, "
+        "Fix each skill in details, "
         "or import with preserve_agent_bindings=false to use the package's copy of each skill."
     )
     assert body["details"] == [
         {
             "type": "workspace_skill_not_found",
-            "loc": ["workspace_skills", name],
-            "msg": f'Workspace Skill "{name}" is not in this workspace.',
-        }
-        for name in ("second", "workspace")
+            "loc": ["workspace_skills", "second"],
+            "msg": 'Workspace Skill "second" is not in this workspace. Import it into the Skill Hub first.',
+        },
+        {
+            "type": "workspace_skill_not_published",
+            "loc": ["workspace_skills", "workspace"],
+            "msg": 'Workspace Skill "workspace" has no published version. Publish it in the Skill Hub first.',
+        },
     ]

@@ -1,4 +1,7 @@
-from collections.abc import Sequence
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+from enum import StrEnum
 
 from werkzeug.exceptions import BadRequest, Conflict, NotFound
 
@@ -61,14 +64,35 @@ class InvalidRosterAgentPackageError(BaseHTTPException):
     code = 400
 
 
-class WorkspaceSkillNotFoundError(InvalidRosterAgentPackageError):
-    """A package links its Agents to workspace Skills by name, and these names are not in the workspace."""
+class WorkspaceSkillProblem(StrEnum):
+    """Why a workspace Skill a package links to cannot be bound, with what to do about it."""
 
-    error_code = "workspace_skill_not_found"
+    remedy: str
 
-    def __init__(self, names: Sequence[str]) -> None:
-        self.names = list(names)
-        super().__init__(f"Workspace Skills are not in this workspace: {', '.join(self.names)}.")
+    NOT_FOUND = ("workspace_skill_not_found", "is not in this workspace. Import it into the Skill Hub first.")
+    NOT_PUBLISHED = (
+        "workspace_skill_not_published",
+        "has no published version. Publish it in the Skill Hub first.",
+    )
+
+    def __new__(cls, value: str, remedy: str) -> WorkspaceSkillProblem:
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member.remedy = remedy
+        return member
+
+    def describe(self, name: str) -> str:
+        return f'Workspace Skill "{name}" {self.remedy}'
+
+
+class WorkspaceSkillUnavailableError(InvalidRosterAgentPackageError):
+    """A package links its Agents to workspace Skills by name, and these cannot be bound in the workspace."""
+
+    error_code = "workspace_skill_unavailable"
+
+    def __init__(self, problems: Mapping[str, WorkspaceSkillProblem]) -> None:
+        self.problems = dict(sorted(problems.items()))
+        super().__init__(f"Workspace Skills cannot be linked in this workspace: {', '.join(self.problems)}.")
 
 
 class RosterReferenceNotAcceptedError(InvalidRosterAgentPackageError):

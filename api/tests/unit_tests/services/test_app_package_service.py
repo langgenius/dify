@@ -5,6 +5,7 @@ import io
 import json
 import zipfile
 from collections.abc import Callable, Generator, Mapping
+from contextlib import AbstractContextManager, nullcontext
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock
@@ -47,7 +48,8 @@ from services.agent.errors import (
     RosterAgentPackageExportFailedError,
     RosterAgentPackageTooLargeError,
     RosterReferenceNotAcceptedError,
-    WorkspaceSkillNotFoundError,
+    WorkspaceSkillProblem,
+    WorkspaceSkillUnavailableError,
 )
 from services.agent.package_resource_exporter import AgentPackageResourceExporter, _FileSource, _SkillSource
 from services.agent.package_resource_importer import AgentPackageResourceImporter
@@ -837,27 +839,34 @@ def _publish_skill(
     session.commit()
 
 
-def _workspace_skill(name: str, *, tenant_id: str = "tenant-2", skill_id: str | None = None) -> Skill:
+def _workspace_skill(
+    name: str,
+    *,
+    tenant_id: str = "tenant-2",
+    skill_id: str | None = None,
+    latest_published_version_id: str | None = None,
+) -> Skill:
     return Skill(
         id=skill_id or str(uuid4()),
         tenant_id=tenant_id,
         name=name,
         display_name=name.title(),
         description=name,
+        latest_published_version_id=latest_published_version_id,
         created_by="account-1",
         updated_by="account-1",
     )
 
 
-def _bind_second_workspace_skill(session: Session, storage: _MemoryStorage) -> None:
-    """Bind a published workspace Skill named ``second`` to the second source Agent."""
+def _bind_second_workspace_skill(session: Session, storage: _MemoryStorage, *, agent: int) -> None:
+    """Bind a published workspace Skill named ``second``, at priority 1, to source Agent ``agent``."""
     skill = _workspace_skill("second", tenant_id="tenant-1")
     _publish_skill(session, storage, skill, "Second skill", version_number=1)
     session.add(
         AgentSkillBindingSnapshot(
             tenant_id="tenant-1",
-            agent_id="source-agent-2",
-            config_snapshot_id="source-snapshot-2",
+            agent_id=f"source-agent-{agent}",
+            config_snapshot_id=f"source-snapshot-{agent}",
             skill_id=skill.id,
             priority=1,
             created_by="account-1",
@@ -979,25 +988,72 @@ class TestWorkspaceSkillLinkCases:
 
     @staticmethod
     @pytest.mark.parametrize(
-        ("present", "missing"),
-        [([], ["second", "workspace"]), (["workspace"], ["second"])],
+        ("present", "problems"),
+        [
+            pytest.param(
+                {},
+                {"second": WorkspaceSkillProblem.NOT_FOUND, "workspace": WorkspaceSkillProblem.NOT_FOUND},
+                id="none-present",
+            ),
+            pytest.param(
+                {"workspace": "published-version"},
+                {"second": WorkspaceSkillProblem.NOT_FOUND},
+                id="one-published",
+            ),
+            pytest.param(
+                {"workspace": None},
+                {"second": WorkspaceSkillProblem.NOT_FOUND, "workspace": WorkspaceSkillProblem.NOT_PUBLISHED},
+                id="one-never-published",
+            ),
+        ],
     )
-    def test_linking_check_names_every_missing_skill(
-        sqlite_session: Session, storage: _MemoryStorage, present: list[str], missing: list[str]
+    def test_linking_check_names_every_unavailable_skill(
+        sqlite_session: Session,
+        storage: _MemoryStorage,
+        present: dict[str, str | None],
+        problems: dict[str, WorkspaceSkillProblem],
     ) -> None:
         app = _source(sqlite_session, storage)
-        _bind_second_workspace_skill(sqlite_session, storage)
-        sqlite_session.add_all([_workspace_skill(name) for name in present])
+        _bind_second_workspace_skill(sqlite_session, storage, agent=2)
+        sqlite_session.add_all(
+            [_workspace_skill(name, latest_published_version_id=version) for name, version in present.items()]
+        )
         sqlite_session.commit()
         prepared = AppPackageService().read_package(
             io.BytesIO(_export(app, preserve_agent_bindings=True)), accept_roster_references=True
         )
         assert prepared is not None
 
-        with prepared, pytest.raises(WorkspaceSkillNotFoundError) as exc_info:
+        with prepared, pytest.raises(WorkspaceSkillUnavailableError) as exc_info:
             prepared.require_workspace_skills(tenant_id="tenant-2")
 
-        assert exc_info.value.names == missing
+        assert exc_info.value.problems == problems
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("priority", "outcome"),
+        [
+            pytest.param(1, nullcontext(), id="distinct"),
+            pytest.param(0, pytest.raises(InvalidRosterAgentPackageError), id="shared"),
+        ],
+    )
+    def test_reader_refuses_workspace_skills_that_share_a_priority(
+        sqlite_session: Session, storage: _MemoryStorage, priority: int, outcome: AbstractContextManager[object]
+    ) -> None:
+        app = _source(sqlite_session, storage)
+        _bind_second_workspace_skill(sqlite_session, storage, agent=1)
+        content = _export(app, preserve_agent_bindings=True)
+
+        def mutate(_manifest: AppPackageManifest, data: dict[str, object], _members: dict[str, bytes]) -> None:
+            packages = cast(dict[str, dict[str, list[dict[str, object]]]], data["agent_packages"])
+            packages["agent_1"]["workspace_skills"][1]["priority"] = priority
+
+        with outcome:
+            prepared = AppPackageService().read_package(
+                io.BytesIO(_rewrite(content, mutate)), accept_roster_references=True
+            )
+            assert prepared is not None
+            prepared.close()
 
 
 """Ordinary App packages preserve DSLs and enforce container integrity."""
