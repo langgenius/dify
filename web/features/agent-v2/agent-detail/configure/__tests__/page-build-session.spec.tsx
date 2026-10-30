@@ -163,6 +163,29 @@ describe('Starting Build', () => {
 })
 
 describe('Leaving Build', () => {
+  it.each(['apply', 'discard'] as const)(
+    'reports the conversation reset failure once after %s without reporting success',
+    async (action) => {
+      const user = userEvent.setup()
+      createEnvironment({ buildDraft: createBuildDraft() }).render()
+      await waitFor(() => expect(applyButton()).toBeEnabled())
+      api.refresh.mockRejectedValueOnce(new Error('Conversation reset failed'))
+
+      await user.click(action === 'apply' ? applyButton() : discardButton())
+      if (action === 'discard') await confirm(user)
+
+      await waitFor(() =>
+        expect(api.error).toHaveBeenCalledExactlyOnceWith('Conversation reset failed'),
+      )
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument(),
+      )
+      expect(api[action]).toHaveBeenCalledTimes(1)
+      expect(promptEditor()).toHaveAttribute('contenteditable', 'true')
+      expect(api.success).not.toHaveBeenCalled()
+    },
+  )
+
   it('keeps the streaming draft and URL when leaving Build is cancelled', async () => {
     const user = userEvent.setup()
     const view = createEnvironment({ buildDraft: createBuildDraft() }).render()

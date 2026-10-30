@@ -346,7 +346,13 @@ export function useAgentConfigureBuildDraftActions({
   const exitBuildDraftMode = useCallback(
     async (shouldRefetchComposer: boolean) => {
       cancelBuildDraftRefresh()
-      await resetBuildChatSession().catch(() => undefined)
+      const didResetBuildChatSession = await resetBuildChatSession().then(
+        () => true,
+        (error: unknown) => {
+          toast.error(getErrorMessage(error) ?? tCommon(($) => $['api.actionFailed']))
+          return false
+        },
+      )
       let nextAgentSoulConfig = normalAgentSoulConfig
       if (shouldRefetchComposer) {
         const result = await refetchComposer()
@@ -358,6 +364,7 @@ export function useAgentConfigureBuildDraftActions({
       })
       rebaseComposerDraft(nextAgentSoulConfig)
       if (shouldRefetchComposer) onComposerRebased?.()
+      return didResetBuildChatSession
     },
     [
       buildDraftQueryOptions.queryKey,
@@ -369,6 +376,7 @@ export function useAgentConfigureBuildDraftActions({
       refetchComposer,
       resetBuildChatSession,
       setSoulSourceOverride,
+      tCommon,
     ],
   )
 
@@ -391,8 +399,7 @@ export function useAgentConfigureBuildDraftActions({
       await queryClient.invalidateQueries({
         queryKey: consoleQuery.agent.get.key(),
       })
-      await exitBuildDraftMode(true)
-      toast.success(tCommon(($) => $['api.actionSuccess']))
+      if (await exitBuildDraftMode(true)) toast.success(tCommon(($) => $['api.actionSuccess']))
     } catch {
       // Each failed request already surfaces its backend error through the console client.
     } finally {
@@ -407,8 +414,7 @@ export function useAgentConfigureBuildDraftActions({
           agent_id: agentId,
         },
       })
-      await exitBuildDraftMode(false)
-      toast.success(tCommon(($) => $['api.actionSuccess']))
+      if (await exitBuildDraftMode(false)) toast.success(tCommon(($) => $['api.actionSuccess']))
       return true
     } catch (error) {
       toast.error(getErrorMessage(error) ?? tCommon(($) => $['api.actionFailed']))
