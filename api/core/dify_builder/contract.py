@@ -392,6 +392,8 @@ class SessionView:
     # Bounded recent safe observations for debug export after reconnect.
     test_execution: dict[str, Any] | None = None
     diagnostics: list[dict[str, Any]] = field(default_factory=list)
+    # Bounded intake receipts; excerpts and storage keys are never public.
+    attachments: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -648,7 +650,17 @@ class TestResultCard(_Card, BuilderPresentation):
     failure_node_ids: list[str] = field(default_factory=list)
     failure_phase: Literal["preparation", "execution"] | None = None
     failure_code: (
-        Literal["connection_refused", "timeout", "authentication", "rate_limit", "service_unavailable", "unknown"]
+        Literal[
+            "connection_refused",
+            "timeout",
+            "authentication",
+            "permission_denied",
+            "credential_unavailable",
+            "authorization_lookup_failed",
+            "rate_limit",
+            "service_unavailable",
+            "unknown",
+        ]
         | None
     ) = None
     simulated_node_ids: list[str] = field(default_factory=list)

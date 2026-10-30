@@ -1004,7 +1004,10 @@ export type TestResultCard = {
   execution_mode?: 'confirmed_run' | 'confirmed_tool' | 'mock' | 'restricted' | null
   failure_code?:
     | 'authentication'
+    | 'authorization_lookup_failed'
     | 'connection_refused'
+    | 'credential_unavailable'
+    | 'permission_denied'
     | 'rate_limit'
     | 'service_unavailable'
     | 'timeout'

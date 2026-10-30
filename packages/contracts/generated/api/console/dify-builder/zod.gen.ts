@@ -1089,7 +1089,10 @@ export const zTestResultCard = z.object({
   failure_code: z
     .enum([
       'authentication',
+      'authorization_lookup_failed',
       'connection_refused',
+      'credential_unavailable',
+      'permission_denied',
       'rate_limit',
       'service_unavailable',
       'timeout',

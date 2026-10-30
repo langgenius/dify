@@ -35306,7 +35306,7 @@ Tag type
 | dify_run_id | string |  | No |
 | executed_node_ids | [ string ] |  | No |
 | execution_mode | string, <br>**Available values:** "confirmed_run", "confirmed_tool", "mock", "restricted" |  | No |
-| failure_code | string, <br>**Available values:** "authentication", "connection_refused", "rate_limit", "service_unavailable", "timeout", "unknown" |  | No |
+| failure_code | string, <br>**Available values:** "authentication", "authorization_lookup_failed", "connection_refused", "credential_unavailable", "permission_denied", "rate_limit", "service_unavailable", "timeout", "unknown" |  | No |
 | failure_node_ids | [ string ] |  | No |
 | failure_phase | string, <br>**Available values:** "execution", "preparation" |  | No |
 | failure_reason | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
