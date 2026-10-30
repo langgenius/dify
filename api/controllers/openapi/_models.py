@@ -656,7 +656,8 @@ class AppPackageImportPayload(BaseModel):
         description=(
             "true: keep the package's links to roster Agents and workspace skills, for a package exported "
             "for editing and uploaded back to the same workspace. false: import every packaged Agent and "
-            "skill as a copy, for a full export; a package that links roster Agents is refused."
+            "skill as a copy, for a full export; a package that links roster Agents is refused. "
+            "Agent App packages always import their skills as copies; true is ignored for them."
         ),
     )
     name: str | None = Field(None, description="Override the app name from the DSL")
@@ -698,8 +699,9 @@ class AppPackageExportQuery(BaseModel):
         True,
         description=(
             "true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) "
-            "and only inline Agents are packaged; they keep their links to workspace skills, which the "
-            "importing workspace must have. false: every Agent is packaged with a copy of each workspace skill, "
+            "and only inline Agents are packaged; they keep their links to workspace skills. "
+            "An import with true links them, so the importing workspace must have them; an import with false "
+            "copies them. false: every Agent is packaged with a copy of each workspace skill, "
             f"as the console does, for moving the App to another workspace. {_IGNORED_FOR_AGENT_APPS}"
         ),
     )
