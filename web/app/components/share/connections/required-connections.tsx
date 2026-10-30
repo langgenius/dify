@@ -19,9 +19,15 @@ type Props = {
   connections: readonly RequiredConnection[]
   className?: string
   showSignIn?: boolean
+  size?: 'small' | 'medium'
 }
 
-export default function RequiredConnections({ connections, className, showSignIn = true }: Props) {
+export default function RequiredConnections({
+  connections,
+  className,
+  showSignIn = true,
+  size = 'small',
+}: Props) {
   const { t } = useTranslation(['share', 'common'])
   const titleId = useId()
   const { signIn, pending, error } = useWebAppSignIn()
@@ -33,12 +39,23 @@ export default function RequiredConnections({ connections, className, showSignIn
       aria-labelledby={titleId}
       className={cn('flex w-full flex-col items-start', className)}
     >
-      <div className="flex w-full flex-col gap-1 pb-6">
-        <h2 id={titleId} className="system-md-semibold text-text-primary">
+      <div className={cn('flex w-full flex-col', size === 'medium' ? 'gap-2 pb-5' : 'gap-1 pb-6')}>
+        <h2
+          id={titleId}
+          className={cn(
+            'text-text-primary',
+            size === 'medium' ? 'system-xl-semibold' : 'system-md-semibold',
+          )}
+        >
           {t(($) => $['connections.required.title'], { ns: 'share' })}
         </h2>
         {showSignIn && (
-          <p className="min-h-5 system-xs-regular text-text-tertiary">
+          <p
+            className={cn(
+              'min-h-5 text-text-tertiary',
+              size === 'medium' ? 'system-sm-regular' : 'system-xs-regular',
+            )}
+          >
             {t(($) => $['connections.required.signInDescription'], { ns: 'share' })}
           </p>
         )}
@@ -47,7 +64,7 @@ export default function RequiredConnections({ connections, className, showSignIn
             <li key={connection.id} className="flex max-w-full min-w-0 items-center gap-1.5">
               <AppIcon
                 size="tiny"
-                className="size-5 rounded-md"
+                className={cn('rounded-md', size === 'small' && 'size-5')}
                 icon={connection.icon}
                 fallback={{
                   content: (
@@ -62,7 +79,12 @@ export default function RequiredConnections({ connections, className, showSignIn
                 }}
                 decorative
               />
-              <span className="system-xs-regular wrap-anywhere text-text-tertiary">
+              <span
+                className={cn(
+                  'wrap-anywhere text-text-tertiary',
+                  size === 'medium' ? 'system-sm-regular' : 'system-xs-regular',
+                )}
+              >
                 {connection.name}
               </span>
             </li>
