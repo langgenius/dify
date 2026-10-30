@@ -948,6 +948,11 @@ jobs:
                                                                      'test_status_real_http_timeout_refuses': 1,
                                                                      'test_status_unsupported_and_transport_failure_refuse_without_acquire': 1}}.items():
               EXPECTED.setdefault(module, {}).update(functions)
+          # Native transport diagnostics retain exact route and logging-refusal coverage.
+          EXPECTED['tests.local.dify_agent.adapters.native_testing.test_transport'].update({
+              'test_native_transport_timing_contains_only_route_identity_and_safe_outcome': 1,
+              'test_native_transport_logging_failure_preserves_redirect_refusal': 1,
+          })
           REPORT = "builder-native-agent.xml"
           code = pytest.main(['tests/local/dify_agent/protocol/test_shell_job_receipt.py', 'tests/local/dify_agent/server/test_binding_job_status.py', 'tests/local/dify_agent/layers/shell/test_layer.py', 'tests/local/dify_agent/client/test_run_recovery.py', 'tests/local/dify_agent/protocol/test_run_recovery.py', 'tests/local/dify_agent/runtime/test_confirmed_continuation_owner.py', 'tests/local/dify_agent/runtime/test_native_lost_ack.py', 'tests/local/dify_agent/runtime/test_run_recovery.py', 'tests/local/dify_agent/server/test_identity_profile.py', 'tests/local/dify_agent/server/test_run_recovery.py', 'tests/local/dify_agent/storage/test_run_recovery.py', 'tests/local/dify_agent/agent_stub/server/test_runtime_admission.py', 'tests/integration/dify_agent/storage/test_active_stub_identity.py', 'tests/local/dify_agent/adapters/native_testing/test_producers.py', 'tests/local/dify_agent/adapters/native_testing/test_transport.py', 'tests/local/dify_agent/layers/dify_plugin/test_layers.py', 'tests/local/dify_agent/layers/knowledge/test_layer.py', 'tests/local/dify_agent/runtime/test_run_transport.py', 'tests/local/dify_agent/server/test_app.py', 'tests/local/dify_agent/server/test_runtime_transport.py', 'tests/local/dify_agent/protocol/test_initial_preparation.py', 'tests/local/dify_agent/server/test_initial_identity.py', 'tests/local/dify_agent/protocol/test_native_testing.py', 'tests/local/dify_agent/runtime/test_native_continuation.py', 'tests/local/dify_agent/storage/test_native_continuation_store.py', 'tests/local/dify_agent/runtime/test_native_effects.py', 'tests/local/dify_agent/protocol/test_native_checkpoint_readback.py', 'tests/local/dify_agent/server/test_native_checkpoint_readback.py', '-vv', '-rA', '--tb=long', '--junitxml=builder-native-agent.xml'])
           problems = []
@@ -1661,6 +1666,11 @@ jobs:
            'tests.unit_tests.services.workflow_runtime.test_workflow_pipeline.TestGenerateTaskPipelineCases': {'test_workflow_app_log_saved_only_on_initial_start': 1,
                                                                                                                'test_workflow_app_log_skipped_on_resumption_start': 1}}.items():
               new_expected.setdefault(module, {}).update(functions)
+          new_expected['tests.unit_tests.services.dify_builder.native_testing.test_agent_associations'].update({
+              'test_v2_association_validation_reads_selected_config_once': 2,
+              'test_v2_single_config_read_keeps_sql_recheck_after_io': 2,
+              'test_protected_read_timing_failure_does_not_change_guard_result': 1,
+          })
           files = list(dict.fromkeys(files))
           new_actual = {module: Counter() for module in new_expected}
           expected = {path.removeprefix("api/").removesuffix(".py").replace("/", ".") for path in files}
