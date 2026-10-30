@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from openpyxl import load_workbook
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
@@ -98,22 +99,20 @@ def test_generated_template_includes_reference_columns_for_selected_metrics(
         "_get_app_input_fields",
         MagicMock(return_value=[{"variable": "input", "label": "Input label", "type": "text-input"}]),
     )
-    monkeypatch.setattr(
-        EvaluationManager,
-        "get_evaluation_instance",
-        MagicMock(return_value=evaluation_instance),
-    )
+    get_evaluation_instance = MagicMock(return_value=evaluation_instance)
+    monkeypatch.setattr(EvaluationManager, "get_evaluation_instance", get_evaluation_instance)
 
     content, _ = EvaluationService.generate_dataset_template(
         app,
         "apps",
         EvaluationConfigData(
+            evaluation_framework=EvaluationFrameworkEnum.DEEPEVAL,
             default_metrics=[
                 DefaultMetric(
                     metric="answer_correctness",
                     node_info_list=[NodeInfo(node_id="llm-1", type="llm", title="Answer")],
                 )
-            ]
+            ],
         ),
         MagicMock(spec=Session),
     )
@@ -121,6 +120,66 @@ def test_generated_template_includes_reference_columns_for_selected_metrics(
 
     assert worksheet is not None
     assert [cell.value for cell in worksheet[1]] == ["index", "input", "Answer : expected_output"]
+    get_evaluation_instance.assert_called_once_with(EvaluationFrameworkEnum.DEEPEVAL)
+
+
+def test_evaluation_framework_request_defaults_to_ragas_and_rejects_none() -> None:
+    assert EvaluationConfigData().evaluation_framework == EvaluationFrameworkEnum.RAGAS
+    with pytest.raises(ValidationError):
+        EvaluationConfigData.model_validate({"evaluation_framework": "none"})
+
+
+def test_selected_framework_is_saved_and_reused_for_file_only_runs(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(EvaluationService, "validate_evaluation_config", MagicMock())
+    tenant_id = "30000000-0000-0000-0000-000000000010"
+    target_id = "30000000-0000-0000-0000-000000000020"
+    account_id = "30000000-0000-0000-0000-000000000030"
+    config = EvaluationService.save_evaluation_config(
+        sqlite_session,
+        tenant_id,
+        "apps",
+        target_id,
+        account_id,
+        EvaluationConfigData(evaluation_framework=EvaluationFrameworkEnum.DEEPEVAL),
+    )
+    sqlite_session.commit()
+
+    assert (
+        sqlite_session.get(EvaluationConfiguration, config.id).evaluation_framework == EvaluationFrameworkEnum.DEEPEVAL
+    )
+    file_only = EvaluationRunRequest(file_id="file-1")
+    resolved = EvaluationService.resolve_run_request_config(sqlite_session, tenant_id, "apps", target_id, file_only)
+    assert resolved.evaluation_framework == EvaluationFrameworkEnum.DEEPEVAL
+
+    explicit = EvaluationRunRequest(file_id="file-1", evaluation_framework=EvaluationFrameworkEnum.RAGAS)
+    resolved = EvaluationService.resolve_run_request_config(sqlite_session, tenant_id, "apps", target_id, explicit)
+    assert resolved.evaluation_framework == EvaluationFrameworkEnum.RAGAS
+
+
+def test_metric_lists_follow_selected_framework(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        EvaluationManager, "get_configured_framework", MagicMock(return_value=EvaluationFrameworkEnum.RAGAS)
+    )
+    supported_metrics = MagicMock(
+        side_effect=lambda _category, framework: (
+            ["semantic_similarity"] if framework == EvaluationFrameworkEnum.RAGAS else ["answer_relevancy"]
+        )
+    )
+    monkeypatch.setattr(EvaluationManager, "get_supported_metrics", supported_metrics)
+    ragas_metrics = EvaluationService.get_console_supported_metrics(
+        EvaluationCategory.LLM, EvaluationFrameworkEnum.RAGAS
+    )
+    deepeval_metrics = EvaluationService.get_console_supported_metrics(
+        EvaluationCategory.LLM, EvaluationFrameworkEnum.DEEPEVAL
+    )
+    assert "semantic_similarity" in ragas_metrics
+    assert "semantic_similarity" not in deepeval_metrics
+    assert [call.args for call in supported_metrics.call_args_list] == [
+        (EvaluationCategory.LLM, EvaluationFrameworkEnum.RAGAS),
+        (EvaluationCategory.LLM, EvaluationFrameworkEnum.DEEPEVAL),
+    ]
 
 
 def test_parse_csv_dataset_preserves_node_title_scoped_references() -> None:
@@ -949,6 +1008,9 @@ def test_validate_config_requires_default_embedding_for_embedding_metrics(
 def test_validate_config_does_not_require_embeddings_for_deepeval_metrics(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(
+        EvaluationManager, "get_configured_framework", MagicMock(return_value=EvaluationFrameworkEnum.RAGAS)
+    )
     session = MagicMock()
     session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
     workflow = SimpleNamespace(
@@ -958,14 +1020,13 @@ def test_validate_config_does_not_require_embeddings_for_deepeval_metrics(
     evaluation_instance = MagicMock()
     evaluation_instance.metric_requires_embeddings.return_value = False
     evaluation_instance.get_supported_metrics.return_value = ["answer_relevancy"]
-    monkeypatch.setattr(
-        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
-        MagicMock(return_value=evaluation_instance),
-    )
+    get_evaluation_instance = MagicMock(return_value=evaluation_instance)
+    monkeypatch.setattr(EvaluationManager, "get_evaluation_instance", get_evaluation_instance)
     monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
     validate_embeddings = MagicMock()
     monkeypatch.setattr(EvaluationService, "_validate_default_embedding_model", validate_embeddings)
     config = EvaluationConfigData(
+        evaluation_framework=EvaluationFrameworkEnum.DEEPEVAL,
         evaluation_model_provider="provider",
         evaluation_model="model",
         default_metrics=[
@@ -985,6 +1046,7 @@ def test_validate_config_does_not_require_embeddings_for_deepeval_metrics(
     )
 
     validate_embeddings.assert_not_called()
+    get_evaluation_instance.assert_any_call(EvaluationFrameworkEnum.DEEPEVAL)
 
 
 def test_validate_knowledge_base_config_uses_retrieval_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1007,7 +1069,7 @@ def test_validate_knowledge_base_config_uses_retrieval_metrics(monkeypatch: pyte
         data=config,
     )
 
-    supported_metrics.assert_called_once_with(EvaluationCategory.RETRIEVAL)
+    supported_metrics.assert_called_once_with(EvaluationCategory.RETRIEVAL, EvaluationFrameworkEnum.RAGAS)
 
 
 def test_validate_knowledge_base_config_rejects_workflow_node_scope(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1126,7 +1188,7 @@ def test_validate_workflow_accepts_knowledge_retrieval_v2(
         target_id="app-1",
         data=config,
     )
-    supported_metrics.assert_called_once_with(EvaluationCategory.RETRIEVAL)
+    supported_metrics.assert_called_once_with(EvaluationCategory.RETRIEVAL, EvaluationFrameworkEnum.RAGAS)
 
 
 def test_validate_knowledge_base_config_rejects_customized_evaluator() -> None:
@@ -1963,12 +2025,10 @@ def test_start_run_persists_and_dispatches_target_workflow_snapshot(monkeypatch:
     session.add.side_effect = assign_run_id
     monkeypatch.setattr(
         "services.evaluation_service.EvaluationManager.get_configured_framework",
-        MagicMock(return_value=EvaluationFrameworkEnum.DEEPEVAL),
+        MagicMock(return_value=EvaluationFrameworkEnum.RAGAS),
     )
-    monkeypatch.setattr(
-        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
-        MagicMock(return_value=MagicMock()),
-    )
+    get_evaluation_instance = MagicMock(return_value=MagicMock())
+    monkeypatch.setattr(EvaluationManager, "get_evaluation_instance", get_evaluation_instance)
     monkeypatch.setattr(
         EvaluationService,
         "save_evaluation_config",
@@ -1999,10 +2059,13 @@ def test_start_run_persists_and_dispatches_target_workflow_snapshot(monkeypatch:
         account_id="account-1",
         dataset_file_content=b"index,query,enabled\n1,hello,true\n",
         dataset_filename="dataset.csv",
-        run_request=EvaluationRunRequest(file_id="file-1", evaluation_model="model"),
+        run_request=EvaluationRunRequest(
+            file_id="file-1", evaluation_model="model", evaluation_framework=EvaluationFrameworkEnum.DEEPEVAL
+        ),
     )
 
     assert run.target_workflow_version_id == "workflow-version-7"
+    get_evaluation_instance.assert_called_once_with(EvaluationFrameworkEnum.DEEPEVAL)
     assert run.config_snapshot_dict["evaluation_framework"] == "deepeval"
     assert run.config_snapshot_dict["dataset_input_types"] == {"query": "string", "enabled": "boolean"}
     dispatch_kwargs = apply_async.call_args.kwargs

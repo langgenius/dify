@@ -16,6 +16,8 @@ export type NonPipelineEvaluationResourceProps = {
 
 export type MetricKind = 'builtin' | 'custom-workflow'
 
+export type EvaluationFramework = 'ragas' | 'deepeval'
+
 export type BatchTestTab = 'input-fields' | 'history'
 
 export type ConditionMetricValueType = 'string' | 'number' | 'boolean'
@@ -104,6 +106,7 @@ export type ConditionMetricOptionGroup = {
 }
 
 export type EvaluationResourceState = {
+  evaluationFramework: EvaluationFramework
   judgeModelId: string | null
   metrics: EvaluationMetric[]
   judgmentConfig: JudgmentConfig

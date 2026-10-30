@@ -2002,6 +2002,7 @@ export const zJudgmentConfig = z.object({
 export const zEvaluationConfigResponse = z.object({
   customized_metrics: zCustomizedMetrics.nullish(),
   default_metrics: z.array(zDefaultMetric).nullish(),
+  evaluation_framework: z.enum(['deepeval', 'ragas']).optional().default('ragas'),
   evaluation_model: z.string().nullish(),
   evaluation_model_provider: z.string().nullish(),
   judgment_config: zJudgmentConfig.nullish(),
@@ -2013,6 +2014,7 @@ export const zEvaluationConfigResponse = z.object({
 export const zEvaluationConfigPayload = z.object({
   customized_metrics: zCustomizedMetrics.nullish(),
   default_metrics: z.array(zDefaultMetric).optional(),
+  evaluation_framework: z.enum(['deepeval', 'ragas']).optional().default('ragas'),
   evaluation_model: z.string().optional().default(''),
   evaluation_model_provider: z.string().optional().default(''),
   judgment_config: zJudgmentConfig.nullish(),
@@ -2024,6 +2026,7 @@ export const zEvaluationConfigPayload = z.object({
 export const zEvaluationRunPayload = z.object({
   customized_metrics: zCustomizedMetrics.nullish(),
   default_metrics: z.array(zDefaultMetric).optional(),
+  evaluation_framework: z.enum(['deepeval', 'ragas']).optional().default('ragas'),
   evaluation_model: z.string().optional().default(''),
   evaluation_model_provider: z.string().optional().default(''),
   file_id: z.string(),
@@ -2993,6 +2996,10 @@ export const zGetDatasetsByDatasetIdEvaluationLogsResponse = zEvaluationRunPagin
 
 export const zGetDatasetsByDatasetIdEvaluationMetricsPath = z.object({
   dataset_id: z.uuid(),
+})
+
+export const zGetDatasetsByDatasetIdEvaluationMetricsQuery = z.object({
+  evaluation_framework: z.enum(['deepeval', 'ragas']).optional().default('ragas'),
 })
 
 /**

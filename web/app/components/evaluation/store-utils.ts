@@ -11,6 +11,7 @@ import type {
 import type {
   ComparisonOperator,
   CustomMetricMapping,
+  EvaluationFramework,
   EvaluationMetric,
   EvaluationResourceState,
   EvaluationResourceType,
@@ -63,6 +64,18 @@ export const resolveMetricOption = (metricId: string): MetricOption => {
 const isPipelineResourceType = (resourceType: EvaluationResourceType) => resourceType === 'datasets'
 
 const supportsCustomMetrics = (resourceType: EvaluationResourceType) => resourceType !== 'datasets'
+
+export const isBuiltinMetricSupportedByFramework = (
+  metricId: string,
+  framework: EvaluationFramework,
+) => framework !== 'deepeval' || metricId !== 'semantic_similarity'
+
+export const getUnsupportedBuiltinMetrics = (resource: EvaluationResourceState) =>
+  resource.metrics.filter(
+    (metric) =>
+      metric.kind === 'builtin' &&
+      !isBuiltinMetricSupportedByFramework(metric.optionId, resource.evaluationFramework),
+  )
 
 const normalizeNodeInfoList = (value: NodeInfo[] | undefined): NodeInfo[] => {
   if (!value?.length) return []
@@ -434,6 +447,7 @@ export const buildInitialState = (
   _resourceType: EvaluationResourceType,
 ): EvaluationResourceState => {
   return {
+    evaluationFramework: 'ragas',
     judgeModelId: null,
     metrics: [],
     judgmentConfig: createEmptyJudgmentConfig(),
@@ -459,6 +473,7 @@ export const buildStateFromEvaluationConfig = (
 
   return {
     ...buildInitialState(resourceType),
+    evaluationFramework: config.evaluation_framework === 'deepeval' ? 'deepeval' : 'ragas',
     judgeModelId:
       config.evaluation_model && config.evaluation_model_provider
         ? encodeModelSelection(config.evaluation_model_provider, config.evaluation_model)
@@ -587,6 +602,7 @@ export const buildEvaluationTemplateConfigPayload = (
   const selectedModel = decodeModelSelection(resource.judgeModelId)
 
   return {
+    evaluation_framework: resource.evaluationFramework,
     ...(selectedModel
       ? {
           evaluation_model: selectedModel.model,
@@ -614,6 +630,8 @@ export const buildEvaluationConfigPayload = (
 ): EvaluationConfigPayload | null => {
   const hasBuiltinMetrics = resource.metrics.some((metric) => metric.kind === 'builtin')
   const payload = buildEvaluationTemplateConfigPayload(resource, resourceType, resourceId)
+
+  if (getUnsupportedBuiltinMetrics(resource).length > 0) return null
 
   if (hasBuiltinMetrics && (!payload.evaluation_model || !payload.evaluation_model_provider))
     return null
@@ -688,6 +706,7 @@ export const isEvaluationRunnable = (state: EvaluationResourceState) => {
 
   return (
     (!hasBuiltinMetrics || !!state.judgeModelId) &&
+    getUnsupportedBuiltinMetrics(state).length === 0 &&
     state.metrics.length > 0 &&
     state.metrics.every(isCustomMetricConfigured)
   )

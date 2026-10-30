@@ -4,6 +4,7 @@ import type {
 } from '@dify/contracts/api/console/evaluate-target-type/types.gen'
 import type {
   ComparisonOperator,
+  EvaluationFramework,
   EvaluationResourceState,
   EvaluationResourceType,
   MetricOption,
@@ -41,6 +42,11 @@ type EvaluationStore = {
   ) => void
   resetResourceConfig: (resourceType: EvaluationResourceType, resourceId: string) => void
   markResourceConfigSaved: (resourceType: EvaluationResourceType, resourceId: string) => void
+  setEvaluationFramework: (
+    resourceType: EvaluationResourceType,
+    resourceId: string,
+    framework: EvaluationFramework,
+  ) => void
   setJudgeModel: (
     resourceType: EvaluationResourceType,
     resourceId: string,
@@ -196,6 +202,7 @@ const createConfigSnapshot = (
 }
 
 const pickConfigComparableState = (resource: EvaluationResourceState) => ({
+  evaluationFramework: resource.evaluationFramework,
   judgeModelId: resource.judgeModelId,
   metrics: resource.metrics,
   judgmentConfig: resource.judgmentConfig,
@@ -253,6 +260,14 @@ export const useEvaluationStore = create<EvaluationStore>((set, get) => ({
         ...state.initialResources,
         [resourceKey]: createConfigSnapshot(resourceType, resource),
       },
+    }))
+  },
+  setEvaluationFramework: (resourceType, resourceId, framework) => {
+    set((state) => ({
+      resources: updateResourceState(state.resources, resourceType, resourceId, (resource) => ({
+        ...resource,
+        evaluationFramework: framework,
+      })),
     }))
   },
   setJudgeModel: (resourceType, resourceId, judgeModelId) => {

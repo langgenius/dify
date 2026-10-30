@@ -25,6 +25,10 @@ export const zErrorResponse = z.object({
   status: z.int(),
 })
 
+export const zGetEvaluationAvailableMetricsQuery = z.object({
+  evaluation_framework: z.enum(['deepeval', 'ragas']).optional().default('ragas'),
+})
+
 /**
  * Available evaluation metrics
  */

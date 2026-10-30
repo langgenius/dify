@@ -9,6 +9,7 @@ import sqlalchemy as sa
 from sqlalchemy import DateTime, Float, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from libs.uuid_utils import uuidv7
 
 from .base import Base
@@ -53,6 +54,9 @@ class EvaluationConfiguration(Base):
     target_type: Mapped[EvaluationTargetType] = mapped_column(EnumText(EvaluationTargetType, length=32), nullable=False)
     target_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
+    evaluation_framework: Mapped[EvaluationFrameworkEnum] = mapped_column(
+        EnumText(EvaluationFrameworkEnum, length=20), nullable=False, server_default="ragas"
+    )
     evaluation_model_provider: Mapped[str | None] = mapped_column(String(255), nullable=True)
     evaluation_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     metrics_config: Mapped[str | None] = mapped_column(LongText, nullable=True)

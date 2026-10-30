@@ -7,6 +7,7 @@ export type ClientOptions = {
 export type EvaluationConfigPayload = {
   customized_metrics?: CustomizedMetrics | null
   default_metrics?: Array<DefaultMetric>
+  evaluation_framework?: 'deepeval' | 'ragas'
   evaluation_model?: string
   evaluation_model_provider?: string
   judgment_config?: JudgmentConfig | null
@@ -25,6 +26,7 @@ export type ErrorResponse = {
 export type EvaluationConfigResponse = {
   customized_metrics?: CustomizedMetrics | null
   default_metrics?: Array<DefaultMetric> | null
+  evaluation_framework?: 'deepeval' | 'ragas'
   evaluation_model?: string | null
   evaluation_model_provider?: string | null
   judgment_config?: JudgmentConfig | null
@@ -70,6 +72,7 @@ export type EvaluationNodeInfoResponse = {
 export type EvaluationRunPayload = {
   customized_metrics?: CustomizedMetrics | null
   default_metrics?: Array<DefaultMetric>
+  evaluation_framework?: 'deepeval' | 'ragas'
   evaluation_model?: string
   evaluation_model_provider?: string
   file_id: string
@@ -289,7 +292,9 @@ export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsDat
     evaluate_target_id: string
     evaluate_target_type: string
   }
-  query?: never
+  query?: {
+    evaluation_framework?: 'deepeval' | 'ragas'
+  }
   url: '/{evaluate_target_type}/{evaluate_target_id}/evaluation/default-metrics'
 }
 
@@ -365,7 +370,9 @@ export type GetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsData = {
     evaluate_target_id: string
     evaluate_target_type: string
   }
-  query?: never
+  query?: {
+    evaluation_framework?: 'deepeval' | 'ragas'
+  }
   url: '/{evaluate_target_type}/{evaluate_target_id}/evaluation/metrics'
 }
 

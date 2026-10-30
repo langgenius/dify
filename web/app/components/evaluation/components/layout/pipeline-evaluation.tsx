@@ -7,6 +7,7 @@ import { useDocLink } from '@/context/i18n'
 import { useEvaluationStore } from '../../store'
 import HistoryTab from '../batch-test-panel/history-tab'
 import EvaluationConfigActions from '../config-actions'
+import EvaluationFrameworkSelector from '../evaluation-framework-selector'
 import JudgeModelSelector from '../judge-model-selector'
 import PipelineBatchActions from '../pipeline/pipeline-batch-actions'
 import PipelineMetricsSection from '../pipeline/pipeline-metrics-section'
@@ -14,8 +15,8 @@ import PipelineResultsPanel from '../pipeline/pipeline-results-panel'
 import SectionHeader, { InlineSectionHeader } from '../section-header'
 
 const PipelineEvaluation = ({ resourceType, resourceId }: EvaluationResourceProps) => {
-  const { t } = useTranslation('evaluation')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['evaluation'])
+  const { t: tCommon } = useTranslation(['common'])
   const docLink = useDocLink()
   const ensureResource = useEvaluationStore((state) => state.ensureResource)
 
@@ -48,6 +49,9 @@ const PipelineEvaluation = ({ resourceType, resourceId }: EvaluationResourceProp
 
         <div className="px-6 pt-3 pb-4">
           <div className="space-y-3">
+            <section>
+              <EvaluationFrameworkSelector resourceType={resourceType} resourceId={resourceId} />
+            </section>
             <section>
               <InlineSectionHeader
                 title={t(($) => $['judgeModel.title'])}

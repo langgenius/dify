@@ -215,6 +215,7 @@ export const zJudgmentConfig = z.object({
 export const zEvaluationConfigPayload = z.object({
   customized_metrics: zCustomizedMetrics.nullish(),
   default_metrics: z.array(zDefaultMetric).optional(),
+  evaluation_framework: z.enum(['deepeval', 'ragas']).optional().default('ragas'),
   evaluation_model: z.string().optional().default(''),
   evaluation_model_provider: z.string().optional().default(''),
   judgment_config: zJudgmentConfig.nullish(),
@@ -226,6 +227,7 @@ export const zEvaluationConfigPayload = z.object({
 export const zEvaluationConfigResponse = z.object({
   customized_metrics: zCustomizedMetrics.nullish(),
   default_metrics: z.array(zDefaultMetric).nullish(),
+  evaluation_framework: z.enum(['deepeval', 'ragas']).optional().default('ragas'),
   evaluation_model: z.string().nullish(),
   evaluation_model_provider: z.string().nullish(),
   judgment_config: zJudgmentConfig.nullish(),
@@ -237,6 +239,7 @@ export const zEvaluationConfigResponse = z.object({
 export const zEvaluationRunPayload = z.object({
   customized_metrics: zCustomizedMetrics.nullish(),
   default_metrics: z.array(zDefaultMetric).optional(),
+  evaluation_framework: z.enum(['deepeval', 'ragas']).optional().default('ragas'),
   evaluation_model: z.string().optional().default(''),
   evaluation_model_provider: z.string().optional().default(''),
   file_id: z.string(),
@@ -332,6 +335,10 @@ export const zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsP
   evaluate_target_type: z.string(),
 })
 
+export const zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsQuery = z.object({
+  evaluation_framework: z.enum(['deepeval', 'ragas']).optional().default('ragas'),
+})
+
 /**
  * Default metrics
  */
@@ -369,6 +376,10 @@ export const zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationLogsResponse =
 export const zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsPath = z.object({
   evaluate_target_id: z.uuid(),
   evaluate_target_type: z.string(),
+})
+
+export const zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsQuery = z.object({
+  evaluation_framework: z.enum(['deepeval', 'ragas']).optional().default('ragas'),
 })
 
 /**

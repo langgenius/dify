@@ -4,6 +4,7 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsPath,
+  zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsQuery,
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsResponse,
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationFilesByFileIdPath,
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationFilesByFileIdResponse,
@@ -11,6 +12,7 @@ import {
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationLogsQuery,
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationLogsResponse,
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsPath,
+  zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsQuery,
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsResponse,
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationPath,
   zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationResponse,
@@ -71,7 +73,10 @@ export const get = oc
     tags: ['console'],
   })
   .input(
-    z.object({ params: zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsPath }),
+    z.object({
+      params: zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsPath,
+      query: zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsQuery.optional(),
+    }),
   )
   .output(zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationDefaultMetricsResponse)
 
@@ -128,7 +133,12 @@ export const get4 = oc
     path: '/{evaluate_target_type}/{evaluate_target_id}/evaluation/metrics',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsPath }))
+  .input(
+    z.object({
+      params: zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsPath,
+      query: zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsQuery.optional(),
+    }),
+  )
   .output(zGetByEvaluateTargetTypeByEvaluateTargetIdEvaluationMetricsResponse)
 
 export const metrics = {
