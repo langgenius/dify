@@ -9,6 +9,7 @@ from flask import Flask
 from controllers.console.billing.compliance import ComplianceApi, ComplianceDownloadQuery
 from controllers.console.billing.error import ComplianceRateLimitError
 from machinery.context import RequestContext
+from services.billing_client import billing
 from services.errors.billing import ComplianceRateLimitExceededError
 
 
@@ -51,7 +52,9 @@ def test_get_compliance_download_link(
     resource = ComplianceApi()
     method = unwrap(resource.get)
     query = ComplianceDownloadQuery(doc_name="SOC2_Type_II")
-    compliance_downloads.get_link.return_value = {"url": "https://example.com/report", "ignored": True}
+    compliance_downloads.get_link.return_value = billing.DownloadComplianceDocumentReply(
+        url="https://example.com/report"
+    )
 
     with (
         app.test_request_context("/compliance/download", headers={"User-Agent": "test-agent"}),

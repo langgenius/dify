@@ -1,4 +1,5 @@
 import datetime
+from collections.abc import Callable
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -52,7 +53,9 @@ class TestBillingSandboxPolicy:
         policy = self._policy({})
         assert policy.filter_message_ids([], {"app1": "t1"}) == []
 
-    def test_malformed_billing_item_does_not_interrupt_other_tenants(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_malformed_billing_item_does_not_interrupt_other_tenants(
+        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ) -> None:
         payload = {
             "data": {
                 "t1": {"plan": "sandbox", "expiration_date": "-1"},
@@ -60,7 +63,7 @@ class TestBillingSandboxPolicy:
             }
         }
         policy = BillingSandboxPolicy(plan_provider=BillingService.get_plan_bulk)
-        monkeypatch.setenv("BILLING_API_URL", "http://billing/v1")
+        config_overrides(BILLING_API_URL="http://billing/v1")
         with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
             monkeypatch.setattr(transport, "_http_client", client)
 

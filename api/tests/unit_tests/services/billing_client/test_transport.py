@@ -123,9 +123,13 @@ def test_request_error_is_retried_then_unavailable(monkeypatch: pytest.MonkeyPat
     ],
 )
 def test_upstream_selects_base_url(
-    monkeypatch: pytest.MonkeyPatch, respond_with: RespondWith, upstream: Upstream, quota_url: str, expected: str
+    config_overrides: Callable[..., None],
+    respond_with: RespondWith,
+    upstream: Upstream,
+    quota_url: str,
+    expected: str,
 ) -> None:
-    monkeypatch.setenv("BILLING_QUOTA_API_URL", quota_url)
+    config_overrides(BILLING_QUOTA_API_URL=quota_url)
     requests = respond_with(httpx.Response(200, json={"ok": True}))
 
     assert _get(upstream).ok is True

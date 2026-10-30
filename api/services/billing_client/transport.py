@@ -1,6 +1,7 @@
 """HTTP transport shared by the generated billing and saas operations.
 
-Reuses the pooled client, auth header, and connection retry of `services.billing_service`.
+This is the only module that reads the billing URLs and secret, and only the generated modules
+call `request`; ruff's banned-api rule (TID251) rejects both anywhere else.
 Network failures, timeouts, throttling, and 5xx raise `BillingUpstreamUnavailableError`;
 any other non-200 status or an enforced response that fails model validation raises
 `BillingUpstreamInvalidResponseError`. For a non-200 status, the error carries the status
@@ -17,7 +18,6 @@ each item before returning it.
 
 import json
 import logging
-import os
 import types
 from collections.abc import Mapping
 from enum import StrEnum
@@ -92,9 +92,9 @@ class BillingModel(BaseModel):
 
 
 def _base_url(upstream: Upstream) -> str:
-    billing_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
+    billing_url = dify_config.BILLING_API_URL
     if upstream == Upstream.BILLING_QUOTA:
-        return os.environ.get("BILLING_QUOTA_API_URL") or billing_url
+        return dify_config.BILLING_QUOTA_API_URL or billing_url
     if upstream == Upstream.NETWORK_ACCESS:
         return (dify_config.NETWORK_ACCESS_API_URL.strip() or billing_url).rstrip("/")
     return billing_url
@@ -109,7 +109,7 @@ def _base_url(upstream: Upstream) -> str:
 def _send(method: HTTPMethod, url: str, *, params: Mapping[str, QueryValue], json: object | None) -> httpx.Response:
     headers = {
         "Content-Type": "application/json",
-        "Billing-Api-Secret-Key": os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY"),
+        "Billing-Api-Secret-Key": dify_config.BILLING_API_SECRET_KEY,
     }
     return _http_client.request(method, url, params=params, json=json, headers=headers, follow_redirects=True)
 
