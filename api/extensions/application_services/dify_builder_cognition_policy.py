@@ -1,5 +1,6 @@
 """Composition of the Builder policy service and native invocation guard."""
 
+from flask import current_app
 from sqlalchemy.orm import sessionmaker
 
 from core.dify_builder.models import Actor
@@ -35,8 +36,9 @@ def guarded_cognition_model(tenant_id: str, requested: dict | None, *, account_i
     if not account_id:
         raise CognitionPolicyDeniedError("policy_permission_denied")
     actor = Actor(tenant_id=tenant_id, account_id=account_id)
+    app = current_app.app_context().app
 
-    def resolve():
+    def resolve_in_context():
         try:
             _require_feature(actor)
             sessions = sessionmaker(bind=db.engine, expire_on_commit=False)
@@ -62,6 +64,12 @@ def guarded_cognition_model(tenant_id: str, requested: dict | None, *, account_i
             raise
         except Exception as exc:
             raise CognitionPolicyDeniedError("model_availability_unknown") from exc
+
+    def resolve():
+        # Parallel node builders need their own Flask/SQLAlchemy scope. Capture
+        # only the app; admission, policy and credentials are read afresh here.
+        with app.app_context():
+            return resolve_in_context()
 
     return PolicyModelInstance(resolve)
 
