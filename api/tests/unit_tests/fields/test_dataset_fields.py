@@ -1,6 +1,7 @@
 import json
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
+from typing import cast
 
 from sqlalchemy import event
 from sqlalchemy.orm import Session
@@ -19,13 +20,15 @@ from models.dataset import (
     ExternalKnowledgeBindings,
     Pipeline,
 )
-from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom, TagType
+from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom, IndexingStatus, TagType
 from models.model import App, AppMode, IconType, Tag, TagBinding
 from services.knowledge.dataset_read_service import load_dataset_detail, load_dataset_details
 
 
-def _dataset_detail_payload(**overrides):
-    payload = {
+def _dataset_detail_payload(**overrides: object) -> dict[str, object]:
+    tags: list[object] = []
+    doc_metadata: list[object] = []
+    payload: dict[str, object] = {
         "id": "ds-1",
         "name": "Dataset",
         "description": "desc",
@@ -71,7 +74,7 @@ def _dataset_detail_payload(**overrides):
             "model_provider_name": None,
             "summary_prompt": None,
         },
-        "tags": [],
+        "tags": tags,
         "doc_form": None,
         "external_knowledge_info": {
             "external_knowledge_id": "knowledge-id",
@@ -80,7 +83,7 @@ def _dataset_detail_payload(**overrides):
             "external_knowledge_api_endpoint": "https://example.com",
         },
         "external_retrieval_model": None,
-        "doc_metadata": [],
+        "doc_metadata": doc_metadata,
         "built_in_field_enabled": False,
         "pipeline_id": None,
         "runtime_mode": "general",
@@ -101,11 +104,11 @@ def _dataset_detail_payload(**overrides):
     return payload
 
 
-def _dump_dataset_detail(payload):
+def _dump_dataset_detail(payload: dict[str, object]) -> dict[str, object]:
     return DatasetDetailResponse.model_validate(payload).model_dump(mode="json")
 
 
-def test_dataset_detail_preserves_permission_keys():
+def test_dataset_detail_preserves_permission_keys() -> None:
     response = _dump_dataset_detail(
         _dataset_detail_payload(permission_keys=["dataset.acl.readonly", "dataset.acl.edit"])
     )
@@ -113,7 +116,7 @@ def test_dataset_detail_preserves_permission_keys():
     assert response["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
 
-def test_dataset_detail_expands_legacy_null_nested_fields():
+def test_dataset_detail_expands_legacy_null_nested_fields() -> None:
     response = _dump_dataset_detail(
         _dataset_detail_payload(
             summary_index_setting=None,
@@ -143,7 +146,7 @@ def test_dataset_detail_expands_legacy_null_nested_fields():
     assert response["external_retrieval_model"] is None
 
 
-def test_dataset_detail_expands_legacy_null_retrieval_nested_fields():
+def test_dataset_detail_expands_legacy_null_retrieval_nested_fields() -> None:
     response = _dump_dataset_detail(
         _dataset_detail_payload(
             retrieval_model_dict={
@@ -162,11 +165,15 @@ def test_dataset_detail_expands_legacy_null_retrieval_nested_fields():
         )
     )
 
-    assert response["retrieval_model_dict"]["reranking_model"] == {
+    retrieval_model_dict = cast("dict[str, object]", response["retrieval_model_dict"])
+
+    assert retrieval_model_dict["reranking_model"] == {
         "reranking_provider_name": None,
         "reranking_model_name": None,
     }
-    assert response["retrieval_model_dict"]["weights"] == {
+    retrieval_model_dict = cast("dict[str, object]", response["retrieval_model_dict"])
+
+    assert retrieval_model_dict["weights"] == {
         "weight_type": None,
         "keyword_setting": {"keyword_weight": None},
         "vector_setting": {
@@ -177,7 +184,7 @@ def test_dataset_detail_expands_legacy_null_retrieval_nested_fields():
     }
 
 
-def test_dataset_detail_expands_missing_weighted_score_nested_fields():
+def test_dataset_detail_expands_missing_weighted_score_nested_fields() -> None:
     response = _dump_dataset_detail(
         _dataset_detail_payload(
             retrieval_model_dict={
@@ -193,7 +200,9 @@ def test_dataset_detail_expands_missing_weighted_score_nested_fields():
         )
     )
 
-    assert response["retrieval_model_dict"]["weights"] == {
+    retrieval_model_dict = cast("dict[str, object]", response["retrieval_model_dict"])
+
+    assert retrieval_model_dict["weights"] == {
         "weight_type": None,
         "keyword_setting": {"keyword_weight": None},
         "vector_setting": {
@@ -225,7 +234,7 @@ def test_dataset_detail_serializes_after_session_closes(sqlite_session: Session)
         enable_api=False,
         is_multimodal=False,
     )
-    dataset.embedding_available = True
+    dataset.embedding_available = True  # pyrefly: ignore[missing-attribute]
     decoy_app = App(
         id="decoy-app",
         tenant_id="tenant-1",
@@ -285,7 +294,7 @@ def _dataset(index: int, account_id: str, **overrides: object) -> Dataset:
     return dataset
 
 
-def _document(dataset_id: str, *, word_count: int, indexing_status: str, archived: bool = False) -> Document:
+def _document(dataset_id: str, *, word_count: int, indexing_status: IndexingStatus, archived: bool = False) -> Document:
     return Document(
         tenant_id="tenant-1",
         dataset_id=dataset_id,
@@ -331,10 +340,10 @@ def _seed_dataset_page(session: Session) -> list[Dataset]:
 
     session.add_all(
         [
-            _document(plain.id, word_count=10, indexing_status="completed"),
-            _document(plain.id, word_count=20, indexing_status="completed", archived=True),
-            _document(plain.id, word_count=5, indexing_status="waiting"),
-            _document(piped.id, word_count=7, indexing_status="completed"),
+            _document(plain.id, word_count=10, indexing_status=IndexingStatus.COMPLETED),
+            _document(plain.id, word_count=20, indexing_status=IndexingStatus.COMPLETED, archived=True),
+            _document(plain.id, word_count=5, indexing_status=IndexingStatus.WAITING),
+            _document(piped.id, word_count=7, indexing_status=IndexingStatus.COMPLETED),
         ]
     )
 
@@ -391,13 +400,15 @@ def _dump(dataset: Dataset, *, session: Session) -> dict[str, object]:
 
 
 @contextmanager
-def _count_selects(session: Session) -> Iterator[list[str]]:
+def _count_selects(session: Session) -> Generator[list[str]]:
     """Record every SELECT issued against the session's engine."""
     statements: list[str] = []
     engine = session.get_bind()
 
     @event.listens_for(engine, "before_cursor_execute")
-    def _before(_conn, _cursor, statement, _parameters, _context, _executemany):
+    def _before(
+        _conn: object, _cursor: object, statement: str, _parameters: object, _context: object, _executemany: object
+    ) -> None:
         if statement.lstrip().upper().startswith("SELECT"):
             statements.append(statement)
 
@@ -407,7 +418,7 @@ def _count_selects(session: Session) -> Iterator[list[str]]:
         event.remove(engine, "before_cursor_execute", _before)
 
 
-def test_dataset_detail_prefetch_matches_per_dataset_lookups(sqlite_session: Session):
+def test_dataset_detail_prefetch_matches_per_dataset_lookups(sqlite_session: Session) -> None:
     datasets = _seed_dataset_page(sqlite_session)
 
     expected = [_dump(dataset, session=sqlite_session) for dataset in datasets]
@@ -438,7 +449,7 @@ def test_dataset_detail_prefetch_matches_per_dataset_lookups(sqlite_session: Ses
     assert prefetched[4]["doc_form"] is None
 
 
-def test_dataset_detail_prefetch_keeps_query_count_independent_of_page_size(sqlite_session: Session):
+def test_dataset_detail_prefetch_keeps_query_count_independent_of_page_size(sqlite_session: Session) -> None:
     account = Account(name="Ada", email="ada@example.com")
     account.id = "account-1"
     sqlite_session.add(account)
