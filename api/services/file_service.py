@@ -119,12 +119,12 @@ class FileService:
         file_size = len(content)
 
         # check if the file size is exceeded
-        if not FileService.is_file_size_within_limit(
+        file_size_limit = FileService.file_size_limit(
             extension=extension,
-            file_size=file_size,
             default_file_size_limit=default_file_size_limit,
-        ):
-            raise FileTooLargeError
+        )
+        if file_size > file_size_limit:
+            raise FileTooLargeError(f"File size must not exceed {file_size_limit // (1024 * 1024)} MiB.")
 
         # generate file key
         file_uuid = str(uuid.uuid4())

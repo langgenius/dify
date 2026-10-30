@@ -1468,7 +1468,7 @@ class TestTrialFileUploadCases:
         response = harness.post("files/upload", query="?source=datasets")
 
         _trial_file_upload_assert_error(response, 413, "file_too_large")
-        assert response.get_json()["message"] == "File size exceeded."
+        assert response.get_json()["message"] == "File size must not exceed 0 MiB."
         assert quota_tenants == [harness.account.current_tenant_id]
         assert size_limit_tenants == [harness.target.tenant_id]
         assert harness.io.saved == {}

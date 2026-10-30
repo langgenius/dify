@@ -200,12 +200,36 @@ class TestFileServiceCases:
                     filename="test.jpg", content=b"", mimetype="image/jpeg", user=_account(), source="datasets"
                 )
 
-        def test_upload_file_too_large(self, file_service, config_overrides: Callable[..., None]):
-            # 16MB file for an image with 15MB limit
-            content = b"a" * (16 * 1024 * 1024)
-            config_overrides(UPLOAD_IMAGE_FILE_SIZE_LIMIT=15)
-            with pytest.raises(FileTooLargeError):
-                file_service.upload_file(filename="test.jpg", content=content, mimetype="image/jpeg", user=_account())
+        @pytest.mark.parametrize(
+            ("extension", "override", "expected_limit_mib"),
+            [("txt", None, 1), ("txt", 0, 0), ("txt", 5, 5), ("jpg", 0, 2), ("mp4", 0, 3), ("mp3", 0, 4)],
+        )
+        def test_upload_file_too_large_reports_effective_limit(
+            self,
+            file_service: FileService,
+            config_overrides: Callable[..., None],
+            extension: str,
+            override: int | None,
+            expected_limit_mib: int,
+        ) -> None:
+            config_overrides(
+                UPLOAD_FILE_SIZE_LIMIT=1,
+                UPLOAD_IMAGE_FILE_SIZE_LIMIT=2,
+                UPLOAD_VIDEO_FILE_SIZE_LIMIT=3,
+                UPLOAD_AUDIO_FILE_SIZE_LIMIT=4,
+            )
+            content = b"a" * (expected_limit_mib * 1024 * 1024 + 1)
+            with patch("services.file_service.storage") as mock_storage:
+                with pytest.raises(FileTooLargeError) as raised:
+                    file_service.upload_file(
+                        filename=f"test.{extension}",
+                        content=content,
+                        mimetype="application/octet-stream",
+                        user=_account(),
+                        default_file_size_limit=override,
+                    )
+                assert raised.value.description == f"File size must not exceed {expected_limit_mib} MiB."
+                mock_storage.save.assert_not_called()
 
         def test_upload_file_end_user(self, file_service: FileService, db_session: Session):
             user = EndUser(
