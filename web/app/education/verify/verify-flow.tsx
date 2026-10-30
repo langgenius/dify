@@ -21,8 +21,8 @@ class EducationVerificationRejectedError extends Error {}
 type EducationVerificationRequest = () => Promise<{ token?: string | null }>
 
 const selectEducationStatus = ({ allow_refresh, is_student }: EducationStatusResponse) => ({
-  allowRefresh: allow_refresh ?? false,
-  isEducationAccount: is_student ?? false,
+  allowRefresh: allow_refresh,
+  isEducationAccount: is_student,
 })
 
 const selectEducationPlanEnabled = ({ education }: GetFeaturesResponse) => education.enabled

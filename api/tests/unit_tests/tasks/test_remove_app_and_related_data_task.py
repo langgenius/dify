@@ -1,23 +1,24 @@
 import logging
-from collections.abc import Iterator, Sequence
-from contextlib import AbstractContextManager
+from collections.abc import Generator, Iterator, Sequence
+from contextlib import AbstractContextManager, contextmanager
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 import tasks.remove_app_and_related_data_task as remove_app_task_module
 from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
 from graphon.enums import WorkflowExecutionStatus
+from graphon.variables.segments import StringSegment
 from libs.archive_storage import ArchiveStorageNotConfiguredError
 from models import AppStar
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.workflow import WorkflowArchiveLog
+from models.workflow import WorkflowArchiveLog, WorkflowDraftVariable
 from services.network_access_group_service import NetworkAccessGroupUpstreamError
 from tasks.remove_app_and_related_data_task import (
     _delete_app_stars,
@@ -264,7 +265,7 @@ def test_parent_retries_before_local_cleanup_when_binding_schedule_fails(
 
 
 class TestDeleteDraftVariablesBatch:
-    def test_delete_draft_variables_batch_invalid_batch_size(self):
+    def test_delete_draft_variables_batch_invalid_batch_size(self) -> None:
         """Test that invalid batch size raises ValueError."""
         app_id = "test-app-id"
 
@@ -275,7 +276,7 @@ class TestDeleteDraftVariablesBatch:
             delete_draft_variables_batch(app_id, 0)
 
     @patch("tasks.remove_app_and_related_data_task.delete_draft_variables_batch")
-    def test_delete_draft_variables_calls_batch_function(self, mock_batch_delete):
+    def test_delete_draft_variables_calls_batch_function(self, mock_batch_delete: MagicMock) -> None:
         """Test that _delete_draft_variables calls the batch function correctly."""
         app_id = "test-app-id"
         expected_return = 42
@@ -347,7 +348,7 @@ class _FakeSessionFactory:
 class TestDeleteDraftVariableOffloadData:
     """Test the Offload data cleanup functionality."""
 
-    def test_delete_draft_variable_offload_data_empty_file_ids(self):
+    def test_delete_draft_variable_offload_data_empty_file_ids(self) -> None:
         """An empty file_ids list must not open a session or touch object storage."""
         with (
             patch("tasks.remove_app_and_related_data_task.session_factory") as mock_session_factory,
@@ -359,7 +360,7 @@ class TestDeleteDraftVariableOffloadData:
         mock_session_factory.create_session.assert_not_called()
         mock_storage.delete.assert_not_called()
 
-    def test_delete_draft_variable_offload_data_database_failure(self, caplog: pytest.LogCaptureFixture):
+    def test_delete_draft_variable_offload_data_database_failure(self, caplog: pytest.LogCaptureFixture) -> None:
         """Test handling of database operation failures."""
         mock_session_factory = MagicMock()
         mock_session_factory.create_session.return_value.__enter__.return_value.execute.side_effect = Exception(
@@ -373,7 +374,7 @@ class TestDeleteDraftVariableOffloadData:
         assert result == 0
         assert "Error deleting draft variable offload data:" in caplog.text
 
-    def test_storage_delete_runs_with_no_open_transaction(self, monkeypatch: pytest.MonkeyPatch):
+    def test_storage_delete_runs_with_no_open_transaction(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Object storage cleanup must not run while a database transaction is open."""
         factory = _FakeSessionFactory([_FakeResult([("vf-1", "key-1", "uf-1"), ("vf-2", "key-2", "uf-2")])])
         mock_storage = MagicMock()
@@ -391,7 +392,7 @@ class TestDeleteDraftVariableOffloadData:
 
     def test_storage_failure_is_logged_and_not_counted(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-    ):
+    ) -> None:
         """A failing object is logged and not counted, and the DB cleanup still runs."""
         factory = _FakeSessionFactory([_FakeResult([("vf-1", "key-1", "uf-1"), ("vf-2", "key-2", "uf-2")])])
         mock_storage = MagicMock()
@@ -407,7 +408,7 @@ class TestDeleteDraftVariableOffloadData:
         assert "Failed to delete storage object key-1" in caplog.text
         assert factory.open_count == 0
 
-    def test_file_ids_with_no_matching_rows_delete_nothing(self, monkeypatch: pytest.MonkeyPatch):
+    def test_file_ids_with_no_matching_rows_delete_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """file_ids that no longer resolve to rows must not raise or touch storage."""
         factory = _FakeSessionFactory([_FakeResult([])])
         mock_storage = MagicMock()
@@ -425,36 +426,84 @@ class TestDeleteDraftVariableOffloadData:
 class TestDeleteDraftVariablesBatchTransactionScope:
     """The batch loop must not hold a transaction while object storage is cleaned up."""
 
-    def test_offload_cleanup_is_called_with_no_session_open(self, monkeypatch: pytest.MonkeyPatch):
-        factory = _FakeSessionFactory([_FakeResult([("var-1", "vf-1")]), _FakeResult([], rowcount=1)])
-        observed_open_counts: list[int] = []
+    def test_offload_cleanup_is_called_with_no_session_open(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        variable = WorkflowDraftVariable.new_node_variable(
+            app_id="app-1",
+            user_id="user-1",
+            node_id="node-1",
+            name="value",
+            value=StringSegment(value="truncated"),
+            node_execution_id="exec-1",
+            file_id="vf-1",
+        )
+        other = WorkflowDraftVariable.new_node_variable(
+            app_id="app-2",
+            user_id="user-1",
+            node_id="node-1",
+            name="value",
+            value=StringSegment(value="untouched"),
+            node_execution_id="exec-2",
+        )
+        sqlite_session.add_all([variable, other])
+        sqlite_session.commit()
+        variable_id, other_id = variable.id, other.id
+        open_sessions: list[Session] = []
+
+        @contextmanager
+        def tracked_session() -> Generator[Session]:
+            with sqlite_session_factory() as session:
+                open_sessions.append(session)
+                try:
+                    yield session
+                finally:
+                    open_sessions.remove(session)
+
+        cleaned: list[list[str]] = []
 
         def _record_cleanup(file_ids: list[str]) -> int:
-            observed_open_counts.append(factory.open_count)
+            assert not open_sessions
+            cleaned.append(file_ids)
             return len(file_ids)
 
-        monkeypatch.setattr(remove_app_task_module, "session_factory", factory)
+        monkeypatch.setattr(remove_app_task_module.session_factory, "create_session", tracked_session)
         monkeypatch.setattr(remove_app_task_module, "_delete_draft_variable_offload_data", _record_cleanup)
 
         total_deleted = delete_draft_variables_batch("app-1", batch_size=10)
 
         assert total_deleted == 1
-        assert observed_open_counts == [0]
-        assert factory.open_count == 0
+        assert cleaned == [["vf-1"]]
+        assert not open_sessions
+        sqlite_session.expire_all()
+        assert sqlite_session.get(WorkflowDraftVariable, variable_id) is None
+        assert sqlite_session.get(WorkflowDraftVariable, other_id) is not None
 
-    def test_rows_without_offloaded_files_skip_cleanup(self, monkeypatch: pytest.MonkeyPatch):
+    def test_rows_without_offloaded_files_skip_cleanup(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
         """A batch whose rows carry no file_id must not invoke the offload cleanup."""
-        factory = _FakeSessionFactory([_FakeResult([("var-1", None)]), _FakeResult([], rowcount=1)])
+        variable = WorkflowDraftVariable.new_node_variable(
+            app_id="app-1",
+            user_id="user-1",
+            node_id="node-1",
+            name="value",
+            value=StringSegment(value="plain"),
+            node_execution_id="exec-1",
+        )
+        sqlite_session.add(variable)
+        sqlite_session.commit()
+        variable_id = variable.id
         cleanup = MagicMock(return_value=0)
 
-        monkeypatch.setattr(remove_app_task_module, "session_factory", factory)
         monkeypatch.setattr(remove_app_task_module, "_delete_draft_variable_offload_data", cleanup)
 
         total_deleted = delete_draft_variables_batch("app-1", batch_size=10)
 
         assert total_deleted == 1
         cleanup.assert_not_called()
-        assert factory.open_count == 0
+        sqlite_session.expire_all()
+        assert sqlite_session.get(WorkflowDraftVariable, variable_id) is None
 
 
 class TestDeleteWorkflowArchiveLogs:
@@ -462,8 +511,8 @@ class TestDeleteWorkflowArchiveLogs:
     @patch("tasks.remove_app_and_related_data_task._delete_records")
     @patch("tasks.remove_app_and_related_data_task.db")
     def test_delete_app_workflow_archive_logs_calls_delete_records(
-        self, mock_db, mock_delete_records, sqlite_session: Session
-    ):
+        self, mock_db: MagicMock, mock_delete_records: MagicMock, sqlite_session: Session
+    ) -> None:
         tenant_id = "tenant-1"
         app_id = "app-1"
 
@@ -510,7 +559,9 @@ class TestDeleteWorkflowArchiveLogs:
 class TestDeleteAppStars:
     @pytest.mark.parametrize("sqlite_session", [(AppStar,)], indirect=True)
     @patch("tasks.remove_app_and_related_data_task._delete_records")
-    def test_delete_app_stars_calls_delete_records(self, mock_delete_records, sqlite_session: Session):
+    def test_delete_app_stars_calls_delete_records(
+        self, mock_delete_records: MagicMock, sqlite_session: Session
+    ) -> None:
         tenant_id = "tenant-1"
         app_id = "app-1"
 
@@ -536,8 +587,8 @@ class TestDeleteAppStars:
 class TestDeleteArchivedWorkflowRunFiles:
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
     def test_delete_archived_workflow_run_files_not_configured(
-        self, mock_get_storage, caplog: pytest.LogCaptureFixture
-    ):
+        self, mock_get_storage: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         mock_get_storage.side_effect = ArchiveStorageNotConfiguredError("missing config")
 
         with caplog.at_level(logging.INFO, logger="tasks.remove_app_and_related_data_task"):
@@ -546,7 +597,9 @@ class TestDeleteArchivedWorkflowRunFiles:
         assert caplog.text.count("Archive storage not configured") == 1
 
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
-    def test_delete_archived_workflow_run_files_list_failure(self, mock_get_storage, caplog: pytest.LogCaptureFixture):
+    def test_delete_archived_workflow_run_files_list_failure(
+        self, mock_get_storage: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         storage = MagicMock()
         storage.list_objects.side_effect = Exception("list failed")
         mock_get_storage.return_value = storage
@@ -559,7 +612,9 @@ class TestDeleteArchivedWorkflowRunFiles:
         assert "Failed to list archive files for app app-1" in caplog.text
 
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
-    def test_delete_archived_workflow_run_files_success(self, mock_get_storage, caplog: pytest.LogCaptureFixture):
+    def test_delete_archived_workflow_run_files_success(
+        self, mock_get_storage: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         storage = MagicMock()
         storage.list_objects.return_value = ["key-1", "key-2"]
         mock_get_storage.return_value = storage

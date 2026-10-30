@@ -8,7 +8,7 @@ import hashlib
 import json
 import math
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from typing import TYPE_CHECKING, Annotated, Any, Literal, TypedDict
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, FiniteFloat, model_validator
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from qdrant_client import QdrantClient
-    from qdrant_client.http.models import Record
+    from qdrant_client.http.models import CollectionInfo, Record
 
     from services.knowledge_fs.vector_store_elasticsearch import ElasticsearchVectorStore
     from services.knowledge_fs.vector_store_weaviate import WeaviateVectorStore
@@ -103,6 +103,10 @@ class VectorRequest(BaseModel):
 
 class VectorStoreUnavailableError(Exception):
     """Safe error; must not include native exceptions containing backend secrets."""
+
+
+class VectorCollectionPendingError(VectorStoreUnavailableError):
+    """Another writer owns collection initialization; retry the same admitted batch."""
 
 
 class VectorMatch(TypedDict):
@@ -236,57 +240,100 @@ def execute_vector_request(
     }
 
 
+def _read_qdrant_collection(client: "QdrantClient", collection: str) -> "CollectionInfo | None":
+    from qdrant_client.http.exceptions import UnexpectedResponse
+
+    try:
+        return client.get_collection(collection)
+    except UnexpectedResponse as error:
+        if error.status_code != 404:
+            raise
+        return None
+
+
+def _prepare_qdrant_collection(
+    client: "QdrantClient", payload: VectorRequest, collection: str
+) -> "CollectionInfo | None":
+    """Serialize TiDB schema initialization across API processes, never normal vector I/O."""
+    from qdrant_client.http import models
+    from redis.exceptions import LockError
+
+    from configs import dify_config
+    from extensions.ext_redis import redis_client
+
+    tidb = dify_config.VECTOR_STORE == "tidb_on_qdrant"
+    upsert = payload.operation == "upsert"
+    info = _read_qdrant_collection(client, collection)
+    if info is None and not upsert:
+        return None
+    with ExitStack() as initialization:
+        if (
+            tidb
+            and upsert
+            and (info is None or (info.points_count == 0 and TIDB_POINT_ID_FIELD not in info.payload_schema))
+        ):
+            # TiDB's concurrent DDL can return 409/500 before the winner's schema
+            # is visible. One re-read after an error is not sufficient. Contenders
+            # return explicit pending so KnowledgeFS can use its bounded retry.
+            try:
+                initialization.enter_context(
+                    redis_client.lock(
+                        f"knowledge_fs:vector_init:{payload.scope.tenant_id}:{collection}",
+                        # At most five SDK calls, each bounded to 60 seconds.
+                        timeout=360,
+                        blocking_timeout=0,
+                    )
+                )
+            except LockError:
+                raise VectorCollectionPendingError("KnowledgeFS vector collection is being initialized") from None
+            info = _read_qdrant_collection(client, collection)
+        if info is None:
+            try:
+                client.create_collection(
+                    collection_name=collection,
+                    vectors_config=models.VectorParams(size=payload.scope.dimension, distance=models.Distance.COSINE),
+                )
+            except Exception:
+                # Accept a concurrent creator only after verifying its schema.
+                info = client.get_collection(collection)
+            else:
+                info = client.get_collection(collection)
+        vectors = info.config.params.vectors
+        if (
+            not isinstance(vectors, models.VectorParams)
+            or vectors.size != payload.scope.dimension
+            or vectors.distance != models.Distance.COSINE
+        ):
+            raise VectorStoreUnavailableError("KnowledgeFS vector collection has incompatible dimensions or distance")
+        id_index = info.payload_schema.get(TIDB_POINT_ID_FIELD)
+        if (
+            tidb
+            and payload.operation in {"upsert", "search"}
+            and id_index is not None
+            and id_index.data_type != models.PayloadSchemaType.KEYWORD
+        ):
+            raise VectorStoreUnavailableError("KnowledgeFS vector ID index has incompatible schema")
+        if tidb and upsert and TIDB_POINT_ID_FIELD not in info.payload_schema and info.points_count == 0:
+            # An index on an empty collection proves every subsequent point is
+            # written with our ID payload. Do not mark old, unbackfilled data ready.
+            _ensure_qdrant_keyword_index(client, collection, TIDB_POINT_ID_FIELD)
+    return info
+
+
 def _execute_qdrant_collection(client: "QdrantClient", payload: VectorRequest, collection: str) -> VectorResult | None:
     """Return None only for a missing collection; all uncertain I/O must fail."""
-
     from qdrant_client.http import models
     from qdrant_client.http.exceptions import UnexpectedResponse
 
     from configs import dify_config
 
-    scope = payload.scope
+    info = _prepare_qdrant_collection(client, payload, collection)
+    if info is None:
+        return None
     point_ids: list[int | str] = list(payload.ids)
     tidb = dify_config.VECTOR_STORE == "tidb_on_qdrant"
-    try:
-        info = client.get_collection(collection)
-    except UnexpectedResponse as error:
-        if error.status_code != 404:
-            raise
-        if payload.operation != "upsert":
-            return None
-        try:
-            client.create_collection(
-                collection_name=collection,
-                vectors_config=models.VectorParams(size=scope.dimension, distance=models.Distance.COSINE),
-            )
-        except Exception:
-            # Concurrent first writers can race. Accept only a compatible existing
-            # collection; never recreate or clear another writer's collection.
-            info = client.get_collection(collection)
-        else:
-            info = client.get_collection(collection)
-    vectors = info.config.params.vectors
-    if (
-        not isinstance(vectors, models.VectorParams)
-        or vectors.size != scope.dimension
-        or vectors.distance != models.Distance.COSINE
-    ):
-        raise VectorStoreUnavailableError("KnowledgeFS vector collection has incompatible dimensions or distance")
-
     id_index = info.payload_schema.get(TIDB_POINT_ID_FIELD)
-    if (
-        tidb
-        and payload.operation in {"upsert", "search"}
-        and id_index is not None
-        and id_index.data_type != models.PayloadSchemaType.KEYWORD
-    ):
-        raise VectorStoreUnavailableError("KnowledgeFS vector ID index has incompatible schema")
-
     if payload.operation == "upsert":
-        if tidb and TIDB_POINT_ID_FIELD not in info.payload_schema and info.points_count == 0:
-            # An index on an empty collection proves every subsequent point is
-            # written with our ID payload. Do not mark old, unbackfilled data ready.
-            _ensure_qdrant_keyword_index(client, collection, TIDB_POINT_ID_FIELD)
         client.upsert(
             collection_name=collection,
             wait=True,

@@ -21,7 +21,7 @@ from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fix
 
 from core.helper.http_client_pooling import get_pooled_http_client
 from enums import CloudPlan
-from services.billing_service import BillingService, _BillingHTTPStatusError
+from services.billing_service import BillingService
 from services.entities.network_access_group_entities import (
     NetworkAccessAppConfig,
     NetworkAccessAppStatusSnapshot,
@@ -30,6 +30,7 @@ from services.entities.network_access_group_entities import (
     NetworkAccessGroup,
     NetworkAccessGroupList,
 )
+from services.errors.billing import BillingError
 from services.network_access_group_service import (
     NetworkAccessGroupControlPlane,
     NetworkAccessGroupEntitlement,
@@ -447,13 +448,7 @@ class BillingNetworkAccessGroupEntitlementGateway(NetworkAccessGroupEntitlement)
     @override
     def is_paid_plan(self, workspace_id: str) -> bool:
         try:
-            billing_info = BillingService.get_info(workspace_id, exclude_vector_space=True)
-        except (
-            httpx.RequestError,
-            json.JSONDecodeError,
-            UnicodeDecodeError,
-            ValidationError,
-            _BillingHTTPStatusError,
-        ) as exc:
+            subscription = BillingService.get_info(workspace_id, exclude_vector_space=True).subscription
+        except BillingError as exc:
             raise NetworkAccessGroupEntitlementUnavailableError from exc
-        return billing_info["subscription"]["plan"] in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM)
+        return subscription.plan in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM)

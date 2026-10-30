@@ -1604,7 +1604,9 @@ def test_service_api_partial_qa_update_uses_shared_word_count_and_indexing(
 
 
 @pytest.mark.parametrize("owner_field", ["tenant_id", "dataset_id", "document_id"])
-def test_legacy_segment_mutation_rejects_mismatched_rows_before_dispatch(owner_field: str) -> None:
+def test_legacy_segment_mutation_rejects_mismatched_rows_before_dispatch(
+    owner_field: str, unbound_session: Session
+) -> None:
     from services.knowledge.segments.application import SegmentMutationService
 
     dataset = _dataset("dataset-1", "workspace-1")
@@ -1612,19 +1614,22 @@ def test_legacy_segment_mutation_rejects_mismatched_rows_before_dispatch(owner_f
     segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
     setattr(segment, owner_field, "foreign-owner")
     mutations = create_autospec(SegmentMutationService, instance=True, spec_set=True)
-    session = create_autospec(Session, instance=True, spec_set=True)
+    commits: list[bool] = []
+    event.listen(unbound_session, "after_commit", lambda _session: commits.append(True))
     with pytest.raises(ValueError, match="Segment does not belong"):
         SegmentService.update_segment(
             SegmentUpdateArgs(content="new"),
             segment,
             document,
             dataset,
-            session,
+            unbound_session,
             actor_id="author",
             mutations=mutations,
         )
     mutations.update_segment.assert_not_called()
-    session.commit.assert_not_called()
+    assert not commits
+    assert not unbound_session.new
+    assert not unbound_session.deleted
 
 
 def _persist_index_batch(

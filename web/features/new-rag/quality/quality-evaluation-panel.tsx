@@ -222,7 +222,7 @@ export function EvaluationReport({
       <div className="mt-4 overflow-x-auto">
         <table
           aria-label={t(($) => $['qualityPage.evaluation.reportTitle'], { ns: 'knowledgeQuality' })}
-          className="w-full min-w-190 table-fixed border-collapse text-left"
+          className="w-full min-w-190 table-fixed border-collapse text-start"
         >
           <colgroup>
             <col />
@@ -232,16 +232,16 @@ export function EvaluationReport({
           </colgroup>
           <thead>
             <tr className="h-9 system-2xs-medium-uppercase text-text-tertiary">
-              <th scope="col" className="pr-3 font-medium">
+              <th scope="col" className="pe-3 text-start font-medium">
                 {t(($) => $['qualityPage.question'], { ns: 'knowledgeSpace' })}
               </th>
-              <th scope="col" className="pr-3 font-medium">
+              <th scope="col" className="pe-3 text-start font-medium">
                 {t(($) => $['qualityPage.statusLabel'], { ns: 'knowledgeQuality' })}
               </th>
-              <th scope="col" className="pr-3 font-medium">
+              <th scope="col" className="pe-3 text-start font-medium">
                 {t(($) => $['qualityPage.evaluation.evidenceHit'], { ns: 'knowledgeQuality' })}
               </th>
-              <th scope="col" className="font-medium">
+              <th scope="col" className="text-start font-medium">
                 {t(($) => $['qualityPage.evaluation.duration'], { ns: 'knowledgeQuality' })}
               </th>
             </tr>
@@ -253,19 +253,19 @@ export function EvaluationReport({
                 <tr key={item.id} className="h-12 border-t border-divider-subtle">
                   <th
                     scope="row"
-                    className="truncate pr-3 text-left system-sm-medium text-text-primary"
+                    className="truncate pe-3 text-start system-sm-medium text-text-primary"
                   >
                     {item.question}
                   </th>
-                  <td className="pr-3">
+                  <td className="pe-3">
                     <EvaluationState state={item.state} />
                   </td>
-                  <td className="pr-3">
+                  <td className="pe-3">
                     {diff ? (
                       <Button
                         variant="ghost"
                         size="small"
-                        className="-ml-2 w-fit px-2 text-text-accent"
+                        className="-ms-2 w-fit px-2 text-text-accent"
                         aria-label={t(($) => $['qualityPage.evaluation.openEvidenceDetails'], {
                           ns: 'knowledgeQuality',
                           expected: diff.expected_count,
@@ -717,7 +717,7 @@ export function QualityEvaluationPanel({
           <div className="mt-2.5 overflow-x-auto pt-3">
             <table
               aria-label={t(($) => $['qualityPage.evaluationTab'], { ns: 'knowledgeQuality' })}
-              className="w-full min-w-185 table-fixed border-collapse text-left"
+              className="w-full min-w-185 table-fixed border-collapse text-start"
             >
               <colgroup>
                 <col className="w-40.5" />
@@ -729,19 +729,19 @@ export function QualityEvaluationPanel({
               </colgroup>
               <thead>
                 <tr className="h-9 system-2xs-medium-uppercase text-text-tertiary">
-                  <th scope="col" className="pr-3 font-medium">
+                  <th scope="col" className="pe-3 text-start font-medium">
                     {t(($) => $['qualityPage.evaluation.createdAt'], { ns: 'knowledgeQuality' })}
                   </th>
-                  <th scope="col" className="pr-3 font-medium">
+                  <th scope="col" className="pe-3 text-start font-medium">
                     {t(($) => $['qualityPage.statusLabel'], { ns: 'knowledgeQuality' })}
                   </th>
-                  <th scope="col" className="pr-3 font-medium">
+                  <th scope="col" className="pe-3 text-start font-medium">
                     {t(($) => $['qualityPage.evaluation.modeLabel'], { ns: 'knowledgeQuality' })}
                   </th>
-                  <th scope="col" className="pr-3 font-medium">
+                  <th scope="col" className="pe-3 text-start font-medium">
                     {t(($) => $['qualityPage.evaluation.hitRate'], { ns: 'knowledgeQuality' })}
                   </th>
-                  <th scope="col" className="pr-3 font-medium">
+                  <th scope="col" className="pe-3 text-start font-medium">
                     {t(($) => $['qualityPage.evaluation.progress'], { ns: 'knowledgeQuality' })}
                   </th>
                   <td />
@@ -752,7 +752,7 @@ export function QualityEvaluationPanel({
                   <tr key={run.id} className="h-12 border-t border-divider-subtle">
                     <th
                       scope="row"
-                      className="pr-3 text-left system-xs-regular font-normal text-text-secondary"
+                      className="pe-3 text-start system-xs-regular font-normal text-text-secondary"
                     >
                       {formatQualityEvaluationCreatedAt(
                         run.created_at,
@@ -760,24 +760,24 @@ export function QualityEvaluationPanel({
                         i18n.language,
                       )}
                     </th>
-                    <td className="pr-3">
+                    <td className="pe-3">
                       <EvaluationState state={run.state} />
                     </td>
-                    <td className="pr-3 system-xs-regular text-text-secondary">
+                    <td className="pe-3 system-xs-regular text-text-secondary">
                       {t(($) => $[`qualityPage.evaluation.mode.${run.mode}`], {
                         ns: 'knowledgeQuality',
                       })}
                     </td>
-                    <td className="pr-3 system-sm-medium text-text-primary">
+                    <td className="pe-3 system-sm-medium text-text-primary">
                       {run.summary.completed > 0
                         ? percent(run.summary.hit_rate, i18n.language)
                         : '—'}
                     </td>
-                    <td className="pr-3 system-xs-regular text-text-secondary">
+                    <td className="pe-3 system-xs-regular text-text-secondary">
                       {new Intl.NumberFormat(i18n.language).format(run.summary.completed)} /{' '}
                       {new Intl.NumberFormat(i18n.language).format(run.summary.total)}
                     </td>
-                    <td className="text-right">
+                    <td className="text-end">
                       <Button variant="secondary" size="small" onClick={() => openReport(run)}>
                         {t(($) => $['qualityPage.evaluation.viewReport'], {
                           ns: 'knowledgeQuality',

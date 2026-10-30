@@ -35,8 +35,6 @@ import {
   zGetAccountProfileResponse,
   zPatchAccountProfileBody,
   zPatchAccountProfileResponse,
-  zPostAccountAvatarBody,
-  zPostAccountAvatarResponse,
   zPostAccountChangeEmailBody,
   zPostAccountChangeEmailCheckEmailUniqueBody,
   zPostAccountChangeEmailCheckEmailUniqueResponse,
@@ -53,16 +51,8 @@ import {
   zPostAccountEducationResponse,
   zPostAccountInitBody,
   zPostAccountInitResponse,
-  zPostAccountInterfaceLanguageBody,
-  zPostAccountInterfaceLanguageResponse,
-  zPostAccountInterfaceThemeBody,
-  zPostAccountInterfaceThemeResponse,
-  zPostAccountNameBody,
-  zPostAccountNameResponse,
   zPostAccountPasswordBody,
   zPostAccountPasswordResponse,
-  zPostAccountTimezoneBody,
-  zPostAccountTimezoneResponse,
 } from './zod.gen.ts'
 
 /**
@@ -80,31 +70,11 @@ export const get = oc
   .input(z.object({ query: zGetAccountAvatarQuery }))
   .output(zGetAccountAvatarResponse)
 
-/**
- * Deprecated. Use PATCH /account/profile instead.
- *
- * @deprecated
- */
-export const post = oc
-  .route({
-    deprecated: true,
-    description: 'Deprecated. Use PATCH /account/profile instead.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAccountAvatar',
-    path: '/account/avatar',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostAccountAvatarBody }))
-  .output(zPostAccountAvatarResponse)
-  .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
-
 export const avatar = {
   get,
-  post,
 }
 
-export const post2 = oc
+export const post = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -121,10 +91,10 @@ export const post2 = oc
   })
 
 export const checkEmailUnique = {
-  post: post2,
+  post,
 }
 
-export const post3 = oc
+export const post2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -143,10 +113,10 @@ export const post3 = oc
   })
 
 export const reset = {
-  post: post3,
+  post: post2,
 }
 
-export const post4 = oc
+export const post3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -164,10 +134,10 @@ export const post4 = oc
   })
 
 export const validity = {
-  post: post4,
+  post: post3,
 }
 
-export const post5 = oc
+export const post4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -186,13 +156,13 @@ export const post5 = oc
   })
 
 export const changeEmail = {
-  post: post5,
+  post: post4,
   checkEmailUnique,
   reset,
   validity,
 }
 
-export const post6 = oc
+export const post5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -204,7 +174,7 @@ export const post6 = oc
   .output(zPostAccountDeleteFeedbackResponse)
 
 export const feedback = {
-  post: post6,
+  post: post5,
 }
 
 export const get2 = oc
@@ -228,7 +198,7 @@ export const verify = {
   get: get2,
 }
 
-export const post7 = oc
+export const post6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -243,7 +213,7 @@ export const post7 = oc
   })
 
 export const delete_ = {
-  post: post7,
+  post: post6,
   feedback,
   verify,
 }
@@ -291,7 +261,7 @@ export const get5 = oc
   })
   .output(zGetAccountEducationResponse)
 
-export const post8 = oc
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -308,12 +278,12 @@ export const post8 = oc
 
 export const education = {
   get: get5,
-  post: post8,
+  post: post7,
   autocomplete,
   verify: verify2,
 }
 
-export const post9 = oc
+export const post8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -331,7 +301,7 @@ export const post9 = oc
   })
 
 export const init = {
-  post: post9,
+  post: post8,
 }
 
 export const get6 = oc
@@ -348,76 +318,7 @@ export const integrates = {
   get: get6,
 }
 
-/**
- * Deprecated. Use PATCH /account/profile instead.
- *
- * @deprecated
- */
-export const post10 = oc
-  .route({
-    deprecated: true,
-    description: 'Deprecated. Use PATCH /account/profile instead.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAccountInterfaceLanguage',
-    path: '/account/interface-language',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostAccountInterfaceLanguageBody }))
-  .output(zPostAccountInterfaceLanguageResponse)
-  .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
-
-export const interfaceLanguage = {
-  post: post10,
-}
-
-/**
- * Deprecated. Use PATCH /account/profile instead.
- *
- * @deprecated
- */
-export const post11 = oc
-  .route({
-    deprecated: true,
-    description: 'Deprecated. Use PATCH /account/profile instead.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAccountInterfaceTheme',
-    path: '/account/interface-theme',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostAccountInterfaceThemeBody }))
-  .output(zPostAccountInterfaceThemeResponse)
-  .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
-
-export const interfaceTheme = {
-  post: post11,
-}
-
-/**
- * Deprecated. Use PATCH /account/profile instead.
- *
- * @deprecated
- */
-export const post12 = oc
-  .route({
-    deprecated: true,
-    description: 'Deprecated. Use PATCH /account/profile instead.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAccountName',
-    path: '/account/name',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostAccountNameBody }))
-  .output(zPostAccountNameResponse)
-  .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
-
-export const name = {
-  post: post12,
-}
-
-export const post13 = oc
+export const post9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -434,7 +335,7 @@ export const post13 = oc
   })
 
 export const password = {
-  post: post13,
+  post: post9,
 }
 
 export const get7 = oc
@@ -465,29 +366,6 @@ export const profile = {
   patch,
 }
 
-/**
- * Deprecated. Use PATCH /account/profile instead.
- *
- * @deprecated
- */
-export const post14 = oc
-  .route({
-    deprecated: true,
-    description: 'Deprecated. Use PATCH /account/profile instead.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAccountTimezone',
-    path: '/account/timezone',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostAccountTimezoneBody }))
-  .output(zPostAccountTimezoneResponse)
-  .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
-
-export const timezone = {
-  post: post14,
-}
-
 export const account = {
   avatar,
   changeEmail,
@@ -495,12 +373,8 @@ export const account = {
   education,
   init,
   integrates,
-  interfaceLanguage,
-  interfaceTheme,
-  name,
   password,
   profile,
-  timezone,
 }
 
 export const contract = {

@@ -2,13 +2,6 @@
 
 import type { AgentPublicationCountsResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentRosterListState } from './components/agent-roster-list'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
@@ -138,27 +131,7 @@ export default function RosterPage() {
       </div>
 
       <div className="min-h-0 flex-1 max-md:min-h-64">
-        <ScrollArea className="h-full min-h-0 min-w-0 overflow-hidden">
-          <ScrollAreaViewport
-            role="region"
-            aria-labelledby={pageTitleId}
-            className="overscroll-contain"
-            style={{ overflowX: 'hidden' }}
-          >
-            <ScrollAreaContent
-              className="min-h-full w-full max-w-full px-2 pt-2 pb-8 sm:px-8"
-              style={{ minWidth: 0 }}
-            >
-              <AgentRosterList
-                label={t(($) => $['roster.listLabel'], { ns: 'agentRoster' })}
-                state={listState}
-              />
-            </ScrollAreaContent>
-          </ScrollAreaViewport>
-          <ScrollAreaScrollbar>
-            <ScrollAreaThumb />
-          </ScrollAreaScrollbar>
-        </ScrollArea>
+        <AgentRosterList aria-labelledby={pageTitleId} state={listState} />
       </div>
     </div>
   )

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import uuid
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.orm import Session
@@ -33,6 +33,7 @@ from services.errors.app import (
 )
 from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
+from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
@@ -143,6 +144,14 @@ class AppGenerateService:
         streaming: bool,
         action: Callable[[RateLimitLease], Any],
     ):
+        """Admit once per scope and hand the acquired slots to the action.
+
+        Preconditions: the admitted app has a trusted tenant, the session can read
+        its settings, and the action wraps streaming results with the supplied lease.
+        Postconditions: blocking returns release both slots; streaming retains them
+        until termination. Admission or action failures after lease setup refund the
+        quota and release acquired slots once before propagating the error.
+        """
         quota_charge = unlimited()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             try:
@@ -340,6 +349,7 @@ class AppGenerateService:
                             app_model=app_model,
                             workflow=workflow,
                             user=user,
+                            execution_identity=build_workflow_execution_identity(user),
                             args=args,
                             invoke_from=invoke_from,
                             streaming=False,
@@ -421,6 +431,7 @@ class AppGenerateService:
                         workflow=workflow,
                         node_id=node_id,
                         user=user,
+                        execution_identity=build_workflow_execution_identity(user),
                         args=args,
                         streaming=streaming,
                         session=session,
@@ -466,6 +477,7 @@ class AppGenerateService:
                         workflow=workflow,
                         node_id=node_id,
                         user=user,
+                        execution_identity=build_workflow_execution_identity(user),
                         args=args,
                         streaming=streaming,
                         session=session,
@@ -475,35 +487,6 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case _:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
-
-    @classmethod
-    def generate_more_like_this(
-        cls,
-        app_model: App,
-        user: Account | EndUser,
-        message_id: str,
-        invoke_from: InvokeFrom,
-        *,
-        session: Session,
-        streaming: bool = True,
-    ) -> Mapping | Generator:
-        """
-        Generate more like this
-        :param app_model: app model
-        :param user: user
-        :param message_id: message id
-        :param invoke_from: invoke from
-        :param streaming: streaming
-        :return:
-        """
-        return CompletionAppGenerator().generate_more_like_this(
-            session=session,
-            app_model=app_model,
-            message_id=message_id,
-            user=user,
-            invoke_from=invoke_from,
-            stream=streaming,
-        )
 
     @classmethod
     def _get_workflow(

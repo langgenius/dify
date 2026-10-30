@@ -27,6 +27,7 @@ from services.account.adapters import (
     TokenManagerChangeEmailTokenGateway,
 )
 from services.account_errors import AccountDeletionRateLimitError
+from services.billing_client import billing
 from services.entities.account_activation_entities import InvitationLookup, InvitationToken
 from services.entities.account_entities import (
     AccountChangeEmailNewEmailToken,
@@ -195,12 +196,9 @@ def test_education_gateway_normalizes_billing_status_timestamp() -> None:
 
     with patch(
         "services.account.adapters.BillingService.EducationIdentity.status",
-        return_value={
-            "result": True,
-            "is_student": True,
-            "expire_at": "2027-01-01T00:00:00+00:00",
-            "allow_refresh": False,
-        },
+        return_value=billing.GetEducationIdentityStatusReply(
+            result=True, is_student=True, expire_at="2027-01-01T00:00:00+00:00", allow_refresh=False
+        ),
     ):
         result = gateway.status("account-1")
 
@@ -217,7 +215,7 @@ def test_education_gateway_activates_with_primitive_account_context() -> None:
 
     with patch(
         "services.account.adapters.BillingService.EducationIdentity.activate",
-        return_value={"message": "success"},
+        return_value=billing.CreateEducationIdentityReply(message="success"),
     ) as activate:
         result = gateway.activate(
             account_id="account-1",
@@ -237,16 +235,30 @@ def test_education_gateway_activates_with_primitive_account_context() -> None:
     )
 
 
-def test_education_gateway_normalizes_autocomplete_defaults() -> None:
+def test_education_gateway_maps_autocomplete_reply() -> None:
     gateway = BillingAccountEducationGateway()
 
     with patch(
         "services.account.adapters.BillingService.EducationIdentity.autocomplete",
-        return_value=None,
+        return_value=billing.AutocompleteEducationInstitutionReply(
+            data=["Example University"], curr_page=0, has_next=True
+        ),
     ):
         result = gateway.autocomplete(keywords="Example", page=0, limit=20)
 
-    assert result == AccountEducationAutocomplete(data=(), curr_page=None, has_next=None)
+    assert result == AccountEducationAutocomplete(data=("Example University",), curr_page=0, has_next=True)
+
+
+def test_education_gateway_reads_empty_expiry_as_none() -> None:
+    gateway = BillingAccountEducationGateway()
+
+    with patch(
+        "services.account.adapters.BillingService.EducationIdentity.status",
+        return_value=billing.GetEducationIdentityStatusReply(
+            result=False, is_student=False, expire_at="", allow_refresh=False
+        ),
+    ):
+        assert gateway.status("account-1").expire_at is None
 
 
 def test_billing_email_policy_preserves_suspended_domain_reason() -> None:

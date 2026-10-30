@@ -1,12 +1,19 @@
 from unittest.mock import MagicMock
 
+import httpx
 import pytest
 
 from extensions.ext_redis import RedisClientWrapper
 from libs.helper import RateLimiter
 from machinery.context import RequestContext
+from services.billing_client import transport
+from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
-from services.errors.billing import BillingUpstreamUnavailableError, ComplianceRateLimitExceededError
+from services.errors.billing import (
+    BillingUpstreamInvalidResponseError,
+    BillingUpstreamUnavailableError,
+    ComplianceRateLimitExceededError,
+)
 
 
 @pytest.fixture
@@ -118,5 +125,33 @@ def test_get_link_does_not_increment_after_fetch_failure(
             ip_address="127.0.0.1",
             device_info="test-agent",
         )
+
+    assert [call.args[0] for call in commands.call_args_list] == ["ZREMRANGEBYSCORE", "ZCARD"]
+
+
+@pytest.mark.parametrize("payload", [{}, {"url": None}, {"url": 123}])
+def test_invalid_billing_response_does_not_consume_download_limit(
+    monkeypatch: pytest.MonkeyPatch,
+    rate_limiter: RateLimiter,
+    request_context: RequestContext,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    payload: dict[str, object],
+) -> None:
+    _, commands = redis_transport
+    commands.return_value = 0
+    service = ComplianceDownloadService(
+        fetch_link=BillingService.get_compliance_download_link, rate_limiter=rate_limiter
+    )
+    monkeypatch.setenv("BILLING_API_URL", "http://billing/v1")
+    with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
+        monkeypatch.setattr(transport, "_http_client", client)
+
+        with pytest.raises(BillingUpstreamInvalidResponseError):
+            service.get_link(
+                request_context=request_context,
+                document_name="SOC2_Type_II",
+                ip_address="127.0.0.1",
+                device_info="test-agent",
+            )
 
     assert [call.args[0] for call in commands.call_args_list] == ["ZREMRANGEBYSCORE", "ZCARD"]

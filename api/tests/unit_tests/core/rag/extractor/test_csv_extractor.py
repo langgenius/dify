@@ -1,8 +1,8 @@
 import csv
 import io
 from pathlib import Path
-from types import SimpleNamespace
-from typing import override
+from types import SimpleNamespace, TracebackType
+from typing import Self, override
 
 import pandas as pd
 import pytest
@@ -13,11 +13,16 @@ from core.rag.extractor.csv_extractor import CSVExtractor
 
 class _ManagedStringIO(io.StringIO):
     @override
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
     @override
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.close()
 
 
@@ -33,6 +38,25 @@ class TestCSVExtractor:
         assert docs[0].page_content == f"value: {value};body: reference"
         assert docs[0].metadata["source"] == value
 
+    def test_extract_header_none_uses_integer_column_labels(self, tmp_path: Path) -> None:
+        file_path = tmp_path / "headerless.csv"
+        file_path.write_text("00123,NA\n00456,NULL\n", encoding="utf-8")
+
+        docs = CSVExtractor(str(file_path), encoding="utf-8", csv_args={"header": None}).extract()
+
+        assert len(docs) == 2
+        assert docs[0].page_content == "0: 00123;1: NA"
+        assert docs[1].page_content == "0: 00456;1: NULL"
+
+    def test_extract_explicit_integer_names_in_csv_args(self, tmp_path: Path) -> None:
+        file_path = tmp_path / "named.csv"
+        file_path.write_text("a,b\n", encoding="utf-8")
+
+        docs = CSVExtractor(str(file_path), encoding="utf-8", csv_args={"header": None, "names": [10, 20]}).extract()
+
+        assert len(docs) == 1
+        assert docs[0].page_content == "10: a;20: b"
+
     def test_extract_honors_explicit_csv_args(self, tmp_path: Path) -> None:
         file_path = tmp_path / "data.csv"
         file_path.write_text("value;body\n00123;NA\n", encoding="utf-8")
@@ -43,7 +67,7 @@ class TestCSVExtractor:
         assert docs[0].page_content == "value: 123.0;body: nan"
         assert csv_args == {"sep": ";", "dtype": {"value": int}, "keep_default_na": True}
 
-    def test_extract_success_with_source_column(self, tmp_path: Path):
+    def test_extract_success_with_source_column(self, tmp_path: Path) -> None:
         file_path = tmp_path / "data.csv"
         file_path.write_text("id,body\nsource-1,hello\n", encoding="utf-8")
 
@@ -54,7 +78,7 @@ class TestCSVExtractor:
         assert docs[0].page_content == "id: source-1;body: hello"
         assert docs[0].metadata == {"source": "source-1", "row": 0}
 
-    def test_extract_raises_when_source_column_missing(self, tmp_path: Path):
+    def test_extract_raises_when_source_column_missing(self, tmp_path: Path) -> None:
         file_path = tmp_path / "data.csv"
         file_path.write_text("id,body\nsource-1,hello\n", encoding="utf-8")
 
@@ -63,10 +87,10 @@ class TestCSVExtractor:
         with pytest.raises(ValueError, match="Source column 'missing_col' not found"):
             extractor.extract()
 
-    def test_extract_wraps_unicode_error_when_autodetect_disabled(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_wraps_unicode_error_when_autodetect_disabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor = CSVExtractor("dummy.csv", autodetect_encoding=False)
 
-        def raise_decode[**P](*args: P.args, **kwargs: P.kwargs):
+        def raise_decode[**P](*args: P.args, **kwargs: P.kwargs) -> None:
             raise UnicodeDecodeError("utf-8", b"x", 0, 1, "decode error")
 
         monkeypatch.setattr("builtins.open", raise_decode)
@@ -74,11 +98,15 @@ class TestCSVExtractor:
         with pytest.raises(RuntimeError, match="Error loading dummy.csv"):
             extractor.extract()
 
-    def test_extract_autodetect_encoding_success(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_autodetect_encoding_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor = CSVExtractor("dummy.csv", autodetect_encoding=True)
         attempted_encodings: list[str | None] = []
 
-        def fake_open(path, newline="", encoding=None):
+        def fake_open(
+            path: object,
+            newline: str = "",
+            encoding: str | None = None,
+        ) -> _ManagedStringIO:
             attempted_encodings.append(encoding)
             if encoding is None:
                 raise UnicodeDecodeError("utf-8", b"x", 0, 1, "decode error")
@@ -99,10 +127,10 @@ class TestCSVExtractor:
         assert docs[0].page_content == "id: source-1;body: hello"
         assert attempted_encodings == [None, "bad", "utf-8"]
 
-    def test_extract_autodetect_encoding_all_attempts_fail_returns_empty(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_autodetect_encoding_all_attempts_fail_returns_empty(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor = CSVExtractor("dummy.csv", autodetect_encoding=True)
 
-        def always_raise[**P](*args: P.args, **kwargs: P.kwargs):
+        def always_raise[**P](*args: P.args, **kwargs: P.kwargs) -> None:
             raise UnicodeDecodeError("utf-8", b"x", 0, 1, "decode error")
 
         monkeypatch.setattr("builtins.open", always_raise)
@@ -110,7 +138,7 @@ class TestCSVExtractor:
 
         assert extractor.extract() == []
 
-    def test_read_from_file_re_raises_csv_error(self, monkeypatch: pytest.MonkeyPatch):
+    def test_read_from_file_re_raises_csv_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor = CSVExtractor("dummy.csv")
 
         monkeypatch.setattr(pd, "read_csv", lambda *args, **kwargs: (_ for _ in ()).throw(csv.Error("bad csv")))

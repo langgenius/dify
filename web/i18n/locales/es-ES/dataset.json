@@ -32,7 +32,6 @@
   "createNewExternalAPI": "Creación de una nueva API de conocimiento externo",
   "creatorFilter.creators": "Creadores",
   "creatorFilter.maxCreators": "Máximo de creadores",
-  "datasetDeleted": "Conocimiento eliminado",
   "datasetUsedByApp": "El conocimiento está siendo utilizado por algunas aplicaciones. Las aplicaciones ya no podrán utilizar este Conocimiento y todas las configuraciones y registros de las sugerencias se eliminarán permanentemente.",
   "defaultRetrievalTip": "De forma predeterminada, se utiliza la recuperación de varias rutas. El conocimiento se recupera de múltiples bases de conocimiento y luego se vuelve a clasificar.",
   "deleteDatasetConfirmContent": "Eliminar el Conocimiento es irreversible. Los usuarios ya no podrán acceder a tu Conocimiento y todas las configuraciones y registros de las sugerencias se eliminarán permanentemente.",

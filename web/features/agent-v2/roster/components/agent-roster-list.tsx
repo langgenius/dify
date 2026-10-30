@@ -1,6 +1,8 @@
 'use client'
 
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
+import type { ScrollAreaViewportProps } from '@langgenius/dify-ui/scroll-area'
+import type { RefObject } from 'react'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -15,16 +17,17 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useMutation } from '@tanstack/react-query'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import AppIcon from '@/app/components/base/app-icon'
@@ -37,7 +40,8 @@ import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { AgentWorkflowReferencesDropdown } from './agent-workflow-references-dropdown'
+import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
+import { AgentWorkflowReferencesMenu } from './agent-workflow-references-menu'
 import { DuplicateAgentDialog } from './duplicate-agent-dialog'
 import { EditAgentDialog } from './edit-agent-dialog'
 
@@ -58,8 +62,12 @@ export type AgentRosterListState =
     }
 
 type AgentRosterListProps = {
-  label: string
   state: AgentRosterListState
+} & Pick<ScrollAreaViewportProps, 'aria-labelledby'>
+
+type DeleteAgentDialogPayload = Pick<AgentAppPartial, 'id' | 'name'> & {
+  fallbackFocus: RefObject<HTMLElement | null>
+  adjacentFocusTargets: HTMLElement[]
 }
 
 const skeletonCardIds = Array.from(
@@ -161,7 +169,7 @@ function AgentRosterPlaceholderState({
 }
 
 type AgentCardActionMenuItemsProps = {
-  kind: 'context' | 'dropdown'
+  kind: 'context' | 'menu'
   isExporting: boolean
   onDelete?: () => void
   onDuplicate?: () => void
@@ -180,35 +188,35 @@ function AgentCardActionMenuItems({
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
   const { t: tAgent } = useTranslation(['agentV2'])
-  const MenuItem = kind === 'context' ? ContextMenuItem : DropdownMenuItem
-  const MenuSeparator = kind === 'context' ? ContextMenuSeparator : DropdownMenuSeparator
+  const ActionItem = kind === 'context' ? ContextMenuItem : MenuItem
+  const ActionSeparator = kind === 'context' ? ContextMenuSeparator : MenuSeparator
 
   return (
     <>
       {onEdit && (
-        <MenuItem className="gap-2" onClick={onEdit}>
+        <ActionItem className="gap-2" onClick={onEdit}>
           <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
           <span>{t(($) => $['roster.editInfo'], { ns: 'agentRoster' })}</span>
-        </MenuItem>
+        </ActionItem>
       )}
       {onDuplicate && (
-        <MenuItem className="gap-2" onClick={onDuplicate}>
+        <ActionItem className="gap-2" onClick={onDuplicate}>
           <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
           <span>{tCommon(($) => $['operation.duplicate'])}</span>
-        </MenuItem>
+        </ActionItem>
       )}
       {onExport && (
-        <MenuItem className="gap-2" disabled={isExporting} onClick={onExport}>
+        <ActionItem className="gap-2" disabled={isExporting} onClick={onExport}>
           <span aria-hidden className="i-ri-download-line size-4 shrink-0 text-text-tertiary" />
           <span>{tAgent(($) => $.exportAgent)}</span>
-        </MenuItem>
+        </ActionItem>
       )}
-      {onDelete && (onEdit || onDuplicate || onExport) && <MenuSeparator />}
+      {onDelete && (onEdit || onDuplicate || onExport) && <ActionSeparator />}
       {onDelete && (
-        <MenuItem variant="destructive" className="gap-2" onClick={onDelete}>
+        <ActionItem variant="destructive" className="gap-2" onClick={onDelete}>
           <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
           <span>{tCommon(($) => $['operation.delete'])}</span>
-        </MenuItem>
+        </ActionItem>
       )}
     </>
   )
@@ -219,11 +227,12 @@ function AgentRosterItem({
   onDelete,
 }: {
   agent: AgentAppPartial
-  onDelete: (agent: AgentAppPartial) => void
+  onDelete: (item: HTMLLIElement | null) => void
 }) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tApp } = useTranslation(['app'])
   const { formatTime } = useTimestamp()
+  const itemRef = useRef<HTMLLIElement>(null)
   const nameId = useId()
   const descriptionId = useId()
   const draftStatusId = useId()
@@ -321,6 +330,7 @@ function AgentRosterItem({
 
   return (
     <li
+      ref={itemRef}
       aria-labelledby={nameId}
       aria-describedby={defaultSection ? undefined : accessibleDescriptionIds || undefined}
       className={cn(
@@ -365,7 +375,7 @@ function AgentRosterItem({
               onEdit={capabilities.canEdit ? handleEditOpen : undefined}
               onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
               onExport={capabilities.canImportExportDSL ? handleExport : undefined}
-              onDelete={capabilities.canDelete ? () => onDelete(agent) : undefined}
+              onDelete={capabilities.canDelete ? () => onDelete(itemRef.current) : undefined}
             />
           </ContextMenuContent>
         )}
@@ -373,8 +383,8 @@ function AgentRosterItem({
       {hasActions && (
         <div className="pointer-events-none absolute inset-e-[-0.5px] top-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 rtl:bg-[linear-gradient(293deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] [@media(hover:none)]:opacity-100">
           <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger
+            <Menu modal={false}>
+              <MenuTrigger
                 render={
                   <IconButton
                     aria-label={t(($) => $['roster.moreActions'], {
@@ -388,24 +398,24 @@ function AgentRosterItem({
                   </IconButton>
                 }
               />
-              <DropdownMenuContent className="w-max min-w-40">
+              <MenuContent align="end" className="w-max min-w-40">
                 <AgentCardActionMenuItems
-                  kind="dropdown"
+                  kind="menu"
                   isExporting={isExporting}
                   onEdit={capabilities.canEdit ? handleEditOpen : undefined}
                   onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
                   onExport={capabilities.canImportExportDSL ? handleExport : undefined}
-                  onDelete={capabilities.canDelete ? () => onDelete(agent) : undefined}
+                  onDelete={capabilities.canDelete ? () => onDelete(itemRef.current) : undefined}
                 />
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </MenuContent>
+            </Menu>
           </div>
         </div>
       )}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex min-w-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           {hasPublishedReferences ? (
-            <AgentWorkflowReferencesDropdown
+            <AgentWorkflowReferencesMenu
               agentName={agent.name}
               publishedReferences={publishedReferences}
               referenceCount={referenceCount}
@@ -451,72 +461,106 @@ function AgentRosterItem({
   )
 }
 
-export function AgentRosterList({ label, state }: AgentRosterListProps) {
+export function AgentRosterList({
+  state,
+  'aria-labelledby': ariaLabelledBy,
+}: AgentRosterListProps) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
   const isBusy = state.status === 'pending' || (state.status === 'ready' && state.isFetching)
-  const [deleteDialog] = useState(() =>
-    createAlertDialogHandle<Pick<AgentAppPartial, 'id' | 'name'>>(),
-  )
+  const [deleteDialog] = useState(() => createAlertDialogHandle<DeleteAgentDialogPayload>())
+  const scrollViewportRef = useRef<HTMLDivElement>(null)
   const deletion = useMutation(
     consoleQuery.agent.byAgentId.delete.mutationOptions({ context: { silent: true } }),
   )
 
   return (
-    <section aria-label={label} aria-busy={isBusy}>
-      {state.status === 'pending' && (
-        <div className={AGENT_ROSTER_GRID_CLASS_NAME}>
-          <AgentRosterSkeleton />
-        </div>
-      )}
-      {state.status === 'error' && (
-        <AgentRosterPlaceholderState
-          onRetry={state.onRetry}
-          role="alert"
-          title={t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}
-        />
-      )}
-      {state.status === 'ready' && state.agents.length === 0 && (
-        <AgentRosterPlaceholderState
-          role={state.emptyState === 'filtered' ? 'status' : undefined}
-          title={
-            state.emptyState === 'filtered'
-              ? t(($) => $['roster.emptySearch'], { ns: 'agentRoster' })
-              : t(($) => $['roster.empty'], { ns: 'agentRoster' })
-          }
-        />
-      )}
-      {state.status === 'ready' && state.agents.length > 0 && (
-        // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
-        // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
-        <ul role="list" className={AGENT_ROSTER_GRID_CLASS_NAME}>
-          {state.agents.map((agent) => (
-            <AgentRosterItem
-              key={agent.id}
-              agent={agent}
-              onDelete={(target) => deleteDialog.openWithPayload(target)}
-            />
-          ))}
-        </ul>
-      )}
-      {state.status === 'ready' && state.footer.status === 'error' && (
-        <div
-          className="flex items-center justify-center gap-3 pt-1 system-xs-regular text-text-destructive"
-          role="alert"
+    <>
+      <ScrollArea className="h-full min-h-0 min-w-0 overflow-hidden">
+        <ScrollAreaViewport
+          ref={scrollViewportRef}
+          role="region"
+          aria-labelledby={ariaLabelledBy}
+          aria-busy={isBusy}
+          className="overscroll-contain"
+          style={{ overflowX: 'hidden' }}
         >
-          <span>{t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}</span>
-          <Button size="small" variant="secondary" onClick={state.footer.onRetry}>
-            {tCommon(($) => $['operation.retry'])}
-          </Button>
-        </div>
-      )}
-      {state.status === 'ready' && state.footer.status === 'load-more' && (
-        <div className="flex justify-center pt-1">
-          <Button loading={state.footer.isLoading} onClick={state.footer.onLoadMore}>
-            {t(($) => $['roster.loadMore'], { ns: 'agentRoster' })}
-          </Button>
-        </div>
-      )}
+          <ScrollAreaContent
+            className="min-h-full w-full max-w-full px-2 pt-2 pb-8 sm:px-8"
+            style={{ minWidth: 0 }}
+          >
+            {state.status === 'pending' && (
+              <div className={AGENT_ROSTER_GRID_CLASS_NAME}>
+                <AgentRosterSkeleton />
+              </div>
+            )}
+            {state.status === 'error' && (
+              <AgentRosterPlaceholderState
+                onRetry={state.onRetry}
+                role="alert"
+                title={t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}
+              />
+            )}
+            {state.status === 'ready' && state.agents.length === 0 && (
+              <AgentRosterPlaceholderState
+                role={state.emptyState === 'filtered' ? 'status' : undefined}
+                title={
+                  state.emptyState === 'filtered'
+                    ? t(($) => $['roster.emptySearch'], { ns: 'agentRoster' })
+                    : t(($) => $['roster.empty'], { ns: 'agentRoster' })
+                }
+              />
+            )}
+            {state.status === 'ready' && state.agents.length > 0 && (
+              <ul
+                // Safari list semantics: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/list-style#accessibility
+                // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Dify's preflight removes list markers.
+                role="list"
+                aria-label={t(($) => $['roster.listLabel'])}
+                className={AGENT_ROSTER_GRID_CLASS_NAME}
+              >
+                {state.agents.map((agent) => (
+                  <AgentRosterItem
+                    key={agent.id}
+                    agent={agent}
+                    onDelete={(item) => {
+                      deleteDialog.openWithPayload({
+                        id: agent.id,
+                        name: agent.name,
+                        adjacentFocusTargets: getAdjacentFocusTargets(item, (sibling) =>
+                          sibling.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
+                        ),
+                        fallbackFocus: { current: null },
+                      })
+                    }}
+                  />
+                ))}
+              </ul>
+            )}
+            {state.status === 'ready' && state.footer.status === 'error' && (
+              <div
+                className="flex items-center justify-center gap-3 pt-1 system-xs-regular text-text-destructive"
+                role="alert"
+              >
+                <span>{t(($) => $['roster.loadingError'], { ns: 'agentRoster' })}</span>
+                <Button size="small" variant="secondary" onClick={state.footer.onRetry}>
+                  {tCommon(($) => $['operation.retry'])}
+                </Button>
+              </div>
+            )}
+            {state.status === 'ready' && state.footer.status === 'load-more' && (
+              <div className="flex justify-center pt-1">
+                <Button loading={state.footer.isLoading} onClick={state.footer.onLoadMore}>
+                  {t(($) => $['roster.loadMore'], { ns: 'agentRoster' })}
+                </Button>
+              </div>
+            )}
+          </ScrollAreaContent>
+        </ScrollAreaViewport>
+        <ScrollAreaScrollbar>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
+      </ScrollArea>
       <AlertDialog
         handle={deleteDialog}
         onOpenChange={(open, details) => {
@@ -528,7 +572,16 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
         }}
       >
         {({ payload }) => (
-          <AlertDialogContent>
+          <AlertDialogContent
+            finalFocus={() => {
+              const fallback = payload?.fallbackFocus.current
+              if (!fallback) return true
+              const target =
+                payload.adjacentFocusTargets.find((element) => element.isConnected) ?? fallback
+              target.focus({ preventScroll: true })
+              return false
+            }}
+          >
             {payload && (
               <DeleteAgentForm
                 agentName={payload.name}
@@ -538,7 +591,12 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
                   if (deletion.isPending) return
                   deletion.mutate(
                     { params: { agent_id: payload.id } },
-                    { onSuccess: () => deleteDialog.close() },
+                    {
+                      onSuccess: () => {
+                        payload.fallbackFocus.current = scrollViewportRef.current
+                        deleteDialog.close()
+                      },
+                    },
                   )
                 }}
               />
@@ -546,6 +604,6 @@ export function AgentRosterList({ label, state }: AgentRosterListProps) {
           </AlertDialogContent>
         )}
       </AlertDialog>
-    </section>
+    </>
   )
 }

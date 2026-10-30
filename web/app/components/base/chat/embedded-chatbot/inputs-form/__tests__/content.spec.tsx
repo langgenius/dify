@@ -1,11 +1,14 @@
 import type { ReactElement, ReactNode } from 'react'
-import { fireEvent, render as renderComponent, screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef, useState } from 'react'
+import { fileUpload } from '@/app/components/base/file-uploader/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { PromptMode } from '@/models/debug'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetConfigsFixture } from '@/test/fixtures/debug-configuration'
 import { createEmbeddedChatbotContextFixture } from '@/test/fixtures/embedded-chatbot'
+import { TransferMethod } from '@/types/app'
 import { EmbeddedChatbotContext } from '../../context'
 import InputsFormContent from '../content'
 
@@ -16,45 +19,12 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-// Mock CodeEditor to trigger onChange easily
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({
-    value,
-    onChange,
-    placeholder,
-  }: {
-    value: string
-    onChange: (v: string) => void
-    placeholder: string | React.ReactNode
-  }) => (
-    <textarea
-      data-testid="mock-code-editor"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={typeof placeholder === 'string' ? placeholder : 'json-placeholder'}
-    />
-  ),
+vi.mock('@/app/components/base/file-uploader/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/base/file-uploader/utils')>()),
+  fileUpload: vi.fn(),
 }))
 
-// Mock FileUploaderInAttachmentWrapper to trigger onChange easily
-vi.mock('@/app/components/base/file-uploader', () => ({
-  FileUploaderInAttachmentWrapper: ({
-    value,
-    onChange,
-  }: {
-    value: File[]
-    onChange: (v: File[]) => void
-  }) => (
-    <div data-testid="mock-file-uploader">
-      <button onClick={() => onChange([new File([''], 'test.png', { type: 'image/png' })])}>
-        Upload
-      </button>
-      <span>{value.length > 0 ? value[0]!.name : 'no file'}</span>
-    </div>
-  ),
-}))
-
-const mockContextValue = createEmbeddedChatbotContextFixture({
+const baseContext = createEmbeddedChatbotContextFixture({
   appParams: {
     opening_statement: '',
     pre_prompt: '',
@@ -115,7 +85,7 @@ const mockContextValue = createEmbeddedChatbotContextFixture({
       required: true,
       allowed_file_types: ['image'],
       allowed_file_extensions: ['.png'],
-      allowed_file_upload_methods: ['local_upload'],
+      allowed_file_upload_methods: [TransferMethod.local_file],
     },
     {
       variable: 'multi_file_var',
@@ -125,7 +95,7 @@ const mockContextValue = createEmbeddedChatbotContextFixture({
       max_length: 5,
       allowed_file_types: ['image'],
       allowed_file_extensions: ['.png'],
-      allowed_file_upload_methods: ['local_upload'],
+      allowed_file_upload_methods: [TransferMethod.local_file],
     },
     {
       variable: 'json_var',
@@ -143,13 +113,11 @@ const mockContextValue = createEmbeddedChatbotContextFixture({
   ],
   currentConversationId: '',
   currentConversationInputs: {},
-  setCurrentConversationInputs: vi.fn(),
   newConversationInputs: {},
   newConversationInputsRef: { current: {} },
-  handleNewConversationInputsChange: vi.fn(),
 })
 
-let context = mockContextValue
+let context = baseContext
 function render(ui: ReactElement) {
   function Wrapper({ children }: { children: ReactNode }) {
     const [currentInputs, setCurrentInputs] = useState(context.currentConversationInputs)
@@ -163,31 +131,49 @@ function render(ui: ReactElement) {
           newConversationInputs: newInputs,
           newConversationInputsRef: newInputsRef,
           setCurrentConversationInputs: (value) => {
-            context.setCurrentConversationInputs(value)
             setCurrentInputs(value)
           },
           handleNewConversationInputsChange: (value) => {
-            context.handleNewConversationInputsChange(value)
             newInputsRef.current = value
             setNewInputs(value)
           },
         }}
       >
         {children}
+        <output aria-label="Current conversation inputs">{JSON.stringify(currentInputs)}</output>
+        <output aria-label="New conversation inputs">{JSON.stringify(newInputs)}</output>
       </EmbeddedChatbotContext.Provider>
     )
   }
-  return renderComponent(ui, { wrapper: Wrapper })
+  return renderWithConsoleQuery(<Wrapper>{ui}</Wrapper>)
 }
+
+const currentInputs = () =>
+  JSON.parse(screen.getByLabelText('Current conversation inputs').textContent!)
+const newInputs = () => JSON.parse(screen.getByLabelText('New conversation inputs').textContent!)
 
 describe('InputsFormContent', () => {
   let user: ReturnType<typeof userEvent.setup>
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.mocked(fileUpload)
+      .mockReset()
+      .mockImplementation(({ file, onSuccessCallback }) => {
+        onSuccessCallback({
+          id: 'uploaded-file',
+          name: file.name,
+          size: file.size,
+          mime_type: file.type,
+          extension: 'png',
+          created_at: 0,
+          created_by: 'user-1',
+          source_url: '',
+          preview_url: null,
+        })
+      })
 
     user = userEvent.setup()
-    context = mockContextValue
+    context = baseContext
   })
 
   it('should render visible input forms', () => {
@@ -212,10 +198,10 @@ describe('InputsFormContent', () => {
     const input = screen.getByRole('textbox', { name: 'Text Label' })
     await user.type(input, 'hello')
 
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
+    expect(currentInputs()).toEqual({
       text_var: 'hello',
     })
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
+    expect(newInputs()).toEqual({
       text_var: 'hello',
     })
   })
@@ -225,10 +211,10 @@ describe('InputsFormContent', () => {
     const input = screen.getByRole('spinbutton', { name: 'Number Label' })
     await user.type(input, '123')
 
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
+    expect(currentInputs()).toEqual({
       num_var: '123',
     })
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
+    expect(newInputs()).toEqual({
       num_var: '123',
     })
   })
@@ -238,10 +224,10 @@ describe('InputsFormContent', () => {
     const input = screen.getByRole('textbox', { name: 'Paragraph Label' })
     await user.type(input, 'long text')
 
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
+    expect(currentInputs()).toEqual({
       para_var: 'long text',
     })
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
+    expect(newInputs()).toEqual({
       para_var: 'long text',
     })
   })
@@ -251,10 +237,10 @@ describe('InputsFormContent', () => {
     const checkbox = screen.getByRole('checkbox', { name: 'Bool Label' })
     await user.click(checkbox)
 
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
+    expect(currentInputs()).toEqual({
       bool_var: true,
     })
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
+    expect(newInputs()).toEqual({
       bool_var: true,
     })
   })
@@ -267,55 +253,55 @@ describe('InputsFormContent', () => {
     const option = screen.getByText('Option 1')
     await user.click(option)
 
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
+    expect(currentInputs()).toEqual({
       select_var: 'Option 1',
     })
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
+    expect(newInputs()).toEqual({
       select_var: 'Option 1',
     })
   })
 
-  it('should handle single file upload change', async () => {
-    render(<InputsFormContent />)
-    await user.click(
-      within(screen.getByTestId('inputs-form-item-file_var')).getByRole('button', {
-        name: 'Upload',
-      }),
-    )
-
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
-      file_var: expect.objectContaining({ name: 'test.png' }),
-    })
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
-      file_var: expect.objectContaining({ name: 'test.png' }),
-    })
-  })
-
-  it('should handle multi files upload change', async () => {
-    render(<InputsFormContent />)
-    await user.click(
-      within(screen.getByTestId('inputs-form-item-multi_file_var')).getByRole('button', {
-        name: 'Upload',
-      }),
-    )
-
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
-      multi_file_var: [expect.objectContaining({ name: 'test.png' })],
-    })
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
-      multi_file_var: [expect.objectContaining({ name: 'test.png' })],
-    })
-  })
+  it.each([
+    { variable: 'file_var', array: false },
+    { variable: 'multi_file_var', array: true },
+  ])(
+    'uploads $variable and saves the expected scalar or list shape',
+    async ({ variable, array }) => {
+      render(<InputsFormContent />)
+      const input = screen
+        .getByTestId(`inputs-form-item-${variable}`)
+        .querySelector<HTMLInputElement>('input[type="file"]')!
+      const file = new File(['image'], 'test.png', { type: 'image/png' })
+      await user.upload(input, file)
+      const uploaded = expect.objectContaining({
+        name: 'test.png',
+        uploadedId: 'uploaded-file',
+        progress: 100,
+        transferMethod: TransferMethod.local_file,
+      })
+      const value = array ? [uploaded] : uploaded
+      await waitFor(() => expect(currentInputs()).toEqual({ [variable]: value }))
+      expect(newInputs()).toEqual({ [variable]: value })
+      expect(fileUpload).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ file }),
+        true,
+        undefined,
+      )
+    },
+  )
 
   it('should handle JSON object change', async () => {
     render(<InputsFormContent />)
-    const jsonEditor = screen.getByTestId('mock-code-editor')
-    fireEvent.change(jsonEditor, { target: { value: '{ "a": 1 }' } })
+    // Monaco is the external editor boundary provided by vitest.setup.ts.
+    const jsonEditor = screen.getByTestId('monaco-editor')
+    await user.click(jsonEditor)
+    await user.paste('{ "a": 1 }')
+    expect(jsonEditor).toHaveValue('{ "a": 1 }')
 
-    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith({
+    expect(currentInputs()).toEqual({
       json_var: '{ "a": 1 }',
     })
-    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith({
+    expect(newInputs()).toEqual({
       json_var: '{ "a": 1 }',
     })
   })
@@ -327,7 +313,7 @@ describe('InputsFormContent', () => {
 
   it('should set initial values from context', () => {
     const contextWithValues = {
-      ...mockContextValue,
+      ...baseContext,
       newConversationInputs: {
         text_var: 'initial value',
       },
@@ -341,7 +327,7 @@ describe('InputsFormContent', () => {
 
   it('should use currentConversationInputs when currentConversationId exists', () => {
     const contextWithConv = {
-      ...mockContextValue,
+      ...baseContext,
       currentConversationId: 'conv-id',
       currentConversationInputs: {
         text_var: 'conv value',
@@ -356,7 +342,7 @@ describe('InputsFormContent', () => {
 
   it('should render numeric zero from context as zero', () => {
     const contextWithZero = {
-      ...mockContextValue,
+      ...baseContext,
       newConversationInputs: {
         num_var: 0,
       },

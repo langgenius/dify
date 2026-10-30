@@ -17,13 +17,18 @@ Follow the backend developer guide's [test layout and naming requirements](READM
 
 ## Architecture And Boundaries
 
-- Treat `api/core/` as a migration-only area: do not add files or move implementations into it. Move responsibilities out; limit changes to existing callers to the adaptations needed for that migration.
-- Keep transport parsing and serialization in controllers, orchestration in services, and domain policy in its domain owner. New or extracted implementations must stay outside `core/`. Keep `libs/` business-agnostic and reuse existing owners before adding abstractions.
-- Before changing controller schemas, generated API contracts, or `SystemFeatureModel`, read `controllers/API_SCHEMA_GUIDE.md`. Treat `/system-features` as a minimal unauthenticated bootstrap allowlist, not a general configuration registry.
-- Scope tenant-owned reads and writes by the complete owner chain, and propagate `tenant_id` across every affected layer. Reconstruct trusted internal references from validated database state after payload or async boundaries.
-- Keep write transactions explicit and bounded. Do not perform external I/O inside an open transaction unless a documented consistency contract requires it.
+Read all backend architecture documentation before modifying backend code:
+
+- [Backend architecture][architecture]
+- [Repositories][repositories]
+- [SQLAlchemy][sqlalchemy]
+- [Database schema][db-schema]
+- [API schema guide][schema-guide]
+
+## Additional Backend Rules
+
+- Reconstruct trusted internal references from validated database state after payload or async boundaries.
 - Read configuration through `configs.dify_config`, access storage through `extensions.ext_storage.storage`, and route outbound HTTP through the existing SSRF-safe owner in `core.helper.ssrf_proxy`.
-- Use Pydantic v2 for request and response models. Reuse domain-specific exceptions and translate them at the controller boundary.
 - Use existing Celery task and queue owners for asynchronous work; do not route unrelated jobs through workflow-specific services.
 - Celery tasks that may be retried or redelivered must keep side effects idempotent and log affected resource identifiers.
 
@@ -32,7 +37,40 @@ guard rejects new `Base` subclasses. Existing `Base` subclasses may be edited
 or migrated without adding more legacy inheritance. `make lint` checks local
 changes, and CI checks the PR against its target revision.
 
+## Billing And SaaS Calls
+
+- Call billing and saas only through the generated functions in `services/billing_client`; do not hand-write paths or response types.
+- To call a new endpoint, add it to `ALLOWED_OPERATIONS` in `dev/generate_billing_client.py` and rerun that script against a dify-saas checkout. Never edit the generated modules or snapshots by hand.
+
 ## Typing Best Practises
 
 - Treat nullable types (`T | None`) strictly as union types; document the semantic meaning for each branch.
 - Treat default parameter values as introducing distinct function overloads; verify that every added default has demonstrable practical utility and avoids masking unsafe runtime states.
+
+## Invariants And Construction
+
+- Start each design from explicit principles and domain invariants. An invariant is a condition that all valid states preserve.
+- Derive implementation rules and memory documents from these principles. Explain the invariant that each rule protects.
+- Document each invariant in the docstring of the module, class, or function that owns it. Use a comment for a local invariant.
+- Use abstract interpretation to reason about possible values and state transitions. Check that each operation preserves the relevant invariants.
+- Use dedicated types to distinguish domain values with different meanings. Use `NewType` for static distinctions between values with identical representations.
+- `NewType` does not validate values at runtime. Use validated value objects when an invariant requires runtime checks.
+- Model mutually exclusive alternatives (an OR relationship) with union types. Use a tagged union when variants need an explicit discriminator.
+- Give each tagged variant a distinct `Literal` tag. Include only the fields that are valid for that variant.
+- Prefer safe-by-construction functional idioms. Use immutable values, explicit result variants, and pure functions where practical.
+- Validate external values at boundaries with Pydantic v2 models or `TypeAdapter`. Construct trusted domain values only after validation succeeds.
+
+## Control Flow And Contracts
+
+- Use structured control flow. Do not add `continue` or `break` statements.
+- Express iteration with explicit conditions, comprehensions, or small functions that return a result.
+- State preconditions and postconditions for each new or changed function in the code you produce.
+- Put these contracts in the function docstring. Include accepted inputs, required state, results, side effects, and failure behavior as applicable.
+- Specify which invariants remain true after success and failure. Use types and executable checks to enforce contracts where practical.
+- Include preconditions and postconditions in the change report. State which checks support the claimed postconditions.
+
+[architecture]: ../docs/BACKEND_ARCHITECTURE.md
+[repositories]: ../docs/BACKEND_REPOSITORIES.md
+[sqlalchemy]: ../docs/BACKEND_SQLALCHEMY.md
+[db-schema]: ../docs/BACKEND_DATABASE_SCHEMA.md
+[schema-guide]: controllers/API_SCHEMA_GUIDE.md

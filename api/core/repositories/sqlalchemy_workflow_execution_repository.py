@@ -212,6 +212,9 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
                     return
                 # Preserve the original start time for pause/resume flows.
                 db_model.created_at = existing_model.created_at
+                # The control repository owns these fields. Dataclass defaults must not clear them on merge.
+                db_model.task_id = existing_model.task_id
+                db_model.stop_requested_at = existing_model.stop_requested_at
 
             # SQLAlchemy merge intelligently handles both insert and update operations
             # based on the presence of the primary key

@@ -19,10 +19,9 @@ import {
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { isAppAccessError } from '@/features/app-access-error/state'
-import { useParams, usePathname } from '@/next/navigation'
+import { useParams } from '@/next/navigation'
 import { uploadPublicRemoteFileInfo } from '@/service/common'
 import { consoleQuery } from '@/service/console'
-import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } from '@/service/share'
 import { TransferMethod } from '@/types/app'
 import { formatFileSize } from '@/utils/format'
 import { isAbortError } from '@/utils/is-abort-error'
@@ -62,8 +61,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const { t } = useTranslation(['common'])
   const fileStore = useFileStore()
   const params = useParams()
-  const pathname = usePathname()
-  const { localUploadUrl, trialAppId } = useFileUploadContext()
+  const { localUploadUrl, trialAppId, uploadStrategy } = useFileUploadContext()
   const { mutateAsync: uploadConsoleRemoteFile } = useMutation(
     consoleQuery.remoteFiles.upload.post.mutationOptions(),
   )
@@ -73,8 +71,6 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = getFileSizeLimit(
     fileConfig.fileUploadConfig,
   )
-  const formToken = typeof params.token === 'string' ? params.token : undefined
-  const isHumanInputFormPage = !!formToken && /(?:^|\/)form\/[^/]+$/.test(pathname)
 
   const checkSizeLimit = useCallback(
     (fileType: string, fileSize: number) => {
@@ -196,6 +192,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
           },
           onErrorCallback: (error?: unknown) => {
+            if (!fileStore.getState().isActive) return
             const errorMessage = getFileUploadErrorMessage(
               error,
               t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
@@ -206,22 +203,23 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           },
         }
 
-        if (isHumanInputFormPage) {
-          uploadHumanInputFormLocalFile({
-            formToken: formToken!,
-            ...uploadParams,
-          })
+        if (uploadStrategy) {
+          uploadStrategy.uploadLocal(uploadParams)
         } else {
           fileUpload(uploadParams, !!params.token, localUploadUrl)
         }
       }
     },
-    [fileStore, t, handleUpdateFile, isHumanInputFormPage, formToken, params.token, localUploadUrl],
+    [fileStore, t, handleUpdateFile, uploadStrategy, params.token, localUploadUrl],
   )
 
   const startProgressTimer = useCallback(
     (fileId: string) => {
       const timer = setInterval(() => {
+        if (!fileStore.getState().isActive) {
+          clearInterval(timer)
+          return
+        }
         const files = fileStore.getState().files
         const file = files.find((file) => file.id === fileId)
 
@@ -251,7 +249,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       startProgressTimer(uploadingFile.id)
 
       let remoteUpload
-      if (isHumanInputFormPage) remoteUpload = uploadHumanInputFormRemoteFileInfo(formToken!, url)
+      if (uploadStrategy) remoteUpload = uploadStrategy.uploadRemote(url)
       else if (trialAppId)
         remoteUpload = uploadTrialRemoteFile({ params: { app_id: trialAppId }, body: { url } })
       else if (params.token) remoteUpload = uploadPublicRemoteFileInfo(url)
@@ -259,6 +257,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
 
       remoteUpload
         .then((res) => {
+          if (!fileStore.getState().isActive) return
           const newFile = {
             ...uploadingFile,
             type: res.mime_type ?? '',
@@ -290,6 +289,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           else handleUpdateFile(newFile)
         })
         .catch((error: unknown) => {
+          if (!fileStore.getState().isActive) return
           if (!isAppAccessError(error) && !isAbortError(error))
             toast.error(t(($) => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }))
           handleRemoveFile(uploadingFile.id)
@@ -304,12 +304,12 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       fileConfig?.allowed_file_types,
       fileConfig.allowed_file_extensions,
       startProgressTimer,
-      isHumanInputFormPage,
-      formToken,
+      uploadStrategy,
       params.token,
       trialAppId,
       uploadConsoleRemoteFile,
       uploadTrialRemoteFile,
+      fileStore,
     ],
   )
 
@@ -356,6 +356,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       reader.addEventListener(
         'load',
         () => {
+          if (!fileStore.getState().isActive) return
           const uploadingFile = {
             id: uuid4(),
             name: file.name,
@@ -381,6 +382,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
               handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
             },
             onErrorCallback: (error?: unknown) => {
+              if (!fileStore.getState().isActive) return
               const errorMessage = getFileUploadErrorMessage(
                 error,
                 t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
@@ -391,11 +393,8 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             },
           }
 
-          if (isHumanInputFormPage) {
-            uploadHumanInputFormLocalFile({
-              formToken: formToken!,
-              ...uploadParams,
-            })
+          if (uploadStrategy) {
+            uploadStrategy.uploadLocal(uploadParams)
           } else {
             fileUpload(uploadParams, !!params.token, localUploadUrl)
           }
@@ -405,6 +404,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       reader.addEventListener(
         'error',
         () => {
+          if (!fileStore.getState().isActive) return
           toast.error(t(($) => $['fileUploader.uploadFromComputerReadError'], { ns: 'common' }))
         },
         false,
@@ -417,13 +417,13 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       t,
       handleAddFile,
       handleUpdateFile,
-      isHumanInputFormPage,
-      formToken,
+      uploadStrategy,
       params.token,
       localUploadUrl,
       fileConfig?.allowed_file_types,
       fileConfig?.allowed_file_extensions,
       fileConfig?.enabled,
+      fileStore,
     ],
   )
 

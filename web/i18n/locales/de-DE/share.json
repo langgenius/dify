@@ -49,6 +49,7 @@
   "generation.tabs.saved": "Gespeichert",
   "generation.title": "KI-Vervollständigung",
   "humanInput.completed": "Es scheint, dass diese Anfrage woanders bearbeitet wurde.",
+  "humanInput.currentAccount": "Aktuelles Konto: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "Diese Aktion läuft {{relativeTime}} ab.",
   "humanInput.expired": "Es scheint, dass diese Anfrage abgelaufen ist.",
   "humanInput.expiredTip": "Diese Aktion ist abgelaufen.",
@@ -57,6 +58,9 @@
   "humanInput.recorded": "Ihre Eingabe wurde aufgezeichnet.",
   "humanInput.sorry": "Entschuldigung!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "Konto wechseln",
   "humanInput.thanks": "Danke!",
+  "humanInput.unavailableDescription": "Der Link ist möglicherweise nicht verfügbar oder passt nicht zu dem Konto, mit dem Sie angemeldet sind. Öffnen Sie das Formular über die erhaltene Benachrichtigung oder wechseln Sie das Konto.",
+  "humanInput.unavailableTitle": "Dieses Formular kann nicht geöffnet werden",
   "login.backToHome": "Zurück zur Startseite"
 }

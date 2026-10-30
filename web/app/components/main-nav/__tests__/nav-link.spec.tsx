@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { RouterContext } from 'next/dist/shared/lib/router-context.shared-runtime'
 import MainNavLink from '../components/nav-link'
 
-vi.mock('@/features/studio-list-navigation', () => ({
+vi.mock('@/app/components/apps/list-navigation-state', () => ({
   useStudioListHref: () => '/apps',
 }))
 

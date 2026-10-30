@@ -3,13 +3,13 @@ import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/d
 import type { ParentMode } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuFilterProvider,
-  DropdownMenuInput,
-  DropdownMenuInputGroup,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuFilterProvider,
+  MenuInput,
+  MenuInputGroup,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getUploadFileExtension } from '@/app/components/datasets/documents/document-source'
@@ -100,37 +100,37 @@ export function DocumentPicker({ datasetId, currentDocument, parentMode }: Docum
   const [searchValue, setSearchValue] = useState('')
 
   return (
-    <DropdownMenuFilterProvider filter={null} value={searchValue} onValueChange={setSearchValue}>
-      <DropdownMenu>
-        <DropdownMenuTrigger
+    <MenuFilterProvider filter={null} value={searchValue} onValueChange={setSearchValue}>
+      <Menu>
+        <MenuTrigger
           aria-label={currentDocument?.name || t(($) => $['operation.search'], { ns: 'common' })}
           className="ms-1 flex min-w-0 items-center gap-0.5 rounded-lg px-2 py-1 text-start transition-colors hover:bg-state-base-hover focus-visible:bg-state-base-hover data-popup-open:bg-state-base-hover motion-reduce:transition-none"
         >
           <DocumentPickerTriggerValue currentDocument={currentDocument} parentMode={parentMode} />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
+        </MenuTrigger>
+        <MenuContent
           align="start"
           sideOffset={0}
           aria-label={t(($) => $['operation.search'], { ns: 'common' })}
           className="w-90 max-w-(--available-width)"
         >
-          <DropdownMenuInputGroup>
+          <MenuInputGroup>
             <span
               className="i-ri-search-line size-4 shrink-0 text-text-tertiary"
               aria-hidden="true"
             />
-            <DropdownMenuInput
+            <MenuInput
               aria-label={t(($) => $['operation.search'], { ns: 'common' })}
               placeholder={t(($) => $['operation.search'], { ns: 'common' })}
             />
-          </DropdownMenuInputGroup>
+          </MenuInputGroup>
           <DocumentList
             datasetId={datasetId}
             currentDocumentId={currentDocument?.id}
             searchValue={searchValue}
           />
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </DropdownMenuFilterProvider>
+        </MenuContent>
+      </Menu>
+    </MenuFilterProvider>
   )
 }
