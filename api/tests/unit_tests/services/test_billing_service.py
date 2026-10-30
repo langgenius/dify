@@ -1,335 +1,19 @@
-"""Comprehensive unit tests for BillingService.
+"""BillingService delegates to the generated billing and saas clients; HTTP behavior is covered in billing_client."""
 
-This test module covers all aspects of the billing service including:
-- HTTP request handling with retry logic
-- Subscription tier management and billing information retrieval
-- Usage calculation and credit management (positive/negative deltas)
-- Compliance and education billing-provider requests
-- Account management and permission checks
-- Cache management for billing data
-- Partner integration features
-
-Network, billing-provider, and cache boundaries are mocked.
-Tests follow the Arrange-Act-Assert pattern for clarity.
-"""
-
-import json
-import logging
-from types import SimpleNamespace
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import patch
 
 import httpx
 import pytest
-import tenacity
-from werkzeug.exceptions import InternalServerError
 
-from services.billing_client import billing, transport
-from services.billing_service import BillingService, _BillingHTTPStatusError
+from services.billing_client import billing, saas, transport
+from services.billing_service import BillingService
 from services.errors.billing import (
-    BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
 )
 from tests.helpers import billing_builders as builders
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
-
-
-class TestBillingServiceSendRequest:
-    """Unit tests for BillingService._send_request method.
-
-    Tests cover:
-    - Successful GET/PUT/POST/DELETE requests
-    - Error handling for various HTTP status codes
-    - Retry logic on network failures
-    - Request header and parameter validation
-    """
-
-    @pytest.fixture
-    def mock_httpx_request(self):
-        """Mock httpx.request for testing."""
-        with patch("services.billing_service._http_client.request") as mock_request:
-            yield mock_request
-
-    @pytest.fixture
-    def mock_billing_config(self):
-        """Mock BillingService configuration."""
-        with (
-            patch.object(BillingService, "base_url", "https://billing-api.example.com"),
-            patch.object(BillingService, "secret_key", "test-secret-key"),
-        ):
-            yield
-
-    def test_get_request_success(self, mock_httpx_request, mock_billing_config):
-        """Test successful GET request."""
-        # Arrange
-        expected_response = {"result": "success", "data": {"info": "test"}}
-        mock_response = MagicMock()
-        mock_response.status_code = httpx.codes.OK
-        mock_response.json.return_value = expected_response
-        mock_httpx_request.return_value = mock_response
-
-        # Act
-        result = BillingService._send_request("GET", "/test", params={"key": "value"})
-
-        # Assert
-        assert result == expected_response
-        mock_httpx_request.assert_called_once()
-        call_args = mock_httpx_request.call_args
-        assert call_args[0][0] == "GET"
-        assert call_args[0][1] == "https://billing-api.example.com/test"
-        assert call_args[1]["params"] == {"key": "value"}
-        assert call_args[1]["headers"]["Billing-Api-Secret-Key"] == "test-secret-key"
-        assert call_args[1]["headers"]["Content-Type"] == "application/json"
-
-    def test_send_request_with_base_url_override(self, mock_httpx_request, mock_billing_config):
-        """Quota APIs can use the new billing service without changing legacy billing calls."""
-        # Arrange
-        expected_response = {"result": "success"}
-        mock_response = MagicMock()
-        mock_response.status_code = httpx.codes.OK
-        mock_response.json.return_value = expected_response
-        mock_httpx_request.return_value = mock_response
-
-        # Act
-        result = BillingService._send_request("GET", "/quota/balance", base_url="https://quota.example.com")
-
-        # Assert
-        assert result == expected_response
-        call_args = mock_httpx_request.call_args
-        assert call_args[0][1] == "https://quota.example.com/quota/balance"
-
-    @pytest.mark.parametrize(
-        "status_code", [httpx.codes.NOT_FOUND, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.BAD_REQUEST]
-    )
-    def test_get_request_non_200_status_code(self, mock_httpx_request, mock_billing_config, status_code):
-        """Test GET request preserves the upstream status for its public caller."""
-        # Arrange
-        mock_response = MagicMock()
-        mock_response.status_code = status_code
-        mock_httpx_request.return_value = mock_response
-
-        # Act & Assert
-        with pytest.raises(_BillingHTTPStatusError) as exc_info:
-            BillingService._send_request("GET", "/test")
-        assert exc_info.value.status_code == status_code
-        assert "Unable to retrieve billing information" in str(exc_info.value)
-
-    def test_put_request_success(self, mock_httpx_request, mock_billing_config):
-        """Test successful PUT request."""
-        # Arrange
-        expected_response = {"result": "success"}
-        mock_response = MagicMock()
-        mock_response.status_code = httpx.codes.OK
-        mock_response.json.return_value = expected_response
-        mock_httpx_request.return_value = mock_response
-
-        # Act
-        result = BillingService._send_request("PUT", "/test", json={"key": "value"})
-
-        # Assert
-        assert result == expected_response
-        call_args = mock_httpx_request.call_args
-        assert call_args[0][0] == "PUT"
-
-    def test_put_request_internal_server_error(self, mock_httpx_request, mock_billing_config):
-        """Test PUT request with INTERNAL_SERVER_ERROR raises InternalServerError."""
-        # Arrange
-        mock_response = MagicMock()
-        mock_response.status_code = httpx.codes.INTERNAL_SERVER_ERROR
-        mock_httpx_request.return_value = mock_response
-
-        # Act & Assert
-        with pytest.raises(InternalServerError) as exc_info:
-            BillingService._send_request("PUT", "/test", json={"key": "value"})
-        assert exc_info.value.code == 500
-        assert "Unable to process billing request" in str(exc_info.value.description)
-
-    @pytest.mark.parametrize(
-        "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.NOT_FOUND, httpx.codes.UNAUTHORIZED, httpx.codes.FORBIDDEN]
-    )
-    def test_put_request_non_200_non_500(self, mock_httpx_request, mock_billing_config, status_code):
-        """Test PUT request with non-200 and non-500 status code raises ValueError."""
-        # Arrange
-        mock_response = MagicMock()
-        mock_response.status_code = status_code
-        mock_httpx_request.return_value = mock_response
-
-        # Act & Assert
-        with pytest.raises(ValueError, match="Invalid arguments\\.") as exc_info:
-            BillingService._send_request("PUT", "/test", json={"key": "value"})
-        assert "Invalid arguments." in str(exc_info.value)
-
-    @pytest.mark.parametrize("method", ["POST", "DELETE"])
-    def test_non_get_non_put_request_success(self, mock_httpx_request, mock_billing_config, method):
-        """Test successful POST/DELETE request."""
-        # Arrange
-        expected_response = {"result": "success"}
-        mock_response = MagicMock()
-        mock_response.status_code = httpx.codes.OK
-        mock_response.json.return_value = expected_response
-        mock_httpx_request.return_value = mock_response
-
-        # Act
-        result = BillingService._send_request(method, "/test", json={"key": "value"})
-
-        # Assert
-        assert result == expected_response
-        call_args = mock_httpx_request.call_args
-        assert call_args[0][0] == method
-
-    @pytest.mark.parametrize(
-        "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
-    )
-    def test_post_request_non_200_with_valid_json(self, mock_httpx_request, mock_billing_config, status_code):
-        """Test POST request with non-200 status code raises ValueError."""
-        # Arrange
-        error_response = {"detail": "Error message"}
-        mock_response = MagicMock()
-        mock_response.status_code = status_code
-        mock_response.json.return_value = error_response
-        mock_httpx_request.return_value = mock_response
-
-        # Act & Assert
-        with pytest.raises(_BillingHTTPStatusError) as exc_info:
-            BillingService._send_request("POST", "/test", json={"key": "value"})
-        assert "Unable to send request to" in str(exc_info.value)
-        assert exc_info.value.status_code == status_code
-
-    @pytest.mark.parametrize(
-        "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
-    )
-    def test_delete_request_non_200_with_valid_json(
-        self, mock_httpx_request, mock_billing_config, status_code, caplog: pytest.LogCaptureFixture
-    ):
-        """Test DELETE request with non-200 status code raises ValueError.
-
-        DELETE now checks status code and raises ValueError for non-200 responses.
-        """
-        # Arrange
-        error_response = {"detail": "Error message"}
-        mock_response = MagicMock()
-        mock_response.status_code = status_code
-        mock_response.text = "Error message"
-        mock_response.json.return_value = error_response
-        mock_httpx_request.return_value = mock_response
-
-        # Act & Assert
-        with caplog.at_level(logging.ERROR, logger="services.billing_service"):
-            with pytest.raises(
-                ValueError,
-                match=(
-                    "Unable to process delete request https://billing\\-api\\.example\\.com"
-                    "/test\\. Please try again later or contact support\\."
-                ),
-            ) as exc_info:
-                BillingService._send_request("DELETE", "/test", json={"key": "value"})
-            assert "Unable to process delete request" in str(exc_info.value)
-            assert "DELETE response" in caplog.text
-
-    @pytest.mark.parametrize(
-        "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
-    )
-    def test_post_request_non_200_with_invalid_json(self, mock_httpx_request, mock_billing_config, status_code):
-        """Test POST request with non-200 status code raises ValueError before JSON parsing."""
-        # Arrange
-        mock_response = MagicMock()
-        mock_response.status_code = status_code
-        mock_response.text = ""
-        mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
-        mock_httpx_request.return_value = mock_response
-
-        # Act & Assert
-        # POST checks status code before calling response.json().
-        with pytest.raises(_BillingHTTPStatusError) as exc_info:
-            BillingService._send_request("POST", "/test", json={"key": "value"})
-        assert "Unable to send request to" in str(exc_info.value)
-        assert exc_info.value.status_code == status_code
-
-    @pytest.mark.parametrize(
-        "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
-    )
-    def test_delete_request_non_200_with_invalid_json(
-        self, mock_httpx_request, mock_billing_config, status_code, caplog: pytest.LogCaptureFixture
-    ):
-        """Test DELETE request with non-200 status code raises ValueError before JSON parsing.
-
-        DELETE now checks status code before calling response.json(), so ValueError is raised
-        when the response cannot be parsed as JSON (e.g., empty response).
-        """
-        # Arrange
-        mock_response = MagicMock()
-        mock_response.status_code = status_code
-        mock_response.text = ""
-        mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
-        mock_httpx_request.return_value = mock_response
-
-        # Act & Assert
-        with caplog.at_level(logging.ERROR, logger="services.billing_service"):
-            with pytest.raises(
-                ValueError,
-                match=(
-                    "Unable to process delete request https://billing\\-api\\.example\\.com"
-                    "/test\\. Please try again later or contact support\\."
-                ),
-            ) as exc_info:
-                BillingService._send_request("DELETE", "/test", json={"key": "value"})
-            assert "Unable to process delete request" in str(exc_info.value)
-            assert "DELETE response" in caplog.text
-
-    @pytest.fixture
-    def retry_sleep(self, monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-        """Advance a virtual clock while retaining the production retry policy."""
-        elapsed = 0.0
-
-        def advance(seconds: float) -> None:
-            nonlocal elapsed
-            elapsed += seconds
-
-        sleep = MagicMock(side_effect=advance)
-        # Replace tenacity's module reference, not the process-wide time module.
-        monkeypatch.setattr(tenacity, "time", SimpleNamespace(monotonic=lambda: elapsed))
-        monkeypatch.setattr("services.billing_service.BillingService._send_request.retry.sleep", sleep)
-        return sleep
-
-    def test_retry_on_request_error(
-        self, mock_httpx_request: MagicMock, mock_billing_config: None, retry_sleep: MagicMock
-    ) -> None:
-        """Test that _send_request retries on httpx.RequestError."""
-        # Arrange
-        expected_response = {"result": "success"}
-        mock_response = MagicMock()
-        mock_response.status_code = httpx.codes.OK
-        mock_response.json.return_value = expected_response
-
-        # First call raises RequestError, second succeeds
-        mock_httpx_request.side_effect = [
-            httpx.RequestError("Network error"),
-            mock_response,
-        ]
-
-        # Act
-        result = BillingService._send_request("GET", "/test")
-
-        # Assert
-        assert result == expected_response
-        assert mock_httpx_request.call_count == 2
-        retry_sleep.assert_called_once_with(2)
-
-    def test_retry_exhausted_raises_exception(
-        self, mock_httpx_request: MagicMock, mock_billing_config: None, retry_sleep: MagicMock
-    ) -> None:
-        """Test that _send_request raises exception after retries are exhausted."""
-        # Arrange
-        mock_httpx_request.side_effect = httpx.RequestError("Network error")
-
-        # Act & Assert
-        with pytest.raises(httpx.RequestError):
-            BillingService._send_request("GET", "/test")
-
-        # The next two-second wait would reach the ten-second stop boundary.
-        assert mock_httpx_request.call_count == 5
-        assert retry_sleep.call_args_list == [call(2)] * 4
 
 
 class TestBillingServiceSubscriptionInfo:
@@ -571,266 +255,6 @@ class TestBillingServiceQuotaOperations:
         )
 
 
-class TestBillingServiceComplianceDownload:
-    """Unit tests for compliance download requests."""
-
-    @pytest.fixture
-    def mock_send_request(self):
-        """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
-            yield mock
-
-    def test_compliance_download_returns_validated_link(self, mock_send_request):
-        doc_name = "compliance_report.pdf"
-        account_id = "account-123"
-        tenant_id = "tenant-456"
-        ip = "192.168.1.1"
-        device_info = "Mozilla/5.0"
-        expected_response = {"url": "https://example.com/download", "ignored": True}
-        mock_send_request.return_value = expected_response
-
-        result = BillingService.get_compliance_download_link(doc_name, account_id, tenant_id, ip, device_info)
-
-        assert result == {"url": "https://example.com/download"}
-        mock_send_request.assert_called_once_with(
-            "POST",
-            "/compliance/download",
-            json={
-                "doc_name": doc_name,
-                "account_id": account_id,
-                "tenant_id": tenant_id,
-                "ip_address": ip,
-                "device_info": device_info,
-            },
-        )
-
-    @pytest.mark.parametrize(
-        ("request_error", "error_type"),
-        [
-            (_BillingHTTPStatusError("request failed", httpx.codes.BAD_REQUEST), BillingUpstreamInvalidResponseError),
-            (_BillingHTTPStatusError("request failed", httpx.codes.REQUEST_TIMEOUT), BillingUpstreamUnavailableError),
-            (_BillingHTTPStatusError("request failed", httpx.codes.TOO_MANY_REQUESTS), BillingUpstreamUnavailableError),
-            (
-                _BillingHTTPStatusError("request failed", httpx.codes.INTERNAL_SERVER_ERROR),
-                BillingUpstreamUnavailableError,
-            ),
-            (httpx.RequestError("request failed"), BillingUpstreamUnavailableError),
-        ],
-    )
-    def test_compliance_download_maps_request_failure(
-        self, mock_send_request, request_error: Exception, error_type: type[Exception]
-    ) -> None:
-        mock_send_request.side_effect = request_error
-
-        with pytest.raises(error_type):
-            BillingService.get_compliance_download_link("SOC2_Type_II", "account-1", "tenant-1", "127.0.0.1", "test")
-
-    def test_compliance_download_rejects_invalid_response(self, mock_send_request) -> None:
-        mock_send_request.return_value = {}
-
-        with pytest.raises(BillingUpstreamInvalidResponseError):
-            BillingService.get_compliance_download_link("SOC2_Type_II", "account-1", "tenant-1", "127.0.0.1", "test")
-
-
-class TestBillingServiceEducationIdentity:
-    """Unit tests for education identity verification and management.
-
-    Tests cover:
-    - Education verification status checking
-    - Institution autocomplete with pagination
-    - Default parameter handling
-    """
-
-    @pytest.fixture
-    def mock_send_request(self):
-        """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
-            yield mock
-
-    def test_education_verify(self, mock_send_request):
-        account_id = "account-123"
-        expected_response = {"token": "education-token"}
-        mock_send_request.return_value = expected_response
-
-        result = BillingService.EducationIdentity.verify(account_id)
-
-        assert result == expected_response
-        mock_send_request.assert_called_once_with("GET", "/education/verify", params={"account_id": account_id})
-
-    def test_education_activate(self, mock_send_request):
-        expected_response = {"message": "success"}
-        mock_send_request.return_value = expected_response
-
-        result = BillingService.EducationIdentity.activate(
-            account_id="account-123",
-            tenant_id="tenant-456",
-            token="verification-token",
-            institution="MIT",
-            role="student",
-        )
-
-        assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "POST",
-            "/education/",
-            json={"institution": "MIT", "token": "verification-token", "role": "student"},
-            params={"account_id": "account-123", "curr_tenant_id": "tenant-456"},
-        )
-
-    def test_education_status(self, mock_send_request):
-        """Test checking education verification status."""
-        # Arrange
-        account_id = "account-123"
-        expected_response = {
-            "result": True,
-            "is_student": True,
-            "expire_at": "2027-01-01T00:00:00Z",
-            "allow_refresh": False,
-        }
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.EducationIdentity.status(account_id)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with("GET", "/education/status", params={"account_id": account_id})
-
-    def test_education_autocomplete(self, mock_send_request):
-        """Test education institution autocomplete."""
-        # Arrange
-        keywords = "Massachusetts"
-        page = 0
-        limit = 20
-        expected_response = {
-            "data": ["Massachusetts Institute of Technology", "University of Massachusetts"],
-            "curr_page": 0,
-            "has_next": False,
-        }
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.EducationIdentity.autocomplete(keywords, page, limit)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "GET", "/education/autocomplete", params={"keywords": keywords, "page": page, "limit": limit}
-        )
-
-    def test_education_autocomplete_with_defaults(self, mock_send_request):
-        """Test education institution autocomplete with default parameters."""
-        # Arrange
-        keywords = "Stanford"
-        expected_response = {"data": ["Stanford University"], "curr_page": 0, "has_next": False}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.EducationIdentity.autocomplete(keywords)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "GET", "/education/autocomplete", params={"keywords": keywords, "page": 0, "limit": 20}
-        )
-
-
-class TestBillingServiceAccountManagement:
-    """Unit tests for account-related billing operations.
-
-    Tests cover:
-    - Account deletion
-    - Email freeze status checking
-    - Account deletion feedback submission
-    - Tenant owner/admin permission validation
-    - Error handling for missing tenant joins
-    """
-
-    @pytest.fixture
-    def mock_send_request(self):
-        """Mock _send_request method."""
-        with patch.object(BillingService, "_send_request") as mock:
-            yield mock
-
-    def test_delete_account(self, mock_send_request):
-        """Test account deletion."""
-        # Arrange
-        account_id = "account-123"
-        expected_response = {"message": "Account deleted successfully."}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.delete_account(account_id)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with("DELETE", "/account", params={"account_id": account_id})
-
-    def test_is_email_in_freeze_true(self, mock_send_request):
-        """Test checking if email is frozen (returns True)."""
-        # Arrange
-        email = "frozen@example.com"
-        mock_send_request.return_value = {"data": True}
-
-        # Act
-        result = BillingService.is_email_in_freeze(email)
-
-        # Assert
-        assert result is True
-        mock_send_request.assert_called_once_with("GET", "/account/in-freeze", params={"email": email})
-
-    def test_get_email_freeze_type_for_suspended_domain(self, mock_send_request):
-        email = "user@suspended.example"
-        mock_send_request.return_value = {"data": True, "freezeType": "email_domain_suspended"}
-
-        result = BillingService.get_email_freeze_type(email)
-
-        assert result == "email_domain_suspended"
-        mock_send_request.assert_called_once_with("GET", "/account/in-freeze", params={"email": email})
-
-    def test_is_email_in_freeze_false(self, mock_send_request):
-        """Test checking if email is frozen (returns False)."""
-        # Arrange
-        email = "active@example.com"
-        mock_send_request.return_value = {"data": False}
-
-        # Act
-        result = BillingService.is_email_in_freeze(email)
-
-        # Assert
-        assert result is False
-        mock_send_request.assert_called_once_with("GET", "/account/in-freeze", params={"email": email})
-
-    def test_is_email_in_freeze_exception_returns_false(self, mock_send_request):
-        """Test that is_email_in_freeze returns False on exception."""
-        # Arrange
-        email = "error@example.com"
-        mock_send_request.side_effect = Exception("Network error")
-
-        # Act
-        result = BillingService.is_email_in_freeze(email)
-
-        # Assert
-        assert result is False
-
-    def test_update_account_deletion_feedback(self, mock_send_request):
-        """Test updating account deletion feedback."""
-        # Arrange
-        email = "user@example.com"
-        feedback = "Service was too expensive"
-        expected_response = {"message": "Reason added successfully."}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.update_account_deletion_feedback(email, feedback)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "POST", "/account/delete-feedback", json={"email": email, "feedback": feedback}
-        )
-
-
 class TestBillingServiceCacheManagement:
     """Unit tests for billing cache management.
 
@@ -858,15 +282,112 @@ class TestBillingServiceCacheManagement:
         mock_redis_client.delete.assert_called_once_with(expected_key)
 
 
-def test_pooled_billing_client_carries_bounded_timeout() -> None:
-    """Regression for #39874: the pooled billing client must carry a
-    read/connect timeout so a stalled Stripe / cloud-billing proxy
-    fails fast instead of pinning a worker. Same shape as the
-    JinaReader / WaterCrawl hardening that landed in PR #39860 and #39824.
-    """
-    import services.billing_service as billing_service_module
+class TestBillingServiceAccountAndEducation:
+    """Education, compliance, account and notification calls delegate to the generated clients."""
 
-    client = billing_service_module._http_client
-    assert client.timeout is not None
-    assert client.timeout.read == 30.0
-    assert client.timeout.connect == 5.0
+    def test_compliance_download_returns_the_link(self):
+        reply = billing.DownloadComplianceDocumentReply(url="https://billing.example.com/compliance")
+
+        with patch.object(billing, "compliance_download_compliance_document", return_value=reply) as download:
+            result = BillingService.get_compliance_download_link("soc2", ACCOUNT_ID, TENANT_ID, "127.0.0.1", "ua")
+
+        assert result == {"url": "https://billing.example.com/compliance"}
+        download.assert_called_once_with(
+            body=billing.DownloadComplianceDocumentReq(
+                doc_name="soc2", account_id=ACCOUNT_ID, tenant_id=TENANT_ID, ip_address="127.0.0.1", device_info="ua"
+            )
+        )
+
+    def test_education_activate_sends_account_context_in_the_body(self):
+        reply = billing.CreateEducationIdentityReply(message="success")
+
+        with patch.object(billing, "education_create_education_identity", return_value=reply) as create:
+            result = BillingService.EducationIdentity.activate(
+                account_id=ACCOUNT_ID, tenant_id=TENANT_ID, token="token", institution="Dify University", role="Student"
+            )
+
+        assert result is reply
+        create.assert_called_once_with(
+            body=billing.CreateEducationIdentityReq(
+                account_id=ACCOUNT_ID,
+                curr_tenant_id=TENANT_ID,
+                institution="Dify University",
+                role="Student",
+                token="token",
+            )
+        )
+
+    def test_education_reads_return_the_generated_replies(self):
+        verify = billing.VerifyEducationIdentityReply(token="token")
+        status = billing.GetEducationIdentityStatusReply(
+            result=True, is_student=True, expire_at="2027-01-01T00:00:00+00:00", allow_refresh=False
+        )
+        autocomplete = billing.AutocompleteEducationInstitutionReply(
+            data=["Dify University"], curr_page=0, has_next=False
+        )
+
+        with (
+            patch.object(billing, "education_verify_education_identity", return_value=verify),
+            patch.object(billing, "education_get_education_identity_status", return_value=status),
+            patch.object(billing, "education_autocomplete_education_institution", return_value=autocomplete) as search,
+        ):
+            assert BillingService.EducationIdentity.verify(ACCOUNT_ID) is verify
+            assert BillingService.EducationIdentity.status(ACCOUNT_ID) is status
+            assert BillingService.EducationIdentity.autocomplete("Dify") is autocomplete
+
+        search.assert_called_once_with(keywords="Dify", page=0, limit=20)
+
+    def test_delete_account_and_feedback_call_saas(self):
+        with (
+            patch.object(saas, "account_delete_account", return_value=saas.DeleteAccountReply(message="ok")) as delete,
+            patch.object(
+                saas, "account_add_delete_feedback", return_value=saas.AddDeleteFeedbackReply(message="ok")
+            ) as feedback,
+        ):
+            BillingService.delete_account(ACCOUNT_ID)
+            BillingService.update_account_deletion_feedback("user@example.com", "too expensive")
+
+        delete.assert_called_once_with(account_id=ACCOUNT_ID)
+        feedback.assert_called_once_with(
+            body=saas.AddDeleteFeedbackRequest(email="user@example.com", feedback="too expensive")
+        )
+
+    @pytest.mark.parametrize(
+        ("data", "freeze_type", "expected"),
+        [
+            (False, "freeze", None),
+            (True, "freeze", "freeze"),
+            (True, "email_domain_suspended", "email_domain_suspended"),
+            (True, "", "freeze"),
+            (True, "unexpected", "freeze"),
+        ],
+    )
+    def test_get_email_freeze_type(self, data: bool, freeze_type: str, expected: str | None):
+        reply = saas.CheckAccountInFreezeReply.model_construct(data=data, freeze_type=freeze_type)
+
+        with patch.object(saas, "account_check_account_in_freeze", return_value=reply) as check:
+            assert BillingService.get_email_freeze_type("user@example.com") == expected
+            assert BillingService.is_email_in_freeze("user@example.com") is (expected is not None)
+
+        check.assert_called_with(email="user@example.com")
+
+    def test_get_email_freeze_type_swallows_billing_errors(self):
+        with patch.object(saas, "account_check_account_in_freeze", side_effect=BillingUpstreamUnavailableError("down")):
+            assert BillingService.get_email_freeze_type("user@example.com") is None
+
+    def test_notifications_call_saas(self):
+        active = saas.GetAccountNotificationReply(should_show=False, notifications=[])
+        dismissed = saas.DismissNotificationReply(success=True)
+
+        with (
+            patch.object(saas, "notification_get_account_notification", return_value=active) as get,
+            patch.object(saas, "notification_dismiss_notification", return_value=dismissed) as dismiss,
+        ):
+            assert BillingService.get_account_notification(ACCOUNT_ID) is active
+            assert BillingService.dismiss_notification("notification-1", ACCOUNT_ID) is dismissed
+
+        get.assert_called_once_with(account_id=ACCOUNT_ID)
+        dismiss.assert_called_once_with(
+            notification_id="notification-1",
+            body=saas.DismissNotificationReq(notification_id="notification-1", account_id=ACCOUNT_ID),
+        )

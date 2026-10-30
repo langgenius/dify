@@ -190,3 +190,9 @@ def test_non_object_body_is_an_invalid_response(respond_with: RespondWith, conte
 
     with pytest.raises(BillingUpstreamInvalidResponseError):
         _get(Upstream.BILLING)
+
+
+def test_pooled_billing_client_carries_bounded_timeout() -> None:
+    """Regression for #39874: a stalled billing proxy must fail fast instead of pinning a worker."""
+    assert transport._http_client.timeout.read == 30.0
+    assert transport._http_client.timeout.connect == 5.0

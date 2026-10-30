@@ -52,7 +52,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   )
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
-      select: ({ is_student }) => is_student ?? false,
+      select: ({ is_student }) => is_student,
     }),
   )
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)

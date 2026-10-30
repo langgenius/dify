@@ -204,7 +204,7 @@ class AccountIntegrateListResponse(ResponseModel):
 
 
 class EducationVerifyResponse(ResponseModel):
-    token: str | None = None
+    token: str
 
 
 class EducationActivateResponse(ResponseModel):
@@ -212,10 +212,10 @@ class EducationActivateResponse(ResponseModel):
 
 
 class EducationStatusResponse(ResponseModel):
-    result: bool | None = None
-    is_student: bool | None = None
-    expire_at: int | None = None
-    allow_refresh: bool | None = None
+    result: bool
+    is_student: bool
+    expire_at: int | None
+    allow_refresh: bool
 
     @field_validator("expire_at", mode="before")
     @classmethod
@@ -224,9 +224,9 @@ class EducationStatusResponse(ResponseModel):
 
 
 class EducationAutocompleteResponse(ResponseModel):
-    data: list[str] = Field(default_factory=list)
-    curr_page: int | None = None
-    has_next: bool | None = None
+    data: list[str]
+    curr_page: int
+    has_next: bool
 
 
 register_response_schema_models(

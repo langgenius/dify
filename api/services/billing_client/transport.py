@@ -42,6 +42,7 @@ ENFORCED_RESPONSE_PATHS: frozenset[str] = frozenset(
         "/subscription/cleanup/whitelist",
         "/model-provider/payment-link",
         "/invoices",
+        "/compliance/download",
         "/quota/info",
         "/quota/reserve",
         "/quota/commit",

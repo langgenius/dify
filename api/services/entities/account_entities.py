@@ -239,7 +239,7 @@ type AccountChangeEmailTokenData = (
 
 @dataclass(frozen=True, slots=True)
 class AccountEducationVerification:
-    token: str | None
+    token: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -249,14 +249,14 @@ class AccountEducationActivation:
 
 @dataclass(frozen=True, slots=True)
 class AccountEducationStatus:
-    result: bool | None
-    is_student: bool | None
+    result: bool
+    is_student: bool
     expire_at: datetime | None
-    allow_refresh: bool | None
+    allow_refresh: bool
 
 
 @dataclass(frozen=True, slots=True)
 class AccountEducationAutocomplete:
     data: tuple[str, ...]
-    curr_page: int | None
-    has_next: bool | None
+    curr_page: int
+    has_next: bool
