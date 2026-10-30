@@ -68,6 +68,7 @@ from models.workflow import Workflow
 from repositories.knowledge import dataset_api_key_bindings
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form, get_latest_dataset_process_rule
 from repositories.knowledge.segment_repository import query_child_chunks
+from services.auth.resource_access_token_contracts import DatasetServiceApiGrant
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -154,17 +155,27 @@ class DatasetService:
         creator_ids: list[str] | None = None,
         *,
         tags: TagTargetQuery,
+        service_api_grant: DatasetServiceApiGrant | None = None,
     ):
-        """Return visible datasets for a tenant using the injected read session."""
+        """Return datasets under account or Dataset Service API visibility.
+
+        Service API callers skip account ACLs while retaining the tenant boundary.
+        A resource-scoped grant further restricts the query to its authorized IDs.
+        """
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
-        if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
+        if service_api_grant is not None:
+            if service_api_grant.tenant_id != tenant_id:
+                raise ValueError("Dataset Service API grant does not match the requested workspace.")
+            if service_api_grant.dataset_ids is not None:
+                query = query.where(Dataset.id.in_(service_api_grant.dataset_ids))
+        elif dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
             accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
             if user:
                 accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             query = query.where(accessible_filter)
 
-        if user:
+        if service_api_grant is None and user:
             # get permitted dataset ids
             dataset_permission = session.scalars(
                 select(DatasetPermission).where(
@@ -217,7 +228,7 @@ class DatasetService:
                                     ),
                                 )
                             )
-        else:
+        elif service_api_grant is None:
             if dify_config.RBAC_ENABLED:
                 # Without an account we cannot resolve RBAC resource visibility.
                 query = query.where(sa.false())
