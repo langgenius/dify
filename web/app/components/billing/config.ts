@@ -1,7 +1,6 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { PlanInfo } from '@/app/components/billing/type'
 
-export const NUM_INFINITE = -1
 export const contactSalesUrl = 'https://vikgc6bnu1s.typeform.com/dify-business'
 export const SELF_HOSTED_PLAN_URLS = {
   community: 'https://github.com/langgenius/dify',
