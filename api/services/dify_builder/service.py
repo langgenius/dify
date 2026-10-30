@@ -489,6 +489,22 @@ def _actions_for(
             ),
         ]
 
+    if (
+        state == PcState.BUILD_RESOURCE_RECOMMENDATION
+        and fc is not None
+        and fc.resource_selection.get("refresh_required")
+    ):
+        # The existing client renders generic decisions only when no active
+        # resource form is projected. A second button beside the resource form
+        # would be invisible in that client, so offer rediscovery alone here.
+        return [
+            UiAction(
+                id="rediscover_resources",
+                label=copy_text(BuilderCopyId.PROGRESS_FIND_COMPATIBLE_RESOURCES),
+                kind=ActionKind.PRIMARY,
+            )
+        ]
+
     actions = list(_ACTIONS_FOR.get(state, []))
     retest = {
         PcState.BUILD_REVIEW: ("run_test", copy_text(BuilderCopyId.ACTIONS_RUN_TEST)),
@@ -797,7 +813,7 @@ _BACKEND_ACTIONS_FOR: dict[PcState, frozenset[str]] = {
     # BUILD_INITIAL_PLAN is a working/pass-through state now (state.py) -- it
     # no longer gates on any action, so it has no entry here, matching every
     # other working Build/Edit state (BUILD_TEST_AND_REPAIR, BUILD_PUBLISH, ...).
-    PcState.BUILD_RESOURCE_RECOMMENDATION: frozenset({"confirm_resources"}),
+    PcState.BUILD_RESOURCE_RECOMMENDATION: frozenset({"confirm_resources", "rediscover_resources"}),
     PcState.BUILD_PLAN_APPROVAL: frozenset({"approve_repair"}),
     PcState.BUILD_EXECUTION: frozenset({"run_test", "undo"}),
     PcState.BUILD_AWAIT_TESTDATA: frozenset({"provide_testdata"}),
@@ -1781,6 +1797,13 @@ class DifyBuilderService:
             fc.paused or fc.recovery_class or is_working(s.current_state) or is_terminal(s.current_state)
         )
         internal_allowed = _internal_action_allowed(s.current_state, fc, action.kind)
+        if s.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION and action.kind in {
+            "confirm_resources",
+            "rediscover_resources",
+        }:
+            expected = "rediscover_resources" if fc.resource_selection.get("refresh_required") else "confirm_resources"
+            if action.kind != expected:
+                raise BadRequestError(f"action {action.kind} is not allowed for the current resource selection")
         if not internal_allowed and (
             lifecycle_limited or action.kind not in _BACKEND_ACTIONS_FOR.get(s.current_state, frozenset())
         ):
@@ -1907,7 +1930,7 @@ class DifyBuilderService:
             if prior.get("test_action_digest") != fingerprint:
                 raise ConflictError("action identity was reused with different content")
             return self.get_session_view(s.id, actor), False, []
-        token = self._session_lock.acquire(s.id)
+        token = self._acquire_workflow_writer(s.id)
         if token is None:
             raise BusyError("Builder is still preparing the current test")
         try:
@@ -1948,11 +1971,11 @@ class DifyBuilderService:
             )
             fc.next_seq += 1
             self._repo.compare_and_advance(s.id, s.version, s.current_state, fc, [item])
-            self._session_lock.release(s.id, token)
+            self._release_workflow_writer(s.id, token)
             self._test_actions.settle(actor=actor, session_id=s.id, request_id=command.request_id)
             return self.get_session_view(s.id, actor), False, [item]
         finally:
-            self._session_lock.release(s.id, token)
+            self._release_workflow_writer(s.id, token)
 
     def submit_action(self, session_id: str, actor: Actor, action: Action) -> SessionView:
         """Port of Go ``SubmitAction``."""
@@ -2135,6 +2158,32 @@ class DifyBuilderService:
             actor,
         )
 
+    def _acquire_workflow_writer(self, session_id: str, *, generation: int | None = None) -> str | None:
+        from configs import dify_config
+        from services.dify_builder.task_controls import generation as task_generation
+
+        if generation is None:
+            _, context = self._repo.get_session(session_id)
+            generation = task_generation(context)
+        token = self._session_lock.acquire(session_id, generation=generation)
+        if token is None:
+            return None
+        try:
+            reserved = self._repo.reserve_workflow_writer(
+                session_id, token, generation, dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS
+            )
+        except BaseException:
+            self._session_lock.release(session_id, token)
+            raise
+        if not reserved:
+            self._session_lock.release(session_id, token)
+            return None
+        return token
+
+    def _release_workflow_writer(self, session_id: str, token: str) -> None:
+        self._repo.release_workflow_writer(session_id, token=token)
+        self._session_lock.release(session_id, token)
+
     def execute_confirmed_tool(
         self,
         session_id: str,
@@ -2164,7 +2213,7 @@ class DifyBuilderService:
         s, _fc = self._get_authorized_session(session_id, actor, AppAccess.TEST_AND_RUN)
         if _fc.paused:
             raise ConflictError("task is paused")
-        token = self._session_lock.acquire(session_id)
+        token = self._acquire_workflow_writer(session_id)
         if token is None:
             replay = consent.replay_execution(
                 actor=actor,
@@ -2187,10 +2236,10 @@ class DifyBuilderService:
                 idempotency_key=idempotency_key,
             )
         except BaseException:
-            self._session_lock.release(session_id, token)
+            self._release_workflow_writer(session_id, token)
             raise
         if not won or receipt.command_id is None:
-            self._session_lock.release(session_id, token)
+            self._release_workflow_writer(session_id, token)
             return receipt
         action = Action(
             kind=CONFIRMED_TOOL_ACTION,
@@ -2209,8 +2258,7 @@ class DifyBuilderService:
         return receipt
 
     def dispatch(self, session_id: str, action: Action, actor: Actor) -> str:
-        """Port of Go ``dispatch``: acquire-or-busy + enqueue, release on
-        enqueue failure."""
+        """Reserve one workflow writer and enqueue once; uncertain ACKs retain ownership."""
         action.command_id = action.command_id or str(uuid4())
         from services.dify_builder.task_controls import generation
 
@@ -2229,7 +2277,7 @@ class DifyBuilderService:
                 action.execution_generation = generation(context)
         if generation(context) != action.execution_generation:
             raise ConflictError("task dispatch stopped or superseded")
-        token = self._session_lock.acquire(session_id, generation=action.execution_generation)
+        token = self._acquire_workflow_writer(session_id, generation=action.execution_generation)
         if token is None:
             raise BusyError(f"session {session_id} is busy")
         try:
@@ -2250,8 +2298,15 @@ class DifyBuilderService:
                     action.base_version = self._repo.compare_and_advance(
                         session_id, action.base_version, session.current_state, current, []
                     )
-            self._enqueue_fn(session_id, action, actor, token)
         except Exception:
-            self._session_lock.release(session_id, token)
+            self._release_workflow_writer(session_id, token)
             raise
+        # A broker acknowledgement can be lost before worker activation. Retain
+        # both leases on any enqueue error; Stop/expiry supplies recovery, never replay.
+        from services.dify_builder.errors import EnqueueAcknowledgementError
+
+        try:
+            self._enqueue_fn(session_id, action, actor, token)
+        except Exception as error:
+            raise EnqueueAcknowledgementError(str(error)) from error
         return action.command_id

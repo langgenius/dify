@@ -22,3 +22,7 @@ class PreflightError(DraftWouldNotStartError):
     ``services``) can tell it apart from a stale intent; still a
     ``ValueError`` underneath.
     """
+
+
+class EnqueueAcknowledgementError(RuntimeError):
+    """The broker may have accepted this command; never automatically enqueue it again."""

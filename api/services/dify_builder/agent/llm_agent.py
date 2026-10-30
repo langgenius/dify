@@ -255,6 +255,22 @@ class LlmBuilderAgent:
         )
 
     @diagnostics.cognition
+    def reconcile_resource_plan(
+        self, plan, resource_ids, *, goal_text, requirements, reply_language: str | None = None
+    ):
+        return build.reconcile_resource_plan(
+            self.model_or_none() if resource_ids else None,
+            self._tenant_id,
+            plan,
+            resource_ids,
+            account_id=self._account_id,
+            goal_text=goal_text,
+            requirements=requirements,
+            mode=self._app_mode,
+            reply_language=reply_language,
+        )
+
+    @diagnostics.cognition
     def build_nodes(self, plan_items, resource_ids=None, *, trusted_text="", reply_language: str | None = None):
         return build.build_nodes(
             self._tenant_id,
