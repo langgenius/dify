@@ -1204,8 +1204,14 @@ def _seed_build_session(repo: SqlDifyBuilderRepository) -> Session:
 
 
 def test_start_build_emits_complete_reply_with_form_and_reaches_goal_analysis(
-    repo: SqlDifyBuilderRepository, wired: Wired
+    repo: SqlDifyBuilderRepository, wired: Wired, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    class RequirementsAgent(StubAgent):
+        @override
+        def analyze_goal(self, goal_text: str, *, reply_language: str | None = None) -> dict[str, object]:
+            return {"fields": [{"key": "audience", "label": "Audience", "type": "text"}], "values": {}}
+
+    monkeypatch.setattr(mod, "build_dify_builder_agent", lambda **_: RequirementsAgent())
     events, released = wired
     s = _seed_build_session(repo)
 
