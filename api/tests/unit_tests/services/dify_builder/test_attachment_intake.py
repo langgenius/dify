@@ -679,3 +679,49 @@ def test_hidden_chat_replay_records_do_not_exhaust_material_capacity(queued: Que
     receipt = queue(repo, session, upload_id, turn="actual-material")
     assert receipt.status == "pending"
     assert len(repo.list_builder_material(session.id, ACTOR)) == 1
+
+
+def test_working_supplement_stream_acknowledges_pending_receipt_without_dispatch(queued: Queued) -> None:
+    import json
+
+    from services.dify_builder.attachment_intake import BuilderAttachmentIntake
+    from services.dify_builder.service import DifyBuilderService
+    from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
+
+    repo, session, context, upload_id = queued
+    lock = FakeSessionLock()
+    token = lock.acquire(session.id)
+    assert token is not None
+    owner = lock.activate(session.id, token)
+    assert owner is not None
+    dispatched: list[Command] = []
+
+    def unexpected_extraction(_upload: NativeContextUpload) -> ExtractedContext:
+        raise AssertionError("queued supplement acknowledgment must not extract attachments")
+
+    service = DifyBuilderService(
+        repo,
+        lock,
+        lambda session_id, action, actor, token: dispatched.append((session_id, action, actor, token)),
+        attachment_intake=BuilderAttachmentIntake(repo, unexpected_extraction),
+    )
+    frames = list(service.submit_message_stream(session.id, ACTOR, "More rules", 1, "queued-stream", [upload_id]))
+    events = [json.loads(frame.split("data: ", 1)[1]) for frame in frames]
+    assert [event["event"] for event in events] == ["command_started", "command_finished"]
+    started, finished = [event["data"] for event in events]
+    assert started["command_id"] == finished["command_id"] == ""
+    assert started["version"] == finished["version"] == 1
+    assert started["run_status"] == finished["run_status"] == "processing"
+    assert finished["session_id"] == session.id
+    receipt = finished["attachments"][0]
+    assert receipt["status"] == "pending"
+    assert receipt["client_turn_id"] == "queued-stream"
+    assert receipt["attachments"][0]["upload_file_id"] == upload_id
+    persisted = repo.list_builder_material(session.id, ACTOR)
+    assert len(persisted) == 1
+    assert persisted[0].id == receipt["id"]
+    assert persisted[0].text == "More rules"
+    assert persisted[0].status == "pending"
+    assert repo.get_session(session.id) == (session, context)
+    assert dispatched == []
+    assert lock.current_owner(session.id) == owner

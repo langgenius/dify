@@ -2058,6 +2058,7 @@ class DifyBuilderService:
                 view,
                 subscription,
                 expect_advance=bool(command_id),
+                emit_command_finished_when_settled=not bool(command_id),
                 command_id=command_id,
                 read_session_view=lambda: self._read_stream_session_view(session_id, actor),
             )
