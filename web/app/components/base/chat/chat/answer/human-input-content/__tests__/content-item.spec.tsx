@@ -5,6 +5,11 @@ import { useState } from 'react'
 import { InputVarType } from '@/app/components/workflow/types'
 import ContentItem from '../content-item'
 
+// Load the real code-split renderer before assertions start their interaction deadlines.
+beforeAll(async () => {
+  await import('@/app/components/base/markdown/streamdown-wrapper')
+})
+
 const fields: ComponentProps<typeof ContentItem>['formInputFields'] = [
   {
     type: InputVarType.paragraph,

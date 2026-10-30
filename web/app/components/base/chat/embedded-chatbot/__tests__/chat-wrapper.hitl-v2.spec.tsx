@@ -6,7 +6,6 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
 import { AppSourceType, fetchSuggestedQuestions, submitHumanInputForm } from '@/service/share'
-import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { useChat } from '../../chat/hooks'
 import ChatWrapper from '../chat-wrapper'
@@ -78,7 +77,11 @@ vi.mock('../../chat', () => ({
     switchSibling: (siblingMessageId: string) => void
     onHumanInputFormSubmit: (
       formToken: string,
-      formData: { inputs: Record<string, HumanInputFieldValue>; action: string },
+      formData: {
+        inputs: Record<string, HumanInputFieldValue>
+        action: string
+        form_version?: '1' | '2'
+      },
     ) => Promise<void>
     onStopResponding: () => void
   }) => (
@@ -118,7 +121,12 @@ vi.mock('../../chat', () => ({
       <button onClick={onStopResponding}>stop responding</button>
       <button
         onClick={() =>
-          onHumanInputFormSubmit('form-token', { inputs: { answer: 'ok' }, action: 'approve' })
+          onHumanInputFormSubmit('form-token', {
+            inputs: { answer: 'ok' },
+            action: 'approve',
+            form_version: chatList.flatMap((item) => item.humanInputFormDataList ?? [])[0]
+              ?.form_version,
+          })
         }
       >
         submit human input
@@ -140,10 +148,6 @@ vi.mock('@/service/share', async (importOriginal) => {
 
 vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: vi.fn(),
-}))
-
-vi.mock('@/service/webapp-human-input', () => ({
-  submitWebAppHumanInputForm: vi.fn(),
 }))
 
 const mockIsDify = vi.fn(() => false)
@@ -297,7 +301,6 @@ describe('EmbeddedChatbot chat-wrapper', () => {
             formVersion,
           )
         })
-        expect(submitHumanInputForm).not.toHaveBeenCalled()
       },
     )
 
@@ -436,7 +439,7 @@ describe('EmbeddedChatbot chat-wrapper', () => {
 
         await user.click(screen.getByRole('button', { name: 'submit human input' }))
 
-        expect(submitWebAppHumanInputForm).toHaveBeenCalledWith(
+        expect(submitHumanInputForm).toHaveBeenCalledWith(
           'form-token',
           {
             inputs: { answer: 'ok' },
@@ -444,7 +447,6 @@ describe('EmbeddedChatbot chat-wrapper', () => {
           },
           formVersion,
         )
-        expect(submitHumanInputForm).not.toHaveBeenCalled()
         expect(submitHumanInputFormService).not.toHaveBeenCalled()
       },
     )

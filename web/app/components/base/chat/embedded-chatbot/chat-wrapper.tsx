@@ -14,6 +14,7 @@ import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
 import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { InputVarType } from '@/app/components/workflow/types'
+import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
   fetchSuggestedQuestions,
@@ -21,7 +22,6 @@ import {
   stopChatMessageResponding,
   submitHumanInputForm,
 } from '@/service/share'
-import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -368,17 +368,12 @@ const ChatWrapper = () => {
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
-      if (!(await prepareHumanInputSubmission())) return
-
-      const form = chatList
-        .flatMap((item) => item.humanInputFormDataList ?? [])
-        .find((item) => item.form_token === formToken)
-      if (isInstalledApp) await submitHumanInputFormService(formToken, formData, form?.form_version)
-      else if (appSourceType === AppSourceType.webApp)
-        await submitWebAppHumanInputForm(formToken, formData, form?.form_version)
-      else await submitHumanInputForm(formToken, formData, form?.form_version)
+      const { form_version: formVersion, ...submission } = formData
+      await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
+      if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
+      else await submitHumanInputForm(formToken, submission, formVersion)
     },
-    [chatList, isInstalledApp, appSourceType, prepareHumanInputSubmission],
+    [isInstalledApp, prepareHumanInputSubmission],
   )
 
   const welcome = useMemo(() => {

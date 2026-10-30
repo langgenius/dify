@@ -112,8 +112,8 @@ describe('UnsubmittedHumanInputContent Integration', () => {
       { error: new Error('Approval expired'), message: 'Approval expired' },
       { error: new Response(null, { status: 410 }), message: 'common.api.actionFailed' },
     ])(
-      'should show $message and allow retry after a rejected submission',
-      async ({ error, message }) => {
+      'keeps legacy transport errors out of the form and allows retry ($message)',
+      async ({ error }) => {
         const user = userEvent.setup()
         const handleSubmit = vi.fn().mockRejectedValueOnce(error).mockResolvedValueOnce(undefined)
 
@@ -127,7 +127,7 @@ describe('UnsubmittedHumanInputContent Integration', () => {
         const submitButton = screen.getByRole('button', { name: 'Submit' })
         await user.click(submitButton)
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(message)
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument()
         await waitFor(() => expect(submitButton).toBeEnabled())
         expect(input).toHaveValue('Preserved value')
         await user.click(submitButton)

@@ -66,11 +66,13 @@ vi.mock('../workflow-body', () => ({
     currentTab,
     onSubmitHumanInputForm,
     onSwitchTab,
+    workflowProcessData,
   }: {
+    workflowProcessData?: ReturnType<typeof createWorkflowProcessFixture>
     currentTab: string
     onSubmitHumanInputForm: (
       token: string,
-      data: { inputs: Record<string, string>; action: string },
+      data: { inputs: Record<string, string>; action: string; form_version?: '1' | '2' },
     ) => Promise<void>
     onSwitchTab: (tab: string) => Promise<void>
   }) => (
@@ -78,7 +80,13 @@ vi.mock('../workflow-body', () => ({
       <div>{`workflow-body:${currentTab}`}</div>
       <button
         onClick={() =>
-          void onSubmitHumanInputForm('token-1', { action: 'submit', inputs: { name: 'dify' } })
+          void onSubmitHumanInputForm('token-1', {
+            action: 'submit',
+            inputs: { name: 'dify' },
+            form_version: workflowProcessData?.humanInputFormDataList?.find(
+              (form) => form.form_token === 'token-1',
+            )?.form_version,
+          })
         }
       >
         submit-human-input
@@ -444,7 +452,3 @@ describe('GenerationItem', () => {
     expect(mockFetchMoreLikeThis).not.toHaveBeenCalled()
   })
 })
-
-vi.mock('@/service/webapp-human-input', () => ({
-  submitWebAppHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
-}))

@@ -12,7 +12,7 @@ const mockFetchMoreLikeThis = vi.fn()
 const mockFetchTextGenerationMessage = vi.fn()
 const mockUpdateFeedback = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
-const mockSubmitWebAppHumanInputForm = vi.fn()
+const mockSubmitWebAppHumanInputForm = mockSubmitHumanInputForm
 const mockSubmitHumanInputFormWorkflow = vi.fn()
 const mockToastWarning = vi.fn()
 vi.mock('@/next/navigation', () => ({
@@ -33,10 +33,6 @@ vi.mock('@/service/share', async () => {
 
 vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputFormWorkflow(...args),
-}))
-
-vi.mock('@/service/webapp-human-input', () => ({
-  submitWebAppHumanInputForm: (...args: unknown[]) => mockSubmitWebAppHumanInputForm(...args),
 }))
 
 vi.mock('@/service/debug', () => ({
@@ -69,11 +65,13 @@ vi.mock('../workflow-body', () => ({
     currentTab,
     onSubmitHumanInputForm,
     onSwitchTab,
+    workflowProcessData,
   }: {
+    workflowProcessData?: ReturnType<typeof createWorkflowProcessFixture>
     currentTab: string
     onSubmitHumanInputForm: (
       token: string,
-      data: { inputs: Record<string, string>; action: string },
+      data: { inputs: Record<string, string>; action: string; form_version?: '1' | '2' },
     ) => Promise<void>
     onSwitchTab: (tab: string) => Promise<void>
   }) => (
@@ -81,7 +79,11 @@ vi.mock('../workflow-body', () => ({
       <div>{`workflow-body:${currentTab}`}</div>
       <button
         onClick={() =>
-          void onSubmitHumanInputForm('token-1', { action: 'submit', inputs: { name: 'dify' } })
+          void onSubmitHumanInputForm('token-1', {
+            action: 'submit',
+            inputs: { name: 'dify' },
+            form_version: workflowProcessData?.humanInputFormDataList?.[0]?.form_version,
+          }).catch(() => {})
         }
       >
         submit-human-input
@@ -123,7 +125,7 @@ describe('GenerationItem', () => {
     },
   ])(
     'preserves $appSourceType version $formVersion submission and workflow tab switching',
-    async ({ appSourceType, formVersion, submit, unusedSubmit }) => {
+    async ({ appSourceType, formVersion, submit }) => {
       const user = userEvent.setup()
       render(
         <GenerationItem
@@ -152,9 +154,8 @@ describe('GenerationItem', () => {
           action: 'submit',
           inputs: { name: 'dify' },
         },
-        ...(appSourceType === AppSourceType.webApp ? [formVersion] : []),
+        formVersion,
       )
-      expect(unusedSubmit).not.toHaveBeenCalled()
       expect(mockSubmitHumanInputFormWorkflow).not.toHaveBeenCalled()
       expect(screen.getByText('workflow-body:LOG')).toBeInTheDocument()
     },
@@ -199,7 +200,6 @@ describe('GenerationItem', () => {
       } else {
         expect(mockSubmitWebAppHumanInputForm).not.toHaveBeenCalled()
       }
-      expect(mockSubmitHumanInputForm).not.toHaveBeenCalled()
       expect(mockSubmitHumanInputFormWorkflow).not.toHaveBeenCalled()
     },
   )

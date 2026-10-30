@@ -6,6 +6,11 @@ import { InputVarType } from '@/app/components/workflow/types'
 import LoadedFormContent from '../loaded-form-content'
 import { normalizeLegacyHumanInputForm } from '../normalize-legacy-definition'
 
+// Load the real code-split renderer before assertions start their interaction deadlines.
+beforeAll(async () => {
+  await import('@/app/components/base/markdown/streamdown-wrapper')
+})
+
 vi.mock('@/app/components/base/chat/chat/answer/human-input-content/expiration-time', () => ({
   default: ({ expirationTime }: { expirationTime: number }) => (
     <div>expiration:{expirationTime}</div>
@@ -97,7 +102,7 @@ describe('LoadedFormContent', () => {
     const approve = screen.getByRole('button', { name: 'Approve' })
     await user.click(approve)
 
-    expect(approve).toBeDisabled()
+    expect(approve).toHaveAttribute('aria-disabled', 'true')
     await user.click(approve)
     expect(onSubmit).toHaveBeenCalledTimes(1)
 
@@ -116,7 +121,11 @@ describe('LoadedFormContent', () => {
       formContent: '{{#$output.response#}}\n\n{{#$output.reviewer#}}',
       resolvedDefaultValues: { response: '   ' },
       inputs: [
-        ...inputs,
+        {
+          type: InputVarType.paragraph,
+          output_variable_name: 'response',
+          default: { type: 'constant', value: '   ', selector: [] },
+        },
         {
           type: InputVarType.select,
           output_variable_name: 'reviewer',
@@ -127,12 +136,15 @@ describe('LoadedFormContent', () => {
 
     render(<LoadedFormContent definition={definition} isSubmitting={false} onSubmit={onSubmit} />)
     const approve = screen.getByRole('button', { name: 'Approve' })
-    expect(approve).toBeDisabled()
+    expect(approve).toBeEnabled()
+    await user.click(approve)
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(screen.getAllByText(/fieldRequired/)).toHaveLength(2)
 
     const response = screen.getByRole('textbox', { name: 'response' })
     await user.clear(response)
     await user.type(response, 'Ready for review')
-    expect(approve).toBeDisabled()
+    expect(approve).toBeEnabled()
 
     await user.click(screen.getByRole('combobox', { name: 'reviewer' }))
     await user.click(await screen.findByRole('option', { name: 'Bob' }))
@@ -142,6 +154,55 @@ describe('LoadedFormContent', () => {
       { response: 'Ready for review', reviewer: 'Bob' },
       'approve',
     )
+  })
+
+  it('retains entered values and exposes a safe error when workflow submission rejects', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('internal transport details'))
+      .mockResolvedValue(undefined)
+    render(<LoadedFormContent definition={v2Definition} isSubmitting={false} onSubmit={onSubmit} />)
+    const response = screen.getByRole('textbox', { name: 'response' })
+    await user.clear(response)
+    await user.type(response, 'Keep this draft')
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(screen.queryByText('internal transport details')).not.toBeInTheDocument()
+    expect(response).toHaveValue('Keep this draft')
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    expect(onSubmit).toHaveBeenLastCalledWith({ response: 'Keep this draft' }, 'approve')
+  })
+
+  it('gives repeated placeholders distinct label associations while retaining a shared wire value', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(
+      <LoadedFormContent
+        definition={{
+          ...v2Definition,
+          formContent:
+            'First review\n\n{{#$output.response#}}\n\nSecond review\n\n{{#$output.response#}}',
+        }}
+        isSubmitting={false}
+        onSubmit={onSubmit}
+      />,
+    )
+    const first = screen.getByRole('textbox', { name: 'First review' })
+    const second = screen.getByRole('textbox', { name: 'Second review' })
+    const firstLabelId = first.getAttribute('aria-labelledby')!
+    const secondLabelId = second.getAttribute('aria-labelledby')!
+    expect(firstLabelId).not.toBe(secondLabelId)
+    expect(document.querySelectorAll('[id]')).toHaveLength(
+      new Set([...document.querySelectorAll('[id]')].map((element) => element.id)).size,
+    )
+    await user.click(screen.getByText('Second review', { selector: 'label' }))
+    expect(second).toHaveFocus()
+    await user.clear(second)
+    await user.type(second, 'One shared response')
+    expect(first).toHaveValue('One shared response')
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    expect(onSubmit).toHaveBeenCalledWith({ response: 'One shared response' }, 'approve')
   })
 
   it('preserves Markdown content alongside the editable fields', async () => {
