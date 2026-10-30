@@ -1,8 +1,8 @@
 from collections.abc import Generator
 from datetime import datetime
 from typing import Any, override
+from zoneinfo import ZoneInfo
 
-import pytz  # type: ignore[import-untyped]
 from sqlalchemy.orm import Session
 
 from core.tools.builtin_tool.tool import BuiltinTool
@@ -44,11 +44,11 @@ class TimezoneConversionTool(BuiltinTool):
         time_format = "%Y-%m-%d %H:%M:%S"
         try:
             # get source timezone
-            input_timezone = pytz.timezone(source_timezone)
+            input_timezone = ZoneInfo(source_timezone)
             # get target timezone
-            output_timezone = pytz.timezone(target_timezone)
+            output_timezone = ZoneInfo(target_timezone)
             local_time = datetime.strptime(current_time, time_format)
-            datetime_with_tz = input_timezone.localize(local_time)
+            datetime_with_tz = local_time.replace(tzinfo=input_timezone)
             # timezone convert
             converted_datetime = datetime_with_tz.astimezone(output_timezone)
             return converted_datetime.strftime(time_format)
