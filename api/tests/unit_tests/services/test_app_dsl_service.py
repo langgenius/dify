@@ -9,7 +9,6 @@ from uuid import uuid4
 import pytest
 import yaml
 from pydantic import ValidationError
-from pytest_mock import MockerFixture
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
