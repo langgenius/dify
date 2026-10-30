@@ -2,14 +2,15 @@
 
 Reuses the pooled client, auth header, and connection retry of `services.billing_service`.
 Network failures, timeouts, throttling, and 5xx raise `BillingUpstreamUnavailableError`;
-any other non-200 status or a body that fails model validation raises
+any other non-200 status or an enforced response that fails model validation raises
 `BillingUpstreamInvalidResponseError`.
 
 Response validation is observed before it is enforced. For a path not in
 `ENFORCED_RESPONSE_PATHS`, a body that fails validation is logged with `logger.exception`
 (reported to Sentry) and rebuilt from the raw payload: fields that validate are coerced,
-the rest keep their raw value, and missing fields read as `None`. Add a path once a
-release has passed without reports for it.
+the rest keep their raw value, and missing fields read as `None`. Migrated single-response
+reads are enforced before their results reach business decisions. Batch subscription plans
+remain observed here; `BillingService.get_plan_bulk` validates each item before returning it.
 """
 
 import json
@@ -31,7 +32,17 @@ from services.errors.billing import BillingUpstreamInvalidResponseError, Billing
 
 logger = logging.getLogger(__name__)
 
-ENFORCED_RESPONSE_PATHS: frozenset[str] = frozenset()
+ENFORCED_RESPONSE_PATHS: frozenset[str] = frozenset(
+    {
+        "/subscription/info",
+        "/subscription/vector-space",
+        "/subscription/knowledge-rate-limit",
+        "/subscription/payment-link",
+        "/subscription/cleanup/whitelist",
+        "/model-provider/payment-link",
+        "/invoices",
+    }
+)
 
 type HTTPMethod = Literal["GET", "POST", "PUT", "DELETE"]
 type QueryValue = str | int | float | bool | list[str]

@@ -458,6 +458,7 @@ class BillingService:
     def get_plan_bulk(cls, tenant_ids: Sequence[str]) -> dict[str, billing.SubscriptionPlanItem]:
         """
         Bulk fetch billing subscription plan via billing API, at most 200 tenants per request.
+        Invalid items are skipped so callers only receive validated plans.
         Returns:
             Mapping of tenant_id -> subscription plan
         """
@@ -470,7 +471,17 @@ class BillingService:
                 reply = billing.subscription_batch_get_subscription_plan(
                     body=billing.BatchGetSubscriptionPlanReq(tenant_ids=list(chunk))
                 )
-                results.update(reply.data or {})
+                for tenant_id, item in (reply.data or {}).items():
+                    try:
+                        # Observed responses can contain constructed models; validating an instance would trust it.
+                        payload = (
+                            item.model_dump(warnings=False) if isinstance(item, billing.SubscriptionPlanItem) else item
+                        )
+                        results[tenant_id] = billing.SubscriptionPlanItem.model_validate(payload)
+                    except ValidationError:
+                        logger.exception(
+                            "get_plan_bulk: failed to validate subscription plan for tenant(%s)", tenant_id
+                        )
             except Exception:
                 logger.exception("get_plan_bulk: failed to fetch billing info batch for tenants: %s", chunk)
                 continue

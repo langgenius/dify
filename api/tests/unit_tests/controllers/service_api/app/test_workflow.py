@@ -7,6 +7,7 @@ from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
+import httpx
 import pytest
 from flask import Flask
 from pytest_mock import MockerFixture
@@ -41,6 +42,7 @@ from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from services.app_generate_service import AppGenerateService
+from services.billing_client import transport
 from services.billing_service import BillingService
 from services.errors.app import (
     IsDraftWorkflowError,
@@ -49,6 +51,7 @@ from services.errors.app import (
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
+from services.errors.billing import BillingUpstreamInvalidResponseError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from tests.helpers import billing_builders as builders
@@ -549,6 +552,37 @@ class TestWorkflowCases:
             generate.assert_called_once()
 
     class TestWorkflowRunByIdApi:
+        def test_missing_billing_plan_cannot_bypass_sandbox_restriction(
+            self,
+            app: Flask,
+            monkeypatch: pytest.MonkeyPatch,
+            sqlite_session: Session,
+            config_overrides: Callable[..., None],
+        ) -> None:
+            config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+            payload = builders.subscription_info().model_dump()
+            del payload["subscription"]["plan"]
+            monkeypatch.setenv("BILLING_API_URL", "http://billing/v1")
+
+            def unexpected_generation(*_args: object, **_kwargs: object) -> None:
+                pytest.fail("Invalid billing data must be rejected before workflow execution")
+
+            monkeypatch.setattr(AppGenerateService, "generate", unexpected_generation)
+            api = WorkflowRunByIdApi()
+            with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
+                monkeypatch.setattr(transport, "_http_client", client)
+                with (
+                    app.test_request_context("/workflows/w1/run", method="POST", json={"inputs": {}}),
+                    pytest.raises(BillingUpstreamInvalidResponseError),
+                ):
+                    unwrap(api.post)(
+                        api,
+                        session=sqlite_session,
+                        app_model=_make_app_model(),
+                        end_user=_make_end_user(),
+                        workflow_id="w1",
+                    )
+
         def test_trigger_workflow_version_returns_stable_unavailable_error(
             self,
             app: Flask,

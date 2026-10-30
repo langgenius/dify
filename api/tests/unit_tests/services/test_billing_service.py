@@ -23,7 +23,7 @@ import pytest
 import tenacity
 from werkzeug.exceptions import InternalServerError
 
-from services.billing_client import billing
+from services.billing_client import billing, transport
 from services.billing_service import BillingService, _BillingHTTPStatusError
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
@@ -411,6 +411,25 @@ class TestBillingServiceSubscriptionInfo:
         assert [len(c.kwargs["body"].tenant_ids) for c in get.call_args_list] == [200, 200, 50]
         assert set(result) == set(tenant_ids[:200] + tenant_ids[400:])
         assert result["tenant-0"] == builders.plan_item("team", 1735689600)
+
+    def test_get_plan_bulk_skips_invalid_items_from_http_response(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        payload = {
+            "data": {
+                "valid": {"plan": "sandbox", "expiration_date": "-1"},
+                "missing_expiration": {"plan": "sandbox"},
+                "invalid_expiration": {"plan": "sandbox", "expiration_date": "invalid"},
+                "missing_plan": {"expiration_date": -1},
+                "invalid_item": "not-an-object",
+                "null_item": None,
+            }
+        }
+        monkeypatch.setenv("BILLING_API_URL", "http://billing/v1")
+        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
+            monkeypatch.setattr(transport, "_http_client", client)
+
+            plans = BillingService.get_plan_bulk(list(payload["data"]))
+
+        assert plans == {"valid": builders.plan_item("sandbox", -1)}
 
     def test_get_expired_subscription_cleanup_whitelist_returns_tenant_ids(self):
         reply = billing.ListSubscriptionCleanupWhitelistReply(

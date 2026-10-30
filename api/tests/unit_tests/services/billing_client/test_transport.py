@@ -106,9 +106,17 @@ def test_invalid_body_is_reported_and_kept_raw_while_observed(
     )
 
     with caplog.at_level(logging.ERROR, logger=transport.__name__):
-        info = billing.subscription_get_subscription_info(tenant_id="t1", exclude_vector_space=True)
+        info = transport.request(
+            Upstream.BILLING,
+            "GET",
+            "/probe",
+            response_model=billing.GetSubscriptionInfoReply,
+            path_params={},
+            params={},
+            body=None,
+        )
 
-    assert "GET /subscription/info" in caplog.text
+    assert "GET /probe" in caplog.text
     assert caplog.records[0].exc_info is not None
     assert info.subscription is not None
     assert info.subscription.plan == "enterprise"
@@ -119,6 +127,29 @@ def test_invalid_body_is_reported_and_kept_raw_while_observed(
     assert info.vector_space is None
     assert info.next_credit_reset_date == 1767225600
     assert info.apps is None
+
+
+@pytest.mark.parametrize(
+    ("path", "response_model"),
+    [
+        ("/subscription/info", billing.GetSubscriptionInfoReply),
+        ("/subscription/vector-space", billing.VectorSpaceQuota),
+        ("/subscription/knowledge-rate-limit", billing.GetKnowledgeRateLimitReply),
+        ("/subscription/payment-link", billing.GetSubscriptionPaymentLinkReply),
+        ("/subscription/cleanup/whitelist", billing.ListSubscriptionCleanupWhitelistReply),
+        ("/model-provider/payment-link", billing.GetModelProviderPaymentLinkReply),
+        ("/invoices", billing.GetInvoicesReply),
+    ],
+)
+def test_migrated_reads_reject_missing_required_fields(
+    respond_with: RespondWith, path: str, response_model: type[BillingModel]
+) -> None:
+    respond_with(httpx.Response(200, json={}))
+
+    with pytest.raises(BillingUpstreamInvalidResponseError):
+        transport.request(
+            Upstream.BILLING, "GET", path, response_model=response_model, path_params={}, params={}, body=None
+        )
 
 
 def test_invalid_body_is_an_invalid_response_once_enforced(

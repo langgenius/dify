@@ -1,7 +1,12 @@
 import datetime
 from unittest.mock import MagicMock, patch
 
+import httpx
+import pytest
+
 from enums import DeploymentEdition
+from services.billing_client import transport
+from services.billing_service import BillingService
 from services.retention.conversation.messages_clean_policy import (
     BillingDisabledPolicy,
     BillingSandboxPolicy,
@@ -46,6 +51,22 @@ class TestBillingSandboxPolicy:
     def test_empty_messages_returns_empty(self):
         policy = self._policy({})
         assert policy.filter_message_ids([], {"app1": "t1"}) == []
+
+    def test_malformed_billing_item_does_not_interrupt_other_tenants(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        payload = {
+            "data": {
+                "t1": {"plan": "sandbox", "expiration_date": "-1"},
+                "t2": {"plan": "sandbox"},
+            }
+        }
+        policy = BillingSandboxPolicy(plan_provider=BillingService.get_plan_bulk)
+        monkeypatch.setenv("BILLING_API_URL", "http://billing/v1")
+        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
+            monkeypatch.setattr(transport, "_http_client", client)
+
+            result = policy.filter_message_ids([_msg("m1", "a1"), _msg("m2", "a2")], {"a1": "t1", "a2": "t2"})
+
+        assert result == ["m1"]
 
     def test_empty_app_to_tenant_returns_empty(self):
         policy = self._policy({})
