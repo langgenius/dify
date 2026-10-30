@@ -10,14 +10,16 @@ from zipfile import ZipFile
 import pytest
 import yaml
 from blinker import Namespace
-from sqlalchemy import Engine, event, select, update
+from sqlalchemy import Engine, delete, event, select, update
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.plugin.entities.plugin import PluginDependency, PluginInstallation
 from core.plugin.impl.plugin import PluginInstaller
+from core.tools.entities.tool_entities import ToolProviderType
 from enums import CloudPlan, DeploymentEdition
 from extensions.application_services.app import AppServices
+from libs.datetime_utils import naive_utc_now
 from machinery.context import AppRequestContext, RequestContext
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.agent import (
@@ -33,6 +35,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, IconType
+from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
 from repositories.app.export_repository import AppExportRepository
 from services.agent.dsl_entities import AGENT_PACKAGE_REF_KEY
@@ -55,6 +58,7 @@ from services.entities.dsl_entities import (
     AppDslExportData,
     AppImportPackage,
     AppImportParams,
+    DraftDependencyCheck,
     DraftGuardedImportParams,
     Import,
     ImportStatus,
@@ -565,95 +569,161 @@ def _seed_draft_app(factory: sessionmaker[Session], graph: str) -> tuple[str, st
     return app_id, workspace, actor
 
 
-NON_PLUGIN_TOOLS_GRAPH = json.dumps(
-    {
-        "nodes": [
-            {
-                "id": provider_type,
-                "data": {
-                    "type": "tool",
-                    "title": provider_type,
-                    "provider_id": provider_id,
-                    "provider_type": provider_type,
-                    "provider_name": provider_id,
-                    "tool_name": "t",
-                    "tool_label": "t",
-                    "tool_configurations": {},
-                    "tool_parameters": {},
-                },
-            }
-            for provider_type, provider_id in (
-                ("api", "3f2a1b4c-0e5d-4c3a-9b1e-123456789abc"),
-                ("workflow", "9a8b7c6d-0e5d-4c3a-9b1e-123456789abc"),
-                ("mcp", "my-mcp-server"),
-            )
-        ],
-        "edges": [],
+def _tool_node(provider_type: ToolProviderType, provider_id: str) -> dict[str, object]:
+    return {
+        "id": provider_id,
+        "data": {
+            "type": "tool",
+            "title": provider_id,
+            "provider_id": provider_id,
+            "provider_type": provider_type,
+            "provider_name": provider_id,
+            "tool_name": "t",
+            "tool_label": "t",
+            "tool_configurations": {},
+            "tool_parameters": {},
+        },
     }
-)
 
 
-def test_draft_dependency_check_ignores_api_workflow_and_mcp_tool_nodes(
-    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-) -> None:
-    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
-    app_id, workspace, actor = _seed_draft_app(factory, NON_PLUGIN_TOOLS_GRAPH)
+def _graph(*nodes: dict[str, object]) -> str:
+    return json.dumps({"nodes": list(nodes), "edges": []})
+
+
+def _check_draft_dependencies(
+    factory: sessionmaker[Session], app_id: str, workspace: str, actor: str
+) -> DraftDependencyCheck:
+    return _transfer_gateway(factory).check_draft_dependencies(RequestContext("r", None, actor, workspace), app_id)
+
+
+@pytest.fixture
+def no_installed_plugins(monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]) -> None:
+    """Nothing is installed and the marketplace is off, so every plugin the check finds is unresolved."""
     monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", lambda *_args: [])
     config_overrides(MARKETPLACE_ENABLED=False)
 
-    result = _transfer_gateway(factory).check_draft_dependencies(RequestContext("r", None, actor, workspace), app_id)
+
+@pytest.mark.usefixtures("no_installed_plugins")
+def test_draft_dependency_check_ignores_api_workflow_and_mcp_tool_nodes(sqlite_engine: Engine) -> None:
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
+    graph = _graph(
+        _tool_node(ToolProviderType.API, "3f2a1b4c-0e5d-4c3a-9b1e-123456789abc"),
+        _tool_node(ToolProviderType.WORKFLOW, "9a8b7c6d-0e5d-4c3a-9b1e-123456789abc"),
+        _tool_node(ToolProviderType.MCP, "my-mcp-server"),
+    )
+
+    result = _check_draft_dependencies(factory, *_seed_draft_app(factory, graph))
 
     assert result.unresolved_plugin_ids == []
     assert result.leaked_dependencies == []
 
 
-def _plugin_tool_graph(provider_type: str) -> str:
-    return json.dumps(
-        {
-            "nodes": [
-                {
-                    "id": "tool",
-                    "data": {
-                        "type": "tool",
-                        "title": "tool",
-                        "provider_id": "acme/search/search",
-                        "provider_type": provider_type,
-                        "provider_name": "acme/search/search",
-                        "tool_name": "t",
-                        "tool_label": "t",
-                        "tool_configurations": {},
-                        "tool_parameters": {},
-                    },
-                }
-            ],
-            "edges": [],
-        }
-    )
-
-
-@pytest.mark.parametrize("provider_type", ["builtin", "plugin"])
+@pytest.mark.usefixtures("no_installed_plugins")
+@pytest.mark.parametrize("provider_type", [ToolProviderType.BUILT_IN, ToolProviderType.PLUGIN])
 @pytest.mark.parametrize("added_after_seed", [False, True])
 def test_draft_dependency_check_reports_an_uninstalled_plugin_tool(
-    sqlite_engine: Engine,
-    monkeypatch: pytest.MonkeyPatch,
-    provider_type: str,
-    added_after_seed: bool,
-    config_overrides: Callable[..., None],
+    sqlite_engine: Engine, provider_type: ToolProviderType, added_after_seed: bool
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
-    graph = _plugin_tool_graph(provider_type)
+    graph = _graph(_tool_node(provider_type, "acme/search/search"))
     app_id, workspace, actor = _seed_draft_app(factory, EMPTY_GRAPH if added_after_seed else graph)
-    monkeypatch.setattr(PluginInstaller, "fetch_plugin_installation_by_ids", lambda *_args: [])
-    config_overrides(MARKETPLACE_ENABLED=False)
-    gateway = _transfer_gateway(factory)
-    context = RequestContext("r", None, actor, workspace)
     if added_after_seed:
         with factory.begin() as session:
             session.execute(update(Workflow).where(Workflow.app_id == app_id).values(graph=graph))
 
-    result = gateway.check_draft_dependencies(context, app_id)
+    result = _check_draft_dependencies(factory, app_id, workspace, actor)
 
     assert result.unresolved_plugin_ids == ["acme/search"]
+
+
+def _add_workflow_tool(
+    session: Session, *, workspace: str, actor: str, provider_id: str, published: str, draft: str | None = None
+) -> str:
+    """Add a Workflow Tool backed by a workflow App, published with ``published`` and optionally a newer draft."""
+    app_id, version = str(uuid4()), Workflow.version_from_datetime(naive_utc_now())
+    session.add(
+        App(id=app_id, tenant_id=workspace, name=provider_id, mode=AppMode.WORKFLOW, enable_site=True, enable_api=True)
+    )
+    for workflow_version, graph in ((version, published), (Workflow.VERSION_DRAFT, draft)):
+        if graph is not None:
+            session.add(
+                Workflow(
+                    tenant_id=workspace,
+                    app_id=app_id,
+                    type=WorkflowType.WORKFLOW,
+                    version=workflow_version,
+                    graph=graph,
+                    _features="{}",
+                    created_by=actor,
+                )
+            )
+    provider = WorkflowToolProvider(
+        name=provider_id,
+        label=provider_id,
+        icon=json.dumps({"background": "#FFEAD5", "content": "🤖"}),
+        app_id=app_id,
+        version=version,
+        user_id=actor,
+        tenant_id=workspace,
+        description="",
+        parameter_configuration="[]",
+    )
+    provider.id = provider_id
+    session.add(provider)
+    return app_id
+
+
+@pytest.mark.usefixtures("no_installed_plugins")
+def test_draft_dependency_check_follows_workflow_tools_at_their_published_version(sqlite_engine: Engine) -> None:
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
+    first, second = str(uuid4()), str(uuid4())
+    app_id, workspace, actor = _seed_draft_app(factory, _graph(_tool_node(ToolProviderType.WORKFLOW, first)))
+    with factory.begin() as session:
+        # The first tool calls the second, which calls the first back; only the first's draft uses acme/draft.
+        _add_workflow_tool(
+            session,
+            workspace=workspace,
+            actor=actor,
+            provider_id=first,
+            published=_graph(
+                _tool_node(ToolProviderType.PLUGIN, "acme/first/first"), _tool_node(ToolProviderType.WORKFLOW, second)
+            ),
+            draft=_graph(_tool_node(ToolProviderType.PLUGIN, "acme/draft/draft")),
+        )
+        _add_workflow_tool(
+            session,
+            workspace=workspace,
+            actor=actor,
+            provider_id=second,
+            published=_graph(
+                _tool_node(ToolProviderType.PLUGIN, "acme/second/second"), _tool_node(ToolProviderType.WORKFLOW, first)
+            ),
+        )
+
+    result = _check_draft_dependencies(factory, app_id, workspace, actor)
+
+    assert result.unresolved_plugin_ids == ["acme/first", "acme/second"]
+
+
+@pytest.mark.usefixtures("no_installed_plugins")
+def test_draft_dependency_check_skips_a_workflow_tool_whose_app_is_gone(sqlite_engine: Engine) -> None:
+    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
+    provider_id = str(uuid4())
+    app_id, workspace, actor = _seed_draft_app(factory, _graph(_tool_node(ToolProviderType.WORKFLOW, provider_id)))
+    with factory.begin() as session:
+        tool_app_id = _add_workflow_tool(
+            session,
+            workspace=workspace,
+            actor=actor,
+            provider_id=provider_id,
+            published=_graph(_tool_node(ToolProviderType.PLUGIN, "acme/first/first")),
+        )
+        session.flush()
+        session.execute(delete(App).where(App.id == tool_app_id))
+
+    result = _check_draft_dependencies(factory, app_id, workspace, actor)
+
+    assert result.unresolved_plugin_ids == []
 
 
 @pytest.mark.parametrize(

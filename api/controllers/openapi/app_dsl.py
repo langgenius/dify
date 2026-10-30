@@ -281,7 +281,7 @@ class AppDslExportApi(Resource):
 
 @openapi_ns.route("/apps/<string:app_id>/dependencies:check")
 class AppDslCheckDependenciesApi(Resource):
-    """Check which plugins the app's current draft needs but the workspace lacks.
+    """Check which plugins the app's current draft and its Workflow Tools need but the workspace lacks.
 
     Works at any time, not only after an import. ``leaked_dependencies`` are
     installable from the marketplace (the hint installs them).

@@ -10,7 +10,7 @@
 
 ## Missing plugins
 
-1. `difyctl check console_app dependency --app-id <app_id>` checks the current draft. Its hint installs every missing marketplace plugin; `unresolved_plugin_ids` must be installed by a human in the console.
+1. `difyctl check console_app dependency --app-id <app_id>` checks the current draft and the Workflow Tools it calls. Its hint installs every missing marketplace plugin; `unresolved_plugin_ids` must be installed by a human in the console.
 2. A plugin in `unresolved_plugin_ids` is not on the marketplace (for example a GitHub or package plugin). difyctl can't install it. Tell the human to install it in the console.
 
 ## Find and install
