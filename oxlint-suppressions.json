@@ -5854,9 +5854,6 @@
     }
   },
   "web/app/components/workflow/panel/env-panel/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    },
     "dify/require-disable-directive-description": {
       "count": 1
     }
