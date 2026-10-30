@@ -81,7 +81,7 @@ class DifyClient {
             'streaming' => $streaming
         ];
 
-        return $this->send_request('POST', 'text-to-audio', $data);
+        return $this->send_request('POST', 'text-to-audio', $data, null, $streaming);
     }
 
     public function get_meta($user) {
@@ -194,7 +194,7 @@ class WorkflowClient extends DifyClient{
             'response_mode' => $response_mode,
             'user' => $user,
         ];
-        return $this->send_request('POST', 'workflows/run', $data);
+        return $this->send_request('POST', 'workflows/run', $data, null, $response_mode === 'streaming');
     }
 
     public function stop($task_id, $user) {

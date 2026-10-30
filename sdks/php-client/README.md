@@ -94,6 +94,36 @@ $response = $difyClient->message_feedback($message_id, $rating, "user_id");
 
 Replace 'your-api-key-here' with your actual Dify API key.
 
+## Streaming responses
+
+Pass `streaming` as the response mode to receive a Guzzle response without waiting for
+all workflow events to arrive. Read its body incrementally; individual reads may split
+an SSE event across chunks.
+
+```php
+$workflowClient = new WorkflowClient($apiKey);
+$response = $workflowClient->run(array("query" => "hello"), "streaming", "user_id");
+$body = $response->getBody();
+while (!$body->eof()) {
+    echo $body->read(1024);
+}
+```
+
+Use `blocking` for the complete JSON response.
+
+For text-to-audio, pass `true` to consume audio without buffering the complete response:
+
+```php
+$response = $difyClient->text_to_audio("Hello", "user_id", true);
+$body = $response->getBody();
+while (!$body->eof()) {
+    echo $body->read(1024);
+}
+```
+
+This controls client-side buffering. Whether the server produces audio incrementally
+depends on the TTS provider output.
+
 ## Empty app inputs
 
 Apps without custom input variables can be called with an empty PHP array:
@@ -117,6 +147,7 @@ After `composer install`, run these commands from this directory:
 ```sh
 php tests/base_url_test.php
 php tests/input_object_test.php
+php tests/streaming_test.php
 ```
 
 The regressions use Guzzle's mock transport and do not contact an API or model provider.
