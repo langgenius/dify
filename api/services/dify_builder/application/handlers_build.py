@@ -17,6 +17,7 @@ from typing import Any
 from core.dify_builder.contract import (
     DecisionItem,
     FormCard,
+    FormField,
     ResourceSelectCard,
     TestResultCard,
 )
@@ -37,6 +38,7 @@ from core.dify_builder.models import (
 from core.dify_builder.progress import ProgressReporter
 from core.dify_builder.state import PcState
 from runtime_contracts.builder.copy_ids import BuilderCopyId
+from runtime_contracts.builder.execution import canonical_digest
 from runtime_contracts.builder.presentation import BuilderText, copy_text, text_parts
 from services.dify_builder.application.handlers_fix import (
     MAX_REPEATED_REPAIRS,
@@ -95,7 +97,13 @@ from services.dify_builder.business_acceptance import (
 )
 from services.dify_builder.execution_messages import change_scope_label
 from services.dify_builder.initial_draft import build_intents_for_draft
-from services.dify_builder.plan import WorkflowPlan, make_plan_card, store_plan
+from services.dify_builder.plan import (
+    ResourceDiscovery,
+    WorkflowPlan,
+    has_knowledge_source_cue,
+    make_plan_card,
+    store_plan,
+)
 from services.dify_builder.repair_gate import NO_REPAIR_REASON
 
 logger = logging.getLogger(__name__)
@@ -222,6 +230,8 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     kind = action_kind(turn)
     if kind != "submit_requirements":
         return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
+    if fc.resource_selection.get("knowledge_decision_pending"):
+        return _handle_knowledge_decision(env, turn, s, fc)
 
     if any(field.get("key") == _ADJUSTMENT_REQUEST for field in fc.form_fields):
         value = (
@@ -252,7 +262,9 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             clear_task_acceptance(fc)
 
     progress.activate("build-draft-plan")
-    plan = env.agent.propose_plan_v1(fc.requirements, goal_text=fc.goal_text, reply_language=fc.reply_language or None)
+    plan = env.agent.propose_plan_v1(
+        _knowledge_requirements(fc), goal_text=fc.goal_text, reply_language=fc.reply_language or None
+    )
     if not plan:
         return _planning_failed(env, s, fc, progress, "build-draft-plan", PcState.BUILD_GOAL_ANALYSIS)
     store_plan(fc, plan)
@@ -352,16 +364,33 @@ def _discover_and_offer_resources(
     options = env.agent.discover_resources(
         list(fc.plan_items),
         goal_text=fc.goal_text,
-        requirements=fc.requirements,
+        requirements=_knowledge_requirements(fc),
         reply_language=fc.reply_language or None,
     )
+    # Server result controls this gate; trace projection is observational only.
+    fc.resource_selection["knowledge_source_unavailable"] = (
+        isinstance(options, ResourceDiscovery) and options.knowledge_source_unavailable
+    )
+    fc.resource_selection["knowledge_requires_clarification"] = (
+        isinstance(options, ResourceDiscovery) and options.knowledge_requires_clarification
+    )
+    if _knowledge_waived(fc):
+        options = [option for option in options if option.kind != "knowledge"]
+    # Persist the actual offered knowledge IDs, not model assertions or client
+    # input. Confirm must also recheck current actor access through the agent.
+    knowledge_ids = [option.id for option in options if option.kind == "knowledge"]
+    if knowledge_ids:
+        fc.resource_selection["offered_knowledge_ids"] = knowledge_ids
+    else:
+        fc.resource_selection.pop("offered_knowledge_ids", None)
     progress.activate("build-prepare-resource-options")
     rs_items = append_card(
         fc,
         ResourceSelectCard(
             title=copy_text(BuilderCopyId.RESOURCES_TITLE),
             description=copy_text(BuilderCopyId.RESOURCES_CATALOGUE_UNAVAILABLE)
-            if any(record.get("code") == "inventory_unavailable" for record in env.diagnostics)
+            if fc.resource_selection.get("knowledge_source_unavailable")
+            or any(record.get("code") == "inventory_unavailable" for record in env.diagnostics)
             else copy_text(BuilderCopyId.RESOURCES_DESCRIPTION)
             if options
             else copy_text(BuilderCopyId.REPLIES_NO_WORKSPACE_RESOURCES_MATCHED_THIS_PLAN_CONTINUING_WITHOUT_ANY),
@@ -371,7 +400,7 @@ def _discover_and_offer_resources(
     # Keep the empty selection card as the active confirm gate. Its description
     # explains the empty result without adding a standalone conversation item.
     gap = env.agent.assess_capability_gap(
-        list(fc.plan_items), options, goal_text=fc.goal_text, requirements=fc.requirements
+        list(fc.plan_items), options, goal_text=fc.goal_text, requirements=_knowledge_requirements(fc)
     )
     execution = progress.finish()
     turn_items = append_assistant(
@@ -401,6 +430,149 @@ def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
     return StepResult(next=next_state, context=fc, items=items)
 
 
+def _knowledge_scope(fc: DifyBuilderContext) -> str:
+    return canonical_digest({"goal": fc.goal_text, "generation": fc.task_control.get("generation", 0)})
+
+
+def _knowledge_waived(fc: DifyBuilderContext) -> bool:
+    decision = fc.resource_selection.get("knowledge_scope_decision")
+    return (
+        isinstance(decision, dict)
+        and decision.get("choice") == "waive"
+        and decision.get("effective_scope_digest", decision.get("scope_digest")) == _knowledge_scope(fc)
+        and bool(decision.get("card_key"))
+    )
+
+
+def _knowledge_requirements(fc: DifyBuilderContext) -> dict[str, Any]:
+    if not _knowledge_waived(fc):
+        return fc.requirements
+    # Keep both the original task and the explicit user change traceable. This
+    # is never inferred from a model's optional/required classification.
+    return {**fc.requirements, "_builder_knowledge_scope_change": fc.resource_selection["knowledge_scope_decision"]}
+
+
+def _ask_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
+    chinese = fc.reply_language.lower().startswith("zh")
+    options = (
+        ["保留知识库检索目标，等待后续能力", "明确修改原目标，放弃本次知识库检索及依赖检索的引用"]
+        if chinese
+        else [
+            "Keep the knowledge retrieval goal and wait",
+            "Explicitly change my goal: omit knowledge retrieval and retrieval-based citations",
+        ]
+    )
+    key = "__builder_knowledge_decision_" + uuid.uuid4().hex
+    fc.resource_selection["knowledge_decision_pending"] = {
+        "card_key": key,
+        "scope_digest": _knowledge_scope(fc),
+        "original_goal": fc.goal_text,
+        "actor_id": turn.actor.account_id,
+        "tenant_id": turn.actor.tenant_id,
+        "source_version": s.version,
+        "options": options,
+    }
+    fc.form_fields = [
+        {
+            "key": key,
+            "label": "知识库目标" if chinese else "Knowledge goal",
+            "type": "select",
+            "options": options,
+            "required": True,
+        }
+    ]
+    form = FormCard(
+        variant="build_requirements",
+        title="确认知识库目标" if chinese else "Confirm the knowledge goal",
+        description=(
+            "本期可以发现和选择知识库，但不能执行检索。未选择知识库并不代表您同意更改原目标，请明确选择。"
+            if chinese
+            else (
+                "This phase can discover knowledge bases but cannot execute retrieval. "
+                "An empty selection does not waive your original goal; choose explicitly."
+            )
+        ),
+        fields=[FormField(key=key, label=fc.form_fields[0]["label"], type="select", options=options, required=True)],
+        values={},
+    )
+    return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc, items=append_card(fc, form))
+
+
+def _handle_knowledge_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
+    pending = fc.resource_selection.get("knowledge_decision_pending")
+    payload = turn.action.payload if turn.action and isinstance(turn.action.payload, dict) else {}
+    if (
+        not isinstance(pending, dict)
+        or pending.get("scope_digest") != _knowledge_scope(fc)
+        or pending.get("actor_id") != turn.actor.account_id
+        or pending.get("tenant_id") != turn.actor.tenant_id
+    ):
+        return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
+    key = pending.get("card_key")
+    options = pending.get("options")
+    value = payload.get(key) if isinstance(key, str) else None
+    if not isinstance(options, list) or len(options) != 2 or value not in options:
+        return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
+    choice = "retain" if value == options[0] else "waive"
+    decision = {**pending, "choice": choice, "user_choice": value}
+    fc.resource_selection["knowledge_scope_decision"] = decision
+    if choice == "retain":
+        fc.resource_selection.pop("knowledge_decision_pending", None)
+        fc.resource_selection["blocked_capability"] = "knowledge_retrieval_phase_two"
+        return _knowledge_wait(env, s, fc)
+    amendment = (
+        "用户明确修改原目标：本次放弃知识库检索及依赖检索的引用，其他要求保持。"
+        if fc.reply_language.lower().startswith("zh")
+        else (
+            "Explicit user goal change: omit knowledge retrieval and retrieval-based citations for this task; "
+            "preserve the other requirements."
+        )
+    )
+    revised_goal = fc.goal_text + "\n\n" + amendment
+    plan = env.agent.propose_plan_v1(
+        _knowledge_requirements(fc), goal_text=revised_goal, reply_language=fc.reply_language or None
+    )
+    if plan is None:
+        # Retain the exact current form/nonce; another choice requires a current
+        # version, and no executable checkpoint or success has been produced.
+        return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
+    clear_task_acceptance(fc)
+    fc.goal_text = revised_goal
+    decision["effective_scope_digest"] = _knowledge_scope(fc)
+    store_plan(fc, plan)
+    fc.resource_selection = {"knowledge_scope_decision": decision}
+    fc.form_fields = []
+    return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc)
+
+
+def _knowledge_wait(
+    env: Env, s: Session, fc: DifyBuilderContext, *, unavailable: bool = False, execution: Any = None
+) -> StepResult:
+    chinese = fc.reply_language.lower().startswith("zh")
+    if unavailable:
+        message = (
+            "知识库选择不可用或已变更，请重新发现当前有权限的资源；尚未确认、绑定或执行任何知识库。"
+            if chinese
+            else (
+                "The knowledge selection is unavailable or changed. Rediscover accessible resources; "
+                "nothing was confirmed, bound or executed."
+            )
+        )
+    else:
+        message = (
+            "已保留知识库目标与已记录的发现偏好。本期仅支持知识库发现与需求澄清，不能生成、绑定或执行知识检索，也不能完成依赖检索的回答与引用。请调整目标或等待后续检索能力；本次未生成或执行工作流。"
+            if chinese
+            else (
+                "The knowledge goal and any recorded preferences are retained for discovery only. "
+                "This phase cannot generate, bind or execute "
+                "retrieval, or complete answers and citations that depend on it. Adjust the goal or wait for retrieval "
+                "support; this selection did not generate or execute a workflow."
+            )
+        )
+    items = append_assistant(env, s, fc, message, execution=execution)
+    return StepResult(next=PcState.BUILD_RESOURCE_RECOMMENDATION, context=fc, items=items)
+
+
 def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) On ``confirm_resources`` bind resources into plan v1 and
     snapshot the pre-build graph as the backend restore checkpoint. Transition
@@ -411,8 +583,8 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     if kind == "rediscover_resources" and fc.resource_selection.get("refresh_required"):
         # The user explicitly asks for current candidates. This appends a new
         # card and returns to confirmation; it never selects a new snapshot.
-        items, next_state = _discover_and_offer_resources(env, s, fc)
         fc.resource_selection = {}
+        items, next_state = _discover_and_offer_resources(env, s, fc)
         return StepResult(next=next_state, context=fc, items=items)
     if fc.resource_selection.get("refresh_required"):
         return StepResult(next=PcState.BUILD_RESOURCE_RECOMMENDATION, context=fc)
@@ -436,12 +608,31 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
         raw_ids = turn.action.payload.get("resource_ids")
         if isinstance(raw_ids, list):
             resource_ids = [r for r in raw_ids if isinstance(r, str)]
+    requested_knowledge = [rid for rid in resource_ids if rid.startswith("knowledge:")]
+    offered_knowledge = fc.resource_selection.get("offered_knowledge_ids", [])
+    if not isinstance(offered_knowledge, list) or not set(requested_knowledge).issubset(offered_knowledge):
+        progress.fail_step("build-bind-resources")
+        return _knowledge_wait(env, s, fc, unavailable=True, execution=progress.finish(status="error"))
+    if (
+        not requested_knowledge
+        and not _knowledge_waived(fc)
+        and (
+            offered_knowledge
+            or fc.resource_selection.get("blocked_capability") == "knowledge_retrieval_phase_two"
+            or fc.resource_selection.get("knowledge_source_unavailable")
+            or fc.resource_selection.get("knowledge_requires_clarification")
+            or has_knowledge_source_cue(fc.goal_text, fc.requirements)
+        )
+    ):
+        progress.fail_step("build-bind-resources")
+        progress.finish(status="error")
+        return _ask_knowledge_decision(env, turn, s, fc)
     try:
         plan = env.agent.reconcile_resource_plan(
             WorkflowPlan(fc.plan_title, fc.plan_input_summary, fc.plan_output_summary, list(fc.plan_items)),
             resource_ids,
             goal_text=fc.goal_text,
-            requirements=fc.requirements,
+            requirements=_knowledge_requirements(fc),
             reply_language=fc.reply_language or None,
         )
     except AgentSnapshotChanged:
@@ -459,10 +650,24 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
         return StepResult(next=PcState.BUILD_RESOURCE_RECOMMENDATION, context=fc, items=items)
     if plan is None:
         return _planning_failed(env, s, fc, progress, "build-bind-resources", PcState.BUILD_RESOURCE_RECOMMENDATION)
+    if requested_knowledge:
+        if set(plan.discovery_resource_ids or []) != set(requested_knowledge) or plan.used_resource_ids != []:
+            return _planning_failed(env, s, fc, progress, "build-bind-resources", PcState.BUILD_RESOURCE_RECOMMENDATION)
+        fc.resource_selection = {
+            "offered_knowledge_ids": list(offered_knowledge),
+            "knowledge_preferences": list(plan.discovery_resource_ids or []),
+            "resource_ids": [],
+            "blocked_capability": "knowledge_retrieval_phase_two",
+        }
+        progress.fail_step("build-bind-resources")
+        return _knowledge_wait(env, s, fc, execution=progress.finish(status="error"))
     store_plan(fc, plan)
+    decision = fc.resource_selection.get("knowledge_scope_decision") if _knowledge_waived(fc) else None
     fc.resource_selection = {
         "resource_ids": resource_ids if plan.used_resource_ids is None else list(plan.used_resource_ids)
     }
+    if decision is not None:
+        fc.resource_selection["knowledge_scope_decision"] = decision
     fc.checkpoint_seq = fc.next_seq
 
     progress.activate("build-create-checkpoint")
@@ -557,7 +762,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     # trusted_text_for byte-for-byte (see test_plan_approval_passes_trusted_
     # text_matching_user_supplied_trusted_text_for). Lets build_nodes tell an
     # endpoint the user actually gave from one the model invented (ESQ1-302/S5b).
-    trusted_text = f"{fc.goal_text}\n{json.dumps(dict(fc.requirements), ensure_ascii=False)}"
+    trusted_text = f"{fc.goal_text}\n{json.dumps(dict(_knowledge_requirements(fc)), ensure_ascii=False)}"
     build_result = env.agent.build_nodes(
         list(fc.plan_items), selected_resource_ids, trusted_text=trusted_text, reply_language=fc.reply_language or None
     )
@@ -1501,7 +1706,9 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     # Draft the plan but show it only once: build.initial_plan (next) falls
     # straight through to build.resource_recommendation, which shows the ONE
     # plan card for this pass (v1, resources bound).
-    plan = env.agent.propose_plan_v1(fc.requirements, goal_text=fc.goal_text, reply_language=fc.reply_language or None)
+    plan = env.agent.propose_plan_v1(
+        _knowledge_requirements(fc), goal_text=fc.goal_text, reply_language=fc.reply_language or None
+    )
     if not plan:
         return _planning_failed(env, s, fc, progress, "build-restart-plan", PcState.BUILD_REVERTED)
     store_plan(fc, plan)
