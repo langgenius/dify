@@ -25,6 +25,8 @@ HUMAN_INPUT_FORM_INPUT_EXAMPLE = {
 
 
 class HumanInputFormSubmitPayload(BaseModel):
+    """Legacy Human Input v1 submit payload shared by existing runtime surfaces."""
+
     inputs: dict[str, JsonValue] = Field(
         description=(
             "Submitted human input values keyed by output variable name. "

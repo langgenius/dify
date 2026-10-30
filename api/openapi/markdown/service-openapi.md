@@ -5511,6 +5511,7 @@ You don't have the permission to access the requested resource.
 | form_content | string |  | Yes |
 | form_id | string |  | Yes |
 | form_token | string |  | No |
+| form_version | string, <br>**Available values:** "1", "2", <br>**Default:** 1 | *Enum:* `"1"`, `"2"` | No |
 | inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
@@ -5545,12 +5546,16 @@ You don't have the permission to access the requested resource.
 
 #### HumanInputFormSubmitPayload
 
+Legacy Human Input v1 submit payload shared by existing runtime surfaces.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
 #### HumanInputFormSubmitPayloadWithUser
+
+Legacy Human Input v1 submit payload shared by existing runtime surfaces.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |

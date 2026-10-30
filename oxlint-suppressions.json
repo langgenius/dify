@@ -795,9 +795,6 @@
     }
   },
   "web/app/components/app/text-generate/item/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    },
     "dify/require-disable-directive-description": {
       "count": 4
     },
@@ -993,7 +990,7 @@
   },
   "web/app/components/base/chat/chat-with-history/chat-wrapper.tsx": {
     "typescript/no-explicit-any": {
-      "count": 7
+      "count": 6
     }
   },
   "web/app/components/base/chat/chat-with-history/context.ts": {
@@ -4043,11 +4040,6 @@
       "count": 3
     }
   },
-  "web/app/components/workflow/block-selector/blocks.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/workflow/block-selector/constants.tsx": {
     "react/only-export-components": {
       "count": 3
@@ -4239,11 +4231,6 @@
   "web/app/components/workflow/header/run-mode.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 5
-    }
-  },
-  "web/app/components/workflow/header/running-title.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
     }
   },
   "web/app/components/workflow/header/test-run-menu-helpers.tsx": {
@@ -5024,11 +5011,6 @@
   },
   "web/app/components/workflow/nodes/human-input/hooks/__tests__/use-single-run-form-params.spec.ts": {
     "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
   },
@@ -5961,9 +5943,6 @@
     }
   },
   "web/app/components/workflow/panel/workflow-preview.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 4
     },

@@ -5,7 +5,7 @@ import json
 import logging
 from collections.abc import Buffer, Iterator
 from dataclasses import dataclass
-from typing import Literal, Never, cast, override
+from typing import Literal, Never, override
 from unittest.mock import MagicMock
 
 import pytest
@@ -13,7 +13,7 @@ from flask import Blueprint, Flask, Response, jsonify, request
 from flask.testing import FlaskClient
 from flask_restx import Namespace, Resource
 from pytest_mock import MockerFixture
-from sqlalchemy import Table
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound, Unauthorized
 
@@ -75,9 +75,9 @@ type MCPClient = tuple[FlaskClient, SessionCalls, MagicMock, MagicMock]
 
 
 @pytest.fixture
-def http_app() -> Flask:
+def http_app(sqlite_engine: Engine) -> Flask:
     app = Flask(__name__)
-    app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI="sqlite:///:memory:")
+    app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=sqlite_engine.url)
     db.init_app(app)
     return app
 
@@ -163,7 +163,6 @@ def test_invalid_token_database_path_does_not_record_usage(http_app: Flask, mock
     usage = mocker.patch.object(token_service, "record_token_usage")
     mocker.patch.object(token_service.ApiTokenCache, "set")
     with http_app.app_context():
-        cast(Table, ApiToken.__table__).create(db.engine)
         with pytest.raises(token_service.ApiTokenInvalidError, match="Access token is invalid"):
             token_service.query_token_from_db("missing-token", "app")
     usage.assert_not_called()
@@ -200,8 +199,6 @@ def uncached_token_client(
     api.add_resource(DatasetTokenResource, "/dataset")
     http_app.register_blueprint(bp)
     try:
-        with http_app.app_context():
-            cast(Table, ApiToken.__table__).create(db.engine)
         yield http_app.test_client(), commands
     finally:
         token_service.redis_client = previous_redis

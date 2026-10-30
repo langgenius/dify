@@ -755,7 +755,8 @@ def build_application_services(
             messages=messages,
             files=message_files,
             extra_contents=ExecutionExtraContentReader(
-                repository=SQLAlchemyExecutionExtraContentRepository(session_maker=database_client)
+                repository=SQLAlchemyExecutionExtraContentRepository(session_maker=database_client),
+                session_factory=database_client,
             ),
         ),
         message_file_previews=MessageFilePreviewService(
@@ -829,6 +830,7 @@ def build_application_services(
         workflow_runs=WorkflowRunService(
             workflow_runs=workflow_run_repository,
             node_executions=workflow_node_execution_repository,
+            session_factory=database_client,
         ),
         workspaces=workspace_services,
         workflow_app_logs=WorkflowAppLogQueryService(

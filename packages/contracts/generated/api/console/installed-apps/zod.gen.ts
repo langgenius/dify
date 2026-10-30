@@ -1232,6 +1232,7 @@ export const zHumanInputFormDefinition = z.object({
   form_content: z.string(),
   form_id: z.string(),
   form_token: z.string().nullish(),
+  form_version: z.enum(['1', '2']).optional().default('1'),
   inputs: z.array(zFormInputConfig).optional(),
   node_id: z.string(),
   node_title: z.string(),

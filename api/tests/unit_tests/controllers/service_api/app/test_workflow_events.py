@@ -38,7 +38,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
-from core.workflow.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
+from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormKind, HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
 from core.workflow.system_variables import build_system_variables
@@ -56,7 +56,7 @@ from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app_generate_service import AppGenerateService
-from services.workflow_event_snapshot_service import _build_snapshot_events
+from services.workflow_event_snapshot_service import _build_paused_snapshot_events
 from tests.helpers.unit.config_override import apply_config_overrides
 
 """Dedicated tests for HITL behavior exposed through the Service API."""
@@ -151,7 +151,9 @@ def _persist_human_input_form(
         conversation_id=None,
         form_kind=HumanInputFormKind.RUNTIME,
         node_id="node-1",
-        form_definition=json.dumps({"display_in_ui": True}),
+        form_definition=FormDefinition(
+            form_content="content", rendered_content="Rendered", expiration_time=expiration_time, display_in_ui=True
+        ).model_dump_json(),
         rendered_content="Rendered",
         status=HumanInputFormStatus.WAITING,
         expiration_time=expiration_time,
@@ -335,6 +337,9 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
         workflow_execution_id="run-1",
     )
     runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
+    from graphon.entities.pause_reason import HitlRequired
+
+    runtime_state.graph_execution.pause(HitlRequired(session_id="form-1", node_id="node-1", node_title="Human Input"))
     runtime_state.set_output("result", "value")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
@@ -745,6 +750,17 @@ class TestHitlServiceApi:
         resumption_context = _build_resumption_context("task-ctx")
         expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
         _persist_human_input_form(sqlite_session, expiration_time=expiration_time)
+        from models.workflow import WorkflowPauseReason
+
+        sqlite_session.add(
+            WorkflowPauseReason.from_entity(
+                pause_id="pause-1",
+                pause_reason=HumanInputRequired(
+                    form_id="form-1", node_id="node-1", node_title="Human Input", form_content="content"
+                ),
+            )
+        )
+        sqlite_session.commit()
         monkeypatch.setattr(
             "services.workflow_event_snapshot_service.load_form_dispositions_by_form_id",
             lambda form_ids, session=None, surface=None: {
@@ -769,7 +785,7 @@ class TestHitlServiceApi:
             ],
         )
 
-        events = _build_snapshot_events(
+        events = _build_paused_snapshot_events(
             workflow_run=workflow_run,
             node_snapshots=[snapshot],
             task_id="task-ctx",

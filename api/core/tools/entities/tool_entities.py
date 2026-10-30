@@ -261,7 +261,6 @@ class ToolInvokeMessage(BaseModel):
     @field_validator("message", mode="before")
     @classmethod
     def decode_blob_message(cls, v, info: ValidationInfo):
-        # 处理 blob 解码
         if isinstance(v, dict) and "blob" in v:
             with contextlib.suppress(Exception):
                 v["blob"] = base64.b64decode(v["blob"])
