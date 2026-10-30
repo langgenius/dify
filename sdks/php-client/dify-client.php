@@ -136,7 +136,7 @@ class ChatClient extends DifyClient {
     public function get_conversations($user, $first_id = null, $limit = null, $pinned = null) {
         $params = [
             'user' => $user,
-            'first_id' => $first_id,
+            'last_id' => $first_id,
             'limit' => $limit,
             'pinned'=> $pinned,
         ];

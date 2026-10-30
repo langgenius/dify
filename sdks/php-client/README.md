@@ -136,6 +136,22 @@ The SDK sends the top-level `inputs` as `{}`, as required by the API, for chat,
 completion and workflow requests. Nonempty input maps and nested arrays retain
 their values and JSON types.
 
+## Conversation pagination
+
+Pass the final conversation ID from the previous page as the second argument:
+
+```php
+$page = json_decode((string) $chatClient->get_conversations("user_id", null, 20)->getBody(), true);
+if ($page['has_more'] && $page['data']) {
+    $lastConversation = end($page['data']);
+    $nextPage = $chatClient->get_conversations("user_id", $lastConversation['id'], 20);
+}
+```
+
+For compatibility, this argument retains its legacy PHP name `$first_id`, but the
+conversation-list request sends the API's `last_id` field. Message history through
+`get_conversation_messages()` continues to send `first_id`.
+
 ## License
 
 This SDK is released under the MIT License.
@@ -146,6 +162,7 @@ After `composer install`, run these commands from this directory:
 
 ```sh
 php tests/base_url_test.php
+php tests/conversation_pagination_test.php
 php tests/input_object_test.php
 php tests/streaming_test.php
 ```
