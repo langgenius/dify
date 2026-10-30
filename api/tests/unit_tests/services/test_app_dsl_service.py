@@ -1219,10 +1219,11 @@ def test_export_dsl_preserves_envelope_and_mode_specific_content(
         (AppMode.ADVANCED_CHAT, "trigger-plugin"),
     ],
 )
-def test_overwrite_rejects_incompatible_nodes_before_mutation(mode: AppMode, node_type: str) -> None:
-    session = Mock()
+def test_overwrite_rejects_incompatible_nodes_before_mutation(
+    unbound_session: Session, mode: AppMode, node_type: str
+) -> None:
     target = App(id="target", tenant_id="tenant", mode=mode, name="Original")
-    service = AppDslService(session)
+    service = AppDslService(unbound_session)
     service._load_app_for_overwrite = Mock(return_value=target)
     result = service.import_app(
         account=_account(),
@@ -1241,7 +1242,8 @@ def test_overwrite_rejects_incompatible_nodes_before_mutation(mode: AppMode, nod
     assert result.error is not None
     assert "incompatible" in result.error
     assert target.name == "Original"
-    session.add.assert_not_called()
+    assert not unbound_session.new
+    assert not unbound_session.deleted
 
 
 @pytest.mark.parametrize(
