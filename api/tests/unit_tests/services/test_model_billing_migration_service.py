@@ -28,7 +28,7 @@ from services.entities.model_billing_migration import (
 )
 from services.model_billing_migration_service import MigrationError
 from services.model_billing_migration_service import ModelBillingMigrationService as Service
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 NOW = datetime(2026, 10, 1, 12)
 HASH = "sha256:" + "1" * 64

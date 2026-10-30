@@ -13,7 +13,7 @@ from models.account import Tenant
 from models.model_billing import TenantModelBillingProfile
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from tasks import bootstrap_tokener_tenant_task as task_module
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 class _CeleryTaskOptions(Protocol):

@@ -104,7 +104,7 @@ def test_prepare_resource_exchange_never_calls_signup_grant(monkeypatch: pytest.
     client = MagicMock(return_value=response)
     monkeypatch.setattr(module.BillingService, "_send_request", client)
     monkeypatch.setattr(module, "_persist_key", MagicMock(return_value="credential-fixture"))
-    from tests.unit_tests.config_override import apply_config_overrides
+    from tests.helpers.unit.config_override import apply_config_overrides
 
     apply_config_overrides(monkeypatch, TOKENER_BILLING_API_URL="https://billing.example.test")
     result = module._prepare_resources("tenant-fixture", {"phase": "resources", "migration_id": "migration-fixture"})
@@ -115,7 +115,7 @@ def test_prepare_resource_exchange_never_calls_signup_grant(monkeypatch: pytest.
 
 
 def test_cross_tenant_resource_response_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
-    from tests.unit_tests.config_override import apply_config_overrides
+    from tests.helpers.unit.config_override import apply_config_overrides
 
     apply_config_overrides(monkeypatch, TOKENER_BILLING_API_URL="https://billing.example.test")
     monkeypatch.setattr(
@@ -157,7 +157,7 @@ def test_real_prepare_worker_publishes_binding_without_trial_or_active_provider(
     spoof_label: str,
 ) -> None:
     from core import model_invocation_routing
-    from tests.unit_tests.config_override import apply_config_overrides
+    from tests.helpers.unit.config_override import apply_config_overrides
 
     tenant = Tenant(name="Prepare-only workflow")
     sqlite_session.add(tenant)
@@ -420,7 +420,7 @@ def test_sweeper_alerts_and_recovers_financial_work_but_stops_initial_30_minute_
 
 
 def test_financial_recovery_calls_only_durable_resume_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
-    from tests.unit_tests.config_override import apply_config_overrides
+    from tests.helpers.unit.config_override import apply_config_overrides
 
     apply_config_overrides(monkeypatch, TOKENER_BILLING_API_URL="https://billing.example.test")
     migration_id = str(uuid4())

@@ -8,8 +8,8 @@ from models import TenantCreditPool
 from models.enums import ProviderQuotaType
 from models.model_billing import TenantModelBillingProfile
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
-from tests.unit_tests.account_domain import AccountDomain
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.account_domain import AccountDomain
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def test_create_tenant_persists_tokener_integration_in_initial_commit(

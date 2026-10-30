@@ -10,7 +10,7 @@ from controllers.inner_api.model_billing_migration import (
 )
 from controllers.inner_api.wraps import InnerApiUnauthorizedError
 from services.model_billing_migration_service import MigrationError, ModelBillingMigrationService
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def test_control_write_requires_inner_auth(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

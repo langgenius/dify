@@ -33,7 +33,7 @@ from services.errors.billing import (
     LegacyCreditPoolManagedByTokenerError,
     TokenerEducationCheckoutUnsupportedError,
 )
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"

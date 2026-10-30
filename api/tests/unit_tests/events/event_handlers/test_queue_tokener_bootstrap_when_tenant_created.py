@@ -5,7 +5,7 @@ import pytest
 
 from events.event_handlers import queue_tokener_bootstrap_when_tenant_created as handler_module
 from models.account import Tenant
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def _tenant() -> Tenant:
