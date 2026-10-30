@@ -4,6 +4,7 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Protocol, cast
 
 import pytest
 from sqlalchemy import select, update
@@ -365,8 +366,12 @@ def test_describe_agent_with_its_service_api_off_is_refused(
     ]
 
 
+class EndpointOwner(Protocol):
+    __spec__: EndpointSpec
+
+
 def test_describe_agent_declares_its_guards() -> None:
-    spec: EndpointSpec = AgentDescribeApi.get.__spec__
+    spec = cast(EndpointOwner, AgentDescribeApi.get).__spec__
     expected = (
         CheckSubject(allowed=(AccountSubject,)),
         CheckAppApiEnabled(),
