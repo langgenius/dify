@@ -1,11 +1,52 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createHttpClientWithSpies } from '../../tests/test-utils'
+import { createHttpClient, createHttpClientWithSpies } from '../../tests/test-utils'
 import { ValidationError } from '../errors/dify-error'
 import { ChatClient } from './chat'
 
 describe('ChatClient', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+  })
+
+  describe.each(['blocking', 'streaming'] as const)('object requests in %s mode', (mode) => {
+    it.each([
+      ['omitted', {}, {}],
+      ['undefined', { inputs: undefined }, {}],
+      ['provided', { inputs: { topic: 'science' } }, { topic: 'science' }],
+    ] as const)(
+      'sends an inputs object when inputs are %s',
+      async (_case, fields, expectedInputs) => {
+        const { client, fetchMock } = createHttpClient()
+        fetchMock.mockResolvedValueOnce(
+          new Response(mode === 'streaming' ? 'data: {"answer":"ok"}\n\n' : '{"answer":"ok"}', {
+            status: 200,
+          }),
+        )
+        const chat = new ChatClient(client)
+        const request = Object.freeze({
+          ...fields,
+          query: 'hello',
+          user: 'user',
+          response_mode: mode,
+        })
+
+        const result = await chat.createChatMessage(request)
+
+        if ('toText' in result) {
+          expect(await result.toText()).toBe('ok')
+        } else {
+          expect(result.data).toEqual({ answer: 'ok' })
+        }
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+        expect(new URL(url).pathname).toBe('/v1/chat-messages')
+        expect(JSON.parse(init.body as string)).toEqual({
+          query: 'hello',
+          user: 'user',
+          response_mode: mode,
+          inputs: expectedInputs,
+        })
+      },
+    )
   })
 
   it('creates chat messages in blocking mode', async () => {
