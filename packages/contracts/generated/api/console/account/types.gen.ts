@@ -141,10 +141,10 @@ export type EmailCodeAccountDeletionRateLimitExceededError = ErrorResponse & {
 }
 
 export type EducationStatusResponse = {
-  allow_refresh?: boolean | null
-  expire_at?: number | null
-  is_student?: boolean | null
-  result?: boolean | null
+  allow_refresh: boolean
+  expire_at: number | null
+  is_student: boolean
+  result: boolean
 }
 
 export type EducationActivatePayload = {
@@ -163,13 +163,13 @@ export type EducationActivateLimitError = ErrorResponse & {
 }
 
 export type EducationAutocompleteResponse = {
-  curr_page?: number | null
-  data?: Array<string>
-  has_next?: boolean | null
+  curr_page: number
+  data: Array<string>
+  has_next: boolean
 }
 
 export type EducationVerifyResponse = {
-  token?: string | null
+  token: string
 }
 
 export type EducationVerifyLimitError = ErrorResponse & {

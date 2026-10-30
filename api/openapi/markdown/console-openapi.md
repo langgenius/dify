@@ -25393,9 +25393,9 @@ Rate limit exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| curr_page | integer |  | No |
-| data | [ string ] |  | No |
-| has_next | boolean |  | No |
+| curr_page | integer |  | Yes |
+| data | [ string ] |  | Yes |
+| has_next | boolean |  | Yes |
 
 #### EducationModel
 
@@ -25408,10 +25408,10 @@ Rate limit exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| allow_refresh | boolean |  | No |
-| expire_at | integer |  | No |
-| is_student | boolean |  | No |
-| result | boolean |  | No |
+| allow_refresh | boolean |  | Yes |
+| expire_at | integer |  | Yes |
+| is_student | boolean |  | Yes |
+| result | boolean |  | Yes |
 
 #### EducationVerifyLimitError
 
@@ -25425,7 +25425,7 @@ Rate limit exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| token | string |  | No |
+| token | string |  | Yes |
 
 #### EmailAlreadyInUseError
 
@@ -31540,9 +31540,9 @@ Only support workflow app.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | body | string |  | Yes |
-| frequency | string |  | No |
+| frequency | string, <br>**Available values:** "every_page_load", "once" | *Enum:* `"every_page_load"`, `"once"` | Yes |
 | lang | string |  | Yes |
-| notification_id | string |  | No |
+| notification_id | string |  | Yes |
 | subtitle | string |  | Yes |
 | title | string |  | Yes |
 | title_pic_url | string |  | Yes |
