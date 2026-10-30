@@ -7,7 +7,7 @@ tracing never breaks the operation that is being traced.
 
 import logging
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation
@@ -28,6 +28,7 @@ _SCOPES_KEY = "trace_scopes"
 _HOOKS_KEY = "application_tracing_hooks"
 
 
+@runtime_checkable
 class ExecutionTraceScopes(Protocol):
     """Trace scopes for legacy producers, which hold the app's stored tracing policy as its raw column value."""
 
@@ -46,6 +47,7 @@ class ExecutionTraceScopes(Protocol):
     ) -> TraceScope | None: ...
 
 
+@runtime_checkable
 class ApplicationTracingHooks(Protocol):
     """Agent trace collection lifecycle; it never replaces the trace pipeline."""
 
@@ -85,7 +87,8 @@ def bind_tracing(app: Flask, *, scopes: ExecutionTraceScopes, hooks: Application
 def _scopes() -> ExecutionTraceScopes | None:
     if not has_app_context():
         return None
-    return cast(ExecutionTraceScopes | None, current_app.extensions.get(_SCOPES_KEY))
+    scopes = current_app.extensions.get(_SCOPES_KEY)
+    return scopes if isinstance(scopes, ExecutionTraceScopes) else None
 
 
 def correlation_from_extras(extras: Mapping[str, Any]) -> TraceCorrelation:
@@ -148,4 +151,5 @@ def application_tracing_hooks() -> ApplicationTracingHooks | None:
     """
     if not has_app_context():
         return None
-    return cast(ApplicationTracingHooks | None, current_app.extensions.get(_HOOKS_KEY))
+    hooks = current_app.extensions.get(_HOOKS_KEY)
+    return hooks if isinstance(hooks, ApplicationTracingHooks) else None

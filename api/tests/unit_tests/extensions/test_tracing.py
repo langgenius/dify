@@ -171,3 +171,16 @@ def test_agent_hooks_are_the_ones_the_composition_root_bound() -> None:
     with _app(_Scopes(fails=False), None).app_context():
         assert application_tracing_hooks() is None
     assert application_tracing_hooks() is None
+
+
+def test_invalid_extension_bindings_fail_open() -> None:
+    app = Flask(__name__)
+    app.extensions["trace_scopes"] = object()
+    app.extensions["application_tracing_hooks"] = object()
+
+    with app.app_context():
+        assert (
+            create_trace_scope(tenant_id="tenant-1", app_id="app-1", app_tracing=None, user_id=None, extras={}) is None
+        )
+        assert create_trace_scope_for_app(tenant_id="tenant-1", app_id="app-1", user_id=None, extras={}) is None
+        assert application_tracing_hooks() is None
