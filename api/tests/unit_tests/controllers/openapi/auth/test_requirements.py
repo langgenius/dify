@@ -23,7 +23,7 @@ import libs.oauth_bearer as oauth_bearer_module
 import libs.rate_limit as rate_limit_module
 from app_factory import create_flask_app_with_configs
 from constants.oauth_bearer import Scope, TokenType
-from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPermission, Workspace
+from controllers.common.rbac import AgentBehindApp, AgentId, PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._app_settings import REGULAR_MODES
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
@@ -702,6 +702,18 @@ ROUTES: tuple[Route, ...] = (
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route("skills.import", "POST", "/workspaces/{workspace_id}/skills/imports", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route(
+        "agent_run.run",
+        "POST",
+        "/workspaces/{workspace_id}/agents/{agent_id}:run",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "agent_run.test",
+        "POST",
+        "/workspaces/{workspace_id}/agents/{agent_id}:test",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
     Route(
         "app_dsl.import",
         "POST",
@@ -1646,6 +1658,15 @@ def _settings_req(
     return (*base, CheckWorkspaceRole(roles)) if roles is not None else base
 
 
+_REQ_AGENT_RUN = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckAppApiEnabled(),
+    CheckWorkspaceMember(),
+    CheckScope(Scope.APPS_RUN),
+    CheckRBACPermission(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())),
+    CheckAppAccess(),
+)
+_REQ_AGENT_TEST = (*_REQ_AGENT_RUN[:-1], CheckWorkspaceRole(_EDITOR_UP))
 _RESOURCE_RUN = (CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)), *_REQ_RUN[1:])
 
 DECLARED: dict[str, tuple[Requirement, ...]] = {
@@ -1704,6 +1725,8 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "app_dsl.export": _REQ_DSL_APP,
     "app_dsl.package_export": _REQ_DSL_PACKAGE_APP,
     "app_dsl.check_dependencies": _REQ_DSL_APP,
+    "agent_run.run": _REQ_AGENT_RUN,
+    "agent_run.test": _REQ_AGENT_TEST,
     "app_run.workflow": _RESOURCE_RUN,
     "app_run.chat": _RESOURCE_RUN,
     "app_run.advanced_chat": _RESOURCE_RUN,
@@ -2280,6 +2303,8 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/apps/{app_id}/runs/{run_id}:stop"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/tasks/{task_id}:stop"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/workflow:run"): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/agents/{agent_id}:run"): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/agents/{agent_id}:test"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/chat:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/advanced-chat:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/completion:run"): frozenset({"200", "422", "default"}),
