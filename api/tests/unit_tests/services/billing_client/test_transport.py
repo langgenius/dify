@@ -1,79 +1,41 @@
-from collections.abc import Callable
-
 import httpx
 import pytest
+import tenacity
 
-from services.billing_client import billing, saas, transport
+from services.billing_client import transport
+from services.billing_client.transport import BillingModel, Upstream
 from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
-
-type RespondWith = Callable[[httpx.Response], list[httpx.Request]]
-
-
-@pytest.fixture
-def respond_with(monkeypatch: pytest.MonkeyPatch) -> RespondWith:
-    requests: list[httpx.Request] = []
-
-    def install(response: httpx.Response) -> list[httpx.Request]:
-        def handler(request: httpx.Request) -> httpx.Response:
-            requests.append(request)
-            return response
-
-        monkeypatch.setattr(transport, "_http_client", httpx.Client(transport=httpx.MockTransport(handler)))
-        return requests
-
-    monkeypatch.setenv("BILLING_API_URL", "http://billing/v1")
-    monkeypatch.setenv("BILLING_QUOTA_API_URL", "http://quota/v1")
-    monkeypatch.setenv("BILLING_API_SECRET_KEY", "secret")
-    return install
+from tests.unit_tests.services.billing_client.conftest import RespondWith
 
 
-def test_response_coerces_int64_strings_and_ignores_unknown_fields(respond_with: RespondWith) -> None:
-    requests = respond_with(
-        httpx.Response(
-            200,
-            json={
-                "available": "9007199254740993",
-                "reserved": 0,
-                "quota": "5",
-                "usage": 1,
-                "exhausted_at": "0",
-                "added_later": True,
-            },
-        )
-    )
-
-    balance = billing.quota_get_balance(tenant_id="t1", feature_key="api_rate_limit", bucket="")
-
-    assert balance.available == 9007199254740993
-    assert balance.quota == 5
-    assert str(requests[0].url) == "http://quota/v1/quota/balance?tenant_id=t1&feature_key=api_rate_limit&bucket="
-    assert requests[0].headers["Billing-Api-Secret-Key"] == "secret"
+class _Reply(BillingModel):
+    ok: bool
 
 
-def test_request_body_is_serialized_from_the_model(respond_with: RespondWith) -> None:
-    requests = respond_with(httpx.Response(200, json={"reservation_id": "r1", "available": "1", "reserved": "1"}))
-    body = billing.QuotaReserveReq(
-        tenant_id="t1", feature_key="trigger_event", request_id="req", amount=2, meta={}, bucket=""
-    )
+class _VirtualClock:
+    """Advance tenacity's clock instead of sleeping, keeping the production retry policy."""
 
-    billing.quota_reserve(body=body)
+    def __init__(self) -> None:
+        self.elapsed = 0.0
+        self.sleeps: list[float] = []
 
-    assert requests[0].method == "POST"
-    assert str(requests[0].url) == "http://quota/v1/quota/reserve"
-    assert body.model_validate_json(requests[0].content) == body
+    def monotonic(self) -> float:
+        return self.elapsed
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.elapsed += seconds
 
 
-def test_missing_required_field_is_an_invalid_response(respond_with: RespondWith) -> None:
-    respond_with(httpx.Response(200, json={"available": "1"}))
-
-    with pytest.raises(BillingUpstreamInvalidResponseError):
-        billing.quota_get_balance(tenant_id="t1", feature_key="api_rate_limit", bucket="")
+def _get(upstream: Upstream) -> _Reply:
+    return transport.request(upstream, "GET", "/probe", response_model=_Reply, path_params={}, params={}, body=None)
 
 
 @pytest.mark.parametrize(
     ("status", "error"),
     [
         (400, BillingUpstreamInvalidResponseError),
+        (408, BillingUpstreamUnavailableError),
         (429, BillingUpstreamUnavailableError),
         (503, BillingUpstreamUnavailableError),
     ],
@@ -82,17 +44,44 @@ def test_non_ok_status_maps_to_upstream_errors(respond_with: RespondWith, status
     respond_with(httpx.Response(status, json={}))
 
     with pytest.raises(error):
-        billing.subscription_get_knowledge_rate_limit(tenant_id="t1")
+        _get(Upstream.BILLING)
 
 
-def test_path_params_are_percent_encoded_into_the_saas_path(respond_with: RespondWith) -> None:
-    requests = respond_with(httpx.Response(200, json={"success": True}))
+def test_request_error_is_retried_then_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
+    attempts: list[httpx.Request] = []
 
-    reply = saas.notification_dismiss_notification(
-        notification_id="a/b c", body=saas.DismissNotificationReq(notification_id="a/b c", account_id="acc")
-    )
+    def handler(request: httpx.Request) -> httpx.Response:
+        attempts.append(request)
+        raise httpx.ConnectError("connection refused", request=request)
 
-    assert reply.success is True
-    assert requests[0].url.raw_path == b"/v1/notifications/a%2Fb%20c/dismiss"
-    assert saas.DismissNotificationReq.model_validate_json(requests[0].content).account_id == "acc"
-    assert b'"accountId"' in requests[0].content
+    clock = _VirtualClock()
+    # Replace tenacity's module reference, not the process-wide time module.
+    monkeypatch.setattr(tenacity, "time", clock)
+    monkeypatch.setattr("services.billing_client.transport._send.retry.sleep", clock.sleep)
+    monkeypatch.setattr(transport, "_http_client", httpx.Client(transport=httpx.MockTransport(handler)))
+
+    with pytest.raises(BillingUpstreamUnavailableError):
+        _get(Upstream.BILLING)
+
+    # The next two-second wait would reach the ten-second stop boundary.
+    assert len(attempts) == 5
+    assert clock.sleeps == [2, 2, 2, 2]
+
+
+@pytest.mark.parametrize(
+    ("upstream", "quota_url", "expected"),
+    [
+        (Upstream.BILLING, "http://quota/v1", "http://billing/v1/probe"),
+        (Upstream.SAAS, "http://quota/v1", "http://billing/v1/probe"),
+        (Upstream.BILLING_QUOTA, "http://quota/v1", "http://quota/v1/probe"),
+        (Upstream.BILLING_QUOTA, "", "http://billing/v1/probe"),
+    ],
+)
+def test_upstream_selects_base_url(
+    monkeypatch: pytest.MonkeyPatch, respond_with: RespondWith, upstream: Upstream, quota_url: str, expected: str
+) -> None:
+    monkeypatch.setenv("BILLING_QUOTA_API_URL", quota_url)
+    requests = respond_with(httpx.Response(200, json={"ok": True}))
+
+    assert _get(upstream).ok is True
+    assert str(requests[0].url) == expected
