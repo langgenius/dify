@@ -65,6 +65,7 @@ from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import BearerAuthenticator, ResolvedRow, sha256_hex
 from models import AppMode as _requirements_AppMode
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.enums import EndUserType
 from models.model import App, EndUser
 from models.model import AppMode as _auth_matrix_AppMode
@@ -490,6 +491,7 @@ DENY_NON_MEMBER = Expect(404, "workspace not found")
 DENY_ROLE = Expect(403, "insufficient workspace role")
 DENY_API_DISABLED = Expect(403, ServiceApiDisabled.description)
 DENY_UNKNOWN_APP = Expect(404, "app not found")
+DENY_UNKNOWN_AGENT = Expect(404, "agent not found")
 DENY_ACCESS_MODE = Expect(403, "subject_not_allowed_for_access_mode")
 DENY_MODE_UNRESOLVED = Expect(403, "app or access mode not loaded")
 DENY_PRIVATE_APP = Expect(403, "user_not_allowed_for_private_app")
@@ -706,13 +708,13 @@ ROUTES: tuple[Route, ...] = (
         "agent_run.run",
         "POST",
         "/workspaces/{workspace_id}/agents/{agent_id}:run",
-        frozenset({Trait.ACCOUNT_PRIMARY}),
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
     ),
     Route(
         "agent_run.test",
         "POST",
         "/workspaces/{workspace_id}/agents/{agent_id}:test",
-        frozenset({Trait.ACCOUNT_PRIMARY}),
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
     ),
     Route(
         "app_dsl.import",
@@ -1392,6 +1394,12 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "app_dsl.export": dict(_ACCOUNT_EDITOR_APP),
     "app_dsl.package_export": dict(_ACCOUNT_EDITOR_APP),
     "app_run.draft.workflow": dict(_ACCOUNT_EDITOR_APP),
+    "agent_run.run": {
+        **_DUAL_SUBJECT_RUN,
+        Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
+        Case.UNKNOWN_APP: DENY_UNKNOWN_AGENT,
+    },
+    "agent_run.test": {**_ACCOUNT_EDITOR_APP, Case.UNKNOWN_APP: DENY_UNKNOWN_AGENT},
     "app_workflow.run.list": dict(_ACCOUNT_READER_APP),
     "app_workflow.run.describe": dict(_ACCOUNT_READER_APP),
     "app_workflow.run.nodes": dict(_ACCOUNT_READER_APP),
@@ -1947,6 +1955,8 @@ class World:
     other_workspace_id: str
     app_id: str
     disabled_app_id: str
+    agent_id: str
+    disabled_agent_id: str
     member_account_id: str
     low_role_account_id: str
     outsider_account_id: str
@@ -2037,8 +2047,10 @@ def _url(route: Route, world: World, scenario: Scenario, bearer: Bearer | None) 
         app_id = world.disabled_app_id
     else:
         app_id = world.app_id
+    agent_id = world.disabled_agent_id if not scenario.app_api_enabled else world.agent_id
     ids = {
         "app_id": app_id,
+        "agent_id": str(uuid.uuid4()) if scenario.unknown_app else agent_id,
         "workspace_id": world.workspace_id,
         # The caller's own session: the access service 404s any other id.
         "session_id": world.session_ids.get(bearer, str(uuid.uuid4())) if bearer else str(uuid.uuid4()),
@@ -2435,6 +2447,8 @@ class TestAuthMatrixCases:
             other_workspace_id=str(uuid.uuid4()),
             app_id=str(uuid.uuid4()),
             disabled_app_id=str(uuid.uuid4()),
+            agent_id=str(uuid.uuid4()),
+            disabled_agent_id=str(uuid.uuid4()),
             member_account_id=str(uuid.uuid4()),
             low_role_account_id=str(uuid.uuid4()),
             outsider_account_id=str(uuid.uuid4()),
@@ -2456,6 +2470,29 @@ class TestAuthMatrixCases:
                 enable_api=enable_api,
             )
 
+        def roster_agent(agent_id: str, *, enable_api: bool) -> list[object]:
+            app_id = str(uuid.uuid4())
+            return [
+                App(
+                    id=app_id,
+                    tenant_id=built.workspace_id,
+                    name="matrix agent",
+                    description="",
+                    mode=_auth_matrix_AppMode.AGENT,
+                    enable_site=False,
+                    enable_api=enable_api,
+                ),
+                Agent(
+                    id=agent_id,
+                    tenant_id=built.workspace_id,
+                    name=f"matrix agent {agent_id}",
+                    scope=AgentScope.ROSTER,
+                    source=AgentSource.AGENT_APP,
+                    app_id=app_id,
+                    status=AgentStatus.ACTIVE,
+                ),
+            ]
+
         workspace = Tenant(name="matrix workspace")
         workspace.id = built.workspace_id
         other_workspace = Tenant(name="other workspace")
@@ -2469,6 +2506,8 @@ class TestAuthMatrixCases:
             account(built.outsider_account_id, "outsider@example.com"),
             application(built.app_id, enable_api=True),
             application(built.disabled_app_id, enable_api=False),
+            *roster_agent(built.agent_id, enable_api=True),
+            *roster_agent(built.disabled_agent_id, enable_api=False),
             TenantAccountJoin(
                 tenant_id=built.workspace_id,
                 account_id=built.member_account_id,

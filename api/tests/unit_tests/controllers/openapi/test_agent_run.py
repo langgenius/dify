@@ -151,7 +151,13 @@ def test_agent_runs_use_the_agents_app(
         {
             "summary": "Reply in this conversation",
             "op": op,
-            "input": {"agent_id": AGENT_ID, "conversation_id": "c1", "query": None, "inputs": {}},
+            "input": {
+                "workspace_id": TENANT_ID,
+                "agent_id": AGENT_ID,
+                "conversation_id": "c1",
+                "query": None,
+                "inputs": {},
+            },
         }
     ]
 
@@ -175,7 +181,12 @@ def test_unpublished_agent_run_hints_the_draft(app: Flask, monkeypatch: pytest.M
 
     assert raised.value.error_code == "agent_not_published"
     assert [hint.model_dump() for hint in raised.value.hints or []] == [
-        {"summary": "Run the draft instead", "op": "test.agent", "input": {"agent_id": AGENT_ID}, "form": None}
+        {
+            "summary": "Run the draft instead",
+            "op": "test.agent",
+            "input": {"workspace_id": TENANT_ID, "agent_id": AGENT_ID},
+            "form": None,
+        }
     ]
 
 
@@ -218,4 +229,33 @@ def test_an_agent_of_another_workspace_is_not_found_and_runs_nothing(
     )
 
     assert (response.status_code, response.get_json()["message"]) == (404, "agent not found")
+    assert stub.calls == []
+
+
+@pytest.mark.parametrize("op", ["run", "test"])
+def test_an_agent_with_its_service_api_off_is_refused_and_runs_nothing(
+    admitted_bearer: AdmittedWorld, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, op: str
+) -> None:
+    persist(
+        sqlite_session,
+        make_app(app_id=AGENT_APP_ID, tenant_id=admitted_bearer.workspace_id, mode=AppMode.AGENT, enable_api=False),
+        _agent(tenant_id=admitted_bearer.workspace_id),
+    )
+    stub = _stub_generate(monkeypatch)
+
+    response = admitted_bearer.client.post(
+        f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}/agents/{AGENT_ID}:{op}",
+        json={"query": "hi"},
+        headers=admitted_bearer.headers,
+    )
+
+    body = response.get_json()
+    assert (response.status_code, body["code"]) == (403, "service_api_disabled")
+    assert body["hints"] == [
+        {
+            "summary": "Turn the Service API on",
+            "op": "set.service_api.agent",
+            "input": {"app_id": AGENT_APP_ID, "enabled": True},
+        }
+    ]
     assert stub.calls == []
