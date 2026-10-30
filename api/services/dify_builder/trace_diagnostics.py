@@ -140,6 +140,9 @@ def project(record: Mapping[str, Any]) -> dict[str, Any]:
         "connection_refused",
         "timeout",
         "authentication",
+        "permission_denied",
+        "credential_unavailable",
+        "authorization_lookup_failed",
         "rate_limit",
         "service_unavailable",
         "unknown",
@@ -164,7 +167,15 @@ def project(record: Mapping[str, Any]) -> dict[str, Any]:
 
 
 FailureReason = Literal[
-    "connection_refused", "timeout", "authentication", "rate_limit", "service_unavailable", "unknown"
+    "connection_refused",
+    "timeout",
+    "authentication",
+    "permission_denied",
+    "credential_unavailable",
+    "authorization_lookup_failed",
+    "rate_limit",
+    "service_unavailable",
+    "unknown",
 ]
 
 
@@ -197,6 +208,10 @@ def plugin_activation_unavailable(error: Exception) -> bool:
 
 
 def failure_reason(error: Exception | None) -> FailureReason:
+    from services.tools.draft_tool_setup import DraftToolSetupError
+
+    if isinstance(error, DraftToolSetupError) and error.setup_failure is not None:
+        return error.setup_failure.reason
     if error is not None and plugin_activation_unavailable(error):
         return "service_unavailable"
     if isinstance(error, ConnectionRefusedError):

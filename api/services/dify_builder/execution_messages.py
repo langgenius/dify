@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.execution import ExecutionEvidenceSummary
 from runtime_contracts.builder.presentation import BuilderText, copy_text, text_parts
+from services.dify_builder.native_launch_observation import FailureResource
 
 if TYPE_CHECKING:
     from core.dify_builder.models import Run
@@ -71,6 +73,9 @@ _REASON_LABELS = {
     "connection_refused": ("connection refused", "连接被拒绝"),
     "timeout": ("request timed out", "请求超时"),
     "authentication": ("authentication failed", "身份认证失败"),
+    "permission_denied": ("provider permission denied", "提供商权限被拒绝"),
+    "credential_unavailable": ("credential missing or inaccessible", "凭据缺失或无权访问"),
+    "authorization_lookup_failed": ("credential access could not be verified", "无法验证凭据访问权限"),
     "rate_limit": ("rate limit exceeded", "请求超过频率限制"),
     "service_unavailable": ("service unavailable", "服务不可用"),
     "provider_invocation_failed": ("model invocation failed", "模型调用失败"),
@@ -99,6 +104,22 @@ def observed_failure_message(
     """Observed preparation failure and unknown effects need different recovery."""
     if summary is None:
         return None
+    if (
+        summary.failure_resource
+        and summary.failure_reason
+        in {"authentication", "permission_denied", "credential_unavailable", "authorization_lookup_failed"}
+        and summary.sealed
+        and (
+            summary.safety_outcome == "preparation_failed"
+            or (summary.safety_outcome == "native_failed" and summary.failure_phase == "execution")
+        )
+    ):
+        return _resource_setup_guidance(
+            reason=summary.failure_reason,
+            resource=summary.failure_resource,
+            node_ids=summary.failure_node_ids,
+            reply_language=reply_language,
+        )
     if summary.safety_outcome == "preparation_failed" or (
         summary.safety_outcome == "native_failed" and summary.failure_phase == "execution"
     ):
@@ -122,18 +143,122 @@ def observed_failure_message(
 
 
 def native_service_failure(run: Run) -> bool:
-    """Known terminal node failure: preserve the Run, avoid speculative graph repair."""
+    """Observed resource failure: preserve the Run, avoid speculative graph repair."""
     summary = run.verification.execution_evidence if run.verification else None
+    if (
+        run.status == "failed"
+        and not run.dify_run_id
+        and summary is not None
+        and summary.sealed
+        and summary.safety_outcome == "preparation_failed"
+        and summary.failure_phase == "preparation"
+        and summary.failure_resource is not None
+        and bool(summary.failure_node_ids)
+        and summary.failure_reason in {"credential_unavailable", "authorization_lookup_failed"}
+    ):
+        return True
     return bool(
         run.status == "failed"
         and run.dify_run_id
         and summary is not None
         and summary.sealed
         and summary.native_run_id == run.dify_run_id
+        and summary.failure_resource is not None
+        and bool(summary.failure_node_ids)
         and summary.safety_outcome == "native_failed"
         and summary.failure_phase == "execution"
-        and summary.failure_reason == "service_unavailable"
+        and summary.failure_reason in {"service_unavailable", "authentication", "permission_denied"}
     )
+
+
+def _resource_setup_guidance(
+    *, reason: str, resource: FailureResource, node_ids: tuple[str, ...], reply_language: str
+) -> str:
+    label = _display_label(_REASON_LABELS, reason, reply_language)
+    resource_label = "/".join(filter(None, resource[1:]))
+    nodes = ", ".join(node_ids)
+    if reply_language.lower().startswith("zh"):
+        recovery = (
+            "请检查工作区凭据访问权限后重新准备测试。"
+            if reason == "authorization_lookup_failed"
+            else "请配置或选择有权访问此资源的凭据，并检查提供商权限后重新准备测试。"
+        )
+        return f"资源设置失败：{label}。{recovery}\n{resource_label}\n{nodes}"
+    recovery = (
+        "Check workspace credential access before preparing a fresh test."
+        if reason == "authorization_lookup_failed"
+        else "Configure or select an authorized credential and check provider permissions "
+        "before preparing a fresh test."
+    )
+    return f"Resource setup failed: {label}. {recovery}\n{resource_label}\n{nodes}"
+
+
+def sanitize_observed_failure(run: Run) -> Run:
+    """Bound Builder errors only; native authorized Run storage keeps original evidence."""
+    summary = run.verification.execution_evidence if run.verification else None
+    if (
+        not native_service_failure(run)
+        or summary is None
+        or summary.failure_resource is None
+        or summary.failure_reason is None
+        or summary.failure_reason == "service_unavailable"
+    ):
+        return run
+    guidance = _resource_setup_guidance(
+        reason=summary.failure_reason,
+        resource=summary.failure_resource,
+        node_ids=summary.failure_node_ids,
+        reply_language="en",
+    )
+    return replace(
+        run,
+        error=guidance,
+        per_node=[
+            replace(node, error=guidance) if node.node_id in summary.failure_node_ids and node.error else node
+            for node in run.per_node
+        ],
+    )
+
+
+def sanitize_resource_failure_event(
+    payload: Mapping[str, Any], *, graph: Mapping[str, Any], recognized_errors: dict[str, str]
+) -> Mapping[str, Any]:
+    """Suppress recognized provider bodies in Builder streams, never seal evidence.
+
+    The admitted graph and native stream ID scope presentation only. Terminal
+    classification still requires the persisted executed graph and native rows.
+    Code/unattributed errors retain their existing diagnostics.
+    """
+    from core.dify_builder.models import NodeOutput, Run
+    from services.dify_builder.native_runtime_failure import native_resource_failure
+    from services.dify_builder.run_mapping import run_id_from_stream_chunk
+
+    data = payload.get("data")
+    native_id = run_id_from_stream_chunk(payload)
+    if not native_id or not isinstance(data, Mapping) or data.get("status") not in {"failed", "exception"}:
+        return payload
+    error = data.get("error")
+    if not isinstance(error, str) or not error:
+        return payload
+    key = f"{native_id}:{error}"
+    guidance = None
+    if payload.get("event") == "node_finished" and isinstance(node_id := data.get("node_id"), str):
+        failure = native_resource_failure(
+            Run(
+                status="failed",
+                dify_run_id=native_id,
+                per_node=[NodeOutput(node_id=node_id, status="failed", error=error)],
+            ),
+            graph,
+        )
+        if failure is not None and failure[2] in {"authentication", "permission_denied"}:
+            guidance = _resource_setup_guidance(
+                reason=failure[2], resource=failure[0], node_ids=failure[1], reply_language="en"
+            )
+            recognized_errors[key] = guidance
+    elif payload.get("event") == "workflow_finished":
+        guidance = recognized_errors.get(key)
+    return {**payload, "data": {**data, "error": guidance}} if guidance else payload
 
 
 def cognition_failure_message(
