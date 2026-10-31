@@ -11,6 +11,7 @@ from typing import Literal
 import pytest
 from sqlalchemy.orm import Session
 
+from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
 from models.tools import MCPToolProvider
 from services.tools.mcp_tools_manage_service import MCPToolManageService
 
@@ -182,3 +183,39 @@ def test_merge_credentials_with_masked_restores_nested_client_information(
         "ba0f3e1c-registered-client-c2",
         "dynamic-client-secret",
     )
+
+
+def test_update_provider_keeps_oauth_state_when_masked_credentials_are_unchanged(
+    service: MCPToolManageService, sqlite_session: Session
+) -> None:
+    provider = _provider()
+    credentials = json.dumps(
+        {
+            "client_information": {
+                "client_id": "ba0f3e1c-registered-client-c2",
+                "client_secret": "dynamic-client-secret",
+                "redirect_uris": ["https://example.com/callback"],
+                "is_dynamic_registration": True,
+            },
+            "access_token": "access-token",
+            "refresh_token": "refresh-token",
+        }
+    )
+    provider.encrypted_credentials = credentials
+    _persist(sqlite_session, provider)
+    masked = provider.to_entity().masked_credentials()
+
+    service.update_provider(
+        tenant_id=TENANT_ID,
+        provider_id=PROVIDER_UUID,
+        name="Renamed MCP",
+        server_url=provider.server_url,
+        icon="icon",
+        icon_type="link",
+        icon_background="",
+        server_identifier=SERVER_IDENTIFIER,
+        configuration=MCPConfiguration(),
+        authentication=MCPAuthentication(client_id=masked["client_id"], client_secret=masked["client_secret"]),
+    )
+
+    assert provider.encrypted_credentials == credentials

@@ -800,11 +800,19 @@ class MCPToolManageService:
     def _process_credentials(
         self, authentication: MCPAuthentication, mcp_provider: MCPToolProvider, tenant_id: str
     ) -> str:
-        """Process credentials update, handling masked values."""
+        """Process credentials update, handling masked values and keeping stored OAuth state when unchanged."""
         # Merge with existing credentials
         final_client_id, final_client_secret = self._merge_credentials_with_masked(
             authentication.client_id, authentication.client_secret, mcp_provider
         )
+
+        existing_client_info = mcp_provider.to_entity().retrieve_client_information()
+        if (
+            existing_client_info
+            and final_client_id == existing_client_info.client_id
+            and final_client_secret == existing_client_info.client_secret
+        ):
+            return mcp_provider.encrypted_credentials or EMPTY_CREDENTIALS_JSON
 
         # Build and encrypt
         return self._build_and_encrypt_credentials(final_client_id, final_client_secret, tenant_id)
