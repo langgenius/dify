@@ -335,7 +335,9 @@ const createTimeoutContext = (timeoutMs: number): TimeoutContext => {
  * (completion, failure, or explicit destruction) and release it then. A
  * timeout that fires mid-stream surfaces as `TimeoutError`, matching the
  * error mapping for non-streaming responses; any other stream error passes
- * through unchanged.
+ * through unchanged. Closing the wrapper also destroys the body stream:
+ * a wrapper destroyed before it is consumed never starts the generator,
+ * so nothing else would cancel the response body.
  */
 const transferTimeoutToStream = (stream: Readable, timeoutContext: TimeoutContext): Readable => {
   const wrapped = Readable.from(
@@ -353,6 +355,9 @@ const transferTimeoutToStream = (stream: Readable, timeoutContext: TimeoutContex
   )
   wrapped.once('close', () => {
     timeoutContext.cleanup()
+    if (!stream.destroyed) {
+      stream.destroy()
+    }
   })
   return wrapped
 }

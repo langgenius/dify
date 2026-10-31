@@ -244,6 +244,34 @@ describe('HttpClient', () => {
     expect(requestSignal?.aborted).toBe(false)
   })
 
+  it('cancels the response body when a stream is destroyed before it is consumed', async () => {
+    const fetchMock = stubFetch()
+    let cancelled = false
+    fetchMock.mockImplementationOnce(
+      async () =>
+        new Response(
+          new ReadableStream({
+            start() {},
+            cancel() {
+              cancelled = true
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'text/event-stream' } },
+        ),
+    )
+
+    const client = new HttpClient({ apiKey: 'test', timeout: 30, maxRetries: 0 })
+    const stream = await client.requestStream({
+      method: 'POST',
+      path: '/chat-messages',
+      data: { user: 'u' },
+    })
+
+    stream.data.destroy()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(cancelled).toBe(true)
+  })
+
   it('respects form-data headers', async () => {
     const fetchMock = stubFetch()
     fetchMock.mockResolvedValueOnce(jsonResponse('ok', { status: 200 }))
