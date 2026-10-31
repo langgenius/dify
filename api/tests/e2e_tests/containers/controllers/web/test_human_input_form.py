@@ -30,7 +30,12 @@ from models.human_input import (
     HumanInputFormRecipient,
     StandaloneWebAppRecipientPayload,
 )
-from models.human_input_entities import FormDefinition, SelectInputConfig, StringListSource, UserActionConfig
+from models.human_input_entities import (
+    FormDefinition,
+    SelectInputConfig,
+    StringListSource,
+    UserActionConfig,
+)
 from models.model import App, AppMode, CustomizeTokenStrategy, IconType, Site
 from models.workflow import WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository

@@ -8,21 +8,18 @@ from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from typing import override
-from unittest.mock import ANY, MagicMock, Mock
+from unittest.mock import ANY, Mock
 
 import pytest
 from flask import Flask
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import NotFound
 
 import services.app_generate_service as ags_module
+from controllers.common.errors import NotFoundError
 from controllers.service_api.app.error import NotWorkflowAppError
 from controllers.service_api.app.workflow_events import WorkflowEventsApi
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
-from core.app.apps.advanced_chat.generate_task_pipeline import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
-from core.app.apps.common import workflow_response_converter
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -41,21 +38,23 @@ from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
 from core.workflow.system_variables import build_system_variables
 from enums import DeploymentEdition
-from enums.human_input import FormInputType, HumanInputFormKind, HumanInputFormStatus
+from enums.human_input import FormInputType, HumanInputFormKind, HumanInputFormStatus, RecipientType
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import to_utc_timestamp
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType, MessageStatus, WorkflowRunTriggeredFrom
-from models.human_input import HumanInputForm
+from models.human_input import HumanInputForm, HumanInputFormRecipient
 from models.human_input_entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun, WorkflowType
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
+from services.app.generation.ports import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
 from services.app_generate_service import AppGenerateService
+from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 from services.workflow_event_snapshot_service import _build_paused_snapshot_events
 from tests.helpers.unit.config_override import apply_config_overrides
 
@@ -163,7 +162,7 @@ def _persist_human_input_form(
     return form
 
 
-def _build_service_api_pause_converter() -> WorkflowResponseConverter:
+def _build_service_api_pause_converter(*, workflow_contexts, tool_providers) -> WorkflowResponseConverter:
     application_generate_entity = WorkflowAppGenerateEntity(
         user_from=UserFrom.END_USER,
         task_id="task",
@@ -186,9 +185,11 @@ def _build_service_api_pause_converter() -> WorkflowResponseConverter:
     user = Account(name="Tester", email="tester@example.com")
     user.id = "account-id"
     return WorkflowResponseConverter(
+        contexts=workflow_contexts,
         application_generate_entity=application_generate_entity,
         user=user,
         system_variables=system_variables,
+        tool_providers=tool_providers,
     )
 
 
@@ -365,7 +366,7 @@ class TestHitlServiceApi:
         )
         msg_generator = Mock()
         msg_generator.retrieve_events.return_value = [{"event": "streamed"}]
-        monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
+        monkeypatch.setattr(workflow_events_module, "WorkflowEventStream", msg_generator)
 
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
@@ -402,7 +403,7 @@ class TestHitlServiceApi:
             snapshot_calls.append(kwargs)
             return [{"event": "snapshot"}]
 
-        monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
+        monkeypatch.setattr(workflow_events_module, "WorkflowEventStream", msg_generator)
         monkeypatch.setattr(workflow_events_module, "build_workflow_event_stream", snapshot_builder)
 
         api = WorkflowEventsApi()
@@ -446,10 +447,11 @@ class TestHitlServiceApi:
         sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
         monkeypatch.setattr(ags_module.session_factory, "get_session_maker", lambda: sqlite_session_maker)
 
-        generator_instance = MagicMock()
+        generator_instance = Mock()
         generator_instance.generate.return_value = {"result": "advanced-blocking"}
         generator_instance.convert_to_event_stream.side_effect = lambda payload: payload
-        monkeypatch.setattr(ags_module, "AdvancedChatAppGenerator", lambda **_kwargs: generator_instance)
+        generator_factory = Mock(return_value=generator_instance)
+        monkeypatch.setattr(ags_module, "AdvancedChatAppGenerator", generator_factory)
 
         app_model = _hitl_service_api_app(app_id="app-id", tenant_id="tenant-id", mode=AppMode.ADVANCED_CHAT)
         user = _hitl_service_api_end_user(user_id="user-id", app_id="app-id", tenant_id="tenant-id")
@@ -465,6 +467,7 @@ class TestHitlServiceApi:
             )
 
         assert result == {"result": "advanced-blocking"}
+        generator_factory.assert_called_once_with(execution_driver=ANY)
         call_kwargs = generator_instance.generate.call_args.kwargs
         assert call_kwargs["streaming"] is False
         assert call_kwargs["pause_state_config"] is not None
@@ -473,7 +476,9 @@ class TestHitlServiceApi:
 
     # Blocking payload contract
     def test_advanced_chat_blocking_pause_payload_contract(self) -> None:
-        from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
+        from services.workflow.execution.adapters.chatflow.generate_response_converter import (
+            AdvancedChatAppGenerateResponseConverter,
+        )
 
         response = AdvancedChatAppGenerateResponseConverter.convert_blocking_full_response(
             _build_advanced_chat_paused_blocking_response()
@@ -487,7 +492,9 @@ class TestHitlServiceApi:
         assert "human_input_forms" not in response["data"]
 
     def test_workflow_blocking_pause_payload_contract(self) -> None:
-        from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
+        from services.workflow.execution.adapters.workflow.generate_response_converter import (
+            WorkflowAppGenerateResponseConverter,
+        )
 
         response = WorkflowAppGenerateResponseConverter.convert_blocking_full_response(
             _build_workflow_paused_blocking_response()
@@ -501,9 +508,13 @@ class TestHitlServiceApi:
         ]
         assert "human_input_forms" not in response["data"]
 
-    def test_advanced_chat_blocking_pipeline_pause_payload_contract(self) -> None:
+    def test_advanced_chat_blocking_pipeline_pause_payload_contract(
+        self, app_records, *, workflow_contexts, tool_providers
+    ) -> None:
         from core.app.app_config.entities import AppAdditionalFeatures
-        from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
+        from services.workflow.execution.adapters.chatflow.generate_task_pipeline import (
+            AdvancedChatAppGenerateTaskPipeline,
+        )
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -527,6 +538,8 @@ class TestHitlServiceApi:
             workflow_run_id="run-id",
         )
         pipeline = AdvancedChatAppGenerateTaskPipeline(
+            contexts=workflow_contexts,
+            chat_records=app_records,
             application_generate_entity=application_generate_entity,
             workflow=WorkflowSnapshot(id="workflow-id", tenant_id="tenant", features_dict={}),
             queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
@@ -542,6 +555,7 @@ class TestHitlServiceApi:
             stream=False,
             dialogue_count=1,
             draft_var_saver_factory=lambda **kwargs: None,
+            tool_providers=tool_providers,
         )
         pipeline._task_state.answer = "partial answer"
         pipeline._workflow_run_id = "run-id"
@@ -594,8 +608,11 @@ class TestHitlServiceApi:
         assert response.data.reasons[0]["form_id"] == "form-1"
         assert response.data.reasons[0]["expiration_time"] == 123
 
-    def test_workflow_blocking_pipeline_pause_payload_contract(self) -> None:
-        from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
+    def test_workflow_blocking_pipeline_pause_payload_contract(
+        self, monkeypatch: pytest.MonkeyPatch, *, workflow_runtime, tool_providers
+    ) -> None:
+        from services.workflow.execution.adapters.workflow import generate_task_pipeline as workflow_pipeline_module
+        from services.workflow.execution.adapters.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 
         app_config = WorkflowUIBasedAppConfig(
             tenant_id="tenant",
@@ -619,13 +636,17 @@ class TestHitlServiceApi:
             call_depth=0,
         )
         pipeline = WorkflowAppGenerateTaskPipeline(
+            contexts=workflow_runtime.contexts,
+            logs=workflow_runtime.logs,
             application_generate_entity=application_generate_entity,
             workflow=_workflow(workflow_id="workflow-id", app_id="app", tenant_id="tenant"),
             queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None),
             user=_hitl_service_api_end_user(user_id="user", app_id="app", tenant_id="tenant"),
             stream=False,
             draft_var_saver_factory=lambda **kwargs: None,
+            tool_providers=tool_providers,
         )
+        monkeypatch.setattr(workflow_pipeline_module.time, "time", lambda: 1700000000)
 
         def _gen():
             yield HumanInputRequiredResponse(
@@ -663,12 +684,12 @@ class TestHitlServiceApi:
         assert response.data.reasons == [{"TYPE": "human_input_required", "form_id": "form-1", "expiration_time": 1}]
 
     def test_service_api_pause_event_serializes_hitl_reason(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_engine: Engine,
-        sqlite_session: Session,
+        self, sqlite_session: Session, *, workflow_contexts, tool_providers
     ) -> None:
-        converter = _build_service_api_pause_converter()
+        converter = _build_service_api_pause_converter(
+            workflow_contexts=workflow_contexts,
+            tool_providers=tool_providers,
+        )
         converter.workflow_start_to_stream_response(
             task_id="task",
             workflow_run_id="run-id",
@@ -677,16 +698,20 @@ class TestHitlServiceApi:
         )
 
         expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
-        _persist_human_input_form(sqlite_session, expiration_time=expiration_time)
-
-        monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=sqlite_engine))
-        monkeypatch.setattr(
-            workflow_response_converter,
-            "load_form_dispositions_by_form_id",
-            lambda form_ids, session=None, surface=None: {
-                "form-1": FormDisposition(form_token="token", approval_channels=[])
-            },
+        form = _persist_human_input_form(sqlite_session, expiration_time=expiration_time)
+        form.tenant_id = "tenant-id"
+        form.app_id = "app-id"
+        form.workflow_run_id = "run-id"
+        sqlite_session.add(
+            HumanInputFormRecipient(
+                form_id=form.id,
+                delivery_id="delivery-1",
+                recipient_type=RecipientType.STANDALONE_WEB_APP,
+                recipient_payload="{}",
+                access_token="token",
+            )
         )
+        sqlite_session.commit()
 
         reason = HumanInputRequired(
             form_id="form-1",
@@ -902,7 +927,7 @@ class TestWorkflowEventsApi:
         end_user = _workflow_events_end_user()
 
         with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
     def test_workflow_run_permission_denied(
@@ -916,7 +941,7 @@ class TestWorkflowEventsApi:
         end_user = _workflow_events_end_user()
 
         with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFoundError):
                 handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
     def test_finished_run_returns_sse(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
@@ -958,7 +983,7 @@ class TestWorkflowEventsApi:
         )
         msg_generator = Mock()
         msg_generator.retrieve_events.return_value = [{"event": "streamed"}]
-        monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
+        monkeypatch.setattr(workflow_events_module, "WorkflowEventStream", msg_generator)
 
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
@@ -989,7 +1014,7 @@ class TestWorkflowEventsApi:
             snapshot_calls.append(kwargs)
             return [{"event": "snapshot"}]
 
-        monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
+        monkeypatch.setattr(workflow_events_module, "WorkflowEventStream", msg_generator)
         monkeypatch.setattr(workflow_events_module, "build_workflow_event_stream", snapshot_builder)
 
         api = WorkflowEventsApi()
