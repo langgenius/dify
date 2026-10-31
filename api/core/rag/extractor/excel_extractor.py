@@ -10,7 +10,7 @@ import hashlib
 import logging
 import mimetypes
 import os
-from typing import TypedDict, override
+from typing import TypedDict, cast, override
 
 import pandas as pd
 from openpyxl import load_workbook
@@ -138,15 +138,28 @@ class ExcelExtractor(BaseExtractor):
             for excel_sheet_name in excel_file.sheet_names:
                 df = excel_file.parse(sheet_name=excel_sheet_name)
                 df.dropna(how="all", inplace=True)
+                # Pandas applies numeric dtype inference to every column, so cells that are
+                # stored as text (e.g. identifiers like "00123" or "1e3") get rewritten as
+                # numbers (123 / 1000.0). xlrd exposes the stored cell type, so restore the
+                # original text for XL_CELL_TEXT cells to keep extraction faithful.
+                stored_text_cells = self._xls_stored_text_cells(excel_file, excel_sheet_name)
 
-                for _, series_row in df.iterrows():
+                for row_idx, series_row in df.iterrows():
                     page_content = []
-                    for k, v in series_row.items():
-                        if pd.notna(v):
-                            # Escape embedded double quotes like the .xlsx branch
-                            # does, so quoted cell values do not corrupt the row.
-                            value = str(v).replace('"', '\\"')
-                            page_content.append(f'"{k}":"{value}"')
+                    for col_pos, (k, v) in enumerate(series_row.items()):
+                        # row_idx is typed Hashable but is an integer label here (plain int or numpy
+                        # integer); numpy integers hash/compare equal to int, so the lookup still matches.
+                        stored_text = stored_text_cells.get((cast(int, row_idx), col_pos))
+                        if stored_text is not None:
+                            value = stored_text
+                        elif pd.notna(v):
+                            value = str(v)
+                        else:
+                            continue
+                        # Escape embedded double quotes like the .xlsx branch
+                        # does, so quoted cell values do not corrupt the row.
+                        value = value.replace('"', '\\"')
+                        page_content.append(f'"{k}":"{value}"')
                     documents.append(
                         Document(page_content=";".join(page_content), metadata={"source": self._file_path})
                     )
@@ -154,6 +167,38 @@ class ExcelExtractor(BaseExtractor):
             raise ValueError(f"Unsupported file extension: {file_extension}")
 
         return documents
+
+    @staticmethod
+    def _xls_stored_text_cells(excel_file: pd.ExcelFile, sheet_name: str | int) -> dict[tuple[int, int], str]:
+        """Return {(data-row index, column position): stored text} for XL_CELL_TEXT cells.
+
+        Row 0 of the xlrd sheet is the pandas header row, so pandas data-row index ``i``
+        maps to xlrd row ``i + 1``. Returns an empty mapping when the underlying
+        workbook is unavailable (e.g. a mocked ExcelFile in tests).
+        """
+        overrides: dict[tuple[int, int], str] = {}
+        try:
+            book = excel_file.book
+        except AttributeError:
+            return overrides
+        if book is None:
+            return overrides
+        try:
+            import xlrd
+        except ImportError:
+            return overrides
+        try:
+            sheet = book.sheet_by_name(sheet_name)
+        except Exception:
+            logger.warning("Failed to read stored text cells from sheet %s", sheet_name, exc_info=True)
+            return overrides
+        for row in range(1, sheet.nrows):
+            for col in range(sheet.ncols):
+                if sheet.cell_type(row, col) == xlrd.XL_CELL_TEXT:
+                    value = sheet.cell_value(row, col)
+                    if isinstance(value, str) and value:
+                        overrides[(row - 1, col)] = value
+        return overrides
 
     def _extract_images_from_sheet(
         self, sheet_name: str, sheet, valid_columns: set[int], min_row: int
