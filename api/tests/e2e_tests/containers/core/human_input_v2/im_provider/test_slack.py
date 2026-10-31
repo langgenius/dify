@@ -16,7 +16,6 @@ from slack_sdk.signature import SignatureVerifier
 from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.web import WebClient
 
-from enums.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -42,6 +41,7 @@ from core.human_input_v2.im_integration.adapters import (
 from core.human_input_v2.im_integration.adapters import slack as slack_module
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, SelectInput, UserAction
+from enums.human_input import ButtonStyle
 
 _SLACK_DIRECTORY_REFERENCE_PAGE_SIZE = 1
 _MINIMUM_EXPECTED_SLACK_DIRECTORY_USERS = 2
