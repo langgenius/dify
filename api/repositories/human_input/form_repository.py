@@ -241,6 +241,12 @@ class HumanInputFormRepositoryImpl:
         delivery_id: str,
         config: InstantMessageDeliveryConfig,
     ) -> list[HumanInputFormRecipient]:
+        """Build unpersisted recipients for the owning form and delivery.
+
+        Callers supply valid owner identifiers and validated IM configuration.
+        Each returned row retains one channel or user target. Payload validation
+        errors propagate before the caller persists any of these rows.
+        """
         recipient_models: list[HumanInputFormRecipient] = []
         for recipient in config.recipients.items:
             match recipient:
