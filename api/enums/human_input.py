@@ -3,8 +3,6 @@
 import enum
 from enum import StrEnum
 
-from core.human_input import ButtonStyle
-
 
 class HumanInputFormStatus(enum.StrEnum):
     """Status of a human input form."""
@@ -28,6 +26,15 @@ class HumanInputFormKind(enum.StrEnum):
 
     RUNTIME = enum.auto()  # Form created during workflow execution.
     DELIVERY_TEST = enum.auto()  # Form created for delivery tests.
+
+
+class ButtonStyle(enum.StrEnum):
+    """Button styles for user actions."""
+
+    PRIMARY = enum.auto()
+    DEFAULT = enum.auto()
+    ACCENT = enum.auto()
+    GHOST = enum.auto()
 
 
 class TimeoutUnit(enum.StrEnum):
