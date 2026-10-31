@@ -20,7 +20,9 @@ from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
-from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerDispatchRepository
+from repositories.sqlalchemy_workflow_trigger_log_repository import (
+    SQLAlchemyWorkflowTriggerExecutionRepository,
+)
 from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
 from repositories.trigger.debug_repository import RedisTriggerDebugRepository
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
@@ -44,6 +46,8 @@ from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway, enqu
 from services.trigger.endpoint_service import TriggerEndpointService
 from services.trigger.event_gateway import PluginTriggerEventGateway
 from services.trigger.event_service import TriggerEventService
+from services.trigger.execution_gateway import WorkflowTriggerExecutionGateway
+from services.trigger.execution_service import TriggerExecutionService, TriggerExecutionStore
 from services.trigger.oauth_client_service import TriggerOAuthClientService
 from services.trigger.oauth_gateway import (
     OAuthProxyContextGateway,
@@ -128,6 +132,8 @@ class WorkspaceServices:
     trigger_debug: TriggerDebugService
     trigger_debug_events: TriggerDebugEventStore
     workflow_dispatch: AsyncWorkflowService
+    trigger_executions: TriggerExecutionService
+    trigger_execution_logs: TriggerExecutionStore
     webhooks: WebhookService
     webhook_files: WebhookFiles
     webhook_draft_bindings: WebhookBindingService
@@ -223,7 +229,10 @@ def build_workspace_services(
         plugins=PluginTriggerEventGateway(),
         requests=trigger_requests,
     )
-    execution_logs = SQLAlchemyWorkflowTriggerDispatchRepository(session_factory=database_client)
+    execution_logs = SQLAlchemyWorkflowTriggerExecutionRepository(session_factory=database_client)
+    execution_runtime = WorkflowTriggerExecutionGateway(
+        models=execution_logs, logs=execution_logs, session_factory=database_client
+    )
     queues = CeleryWorkflowQueuePublisher()
     workflow_dispatch = AsyncWorkflowService(
         workflows=workflow_queries, logs=execution_logs, queues=queues, reserve_quota=QuotaService.reserve
@@ -284,6 +293,8 @@ def build_workspace_services(
             now=lambda: datetime.now(UTC),
         ),
         workflow_dispatch=workflow_dispatch,
+        trigger_executions=TriggerExecutionService(logs=execution_logs, run=execution_runtime.run),
+        trigger_execution_logs=execution_logs,
         webhooks=WebhookService(
             webhooks=app_triggers,
             end_users=trigger_end_users,
