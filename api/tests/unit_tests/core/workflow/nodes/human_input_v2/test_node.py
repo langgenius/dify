@@ -147,10 +147,10 @@ def submit(form: Form) -> Form:
 def test_v1_event_filter_preserves_v2_completion_without_duplicate_events(
     form: Form, status: HumanInputFormStatus
 ) -> None:
-    from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
     from graphon.engine.filter import EngineEventFilterContext, filter_engine_events
     from graphon.graph import Graph
     from graphon.runtime import ReadOnlyRuntimeStateWrapper
+    from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
     from services.workflow.execution.adapters.human_input_events import HumanInputFormEventFilter
 
     form = submit(form) if status == HumanInputFormStatus.SUBMITTED else replace(form, status=status)
@@ -312,12 +312,14 @@ def test_actual_graph_queue_response_path_preserves_order_and_fields(
 
 @pytest.mark.parametrize("token", ["initiator-token", None])
 def test_dify_projection_serializes_the_runtime_token_without_a_graph_reason(form: Form, token: str | None) -> None:
-    from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
     from core.app.entities.task_entities import HumanInputRequiredPauseReasonPayload
+    from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 
     prepared = PreparedForm(form, SecretStr(token) if token else None)
     with patch(
-        "core.app.apps.common.workflow_response_converter.Session", side_effect=AssertionError("unexpected lookup")
+        "services.workflow.execution.adapters.response_converter.Session",
+        side_effect=AssertionError("unexpected lookup"),
+        create=True,
     ):
         data = WorkflowResponseConverter.human_input_v2_required_data(prepared, node_id="node-1")
     assert data.form_token == token
@@ -441,7 +443,7 @@ def test_filled_rendering_skips_missing_and_null_inputs_and_preserves_select_tex
 
 
 def test_waiting_projection_freezes_select_options_and_deduplicates_slots(form: Form) -> None:
-    from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
+    from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 
     option = SelectInput(output_variable_name="choice", options=("old-a", "old-b"), default_value="old-b")
     form = replace(form, resolved_form=form.resolved_form.model_copy(update={"parts": (option, option)}))
