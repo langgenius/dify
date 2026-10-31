@@ -1,7 +1,9 @@
+import logging
 from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager
-from typing import Any, override
+from dataclasses import asdict, dataclass
+from typing import Any, Literal, Self, override
 
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -13,7 +15,7 @@ from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
-from models.dataset import Dataset, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DocumentSegment
 from repositories.knowledge.dataset_read_repository import get_dataset_keyword_table
 from repositories.knowledge.keyword_table_repository import (
     keyword_file_key,
@@ -23,9 +25,60 @@ from repositories.knowledge.keyword_table_repository import (
     save_keyword_table,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class KeywordTableConfig(BaseModel):
     max_keywords_per_chunk: int = 10
+
+
+type KeywordSearchStatus = Literal["ok", "empty_valid", "partial", "broken_empty", "filter_indeterminate"]
+
+
+@dataclass(frozen=True, slots=True)
+class KeywordSearchDiagnostics:
+    """Counts for selected keyword IDs before downstream parent resolution.
+
+    With a document filter, absent rows may be filtered out or stale. Those
+    counts are unknown unless every selected ID was materialized.
+    """
+
+    keyword_hits: int
+    materialized: int
+    filtered_out: int | None
+    unresolved: int | None
+    filter_applied: bool
+    status: KeywordSearchStatus
+
+    @classmethod
+    def from_counts(cls, *, keyword_hits: int, materialized: int, filter_applied: bool) -> Self:
+        status: KeywordSearchStatus
+        if keyword_hits == 0:
+            status = "empty_valid"
+        elif materialized == keyword_hits:
+            status = "ok"
+        elif filter_applied:
+            status = "filter_indeterminate"
+        elif materialized:
+            status = "partial"
+        else:
+            status = "broken_empty"
+
+        unknown_filtered_cause = filter_applied and materialized < keyword_hits
+        return cls(
+            keyword_hits=keyword_hits,
+            materialized=materialized,
+            filtered_out=None if unknown_filtered_cause else 0,
+            unresolved=None if unknown_filtered_cause else keyword_hits - materialized,
+            filter_applied=filter_applied,
+            status=status,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class _KeywordSearchResult:
+    results: list[Document]
+    diagnostics: KeywordSearchDiagnostics
 
 
 class Jieba(BaseKeyword):
@@ -141,6 +194,31 @@ class Jieba(BaseKeyword):
 
     @override
     def search(self, query: str, *, session: Session, **kwargs: Any) -> list[Document]:
+        outcome = self._search_with_diagnostics(query, session=session, **kwargs)
+        diagnostics = outcome.diagnostics
+        if diagnostics.unresolved:
+            logger.warning(
+                "Keyword index consistency check failed for dataset %s: "
+                "%d of %d matched node IDs could not be materialized.",
+                self.dataset.id,
+                diagnostics.unresolved,
+                diagnostics.keyword_hits,
+                extra={"keyword_search_diagnostics": asdict(diagnostics)},
+            )
+        elif diagnostics.status == "filter_indeterminate":
+            document_ids_filter = kwargs["document_ids_filter"]
+            logger.debug(
+                "Keyword search for dataset %s materialized %d of %d matched node IDs with %d "
+                "document ID filters active; excluded and unresolved hits cannot be separated at this stage.",
+                self.dataset.id,
+                diagnostics.materialized,
+                diagnostics.keyword_hits,
+                len(document_ids_filter),
+                extra={"keyword_search_diagnostics": asdict(diagnostics)},
+            )
+        return outcome.results
+
+    def _search_with_diagnostics(self, query: str, *, session: Session, **kwargs: Any) -> _KeywordSearchResult:
         keyword_table = None
         keyword_table_dict = load_dataset_keyword_table(self.dataset, session=session, storage=storage)
         if keyword_table_dict:
@@ -150,18 +228,51 @@ class Jieba(BaseKeyword):
         k = kwargs.get("top_k", 4)
         document_ids_filter = kwargs.get("document_ids_filter")
         sorted_chunk_indices = self._retrieve_ids_by_query(keyword_table or {}, query, k)
+        if not sorted_chunk_indices:
+            return _KeywordSearchResult(
+                results=[],
+                diagnostics=KeywordSearchDiagnostics.from_counts(
+                    keyword_hits=0, materialized=0, filter_applied=bool(document_ids_filter)
+                ),
+            )
 
         documents = []
 
+        child_query_stmt = select(ChildChunk).where(
+            ChildChunk.tenant_id == self.dataset.tenant_id,
+            ChildChunk.dataset_id == self.dataset.id,
+            ChildChunk.index_node_id.in_(sorted_chunk_indices),
+        )
         segment_query_stmt = select(DocumentSegment).where(
-            DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id.in_(sorted_chunk_indices)
+            DocumentSegment.tenant_id == self.dataset.tenant_id,
+            DocumentSegment.dataset_id == self.dataset.id,
+            DocumentSegment.index_node_id.in_(sorted_chunk_indices),
         )
         if document_ids_filter:
+            child_query_stmt = child_query_stmt.where(ChildChunk.document_id.in_(document_ids_filter))
             segment_query_stmt = segment_query_stmt.where(DocumentSegment.document_id.in_(document_ids_filter))
 
+        child_chunks = session.scalars(child_query_stmt).all()
+        child_chunk_map = {child_chunk.index_node_id: child_chunk for child_chunk in child_chunks}
         segments = session.scalars(segment_query_stmt).all()
         segment_map = {segment.index_node_id: segment for segment in segments}
+
         for chunk_index in sorted_chunk_indices:
+            child_chunk = child_chunk_map.get(chunk_index)
+            if child_chunk:
+                documents.append(
+                    Document(
+                        page_content=child_chunk.content,
+                        metadata={
+                            "doc_id": chunk_index,
+                            "doc_hash": child_chunk.index_node_hash,
+                            "document_id": child_chunk.document_id,
+                            "dataset_id": child_chunk.dataset_id,
+                        },
+                    )
+                )
+                continue
+
             segment = segment_map.get(chunk_index)
 
             if segment:
@@ -177,7 +288,14 @@ class Jieba(BaseKeyword):
                     )
                 )
 
-        return documents
+        return _KeywordSearchResult(
+            results=documents,
+            diagnostics=KeywordSearchDiagnostics.from_counts(
+                keyword_hits=len(sorted_chunk_indices),
+                materialized=len(documents),
+                filter_applied=bool(document_ids_filter),
+            ),
+        )
 
     @override
     def delete(self, *, session: Session):
