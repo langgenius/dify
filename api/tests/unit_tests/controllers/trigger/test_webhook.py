@@ -1,14 +1,21 @@
 from dataclasses import dataclass
-from unittest.mock import patch
+from io import BytesIO
+from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 
 import controllers.trigger.webhook as module
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from factories import file_factory
+from models.enums import DEFAULT_END_USER_SESSION_ID, EndUserType
+from models.model import EndUser
 from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
-from tests.helpers.unit.model_factories import make_workflow
+from tests.helpers.unit.model_factories import make_end_user, make_workflow
 
 
 class _RequestStub:
@@ -25,6 +32,22 @@ class _AppScopedEndUserServicesStub:
 class _ApplicationServicesStub:
     def __init__(self, commands: object) -> None:
         self.app_scoped_end_users = _AppScopedEndUserServicesStub(commands)
+
+
+class _EndUserCommandsStub:
+    def __init__(self, end_user: EndUser) -> None:
+        self._end_user = end_user
+        self.calls: list[tuple[EndUserType, str, str, str | None]] = []
+
+    def get_or_create_end_user_by_type(
+        self,
+        type: EndUserType,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None = None,
+    ) -> EndUser:
+        self.calls.append((type, tenant_id, app_id, user_id))
+        return self._end_user
 
 
 @pytest.fixture(autouse=True)
@@ -82,6 +105,55 @@ class TestPrepareWebhookExecution:
 
         assert error == "bad"
         assert webhook_data["method"] == "POST"
+
+    @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow")
+    def test_prepare_stores_uploads_for_the_trigger_end_user_run(
+        self, mock_get: MagicMock, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        node_config = {
+            "data": {
+                "method": "post",
+                "content_type": "multipart/form-data",
+                "body": [{"name": "chat_history_file", "type": "file", "required": True}],
+            }
+        }
+        mock_get.return_value = (_webhook_trigger(), _workflow(), node_config)
+        trigger_end_user = make_end_user(
+            end_user_id="trigger-end-user-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            end_user_type=EndUserType.TRIGGER,
+            session_id=DEFAULT_END_USER_SESSION_ID,
+        )
+        end_users = _EndUserCommandsStub(trigger_end_user)
+        monkeypatch.setattr(module, "application_services", lambda: _ApplicationServicesStub(end_users))
+        monkeypatch.setattr("core.tools.tool_file_manager.storage.save", lambda *_args: None)
+
+        with app.test_request_context(
+            "/triggers/webhook/wh-1",
+            method="POST",
+            data={"chat_history_file": (BytesIO(b"# chat"), "chat.md", "text/markdown")},
+            content_type="multipart/form-data",
+        ):
+            _, _, _, webhook_data, error = module._prepare_webhook_execution("wh-1")
+
+        assert error is None
+        tool_file_id = webhook_data["files"]["chat_history_file"]["related_id"]
+        # The async run executes as the trigger end user, whose scope only loads tool files it owns.
+        run_scope = FileAccessScope(
+            tenant_id="tenant-1",
+            user_id=trigger_end_user.id,
+            user_from=UserFrom.END_USER,
+            invoke_from=InvokeFrom.SERVICE_API,
+        )
+        with bind_file_access_scope(run_scope):
+            file = file_factory.build_from_mapping(
+                mapping={"transfer_method": "tool_file", "tool_file_id": tool_file_id},
+                tenant_id="tenant-1",
+                access_controller=DatabaseFileAccessController(),
+            )
+        assert file.related_id == tool_file_id
+        assert end_users.calls == [(EndUserType.TRIGGER, "tenant-1", "app-1", None)]
 
 
 class TestHandleWebhook:
