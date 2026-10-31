@@ -1453,6 +1453,7 @@ describe('useChatWithHistory', () => {
   describe('handleNewConversation with inputsForms', () => {
     it('should reset new conversation inputs to form defaults', async () => {
       // Arrange
+      setConversationIdInfo('app-1', '')
       initialAppState.appParams = createChatConfig({
         user_input_form: [
           {
@@ -1487,6 +1488,7 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(result.current.newConversationInputs.my_var).toBe('default_val')
       })
+      expect(result.current.currentConversationId).toBe('')
     })
   })
 

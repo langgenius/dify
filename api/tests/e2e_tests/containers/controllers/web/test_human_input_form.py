@@ -10,7 +10,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from enums.human_input import (
@@ -97,6 +97,7 @@ def _build_resumption_context(*, app: App, workflow_run: WorkflowRun, options: l
         workflow_id=workflow_run.workflow_id,
     )
     generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task-1",
         app_config=app_config,
         inputs={},

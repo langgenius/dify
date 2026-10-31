@@ -3,9 +3,11 @@
 from collections.abc import Sequence
 from typing import override
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
+from libs.datetime_utils import naive_utc_now
 from models.credential_permission import CredentialPermission, CredentialType
 from models.enums import PermissionEnum
 from models.oauth import DatasourceProvider
@@ -20,6 +22,7 @@ from services.credentials.query import (
     ToolCredentialRecord,
     TriggerSubscriptionRecord,
 )
+from services.credentials.tool_runtime import ToolRuntimeCredential
 
 
 def apply_credential_visibility_filter_for_actor(
@@ -65,6 +68,55 @@ class CredentialQueryRepository(CredentialQuery):
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def get_tool_credential(
+        self, *, workspace_id: str, providers: tuple[str, ...], credential_id: str | None
+    ) -> ToolRuntimeCredential | None:
+        statement = select(BuiltinToolProvider).where(
+            BuiltinToolProvider.tenant_id == workspace_id,
+            BuiltinToolProvider.provider.in_(providers),
+        )
+        if credential_id is not None:
+            statement = statement.where(BuiltinToolProvider.id == credential_id)
+        with self._session_factory() as session:
+            record = session.scalar(
+                statement.order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc()).limit(1)
+            )
+            if record is None:
+                return None
+            return ToolRuntimeCredential(
+                id=record.id,
+                workspace_id=workspace_id,
+                owner_id=record.user_id,
+                provider=record.provider,
+                credential_type=record.credential_type.value,
+                encrypted_credentials=record.encrypted_credentials,
+                expires_at=record.expires_at,
+            )
+
+    def update_tool_credential_if_unchanged(
+        self, *, record: ToolRuntimeCredential, encrypted_credentials: str, expires_at: int
+    ) -> bool:
+        with self._session_factory.begin() as session:
+            result = session.execute(
+                update(BuiltinToolProvider)
+                .where(
+                    BuiltinToolProvider.id == record.id,
+                    BuiltinToolProvider.tenant_id == record.workspace_id,
+                    BuiltinToolProvider.provider == record.provider,
+                    BuiltinToolProvider.user_id == record.owner_id,
+                    BuiltinToolProvider.credential_type == record.credential_type,
+                    BuiltinToolProvider.encrypted_credentials == record.encrypted_credentials,
+                    BuiltinToolProvider.expires_at == record.expires_at,
+                )
+                .values(
+                    encrypted_credentials=encrypted_credentials,
+                    expires_at=expires_at,
+                    updated_at=naive_utc_now(),
+                )
+            )
+            assert isinstance(result, CursorResult)
+            return result.rowcount == 1
 
     @override
     def list_models(self, *, workspace_id: str, provider: str, actor_id: str | None) -> Sequence[ModelCredentialRecord]:

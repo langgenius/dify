@@ -16,6 +16,8 @@
   "settings.membersRequired": "Ən azı bir komanda üzvü seçin.",
   "settings.nameRequired": "Agent bilik bazasının adı tələb olunur.",
   "settings.pageDescription": "Əsas məlumatı, API girişini və məlumat axtarışını idarə edin.",
+  "settings.reasoningChangeConfirm": "Dəyişikliyi təsdiqlə",
+  "settings.reasoningChangeWarning": "Sistem düşünmə modelinin dəyişdirilməsi indekslənmiş sənədlərin yenidən emal edilməsinə və onların axtarış indekslərinin yenilənməsinə səbəb olacaq. Bu, vaxt aparır və modeldən istifadəyə görə əlavə xərclərə səbəb olur.",
   "settings.reloadLatest": "Ən son parametrləri yenidən yüklə",
   "settings.rerankModelRequired": "Rerank modeli seçin.",
   "settings.retrievalDepth": "Axtarış dərinliyi",

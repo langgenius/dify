@@ -114,8 +114,35 @@ describe('AddKnowledgeSpace', () => {
     expect(product).toHaveAttribute('aria-checked', 'true')
   })
 
+  it.each(['all_team_members', 'partial_members'])(
+    'allows selecting a %s space with read and query permissions',
+    async (visibility) => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      listSpaces.mockResolvedValue(
+        page([
+          space('shared-space', 'Shared docs', {
+            visibility,
+            permission_keys: ['knowledge_space_read', 'knowledge_space_query'],
+          }),
+        ]),
+      )
+      render(<AddKnowledgeSpace selectedSpaces={[]} onChange={onChange} />)
+
+      const dialog = await openSelector(user)
+      const shared = await within(dialog).findByRole('checkbox', { name: 'Shared docs' })
+      expect(shared).not.toHaveAttribute('aria-disabled', 'true')
+      await user.click(shared)
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.add' }))
+      expect(onChange).toHaveBeenCalledWith([
+        expect.objectContaining({ control_space_id: 'shared-space', name: 'Shared docs' }),
+      ])
+    },
+  )
+
   it.each([
-    ['without access configuration', { permission_keys: BINDING_PERMISSIONS.slice(0, 2) }],
+    ['without read permission', { permission_keys: ['knowledge_space_query'] }],
+    ['without query permission', { permission_keys: ['knowledge_space_read'] }],
     ['when inactive', { state: 'deleting' }],
   ])('does not offer a space %s that publishing would reject', async (_, overrides) => {
     const user = userEvent.setup()
