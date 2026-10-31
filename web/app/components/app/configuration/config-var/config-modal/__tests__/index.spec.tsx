@@ -18,6 +18,7 @@ import ConfigModal from '../index'
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useParams: () => ({ appId: 'app-1' }),
+  usePathname: () => '/app/app-1/configuration',
 }))
 
 vi.mock('@monaco-editor/react', async () => ({

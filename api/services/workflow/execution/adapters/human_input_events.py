@@ -33,11 +33,12 @@ class HumanInputPauseReasonResolutionError(LookupError):
 
 
 class HumanInputFormEventFilter:
-    """Adapt HITL callback results into Dify's form lifecycle event stream."""
+    """Adapt V1 callback results; V2 nodes emit their own form lifecycle events."""
 
     def __init__(self, *, form_repository: HumanInputFormReader) -> None:
         self._form_repository = form_repository
         self._node_titles: dict[str, str] = {}
+        self._v1_node_ids: set[str] = set()
         self._app_id: str | None = None
 
     @property
@@ -46,13 +47,21 @@ class HumanInputFormEventFilter:
 
     def initialize(self, context: EngineEventFilterContext) -> None:
         self._node_titles.clear()
+        # Graphon completion events can retain the default version. Route by
+        # the concrete node in the graph instead of the event's version field.
+        self._v1_node_ids = {
+            node.id
+            for node in (context.graph.root_node, *context.graph.nodes.values())
+            if node.node_type == BuiltinNodeTypes.HUMAN_INPUT and node.version() == "1"
+        }
         self._app_id = get_system_text(context.runtime_state.variable_pool, SystemVariableKey.APP_ID)
 
     def on_event(self, event: EngineEvent) -> Iterable[EngineEvent]:
-        if isinstance(event, NodeRunStartedEvent) and event.node_type == BuiltinNodeTypes.HUMAN_INPUT:
-            self._node_titles[event.id] = event.node_title
-        elif isinstance(event, NodeRunSucceededEvent) and event.node_type == BuiltinNodeTypes.HUMAN_INPUT:
-            yield self._completion_event(event)
+        if isinstance(event, NodeRunStartedEvent | NodeRunSucceededEvent) and event.node_id in self._v1_node_ids:
+            if isinstance(event, NodeRunStartedEvent):
+                self._node_titles[event.id] = event.node_title
+            else:
+                yield self._completion_event(event)
 
         yield event
 
@@ -126,7 +135,9 @@ def _enrich_hitl_required(
     form_repository: HumanInputFormReader,
     variable_pool: ReadOnlyVariablePool | None,
 ) -> HumanInputRequired:
-    form_id = default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
+    node_version, form_id = default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
+    if node_version != "1":
+        raise ValueError("Expected a Human Input v1 session")
     record = form_repository.get_by_form_id(form_id)
     if record is None:
         raise HumanInputPauseReasonResolutionError(

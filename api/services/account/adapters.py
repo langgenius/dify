@@ -3,10 +3,11 @@
 import logging
 import secrets
 import uuid
-from collections.abc import Sequence
-from datetime import UTC, datetime, timedelta
+from collections.abc import Generator, Sequence
+from contextlib import contextmanager
+from datetime import timedelta
 from hashlib import sha256
-from typing import override
+from typing import assert_never, override
 
 from pydantic import TypeAdapter, ValidationError
 from redis import RedisError
@@ -40,7 +41,13 @@ from services.account_change_email_ports import (
 )
 from services.account_deletion_feedback_service import AccountDeletionFeedbackGateway
 from services.account_education_service import AccountEducationGateway
-from services.account_errors import AccountDeletionRateLimitError
+from services.account_errors import (
+    AccountApplicationError,
+    AccountDeletionRateLimitError,
+    EducationActivationFailedError,
+    EducationRequestInProgressError,
+    EducationVerificationFailedError,
+)
 from services.account_ports import (
     AccountDeletionScheduler,
     AccountDeletionSyncGateway,
@@ -48,6 +55,7 @@ from services.account_ports import (
     AccountDeletionVerificationNotifier,
 )
 from services.account_security_gateway import RedisAccountEmailSecurityGateway
+from services.billing_client import billing
 from services.billing_service import BillingService
 from services.enterprise.account_deletion_sync import sync_account_deletion_memberships
 from services.enterprise.enterprise_service import try_join_default_workspace
@@ -62,6 +70,8 @@ from services.entities.account_entities import (
     AccountDeletionChallenge,
     AccountEducationActivation,
     AccountEducationAutocomplete,
+    AccountEducationEligible,
+    AccountEducationNotEligible,
     AccountEducationStatus,
     AccountEducationVerification,
 )
@@ -72,6 +82,7 @@ from services.entities.auth_entities import (
     ChangeEmailOldEmailVerifiedToken,
     ChangeEmailTokenData,
 )
+from services.errors.billing import UnknownErrorReason
 from services.telemetry_service import CommunityTelemetryService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
@@ -265,11 +276,116 @@ class RBACWorkspaceMemberAccessSync(WorkspaceMemberAccessSync):
         )
 
 
+def _education_error(error: billing.UpstreamError) -> AccountApplicationError | None:
+    """The account error for a billing failure, or None to leave it to the generic billing errors."""
+    match error.reason:
+        case "EDUCATION_VERIFY_FAILED":
+            return EducationVerificationFailedError()
+        case "EDUCATION_CREATE_FAILED":
+            return EducationActivationFailedError()
+        case "REQUEST_IN_PROGRESS":
+            return EducationRequestInProgressError()
+        case (
+            ""
+            | "CODEC"
+            | "VALIDATOR"
+            | "UNKNOWN"
+            | "INVALID_SECRET_KEY"
+            | "MISSING_TENANT_ID"
+            | "INVALID_TENANT_ID"
+            | "MISSING_ACCOUNT_ID"
+            | "INVALID_ACCOUNT_ID"
+            | "MISSING_PREFILLED_EMAIL"
+            | "INVALID_PAYMENT_LINK_REQUEST"
+            | "MISSING_PLAN"
+            | "MISSING_INTERVAL"
+            | "INVALID_PLAN_INTERVAL"
+            | "CREATE_SUBSCRIPTION_PAYMENT_LINK_FAILED"
+            | "INVALID_KNOWLEDGE_RATE_LIMIT_REQUEST"
+            | "TENANT_IDS_COUNT_TOO_LARGE"
+            | "DOCUMENT_USAGE_UNAVAILABLE"
+            | "EDUCATION_STATUS_FAILED"
+            | "INVALID_INVOICE_REQUEST"
+            | "CREATE_INVOICE_PORTAL_FAILED"
+            | "INVALID_COMPLIANCE_DOWNLOAD_REQUEST"
+            | "MISSING_DOC_NAME"
+            | "MISSING_IP_ADDRESS"
+            | "MISSING_DEVICE_INFO"
+            | "COMPLIANCE_DOCUMENT_NOT_FOUND"
+            | "COMPLIANCE_DOWNLOAD_FORBIDDEN"
+            | "COMPLIANCE_DOWNLOAD_FAILED"
+            | "INVALID_MODEL_PROVIDER_PAYMENT_LINK_REQUEST"
+            | "MISSING_PROVIDER_NAME"
+            | "INVALID_MODEL_PROVIDER"
+            | "CREATE_MODEL_PROVIDER_PAYMENT_LINK_FAILED"
+            | "BILLING_COUPON_AMOUNT_OFF_INVALID"
+            | "BILLING_COUPON_CURRENCY_INVALID"
+            | "BILLING_COUPON_DISCOUNT_TYPE_INVALID"
+            | "BILLING_COUPON_DURATION_MISMATCH"
+            | "BILLING_COUPON_DURATION_MONTHS_INVALID"
+            | "BILLING_COUPON_DURATION_MONTHS_MISMATCH"
+            | "BILLING_COUPON_DURATION_UNSUPPORTED"
+            | "BILLING_COUPON_EXPIRES_AFTER_COUPON"
+            | "BILLING_COUPON_EXPIRES_AT_INVALID"
+            | "BILLING_COUPON_ID_EMPTY"
+            | "BILLING_COUPON_NOT_FOUND"
+            | "BILLING_COUPON_PERCENT_OFF_INVALID"
+            | "BILLING_COUPON_PRODUCT_NOT_FOUND"
+            | "BILLING_COUPON_PRODUCT_PRICE_NOT_CONFIGURED"
+            | "BILLING_COUPON_PRODUCT_SCOPE_INVALID"
+            | "BILLING_COUPON_PRODUCT_SCOPE_MISMATCH"
+            | "BILLING_COUPON_PRODUCT_SERVICE_NOT_CONFIGURED"
+            | "BILLING_COUPON_PROMOTION_CODE_INVALID"
+            | "BILLING_COUPON_QUANTITY_INVALID"
+            | "BILLING_COUPON_QUANTITY_TOO_LARGE"
+            | "BILLING_COUPON_STRIPE_NOT_CONFIGURED"
+            | "BILLING_COUPON_TASK_ID_REQUIRED"
+            | "BILLING_COUPON_TASK_NOT_CONFIGURED"
+            | "BILLING_COUPON_TASK_NOT_FOUND"
+            | "BILLING_COUPON_TASK_PUBLISHER_NOT_CONFIGURED"
+            | "BILLING_COUPON_TASK_REPO_NOT_CONFIGURED"
+            | "BILLING_COUPON_TICKET_ID_REQUIRED"
+            | "BILLING_COUPON_USAGE_REPO_NOT_CONFIGURED"
+            | "BILLING_REFUND_AMOUNT_INVALID"
+            | "BILLING_REFUND_INVOICE_MISMATCH"
+            | "BILLING_REFUND_INVOICE_NOT_FOUND"
+            | "BILLING_REFUND_MODE_INVALID"
+            | "BILLING_REFUND_NOT_REFUNDABLE"
+            | "BILLING_REFUND_PAYMENT_NOT_FOUND"
+            | "BILLING_REFUND_STRIPE_STATUS_NOT_FOUND"
+            | "BILLING_REFUND_SUBSCRIPTION_NOT_FOUND"
+            | "BILLING_REFUND_TICKET_ID_REQUIRED"
+        ):
+            return None
+        case UnknownErrorReason() | None:
+            return None
+        case unreachable:
+            assert_never(unreachable)
+
+
+@contextmanager
+def _education_errors() -> Generator[None]:
+    try:
+        yield
+    except billing.UpstreamError as error:
+        mapped = _education_error(error)
+        if mapped is None:
+            raise
+        raise mapped from error
+
+
 class BillingAccountEducationGateway(AccountEducationGateway):
     @override
     def verify(self, *, account_id: str) -> AccountEducationVerification:
-        result = BillingService.EducationIdentity.verify(account_id=account_id) or {}
-        return AccountEducationVerification(token=result.get("token"))
+        with _education_errors():
+            result = BillingService.EducationIdentity.verify(account_id=account_id)
+        match result.status:
+            case "eligible":
+                return AccountEducationEligible(token=result.token)
+            case "not_eligible":
+                return AccountEducationNotEligible()
+            case _:
+                assert_never(result.status)
 
     @override
     def activate(
@@ -281,33 +397,35 @@ class BillingAccountEducationGateway(AccountEducationGateway):
         institution: str,
         role: str,
     ) -> AccountEducationActivation:
-        result = BillingService.EducationIdentity.activate(
-            account_id=account_id,
-            tenant_id=tenant_id,
-            token=token,
-            institution=institution,
-            role=role,
-        )
-        return AccountEducationActivation(message=result["message"])
+        with _education_errors():
+            result = BillingService.EducationIdentity.activate(
+                account_id=account_id,
+                tenant_id=tenant_id,
+                token=token,
+                institution=institution,
+                role=role,
+            )
+        return AccountEducationActivation(message=result.message)
 
     @override
     def status(self, account_id: str) -> AccountEducationStatus:
-        result = BillingService.EducationIdentity.status(account_id) or {}
-        expire_at = result.get("expire_at")
+        with _education_errors():
+            result = BillingService.EducationIdentity.status(account_id)
         return AccountEducationStatus(
-            result=result.get("result"),
-            is_student=result.get("is_student"),
-            expire_at=datetime.fromisoformat(expire_at).astimezone(UTC) if isinstance(expire_at, str) else expire_at,
-            allow_refresh=result.get("allow_refresh"),
+            result=result.result,
+            is_student=result.is_student,
+            expire_at=result.expire_at,
+            allow_refresh=result.allow_refresh,
         )
 
     @override
     def autocomplete(self, *, keywords: str, page: int, limit: int) -> AccountEducationAutocomplete:
-        result = BillingService.EducationIdentity.autocomplete(keywords, page, limit) or {}
+        with _education_errors():
+            result = BillingService.EducationIdentity.autocomplete(keywords, page, limit)
         return AccountEducationAutocomplete(
-            data=tuple(result.get("data") or ()),
-            curr_page=result.get("curr_page"),
-            has_next=result.get("has_next"),
+            data=tuple(result.data or ()),
+            curr_page=result.curr_page,
+            has_next=result.has_next,
         )
 
 

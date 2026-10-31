@@ -37,6 +37,7 @@ from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
+from services.app.file_input_defaults import grant_file_default_access
 from services.app.generation.input_adapter import AppInputAdapter
 from services.app.generation.ports import (
     ConversationSnapshot,
@@ -511,6 +512,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
             user=user,
             invoke_from=invoke_from,
         ):
+            grant_file_default_access(application_generate_entity.app_config.variables)
             is_first_conversation = conversation is None
 
             if conversation is None or message is None:

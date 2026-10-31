@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import mimetypes
 import secrets
 from collections.abc import Callable, Mapping, Sequence
@@ -620,6 +621,11 @@ class WebhookService:
             case SegmentType.NUMBER:
                 if not cls._can_convert_to_number(value):
                     raise ValueError(f"Cannot convert '{value}' to number")
+                try:
+                    # float() rounds integers above 2**53, so parse integers exactly first.
+                    return int(value)
+                except ValueError:
+                    pass
                 numeric_value = float(value)
                 return int(numeric_value) if numeric_value.is_integer() else numeric_value
             case SegmentType.BOOLEAN:
@@ -775,10 +781,9 @@ class WebhookService:
 
     @classmethod
     def _can_convert_to_number(cls, value: str) -> bool:
-        """Check if a string can be converted to a number."""
+        """Check if a string can be converted to a finite number."""
         try:
-            float(value)
-            return True
+            return math.isfinite(float(value))
         except ValueError:
             return False
 

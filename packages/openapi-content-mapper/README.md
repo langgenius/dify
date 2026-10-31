@@ -196,7 +196,9 @@ model dependencies preloaded. Changing a preloaded dependency, adding/removing a
 Python file, changing `.env`, or changing the environment invalidates that state.
 Python bytecode caches are bypassed to handle rapid same-size edits. Export errors
 are surfaced rather than serving the old contract. Refreshes interrupted by more
-source edits are retried. Backend tests are excluded from Console source inputs.
+source edits are retried. Console and Community type descriptors track Python
+sources in `api/` and the editable `dify-agent/src/` dependency, together with their
+package configuration. Backend tests are excluded from Console source inputs.
 Native threads are checked before forking; unsafe snapshots and platforms without
 fork use a fresh-process export instead. Those refreshes still incur cold startup.
 
@@ -236,7 +238,7 @@ live API schemas and retained Enterprise snapshots are unchanged.
 
 ## API and transport
 
-Documents export only `api` and `query`; operation IDs are not exports. `/pets/{petId}` becomes `pets.byPetId`, hyphenated segments become camelCase and HTTP methods are leaf functions. Colon actions such as `/chat:run` become `chat.run`. `key` is reserved as a route segment for query helpers. Unresolvable member collisions fail during compilation.
+Documents export `api` and `query` at runtime, plus the type-only `Schemas`, `Inputs` and `Outputs` maps; operation IDs are not exports. `/pets/{petId}` becomes `pets.byPetId`, hyphenated segments become camelCase and HTTP methods are leaf functions. Colon actions such as `/chat:run` become `chat.run`. `key` is reserved as a route segment for query helpers. Unresolvable member collisions fail during compilation.
 
 An operation may set `x-client-path` to an explicit array such as `["enterprise", "access", "getEnvironmentApi"]` to preserve an existing public API. This replaces its entire client member path, including the method leaf, and also determines its query key. HTTP methods, URLs and per-operation sidecar keys still use the OpenAPI operation. Colliding or reserved member names fail during compilation.
 
@@ -265,6 +267,174 @@ Successful calls return decoded response data. Non-2xx responses throw `ApiError
 Wildcard response media follow the most specific matching declaration for the response status: `*/*` and `application/*` return Blob, while `text/*` returns text. An explicit `application/json` or `text/event-stream` declaration takes precedence over a wildcard. HTTP errors are decoded from their actual Content-Type.
 
 With one request media type, `contentType` can be omitted. With multiple media types, only `application/json` is implicit; other alternatives require an explicit matching `contentType`. Multipart accepts flat objects with scalar, Blob/File or repeated array fields, plus explicit JSON part encodings. Fetch supplies its boundary. Optional request bodies may be omitted entirely.
+
+### Reuse model, input and output types
+
+See [Petstore type examples] for reusable aliases and
+a legacy request envelope, and [the runnable demo]
+for typed HTTP calls. Run `pnpm --filter @dify/openapi-content-mapper type-check`
+to check the examples, or `pnpm --filter @dify/openapi-content-mapper demo`
+to execute them against a local server started by the demo.
+
+Import types from the same document as the API. This works for YAML, JSON `.openapi`
+files and `.openapi-source` command sources, without generating files:
+
+```ts
+import type { Schemas, Inputs, Outputs } from './pets.openapi.yaml'
+
+type Pet = Schemas['Pet']
+type CreatePetBody = Inputs['pets']['post']['body']
+type GetPetInput = Inputs['pets']['byPetId']['get']
+type PetList = Outputs['pets']['get']
+type ListQuery = NonNullable<Inputs['pets']['get']>['query']
+```
+
+`Schemas` contains every `components.schemas` entry under its original name,
+including unused and recursive models. Names containing `/` or `~` are accessed
+with their original spelling. It describes JSON values: binary-formatted strings
+remain `string`. For a multipart body, use `Inputs` to get the appropriate
+`Blob`/`File`-compatible fields. Documents without component schemas export an
+empty `Schemas` map.
+
+`Inputs` and `Outputs` follow the `api` member paths, including `x-client-path`
+overrides. Each input is the operation's first argument, equivalent to
+`Parameters<typeof api.pets.get>[0]`; optional inputs include `undefined`. It does
+not include the second argument's transport options or context. Each output is
+the awaited successful result, equivalent to `Awaited<ReturnType<...>>`, including
+`void` for empty responses, `Blob` for binary responses and streams for SSE.
+Inline schemas and media-type discrimination are preserved. All three exports
+are erased from JavaScript; use `import type` or `export type` to consume them.
+
+### Dify contract type subpaths
+
+Inside the Dify repository, import compatible contract types directly from this
+package's subpaths. Existing type names and structures are preserved; only the
+module specifier changes:
+
+```ts
+import type {
+  DatasetCreatePayload,
+  PostDatasetsData,
+  PostDatasetsResponses,
+  PostDatasetsResponse,
+  PostDatasetsErrors,
+  PostDatasetsError,
+} from '@dify/openapi-content-mapper/console/datasets'
+
+const body: DatasetCreatePayload = { name: 'Documentation' }
+const request: PostDatasetsData = { url: '/datasets', body }
+type Created = PostDatasetsResponses[201]
+type Conflict = PostDatasetsErrors[409]
+```
+
+Available subpaths are `/console/*`, `/service`, `/web`, `/openapi`, `/enterprise`
+and `/enterprise-app-deploy`. They provide models, `ClientOptions`, legacy `*Data`
+request envelopes, status-indexed `*Responses` / `*Errors`, and the singular
+response/error unions. Same-named types stay isolated in their modules. The
+original `@dify/contracts` exports remain unchanged; no `customConditions` or
+conditional overrides of those paths are needed.
+
+These subpaths are **type-only**. For runtime enum objects, continue to import the
+original contracts module, while the mapper subpath can supply the type:
+
+```ts
+import type { AccessMode } from '@dify/openapi-content-mapper/enterprise'
+import { AccessMode as AccessModes } from '@dify/contracts/enterprise/types.gen'
+
+const mode: AccessMode = AccessModes.ACCESS_MODE_PRIVATE
+```
+
+Enable `.openapi-types` in the consuming project's mapper settings. The mapper
+automatically registers the contract sources shipped in its workspace package:
+
+```json
+{
+  "contentMappers": [
+    {
+      "package": "@dify/openapi-content-mapper",
+      "extensions": [".openapi", ".openapi-source", ".openapi-types"]
+    }
+  ]
+}
+```
+
+No `options.sources` or `paths` entries are needed for these package subpaths.
+Registration watches descriptors and backend inputs without running exporters;
+exporters run when their modules are imported. Modules sharing inputs reuse one
+filesystem scan per registration. Custom `.openapi-source` and `.openapi-types`
+files outside the package's `contracts/` directory still require `options.sources`,
+with paths relative to the consuming tsconfig. Explicit sources are combined with
+the automatic sources. Run TypeScript 7.1 with `--runExternalCode`, and enable
+content mappers in the editor. The [repository compatibility example]
+and its tsconfig already use these subpaths:
+
+```sh
+pnpm --filter @dify/openapi-content-mapper type-check:contracts
+```
+
+The compatibility exporter reuses the same Community document normalization,
+Console module splitting and Hey API TypeScript plugin as regular generation.
+It exports current Python schemas into memory and runs Hey API with disk output
+and cleanup disabled. Request `path`/`url`, status maps, writable variants,
+recursive models, binary types and enum naming therefore follow the existing
+contracts rules, rather than the mapper RPC `Inputs`/`Outputs` rules. Backend
+contract changes still change the inferred types.
+
+Type hovers include **Open backend implementation** links for registered Community
+Python models and API request/response/error envelopes. With the local
+[VS Code extension], F12 / Cmd+click and Go to
+Implementation follow these links, including through import aliases and re-exports.
+In the example, `DatasetCreatePayload` opens its Python class and `PostDatasetsData`
+opens `DatasetListApi.post`. Synthetic models and snapshots without source metadata
+have no backend target; the exporter does not guess by type name.
+
+Enterprise and App Deploy use the retained OpenAPI snapshots. These snapshots omit
+some non-Console models; missing exports are re-exported from the existing complete
+contracts modules. Those retained types update with regular Enterprise generation,
+rather than with unavailable private backend sources.
+
+The three contracts generation commands also regenerate the mapper's thin subpath
+selectors and `.d.ts` entry points. To refresh them alone after adding modules, run
+`pnpm --filter @dify/contracts gen-compatibility-sources`. Each selector contains
+only an `extends` path and module argument; exporter commands and watched inputs
+live in two shared source configurations. Each declaration entry contains only an
+`export type *` pointing to its selector; model declarations remain virtual and new
+names are discovered automatically. No additional OpenAPI snapshots are written.
+
+Package exports resolve through these standard `.d.ts` entries so TypeScript 7's
+language service does not report a missing-declaration hint for the custom source
+extension. Consumers need no `compilerOptions.paths` overrides or ambient module
+declarations; they only enable the mapper and extension as shown above.
+
+Dify-specific subpaths require the repository's Python and JavaScript development
+dependencies, but no running API or database. They are workspace integrations and
+are excluded from the standalone npm SDK's published exports and files. The
+standalone package continues to support generic OpenAPI imports. Production
+consumers of `@dify/contracts` are unaffected.
+
+#### Type-only command sources
+
+`.openapi-types` uses the same descriptor shape, watched-input validation and
+cache invalidation as `.openapi-source`. Its exporter writes JSON of the form
+`{"typescript":"export type Example = { id: string };"}` to stdout. The mapper
+uses this TypeScript module as virtual compiler input. Exporter logs belong on
+stderr, and empty or malformed results are diagnostics, not cached successes.
+These files are for type resolution, not runtime imports. Dify subpaths expose
+only a `types` target; runtime imports continue to use the original contracts. Ordinary OpenAPI imports still export `Schemas`,
+`Inputs`, `Outputs`, `api` and `query` as described above.
+
+Descriptors can share a configuration with `extends`. `extends` and `cwd` paths
+are resolved from the descriptor that defines them; input patterns are relative
+to the effective `cwd`. Other fields replace inherited values, and `args` is
+appended to the effective command. Every inherited descriptor
+is watched and included in cache invalidation. For example:
+
+```json
+{
+  "extends": "../community.source.json",
+  "args": ["api/console/datasets"]
+}
+```
 
 ### Document configuration
 
@@ -438,6 +608,16 @@ No running API, database or private source checkout is needed. CI installs the
 Python environment before the standalone Console checks. `compose:console` now
 prints the composed OpenAPI JSON to stdout instead of creating a file.
 
+Open [the real Dify type examples] to inspect dataset
+models, list/create inputs and outputs, multipart file uploads, and compatibility
+aliases retaining existing contracts names and request envelopes. The example
+imports `Schemas`, `Inputs` and `Outputs` from the live Console source descriptor;
+its sample values do not send requests. Check all repository examples with:
+
+```sh
+pnpm --filter @dify/openapi-content-mapper exec tsc --runExternalCode --noEmit -p examples/repository/tsconfig.json
+```
+
 The package uses `vp pack` and builds through `prepare` during workspace installation,
 like `@langgenius/dev-proxy`. Web's `prebuild` and `prebuild:vinext` hooks also build
 the SDK so production builds work after an installation with `--ignore-scripts`,
@@ -486,4 +666,8 @@ This package retains the repository's modified Apache 2.0 terms, including its a
 [CHANGELOG]: CHANGELOG.md
 [Development and release]: #development-and-release
 [LICENSE]: LICENSE
+[Petstore type examples]: examples/petstore/types.ts
 [VS Code extension]: ./vscode/README.md
+[repository compatibility example]: examples/repository/compatibility.ts
+[the real Dify type examples]: examples/repository/types.ts
+[the runnable demo]: examples/petstore/demo.ts

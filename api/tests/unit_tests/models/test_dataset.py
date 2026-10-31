@@ -17,11 +17,13 @@ from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from core.rag.entities import ParentMode
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.storage.storage_type import StorageType
+from fields.dataset_fields import DatasetRetrievalModelResponse
 from models.account import Account
 from models.base import Base, TypeBase
 from models.dataset import (
@@ -568,6 +570,58 @@ class TestDatasetModelValidation:
         assert result["top_k"] == 4
         assert result["score_threshold_enabled"] is True
         assert result["score_threshold"] == 0.42
+
+    @pytest.mark.parametrize("blank", [None, ""])
+    def test_dataset_retrieval_model_dict_normalizes_blank_legacy_values(self, blank: str | None) -> None:
+        stored = {
+            "search_method": blank,
+            "reranking_enable": blank,
+            "reranking_model": blank,
+            "score_threshold_enabled": blank,
+            "top_k": 4,
+        }
+        dataset = Dataset(retrieval_model=stored.copy())
+
+        response = DatasetRetrievalModelResponse.model_validate(dataset.retrieval_model_dict)
+
+        assert response.search_method == "semantic_search"
+        assert response.reranking_enable is False
+        assert response.score_threshold_enabled is False
+        assert response.reranking_model.reranking_provider_name == ""
+        assert response.reranking_model.reranking_model_name == ""
+        assert response.top_k == 4
+        assert dataset.retrieval_model == stored
+
+    @pytest.mark.parametrize("flag", [True, False, "true", "false"])
+    def test_dataset_retrieval_model_dict_preserves_explicit_settings(self, flag: bool | str) -> None:
+        stored = {
+            "search_method": "keyword_search",
+            "reranking_enable": flag,
+            "reranking_model": {"reranking_provider_name": "provider", "reranking_model_name": "model"},
+            "score_threshold_enabled": flag,
+            "score_threshold": 0,
+            "top_k": 4,
+        }
+        dataset = Dataset(retrieval_model=stored.copy())
+
+        response = DatasetRetrievalModelResponse.model_validate(dataset.retrieval_model_dict)
+
+        assert response.search_method == "keyword_search"
+        assert response.reranking_enable is (flag is True or flag == "true")
+        assert response.score_threshold_enabled is response.reranking_enable
+        assert response.reranking_model.reranking_model_name == "model"
+        assert response.score_threshold == 0
+        assert response.top_k == 4
+        assert dataset.retrieval_model == stored
+
+    @pytest.mark.parametrize("field", ["search_method", "reranking_enable", "score_threshold_enabled"])
+    def test_dataset_retrieval_model_dict_does_not_hide_unknown_values(self, field: str) -> None:
+        dataset = Dataset(retrieval_model={field: "invalid"})
+
+        with pytest.raises(ValidationError) as error:
+            DatasetRetrievalModelResponse.model_validate(dataset.retrieval_model_dict)
+
+        assert error.value.errors()[0]["loc"] == (field,)
 
     def test_dataset_gen_collection_name_by_id(self):
         """Test static method for generating collection name."""

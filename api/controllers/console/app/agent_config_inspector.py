@@ -85,6 +85,12 @@ class AgentConfigFileUploadPayload(BaseModel):
     upload_file_id: str = Field(..., description="UploadFile UUID from POST /console/api/files/upload")
 
 
+class AgentConfigFilesUploadPayload(BaseModel):
+    upload_file_ids: list[UUID] = Field(
+        ..., min_length=1, description="UploadFile UUIDs from POST /console/api/files/upload, in replacement order"
+    )
+
+
 _AGENT_CONFIG_SKILL_UPLOAD_PARAMS = {
     "file": {
         "in": "formData",
@@ -145,6 +151,11 @@ class AgentConfigSkillUploadResponse(ResponseModel):
 
 class AgentConfigFileUploadResponse(ResponseModel):
     file: AgentConfigFileItemResponse
+    config_version: AgentConfigVersionResponse
+
+
+class AgentConfigFilesUploadResponse(ResponseModel):
+    files: list[AgentConfigFileItemResponse]
     config_version: AgentConfigVersionResponse
 
 
@@ -224,7 +235,7 @@ class AgentConfigDeleteResponse(ResponseModel):
     removed_names: list[str] = Field(default_factory=list)
 
 
-register_schema_models(console_ns, AgentConfigFileUploadPayload)
+register_schema_models(console_ns, AgentConfigFileUploadPayload, AgentConfigFilesUploadPayload)
 register_response_schema_models(
     console_ns,
     BinaryFileResponse,
@@ -235,6 +246,7 @@ register_response_schema_models(
     AgentConfigFileListResponse,
     AgentConfigFilePreviewResponse,
     AgentConfigFileUploadResponse,
+    AgentConfigFilesUploadResponse,
     AgentConfigManifestResponse,
     AgentConfigSkillFilePreviewResponse,
     AgentConfigSkillFileResponse,
@@ -589,6 +601,21 @@ def _file_upload_response(
         upload_file_id=payload.upload_file_id,
     )
     return manifest, 201
+
+
+def _files_upload_response(
+    target: _ResolvedConsoleTarget, payload: AgentConfigFilesUploadPayload
+) -> tuple[dict[str, Any], int]:
+    assert target.account_id is not None
+    result = _service().push_files_for_console(
+        tenant_id=target.tenant_id,
+        agent_id=target.agent_id,
+        user_id=target.account_id,
+        config_version_id=target.version_id,
+        config_version_kind=target.version_kind,
+        upload_file_ids=[str(file_id) for file_id in payload.upload_file_ids],
+    )
+    return dump_response(AgentConfigFilesUploadResponse, result), 201
 
 
 def _skill_inspect_response(target: _ResolvedConsoleTarget, name: str) -> Response:
@@ -958,6 +985,63 @@ class AgentConfigFilesApi(Resource):
             app_model=app_model,
             current_user=current_user,
             action=lambda target: _file_upload_response(target, req_data),
+        )
+
+
+@console_ns.route("/agent/<uuid:agent_id>/config/files/batch")
+class AgentConfigFilesUploadByAgentApi(Resource):
+    @error_responses(AgentNotFoundError, RelayedHTTPError)
+    @console_ns.doc("upload_agent_config_files_by_agent")
+    @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.expect(console_ns.models[AgentConfigFilesUploadPayload.__name__])
+    @console_ns.response(201, "Bound config files", console_ns.models[AgentConfigFilesUploadResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
+    @with_current_user
+    @with_current_tenant_id
+    @with_session
+    @model_validate(AgentConfigFilesUploadPayload)
+    def post(
+        self,
+        req_data: AgentConfigFilesUploadPayload,
+        session: Session,
+        tenant_id: str,
+        current_user: Account,
+        agent_id: UUID,
+    ):
+        return _with_agent_route_target(
+            session=session,
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            current_user=current_user,
+            action=lambda target: _files_upload_response(target, req_data),
+        )
+
+
+@console_ns.route("/apps/<uuid:app_id>/agent/config/files/batch")
+class AgentConfigFilesUploadApi(Resource):
+    @error_responses(AgentNotBoundError, AgentNotFoundError, RelayedHTTPError)
+    @console_ns.doc("upload_agent_config_files")
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.expect(console_ns.models[AgentConfigFilesUploadPayload.__name__])
+    @console_ns.response(201, "Bound config files", console_ns.models[AgentConfigFilesUploadResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
+    @with_current_user
+    @with_session
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    @model_validate(AgentConfigFilesUploadPayload)
+    def post(self, req_data: AgentConfigFilesUploadPayload, session: Session, current_user: Account, app_model: App):
+        return _with_app_route_target(
+            session=session,
+            app_model=app_model,
+            current_user=current_user,
+            action=lambda target: _files_upload_response(target, req_data),
         )
 
 
