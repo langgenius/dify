@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from models.tools import MCPToolProvider
-from services.tools.mcp_tools_manage_service import MCPToolManageService
+from services.tools.legacy_mcp_tools_manage_service import MCPToolManageService
 
 PROVIDER_UUID = "0b2bd1e4-3a7d-4a0b-9f2a-9b2d6f3c1e55"
 OTHER_PROVIDER_UUID = "00000000-0000-4000-8000-000000000002"
