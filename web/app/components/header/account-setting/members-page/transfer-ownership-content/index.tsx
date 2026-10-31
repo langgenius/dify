@@ -63,10 +63,18 @@ const TransferOwnershipContent = () => {
       }, 1000),
     )
   }
-  const { mutate: sendEmail, isPending: isSendingCode } = useMutation({
+  const {
+    mutate: sendEmail,
+    isPending: isSendingCode,
+    error: sendEmailError,
+  } = useMutation({
     mutationFn: () =>
       consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post({ body: {} }),
   })
+  const sendEmailErrorMessage =
+    sendEmailError && !isSendingCode && sendEmailError.name !== 'AbortError'
+      ? (getErrorMessage(sendEmailError) ?? t(($) => $['api.actionFailed'], { ns: 'common' }))
+      : undefined
   const verifyEmailAddress = async (code: string, token: string, callback?: () => void) => {
     try {
       const res = await consoleClient.workspaces.current.members.ownerTransferCheck.post({
@@ -143,6 +151,11 @@ const TransferOwnershipContent = () => {
                 />
               </div>
             </div>
+            {sendEmailErrorMessage && (
+              <p role="alert" className="system-sm-regular text-text-destructive">
+                {sendEmailErrorMessage}
+              </p>
+            )}
           </DialogBody>
           <DialogFooter className="flex-col items-stretch">
             <Button variant="primary" loading={isSendingCode} onClick={sendCodeToOriginEmail}>
@@ -201,6 +214,11 @@ const TransferOwnershipContent = () => {
                 maxLength={6}
               />
             </div>
+            {sendEmailErrorMessage && (
+              <p role="alert" className="system-sm-regular text-text-destructive">
+                {sendEmailErrorMessage}
+              </p>
+            )}
           </DialogBody>
           <DialogFooter className="flex-col items-stretch">
             <Button
