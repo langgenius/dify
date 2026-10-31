@@ -49,6 +49,7 @@
   "generation.tabs.saved": "Shranjeno",
   "generation.title": "AI Zaključek",
   "humanInput.completed": "Videti je, da je bila ta zahteva obravnavana drugje.",
+  "humanInput.currentAccount": "Trenutni račun: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "To dejanje bo poteklo {{relativeTime}}.",
   "humanInput.expired": "Videti je, da je ta zahteva potekla.",
   "humanInput.expiredTip": "To dejanje je poteklo.",
@@ -57,6 +58,9 @@
   "humanInput.recorded": "Vaš vnos je bil zabeležen.",
   "humanInput.sorry": "Oprostite!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "Zamenjaj račun",
   "humanInput.thanks": "Hvala!",
+  "humanInput.unavailableDescription": "Povezava morda ni na voljo ali se ne ujema z računom, s katerim ste prijavljeni. Obrazec odprite iz prejetega obvestila ali poskusite zamenjati račun.",
+  "humanInput.unavailableTitle": "Tega obrazca ni mogoče odpreti",
   "login.backToHome": "Nazaj na začetno stran"
 }

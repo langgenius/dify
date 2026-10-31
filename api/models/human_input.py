@@ -2,10 +2,17 @@ from datetime import datetime
 from typing import Annotated, Literal, Self, final
 
 import sqlalchemy as sa
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from enums.human_input import DeliveryMethodType, HumanInputFormKind, HumanInputFormStatus, RecipientType
+from enums.human_input import (
+    DeliveryMethodType,
+    HumanInputFormKind,
+    HumanInputFormStatus,
+    InstantMessageProvider,
+    InstantMessageRecipientType,
+    RecipientType,
+)
 from libs.helper import generate_string
 
 from .base import Base, DefaultFieldsMixin
@@ -143,6 +150,26 @@ class EmailExternalRecipientPayload(BaseModel):
 
 
 @final
+class InstantMessageRecipientPayload(BaseModel):
+    TYPE: Literal[RecipientType.INSTANT_MESSAGE] = RecipientType.INSTANT_MESSAGE
+    provider: InstantMessageProvider
+    recipient_kind: InstantMessageRecipientType
+    channel_id: str | None = None
+    user_id: str | None = None
+
+    @model_validator(mode="after")
+    def validate_target(self) -> Self:
+        match self.recipient_kind:
+            case InstantMessageRecipientType.CHANNEL:
+                if self.channel_id is None or self.user_id is not None:
+                    raise ValueError("channel recipients must include channel_id and must not include user_id")
+            case InstantMessageRecipientType.USER:
+                if self.user_id is None or self.channel_id is not None:
+                    raise ValueError("user recipients must include user_id and must not include channel_id")
+        return self
+
+
+@final
 class StandaloneWebAppRecipientPayload(BaseModel):
     TYPE: Literal[RecipientType.STANDALONE_WEB_APP] = RecipientType.STANDALONE_WEB_APP
 
@@ -168,6 +195,7 @@ class ConsoleDeliveryPayload(BaseModel):
 RecipientPayload = Annotated[
     EmailMemberRecipientPayload
     | EmailExternalRecipientPayload
+    | InstantMessageRecipientPayload
     | StandaloneWebAppRecipientPayload
     | ConsoleRecipientPayload
     | BackstageRecipientPayload,

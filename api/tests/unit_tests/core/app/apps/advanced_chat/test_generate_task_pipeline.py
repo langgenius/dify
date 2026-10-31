@@ -714,6 +714,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert response.data.reasons == [
             {
                 "TYPE": DifyHITLEventType.HUMAN_INPUT_REQUIRED,
+                "form_version": "1",
                 "form_id": "form-1",
                 "node_id": "node-1",
                 "node_title": "Approval",

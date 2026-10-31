@@ -16,6 +16,8 @@
   "settings.membersRequired": "Selecteer ten minste één teamlid.",
   "settings.nameRequired": "De naam van de Agent-kennisbank is verplicht.",
   "settings.pageDescription": "Beheer basisinformatie, API-toegang en ophalen.",
+  "settings.reasoningChangeConfirm": "Wijziging bevestigen",
+  "settings.reasoningChangeWarning": "Door het redeneermodel voor het systeem te wijzigen, worden geïndexeerde documenten opnieuw verwerkt en hun ophaalindexen bijgewerkt. Dit kost tijd en brengt extra kosten voor modelgebruik met zich mee.",
   "settings.reloadLatest": "Nieuwste instellingen laden",
   "settings.rerankModelRequired": "Selecteer een rerankmodel.",
   "settings.retrievalDepth": "Ophaaldiepte",

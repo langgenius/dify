@@ -14,12 +14,14 @@ from repositories.account.repository import SQLAlchemyAccountRepository
 from services.account.adapters import BillingAccountEducationGateway
 from services.account_education_service import AccountEducationService
 from services.account_errors import EducationRateLimitExceededError
+from services.billing_client import billing
 from services.billing_service import BillingService
 from services.entities.account_entities import (
     AccountEducationActivation,
     AccountEducationAutocomplete,
+    AccountEducationEligible,
+    AccountEducationNotEligible,
     AccountEducationStatus,
-    AccountEducationVerification,
 )
 from tests.helpers.unit.model_factories import make_account
 
@@ -72,17 +74,27 @@ def test_verify_reads_account_before_billing_gateway_call(
     _record_commands(commands, events)
     lookup = mocker.spy(accounts, "get")
 
-    def verify(*, account_id: str) -> dict[str, str]:
+    def verify(*, account_id: str) -> billing.VerifyEducationIdentityReply:
         lookup.assert_called_once_with(account_id)
         events.append("verify")
-        return {"token": "education-token"}
+        return billing.VerifyEducationIdentityReply(token="education-token", status="eligible")
 
-    billing = mocker.patch.object(BillingService.EducationIdentity, "verify", side_effect=verify)
+    billing_call = mocker.patch.object(BillingService.EducationIdentity, "verify", side_effect=verify)
 
-    assert service.verify(_context()) == AccountEducationVerification(token="education-token")
+    assert service.verify(_context()) == AccountEducationEligible(token="education-token")
     assert events == ["check", "increment", "verify"]
-    billing.assert_called_once_with(account_id="account-1")
+    billing_call.assert_called_once_with(account_id="account-1")
     assert all(call.args[1] == "verification:student@example.edu" for call in commands.call_args_list)
+
+
+def test_verify_returns_not_eligible_without_token(service: AccountEducationService, mocker: MockerFixture) -> None:
+    mocker.patch.object(
+        BillingService.EducationIdentity,
+        "verify",
+        return_value=billing.VerifyEducationIdentityReply(token="", status="not_eligible"),
+    )
+
+    assert service.verify(_context()) == AccountEducationNotEligible()
 
 
 def test_status_and_autocomplete_delegate_framework_neutral_contracts(
@@ -91,17 +103,16 @@ def test_status_and_autocomplete_delegate_framework_neutral_contracts(
     status = mocker.patch.object(
         BillingService.EducationIdentity,
         "status",
-        return_value={
-            "result": True,
-            "is_student": True,
-            "expire_at": "2027-01-01T00:00:00+00:00",
-            "allow_refresh": False,
-        },
+        return_value=billing.GetEducationIdentityStatusReply(
+            result=True, is_student=True, expire_at="2027-01-01T00:00:00+00:00", allow_refresh=False
+        ),
     )
     autocomplete = mocker.patch.object(
         BillingService.EducationIdentity,
         "autocomplete",
-        return_value={"data": ["Example University"], "curr_page": 0, "has_next": False},
+        return_value=billing.AutocompleteEducationInstitutionReply(
+            data=["Example University"], curr_page=0, has_next=False
+        ),
     )
 
     assert service.status(_context()) == AccountEducationStatus(
@@ -122,10 +133,12 @@ def test_activate_delegates_account_and_workspace_context(
     _, commands = redis_transport
     events: list[str] = []
     _record_commands(commands, events)
-    billing = mocker.patch.object(
+    billing_call = mocker.patch.object(
         BillingService.EducationIdentity,
         "activate",
-        side_effect=lambda **_kwargs: events.append("activate") or {"message": "success"},
+        side_effect=lambda **_kwargs: (
+            events.append("activate") or billing.CreateEducationIdentityReply(message="success")
+        ),
     )
 
     result = service.activate(_context(), token="education-token", institution="Dify University", role="Student")
@@ -133,7 +146,7 @@ def test_activate_delegates_account_and_workspace_context(
     assert result == AccountEducationActivation(message="success")
     assert events == ["check", "increment", "activate"]
     assert all(call.args[1] == "activation:student@example.edu" for call in commands.call_args_list)
-    billing.assert_called_once_with(
+    billing_call.assert_called_once_with(
         account_id="account-1",
         tenant_id="workspace-1",
         token="education-token",

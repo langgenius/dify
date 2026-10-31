@@ -1,0 +1,140 @@
+from enum import StrEnum
+from typing import NewType
+
+from pydantic import NaiveDatetime
+
+from core.human_input_v2.shared import AccountId, ContactId, NormalizedEmail, TenantId
+
+
+class HumanInputContactType(StrEnum):
+    """Concrete contact classification resolved in one workspace."""
+
+    WORKSPACE = "workspace"
+    PLATFORM = "platform"
+    EXTERNAL = "external"
+
+
+class ChannelKind(StrEnum):
+    """Human Input channel kind used by management contracts."""
+
+    EMAIL = "email"
+    IM = "im"
+    WEB = "web"
+    CONSOLE = "console"
+
+
+class IMProvider(StrEnum):
+    """IM provider supported by Human Input contact and delivery flows."""
+
+    FEISHU = "feishu"
+    SLACK = "slack"
+    DING_TALK = "ding_talk"
+    MS_TEAMS = "ms_teams"
+    WE_COM = "we_com"
+    LARK = "lark"
+
+    def supports_webhook(self) -> bool:
+        """Return whether the provider has a static inbound Webhook capability."""
+
+        return self in {
+            IMProvider.SLACK,
+            IMProvider.FEISHU,
+            IMProvider.LARK,
+            IMProvider.MS_TEAMS,
+        }
+
+
+class DebugChannel(StrEnum):
+    """Delivery selection for editor debugging, resolved to current channel configuration."""
+
+    EMAIL = "email"
+    FEISHU = IMProvider.FEISHU.value
+    SLACK = IMProvider.SLACK.value
+    DING_TALK = IMProvider.DING_TALK.value
+    MS_TEAMS = IMProvider.MS_TEAMS.value
+    WE_COM = IMProvider.WE_COM.value
+    LARK = IMProvider.LARK.value
+
+
+class IMBindingScope(StrEnum):
+    """Resolution scope of a contact-to-IM-identity binding."""
+
+    WORKSPACE = "workspace"
+    ORGANIZATION = "organization"
+
+
+class IMIdentityBindingStatus(StrEnum):
+    """Whether a synchronized IM identity is currently bound."""
+
+    UNBOUND = "unbound"
+    BOUND = "bound"
+
+
+class IMSyncRunStatus(StrEnum):
+    """Lifecycle state of a manual IM directory synchronization."""
+
+    QUEUED = "queued"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+class IMSyncResultType(StrEnum):
+    """Stable reconciliation bucket for one synchronized directory entry."""
+
+    ADDED = "added"
+    NOT_MATCHED = "not_matched"
+    FAILED = "failed"
+    REMOVED = "removed"
+    SKIPPED = "skipped"
+
+
+class IMSyncRemovalReason(StrEnum):
+    """Stable reason for removing or replacing a current IM binding."""
+
+    NOT_PRESENT_IN_DIRECTORY = "not_present_in_directory"
+    BINDING_INVALIDATED = "binding_invalidated"
+    BINDING_REPLACED = "binding_replaced"
+
+
+class EmailProviderType(StrEnum):
+    """Email provider supported by organization-level Human Input delivery."""
+
+    RESEND = "resend"
+
+
+# Organization candidate identifiers round-trip as stable Contact IDs.
+OrganizationCandidateId = ContactId
+
+# Identifiers for synced IM identiies. This is not the same as user_id or account_id
+# on the IM provier side. It is the identifier for the synced IM user record in Dify.
+IMIdentityId = NewType("IMIdentityId", str)
+
+# Identifiers for a full IM user synchorization.
+IMSyncRunId = NewType("IMSyncRunId", str)
+
+# Identifier for an IM binding, an association between an IM identity and a Dify contact.
+IMBindingId = NewType("IMBindingId", str)
+
+
+__all__ = [
+    "AccountId",
+    "ChannelKind",
+    "ContactId",
+    "DebugChannel",
+    "EmailProviderType",
+    "HumanInputContactType",
+    "IMBindingId",
+    "IMBindingScope",
+    "IMIdentityBindingStatus",
+    "IMIdentityId",
+    "IMProvider",
+    "IMSyncRemovalReason",
+    "IMSyncResultType",
+    "IMSyncRunId",
+    "IMSyncRunStatus",
+    "NaiveDatetime",
+    "NormalizedEmail",
+    "OrganizationCandidateId",
+    "TenantId",
+]

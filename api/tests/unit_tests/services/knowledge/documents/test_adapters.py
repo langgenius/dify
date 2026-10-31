@@ -651,7 +651,7 @@ class TestDocumentCreationCases:
             outside_transaction()
             raise StopBeforeNetworkError()
 
-        monkeypatch.setattr("services.billing_service._http_client.request", request)
+        monkeypatch.setattr("services.billing_client.transport._http_client.request", request)
         with pytest.raises(StopBeforeNetworkError):
             operations.create_documents(CONTEXT, _DOCUMENT_CREATION_REF, settings())
         outside_transaction()

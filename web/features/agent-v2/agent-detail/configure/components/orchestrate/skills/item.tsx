@@ -4,6 +4,7 @@ import type { AgentConfigApiContext } from '../config-context'
 import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
@@ -161,18 +162,22 @@ export function AgentSkillItem({
             }}
           >
             <MenuTrigger
-              data-agent-skill-actions
-              aria-label={t(($) => $['agentDetail.configure.skills.moreActions'], {
-                name: skill.name,
-              })}
-              className={cn(
-                'pointer-events-none absolute top-1/2 right-1 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
-                isRemoveHighlighted && 'text-text-destructive!',
-              )}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <span aria-hidden className="i-ri-more-fill size-4" />
-            </MenuTrigger>
+              render={
+                <IconButton
+                  data-agent-skill-actions
+                  aria-label={t(($) => $['agentDetail.configure.skills.moreActions'], {
+                    name: skill.name,
+                  })}
+                  className={cn(
+                    'pointer-events-none absolute top-1/2 right-1 z-10 -translate-y-1/2 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
+                    isRemoveHighlighted && 'text-text-destructive!',
+                  )}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <span aria-hidden className="i-ri-more-fill size-4" />
+                </IconButton>
+              }
+            />
             <MenuContent align="end" className="w-48">
               {!skill.isMissing && onDownloadSkill && (
                 <MenuItem className="gap-2" onClick={onDownloadSkill}>

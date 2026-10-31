@@ -1,4 +1,5 @@
 import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createExternalKnowledgeBase } from '@/service/datasets'
@@ -138,19 +139,22 @@ describe('ExternalKnowledgeBaseConnector', () => {
 
       // Verify API was called with form data
       await waitFor(() => {
-        expect(createExternalKnowledgeBase).toHaveBeenCalledWith({
-          body: expect.objectContaining({
-            name: 'Test Knowledge Base',
-            external_knowledge_id: 'kb-123',
-            external_knowledge_api_id: 'api-1',
-            provider: 'external',
-            external_retrieval_model: {
-              top_k: 4,
-              score_threshold: 0.5,
-              score_threshold_enabled: false,
-            },
-          }),
-        })
+        expect(createExternalKnowledgeBase).toHaveBeenCalledWith(
+          {
+            body: expect.objectContaining({
+              name: 'Test Knowledge Base',
+              external_knowledge_id: 'kb-123',
+              external_knowledge_api_id: 'api-1',
+              provider: 'external',
+              external_retrieval_model: {
+                top_k: 4,
+                score_threshold: 0.5,
+                score_threshold_enabled: false,
+              },
+            }),
+          },
+          { silent: true },
+        )
       })
 
       // Verify success notification
@@ -165,10 +169,22 @@ describe('ExternalKnowledgeBaseConnector', () => {
 
   // Tests for API error flow
   describe('API Error Flow', () => {
-    it('should show error notification when API fails', async () => {
+    it.each([
+      {
+        scenario: 'the selected API template no longer exists',
+        error: new ORPCError('NOT_FOUND', { status: 404, message: 'API template not found.' }),
+        message: 'API template not found.',
+      },
+      {
+        scenario: 'the failure has no error message',
+        // oxlint-disable-next-line unicorn/error-message -- Exercise the fallback for an exception without a useful message.
+        error: new Error(''),
+        message: 'dataset.externalKnowledgeForm.connectedFailed',
+      },
+    ])('shows one error and keeps the form open when $scenario', async ({ error, message }) => {
       const user = userEvent.setup()
       const consoleErrorSpy = suppressConsoleError()
-      vi.mocked(createExternalKnowledgeBase).mockRejectedValue(new Error('Network Error'))
+      vi.mocked(createExternalKnowledgeBase).mockRejectedValue(error)
 
       render(<ExternalKnowledgeBaseConnector />)
 
@@ -176,7 +192,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
 
       // Verify error notification
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith('dataset.externalKnowledgeForm.connectedFailed')
+        expect(mockToastError).toHaveBeenCalledExactlyOnceWith(message)
       })
 
       // Verify no navigation

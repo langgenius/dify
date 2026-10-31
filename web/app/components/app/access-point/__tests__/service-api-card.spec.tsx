@@ -197,7 +197,7 @@ describe('ServiceApiAccessPointCard', () => {
     await waitFor(() => {
       expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
     })
-    expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+    expect(toast.error).toHaveBeenCalledWith('request failed')
     expect(toast.success).not.toHaveBeenCalled()
   })
 
