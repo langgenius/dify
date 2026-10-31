@@ -26,43 +26,6 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * AccountAvatarPayload
- */
-export const zAccountAvatarPayload = z.object({
-  avatar: z.string(),
-})
-
-/**
- * AccountResponse
- */
-export const zAccountResponse = z.object({
-  avatar: z.string().nullish(),
-  avatar_url: z.string().nullable(),
-  created_at: z.int().nullish(),
-  email: z.string(),
-  id: z.string(),
-  interface_language: z.string().nullish(),
-  interface_theme: z.string().nullish(),
-  is_password_set: z.boolean(),
-  last_login_at: z.int().nullish(),
-  last_login_ip: z.string().nullish(),
-  name: z.string(),
-  timezone: z.string().nullish(),
-})
-
-/**
- * AccountNotFoundError
- *
- * Account not found.
- */
-export const zAccountNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('account_not_found'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * ChangeEmailSendPayload
  */
 export const zChangeEmailSendPayload = z.object({
@@ -79,6 +42,18 @@ export const zSimpleResultDataResponse = z.object({
   data: z.string(),
   result: z.string(),
 })
+
+/**
+ * AccountNotFoundError
+ *
+ * Account not found.
+ */
+export const zAccountNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_found'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * InvalidEmailError
@@ -187,6 +162,24 @@ export const zChangeEmailResetPayload = z.object({
 })
 
 /**
+ * AccountResponse
+ */
+export const zAccountResponse = z.object({
+  avatar: z.string().nullish(),
+  avatar_url: z.string().nullable(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  id: z.string(),
+  interface_language: z.string().nullish(),
+  interface_theme: z.string().nullish(),
+  is_password_set: z.boolean(),
+  last_login_at: z.int().nullish(),
+  last_login_ip: z.string().nullish(),
+  name: z.string(),
+  timezone: z.string().nullish(),
+})
+
+/**
  * ChangeEmailValidityPayload
  */
 export const zChangeEmailValidityPayload = z.object({
@@ -272,11 +265,47 @@ export const zEmailCodeAccountDeletionRateLimitExceededError = zErrorResponse.an
  * EducationStatusResponse
  */
 export const zEducationStatusResponse = z.object({
-  allow_refresh: z.boolean().nullish(),
-  expire_at: z.int().nullish(),
-  is_student: z.boolean().nullish(),
-  result: z.boolean().nullish(),
+  allow_refresh: z.boolean(),
+  expire_at: z.int().nullable(),
+  is_student: z.boolean(),
+  result: z.boolean(),
 })
+
+/**
+ * BillingRequestInProgressError
+ *
+ * A previous request is still being processed. Please try again shortly.
+ */
+export const zBillingRequestInProgressError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_request_in_progress'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * BillingOperationFailedError
+ *
+ * We couldn't complete this request. Please try again. If the problem persists, contact support.
+ */
+export const zBillingOperationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_operation_failed'),
+    status: z.literal(502),
+  }),
+)
+
+/**
+ * BillingUnavailableError
+ *
+ * This operation is temporarily unavailable. Please try again later.
+ */
+export const zBillingUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_unavailable'),
+    status: z.literal(503),
+  }),
+)
 
 /**
  * EducationActivatePayload
@@ -295,6 +324,18 @@ export const zEducationActivateResponse = z.object({
 })
 
 /**
+ * EducationActivateFailedError
+ *
+ * We couldn't activate your education discount.
+ */
+export const zEducationActivateFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('education_activate_failed'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * EducationActivateLimitError
  *
  * Rate limit exceeded
@@ -310,17 +351,22 @@ export const zEducationActivateLimitError = zErrorResponse.and(
  * EducationAutocompleteResponse
  */
 export const zEducationAutocompleteResponse = z.object({
-  curr_page: z.int().nullish(),
-  data: z.array(z.string()).optional(),
-  has_next: z.boolean().nullish(),
+  curr_page: z.int(),
+  data: z.array(z.string()),
+  has_next: z.boolean(),
 })
 
 /**
- * EducationVerifyResponse
+ * EducationVerifyFailedError
+ *
+ * We couldn't verify your education status.
  */
-export const zEducationVerifyResponse = z.object({
-  token: z.string().nullish(),
-})
+export const zEducationVerifyFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('education_verify_failed'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * EducationVerifyLimitError
@@ -380,27 +426,6 @@ export const zMissingInvitationCodeError = zErrorResponse.and(
 )
 
 /**
- * AccountInterfaceLanguagePayload
- */
-export const zAccountInterfaceLanguagePayload = z.object({
-  interface_language: z.string(),
-})
-
-/**
- * AccountInterfaceThemePayload
- */
-export const zAccountInterfaceThemePayload = z.object({
-  interface_theme: z.enum(['dark', 'light']),
-})
-
-/**
- * AccountNamePayload
- */
-export const zAccountNamePayload = z.object({
-  name: z.string().min(3).max(30),
-})
-
-/**
  * AccountPasswordPayload
  */
 export const zAccountPasswordPayload = z.object({
@@ -447,11 +472,29 @@ export const zAccountProfilePatchPayload = z
   .strict()
 
 /**
- * AccountTimezonePayload
+ * EducationVerifyEligibleResponse
  */
-export const zAccountTimezonePayload = z.object({
-  timezone: z.string(),
+export const zEducationVerifyEligibleResponse = z.object({
+  status: z.literal('eligible'),
+  token: z.string(),
 })
+
+/**
+ * EducationVerifyNotEligibleResponse
+ */
+export const zEducationVerifyNotEligibleResponse = z.object({
+  status: z.literal('not_eligible'),
+})
+
+/**
+ * EducationVerifyResponse
+ *
+ * Education verification result: a token for an eligible account, none for an ineligible one.
+ */
+export const zEducationVerifyResponse = z.discriminatedUnion('status', [
+  zEducationVerifyEligibleResponse,
+  zEducationVerifyNotEligibleResponse,
+])
 
 /**
  * AccountIntegrateResponse
@@ -495,13 +538,6 @@ export const zGetAccountAvatarQuery = z.object({
  * Success
  */
 export const zGetAccountAvatarResponse = zAvatarUrlResponse
-
-export const zPostAccountAvatarBody = zAccountAvatarPayload
-
-/**
- * Success
- */
-export const zPostAccountAvatarResponse = zAccountResponse
 
 export const zPostAccountChangeEmailBody = zChangeEmailSendPayload
 
@@ -590,27 +626,6 @@ export const zPostAccountInitResponse = zSimpleResultResponse
  */
 export const zGetAccountIntegratesResponse = zAccountIntegrateListResponse
 
-export const zPostAccountInterfaceLanguageBody = zAccountInterfaceLanguagePayload
-
-/**
- * Success
- */
-export const zPostAccountInterfaceLanguageResponse = zAccountResponse
-
-export const zPostAccountInterfaceThemeBody = zAccountInterfaceThemePayload
-
-/**
- * Success
- */
-export const zPostAccountInterfaceThemeResponse = zAccountResponse
-
-export const zPostAccountNameBody = zAccountNamePayload
-
-/**
- * Success
- */
-export const zPostAccountNameResponse = zAccountResponse
-
 export const zPostAccountPasswordBody = zAccountPasswordPayload
 
 /**
@@ -629,10 +644,3 @@ export const zPatchAccountProfileBody = zAccountProfilePatchPayload
  * Success
  */
 export const zPatchAccountProfileResponse = zAccountResponse
-
-export const zPostAccountTimezoneBody = zAccountTimezonePayload
-
-/**
- * Success
- */
-export const zPostAccountTimezoneResponse = zAccountResponse

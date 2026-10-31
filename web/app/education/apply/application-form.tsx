@@ -21,6 +21,7 @@ import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/w
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import UserInfo from '../user-info'
 import AppliedEducationContent from './applied-education-content'
 import InstitutionField from './institution-field'
@@ -52,7 +53,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   )
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
-      select: ({ is_student }) => is_student ?? false,
+      select: ({ is_student }) => is_student,
     }),
   )
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
@@ -60,7 +61,9 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
   const openAsyncWindow = useAsyncWindowOpen()
-  const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
+  const switchWorkspaceMutation = useMutation(
+    consoleQuery.workspaces.switch.post.mutationOptions({ context: { silent: true } }),
+  )
 
   const appliedEducationCase = (() => {
     if (!isCurrentWorkspaceManager) return AppliedEducationCase.noPaymentPermission
@@ -97,7 +100,9 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
     try {
       await openAsyncWindow(
         async () => {
-          const res = await consoleClient.billing.invoices.get()
+          const res = await consoleClient.billing.invoices.get(undefined, {
+            context: { silent: true },
+          })
           if (res.url) return res.url
 
           throw new Error('Failed to open billing page')
@@ -124,8 +129,10 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
     try {
       await switchWorkspaceMutation.mutateAsync({ body: { tenant_id: tenantId } })
       globalThis.location.reload()
-    } catch {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
     }
   }
 

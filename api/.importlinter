@@ -265,6 +265,35 @@ forbidden_modules =
     flask
 allow_indirect_imports = True
 
+[importlinter:contract:tool-credential-application-boundary]
+name = Runtime credential refresh policies are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.credentials.tool_runtime
+    services.credentials.refresh
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:tool-credential-adapter-boundary]
+name = Tool runtime credential persistence is reached only through composition
+type = forbidden
+source_modules =
+    core.tools.tool_manager
+forbidden_modules =
+    repositories
+    services.credentials.tool_runtime_adapters
+    services.credentials.redis_refresh_lock
+allow_indirect_imports = True
+
 [importlinter:contract:credential-query-implementation-boundary]
 name = Credential query implementations are wired only by composition or other repositories
 type = forbidden
@@ -374,7 +403,7 @@ forbidden_modules =
 name = Conversation persistence does not call legacy conversation or workspace services
 type = forbidden
 source_modules =
-    repositories.installed_app_conversation_repository
+    repositories.conversation_repository
     repositories.conversation_lifecycle
     repositories.agent_workspace_repository
 forbidden_modules =
@@ -996,6 +1025,37 @@ forbidden_modules =
     repositories
     sqlalchemy
     werkzeug
+
+[importlinter:contract:conversation-name-boundary]
+name = Conversation application services are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.conversation_name_service
+    services.conversation_command_service
+    services.conversation_query_service
+    services.conversation_variable_command_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    services.conversation_service
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:console-conversation-controller-boundary]
+name = Console conversation controllers reach persistence through the composition root
+type = forbidden
+source_modules =
+    controllers.console.app.conversation
+forbidden_modules =
+    extensions.ext_database
+    models
+    repositories
+    services.conversation_service
+    sqlalchemy
+allow_indirect_imports = True
 
 [importlinter:contract:billing-application-boundary]
 name = Billing application services and ports are framework and infrastructure neutral

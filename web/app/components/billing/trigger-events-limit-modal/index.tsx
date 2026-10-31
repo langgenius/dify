@@ -1,4 +1,5 @@
 'use client'
+import type { BillingQuota } from '../quota'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import UsageInfo from '@/app/components/billing/usage-info'
@@ -6,18 +7,10 @@ import UsageInfo from '@/app/components/billing/usage-info'
 type Props = Readonly<{
   show: boolean
   onClose: () => void
-  usage: number
-  total: number
-  resetInDays?: number
+  quota: BillingQuota
 }>
 
-export default function TriggerEventsLimitModal({
-  show,
-  onClose,
-  usage,
-  total,
-  resetInDays,
-}: Props) {
+export default function TriggerEventsLimitModal({ show, onClose, quota }: Props) {
   const { t } = useTranslation(['billing'])
 
   return (
@@ -32,9 +25,7 @@ export default function TriggerEventsLimitModal({
           className="mt-4 w-full rounded-xl bg-components-panel-on-panel-item-bg"
           iconClassName={'i-custom-vender-workflow-trigger-all'}
           name={t(($) => $['triggerLimitModal.usageTitle'], { ns: 'billing' })}
-          usage={usage}
-          total={total}
-          resetInDays={resetInDays}
+          quota={quota}
           hideIcon
         />
       }

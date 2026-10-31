@@ -366,7 +366,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
 
     def _ensure_draft_bindings(self, run_context: DifyRunContext) -> None:
         # Only draft debugging may enable bindings. Explore runs the published workflow, so it must rely
-        # on the bindings that already admit the app instead of requiring access-config permission.
+        # on existing app bindings instead of checking the current runner's authoring permissions.
         if run_context.invoke_from is not InvokeFrom.DEBUGGER or run_context.user_from is not UserFrom.ACCOUNT:
             return
         binding_service = self._binding_service

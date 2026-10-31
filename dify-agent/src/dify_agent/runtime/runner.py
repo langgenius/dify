@@ -53,6 +53,7 @@ from dify_agent.runtime.event_coalescer import (
 )
 from dify_agent.runtime.event_sink import (
     RunEventSink,
+    RunStreamSealedError,
     emit_pydantic_ai_event,
     emit_run_failed,
     emit_run_started,
@@ -209,6 +210,11 @@ class AgentRunRunner:
             try:
                 _ = await emit_run_started(self.sink, run_id=self.run_id)
                 outcome = await self._run_agent()
+            except RunStreamSealedError:
+                # A terminal transition (typically a cancellation accepted by
+                # another process) sealed the stream first; stop without
+                # appending a second terminal event.
+                return
             except BaseException as exc:
                 failure = exc
                 raise

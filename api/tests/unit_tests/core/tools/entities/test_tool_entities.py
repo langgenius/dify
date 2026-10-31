@@ -52,7 +52,6 @@ def test_tool_parameter_accepts_multiple_select_declarations(parameter_type: Too
 @pytest.mark.parametrize(
     ("value", "message"),
     [
-        ("a", "must be a list"),
         (["a", 1], "only strings"),
         (["missing"], "not in options"),
         ([], "not found in tool config"),
@@ -63,6 +62,28 @@ def test_multiple_select_normalization_rejects_invalid_values(value: object, mes
 
     with pytest.raises(ValueError, match=message):
         parameter.init_frontend_parameter(value)
+
+
+def test_multiple_select_normalization_splits_legacy_comma_separated_string():
+    # Historical workflows and older frontends stored a multiple-select value
+    # as a comma-separated string; it must normalize to a list, not raise.
+    parameter = _make_select_parameter(multiple=True, required=False)
+
+    assert parameter.init_frontend_parameter("a,b") == ["a", "b"]
+    assert parameter.init_frontend_parameter(" a , b ") == ["a", "b"]
+    assert parameter.init_frontend_parameter("") == []
+
+
+def test_multiple_select_normalization_keeps_required_and_option_checks_for_strings():
+    # The string-to-list normalization must not weaken the existing checks:
+    # a required parameter stays required, and SELECT options still apply.
+    parameter = _make_select_parameter(multiple=True, required=True)
+
+    for empty in ("", " , , "):
+        with pytest.raises(ValueError, match="not found in tool config"):
+            parameter.init_frontend_parameter(empty)
+    with pytest.raises(ValueError, match="not in options"):
+        parameter.init_frontend_parameter("a,invalid")
 
 
 def test_multiple_select_normalization_preserves_explicit_empty_list():

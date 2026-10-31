@@ -11,7 +11,6 @@ from flask import current_app
 
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy, get_credit_usage_app_type
 from core.llm_generator.llm_generator import _normalize_completion_params
-from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.model_context import use_credit_usage_metadata, with_credit_usage_created_by
 from core.model_manager import ModelInstance, ModelManager
 from core.ops.entities.trace_entity import TraceTaskName
@@ -23,6 +22,7 @@ from extensions.ext_database import db
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterType
+from services.message_suggested_questions_parser import SuggestedQuestionsAfterAnswerOutputParser
 
 if TYPE_CHECKING:
     from core.memory.token_buffer_memory import PreparedHistory

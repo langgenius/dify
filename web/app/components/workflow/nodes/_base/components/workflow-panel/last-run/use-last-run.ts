@@ -8,6 +8,7 @@ import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/no
 import useCodeSingleRunFormParams from '@/app/components/workflow/nodes/code/use-single-run-form-params'
 import useDocExtractorSingleRunFormParams from '@/app/components/workflow/nodes/document-extractor/use-single-run-form-params'
 import useHttpRequestSingleRunFormParams from '@/app/components/workflow/nodes/http/use-single-run-form-params'
+import { isHumanInputV2NodeData } from '@/app/components/workflow/nodes/human-input-v2/types'
 import useHumanInputSingleRunFormParams from '@/app/components/workflow/nodes/human-input/hooks/use-single-run-form-params'
 import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
 import useIterationSingleRunFormParams from '@/app/components/workflow/nodes/iteration/use-single-run-form-params'
@@ -33,6 +34,7 @@ import { useInvalidateLastRun } from '@/service/use-workflow'
 import { useWorkflowRunValidation } from '../../../../../hooks/use-checklist'
 import useInspectVarsCrud from '../../../../../hooks/use-inspect-vars-crud'
 import { useNodesSyncDraft } from '../../../../../hooks/use-nodes-sync-draft'
+import { useSetWorkflowVarsWithValue } from '../../../../../hooks/use-set-workflow-vars-with-value'
 import { TabType } from '../types'
 
 const singleRunFormParamsHooks: Record<BlockEnum, any> = {
@@ -64,6 +66,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.LoopStart]: undefined,
   [BlockEnum.LoopEnd]: undefined,
   [BlockEnum.HumanInput]: useHumanInputSingleRunFormParams,
+  [BlockEnum.HumanInputV2]: useHumanInputSingleRunFormParams,
   [BlockEnum.DataSource]: undefined,
   [BlockEnum.DataSourceEmpty]: undefined,
   [BlockEnum.TriggerWebhook]: undefined,
@@ -105,6 +108,7 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.LoopStart]: undefined,
   [BlockEnum.LoopEnd]: undefined,
   [BlockEnum.HumanInput]: undefined,
+  [BlockEnum.HumanInputV2]: undefined,
   [BlockEnum.DataSource]: undefined,
   [BlockEnum.DataSourceEmpty]: undefined,
   [BlockEnum.KnowledgeBase]: undefined,
@@ -128,13 +132,16 @@ const createGetDataForCheckMoreHook = <T>(nodeType: BlockEnum) => {
 type Params<T> = Omit<OneStepRunParams<T>, 'isRunAfterSingleRun'>
 const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   const { conversationVars, systemVars, hasSetInspectVar } = useInspectVarsCrud()
-  const blockType = oneStepRunParams.data.type
+  const blockType = isHumanInputV2NodeData(oneStepRunParams.data)
+    ? BlockEnum.HumanInputV2
+    : oneStepRunParams.data.type
   const isStartNode = blockType === BlockEnum.Start
   const isIterationNode = blockType === BlockEnum.Iteration
   const isLoopNode = blockType === BlockEnum.Loop
   const isAggregatorNode = blockType === BlockEnum.VariableAggregator
   const isCustomRunNode = isSupportCustomRunForm(blockType)
-  const isHumanInputNode = blockType === BlockEnum.HumanInput
+  const isHumanInputNode =
+    blockType === BlockEnum.HumanInput || blockType === BlockEnum.HumanInputV2
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const useGetDataForCheckMore = createGetDataForCheckMoreHook<T>(blockType)
   const { getData: getDataForCheckMore } = useGetDataForCheckMore(
@@ -224,6 +231,7 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
     })
   }
   const workflowStore = useWorkflowStore()
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const { setInitShowLastRunTab, setShowVariableInspectPanel } = workflowStore.getState()
   const initShowLastRunTab = useStore((s) => s.initShowLastRunTab)
   const [tabType, setTabType] = useState<TabType>(
@@ -325,7 +333,15 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
     })
   }
 
-  const handleAfterCustomSingleRun = () => {
+  const handleAfterCustomSingleRun = async () => {
+    if (blockType === BlockEnum.HumanInputV2) {
+      await fetchInspectVars({})
+      workflowStore.getState().setCurrentFocusNodeId(null)
+      setTabType(TabType.settings)
+      setShowVariableInspectPanel(true)
+      hideSingleRun()
+      return
+    }
     invalidLastRun()
     setTabType(TabType.lastRun)
     hideSingleRun()

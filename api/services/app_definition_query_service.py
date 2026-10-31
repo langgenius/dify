@@ -64,7 +64,9 @@ class AppDefinitionQuery(Protocol):
 
     def get_service_api_record(self, app_id: str, *, tenant_id: str | None = None) -> ServiceApiAppRecord | None: ...
 
-    def has_service_api_owner(self, tenant_id: str) -> bool: ...
+    def get_service_api_owner_id(self, tenant_id: str) -> str | None:
+        """Return the active workspace's owner ID, or None when that identity is unavailable."""
+        ...
 
     def get_published_parameter_config(
         self,
@@ -106,8 +108,8 @@ class AppDefinitionQueryService:
 
         ``None`` means the API token no longer references an app. The repository
         closes its read session before this policy runs or an end user is provisioned.
-        Resource-token grants provide ``tenant_id`` to constrain the lookup to their
-        workspace; ``None`` retains legacy app tokens' app-ID-only lookup.
+        Credentials with a recorded ``tenant_id`` constrain the lookup to that
+        workspace; ``None`` supports historical app keys without a tenant ID.
         """
         if app_id is None:
             raise AppDefinitionUnavailableError("The app no longer exists.")
@@ -124,9 +126,9 @@ class AppDefinitionQueryService:
             raise WorkspaceArchivedError("The workspace's status is archived.")
         return app
 
-    def has_service_api_owner(self, tenant_id: str) -> bool:
-        """Whether an active API workspace still has its legacy owner identity."""
-        return self._definitions.has_service_api_owner(tenant_id)
+    def get_service_api_owner_id(self, tenant_id: str) -> str | None:
+        """Return the active workspace's legacy owner identity; None means unavailable."""
+        return self._definitions.get_service_api_owner_id(tenant_id)
 
     def get_mode(self, app_id: str) -> str:
         mode = self._definitions.get_mode(app_id)

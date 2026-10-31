@@ -13,6 +13,7 @@ from configs import dify_config
 from enums import DeploymentEdition
 from enums.agent import WorkflowAgentBindingType
 from graphon.enums import NodeType
+from libs.helper import escape_like_pattern
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, TagBinding
 from models.agent import WORKFLOW_ONLY_AGENT_SOURCES, Agent, AgentScope, AgentStatus, WorkflowAgentNodeBinding
@@ -208,8 +209,10 @@ class SnippetService:
         )
 
         if keyword:
+            escaped_keyword = escape_like_pattern(keyword)
             stmt = stmt.where(
-                CustomizedSnippet.name.ilike(f"%{keyword}%") | CustomizedSnippet.description.ilike(f"%{keyword}%")
+                CustomizedSnippet.name.ilike(f"%{escaped_keyword}%", escape="\\")
+                | CustomizedSnippet.description.ilike(f"%{escaped_keyword}%", escape="\\")
             )
 
         if is_published is not None:

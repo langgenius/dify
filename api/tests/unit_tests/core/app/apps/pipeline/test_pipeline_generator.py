@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 import services.workflow.execution.adapters.pipeline.pipeline_generator as module
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from graphon.variable_loader import VariableLoader
@@ -25,11 +25,11 @@ from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
-from services.data_source.provider_service import DatasourceProviderService
 from services.errors.app import WorkflowNotFoundError
 from services.rag_pipeline.document_preparation import prepare_pipeline_document
 from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow_run_agg import WorkflowRunAgg
+from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 PIPELINE_ID = "00000000-0000-0000-0000-000000000002"
@@ -58,7 +58,7 @@ def generator(mocker: MockerFixture, sqlite_engine: Engine, *, workflow_runtime:
         draft_variable_saver=Mock(return_value=draft_variable_saver),
         execution_driver=WorkflowRunAgg.run,
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
-        datasource_providers=DatasourceProviderService(
+        datasource_providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         ),
         runtime=workflow_runtime,
@@ -204,7 +204,7 @@ def test_generate_debugger_calls_generate(generator, mocker: MockerFixture, sqli
     generator._runtime = replace(generator._runtime, execution_writer=Mock(return_value=Mock()))
     generator._runtime = replace(generator._runtime, node_writer=Mock(return_value=Mock()))
 
-    mocker.patch.object(generator, "_generate", return_value={"result": "ok"})
+    generate = mocker.patch.object(generator, "_generate", return_value={"result": "ok"})
 
     result = generator.generate(
         pipeline=pipeline,
@@ -216,6 +216,7 @@ def test_generate_debugger_calls_generate(generator, mocker: MockerFixture, sqli
     )
 
     assert result == {"result": "ok"}
+    assert generate.call_args.kwargs["application_generate_entity"].user_from == UserFrom.END_USER
 
 
 def test_generate_published_pipeline_creates_documents_and_delay(
@@ -545,7 +546,7 @@ def test_single_iteration_generate_success(
     generator._runtime = replace(generator._runtime, execution_writer=Mock(return_value=Mock()))
     generator._runtime = replace(generator._runtime, node_writer=Mock(return_value=Mock()))
 
-    mocker.patch.object(generator, "_generate", return_value={"ok": True})
+    generate = mocker.patch.object(generator, "_generate", return_value={"ok": True})
 
     result = generator.single_iteration_generate(
         pipeline,
@@ -557,6 +558,7 @@ def test_single_iteration_generate_success(
     )
 
     assert result == {"ok": True}
+    assert generate.call_args.kwargs["application_generate_entity"].user_from == UserFrom.END_USER
 
 
 def test_single_loop_generate_success(
@@ -574,7 +576,7 @@ def test_single_loop_generate_success(
     generator._runtime = replace(generator._runtime, execution_writer=Mock(return_value=Mock()))
     generator._runtime = replace(generator._runtime, node_writer=Mock(return_value=Mock()))
 
-    mocker.patch.object(generator, "_generate", return_value={"ok": True})
+    generate = mocker.patch.object(generator, "_generate", return_value={"ok": True})
 
     result = generator.single_loop_generate(
         pipeline,
@@ -586,6 +588,7 @@ def test_single_loop_generate_success(
     )
 
     assert result == {"ok": True}
+    assert generate.call_args.kwargs["application_generate_entity"].user_from == UserFrom.END_USER
 
 
 def test_handle_response_value_error_triggers_generate_task_stopped(generator, mocker: MockerFixture):

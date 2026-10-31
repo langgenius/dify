@@ -49,6 +49,7 @@
   "generation.tabs.saved": "บันทึก",
   "generation.title": "ความสมบูรณ์ของ AI",
   "humanInput.completed": "ดูเหมือนว่าคำขอนี้ได้รับการจัดการในที่อื่นแล้ว",
+  "humanInput.currentAccount": "บัญชีปัจจุบัน: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "การดำเนินการนี้จะหมดอายุ {{relativeTime}}",
   "humanInput.expired": "ดูเหมือนว่าคำขอนี้หมดอายุแล้ว",
   "humanInput.expiredTip": "การดำเนินการนี้หมดอายุแล้ว",
@@ -57,6 +58,9 @@
   "humanInput.recorded": "ข้อมูลของคุณได้รับการบันทึกแล้ว",
   "humanInput.sorry": "ขออภัย!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "เปลี่ยนบัญชี",
   "humanInput.thanks": "ขอบคุณ!",
+  "humanInput.unavailableDescription": "ลิงก์อาจไม่พร้อมใช้งานหรือไม่ตรงกับบัญชีที่คุณลงชื่อเข้าใช้ โปรดเปิดแบบฟอร์มจากการแจ้งเตือนที่คุณได้รับ หรือลองเปลี่ยนบัญชี",
+  "humanInput.unavailableTitle": "ไม่สามารถเปิดแบบฟอร์มนี้ได้",
   "login.backToHome": "กลับไปที่หน้าแรก"
 }

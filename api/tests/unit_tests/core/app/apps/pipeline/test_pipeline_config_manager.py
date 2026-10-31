@@ -11,7 +11,7 @@ from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.execution.adapters.pipeline.pipeline_config_manager import PipelineConfigManager
 
 
-def test_get_pipeline_config(mocker: MockerFixture):
+def test_get_pipeline_config(mocker: MockerFixture) -> None:
     pipeline = Pipeline(tenant_id="tenant", name="Pipeline", description="")
     pipeline.id = "pipe1"
     workflow = Workflow.new(
@@ -46,7 +46,7 @@ def test_get_pipeline_config(mocker: MockerFixture):
     assert result.rag_pipeline_variables == ["var1"]
 
 
-def test_config_validate_filters_related_keys(mocker: MockerFixture):
+def test_config_validate_filters_related_keys(mocker: MockerFixture) -> None:
     config = {
         "file_upload": {"enabled": True},
         "tts": {"enabled": True},

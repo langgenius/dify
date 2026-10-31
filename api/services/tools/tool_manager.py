@@ -3,7 +3,7 @@ import mimetypes
 from collections.abc import Callable, Generator, Mapping
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Protocol, cast
 
 from typing_extensions import TypedDict
 from yarl import URL
@@ -16,6 +16,7 @@ from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.exc import PluginDaemonNotFoundError, PluginNotFoundError
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool import Tool
@@ -41,6 +42,7 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.plugin_tool.tool import PluginTool
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.encryption import create_tool_provider_encrypter
+from core.tools.utils.uuid_utils import is_valid_uuid
 from graphon.runtime import VariablePool
 from graphon.variables.template_resolution import convert_template
 from models import Account
@@ -49,7 +51,6 @@ from models.tool_runtime_contracts import WorkflowToolQueries
 from services.files.signature import sign_upload_file_url
 from services.tools.api.contracts import ApiToolProviderRecord
 from services.tools.api.provider import ApiToolProviderController
-from services.tools.builtin.credentials import resolve_builtin_credentials
 from services.tools.provider_queries import ToolProviderIcons, ToolProviders
 from services.tools.tools_transform_service import ToolTransformService
 from services.tools.workflow.provider import WorkflowToolProviderController
@@ -85,12 +86,29 @@ class WorkflowToolRuntimeSpec(Protocol):
     def credential_id(self) -> str | None: ...
 
 
+class ToolCredentialResolver(Protocol):
+    def __call__(
+        self,
+        *,
+        controller: BuiltinToolProviderController,
+        provider_id: str,
+        workspace_id: str,
+        credential_id: str | None,
+    ) -> tuple[Mapping[str, object], CredentialType]: ...
+
+
 class ToolManager:
     _builtin_provider_lock = Lock()
     _hardcoded_providers: dict[str, BuiltinToolProviderController] = {}
     _external_hardcoded_provider_classes: list[type[BuiltinToolProviderController]] = []
     _builtin_providers_loaded = False
     _builtin_tools_labels: dict[str, I18nObject | None] = {}
+    _credential_resolver: ClassVar[ToolCredentialResolver | None] = None
+
+    @classmethod
+    def configure_credential_resolver(cls, resolver: ToolCredentialResolver) -> None:
+        """Register stateless credential composition for runtime tool construction."""
+        cls._credential_resolver = resolver
 
     @classmethod
     def get_hardcoded_provider(cls, provider: str) -> BuiltinToolProviderController:
@@ -225,19 +243,25 @@ class ToolManager:
                             tool_invoke_from=tool_invoke_from,
                         )
                     )
-                credentials, credential_type = resolve_builtin_credentials(
-                    providers=tool_providers,
+                selected_id = (
+                    credential_id
+                    if isinstance(provider_controller, PluginToolProviderController) and is_valid_uuid(credential_id)
+                    else None
+                )
+                if cls._credential_resolver is None:
+                    raise RuntimeError("Tool credential resolver is not configured")
+                credentials, credential_type = cls._credential_resolver(
                     controller=provider_controller,
-                    tenant_id=tenant_id,
                     provider_id=provider_id,
-                    credential_id=credential_id,
+                    workspace_id=tenant_id,
+                    credential_id=selected_id,
                 )
 
                 return builtin_tool.fork_tool_runtime(
                     runtime=ToolRuntime(
                         tenant_id=tenant_id,
                         user_id=user_id,
-                        credentials=credentials,
+                        credentials=dict(credentials),
                         credential_type=credential_type,
                         runtime_parameters={},
                         invoke_from=invoke_from,

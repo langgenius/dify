@@ -509,6 +509,8 @@ def test_dsl_export_uses_owned_short_session_and_preserves_selectors(
         agent_packages=RosterAgentPackageExporter(),
         agent_importer=RosterAgentPackageImporter(),
         recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
+        workflow_tools=Mock(),
+        workflow_publisher=Mock(),
     )
     context = RequestContext("request", None, "actor", workspace)
     options = AppExportOptions(include_secret=True, workflow_id="workflow")
@@ -588,6 +590,8 @@ def test_real_dsl_export_releases_connection_before_plugin_request(
         agent_packages=RosterAgentPackageExporter(),
         agent_importer=RosterAgentPackageImporter(),
         recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
+        workflow_tools=Mock(),
+        workflow_publisher=Mock(),
     )
     exports = AppExportService(
         apps=AppExportRepository(session_factory=factory), serialize=AppDslService.serialize_export_data
@@ -713,7 +717,7 @@ def test_console_package_import_forwards_archive_and_closes_it(
         return Import(id="import-1", status=status)
 
     monkeypatch.setattr(AppDslService, "import_app", import_app)
-    with AppPackageService().export(dsl=dsl, name="Example") as exported:
+    with AppPackageService().export(dsl=dsl, name="Example", workflow_tools=[]) as exported:
         result = app_services.console.import_app(context, AppImportParams(mode="yaml-content"), source=exported.archive)
     assert result.status == status
     assert len(archives) == 1
@@ -909,6 +913,8 @@ def test_import_creator_access_runs_after_successful_commit(
         agent_packages=RosterAgentPackageExporter(),
         agent_importer=RosterAgentPackageImporter(),
         recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
+        workflow_tools=Mock(),
+        workflow_publisher=Mock(),
     )
     import_entry = gateway.import_copy if entry == "copy" else gateway.import_dsl
     if commit_fails and status != ImportStatus.FAILED and not (entry == "copy" and status == ImportStatus.PENDING):
@@ -945,3 +951,38 @@ def test_console_package_export_forwards_roster_options(
     monkeypatch.setattr(AppPackageService, "export_app", export_app)
     app_services.console.export(context, app_id, AppExportOptions(format="ifpkg", preserve_agent_bindings=True))
     assert captured["preserve_agent_bindings"] is True
+
+
+@pytest.mark.parametrize("outcome", ["disabled", "write_error", "false_result"])
+def test_inherit_access_preserves_copy_contract(
+    monkeypatch: pytest.MonkeyPatch, rbac_domain: RBACDomain, outcome: str
+) -> None:
+    from services.enterprise.enterprise_service import EnterpriseRequest
+    from services.errors.enterprise import EnterpriseServiceError
+
+    monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", lambda: outcome != "disabled")
+    calls: list[str] = []
+    error = EnterpriseServiceError("write failed")
+
+    def request(method: str, endpoint: str, **kwargs: object) -> dict[str, object]:
+        calls.append(method)
+        if method == "GET":
+            assert endpoint == "/webapp/access-mode/id"
+            assert kwargs["params"] == {"appId": "source"}
+            return {"accessMode": "private_all"}
+        assert method == "POST"
+        assert endpoint == "/webapp/access-mode"
+        assert kwargs["json"] == {"appId": "target", "accessMode": "private_all"}
+        if outcome == "write_error":
+            raise error
+        return {"result": False}
+
+    monkeypatch.setattr(EnterpriseRequest, "send_request", request)
+    gateway = EnterpriseConsoleAppAccess(members=rbac_domain.rbac.members)
+    if outcome == "write_error":
+        with pytest.raises(EnterpriseServiceError) as raised:
+            gateway.inherit_access("source", "target")
+        assert raised.value is error
+    else:
+        assert gateway.inherit_access("source", "target") is None
+    assert calls == ([] if outcome == "disabled" else ["GET", "POST"])

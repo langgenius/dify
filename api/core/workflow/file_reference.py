@@ -62,7 +62,12 @@ def parse_file_reference(reference: str | None) -> FileReference | None:
     encoded_payload = reference.removeprefix(_FILE_REFERENCE_PREFIX)
     try:
         payload = json.loads(base64.urlsafe_b64decode(encoded_payload.encode()))
-    except (ValueError, json.JSONDecodeError):
+    except ValueError:
+        return FileReference(record_id=reference)
+
+    if not isinstance(payload, dict):
+        # lenient fallback: a canonical prefix around a non-object payload is
+        # malformed, treat the whole input as the raw record id
         return FileReference(record_id=reference)
 
     record_id = payload.get("record_id")
