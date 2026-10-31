@@ -300,6 +300,21 @@ class TestCreateMCPErrorResponse:
         assert response_json["error"]["code"] == -32700
         assert response_json["error"]["message"] == "Parse error"
 
+    def test_create_error_response_with_zero_id(self):
+        """Test creating error response with zero numeric request ID.
+
+        JSON-RPC 2.0 permits numeric id 0 (only null is reserved for
+        notifications); the response must echo the same id so the client
+        can match it. `request_id or 1` would rewrite 0 to 1.
+        """
+        generator = create_mcp_error_response(request_id=0, code=-32600, message="Invalid Request")
+
+        response_bytes = next(generator)
+        response_json = json.loads(response_bytes.decode("utf-8"))
+
+        assert response_json["id"] == 0
+        assert response_json["error"]["code"] == -32600
+
     def test_create_error_response_with_complex_data(self):
         """Test creating error response with complex error data."""
         complex_data = {
