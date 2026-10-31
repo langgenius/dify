@@ -63,6 +63,11 @@ def test_session_view_to_dict_projects_only_browser_fields() -> None:
         "interrupted": False,
         "conversation_last_seq": 7,
         "last_command_id": "",
+        "task_id": "",
+        "task_status": "active",
+        "task_summaries": [],
+        "conversation_cleared": False,
+        "pending_fix_context": None,
         "phase": "understand",
         "actions": [],
     }
