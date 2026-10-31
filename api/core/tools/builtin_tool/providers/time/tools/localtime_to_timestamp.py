@@ -1,8 +1,8 @@
 from collections.abc import Generator
 from datetime import datetime, tzinfo
-from typing import Any, cast, override
+from typing import Any, override
+from zoneinfo import ZoneInfo
 
-import pytz  # type: ignore[import-untyped]
 from sqlalchemy.orm import Session
 
 from core.tools.builtin_tool.tool import BuiltinTool
@@ -46,14 +46,10 @@ class LocaltimeToTimestampTool(BuiltinTool):
                 case None:
                     converted_localtime = local_time.astimezone()
                 case str() as timezone_name:
-                    timezone = pytz.timezone(timezone_name)
-                    converted_localtime = timezone.localize(local_time)
+                    timezone = ZoneInfo(timezone_name)
+                    converted_localtime = local_time.replace(tzinfo=timezone)
                 case tzinfo():
-                    localize = getattr(local_tz, "localize", None)
-                    if callable(localize):
-                        converted_localtime = cast(datetime, localize(local_time))
-                    else:
-                        converted_localtime = local_time.replace(tzinfo=local_tz)
+                    converted_localtime = local_time.replace(tzinfo=local_tz)
                 case _:
                     raise ValueError("local_tz must be None, a timezone name, or a tzinfo instance")
             timestamp = int(converted_localtime.timestamp())

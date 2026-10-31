@@ -1,8 +1,9 @@
 import abc
 import datetime
 from typing import Protocol
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-import pytz  # type: ignore[import-untyped]
+from pytz.exceptions import UnknownTimeZoneError
 
 
 class _NowFunction(Protocol):
@@ -67,8 +68,13 @@ def parse_time_range(
     Raises:
         ValueError: When time range is invalid or start > end
     """
-    tz = pytz.timezone(tzname)
-    utc = pytz.utc
+    try:
+        tz = ZoneInfo(tzname)
+    except ZoneInfoNotFoundError as exc:
+        # Preserve the public error contract: callers and tests expect the same
+        # exception type pytz raised for unknown timezone names.
+        raise UnknownTimeZoneError(tzname) from exc
+    utc = datetime.UTC
 
     def _parse(time_str: str | None, label: str) -> datetime.datetime | None:
         if not time_str:
@@ -79,13 +85,20 @@ def parse_time_range(
         except ValueError as e:
             raise ValueError(f"Invalid {label} time format: {e}") from e
 
-        try:
-            return tz.localize(dt, is_dst=None).astimezone(utc)
-        except pytz.AmbiguousTimeError:
-            return tz.localize(dt, is_dst=False).astimezone(utc)
-        except pytz.NonExistentTimeError:
-            dt += datetime.timedelta(hours=1)
-            return tz.localize(dt, is_dst=None).astimezone(utc)
+        # `ZoneInfo` expresses DST transitions via the `fold` attribute instead of
+        # pytz's `localize(is_dst=...)`. Reproduce the original behavior:
+        #   - ambiguous local time (fall-back): pick standard time (`is_dst=False`,
+        #     i.e. `fold=1`, the later of the two wall-clock occurrences);
+        #   - non-existent local time (spring-forward): step forward one hour to the
+        #     first existing time, which `fold=0` resolves to deterministically.
+        dt0 = dt.replace(tzinfo=tz, fold=0)
+        dt1 = dt.replace(tzinfo=tz, fold=1)
+        offset0 = dt0.utcoffset()
+        offset1 = dt1.utcoffset()
+        if offset0 is not None and offset1 is not None and offset0 > offset1:
+            # Fall-back ambiguity: the earlier offset is DST, prefer standard time.
+            return dt1.astimezone(utc)
+        return dt0.astimezone(utc)
 
     start_dt = _parse(start, "start")
     end_dt = _parse(end, "end")
