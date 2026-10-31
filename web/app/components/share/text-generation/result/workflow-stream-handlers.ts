@@ -266,6 +266,7 @@ export const createWorkflowStreamHandlers = ({
 }: CreateWorkflowStreamHandlersParams): IOtherOptions => {
   let tempMessageId = ''
   let hasStartedResumeStream = false
+  let hasFailed = false
 
   const finishWithFailure = () => {
     setRespondingFalse()
@@ -284,6 +285,19 @@ export const createWorkflowStreamHandlers = ({
 
   const otherOptions: IOtherOptions = {
     isPublicAPI,
+    onError: (message) => {
+      if (hasFailed || message === 'AbortError' || message.startsWith('AbortError:')) return
+      hasFailed = true
+      const error = message || t(($) => $['api.actionFailed'], { ns: 'common' })
+      notify({ type: 'error', message: error })
+      setWorkflowProcessData(
+        applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Failed, error),
+      )
+      finishWithFailure()
+    },
+    onCompleted: (hasError, message) => {
+      if (hasError) otherOptions.onError?.(message ?? '')
+    },
     onWorkflowStarted: ({ workflow_run_id, task_id }) => {
       const workflowProcessData = getWorkflowProcessData()
       if (workflowProcessData?.tracing.length) {

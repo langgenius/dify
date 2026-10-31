@@ -299,4 +299,35 @@ describe('GetAutomaticRes', () => {
 
     expect(screen.getByText(/generate.newNoDataLine1/)).toBeInTheDocument()
   })
+  it.each([true, false])(
+    'shows rejected generation and permits retry (basic: %s)',
+    async (isBasicMode) => {
+      const user = userEvent.setup()
+      const generate = isBasicMode ? mockGenerateBasicAppFirstTimeRule : mockGenerateRule
+      generate
+        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+        .mockResolvedValueOnce({ prompt: 'Recovered prompt', modified: 'Recovered prompt' })
+      render(
+        <GetAutomaticRes
+          modelMode="chat"
+          isShow
+          onClose={mockOnClose}
+          onFinished={mockOnFinished}
+          flowId="flow-1"
+          nodeId="node-1"
+          currentPrompt="Current prompt"
+          isBasicMode={isBasicMode}
+        />,
+      )
+      await user.click(instruction())
+      await user.paste('Keep this instruction')
+      await user.click(screen.getByRole('button', { name: /generate.generate/ }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('Failed to fetch')
+      expect(instruction()).toHaveTextContent('Keep this instruction')
+      await user.click(screen.getByRole('button', { name: /generate.generate/ }))
+      await waitFor(() => expect(generate).toHaveBeenCalledTimes(2))
+      expect(await screen.findByRole('button', { name: /generate\.apply/ })).toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    },
+  )
 })

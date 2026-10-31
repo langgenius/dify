@@ -416,11 +416,6 @@
       "count": 4
     }
   },
-  "web/app/components/app/configuration/config/automatic/get-automatic-res.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/app/configuration/config/automatic/idea-output.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -450,11 +445,6 @@
     }
   },
   "web/app/components/app/configuration/config/automatic/version-selector.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/configuration/config/code-generator/get-code-generator-res.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }

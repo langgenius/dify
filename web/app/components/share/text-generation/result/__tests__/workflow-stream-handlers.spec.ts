@@ -300,6 +300,22 @@ describe('createWorkflowStreamHandlers', () => {
     }
   }
 
+  it('settles a failed stream once and preserves its error in the workflow result', () => {
+    const setup = setupHandlers()
+    setup.handlers.onError?.('Service unavailable')
+    setup.handlers.onCompleted?.(true, 'Service unavailable')
+    expect(setup.notify).toHaveBeenCalledExactlyOnceWith({
+      type: 'error',
+      message: 'Service unavailable',
+    })
+    expect(setup.onCompleted).toHaveBeenCalledExactlyOnceWith('', 3, false)
+    expect(setup.setRespondingFalse).toHaveBeenCalledOnce()
+    expect(setup.workflowProcessData()).toMatchObject({
+      status: WorkflowRunningStatus.Failed,
+      error: 'Service unavailable',
+    })
+  })
+
   it('should process workflow success and paused events', () => {
     const setup = setupHandlers({ isPublicAPI: true })
     const handlers = setup.handlers as Required<

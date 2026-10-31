@@ -40,11 +40,6 @@ type UseResultSenderOptions = {
   visionConfig: VisionSettings
 }
 
-const logRequestError = (notify: Notify, error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error)
-  notify({ type: 'error', message })
-}
-
 export const useResultSender = ({
   appId,
   appSourceType,
@@ -168,13 +163,42 @@ export const useResultSender = ({
         taskId,
       })
 
+      otherOptions.getAbortController = (controller) => {
+        runState.abortControllerRef.current = controller
+      }
+      const onError = otherOptions.onError
+      otherOptions.onError = (message) => {
+        if (stopInactiveRequest() || runState.abortControllerRef.current?.signal.aborted) return
+        onError?.(message)
+      }
       void sendWorkflowMessage(data, otherOptions, appSourceType, appId).catch((error) => {
-        if (stopInactiveRequest()) return
-        runState.setRespondingFalse()
-        runState.resetRunState()
-        logRequestError(notify, error)
+        otherOptions.onError?.(
+          error instanceof Error && error.name !== 'AbortError' ? error.message : String(error),
+        )
       })
       return true
+    }
+
+    const handleCompletionError = (message: string) => {
+      if (stopInactiveRequest()) return
+      if (isTimeout) {
+        notify({
+          type: 'warning',
+          message: t(($) => $['warningMessage.timeoutExceeded'], { ns: 'appDebug' }),
+        })
+        return
+      }
+
+      if (isEnd || runState.abortControllerRef.current?.signal.aborted) return
+      if (message !== 'AbortError' && !message?.startsWith('AbortError:'))
+        notify({
+          type: 'error',
+          message: message || t(($) => $['api.actionFailed'], { ns: 'common' }),
+        })
+      runState.setRespondingFalse()
+      runState.resetRunState()
+      onCompleted(runState.getCompletionRes(), taskId, false)
+      isEnd = true
     }
 
     void sendCompletionMessage(
@@ -188,8 +212,12 @@ export const useResultSender = ({
           completionChunks.push(chunk)
           runState.setCompletionRes(completionChunks.join(''))
         },
-        onCompleted: () => {
-          if (stopInactiveRequest()) return
+        onCompleted: (hasError, message) => {
+          if (hasError) {
+            handleCompletionError(message ?? '')
+            return
+          }
+          if (isEnd || stopInactiveRequest()) return
           if (isTimeout) {
             notify({
               type: 'warning',
@@ -208,21 +236,7 @@ export const useResultSender = ({
           completionChunks = [messageReplace.answer]
           runState.setCompletionRes(completionChunks.join(''))
         },
-        onError: () => {
-          if (stopInactiveRequest()) return
-          if (isTimeout) {
-            notify({
-              type: 'warning',
-              message: t(($) => $['warningMessage.timeoutExceeded'], { ns: 'appDebug' }),
-            })
-            return
-          }
-
-          runState.setRespondingFalse()
-          runState.resetRunState()
-          onCompleted(runState.getCompletionRes(), taskId, false)
-          isEnd = true
-        },
+        onError: handleCompletionError,
         getAbortController: (abortController) => {
           runState.abortControllerRef.current = abortController
         },
