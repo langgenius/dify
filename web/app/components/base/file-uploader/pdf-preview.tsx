@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { basePath } from '@/utils/var'
 import { PdfHighlighter, PdfLoader } from './pdf-highlighter-adapter'
+import PdfPreviewError from './pdf-preview-error'
 
 type PdfPreviewProps = {
   url: string
@@ -16,6 +17,9 @@ type PdfPreviewProps = {
 export function PdfPreview({ url, popupRef }: PdfPreviewProps) {
   const { t } = useTranslation(['common'])
   const [scale, setScale] = useState(1)
+  // PdfLoader only reloads when `url` changes, so retrying a failed load means
+  // remounting it via this key.
+  const [loadAttempt, setLoadAttempt] = useState(0)
 
   const zoomIn = () => {
     setScale((prevScale) => Math.min(prevScale * 1.2, 15))
@@ -76,6 +80,13 @@ export function PdfPreview({ url, popupRef }: PdfPreviewProps) {
         }}
       >
         <PdfLoader
+          key={loadAttempt}
+          errorMessage={
+            <PdfPreviewError
+              variant="overlay"
+              onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
+            />
+          }
           workerSrc={`${basePath}/pdf.worker.min.mjs`}
           url={url}
           beforeLoad={<LoadingPlaceholder className="h-64" />}
