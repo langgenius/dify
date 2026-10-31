@@ -162,6 +162,27 @@ describe('ChatWrapper', () => {
     mockUseChat.mockReturnValue(createChatState())
   })
 
+  it('shows the subscription failure and retries from the debug panel', async () => {
+    const user = userEvent.setup()
+    const retry = vi.fn()
+    mockUseChat.mockReturnValue(
+      createChatState({ resumeFailure: { message: 'Stream unavailable', retry } }),
+    )
+    renderWorkflowFlowComponent(
+      <ChatWrapper
+        ref={createChatWrapperRef()}
+        showConversationVariableModal={false}
+        onConversationModalHide={vi.fn()}
+        showInputsFieldsPanel={false}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Stream unavailable')
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(retry).toHaveBeenCalledOnce()
+  })
+
   it('seeds start defaults into workflow inputs and exposes restart through the ref handle', async () => {
     const user = userEvent.setup()
     const chatState = createChatState()

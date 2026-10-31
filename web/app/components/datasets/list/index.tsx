@@ -1,6 +1,7 @@
 'use client'
 
 import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/list/knowledge-view-switcher'
+import { Button } from '@langgenius/dify-ui/button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 // Libraries
 import { useBoolean } from 'ahooks'
@@ -27,6 +28,7 @@ import { TagManagementModal } from '@/features/tag-management/components/tag-man
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 // Components
 import FilterEmptyState from '../../base/filter-empty-state'
@@ -44,7 +46,7 @@ function LegacyList({
 }: {
   knowledgeViewSwitcherProps?: KnowledgeViewSwitcherProps
 }) {
-  const { t } = useTranslation(['dataset'])
+  const { t } = useTranslation(['dataset', 'common'])
   const { push } = useRouter()
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
@@ -164,7 +166,20 @@ function LegacyList({
       <div role="status" aria-atomic="true" className="sr-only">
         {announceFilteredEmptyState ? filteredEmptyMessage : ''}
       </div>
-      {showEmptyDataList ? (
+      {datasetListQuery.isError && !hasResolvedFirstPage ? (
+        <div role="alert" className="flex flex-col items-start gap-3 px-8 py-4">
+          <p className="system-sm-regular text-text-destructive">
+            {getErrorMessage(datasetListQuery.error) ??
+              t(($) => $['api.actionFailed'], { ns: 'common' })}
+          </p>
+          <Button
+            loading={datasetListQuery.isFetching}
+            onClick={() => void datasetListQuery.refetch()}
+          >
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </div>
+      ) : showEmptyDataList ? (
         <DatasetFirstEmptyState
           canConnectExternalDataset={canConnectExternalDataset}
           canCreateDataset={canCreateDataset}
