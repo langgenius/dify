@@ -16,7 +16,6 @@ from slack_sdk.signature import SignatureVerifier
 from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.web import WebClient
 
-from enums.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -49,6 +48,7 @@ from core.human_input_v2.resolved_form import (
     SelectInput,
     UserAction,
 )
+from enums.human_input import ButtonStyle
 
 _SIGNING_SECRET = "sanitized-signing-material"
 
