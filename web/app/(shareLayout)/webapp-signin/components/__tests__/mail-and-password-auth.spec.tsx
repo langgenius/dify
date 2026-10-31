@@ -170,4 +170,24 @@ describe('MailAndPasswordAuth', () => {
     await user.click(screen.getByRole('button', { name: 'login.hidePassword' }))
     expect(passwordInput).toHaveAttribute('type', 'password')
   })
+  it.each(['credentials', 'business-response'])(
+    'preserves the sign-in reason for a rejected %s result',
+    async (failure) => {
+      const user = userEvent.setup()
+      if (failure === 'credentials')
+        webAppLoginMock.mockRejectedValueOnce(
+          Object.assign(new Error('Account access denied'), { code: 'authentication_failed' }),
+        )
+      else webAppLoginMock.mockResolvedValueOnce({ result: 'fail', data: 'Account access denied' })
+      render(<MailAndPasswordAuth isEmailSetup />)
+      await user.type(screen.getByRole('textbox', { name: 'login.email' }), 'user@example.com')
+      const password = screen.getByLabelText('login.password', { exact: true })
+      await user.type(password, 'valid-password')
+      await user.click(screen.getByRole('button', { name: 'login.signBtn' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent('Account access denied')
+      expect(password).toHaveValue('valid-password')
+      expect(fetchAccessTokenMock).not.toHaveBeenCalled()
+      expect(replaceMock).not.toHaveBeenCalled()
+    },
+  )
 })

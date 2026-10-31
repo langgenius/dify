@@ -1,15 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
+import { COUNT_DOWN_KEY } from '@/app/components/signin/storage'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
 import CheckCodePage from '../page'
 
 const mockPush = vi.fn()
-
-vi.mock('@/app/components/signin/countdown', () => ({
-  default: () => null,
-}))
 
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
@@ -40,6 +37,7 @@ vi.mock('@/service/console', async (importOriginal) => ({
 describe('ResetPasswordCheckCodePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.setItem(COUNT_DOWN_KEY, '0')
     vi.mocked(useLocale).mockReturnValue('en-US')
     vi.mocked(useRouter).mockReturnValue({ push: mockPush } as unknown as ReturnType<
       typeof useRouter
@@ -112,5 +110,15 @@ describe('ResetPasswordCheckCodePage', () => {
     await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
     await waitFor(() => expect(mockPush).toHaveBeenCalledOnce())
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+  it('shows a failed resend request and leaves the verification token unchanged', async () => {
+    const user = userEvent.setup()
+    vi.mocked(consoleClient.forgotPassword.post).mockRejectedValueOnce(
+      new Error('Too many reset requests'),
+    )
+    render(<CheckCodePage />)
+    await user.click(await screen.findByRole('button', { name: 'login.checkCode.resend' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Too many reset requests')
+    expect(mockPush).not.toHaveBeenCalled()
   })
 })
