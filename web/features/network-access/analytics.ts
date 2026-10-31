@@ -2,8 +2,13 @@ import type {
   AppMode,
   AppNetworkAccessGroupResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  NetworkAccessGroupNameConflictError,
+  NetworkAccessNotEntitledError,
+  PaidPlanRequiredError,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import { isDefinedError, ORPCError } from '@orpc/client'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { hasNetworkAccessErrorCode } from '@/features/network-access/errors'
 
 type NetworkAccessPoint = AppNetworkAccessGroupResponse['available_access_points'][number]
 
@@ -165,22 +170,31 @@ function isNetworkFailure(error: unknown) {
   )
 }
 
+type DefinedFailureCode = (
+  | NetworkAccessGroupNameConflictError
+  | NetworkAccessNotEntitledError
+  | PaidPlanRequiredError
+)['code']
+
+function hasDefinedCode(error: unknown, ...codes: DefinedFailureCode[]) {
+  return (
+    error instanceof ORPCError && isDefinedError(error) && codes.some((code) => code === error.code)
+  )
+}
+
 function isPermissionFailure(error: unknown) {
-  if (hasNetworkAccessErrorCode(error, 'network_access_forbidden', 'network_access_role_denied'))
-    return true
   const status = readStatus(error)
   return status === 401 || status === 403
 }
 
 export function getAccessControlFailReason(error: unknown): AccessControlFailReason {
-  if (hasNetworkAccessErrorCode(error, 'paid_plan_required', 'network_access_not_entitled'))
-    return 'plan'
+  if (hasDefinedCode(error, 'paid_plan_required', 'network_access_not_entitled')) return 'plan'
   if (isPermissionFailure(error)) return 'permission'
   return isNetworkFailure(error) ? 'network' : 'other'
 }
 
 export function getIpPolicyFailReason(error: unknown): IpPolicyFailReason {
-  if (hasNetworkAccessErrorCode(error, 'network_access_group_name_conflict')) return 'name_conflict'
+  if (hasDefinedCode(error, 'network_access_group_name_conflict')) return 'name_conflict'
   if (isPermissionFailure(error)) return 'permission'
   return isNetworkFailure(error) ? 'network' : 'other'
 }

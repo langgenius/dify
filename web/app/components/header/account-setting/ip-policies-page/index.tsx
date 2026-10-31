@@ -11,6 +11,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
+import { isDefinedError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import Image from 'next/image'
@@ -24,7 +25,6 @@ import {
 } from '@/app/components/billing/pricing/query-params'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { getIpPolicyFailReason, trackNetworkAccessEvent } from '@/features/network-access/analytics'
-import { hasNetworkAccessErrorCode } from '@/features/network-access/errors'
 import {
   canManageNetworkAccessPoliciesAtom,
   canReadNetworkAccessAtom,
@@ -335,7 +335,10 @@ export default function IpPoliciesPage() {
                       if (dialogSessionRef.current === session) openDialog(null)
                     },
                     onError: (error) => {
-                      if (!hasNetworkAccessErrorCode(error, 'network_access_version_conflict'))
+                      if (
+                        !isDefinedError(error) ||
+                        error.code !== 'network_access_version_conflict'
+                      )
                         return
                       void refreshGroupsAfterConflict(selectedGroup.id, session)
                     },

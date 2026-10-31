@@ -1,6 +1,4 @@
-import { ORPCError } from '@orpc/client'
 import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
-import { hasNetworkAccessErrorCode } from '@/features/network-access/errors'
 import {
   accessPointsFromScopes,
   draftFromBinding,
@@ -16,27 +14,6 @@ describe('network access mappers', () => {
     expect(toApiAccessPoint('serviceApi')).toBe('service_api')
     expect(toUiAccessPoint('webapp')).toBe('webApp')
     expect(toUiAccessPoint('service_api')).toBe('serviceApi')
-  })
-
-  it('matches only defined errors with one of the requested codes', () => {
-    const conflict = new ORPCError('network_access_version_conflict', {
-      defined: true,
-      status: 409,
-    })
-    expect(hasNetworkAccessErrorCode(conflict, 'network_access_version_conflict')).toBe(true)
-    expect(hasNetworkAccessErrorCode(conflict, 'network_access_group_name_conflict')).toBe(false)
-    expect(
-      hasNetworkAccessErrorCode(
-        new ORPCError('network_access_version_conflict', { status: 409 }),
-        'network_access_version_conflict',
-      ),
-    ).toBe(false)
-    expect(
-      hasNetworkAccessErrorCode(
-        new Response(null, { status: 409 }),
-        'network_access_version_conflict',
-      ),
-    ).toBe(false)
   })
 
   it('builds scopes from selected API access points', () => {

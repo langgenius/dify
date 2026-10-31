@@ -17,6 +17,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { isDefinedError } from '@orpc/client'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -36,7 +37,6 @@ import {
   getProtectedAccessPoints,
   trackNetworkAccessEvent,
 } from '@/features/network-access/analytics'
-import { hasNetworkAccessErrorCode } from '@/features/network-access/errors'
 import {
   canManageNetworkAccessPoliciesAtom,
   canReadNetworkAccessAtom,
@@ -179,20 +179,7 @@ function AccessControlSession({
   )
   const saveCheck = useMutation(checkCurrentIp.mutationOptions({ context: { silent: true } }))
 
-  const hideForUnsupportedApp =
-    canFetchNetworkAccess &&
-    Boolean(appId) &&
-    hasNetworkAccessErrorCode(
-      bindingQuery.error,
-      'network_access_unsupported_app_mode',
-      'network_access_role_denied',
-      'network_access_forbidden',
-      'network_access_not_entitled',
-      'app_not_found',
-    )
-
   if (!canFetchNetworkAccess) return null
-  if (hideForUnsupportedApp) return null
   if (groupsQuery.isPending || bindingQuery.isPending) return null
   if (groupsQuery.isError || bindingQuery.isError || !groupsQuery.data || !bindingQuery.data)
     return null
@@ -371,7 +358,7 @@ function AccessControlSession({
             onSuccess?.()
           },
           onError: (error) => {
-            if (!hasNetworkAccessErrorCode(error, 'network_access_version_conflict')) return
+            if (!isDefinedError(error) || error.code !== 'network_access_version_conflict') return
             void queryClient.invalidateQueries({
               queryKey: consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
                 input: { params: { app_id: appId } },
