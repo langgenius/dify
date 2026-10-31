@@ -1312,6 +1312,9 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             items=append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_CHOSE_TO_PUBLISH))),
         )
     if kind == "keep_draft":
+        from services.dify_builder.task_lifecycle import record_task_completion
+
+        record_task_completion(env, s, fc, "kept_draft")
         decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_KEPT_THE_DRAFT)))
         turn_items = append_assistant(
             env,
@@ -1378,6 +1381,9 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
         execution=execution,
         turn_id=progress.operation_id,
     )
+    from services.dify_builder.task_lifecycle import record_task_completion
+
+    record_task_completion(env, s, fc, "published")
     return StepResult(next=PcState.EDIT_COMPLETE, context=fc, items=items)
 
 

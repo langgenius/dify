@@ -238,6 +238,7 @@ def test_save_run_with_preset_id_preserves_it_and_get_run_round_trips(repo: SqlD
         immutable=True,
     )
 
+    repo.create_session(_make_domain_session(id="session-1"), DifyBuilderContext(), [])
     repo.save_run("session-1", run)
 
     assert run.id == "44444444-4444-4444-4444-444444444444"
@@ -257,6 +258,7 @@ def test_save_run_with_preset_id_preserves_it_and_get_run_round_trips(repo: SqlD
 def test_save_run_with_empty_id_generates_one(repo: SqlDifyBuilderRepository) -> None:
     run = Run(kind="original-failed", status="failed")
 
+    repo.create_session(_make_domain_session(id="session-1"), DifyBuilderContext(), [])
     repo.save_run("session-1", run)
 
     assert run.id
@@ -275,6 +277,7 @@ def test_get_run_missing_id_raises_not_found(repo: SqlDifyBuilderRepository) -> 
 def test_save_test_input_then_get_test_input_round_trips(repo: SqlDifyBuilderRepository) -> None:
     ti = TestInput(session_id="session-1", source="mock", inputs={"q": "hi"}, start_schema_hash="hash-1")
 
+    repo.create_session(_make_domain_session(id="session-1"), DifyBuilderContext(), [])
     repo.save_test_input(ti)
 
     assert ti.id
@@ -290,6 +293,7 @@ def test_save_test_input_then_get_test_input_round_trips(repo: SqlDifyBuilderRep
 def test_save_test_input_with_preset_id_preserves_it(repo: SqlDifyBuilderRepository) -> None:
     ti = TestInput(id="55555555-5555-5555-5555-555555555555", session_id="session-1", source="upload")
 
+    repo.create_session(_make_domain_session(id="session-1"), DifyBuilderContext(), [])
     repo.save_test_input(ti)
 
     assert ti.id == "55555555-5555-5555-5555-555555555555"
@@ -453,6 +457,7 @@ def test_save_run_persists_error_field(repo: SqlDifyBuilderRepository) -> None:
         immutable=True,
     )
 
+    repo.create_session(_make_domain_session(id="session-1"), DifyBuilderContext(), [])
     repo.save_run("session-1", run)
     loaded = repo.get_run(run.id)
 
@@ -495,6 +500,7 @@ def test_fixture_lineage_roundtrip_and_legacy_absence(repo: SqlDifyBuilderReposi
     )
     envelope = HttpFixtureSetV1(execution_revision="a" * 64, fixtures=(sample,))
     value = TestInput(session_id="session", inputs={"n": 41}, http_fixtures=envelope)
+    repo.create_session(_make_domain_session(id="session"), DifyBuilderContext(), [])
     repo.save_test_input(value)
     assert repo.get_test_input(value.id).http_fixtures == envelope
     old = TestInput(session_id="session", inputs={"n": 41})

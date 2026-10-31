@@ -23,6 +23,7 @@ from graphon.model_runtime.entities.message_entities import (
 from graphon.nodes.llm.reasoning import ThinkStreamFilter, split_reasoning
 from services.dify_builder import trace_diagnostics as diagnostics
 from services.dify_builder.attachment_context import append_material, material_policy
+from services.dify_builder.task_lifecycle import append_task_summaries
 
 # --- Reply-language instruction (M1) -----------------------------------------
 # Appended to user-facing prompts so generated prose adopts the user's input
@@ -130,7 +131,7 @@ def invoke_text(
         user += "\n\nCURRENT SYNCHRONIZED WORKFLOW DSL:\n" + json.dumps(dsl, ensure_ascii=False)
     messages = [
         SystemPromptMessage(content=system + material_policy()),
-        UserPromptMessage(content=append_material(user)),
+        UserPromptMessage(content=append_material(append_task_summaries(user))),
     ]
     return _complete(model_instance, messages, model_parameters, stop, on_reasoning)
 
@@ -152,7 +153,7 @@ def invoke_text_stream(
         user += "\n\nCURRENT SYNCHRONIZED WORKFLOW DSL:\n" + json.dumps(dsl, ensure_ascii=False)
     messages = [
         SystemPromptMessage(content=system + material_policy()),
-        UserPromptMessage(content=append_material(user)),
+        UserPromptMessage(content=append_material(append_task_summaries(user))),
     ]
     from services.dify_builder.task_controls import check_current
 
@@ -238,7 +239,7 @@ def invoke_json(
         user += "\n\nCURRENT SYNCHRONIZED WORKFLOW DSL:\n" + json.dumps(dsl, ensure_ascii=False)
     messages = [
         SystemPromptMessage(content=system + material_policy()),
-        UserPromptMessage(content=append_material(user)),
+        UserPromptMessage(content=append_material(append_task_summaries(user))),
     ]
     text = _complete(model_instance, messages, model_parameters, stop, on_reasoning)
     parsed = _as_dict(text)

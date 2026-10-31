@@ -74,6 +74,8 @@ def control(
     from services.dify_builder.service import AppAccess
 
     session, context = service._get_authorized_session(session_id, actor, AppAccess.EDIT)
+    if context.task_control.get("conversation_clear") or (kind == "resume" and context.task_status == "abandoned"):
+        raise ConflictError("task has been abandoned or cleared")
     if type(base_version) is not int or base_version < 1 or not client_action_id.strip():
         raise BadRequestError("base_version and client_action_id are required")
     if context.test_input_ref and kind == "stop":
@@ -88,6 +90,8 @@ def control(
         if kind == "resume" and saved.get("enqueue") in {"pending", "dispatching", "claimed"}:
             _enqueue_resume(service, session_id, actor, saved)
         return view
+    if context.task_status == "abandoned":
+        raise ConflictError("abandoned task accepts only an existing Stop receipt")
     _, observed = service._repo.get_session_at_version(session_id, base_version)
     expected_generation = generation(observed)
     old_owner = service._session_lock.current_owner(session_id)
@@ -100,6 +104,8 @@ def control(
 
     def write(sql, current, fc):
         _authorize_locked(current, actor)
+        if fc.task_control.get("conversation_clear") or fc.task_status == "abandoned":
+            raise ConflictError("task has been abandoned or cleared")
         if _saved(service, session_id, client_action_id, intent, sql=sql):
             return False
         if generation(fc) != expected_generation or is_terminal(current.current_state):
@@ -148,7 +154,16 @@ def control(
             controls["ordinary_run_ids"] = run_ids
             controls["ordinary_request_ids"] = ordinary_ids
             controls["stopped_state"] = str(current.current_state)
-            controls["settlement"] = "pending" if request_id or run_ids or ordinary_ids else "settled"
+            from services.dify_builder.task_native_cancel import task_execution_settlement
+
+            evidence = task_execution_settlement(sql, session_id, fc)
+            controls["settlement"] = (
+                "unknown"
+                if evidence == "unknown"
+                else "pending"
+                if request_id or run_ids or ordinary_ids or evidence == "pending"
+                else "settled"
+            )
             controls["native_request_id"] = request_id or ""
             receipt["settlement"] = controls["settlement"]
             fc.paused = True
@@ -262,13 +277,23 @@ def _settle_stop(repo, test_actions, session_id, actor, key, *, deliver=True):
         return
 
     def settle(_sql, session, fc):
+        from services.dify_builder.task_native_cancel import task_execution_settlement
+
         if not fc.paused or fc.task_control.get("receipt", {}).get("id") != key:
             return False
-        if fc.task_control.get("settlement") == settlement:
+        evidence = task_execution_settlement(_sql, session_id, fc, include_controls=False)
+        observed = (
+            "unknown"
+            if "unknown" in {settlement, evidence}
+            else "pending"
+            if "pending" in {settlement, evidence}
+            else "settled"
+        )
+        if fc.task_control.get("settlement") == observed:
             return False
-        fc.task_control["settlement"] = settlement
+        fc.task_control["settlement"] = observed
         receipt = fc.task_control["receipt"]
-        receipt["settlement"] = settlement
+        receipt["settlement"] = observed
         # Settlement advances the current projection, while an acknowledged
         # response remains immutable for exact historical command replay.
         if not receipt.get("view"):

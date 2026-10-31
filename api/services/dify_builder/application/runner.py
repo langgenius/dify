@@ -59,6 +59,7 @@ from services.dify_builder.application.ports import (
     ReasoningStreamingAgent,
     Repository,
 )
+from services.dify_builder.task_lifecycle import task_summary_scope
 
 __all__ = ["Env", "Handler", "Runner", "StepResult"]
 
@@ -524,7 +525,10 @@ class Runner:
                 f"for session {session_id} (current {s.version})"
             )
 
-        if fc.paused and action_kind != "resume":
+        abandoned_goal = action_kind == "message" and fc.task_status == "abandoned"
+        if abandoned_goal and fc.task_control.get("settlement") in {"pending", "unknown"}:
+            raise ConflictError("task cancellation has not safely settled")
+        if fc.paused and action_kind != "resume" and not abandoned_goal:
             raise ConflictError("task is paused")
 
         if action_kind == "task_continue":
@@ -626,7 +630,8 @@ class Runner:
             graph, _graph_hash = self._env.dify.read_graph(s.app_id, turn.actor)
             from services.dify_builder.conversation_tasks import prepare_continuation
 
-            continuation = prepare_continuation(self._env, turn, s, fc, graph, text, graph_revision=_graph_hash)
+            with task_summary_scope(fc.task_summaries):
+                continuation = prepare_continuation(self._env, turn, s, fc, graph, text, graph_revision=_graph_hash)
             if continuation is not None:
                 self._commit(s, continuation.next, continuation.context or fc, continuation.items, settled=True)
                 return s
@@ -655,7 +660,7 @@ class Runner:
             from services.dify_builder.attachment_context import material_scope
             from services.dify_builder.task_controls import generation
 
-            with material_scope(fc.attachment_material, generation(fc)):
+            with material_scope(fc.attachment_material, generation(fc)), task_summary_scope(fc.task_summaries):
                 reply = self._env.agent.respond_to_message(
                     s.current_state,
                     fc,
@@ -724,6 +729,7 @@ class Runner:
 
             with (
                 material_scope(fc.attachment_material, generation(fc)),
+                task_summary_scope(fc.task_summaries),
                 trace_diagnostics.scope(self._env.record_diagnostic, str(s.current_state).replace(".", "-")),
             ):
                 res = handler(self._env, step_turn, s, fc)

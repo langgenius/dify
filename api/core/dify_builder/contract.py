@@ -16,7 +16,7 @@ from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any, ClassVar, Literal, override
 
-from core.dify_builder.models import ConversationItem, EntryMode
+from core.dify_builder.models import ConversationItem, EntryMode, TaskSummary
 from runtime_contracts.builder.execution import HttpResponseFixtureV1, decode_http_fixture_submission
 from runtime_contracts.builder.presentation import BuilderPresentation, BuilderText
 
@@ -394,6 +394,12 @@ class SessionView:
     diagnostics: list[dict[str, Any]] = field(default_factory=list)
     # Bounded intake receipts; excerpts and storage keys are never public.
     attachments: list[dict[str, Any]] = field(default_factory=list)
+    # Logical task identity is independent from the worker's execution generation.
+    task_id: str = ""
+    task_status: Literal["active", "paused", "completed", "abandoned"] = "active"
+    task_summaries: list[TaskSummary] = field(default_factory=list)
+    conversation_cleared: bool = False
+    pending_fix_context: "RunContextCard | PreflightContextCard | None" = None
 
 
 @dataclass

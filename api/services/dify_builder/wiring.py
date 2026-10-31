@@ -164,6 +164,8 @@ def build_real_call_consent_service() -> BuilderRealCallConsentService:
 
 
 def build_service() -> DifyBuilderService:
+    from services.dify_builder.fix_intent_repository import SqlFixIntentRepository
+
     app = current_app.app_context().app
     repo = SqlDifyBuilderRepository(sessionmaker(bind=db.engine, expire_on_commit=False))
     return DifyBuilderService(
@@ -181,6 +183,7 @@ def build_service() -> DifyBuilderService:
         stream_read_scope_fn=app.app_context,
         attachment_intake=build_attachment_intake(repo),
         cognition_policy_fn=select_cognition_config,
+        fix_intent_repo=SqlFixIntentRepository(repo),
     )
 
 
@@ -280,6 +283,9 @@ def _public_session_view(view: dict[str, Any], *, include_last_command_id: bool)
         "phase": view.get("phase", "understand"),
         "actions": _public_actions(view.get("actions")),
     }
+    for key in ("task_id", "task_status", "task_summaries", "conversation_cleared", "pending_fix_context"):
+        if key in view:
+            projected[key] = view[key]
     if view.get("diagnostics"):
         projected["diagnostics"] = view["diagnostics"]
     if view.get("attachments"):
@@ -679,6 +685,7 @@ def stream_advance_frames(
     initial_progress: ProgressSnapshot | None = None,
     native_receipts: Callable[[], tuple[NativeTestPublicReceipt, ...]] | None = None,
     native_cursor: str = "",
+    conversation_cleared: Callable[[], bool] | None = None,
 ) -> Iterator[str]:
     """Emit a bounded command handshake, then relay incremental progress.
 
@@ -720,8 +727,29 @@ def stream_advance_frames(
                     },
                 )
 
+    def cleared_frame() -> str | None:
+        if not view_dict.get("conversation_cleared") and not (conversation_cleared and conversation_cleared()):
+            return None
+        latest = read_session_view() if read_session_view is not None else view_dict
+        return _event_frame(
+            "command_finished",
+            {
+                "session_id": view_dict.get("session_id", ""),
+                "version": (latest or {}).get("version", view_dict.get("version", 0)),
+                "conversation_cleared": True,
+                "task_status": "abandoned",
+                "conversation_last_seq": -1,
+                "run_status": "complete",
+                "canvas_read_only": False,
+                "actions": [],
+            },
+        )
+
     def _frames() -> Generator[str]:
         try:
+            if cleared := cleared_frame():
+                yield cleared
+                return
             yield from native_frames()
 
             if emit_command_started:
@@ -736,6 +764,9 @@ def stream_advance_frames(
                     },
                 )
             for item in initial_items:
+                if cleared := cleared_frame():
+                    yield cleared
+                    return
                 if item.kind == "assistant_turn":
                     continue
                 yield _event_frame(
@@ -776,6 +807,9 @@ def stream_advance_frames(
                 try:
                     raw = subscription.receive(timeout=_HEARTBEAT_SECONDS)
                 except SubscriptionClosedError:
+                    return
+                if cleared := cleared_frame():
+                    yield cleared
                     return
                 if raw is None:
                     # Native changes arrive on the existing bus. Idle

@@ -84,7 +84,10 @@ from services.feature_service import FeatureService
 
 from . import console_ns
 from .dify_builder_fields import (
+    DifyBuilderClearConversationPayload,
     DifyBuilderConfirmRealCallPayload,
+    DifyBuilderConversationLifecyclePayload,
+    DifyBuilderConversationLifecycleResponse,
     DifyBuilderConversationListQuery,
     DifyBuilderConversationPageResponse,
     DifyBuilderCreateBuildSessionPayload,
@@ -94,6 +97,8 @@ from .dify_builder_fields import (
     DifyBuilderCreateSessionPayload,
     DifyBuilderErrorResponse,
     DifyBuilderExecuteRealCallPayload,
+    DifyBuilderFixIntentPayload,
+    DifyBuilderFixIntentResponse,
     DifyBuilderNativeTestInputResponse,
     DifyBuilderNativeTestResponse,
     DifyBuilderPrepareRealCallPayload,
@@ -121,6 +126,9 @@ register_schema_models(
     DifyBuilderSubmitActionPayload,
     DifyBuilderSubmitMessagePayload,
     DifyBuilderTaskControlPayload,
+    DifyBuilderConversationLifecyclePayload,
+    DifyBuilderClearConversationPayload,
+    DifyBuilderFixIntentPayload,
     DifyBuilderPrepareRealCallPayload,
     DifyBuilderConfirmRealCallPayload,
     DifyBuilderExecuteRealCallPayload,
@@ -136,6 +144,8 @@ register_response_schema_models(
     DifyBuilderRealCallConsentResponse,
     DifyBuilderRealCallRefusalResponse,
     DifyBuilderRealCallForbiddenResponse,
+    DifyBuilderConversationLifecycleResponse,
+    DifyBuilderFixIntentResponse,
 )
 
 
@@ -195,6 +205,11 @@ def _stream_response(make_generator: Callable[[], Iterator[str]]) -> Response | 
     return Response(generator, mimetype="text/event-stream", headers=_SSE_HEADERS)
 
 
+class _FixArguments(TypedDict, total=False):
+    session_id: str
+    client_action_id: str
+
+
 class _AttachmentArguments(TypedDict, total=False):
     attachments: list[str]
 
@@ -208,6 +223,12 @@ def _create(body, actor: Actor) -> Response | tuple[dict, int]:
     model_config = dataclasses.asdict(payload.model_config_data) if payload.model_config_data else None
     attachments = [str(attachment.upload_file_id) for attachment in payload.attachments]
     attachment_arguments: _AttachmentArguments = {"attachments": attachments} if attachments else {}
+    fix_arguments: _FixArguments = {}
+    if isinstance(payload, DifyBuilderCreateFixSessionPayload | DifyBuilderCreateChecklistFixSessionPayload):
+        if payload.session_id is not None:
+            fix_arguments["session_id"] = payload.session_id
+        if payload.client_action_id is not None:
+            fix_arguments["client_action_id"] = payload.client_action_id
     if isinstance(payload, DifyBuilderCreateBuildSessionPayload):
         return _stream_response(
             lambda: build_service().create_build_session_stream(
@@ -233,6 +254,7 @@ def _create(body, actor: Actor) -> Response | tuple[dict, int]:
         return _stream_response(
             lambda: build_service().create_fix_session_stream(
                 app_id=payload.app_id,
+                **fix_arguments,
                 actor=actor,
                 failed_run_id=payload.failed_run_id,
                 checklist_errors=[error.model_dump() for error in payload.checklist_errors],
@@ -244,6 +266,7 @@ def _create(body, actor: Actor) -> Response | tuple[dict, int]:
         return _stream_response(
             lambda: build_service().create_fix_session_stream(
                 app_id=payload.app_id,
+                **fix_arguments,
                 actor=actor,
                 failed_run_id=payload.failed_run_id,
                 model_config=model_config,
@@ -340,6 +363,57 @@ def _task_control(session_id: str, body, actor: Actor, *, operation: Literal["st
     return dump_response(DifyBuilderSessionViewResponse, session_view_to_dict(view))
 
 
+def _conversation_control(session_id: str, body, actor: Actor, *, operation: Literal["clear", "abandon"]):
+    """Confirmed lifecycle controls deliberately have no app-revision input."""
+    payload_type = (
+        DifyBuilderClearConversationPayload if operation == "clear" else DifyBuilderConversationLifecyclePayload
+    )
+    try:
+        payload = payload_type.model_validate(body)
+    except ValidationError:
+        raise BadRequest("Invalid conversation control request.") from None
+    try:
+        service = build_service()
+        command = service.clear_conversation if operation == "clear" else service.abandon_task
+        receipt = command(session_id, actor, **payload.model_dump())
+    except Exception as error:
+        mapped = dify_builder_error_response(error)
+        if mapped is None:
+            raise
+        return mapped
+    return dump_response(DifyBuilderConversationLifecycleResponse, receipt)
+
+
+def _fix_intent(session_id: str, body, actor: Actor):
+    try:
+        payload = DifyBuilderFixIntentPayload.model_validate(body)
+    except ValidationError:
+        raise BadRequest("Invalid Fix intent request.") from None
+    try:
+        receipt = build_service().prepare_fix_intent(
+            session_id,
+            actor,
+            base_version=payload.base_version,
+            client_action_id=payload.client_action_id,
+            failed_run_id=payload.failed_run_id,
+            checklist_errors=[item.model_dump() for item in payload.checklist_errors] or None,
+            model_config=dataclasses.asdict(payload.model_config_data) if payload.model_config_data else None,
+        )
+    except Exception as error:
+        mapped = dify_builder_error_response(error)
+        if mapped is None:
+            raise
+        return mapped
+    return dump_response(
+        DifyBuilderFixIntentResponse,
+        {
+            "fix_intent_id": receipt.fix_intent_id,
+            "status": receipt.status,
+            "session": session_view_to_dict(receipt.session),
+        },
+    )
+
+
 def _get_session(session_id: str, actor: Actor) -> dict | tuple[dict, int]:
     try:
         view = build_service().get_session_view(session_id, actor)
@@ -429,6 +503,7 @@ def _stream(
             initial_progress=snapshot,
             native_receipts=read_native_receipts if native_version is not None else None,
             native_cursor=native_cursor,
+            conversation_cleared=lambda: service.is_conversation_cleared(session_id, actor),
         ),
         mimetype="text/event-stream",
         headers=_SSE_HEADERS,
@@ -714,6 +789,60 @@ class DifyBuilderTaskResumeApi(Resource):
         return _task_control(
             session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id), operation="resume"
         )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/clear")
+class DifyBuilderConversationClearApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderClearConversationPayload.__name__])
+    @console_ns.response(
+        200, "Conversation cleared", console_ns.models[DifyBuilderConversationLifecycleResponse.__name__]
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _conversation_control(
+            session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id), operation="clear"
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/abandon")
+class DifyBuilderTaskAbandonApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderConversationLifecyclePayload.__name__])
+    @console_ns.response(200, "Task abandoned", console_ns.models[DifyBuilderConversationLifecycleResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _conversation_control(
+            session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id), operation="abandon"
+        )
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/fix-intents")
+class DifyBuilderFixIntentsApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderFixIntentPayload.__name__])
+    @console_ns.response(200, "Validated Fix intent", console_ns.models[DifyBuilderFixIntentResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @real_call_without_request_sql
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _fix_intent(session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id))
 
 
 @console_ns.route("/dify-builder/sessions/<string:session_id>/messages")

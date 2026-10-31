@@ -336,7 +336,7 @@ def case(monkeypatch: pytest.MonkeyPatch) -> HostCapacityCase:
                 version=1,
                 state="build.review",
                 actor="actor",
-                context={"paused": False},
+                context={"paused": False, "test_input_ref": "input"},
             )
         ],
         NativeInvocationState: [state],

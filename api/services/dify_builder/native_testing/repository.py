@@ -244,7 +244,7 @@ class OwnedNativeTestLoader:
         request = session.scalar(self._request_query(ref).execution_options(populate_existing=True))
         binding = self._request_binding(request, ref)
         try:
-            lock_task_admission(session, binding[0])
+            lock_task_admission(session, binding[0], test_input_id=binding[3])
         except ConflictError as error:
             raise BuilderExecutionPolicyError("native_revision_drift") from error
         return binding
