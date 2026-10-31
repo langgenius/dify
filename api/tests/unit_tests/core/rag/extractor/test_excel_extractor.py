@@ -1,7 +1,9 @@
+import builtins
 import importlib.util
 import io
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 
 import pandas as pd
 import pytest
@@ -112,6 +114,29 @@ class TestExcelExtractor:
 
         documents = ExcelExtractor(str(path)).extract()
         assert [document.page_content for document in documents] == ['"Name":"Alice";"Count":"3"']
+
+    def test_broken_wolfxl_install_is_not_masked(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        real_import = builtins.__import__
+
+        def import_with_broken_wolfxl(
+            name: str,
+            globals: Mapping[str, object] | None = None,
+            locals: Mapping[str, object] | None = None,
+            fromlist: Sequence[str] = (),
+            level: int = 0,
+        ) -> ModuleType:
+            if name == "wolfxl":
+                raise ModuleNotFoundError("No module named 'wolfxl._native'", name="wolfxl._native")
+            return real_import(name, globals, locals, fromlist, level)
+
+        monkeypatch.setattr(builtins, "__import__", import_with_broken_wolfxl)
+        spec = importlib.util.spec_from_file_location("_excel_extractor_import_probe", excel_module.__file__)
+        assert spec is not None
+        assert spec.loader is not None
+
+        with pytest.raises(ModuleNotFoundError) as exc_info:
+            spec.loader.exec_module(importlib.util.module_from_spec(spec))
+        assert exc_info.value.name == "wolfxl._native"
 
     def test_extract_xlsx_with_hyperlinks_and_sheet_skip(self, monkeypatch: pytest.MonkeyPatch):
         sheet_with_data = _FakeSheet(
