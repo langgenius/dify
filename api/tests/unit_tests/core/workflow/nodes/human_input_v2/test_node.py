@@ -6,13 +6,11 @@ from unittest.mock import MagicMock, create_autospec, patch
 import pytest
 from pydantic import SecretStr, TypeAdapter
 
-from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.queue_entities import (
     QueueHumanInputFormFilledEvent,
     QueueHumanInputFormTimeoutEvent,
     QueueNodeSucceededEvent,
 )
-from enums.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import (
     FileInput,
     FileListInput,
@@ -32,8 +30,7 @@ from core.workflow.nodes.human_input_v2.entities import (
 from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormRequiredEvent
 from core.workflow.nodes.human_input_v2.node import HumanInputNode
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, HumanInputRuntime, PreparedForm
-from core.workflow.workflow_entry import WorkflowEntry
-from enums.human_input import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from enums.human_input import ButtonStyle, HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from graphon.engine_events import (
     EngineEvent,
     NodeRunFailedEvent,
@@ -56,6 +53,10 @@ from models.human_input_entities import (
     StringSource,
 )
 from repositories.human_input_v2.form_repository import Form, FormSubmission
+from services.tools.provider_queries import ToolProviderIcons
+from services.workflow.execution.adapters.events import WorkflowEventPublisher
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
+from services.workflow.execution.ports import ExecutionContexts
 from tests.unit_tests.core.app.apps.common.test_workflow_response_converter import (
     _workflow_response_converter_human_input_build_converter as _build_converter,
 )
@@ -147,10 +148,10 @@ def test_v1_event_filter_preserves_v2_completion_without_duplicate_events(
     form: Form, status: HumanInputFormStatus
 ) -> None:
     from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
-    from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
     from graphon.engine.filter import EngineEventFilterContext, filter_engine_events
     from graphon.graph import Graph
     from graphon.runtime import ReadOnlyRuntimeStateWrapper
+    from services.workflow.execution.adapters.human_input_events import HumanInputFormEventFilter
 
     form = submit(form) if status == HumanInputFormStatus.SUBMITTED else replace(form, status=status)
     node, _ = build_node(form)
@@ -270,16 +271,23 @@ def test_reentry_consumes_the_new_persisted_outcome(form: Form) -> None:
 
 
 @pytest.mark.parametrize("status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.TIMEOUT])
-def test_actual_graph_queue_response_path_preserves_order_and_fields(form: Form, status: HumanInputFormStatus) -> None:
+def test_actual_graph_queue_response_path_preserves_order_and_fields(
+    form: Form,
+    status: HumanInputFormStatus,
+    *,
+    workflow_contexts: ExecutionContexts,
+    tool_providers: ToolProviderIcons,
+) -> None:
     form = submit(form) if status == HumanInputFormStatus.SUBMITTED else replace(form, status=status)
     node, _ = build_node(form)
-    runner = create_autospec(WorkflowBasedAppRunner, instance=True)
-    entry = WorkflowEntry({}, Graph(root_node=node), 0, node.runtime_state)
+    queue_manager = MagicMock()
+    publisher = WorkflowEventPublisher(queue_manager, notify_pause=MagicMock())
+    entry = WorkflowEntry({}, Graph(root_node=node), 0, node.runtime_state, human_form_reader=MagicMock())
     for event in list(engine_events(node))[1:]:
-        WorkflowBasedAppRunner.handle_event(runner, entry, event)
-    queue_events = [call.args[0] for call in runner._publish_event.call_args_list]
+        publisher.publish(entry, event)
+    queue_events = [call.args[0] for call in queue_manager.publish.call_args_list]
     assert isinstance(queue_events[1], QueueNodeSucceededEvent)
-    converter = _build_converter()
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     converter.workflow_start_to_stream_response(
         task_id="task-1", workflow_run_id="run-1", workflow_id="wf-1", reason=WorkflowStartReason.INITIAL
     )
@@ -336,7 +344,9 @@ def test_dify_projection_serializes_the_runtime_token_without_a_graph_reason(for
     }
 
 
-def test_file_segments_survive_node_graph_queue_and_response(form: Form) -> None:
+def test_file_segments_survive_node_graph_queue_and_response(
+    form: Form, *, workflow_contexts: ExecutionContexts, tool_providers: ToolProviderIcons
+) -> None:
     attachment = File(
         file_id="file-1",
         file_type=FileType.DOCUMENT,
@@ -370,14 +380,15 @@ def test_file_segments_survive_node_graph_queue_and_response(form: Form) -> None
     assert isinstance(graph_events[2], NodeRunSucceededEvent)
     assert graph_events[1].rendered_content == "Answer: yes; files: [1 files]; attachment: [file]"
     assert isinstance(graph_events[2].node_run_result.outputs["attachment"], FileSegment)
-    runner = create_autospec(WorkflowBasedAppRunner, instance=True)
-    WorkflowBasedAppRunner.handle_event(
-        runner, WorkflowEntry({}, Graph(root_node=node), 0, node.runtime_state), graph_events[1]
+    queue_manager = MagicMock()
+    publisher = WorkflowEventPublisher(queue_manager, notify_pause=MagicMock())
+    publisher.publish(
+        WorkflowEntry({}, Graph(root_node=node), 0, node.runtime_state, human_form_reader=MagicMock()), graph_events[1]
     )
-    queue_event = runner._publish_event.call_args.args[0]
+    queue_event = queue_manager.publish.call_args.args[0]
     assert isinstance(queue_event.submitted_data["attachment"], FileSegment)
     assert isinstance(queue_event.submitted_data["files"], ArrayFileSegment)
-    converter = _build_converter()
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     converter.workflow_start_to_stream_response(
         task_id="task-1", workflow_run_id="run-1", workflow_id="wf-1", reason=WorkflowStartReason.INITIAL
     )
