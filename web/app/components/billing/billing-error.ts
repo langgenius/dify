@@ -2,7 +2,7 @@ import type {
   BillingOperationFailedError,
   BillingRequestInProgressError,
   BillingUnavailableError,
-} from '@dify/contracts/api/console/account/types.gen'
+} from '@dify/contracts/api/console/compliance/types.gen'
 import { isDefinedError, ORPCError } from '@orpc/client'
 
 type BillingErrorCode = (

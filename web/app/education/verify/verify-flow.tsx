@@ -1,7 +1,10 @@
 'use client'
 
+import type { contract } from '@dify/contracts/api/console/account/orpc.gen'
 import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
+import type { ErrorFromErrorMap, InferContractRouterErrorMap } from '@orpc/contract'
+import type { TFunction } from 'i18next'
 import type { ReactNode } from 'react'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { isDefinedError } from '@orpc/client'
@@ -22,6 +25,25 @@ const selectEducationStatus = ({ allow_refresh, is_student }: EducationStatusRes
   allowRefresh: allow_refresh,
   isEducationAccount: is_student,
 })
+
+type EducationVerificationError = ErrorFromErrorMap<
+  InferContractRouterErrorMap<typeof contract.account.education.verify.get>
+>
+
+function educationVerifyErrorMessage(
+  error: EducationVerificationError,
+  t: TFunction<['billing', 'education']>,
+) {
+  const code = isDefinedError(error) ? error.code : undefined
+  switch (code) {
+    case 'education_verify_failed':
+      return t(($) => $.verifyFailed, { ns: 'education' })
+    case 'education_verify_limit':
+      return t(($) => $.tooManyAttempts, { ns: 'education' })
+    default:
+      return t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' })
+  }
+}
 
 const selectEducationPlanEnabled = ({ education }: GetFeaturesResponse) => education.enabled
 
@@ -145,17 +167,10 @@ export function EducationVerifyFlow() {
     )
   }
 
-  if (isVerificationError) {
-    const code = isDefinedError(verificationError) ? verificationError.code : undefined
+  if (isVerificationError)
     return (
       <EducationVerifyError
-        message={
-          code === 'education_verify_failed'
-            ? t(($) => $.verifyFailed, { ns: 'education' })
-            : code === 'education_verify_limit'
-              ? t(($) => $.tooManyAttempts, { ns: 'education' })
-              : t(($) => $[billingErrorMessageKey(verificationError)], { ns: 'billing' })
-        }
+        message={educationVerifyErrorMessage(verificationError, t)}
         onRetry={() => {
           verificationStartedRef.current = false
           resetVerification()
@@ -163,7 +178,6 @@ export function EducationVerifyFlow() {
         }}
       />
     )
-  }
 
   return <EducationVerifyLoading />
 }

@@ -1,7 +1,10 @@
 'use client'
 
+import type { contract } from '@dify/contracts/api/console/account/orpc.gen'
 import type { SubscriptionModel } from '@dify/contracts/api/console/features/types.gen'
 import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ErrorFromErrorMap, InferContractRouterErrorMap } from '@orpc/contract'
+import type { TFunction } from 'i18next'
 import type { ReactNode } from 'react'
 import type { EducationRole } from './types'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -36,6 +39,25 @@ const AppliedEducationCase = {
   activeSubscription: 'activeSubscription',
   noPaymentPermission: 'noPaymentPermission',
 } as const
+
+type EducationApplyError = ErrorFromErrorMap<
+  InferContractRouterErrorMap<typeof contract.account.education.post>
+>
+
+function educationApplyErrorMessage(
+  error: EducationApplyError,
+  t: TFunction<['billing', 'common', 'education']>,
+) {
+  const code = isDefinedError(error) ? error.code : undefined
+  switch (code) {
+    case 'education_activate_failed':
+      return t(($) => $.activateFailed, { ns: 'education' })
+    case 'education_activate_limit':
+      return t(($) => $.tooManyAttempts, { ns: 'education' })
+    default:
+      return t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' })
+  }
+}
 
 type EducationApplyPageProps = {
   plan: SubscriptionModel['plan']
@@ -123,7 +145,6 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
       setIsOpeningBillingPortal(false)
     }
   }
-  const submitErrorCode = isDefinedError(submitError) ? submitError.code : undefined
   const renderBackToDifyButton = () => (
     <Link className={buttonVariants({ variant: 'ghost-accent' })} href="/">
       <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
@@ -288,11 +309,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
           </Button>
           {submitError && (
             <p role="alert" className="mt-2 system-sm-regular text-text-destructive">
-              {submitErrorCode === 'education_activate_failed'
-                ? t(($) => $.activateFailed, { ns: 'education' })
-                : submitErrorCode === 'education_activate_limit'
-                  ? t(($) => $.tooManyAttempts, { ns: 'education' })
-                  : t(($) => $[billingErrorMessageKey(submitError)], { ns: 'billing' })}
+              {educationApplyErrorMessage(submitError, t)}
             </p>
           )}
           <div className="mt-5 mb-4 h-px bg-linear-to-r from-[rgba(16,24,40,0.08)]" />
