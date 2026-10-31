@@ -9,7 +9,7 @@ from tests.unit_tests.services.dify_builder.native_testing.test_native_runtime i
 pytest_plugins = ["tests.unit_tests.services.dify_builder.native_testing.test_native_runtime"]
 
 
-def test_clear_boundary_blocks_native_projection_and_commands(cancel_composition: CancellationCase):
+def test_clear_boundary_blocks_native_projection_and_commands(cancel_composition: CancellationCase) -> None:
     case = cancel_composition
     builder = case.rows[DifyBuilderSession][0]
     assert isinstance(builder, DifyBuilderSession)
@@ -33,7 +33,9 @@ def test_clear_boundary_blocks_native_projection_and_commands(cancel_composition
         )
 
 
-def test_old_native_input_cannot_dispatch_after_a_new_task_cleared_active_input(cancel_composition: CancellationCase):
+def test_old_native_input_cannot_dispatch_after_a_new_task_cleared_active_input(
+    cancel_composition: CancellationCase,
+) -> None:
     from core.dify_builder.errors import ConflictError
     from services.dify_builder.task_controls import lock_task_admission
 
