@@ -26,7 +26,6 @@ from core.rag.index_processor.constant.index_type import (
     IndexStructureType as _dataset_service_segment_IndexStructureType,
 )
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from models import Account as _dataset_service_dataset_Account
@@ -55,6 +54,7 @@ from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, Pr
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
 from repositories.knowledge.collection_binding_repository import DatasetCollectionBindingRepository
+from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from services.enterprise import rbac_service
 from services.entities.knowledge_entities.rag_pipeline_entities import (
@@ -353,7 +353,7 @@ class TestMetadataBuiltInFieldsCases:
         with sqlite_session_factory.begin() as session:
             session.add(make_document(document_id="document-1", doc_metadata=doc_metadata))
 
-        filters = DatasetRetrieval.process_metadata_filter_func(0, condition, field, CREATED_AT_EPOCH, [])
+        filters = KnowledgeRetrievalRepository.process_metadata_filter_func(0, condition, field, CREATED_AT_EPOCH, [])
         with sqlite_session_factory() as session:
             found = session.scalars(select(_metadata_built_in_fields_Document.id).where(*filters)).all()
 
