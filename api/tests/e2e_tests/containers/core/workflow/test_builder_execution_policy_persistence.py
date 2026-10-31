@@ -237,7 +237,8 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     from extensions.ext_database import db
 
     merge_revision = "f9a3c62de418"
-    current_head = "5b73e0c8f124"
+    current_head = "6c84f1d90235"
+    writer_head = "5b73e0c8f124"
     material_head = "4a62d9b7e013"
     coordination_head = "e832a94f210b"
     knowledge_fs_head = "b9d3f7a5c102"
@@ -255,7 +256,10 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     config.set_main_option("script_location", str(Path(__file__).parents[5] / "migrations"))
     scripts = ScriptDirectory.from_config(config)
     assert scripts.get_heads() == [current_head]
-    writer_revision = scripts.get_revision(current_head)
+    fix_intents_revision = scripts.get_revision(current_head)
+    assert fix_intents_revision is not None
+    assert fix_intents_revision.down_revision == writer_head
+    writer_revision = scripts.get_revision(writer_head)
     assert writer_revision is not None
     assert writer_revision.down_revision == material_head
     material_revision = scripts.get_revision(material_head)
@@ -315,11 +319,19 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             connection.execute(text(f"CREATE TABLE {table} (LIKE public.{table} INCLUDING ALL)"))
         connection.execute(text("ALTER TABLE dify_builder_test_inputs DROP COLUMN http_fixtures"))
         connection.execute(text("ALTER TABLE dify_builder_runs DROP COLUMN verification"))
+        connection.execute(text("ALTER TABLE dify_builder_runs DROP COLUMN origin_task_id"))
         identity = str(uuid4())
         connection.execute(
             text(
                 "INSERT INTO dify_builder_test_inputs (id,session_id,source,inputs,start_schema_hash) "
                 "VALUES (:id,:id,'user','{}','historical')"
+            ),
+            {"id": identity},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO dify_builder_runs (id,session_id,kind,status,error,immutable) "
+                "VALUES (:id,:id,'verify','failed','historical execution evidence',true)"
             ),
             {"id": identity},
         )
@@ -435,6 +447,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             include_draft_coordination: bool = False,
             include_builder_context: bool = False,
             include_workflow_writer: bool = False,
+            include_fix_intents: bool = False,
         ) -> dict[str, _TableWitness]:
             inspector = inspect(connection)
             expected_tables = {*tables, "alembic_version"}
@@ -446,6 +459,8 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
                 expected_tables.update({"dify_builder_cognition_policies", "dify_builder_material"})
             if include_workflow_writer:
                 expected_tables.add("dify_builder_workflow_writers")
+            if include_fix_intents:
+                expected_tables.add("dify_builder_fix_intents")
             if include_archive:
                 expected_tables.add("workflow_run_archive_bundles")
             if include_native:
@@ -655,8 +670,9 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         ).one() == (None, None)
 
         # The official branch has its own migration qualification. With both
-        # parents applied, the merge consolidates version rows; its two new
-        # Builder descendants add empty context/ownership tables without altering history.
+        # parents applied, the merge consolidates version rows; its later
+        # Builder descendants add empty context/ownership/Fix tables and nullable
+        # run provenance without altering historical values or constraints.
         parents = MigrationContext.configure(connection, opts={"version_table_schema": schema})
         parents.stamp(scripts, coordination_head)
         parents.stamp(scripts, knowledge_fs_head)
@@ -667,7 +683,25 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         assert connection.scalar(text("SELECT count(*) FROM dify_builder_cognition_policies")) == 0
         assert connection.scalar(text("SELECT count(*) FROM dify_builder_material")) == 0
         assert connection.scalar(text("SELECT count(*) FROM dify_builder_workflow_writers")) == 0
+        assert connection.scalar(text("SELECT count(*) FROM dify_builder_fix_intents")) == 0
         writer_inspector = inspect(connection)
+        assert writer_inspector.get_pk_constraint("dify_builder_fix_intents", schema=schema)["constrained_columns"] == [
+            "id"
+        ]
+        assert {
+            constraint["name"]: constraint["column_names"]
+            for constraint in writer_inspector.get_unique_constraints("dify_builder_fix_intents", schema=schema)
+        } == {
+            "builder_fix_intent_action_unique": ["session_id", "client_action_id"],
+            "builder_fix_intent_decision_unique": ["session_id", "decision_id"],
+        }
+        assert {
+            index["name"]: index["column_names"]
+            for index in writer_inspector.get_indexes("dify_builder_fix_intents", schema=schema)
+            if not index.get("duplicates_constraint")
+        } == {
+            "builder_fix_intent_owner_idx": ["tenant_id", "owner_account_id", "app_id", "session_id"],
+        }
         assert writer_inspector.get_pk_constraint("dify_builder_workflow_writers", schema=schema)[
             "constrained_columns"
         ] == [
@@ -689,6 +723,16 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         } == {
             "builder_workflow_writer_session_idx",
         }
+        previous_runs = before_continuation["dify_builder_runs"]
+        assert len(previous_runs["rows"]) == 1
+        expected_after_fix_intents: dict[str, _TableWitness] = {
+            **before_continuation,
+            "dify_builder_runs": {
+                **previous_runs,
+                "columns": [*previous_runs["columns"], ("origin_task_id", "VARCHAR(255)", True, None)],
+                "rows": [(*row, None) for row in previous_runs["rows"]],
+            },
+        }
         assert (
             witness(
                 include_archive=True,
@@ -700,8 +744,9 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
                 include_draft_coordination=True,
                 include_builder_context=True,
                 include_workflow_writer=True,
+                include_fix_intents=True,
             )
-            == before_continuation
+            == expected_after_fix_intents
         )
 
 
