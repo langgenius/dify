@@ -54,9 +54,7 @@ def test_yaml_import_preserves_github_url_components(
             session=unbound_session,
             drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
             overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
-        ).import_app(
-            account=account, import_mode="yaml-url", yaml_url=url
-        )
+        ).import_app(account=account, import_mode="yaml-url", yaml_url=url)
     else:
         result = RagPipelineDslService(session=unbound_session).import_rag_pipeline(
             account=account, import_mode="yaml-url", yaml_url=url
