@@ -95,13 +95,16 @@ class QAIndexProcessor(BaseIndexProcessor):
                     split_documents.append(document_node)
             all_documents.extend(split_documents)
         if preview:
-            self._format_qa_document(
-                current_app._get_current_object(),  # type: ignore
-                kwargs.get("tenant_id"),  # type: ignore
-                all_documents[0],
-                all_qa_documents,
-                kwargs.get("doc_language", "English"),
-            )
+            # a source can yield no chunks (empty/whitespace-only text, a blank
+            # PDF, or URL-sourced images); preview the first one only if any
+            if all_documents:
+                self._format_qa_document(
+                    current_app._get_current_object(),  # type: ignore
+                    kwargs.get("tenant_id"),  # type: ignore
+                    all_documents[0],
+                    all_qa_documents,
+                    kwargs.get("doc_language", "English"),
+                )
         else:
             for i in range(0, len(all_documents), 10):
                 threads = []
