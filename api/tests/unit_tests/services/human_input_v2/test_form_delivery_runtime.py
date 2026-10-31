@@ -1517,7 +1517,12 @@ def test_reentry_does_not_retry_failed_notifications(context: Context, providers
 @pytest.mark.usefixtures("providers")
 @pytest.mark.parametrize("recipient", [Initiator(), OnetimeEmail(email="person@example.com")])
 def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_token(
-    context: Context, monkeypatch: pytest.MonkeyPatch, recipient: Initiator | OnetimeEmail
+    context: Context,
+    monkeypatch: pytest.MonkeyPatch,
+    recipient: Initiator | OnetimeEmail,
+    *,
+    workflow_contexts,
+    tool_providers,
 ) -> None:
     from core.app.entities.queue_entities import QueueWorkflowPausedEvent
     from core.app.entities.task_entities import (
@@ -1600,7 +1605,7 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
         raise AssertionError("Unexpected live form reload")
 
     monkeypatch.setattr(session_factory, "create_session", reject_live_reload)
-    converter = _build_converter()
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     converter.workflow_start_to_stream_response(
         task_id="task", workflow_run_id=_RUN, workflow_id=run.workflow_id, reason=WorkflowStartReason.INITIAL
     )
