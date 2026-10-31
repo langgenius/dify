@@ -9,7 +9,8 @@ from flask.ctx import RequestContext
 from werkzeug.datastructures import FileStorage
 
 from controllers.openapi._errors import InvalidFilePart
-from controllers.openapi._multipart import body_from_request
+from controllers.openapi._multipart import body_from_request, folder_streams
+from controllers.openapi._upload import UploadParts
 
 _FILE_FIELDS = frozenset({"file", "files", "attachments"})
 
@@ -66,3 +67,26 @@ def test_multipart_places_every_part_name_shape(app: Flask) -> None:
 def test_multipart_rejects_malformed_bodies(app: Flask, data: Mapping[str, object], reason: str) -> None:
     with _multipart(app, data), pytest.raises(InvalidFilePart, match=reason):
         body_from_request(file_fields=_FILE_FIELDS)
+
+
+def test_folder_streams_maps_each_path_to_its_stream() -> None:
+    first, second = FileStorage(stream=BytesIO(b"a")), FileStorage(stream=BytesIO(b"b"))
+    streams = folder_streams({"SKILL.md": first, "scripts/run.py": second})
+    assert streams == {"SKILL.md": first.stream, "scripts/run.py": second.stream}
+
+
+def test_folder_streams_rejects_a_path_given_more_than_once() -> None:
+    parts: UploadParts = {"SKILL.md": [FileStorage(stream=BytesIO(b"a")), FileStorage(stream=BytesIO(b"b"))]}
+    with pytest.raises(InvalidFilePart, match="SKILL.md"):
+        folder_streams(parts)
+
+
+@pytest.mark.parametrize("direct", ["files", "files[]"])
+@pytest.mark.parametrize("mapped", ["files[doc]", "files[doc][]"])
+@pytest.mark.parametrize("mapped_first", [False, True], ids=["direct_first", "mapped_first"])
+def test_multipart_rejects_conflicting_file_shapes(app: Flask, direct: str, mapped: str, mapped_first: bool) -> None:
+    names = [mapped, direct] if mapped_first else [direct, mapped]
+    data = {name: _part() for name in names}
+    with _multipart(app, data), pytest.raises(InvalidFilePart, match="given more than once") as exc:
+        body_from_request(file_fields=_FILE_FIELDS)
+    assert exc.value.code == 422

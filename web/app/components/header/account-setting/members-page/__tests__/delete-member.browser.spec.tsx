@@ -2,6 +2,12 @@ import type { AccountWithRoleResponse } from '@dify/contracts/api/console/worksp
 import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { createContactsMockRepository } from '@/features/contacts/management/__tests__/fixtures/repository'
+import {
+  ContactsMockScenario,
+  createContactsMockScenario,
+} from '@/features/contacts/management/__tests__/fixtures/scenarios'
+import { ContactsManagementProvider } from '@/features/contacts/management/composition'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
@@ -12,6 +18,10 @@ const api = vi.hoisted(() => ({
   features: vi.fn<typeof consoleClient.features.get>(),
   members: vi.fn<typeof consoleClient.workspaces.current.members.get>(),
   remove: vi.fn<typeof consoleClient.workspaces.current.members.byMemberId.delete>(),
+  contactsEnabled: vi.fn(() => false),
+}))
+vi.mock('@/features/contacts/management/feature-flag', () => ({
+  isContactsManagementEnabled: api.contactsEnabled,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -39,6 +49,7 @@ const member = (id: string): AccountWithRoleResponse => ({
   status: 'active',
 })
 beforeEach(() => {
+  api.contactsEnabled.mockReturnValue(false)
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
   vi.stubGlobal(
     'fetch',
@@ -56,7 +67,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-async function setup(ids: string[]) {
+async function setup(ids: string[], contactRemoval = false) {
   let accounts = ids.map(member)
   api.members.mockReset().mockImplementation(async () => ({ accounts }))
   api.remove.mockReset().mockImplementation(async ({ params }) => {
@@ -68,9 +79,31 @@ async function setup(ids: string[]) {
     workspacePermissionKeys: ['workspace.member.manage'],
   })
   api.features.mockResolvedValue(queryClient.getQueryData(consoleQuery.features.get.queryKey())!)
+  const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
+  const contactsRepository = createContactsMockRepository({ scenario })
+  const removeContactMember = vi
+    .spyOn(contactsRepository, 'removeMember')
+    .mockImplementation(async ({ memberId }) => {
+      accounts = accounts.filter((account) => account.id !== memberId)
+      return { kind: 'removed', contactId: null, contactOutcome: 'not_found' }
+    })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
-      <MembersPage />
+      {contactRemoval ? (
+        <ContactsManagementProvider
+          repository={contactsRepository}
+          context={{
+            deployment: scenario.deployment,
+            imCentrallyManaged: true,
+            permissions: scenario.permissions,
+            workspaceId: scenario.workspaceId,
+          }}
+        >
+          <MembersPage />
+        </ContactsManagementProvider>
+      ) : (
+        <MembersPage />
+      )}
     </QueryClientTestProvider>,
   )
   const open = async (id: string) => {
@@ -81,8 +114,28 @@ async function setup(ids: string[]) {
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
     await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
   }
-  return { screen, open }
+  return { screen, open, removeContactMember }
 }
+
+it('returns focus to the next member after contact-aware removal deletes the opening row', async () => {
+  api.contactsEnabled.mockReturnValue(true)
+  const { screen, open, removeContactMember } = await setup(['Alpha', 'Beta'], true)
+  await open('Alpha')
+  const retention = screen.getByRole('checkbox', { name: /memberRemoval\.keepPlatform/ })
+  await expect.element(retention).toBeChecked()
+  await retention.click()
+  await screen.getByRole('button', { name: 'contacts.memberRemoval.remove', exact: true }).click()
+  await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('button', { name: 'Alpha', exact: true }))
+    .not.toBeInTheDocument()
+  await expect.element(screen.getByRole('button', { name: 'Beta', exact: true })).toHaveFocus()
+  expect(removeContactMember).toHaveBeenCalledExactlyOnceWith({
+    memberId: 'Alpha',
+    keepAsPlatformContact: false,
+  })
+  expect(api.remove).not.toHaveBeenCalled()
+})
 
 it('removes the member before a slow list refresh completes', async () => {
   const { screen, open } = await setup(['Alpha', 'Beta'])

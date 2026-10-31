@@ -128,10 +128,13 @@ describe('CreateSubscriptionButton', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'pluginTrigger.modal.manual.title' })
     await waitFor(() =>
-      expect(mockCreateBuilder).toHaveBeenCalledWith({
-        params: { provider: 'test-provider' },
-        body: { credential_type: 'unauthorized' },
-      }),
+      expect(mockCreateBuilder).toHaveBeenCalledWith(
+        {
+          params: { provider: 'test-provider' },
+          body: { credential_type: 'unauthorized' },
+        },
+        { context: { silent: true } },
+      ),
     )
     expect(
       within(dialog).getByRole('textbox', { name: /subscriptionName.label/ }),
@@ -161,10 +164,13 @@ describe('CreateSubscriptionButton', () => {
       within(dialog).getByRole('button', { name: 'pluginTrigger.modal.common.verify' }),
     ).toBeInTheDocument()
     await waitFor(() =>
-      expect(mockCreateBuilder).toHaveBeenCalledWith({
-        params: { provider: 'test-provider' },
-        body: { credential_type: 'api-key' },
-      }),
+      expect(mockCreateBuilder).toHaveBeenCalledWith(
+        {
+          params: { provider: 'test-provider' },
+          body: { credential_type: 'api-key' },
+        },
+        { context: { silent: true } },
+      ),
     )
   })
 
@@ -241,10 +247,13 @@ describe('CreateSubscriptionButton', () => {
       within(dialog).getByRole('button', { name: 'pluginTrigger.modal.common.create' }),
     )
     await waitFor(() =>
-      expect(mockBuildSubscription).toHaveBeenCalledWith({
-        params: { provider: 'test-provider', subscription_builder_id: 'builder-1' },
-        body: { name: 'OAuth updates' },
-      }),
+      expect(mockBuildSubscription).toHaveBeenCalledWith(
+        {
+          params: { provider: 'test-provider', subscription_builder_id: 'builder-1' },
+          body: { name: 'OAuth updates' },
+        },
+        { context: { silent: true } },
+      ),
     )
     expect(toastMocks.success).toHaveBeenCalledTimes(1)
   })

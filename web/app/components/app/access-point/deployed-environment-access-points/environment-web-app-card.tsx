@@ -22,6 +22,7 @@ import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import {
@@ -101,24 +102,32 @@ export function EnvironmentWebAppCard({
     subjectsQuery.data.subjects.length > 0
   const siteMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentSite.mutationOptions({
+      context: { silent: true },
       scope: {
         id: `environment-web-app-toggle:${appId}:${environmentId}`,
       },
-      onError: () => {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
       },
     }),
   )
   const resetAccessTokenMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.resetEnvironmentSiteAccessToken.mutationOptions(
       {
+        context: { silent: true },
         onSuccess: (updatedSite) => {
           queryClient.setQueryData(siteQueryOptions.queryKey, updatedSite)
           setShowRegenerate(false)
           toast.success(t(($) => $['actionMsg.generatedSuccessfully'], { ns: 'common' }))
         },
-        onError: () => {
-          toast.error(t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ??
+              t(($) => $['actionMsg.generatedUnsuccessfully'], { ns: 'common' }),
+          )
         },
       },
     ),

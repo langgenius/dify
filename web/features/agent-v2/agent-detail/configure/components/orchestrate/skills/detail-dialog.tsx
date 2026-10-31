@@ -17,9 +17,13 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useCallback, useId } from 'react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { queryOptions, useQuery } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
+import { useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { getFileExtension, hasFileDataPreview } from '@/features/agent-v2/file-icon'
 import { AgentFileTree } from '../files/tree'
 
 type AgentSkillDetailSection = {
@@ -47,13 +51,14 @@ export type AgentSkillDetail = {
     content?: string
     downloadActionLoadingTarget?: AgentSkillDetailDownloadAction | null
     downloadUrl?: string
+    fileData?: Blob
     fileName?: string
-    imageData?: Blob
+    fileType?: AgentFileNode['icon']
     isDownloadError?: boolean
     isDownloadLoading?: boolean
     isError?: boolean
-    isImage?: boolean
     isLoading?: boolean
+    truncated?: boolean
   }
   onFolderOpenChange?: (context: { file: AgentFileNode; depth: number; open: boolean }) => void
   onFolderEnter?: (context: { file: AgentFileNode; depth: number }) => void
@@ -65,6 +70,11 @@ export type AgentSkillDetail = {
 }
 
 const keepSkillFoldersClosed = () => false
+
+const AgentFilePdfPreview = dynamic(
+  () => import('./pdf-preview').then((module) => module.AgentFilePdfPreview),
+  { ssr: false, loading: () => <AgentFilePreviewLoading /> },
+)
 
 function AgentSkillFileList({
   fileListHeader,
@@ -171,19 +181,19 @@ function AgentSkillDetailSectionBlock({ section }: { section: AgentSkillDetailSe
   )
 }
 
-function AgentSkillImagePreview({ fileName, imageData }: { fileName?: string; imageData: Blob }) {
+function AgentSkillImagePreview({ fileName, fileData }: { fileName?: string; fileData: Blob }) {
   const setImageRef = useCallback(
     (image: HTMLImageElement | null) => {
       if (!image) return
 
-      const objectUrl = URL.createObjectURL(imageData)
+      const objectUrl = URL.createObjectURL(fileData)
       image.src = objectUrl
 
       return () => {
         URL.revokeObjectURL(objectUrl)
       }
     },
-    [imageData],
+    [fileData],
   )
 
   return (
@@ -197,44 +207,86 @@ function AgentSkillImagePreview({ fileName, imageData }: { fileName?: string; im
   )
 }
 
+function AgentFilePreviewLoading() {
+  return (
+    <div className="flex min-h-40 flex-1 items-center justify-center">
+      <LoadingPlaceholder />
+    </div>
+  )
+}
+
+function AgentFilePreviewFallback({
+  downloadActionLoadingTarget,
+  downloadUrl,
+  message,
+  onDownloadFile,
+}: Pick<
+  NonNullable<AgentSkillDetail['filePreview']>,
+  'downloadActionLoadingTarget' | 'downloadUrl'
+> &
+  Pick<AgentSkillDetail, 'onDownloadFile'> & { message: string }) {
+  const { t: tCommon } = useTranslation(['common'])
+  const isPreviewDownloadLoading = downloadActionLoadingTarget === 'preview'
+
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2 px-4">
+      <span className="system-sm-regular text-text-tertiary">{message}</span>
+      {onDownloadFile && (
+        <a
+          href={downloadUrl || '#'}
+          aria-disabled={isPreviewDownloadLoading}
+          onClick={(event) => {
+            if (isPreviewDownloadLoading) {
+              event.preventDefault()
+              return
+            }
+            if (!downloadUrl) {
+              event.preventDefault()
+              onDownloadFile('preview')
+            }
+          }}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex min-w-0 items-center gap-1 rounded-md px-2 py-1 system-sm-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        >
+          <span
+            aria-hidden
+            className={cn(
+              'size-4 shrink-0',
+              isPreviewDownloadLoading
+                ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+                : 'i-ri-download-2-line',
+            )}
+          />
+          <span className="shrink-0">
+            {isPreviewDownloadLoading
+              ? tCommon(($) => $['operation.downloading'])
+              : tCommon(($) => $['operation.download'])}
+          </span>
+        </a>
+      )}
+    </div>
+  )
+}
+
 function AgentFilePreviewContent({
   binary,
   content,
   downloadActionLoadingTarget,
   downloadUrl,
+  fileData,
   fileName,
-  imageData,
+  fileType,
   isDownloadError,
   isDownloadLoading,
   isError,
-  isImage,
   isLoading,
   onDownloadFile,
-}: {
-  binary?: boolean
-  content?: string
-  downloadActionLoadingTarget?: AgentSkillDetailDownloadAction | null
-  downloadUrl?: string
-  fileName?: string
-  imageData?: Blob
-  isDownloadError?: boolean
-  isDownloadLoading?: boolean
-  isError?: boolean
-  isImage?: boolean
-  isLoading?: boolean
-  onDownloadFile?: (action: AgentSkillDetailDownloadAction) => void
-}) {
+  truncated,
+}: NonNullable<AgentSkillDetail['filePreview']> & Pick<AgentSkillDetail, 'onDownloadFile'>) {
   const { t } = useTranslation(['agentV2'])
-  const { t: tCommon } = useTranslation(['common'])
-  const isPreviewDownloadLoading = downloadActionLoadingTarget === 'preview'
 
-  if (isLoading || isDownloadLoading) {
-    return (
-      <div className="flex min-h-40 flex-1 items-center justify-center">
-        <LoadingPlaceholder />
-      </div>
-    )
-  }
+  if (isLoading || isDownloadLoading) return <AgentFilePreviewLoading />
 
   if (isError || isDownloadError) {
     return (
@@ -244,62 +296,46 @@ function AgentFilePreviewContent({
     )
   }
 
-  if (isImage) {
-    if (imageData) return <AgentSkillImagePreview fileName={fileName} imageData={imageData} />
-    if (downloadUrl) {
-      return (
-        <div className="flex min-h-40 flex-1 items-start justify-center overflow-auto px-2 pb-4">
-          <img
-            src={downloadUrl}
-            alt={fileName ?? ''}
-            className="max-h-140 max-w-full rounded-lg object-contain"
-          />
-        </div>
-      )
-    }
+  if (fileType === 'image' && fileData)
+    return <AgentSkillImagePreview fileName={fileName} fileData={fileData} />
+
+  if (fileType === 'image' && downloadUrl) {
+    return (
+      <div className="flex min-h-40 flex-1 items-start justify-center overflow-auto px-2 pb-4">
+        <img
+          src={downloadUrl}
+          alt={fileName ?? ''}
+          className="max-h-140 max-w-full rounded-lg object-contain"
+        />
+      </div>
+    )
   }
 
-  if (binary) {
+  if (fileType === 'pdf' && (fileData || downloadUrl)) {
     return (
-      <div className="flex min-w-0 flex-wrap items-center gap-2 px-4">
-        <span className="system-sm-regular text-text-tertiary">
-          {t(($) => $['agentDetail.configure.files.preview.unsupported'])}
-        </span>
-        {onDownloadFile && (
-          <a
-            href={downloadUrl || '#'}
-            aria-disabled={isPreviewDownloadLoading}
-            onClick={(event) => {
-              if (isPreviewDownloadLoading) {
-                event.preventDefault()
-                return
-              }
-              if (!downloadUrl) {
-                event.preventDefault()
-                onDownloadFile?.('preview')
-              }
-            }}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex min-w-0 items-center gap-1 rounded-md px-2 py-1 system-sm-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            <span
-              aria-hidden
-              className={cn(
-                'size-4 shrink-0',
-                isPreviewDownloadLoading
-                  ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
-                  : 'i-ri-download-2-line',
-              )}
-            />
-            <span className="shrink-0">
-              {isPreviewDownloadLoading
-                ? tCommon(($) => $['operation.downloading'])
-                : tCommon(($) => $['operation.download'])}
-            </span>
-          </a>
-        )}
-      </div>
+      <AgentFilePdfPreview
+        data={fileData}
+        url={downloadUrl}
+        loading={<AgentFilePreviewLoading />}
+        failure={
+          <AgentFilePreviewFallback
+            downloadActionLoadingTarget={downloadActionLoadingTarget}
+            message={t(($) => $['agentDetail.configure.files.preview.failed'])}
+            onDownloadFile={onDownloadFile}
+          />
+        }
+      />
+    )
+  }
+
+  if (binary || hasFileDataPreview(fileType)) {
+    return (
+      <AgentFilePreviewFallback
+        downloadActionLoadingTarget={downloadActionLoadingTarget}
+        downloadUrl={downloadUrl}
+        message={t(($) => $['agentDetail.configure.files.preview.unsupported'])}
+        onDownloadFile={onDownloadFile}
+      />
     )
   }
 
@@ -311,10 +347,64 @@ function AgentFilePreviewContent({
     )
   }
 
+  return (
+    <>
+      {truncated && (
+        <p className="flex items-center gap-1 px-4 system-xs-regular text-text-tertiary">
+          <span aria-hidden className="i-ri-information-line size-3.5 shrink-0" />
+          {t(($) => $['agentDetail.configure.files.preview.truncated'])}
+        </p>
+      )}
+      <AgentFileTextPreview content={content} fileName={fileName} />
+    </>
+  )
+}
+
+const loadFileHighlighter = async () => {
+  const [{ codeToTokens, isSupportedLanguage }, { default: light }, { default: dark }] =
+    await Promise.all([
+      import('@pierre/highlights'),
+      import('@pierre/highlights/themes/github-light'),
+      import('@pierre/highlights/themes/github-dark'),
+    ])
+
+  return (code: string, lang: string) => {
+    if (!isSupportedLanguage(lang)) return undefined
+
+    try {
+      return codeToTokens(code, {
+        lang,
+        themes: { light, dark },
+        defaultColor: false,
+        tokenizeMaxLineLength: 1000,
+      }).tokens
+    } catch {
+      return undefined
+    }
+  }
+}
+
+function AgentFileTextPreview({ content, fileName }: { content: string; fileName?: string }) {
+  const extension = fileName ? getFileExtension(fileName) : ''
+  const language = extension && extension !== 'txt' ? extension : undefined
+  const { data: highlight } = useQuery(
+    queryOptions({
+      queryKey: ['agent-v2', 'file-highlighter'],
+      queryFn: loadFileHighlighter,
+      enabled: !!language,
+      networkMode: 'always',
+      staleTime: Infinity,
+    }),
+  )
+  const highlightedLines = useMemo(
+    () => (highlight && language ? highlight(content, language) : undefined),
+    [content, highlight, language],
+  )
   const lines = content.split('\n').map((line, index) => ({
     content: line,
     key: `${index}:${line}`,
     lineNumber: String(index + 1).padStart(2, '0'),
+    tokens: highlightedLines?.[index],
   }))
 
   return (
@@ -328,7 +418,18 @@ function AgentFilePreviewContent({
             {line.lineNumber}
           </span>
           <code className="block min-w-0 flex-1 wrap-anywhere whitespace-pre-wrap text-text-primary">
-            {line.content}
+            {line.tokens
+              ? line.tokens.map((token, tokenIndex) => (
+                  <span
+                    // oxlint-disable-next-line react/no-array-index-key -- Tokens are positional within their line.
+                    key={tokenIndex}
+                    style={token.htmlStyle}
+                    className="[font-weight:var(--hls-light-font-weight)] text-(--hls-light) [font-style:var(--hls-light-font-style)] in-data-[theme=dark]:[font-weight:var(--hls-dark-font-weight)] in-data-[theme=dark]:text-(--hls-dark) in-data-[theme=dark]:[font-style:var(--hls-dark-font-style)]"
+                  >
+                    {token.content}
+                  </span>
+                ))
+              : line.content}
           </code>
         </div>
       ))}
@@ -364,6 +465,9 @@ export function AgentSkillDetailBody({
   const dialogTitleId = useId()
   const previewTitle = detail.filePreview?.fileName
   const isHeaderDownloadLoading = detail.filePreview?.downloadActionLoadingTarget === 'header'
+  const headerDownloadLabel = isHeaderDownloadLoading
+    ? tCommon(($) => $['operation.downloading'])
+    : tCommon(($) => $['operation.download'])
 
   return (
     <>
@@ -409,23 +513,31 @@ export function AgentSkillDetailBody({
             </div>
             <div className="-my-0.5 flex shrink-0 items-center gap-1">
               {detail.onDownloadFile && previewTitle && (
-                <button
-                  type="button"
-                  aria-label={`${isHeaderDownloadLoading ? tCommon(($) => $['operation.downloading']) : tCommon(($) => $['operation.download'])} ${previewTitle}`}
-                  onClick={() => detail.onDownloadFile?.('header')}
-                  disabled={isHeaderDownloadLoading}
-                  className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      'size-4',
-                      isHeaderDownloadLoading
-                        ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
-                        : 'i-ri-download-line',
-                    )}
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <IconButton
+                        aria-label={`${headerDownloadLabel} ${previewTitle}`}
+                        size="lg"
+                        className="shrink-0"
+                        disabled={isHeaderDownloadLoading}
+                        focusableWhenDisabled
+                        onClick={() => detail.onDownloadFile?.('header')}
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'size-4',
+                            isHeaderDownloadLoading
+                              ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+                              : 'i-ri-download-line',
+                          )}
+                        />
+                      </IconButton>
+                    }
                   />
-                </button>
+                  <TooltipContent>{headerDownloadLabel}</TooltipContent>
+                </Tooltip>
               )}
               <DialogClose
                 render={
@@ -452,17 +564,7 @@ export function AgentSkillDetailBody({
               >
                 {detail.filePreview && (
                   <AgentFilePreviewContent
-                    binary={detail.filePreview.binary}
-                    content={detail.filePreview.content}
-                    downloadActionLoadingTarget={detail.filePreview.downloadActionLoadingTarget}
-                    downloadUrl={detail.filePreview.downloadUrl}
-                    fileName={detail.filePreview.fileName}
-                    imageData={detail.filePreview.imageData}
-                    isDownloadError={detail.filePreview.isDownloadError}
-                    isDownloadLoading={detail.filePreview.isDownloadLoading}
-                    isError={detail.filePreview.isError}
-                    isImage={detail.filePreview.isImage}
-                    isLoading={detail.filePreview.isLoading}
+                    {...detail.filePreview}
                     onDownloadFile={detail.onDownloadFile}
                   />
                 )}

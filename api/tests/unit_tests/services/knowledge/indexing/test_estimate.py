@@ -8,6 +8,7 @@ from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, UploadFileExtractionInput
 from machinery.context import RequestContext
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.data_source.credential_gateway import DatasourceCredentialNotFoundError
 from services.data_source.entities.notion_import import NotionPageType
 from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess, DatasetAccessDeniedError
@@ -333,6 +334,7 @@ def test_estimate_rejects_missing_document(fixture: ServiceFixture) -> None:
 @pytest.mark.parametrize(
     ("source_error", "expected_error"),
     [
+        (CredentialRefreshUnavailableError(), CredentialRefreshUnavailableError),
         (DatasourceCredentialNotFoundError(), IndexingEstimateCredentialUnavailableError),
         (IndexingInputSourceError("missing source"), EstimateSourceNotFoundError),
         (UnsupportedStoredSourceError("unknown"), UnsupportedEstimateSourceError),

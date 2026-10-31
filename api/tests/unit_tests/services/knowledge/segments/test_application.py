@@ -458,7 +458,7 @@ def test_create_segment_returns_store_detail() -> None:
 )
 def test_shared_update_rejects_disabled_or_indexing_segments(enabled: bool, indexing: bool, message: str) -> None:
     service, _, store, _, _, state, _ = _service()
-    store.get_segment_update_state.return_value = SegmentUpdateState("content", enabled, None)
+    store.get_segment_update_state.return_value = SegmentUpdateState("content", enabled, None, None)
     state.is_segment_indexing.return_value = indexing
     with pytest.raises(ValueError, match=message):
         service.mutations.update_segment(
@@ -472,7 +472,7 @@ def test_shared_update_rejects_disabled_or_indexing_segments(enabled: bool, inde
 
 def test_shared_disable_patch_does_not_replace_content() -> None:
     service, _, store, _, _, state, _ = _service()
-    store.get_segment_update_state.return_value = SegmentUpdateState("content", True, None)
+    store.get_segment_update_state.return_value = SegmentUpdateState("content", True, None, None)
     service.mutations.update_segment(
         SegmentMutationScope(_dataset(), _document()),
         actor_id="editor",
@@ -490,7 +490,7 @@ def test_shared_disable_patch_does_not_replace_content() -> None:
 def test_shared_writes_do_not_build_segment_detail() -> None:
     service, _, store, _, _, _, _ = _service()
     store.get_segment.side_effect = RuntimeError("attachment URL signing unavailable")
-    store.get_segment_update_state.return_value = SegmentUpdateState("content", True, None)
+    store.get_segment_update_state.return_value = SegmentUpdateState("content", True, None, None)
     scope = SegmentMutationScope(_dataset(), _document())
 
     created = service.mutations.create_segment(scope, actor_id="author", args=SegmentUpdateArgs(content="content"))

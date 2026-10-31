@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "चुने गए संपर्क इस कार्यक्षेत्र से स्थायी रूप से हटा दिए जाएँगे। इस कार्रवाई को पूर्ववत नहीं किया जा सकता।",
+  "directory.removalTitle": "संपर्क हटाएँ?",
+  "imPlatform.bindingDialog.clearSavedCredential": "सहेजा गया मान साफ़ करें",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "सहेजने पर यह सहेजा गया मान साफ़ हो जाएगा।",
+  "imPlatform.bindingDialog.replacementRequired": "ये क्रेडेंशियल किसी दूसरे IM टेनेंट के हैं और इन्हें सीधे सहेजा नहीं जा सकता। टेनेंट बदलने के लिए मौजूदा IM चैनल को बदलना होगा, जिससे सभी स्वचालित और मैन्युअल IM बाइंडिंग मिट जाएँगी। चैनल बदलने के बाद संपर्कों को फिर से सिंक करें।",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "कॉन्फ़िगरेशन सहेज लिया गया है, लेकिन उसका विवरण लोड नहीं हो सका। यह संवाद बंद करके फिर खोलें।",
+  "imPlatform.bindingDialog.undoClearCredential": "साफ़ करना पूर्ववत करें"
+}

@@ -1,0 +1,34 @@
+from collections.abc import Callable
+
+import httpx
+import pytest
+
+from services.billing_client import transport
+
+type RespondWith = Callable[[httpx.Response], list[httpx.Request]]
+
+
+@pytest.fixture(autouse=True)
+def billing_config(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        BILLING_API_URL="http://billing/v1",
+        BILLING_QUOTA_API_URL="http://quota/v1",
+        BILLING_API_SECRET_KEY="secret",
+        NETWORK_ACCESS_API_URL="",
+    )
+
+
+@pytest.fixture
+def respond_with(monkeypatch: pytest.MonkeyPatch) -> RespondWith:
+    """Route the pooled billing client to a MockTransport that answers every request with `response`."""
+    requests: list[httpx.Request] = []
+
+    def install(response: httpx.Response) -> list[httpx.Request]:
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return response
+
+        monkeypatch.setattr(transport, "_http_client", httpx.Client(transport=httpx.MockTransport(handler)))
+        return requests
+
+    return install
