@@ -4,7 +4,7 @@
     "title": "",
     "version": "0.0.1"
   },
-  "x-dify-saas-commit": "04f8d88cc15c5f62f14f8843a54f3e2e7e09ee5a",
+  "x-dify-saas-commit": "2d358b5a0555440b30d8601f5e786a15e28a2345",
   "paths": {
     "/v1/subscription/info": {
       "get": {
@@ -710,6 +710,138 @@
           "tenant_ids"
         ]
       },
+      "BillingComplianceErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "REQUEST_IN_PROGRESS",
+          "MISSING_TENANT_ID",
+          "INVALID_TENANT_ID",
+          "MISSING_ACCOUNT_ID",
+          "INVALID_ACCOUNT_ID",
+          "MISSING_PREFILLED_EMAIL",
+          "INVALID_COMPLIANCE_DOWNLOAD_REQUEST",
+          "MISSING_DOC_NAME",
+          "MISSING_IP_ADDRESS",
+          "MISSING_DEVICE_INFO",
+          "COMPLIANCE_DOCUMENT_NOT_FOUND",
+          "COMPLIANCE_DOWNLOAD_FORBIDDEN",
+          "COMPLIANCE_DOWNLOAD_FAILED"
+        ],
+        "type": "string",
+        "description": "Reasons returned by the BillingCompliance service: values of the proto enums dify.saas.api.billing.CommonErrorReason and dify.saas.api.billing.BillingComplianceErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
+      },
+      "BillingEducationErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "REQUEST_IN_PROGRESS",
+          "MISSING_TENANT_ID",
+          "INVALID_TENANT_ID",
+          "MISSING_ACCOUNT_ID",
+          "INVALID_ACCOUNT_ID",
+          "MISSING_PREFILLED_EMAIL",
+          "EDUCATION_VERIFY_FAILED",
+          "EDUCATION_CREATE_FAILED",
+          "EDUCATION_STATUS_FAILED"
+        ],
+        "type": "string",
+        "description": "Reasons returned by the BillingEducation service: values of the proto enums dify.saas.api.billing.CommonErrorReason and dify.saas.api.billing.BillingEducationErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
+      },
+      "BillingInvoiceErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "REQUEST_IN_PROGRESS",
+          "MISSING_TENANT_ID",
+          "INVALID_TENANT_ID",
+          "MISSING_ACCOUNT_ID",
+          "INVALID_ACCOUNT_ID",
+          "MISSING_PREFILLED_EMAIL",
+          "INVALID_INVOICE_REQUEST",
+          "CREATE_INVOICE_PORTAL_FAILED"
+        ],
+        "type": "string",
+        "description": "Reasons returned by the BillingInvoice service: values of the proto enums dify.saas.api.billing.CommonErrorReason and dify.saas.api.billing.BillingInvoiceErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
+      },
+      "BillingModelProviderErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "REQUEST_IN_PROGRESS",
+          "MISSING_TENANT_ID",
+          "INVALID_TENANT_ID",
+          "MISSING_ACCOUNT_ID",
+          "INVALID_ACCOUNT_ID",
+          "MISSING_PREFILLED_EMAIL",
+          "INVALID_MODEL_PROVIDER_PAYMENT_LINK_REQUEST",
+          "MISSING_PROVIDER_NAME",
+          "INVALID_MODEL_PROVIDER",
+          "CREATE_MODEL_PROVIDER_PAYMENT_LINK_FAILED"
+        ],
+        "type": "string",
+        "description": "Reasons returned by the BillingModelProvider service: values of the proto enums dify.saas.api.billing.CommonErrorReason and dify.saas.api.billing.BillingModelProviderErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
+      },
+      "BillingQuotaErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "REQUEST_IN_PROGRESS",
+          "MISSING_TENANT_ID",
+          "INVALID_TENANT_ID",
+          "MISSING_ACCOUNT_ID",
+          "INVALID_ACCOUNT_ID",
+          "MISSING_PREFILLED_EMAIL"
+        ],
+        "type": "string",
+        "description": "Reasons returned by the BillingQuota service: values of the proto enum dify.saas.api.billing.CommonErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
+      },
+      "BillingSubscriptionErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "REQUEST_IN_PROGRESS",
+          "MISSING_TENANT_ID",
+          "INVALID_TENANT_ID",
+          "MISSING_ACCOUNT_ID",
+          "INVALID_ACCOUNT_ID",
+          "MISSING_PREFILLED_EMAIL",
+          "INVALID_PAYMENT_LINK_REQUEST",
+          "MISSING_PLAN",
+          "MISSING_INTERVAL",
+          "INVALID_PLAN_INTERVAL",
+          "CREATE_SUBSCRIPTION_PAYMENT_LINK_FAILED",
+          "INVALID_KNOWLEDGE_RATE_LIMIT_REQUEST",
+          "TENANT_IDS_COUNT_TOO_LARGE",
+          "DOCUMENT_USAGE_UNAVAILABLE"
+        ],
+        "type": "string",
+        "description": "Reasons returned by the BillingSubscription service: values of the proto enums dify.saas.api.billing.CommonErrorReason and dify.saas.api.billing.BillingSubscriptionErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
+      },
       "BillingSubscriptionPlan": {
         "type": "object",
         "properties": {
@@ -844,7 +976,8 @@
             "format": "int32"
           },
           "reason": {
-            "$ref": "#/components/schemas/ErrorReason"
+            "type": "string",
+            "description": "Error reason. The possible values for an operation are listed in the dify.saas.api.billing.<Service>ErrorReason schema of its service, where <Service> is the operationId prefix before the underscore."
           },
           "message": {
             "type": "string"
@@ -857,85 +990,6 @@
           }
         },
         "description": "Error body returned with every non-2xx response."
-      },
-      "ErrorReason": {
-        "enum": [
-          "",
-          "CODEC",
-          "VALIDATOR",
-          "UNKNOWN",
-          "INVALID_SECRET_KEY",
-          "REQUEST_IN_PROGRESS",
-          "MISSING_TENANT_ID",
-          "INVALID_TENANT_ID",
-          "MISSING_ACCOUNT_ID",
-          "INVALID_ACCOUNT_ID",
-          "MISSING_PREFILLED_EMAIL",
-          "INVALID_PAYMENT_LINK_REQUEST",
-          "MISSING_PLAN",
-          "MISSING_INTERVAL",
-          "INVALID_PLAN_INTERVAL",
-          "CREATE_SUBSCRIPTION_PAYMENT_LINK_FAILED",
-          "INVALID_KNOWLEDGE_RATE_LIMIT_REQUEST",
-          "TENANT_IDS_COUNT_TOO_LARGE",
-          "DOCUMENT_USAGE_UNAVAILABLE",
-          "EDUCATION_VERIFY_FAILED",
-          "EDUCATION_CREATE_FAILED",
-          "EDUCATION_STATUS_FAILED",
-          "INVALID_INVOICE_REQUEST",
-          "CREATE_INVOICE_PORTAL_FAILED",
-          "INVALID_COMPLIANCE_DOWNLOAD_REQUEST",
-          "MISSING_DOC_NAME",
-          "MISSING_IP_ADDRESS",
-          "MISSING_DEVICE_INFO",
-          "COMPLIANCE_DOCUMENT_NOT_FOUND",
-          "COMPLIANCE_DOWNLOAD_FORBIDDEN",
-          "COMPLIANCE_DOWNLOAD_FAILED",
-          "INVALID_MODEL_PROVIDER_PAYMENT_LINK_REQUEST",
-          "MISSING_PROVIDER_NAME",
-          "INVALID_MODEL_PROVIDER",
-          "CREATE_MODEL_PROVIDER_PAYMENT_LINK_FAILED",
-          "BILLING_COUPON_AMOUNT_OFF_INVALID",
-          "BILLING_COUPON_CURRENCY_INVALID",
-          "BILLING_COUPON_DISCOUNT_TYPE_INVALID",
-          "BILLING_COUPON_DURATION_MISMATCH",
-          "BILLING_COUPON_DURATION_MONTHS_INVALID",
-          "BILLING_COUPON_DURATION_MONTHS_MISMATCH",
-          "BILLING_COUPON_DURATION_UNSUPPORTED",
-          "BILLING_COUPON_EXPIRES_AFTER_COUPON",
-          "BILLING_COUPON_EXPIRES_AT_INVALID",
-          "BILLING_COUPON_ID_EMPTY",
-          "BILLING_COUPON_NOT_FOUND",
-          "BILLING_COUPON_PERCENT_OFF_INVALID",
-          "BILLING_COUPON_PRODUCT_NOT_FOUND",
-          "BILLING_COUPON_PRODUCT_PRICE_NOT_CONFIGURED",
-          "BILLING_COUPON_PRODUCT_SCOPE_INVALID",
-          "BILLING_COUPON_PRODUCT_SCOPE_MISMATCH",
-          "BILLING_COUPON_PRODUCT_SERVICE_NOT_CONFIGURED",
-          "BILLING_COUPON_PROMOTION_CODE_INVALID",
-          "BILLING_COUPON_QUANTITY_INVALID",
-          "BILLING_COUPON_QUANTITY_TOO_LARGE",
-          "BILLING_COUPON_STRIPE_NOT_CONFIGURED",
-          "BILLING_COUPON_TASK_ID_REQUIRED",
-          "BILLING_COUPON_TASK_NOT_CONFIGURED",
-          "BILLING_COUPON_TASK_NOT_FOUND",
-          "BILLING_COUPON_TASK_PUBLISHER_NOT_CONFIGURED",
-          "BILLING_COUPON_TASK_REPO_NOT_CONFIGURED",
-          "BILLING_COUPON_TICKET_ID_REQUIRED",
-          "BILLING_COUPON_USAGE_REPO_NOT_CONFIGURED",
-          "BILLING_REFUND_AMOUNT_INVALID",
-          "BILLING_REFUND_INVOICE_MISMATCH",
-          "BILLING_REFUND_INVOICE_NOT_FOUND",
-          "BILLING_REFUND_MODE_INVALID",
-          "BILLING_REFUND_NOT_REFUNDABLE",
-          "BILLING_REFUND_PAYMENT_NOT_FOUND",
-          "BILLING_REFUND_STRIPE_STATUS_NOT_FOUND",
-          "BILLING_REFUND_SUBSCRIPTION_NOT_FOUND",
-          "BILLING_REFUND_TICKET_ID_REQUIRED"
-        ],
-        "type": "string",
-        "description": "Values of dify.saas.api.billing.ErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
-        "properties": {}
       },
       "GetEducationIdentityStatusReply": {
         "type": "object",
