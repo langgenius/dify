@@ -4,7 +4,7 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter
 from sqlalchemy import exists, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -31,7 +31,7 @@ def _mapping(value: object) -> Mapping[str, object] | None:
         if isinstance(value, str):
             return _MAPPING_ADAPTER.validate_json(value)
         return _MAPPING_ADAPTER.validate_python(value)
-    except (TypeError, ValueError, ValidationError):
+    except (TypeError, ValueError):
         return {}
 
 

@@ -83,9 +83,12 @@ describe('EditWorkspaceContent', () => {
     await user.click(getSaveButton())
 
     await waitFor(() => {
-      expect(consoleClient.workspaces.info.post).toHaveBeenCalledWith({
-        body: { name: 'Renamed Workspace' },
-      })
+      expect(consoleClient.workspaces.info.post).toHaveBeenCalledWith(
+        {
+          body: { name: 'Renamed Workspace' },
+        },
+        { context: { silent: true } },
+      )
       expect(mockAssign).toHaveBeenCalledWith('http://localhost')
     })
 

@@ -93,6 +93,26 @@ describe('BatchModal', () => {
     vi.useRealTimers()
   })
 
+  it('reports an upload failure once and leaves the CSV available for retry', async () => {
+    const user = userEvent.setup()
+    const { props } = renderComponent()
+    annotationBatchImportMock.mockRejectedValueOnce(new Error('CSV contains duplicate questions'))
+    await selectFile(user)
+    await user.click(screen.getByRole('button', { name: 'appAnnotation.batchModal.run' }))
+
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledExactlyOnceWith({
+        type: 'error',
+        message: 'appAnnotation.batchModal.runError: CSV contains duplicate questions',
+      }),
+    )
+    expect(annotationBatchImportMock).toHaveBeenCalledWith('app-id', expect.any(FormData), {
+      silent: true,
+    })
+    expect(props.onCancel).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'appAnnotation.batchModal.run' })).toBeEnabled()
+  })
+
   it('should disable run action and show billing hint when annotation quota is full', () => {
     annotationQuota = { size: 10, limit: 10 }
 

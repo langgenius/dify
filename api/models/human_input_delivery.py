@@ -11,7 +11,12 @@ import markdown
 from markdown.extensions.tables import TableExtension
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
-from enums.human_input import DeliveryMethodType, EmailRecipientType
+from enums.human_input import (
+    DeliveryMethodType,
+    EmailRecipientType,
+    InstantMessageProvider,
+    InstantMessageRecipientType,
+)
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from graphon.runtime import VariablePool
 from graphon.variables.consts import SELECTORS_LENGTH
@@ -40,6 +45,26 @@ MemberRecipient = BoundRecipient
 EmailRecipient = Annotated[BoundRecipient | ExternalRecipient, Field(discriminator="type")]
 
 
+class InstantMessageChannelRecipient(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal[InstantMessageRecipientType.CHANNEL] = InstantMessageRecipientType.CHANNEL
+    channel_id: str
+
+
+class InstantMessageUserRecipient(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal[InstantMessageRecipientType.USER] = InstantMessageRecipientType.USER
+    user_id: str
+
+
+InstantMessageRecipient = Annotated[
+    InstantMessageChannelRecipient | InstantMessageUserRecipient,
+    Field(discriminator="type"),
+]
+
+
 class EmailRecipients(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -50,6 +75,12 @@ class EmailRecipients(BaseModel):
     items: list[EmailRecipient] = Field(default_factory=list)
 
 
+class InstantMessageRecipients(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[InstantMessageRecipient] = Field(default_factory=list)
+
+
 class EmailDeliveryConfig(BaseModel):
     URL_PLACEHOLDER: ClassVar[str] = "{{#url#}}"
     _ALLOWED_HTML_TAGS: ClassVar[list[str]] = [
@@ -57,6 +88,12 @@ class EmailDeliveryConfig(BaseModel):
         "br",
         "code",
         "em",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
         "li",
         "ol",
         "p",
@@ -125,6 +162,14 @@ class EmailDeliveryConfig(BaseModel):
         return " ".join(sanitized.split())
 
 
+class InstantMessageDeliveryConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: InstantMessageProvider
+    recipients: InstantMessageRecipients = Field(default_factory=InstantMessageRecipients)
+    message: str | None = None
+
+
 class _DeliveryMethodBase(BaseModel):
     enabled: bool = True
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
@@ -154,4 +199,25 @@ class EmailDeliveryMethod(_DeliveryMethodBase):
         return selectors
 
 
-DeliveryChannelConfig = Annotated[InteractiveSurfaceDeliveryMethod | EmailDeliveryMethod, Field(discriminator="type")]
+class InstantMessageDeliveryMethod(_DeliveryMethodBase):
+    type: Literal[DeliveryMethodType.IM] = DeliveryMethodType.IM
+    config: InstantMessageDeliveryConfig
+
+    @override
+    def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
+        if not self.config.message:
+            return ()
+        variable_template_parser = VariableTemplateParser(template=self.config.message)
+        selectors: list[Sequence[str]] = []
+        for variable_selector in variable_template_parser.extract_variable_selectors():
+            value_selector = list(variable_selector.value_selector)
+            if len(value_selector) < SELECTORS_LENGTH:
+                continue
+            selectors.append(value_selector[:SELECTORS_LENGTH])
+        return selectors
+
+
+DeliveryChannelConfig = Annotated[
+    InteractiveSurfaceDeliveryMethod | EmailDeliveryMethod | InstantMessageDeliveryMethod,
+    Field(discriminator="type"),
+]

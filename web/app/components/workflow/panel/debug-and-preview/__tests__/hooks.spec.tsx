@@ -345,10 +345,14 @@ describe('useChat', () => {
       })
     })
 
-    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('token-123', {
-      inputs: { field: 'value' },
-      action: 'approve',
-    })
+    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith(
+      'token-123',
+      {
+        inputs: { field: 'value' },
+        action: 'approve',
+      },
+      undefined,
+    )
   })
 
   it('returns the matching custom node for a human input request', () => {

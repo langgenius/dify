@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "ผู้ติดต่อที่เลือกจะถูกลบออกจากพื้นที่ทำงานนี้อย่างถาวร การดำเนินการนี้ไม่สามารถยกเลิกได้",
+  "directory.removalTitle": "ลบผู้ติดต่อหรือไม่?",
+  "imPlatform.bindingDialog.clearSavedCredential": "ล้างค่าที่บันทึกไว้",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "ค่าที่บันทึกไว้นี้จะถูกล้างเมื่อคุณบันทึก",
+  "imPlatform.bindingDialog.replacementRequired": "ข้อมูลรับรองเหล่านี้เป็นของเทนเนนต์ IM อื่น จึงไม่สามารถบันทึกได้โดยตรง การเปลี่ยนเทนเนนต์จำเป็นต้องแทนที่ช่องทาง IM ปัจจุบัน ซึ่งจะลบการเชื่อมโยง IM ทั้งหมด ทั้งแบบอัตโนมัติและแบบกำหนดด้วยตนเอง หลังจากแทนที่แล้ว ให้ซิงค์รายชื่อผู้ติดต่ออีกครั้ง",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "บันทึกการกำหนดค่าแล้ว แต่โหลดรายละเอียดไม่ได้ ปิดกล่องโต้ตอบนี้แล้วเปิดอีกครั้ง",
+  "imPlatform.bindingDialog.undoClearCredential": "เลิกทำการล้าง"
+}

@@ -2,7 +2,7 @@ import inspect
 from collections.abc import Iterator
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, create_autospec, patch
 from uuid import NAMESPACE_URL, uuid5
 
 import pytest
@@ -21,6 +21,7 @@ from controllers.console.auth.error import (
 )
 from controllers.console.error import (
     AccountInFreezeError,
+    EducationActivateFailedError,
     EducationActivateLimitError,
     EducationVerifyLimitError,
     EmailDomainSuspendedError,
@@ -28,7 +29,6 @@ from controllers.console.error import (
 )
 from controllers.console.workspace.account import (
     AccountAvatarApi,
-    AccountAvatarPayload,
     AccountAvatarQuery,
     AccountDeleteApi,
     AccountDeletePayload,
@@ -38,18 +38,10 @@ from controllers.console.workspace.account import (
     AccountInitApi,
     AccountInitPayload,
     AccountIntegrateApi,
-    AccountInterfaceLanguageApi,
-    AccountInterfaceLanguagePayload,
-    AccountInterfaceThemeApi,
-    AccountInterfaceThemePayload,
-    AccountNameApi,
-    AccountNamePayload,
     AccountPasswordApi,
     AccountPasswordPayload,
     AccountProfileApi,
     AccountProfilePatchPayload,
-    AccountTimezoneApi,
-    AccountTimezonePayload,
     ChangeEmailCheckApi,
     ChangeEmailResetApi,
     ChangeEmailResetPayload,
@@ -70,6 +62,7 @@ from controllers.console.workspace.error import (
 )
 from extensions.application_services.account import AccountServices
 from extensions.ext_application_services import ApplicationServices
+from libs.exception import BaseHTTPException
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models import Account, Tenant, TenantAccountJoin
@@ -77,6 +70,7 @@ from models import AccountStatus as _workspace_account_AccountStatus
 from models.account import AccountStatus as _accounts_AccountStatus
 from models.account import TenantAccountRole
 from services import account_errors
+from services.account_education_service import AccountEducationService
 from services.account_email import normalize_email
 from services.account_errors import (
     AccountAlreadyInitializedError,
@@ -91,8 +85,12 @@ from services.account_errors import (
     InvalidChangeEmailCodeError,
     MissingInvitationCodeError,
 )
+from services.billing_client import billing
 from services.entities.account_entities import (
     AccountEducationActivation,
+    AccountEducationEligible,
+    AccountEducationNotEligible,
+    AccountEducationVerification,
     AccountIntegrationStatus,
     AccountProfileChanges,
     ChangeEmailVerification,
@@ -104,6 +102,9 @@ from services.entities.auth_entities import (
     ChangeEmailOldEmailVerifiedToken,
     ChangeEmailPhase,
     ChangeEmailTokenBase,
+)
+from services.errors.billing import (
+    UnknownErrorReason,
 )
 from tests.helpers.unit.config_override import config_overrides_context
 
@@ -234,6 +235,43 @@ class TestWorkspaceAccountCases:
                 role="Student",
             )
 
+        @pytest.mark.parametrize(
+            ("verification", "expected"),
+            [
+                (
+                    AccountEducationEligible(token="education-token"),
+                    {"status": "eligible", "token": "education-token"},
+                ),
+                (AccountEducationNotEligible(), {"status": "not_eligible"}),
+            ],
+        )
+        def test_verify_returns_status_discriminated_result(
+            self,
+            app: Flask,
+            account_application_services: ApplicationServices,
+            verification: AccountEducationVerification,
+            expected: dict[str, str],
+        ) -> None:
+            request_context = RequestContext(
+                request_id="request-1",
+                trace_id=None,
+                account_id="account-1",
+                active_workspace_id="workspace-1",
+            )
+
+            with (
+                app.test_request_context("/account/education/verify", method="GET"),
+                patch(
+                    "controllers.console.workspace.account.application_services",
+                    return_value=account_application_services,
+                ),
+                patch.object(account_application_services.accounts.education, "verify", lambda _context: verification),
+            ):
+                api = EducationVerifyApi()
+                result = inspect.unwrap(api.get)(api, request_context)
+
+            assert result == expected
+
         def test_verify_maps_rate_limit_error(self, app: Flask) -> None:
             education = MagicMock()
             education.verify.side_effect = account_errors.EducationRateLimitExceededError
@@ -278,6 +316,73 @@ class TestWorkspaceAccountCases:
             ):
                 api = EducationApi()
                 with pytest.raises(EducationActivateLimitError):
+                    inspect.unwrap(api.post)(
+                        api, EducationActivatePayload.model_validate(request.get_json() or {}), request_context
+                    )
+
+        @pytest.mark.parametrize(
+            ("error", "expected_code", "expected_status"),
+            [
+                (account_errors.EducationVerificationFailedError(), "education_verify_failed", 400),
+                (account_errors.EducationRequestInProgressError(), "billing_request_in_progress", 429),
+                (billing.UpstreamUnavailableError(status_code=500, reason=""), "billing_unavailable", 503),
+                (
+                    billing.UpstreamInvalidResponseError(status_code=400, reason=UnknownErrorReason("SHIPPED_LATER")),
+                    "billing_operation_failed",
+                    502,
+                ),
+            ],
+        )
+        def test_verify_maps_billing_errors(
+            self, app: Flask, error: Exception, expected_code: str, expected_status: int
+        ) -> None:
+            education = create_autospec(AccountEducationService, instance=True)
+            education.verify.side_effect = error
+            request_context = RequestContext(
+                request_id="request-1",
+                trace_id=None,
+                account_id="account-1",
+                active_workspace_id="workspace-1",
+            )
+
+            api = EducationVerifyApi()
+            with (
+                app.test_request_context("/account/education/verify", method="GET"),
+                patch(
+                    "controllers.console.workspace.account.application_services",
+                    **{"return_value.accounts.education": education},
+                ),
+                pytest.raises(BaseHTTPException) as exc_info,
+            ):
+                inspect.unwrap(api.get)(api, request_context)
+
+            assert exc_info.value.error_code == expected_code
+            assert exc_info.value.code == expected_status
+            assert exc_info.value.__cause__ is error
+
+        def test_post_maps_activation_failure(self, app: Flask) -> None:
+            education = create_autospec(AccountEducationService, instance=True)
+            education.activate.side_effect = account_errors.EducationActivationFailedError
+            request_context = RequestContext(
+                request_id="request-1",
+                trace_id=None,
+                account_id="account-1",
+                active_workspace_id="workspace-1",
+            )
+
+            with (
+                app.test_request_context(
+                    "/account/education",
+                    method="POST",
+                    json={"token": "education-token", "institution": "Dify University", "role": "Student"},
+                ),
+                patch(
+                    "controllers.console.workspace.account.application_services",
+                    **{"return_value.accounts.education": education},
+                ),
+            ):
+                api = EducationApi()
+                with pytest.raises(EducationActivateFailedError):
                     inspect.unwrap(api.post)(
                         api, EducationActivatePayload.model_validate(request.get_json() or {}), request_context
                     )
@@ -723,76 +828,6 @@ class TestAccountsCases:
             assert result["id"] == user.id
             get_profile.assert_called_once_with(request_context)
 
-    class TestAccountUpdateApis:
-        @pytest.mark.parametrize(
-            ("api_cls", "payload_model", "payload", "expected_changes"),
-            [
-                (AccountNameApi, AccountNamePayload, {"name": "test"}, AccountProfileChanges(name="test")),
-                (
-                    AccountAvatarApi,
-                    AccountAvatarPayload,
-                    {"avatar": "img.png"},
-                    AccountProfileChanges(avatar="img.png"),
-                ),
-                (
-                    AccountInterfaceLanguageApi,
-                    AccountInterfaceLanguagePayload,
-                    {"interface_language": "en-US"},
-                    AccountProfileChanges(interface_language="en-US"),
-                ),
-                (
-                    AccountInterfaceThemeApi,
-                    AccountInterfaceThemePayload,
-                    {"interface_theme": "dark"},
-                    AccountProfileChanges(interface_theme="dark"),
-                ),
-                (
-                    AccountTimezoneApi,
-                    AccountTimezonePayload,
-                    {"timezone": "UTC"},
-                    AccountProfileChanges(timezone="UTC"),
-                ),
-            ],
-        )
-        def test_deprecated_update_routes_delegate_to_profile_service(
-            self,
-            app: Flask,
-            account_services: AccountServices,
-            api_cls,
-            payload_model,
-            payload,
-            expected_changes: AccountProfileChanges,
-        ):
-            api = api_cls()
-            method = inspect.unwrap(api.post)
-            user = make_account()
-            request_context = RequestContext(
-                request_id="request-1",
-                trace_id=None,
-                account_id=user.id,
-                active_workspace_id="workspace-1",
-            )
-            update_profile = MagicMock(return_value=user)
-
-            with (
-                app.test_request_context("/", json=payload),
-                patch.object(account_services.profile, "update", update_profile),
-            ):
-                result = method(api, payload_model.model_validate(payload), request_context)
-
-            assert result["id"] == user.id
-            update_profile.assert_called_once_with(request_context, expected_changes)
-
-        def test_deprecated_update_routes_are_marked_deprecated(self):
-            for api_cls in (
-                AccountNameApi,
-                AccountAvatarApi,
-                AccountInterfaceLanguageApi,
-                AccountInterfaceThemeApi,
-                AccountTimezoneApi,
-            ):
-                assert api_cls.post.__apidoc__["deprecated"] is True
-
     class TestAccountProfilePatchApi:
         def test_json_schema_matches_runtime_patch_rules(self):
             schema = AccountProfilePatchPayload.model_json_schema()
@@ -939,13 +974,13 @@ class TestAccountsCases:
 
             assert exc_info.value.code == 422
 
-    class TestConvertedPostDecorator:
+    class TestConvertedPatchDecorator:
         def test_rejects_an_invalid_body_through_the_decorator(self, app: Flask):
-            """The decorator validates the JSON body before the view runs, for the POST handlers too."""
+            """The decorator validates the JSON body before the PATCH handler runs."""
             account = make_account()
 
             with (
-                app.test_request_context("/account/name", method="POST", json={}),
+                app.test_request_context("/account/profile", method="PATCH", json={"name": None}),
                 patch("controllers.console.wraps._is_setup_completed", return_value=True),
                 config_overrides_context(LOGIN_DISABLED=True),
                 patch(
@@ -958,7 +993,7 @@ class TestAccountsCases:
                 ),
             ):
                 with pytest.raises(UnprocessableEntity) as exc_info:
-                    AccountNameApi().post()
+                    AccountProfileApi().patch()
 
             assert exc_info.value.code == 422
 

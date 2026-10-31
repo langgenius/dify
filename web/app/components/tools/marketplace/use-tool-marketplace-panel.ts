@@ -1,6 +1,6 @@
 import type { RefObject } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useMarketplace } from './hooks'
+import { useToolMarketplace } from './hooks'
 
 type UseToolMarketplacePanelParams = {
   containerRef: RefObject<HTMLDivElement | null>
@@ -19,7 +19,7 @@ export function useToolMarketplacePanel({
   )
   const hasActiveSearchOrTagFilter = !!keywords || tagFilterValue.length > 0
   const shouldLoadMarketplace = marketplaceActivated || hasActiveSearchOrTagFilter
-  const marketplaceContext = useMarketplace(keywords, tagFilterValue, shouldLoadMarketplace)
+  const marketplaceContext = useToolMarketplace(keywords, tagFilterValue, shouldLoadMarketplace)
   const { handleScroll } = marketplaceContext
   const [isMarketplaceArrowVisible, setIsMarketplaceArrowVisible] = useState(true)
 

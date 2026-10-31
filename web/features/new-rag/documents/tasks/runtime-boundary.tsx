@@ -14,6 +14,7 @@ import { documentTasksOpenAtom } from '../state/scoped'
 import { useAuxiliaryTaskReadGuard } from './auxiliary-read-guard'
 import { TaskEventObserver } from './event-observer'
 import { queryKeyMatchesKnowledgeSpace } from './recovery'
+import { useDocumentStatusRefresh } from './use-document-status-refresh'
 import { useTaskRuntimeController } from './use-task-runtime'
 
 export function DocumentTaskRuntimeController() {
@@ -32,6 +33,12 @@ export function DocumentTaskRuntimeController() {
   } = useAuxiliaryTaskReadGuard({
     documentPermissionDenied,
     refetchDocuments: permissionQueryFacts.refetchDocuments,
+  })
+
+  useDocumentStatusRefresh({
+    knowledgeSpaceId,
+    permissionDenied:
+      documentPermissionDenied || auxiliaryReadPermissionDenied || sourcePermissionDenied,
   })
 
   const refreshDocuments = useCallback(() => {
