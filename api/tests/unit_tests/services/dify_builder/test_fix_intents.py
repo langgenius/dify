@@ -589,4 +589,6 @@ def test_same_source_can_be_offered_again_after_another_logical_task(repo: SqlDi
     assert second.id != first.id
     assert second.status == "awaiting_confirmation"
     assert second.target_task_id == task_identity(head, context)
-    assert repository.pending(ACTOR, session.id).id == second.id
+    pending = repository.pending(ACTOR, session.id)
+    assert pending is not None
+    assert pending.id == second.id

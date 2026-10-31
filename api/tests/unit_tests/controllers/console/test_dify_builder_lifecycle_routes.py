@@ -35,7 +35,7 @@ def test_lifecycle_routes_return_only_the_lifecycle_receipt(operation: str, monk
     assert hasattr(routes, "DifyBuilderTaskAbandonApi")
     service = _route_service()
     calls = []
-    receipt = {
+    receipt: dict[str, object] = {
         "session_id": "s1",
         "version": 4,
         "last_command_id": "lifecycle-3",
@@ -46,7 +46,7 @@ def test_lifecycle_routes_return_only_the_lifecycle_receipt(operation: str, monk
         "conversation_last_seq": -1,
     }
 
-    def control(session_id, actor, **kwargs):
+    def control(session_id: str, actor: Actor, **kwargs: object) -> dict[str, object]:
         calls.append((session_id, actor, kwargs))
         return receipt
 
