@@ -313,6 +313,7 @@
   "preflight.pluginMissing": "{{count}} tích hợp chưa được cài đặt",
   "reset": "Bắt đầu cuộc trò chuyện mới",
   "resourceNeedsAuthorization": "Cần cấp quyền",
+  "resourceNeedsSetup": "Cần thiết lập",
   "resourceReady": "Đã cấu hình · chưa xác minh hoạt động",
   "runTest": "Chạy thử nghiệm",
   "running": "Đang chạy",

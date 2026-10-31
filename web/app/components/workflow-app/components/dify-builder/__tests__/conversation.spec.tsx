@@ -722,6 +722,9 @@ describe('DifyBuilderConversation test data form', () => {
   it.each([
     ['ready', 'difyBuilder.resourceReady'],
     ['missing_config', 'difyBuilder.resourceNeedsAuthorization'],
+    ['waiting_setup', 'difyBuilder.resourceNeedsSetup'],
+    ['missing_plugin', 'difyBuilder.resourceNeedsSetup'],
+    ['placeholder', 'difyBuilder.resourceNeedsSetup'],
   ] as const)(
     'shows %s readiness and submits resource IDs without a conflict policy',
     async (readiness, readinessLabel) => {
@@ -735,7 +738,7 @@ describe('DifyBuilderConversation test data form', () => {
           recommended: [
             {
               id: 'knowledge-base-1',
-              kind: 'dataset',
+              kind: 'knowledge',
               label: 'Support knowledge base',
               meta: '12 documents',
               readiness,
@@ -755,6 +758,7 @@ describe('DifyBuilderConversation test data form', () => {
       const checkbox = screen.getByRole('checkbox', { name: 'Support knowledge base' })
       expect(checkbox).toBeChecked()
       expect(checkbox).toHaveAccessibleDescription(`12 documents · ${readinessLabel}`)
+      expect(checkbox).toBeEnabled()
       expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
 
       await user.click(screen.getByText('Support knowledge base'))
@@ -762,6 +766,13 @@ describe('DifyBuilderConversation test data form', () => {
       expect(checkbox).not.toBeChecked()
       expect(onActionPayloadChange).toHaveBeenLastCalledWith('confirm_resources', {
         resource_ids: [],
+      })
+
+      await user.click(checkbox)
+
+      expect(checkbox).toBeChecked()
+      expect(onActionPayloadChange).toHaveBeenLastCalledWith('confirm_resources', {
+        resource_ids: ['knowledge-base-1'],
       })
     },
   )

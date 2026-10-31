@@ -313,6 +313,7 @@
   "preflight.pluginMissing": "{{count}} 個集成未安裝",
   "reset": "開始新對話",
   "resourceNeedsAuthorization": "需要授權",
+  "resourceNeedsSetup": "需要設定",
   "resourceReady": "設定就緒 · 執行狀態未驗證",
   "runTest": "執行測試",
   "running": "運行中",
