@@ -38,9 +38,10 @@ def adapt_human_input_node_data_for_graph(node_data: Mapping[str, Any] | BaseMod
 
         config_mapping = _copy_mapping(method_mapping.get("config"))
         if config_mapping is not None:
-            recipients_mapping = _copy_mapping(config_mapping.get("recipients"))
-            if recipients_mapping is not None:
-                config_mapping["recipients"] = _normalize_email_recipients(recipients_mapping)
+            if method_mapping.get("type") == DeliveryMethodType.EMAIL:
+                recipients_mapping = _copy_mapping(config_mapping.get("recipients"))
+                if recipients_mapping is not None:
+                    config_mapping["recipients"] = _normalize_email_recipients(recipients_mapping)
             method_mapping["config"] = config_mapping
 
         normalized_methods.append(method_mapping)

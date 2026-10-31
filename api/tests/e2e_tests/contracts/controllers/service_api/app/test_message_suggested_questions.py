@@ -292,6 +292,38 @@ def test_invalid_authorization_stops_before_database_admission(harness: _Harness
     assert harness.admissions == harness.provisions == harness.queries == []
 
 
+def test_app_key_with_foreign_workspace_is_rejected_before_end_user_provisioning(harness: _Harness) -> None:
+    with harness.factory.begin() as session:
+        foreign_tenant = Tenant(name="Other API key workspace")
+        session.add(foreign_tenant)
+        token = session.scalar(select(ApiToken).where(ApiToken.token == "test-token"))
+        assert token is not None
+        token.tenant_id = foreign_tenant.id
+
+    response = harness.get(user="must-not-be-provisioned")
+
+    assert response.status_code == 403
+    assert response.json == {"code": "app_not_found", "message": "The app no longer exists.", "status": 403}
+    assert harness.provisions == harness.queries == []
+    with harness.factory() as session:
+        assert session.scalars(select(EndUser.id)).all() == [harness.end_user.id]
+    harness.assert_closed()
+
+
+def test_historical_app_key_without_workspace_uses_the_apps_workspace(harness: _Harness) -> None:
+    with harness.factory.begin() as session:
+        token = session.scalar(select(ApiToken).where(ApiToken.token == "test-token"))
+        assert token is not None
+        token.tenant_id = None
+
+    response = harness.get()
+
+    assert response.status_code == 200
+    assert response.json == {"result": "success", "data": []}
+    assert len(harness.provisions) == len(harness.queries) == 1
+    harness.assert_closed()
+
+
 @pytest.mark.parametrize("user", [None, ""])
 def test_required_user_rejected_before_provisioning(harness: _Harness, user: str | None) -> None:
     response = harness.get(user=user)
@@ -641,7 +673,7 @@ def test_multiple_app_resource_token_requires_app_header_before_provisioning(har
 
     assert response.status_code == 400
     assert response.json == {
-        "code": "bad_request",
+        "code": "invalid_param",
         "message": "App ID is required when a resource access token is bound to multiple apps.",
         "status": 400,
     }

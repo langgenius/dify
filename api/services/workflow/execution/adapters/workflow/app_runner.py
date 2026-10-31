@@ -14,6 +14,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.queue_entities import NodeExecutionSnapshot
 from core.workflow.nodes.human_input.pause_reason import PauseReason
+from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.snippet_start import get_compatible_start_aliases
 from core.workflow.system_variables import (
     build_bootstrap_variables,
@@ -130,7 +131,7 @@ class WorkflowAppRunner:
         # if only single iteration or single loop run is requested
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             invoke_from = InvokeFrom.DEBUGGER
-        user_from = self._graphs.resolve_user_from(invoke_from)
+        user_from = self.application_generate_entity.user_from
 
         resume_state = self._resume_graph_runtime_state
 
@@ -288,11 +289,14 @@ class WorkflowAppRunner:
         node_run_index: int = 1,
         node_execution_snapshots: tuple[NodeExecutionSnapshot, ...] = (),
         pause_reasons: Sequence[PauseReason] = (),
+        human_input_v2_forms: Mapping[str, PreparedForm] | None = None,
     ) -> None:
+        """Publish an engine event and retain prepared V2 forms on pause events."""
         self._events.publish(
             workflow_entry,
             event,
             node_run_index=node_run_index,
             node_execution_snapshots=node_execution_snapshots,
             pause_reasons=pause_reasons,
+            human_input_v2_forms=human_input_v2_forms,
         )

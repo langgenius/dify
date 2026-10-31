@@ -45,7 +45,7 @@ function renderFlow({
 describe('EducationVerifyFlow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockRequestVerification.mockResolvedValue({ token: 'education-token' })
+    mockRequestVerification.mockResolvedValue({ status: 'eligible', token: 'education-token' })
   })
 
   it('shows an already verified account', () => {
@@ -61,7 +61,7 @@ describe('EducationVerifyFlow', () => {
   })
 
   it('requests one token on entry and replaces the route with the application form', async () => {
-    mockRequestVerification.mockResolvedValue({ token: 'education token' })
+    mockRequestVerification.mockResolvedValue({ status: 'eligible', token: 'education token' })
     const { queryClient, wrapper } = createConsoleQueryWrapper({
       accountProfile: { email: 'student@university.edu' },
       educationStatus: { allow_refresh: false, is_student: false },
@@ -81,8 +81,8 @@ describe('EducationVerifyFlow', () => {
     })
   })
 
-  it('renders the rejection state when verification returns no token', async () => {
-    mockRequestVerification.mockResolvedValue({ token: null })
+  it('renders the rejection state when the account is not eligible', async () => {
+    mockRequestVerification.mockResolvedValue({ status: 'not_eligible' })
 
     renderFlow({})
 
@@ -102,7 +102,7 @@ describe('EducationVerifyFlow', () => {
     expect(
       await screen.findByRole('heading', { name: 'common.errorBoundary.title' }),
     ).toBeInTheDocument()
-    mockRequestVerification.mockResolvedValue({ token: 'retry-token' })
+    mockRequestVerification.mockResolvedValue({ status: 'eligible', token: 'retry-token' })
     await user.click(screen.getByRole('button', { name: 'common.errorBoundary.tryAgain' }))
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith('/education/apply?token=retry-token'),

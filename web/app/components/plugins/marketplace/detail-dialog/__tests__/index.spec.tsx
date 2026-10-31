@@ -16,12 +16,17 @@ const mocks = vi.hoisted(() => ({
 }))
 
 // Preserve query construction while keeping the external iframe document local.
-vi.mock('../../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../utils')>()
+vi.mock('@/features/marketplace/links', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/marketplace/links')>()
+  const toBlank = (url: string) =>
+    `about:blank${new URL(url, 'https://marketplace.example.test').search}`
   return {
     ...actual,
-    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) =>
-      `about:blank${new URL(actual.getPluginLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
+    marketplaceLinks: {
+      ...actual.marketplaceLinks,
+      plugin: (...args: Parameters<typeof actual.marketplaceLinks.plugin>) =>
+        toBlank(actual.marketplaceLinks.plugin(...args)),
+    },
   }
 })
 vi.mock('@/service/console', async (importOriginal) => {

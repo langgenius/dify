@@ -49,6 +49,7 @@
   "generation.tabs.saved": "Kaydedildi",
   "generation.title": "AI Tamamlama",
   "humanInput.completed": "Bu isteğin başka bir yerde işlendiği görülüyor.",
+  "humanInput.currentAccount": "Geçerli hesap: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "Bu eylem {{relativeTime}} sona erecek.",
   "humanInput.expired": "Bu isteğin süresi dolmuş gibi görünüyor.",
   "humanInput.expiredTip": "Bu eylemin süresi doldu.",
@@ -57,6 +58,9 @@
   "humanInput.recorded": "Girişiniz kaydedildi.",
   "humanInput.sorry": "Üzgünüz!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "Hesap değiştir",
   "humanInput.thanks": "Teşekkürler!",
+  "humanInput.unavailableDescription": "Bağlantı kullanılamıyor olabilir veya oturum açtığınız hesapla eşleşmiyor olabilir. Formu aldığınız bildirimden açın veya hesap değiştirmeyi deneyin.",
+  "humanInput.unavailableTitle": "Bu form açılamıyor",
   "login.backToHome": "Ana Sayfaya Dön"
 }
