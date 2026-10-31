@@ -4,7 +4,7 @@ import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, ClassVar, Protocol, cast, override
+from typing import Any, ClassVar, Protocol, override
 
 from configs import dify_config
 from core.trigger.constants import is_trigger_node_type
@@ -487,7 +487,7 @@ class DraftVariableSaver:
         original_content_serialized: str
         if isinstance(value_seg, StringSegment):
             # For string types, store as plain text
-            original_content_serialized = cast(str, value_seg.value)
+            original_content_serialized = value_seg.value
             content_type = "text/plain"
             filename = f"{self._generate_filename(name)}.txt"
         else:

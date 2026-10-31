@@ -53,7 +53,6 @@ def external_deps() -> Generator[dict[str, object]]:
     workflow sync, dependency analysis, enterprise hooks) while leaving the DSL
     service and DB writes real."""
     with (
-        patch("services.app_dsl_service.WorkflowService") as mock_workflow_service,
         patch("extensions.application_services.workflow.build_workflow_draft_service") as mock_drafts,
         patch("services.app_dsl_service.DependenciesAnalysisService") as mock_dependencies_service,
         patch("services.app_dsl_service.app_was_created") as mock_app_was_created,
@@ -61,9 +60,6 @@ def external_deps() -> Generator[dict[str, object]]:
         patch("services.app_service.SystemFeatureService") as mock_feature_service,
         patch("services.app_service.EnterpriseService") as mock_enterprise_service,
     ):
-        mock_workflow_service.get_draft_workflow.return_value = None
-        mock_workflow_service.get_published_workflow_by_id.return_value = None
-        mock_workflow_service.return_value.get_draft_workflow.return_value = None
         mock_drafts.return_value.sync.return_value = None
         mock_dependencies_service.generate_latest_dependencies.return_value = []  # type: ignore[assignment]
         mock_dependencies_service.get_leaked_dependencies.return_value = []  # type: ignore[assignment]
@@ -78,7 +74,7 @@ def external_deps() -> Generator[dict[str, object]]:
         mock_enterprise_service.WebAppAuth.update_app_access_mode.return_value = None
         mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
 
-        yield {"workflow_service": mock_workflow_service}
+        yield {}
 
 
 def _app_and_account(db_session: Session, *, mode: str = "chat") -> tuple[App, Account]:

@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.orm import Session
@@ -131,18 +130,15 @@ def _tool_graph(tool_data: dict) -> dict:
     }
 
 
-def test_historical_agent_version_two_is_not_validated_as_dify_agent() -> None:
+def test_historical_agent_version_two_is_not_validated_as_dify_agent(unbound_session: Session) -> None:
     graph = {
         "nodes": [{"id": "legacy-agent", "data": {"type": "agent", "version": "2"}}],
         "edges": [],
     }
-    session = Mock()
 
-    WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(session)).validate_published_workflow(
+    WorkflowAgentNodeValidator(repository=WorkflowAgentBindingRepository(unbound_session)).validate_published_workflow(
         workflow=workflow_binding_scope(_workflow(graph))
     )
-
-    session.scalar.assert_not_called()
 
 
 def _persist_validation_scope(

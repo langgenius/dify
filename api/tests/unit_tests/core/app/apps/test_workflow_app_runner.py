@@ -673,7 +673,7 @@ class TestWorkflowExecutionAdapters:
                 emails.append({"kwargs": kwargs, "queue": queue})
 
         monkeypatch.setattr(
-            "services.workflow.execution.adapters.events.dispatch_human_input_email_task",
+            "services.workflow.execution.adapters.events.dispatch_human_input_form_delivery_task",
             _Dispatch(),
         )
         enriched_reason = HumanInputRequired(
@@ -1090,7 +1090,7 @@ class _DummyWorkflowEntry:
         self.graph_engine = _DummyGraphEngine()
 
 
-def test_handle_pause_event_enqueues_email_task(monkeypatch: pytest.MonkeyPatch):
+def test_handle_pause_event_enqueues_delivery_task(monkeypatch: pytest.MonkeyPatch):
     queue_manager = _DummyQueueManager()
     publisher = WorkflowEventPublisher(queue_manager=queue_manager, notify_pause=enqueue_human_input_notifications)
     workflow_entry = _DummyWorkflowEntry()
@@ -1098,7 +1098,7 @@ def test_handle_pause_event_enqueues_email_task(monkeypatch: pytest.MonkeyPatch)
     graph_reason = HitlRequired(session_id="form-123", node_id="node-1", node_title="Review")
     event = GraphRunPausedEvent(reasons=[graph_reason], outputs={})
 
-    email_task = MagicMock()
+    delivery_task = MagicMock()
     enriched_reason = HumanInputRequired(
         form_id="form-123",
         form_content="content",
@@ -1107,12 +1107,14 @@ def test_handle_pause_event_enqueues_email_task(monkeypatch: pytest.MonkeyPatch)
         node_id="node-1",
         node_title="Review",
     )
-    monkeypatch.setattr("services.workflow.execution.adapters.events.dispatch_human_input_email_task", email_task)
+    monkeypatch.setattr(
+        "services.workflow.execution.adapters.events.dispatch_human_input_form_delivery_task", delivery_task
+    )
 
     publisher.publish(workflow_entry, event, pause_reasons=[enriched_reason])
 
-    email_task.apply_async.assert_called_once()
-    kwargs = email_task.apply_async.call_args.kwargs["kwargs"]
+    delivery_task.apply_async.assert_called_once()
+    kwargs = delivery_task.apply_async.call_args.kwargs["kwargs"]
     assert kwargs["form_id"] == "form-123"
     assert kwargs["node_title"] == "Review"
 
@@ -1155,6 +1157,7 @@ def test_run_uses_single_node_execution_branch(
     workflow_runtime: WorkflowRuntime,
 ) -> None:
     app_generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER,
         app_config=WorkflowUIBasedAppConfig(
             app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
         ),
@@ -1309,6 +1312,7 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(
     queue_manager: WorkflowAppQueueManager, *, workflow_runtime: WorkflowRuntime
 ) -> None:
     app_generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER,
         app_config=WorkflowUIBasedAppConfig(
             app_id="app", tenant_id="tenant", workflow_id="workflow", app_mode=AppMode.WORKFLOW
         ),
@@ -1426,6 +1430,7 @@ def _generate_entity() -> WorkflowAppGenerateEntity:
         inputs={},
         files=[],
         user_id="user",
+        user_from=UserFrom.ACCOUNT,
         stream=True,
         invoke_from=InvokeFrom.DEBUGGER,
         workflow_execution_id="run-1",

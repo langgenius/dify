@@ -1,5 +1,6 @@
 import type { ToolProviderType } from '@dify/contracts/api/console/agent/types.gen'
 import type { FileTransferMethod } from '@dify/contracts/api/console/apps/types.gen'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
 import type { LanguagesSupported } from '@/i18n/language'
 import type { ExternalDataTool } from '@/models/common'
@@ -92,8 +93,9 @@ type CheckboxTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
   default?: string | boolean
 }
 
-type FileTypeFormItem = Omit<TextTypeFormItem, 'max_length'> &
+type FileTypeFormItem = Omit<TextTypeFormItem, 'max_length' | 'default'> &
   Partial<UploadFileSetting> & {
+    default?: string | FileEntity | FileEntity[]
     max_length?: number
   }
 
