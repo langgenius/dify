@@ -97,6 +97,7 @@ def test_request_test_retains_history_inputs_and_opens_fresh_confirmation() -> N
     assert out.current_state == PcState.BUILD_AWAIT_TESTDATA
     _, current = repo.get_session(session.id)
     assert current.requirements == {"format": "uppercase"}
+    assert current.goal_text == "Continue the task"
     assert current.effect_confirmation == {}
     assert repo.get_test_input(current.test_input_ref).inputs == {"order_id": "A123"}
     rows = repo.list_conversation(session.id)
@@ -183,6 +184,107 @@ def test_continuation_mode_survives_context_reload() -> None:
     restored = context_from_dict(context_to_dict(context))
     assert active_entry_mode(session, restored) == EntryMode.EDIT
     assert session.entry_mode == EntryMode.BUILD
+
+
+def test_edit_followup_uses_latest_raw_goal_and_preserves_completed_summary() -> None:
+    from services.dify_builder.task_lifecycle import record_task_completion
+
+    env, repo, session = setup_task("edit")
+    _, context = repo.get_session(session.id)
+    record_task_completion(env, session, context, "kept_draft")
+    repo.compare_and_advance(session.id, session.version, session.current_state, context, [])
+    session, _ = repo.get_session(session.id)
+    continue_task(env, session)
+    _, current = repo.get_session(session.id)
+    assert current.goal_text == "Continue the task"
+    assert current.logical_task_id == f"{session.id}:1"
+    assert current.task_summaries[0].goal == "Original requirements"
+    assert current.task_status == "active"
+
+
+def test_settled_abandoned_goal_starts_new_task_without_reopening_old_cards() -> None:
+    env, repo, session = setup_task("edit")
+    _, context = repo.get_session(session.id)
+    context.task_status = "abandoned"
+    context.paused = True
+    context.recovery_class = "config_only"
+    context.task_control = {"generation": 4, "settlement": "settled"}
+    repo.compare_and_advance(session.id, session.version, PcState.BUILD_PLAN_APPROVAL, context, [])
+    session, _ = repo.get_session(session.id)
+    out = continue_task(env, session)
+    _, current = repo.get_session(session.id)
+    assert out.current_state == PcState.EDIT_IMPACT_ANALYSIS
+    assert current.logical_task_id == f"{session.id}:1"
+    assert current.task_control["generation"] == 5
+    assert not current.paused
+    assert not current.recovery_class
+    assert not current.effect_confirmation
+    assert not repo._runs
+
+
+@pytest.mark.parametrize("settlement", ["pending", "unknown"])
+def test_abandoned_goal_waits_for_known_cancellation_settlement(settlement: str) -> None:
+    from core.dify_builder.errors import ConflictError
+
+    env, repo, session = setup_task("edit")
+    _, context = repo.get_session(session.id)
+    context.task_status = "abandoned"
+    context.task_control = {"generation": 4, "settlement": settlement}
+    repo.compare_and_advance(session.id, session.version, session.current_state, context, [])
+    session, _ = repo.get_session(session.id)
+    with pytest.raises(ConflictError):
+        continue_task(env, session)
+    _, current = repo.get_session(session.id)
+    assert current.task_control["generation"] == 4
+    assert current.task_status == "abandoned"
+    assert not repo._runs
+
+
+def test_abandoned_activation_is_pure_and_prepares_one_new_fenced_task() -> None:
+    from services.dify_builder.conversation_tasks import prepare_abandoned_continuation
+    from services.dify_builder.task_lifecycle import record_task_completion
+
+    env, repo, session = setup_task("edit")
+    _, context = repo.get_session(session.id)
+    record_task_completion(env, session, context, "kept_draft")
+    context.task_status = "abandoned"
+    context.paused = True
+    context.task_control = {"generation": 4, "settlement": "settled", "lifecycle_receipt": {"id": "abandon"}}
+    context.test_input_ref = "old-input"
+    context.failed_run_id = "old-failure"
+    context.attachment_material = [{"generation": 4, "text": "old pending material"}]
+    dsl: dict[str, dict[str, list[object]]] = {"graph": {"nodes": [], "edges": []}}
+    state, fresh = prepare_abandoned_continuation(session, context, "New explicit goal", dsl, "new-revision")
+    assert state == PcState.EDIT_CAPABILITY_CHECK
+    assert fresh.logical_task_id == f"{session.id}:1"
+    assert fresh.task_control["generation"] == 5
+    assert fresh.task_control["lifecycle_receipt"] == {"id": "abandon"}
+    assert fresh.task_control["dsl"] == dsl
+    assert fresh.goal_text == "New explicit goal"
+    assert fresh.last_snapshot_hash == "new-revision"
+    assert fresh.task_status == "active"
+    assert not fresh.paused
+    assert not fresh.test_input_ref
+    assert not fresh.failed_run_id
+    assert not fresh.effect_confirmation
+    assert not fresh.attachment_material
+    assert fresh.task_summaries == context.task_summaries
+    assert context.task_status == "abandoned"
+    assert context.task_control["generation"] == 4
+    assert context.test_input_ref == "old-input"
+
+
+@pytest.mark.parametrize("settlement", ["pending", "unknown"])
+def test_pure_abandoned_activation_cannot_bypass_unsettled_effects(settlement: str) -> None:
+    from core.dify_builder.errors import ConflictError
+    from services.dify_builder.conversation_tasks import prepare_abandoned_continuation
+
+    _, repo, session = setup_task("edit")
+    _, context = repo.get_session(session.id)
+    context.task_status = "abandoned"
+    context.task_control["settlement"] = settlement
+    with pytest.raises(ConflictError):
+        prepare_abandoned_continuation(session, context, "New goal", {"graph": {}}, "revision")
 
 
 def test_completed_task_test_form_rebases_current_read_without_running() -> None:

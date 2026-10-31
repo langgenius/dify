@@ -23,7 +23,13 @@ from core.dify_builder.models import Actor, DifyBuilderContext, EntryMode, Graph
 from core.dify_builder.state import PcState
 from graphon.enums import WorkflowExecutionStatus
 from models.account import Account
-from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderRun, DifyBuilderSession, DifyBuilderTestInput
+from models.dify_builder import (
+    DifyBuilderExecutionRequest,
+    DifyBuilderRun,
+    DifyBuilderSession,
+    DifyBuilderSessionCommit,
+    DifyBuilderTestInput,
+)
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode
 from models.tools import BuiltinToolProvider
@@ -106,6 +112,7 @@ def harness(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> Generato
         DifyBuilderRun,
         DifyBuilderExecutionRequest,
         DifyBuilderSession,
+        DifyBuilderSessionCommit,
         DifyBuilderTestInput,
         BuiltinToolProvider,
         WorkflowRun,
@@ -130,6 +137,11 @@ def harness(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> Generato
                 entry_mode="build",
                 current_state="build.test_and_repair",
                 version=1,
+            )
+        )
+        session.add(
+            DifyBuilderSessionCommit(
+                session_id=ids["session"], version=1, state="build.test_and_repair", context={}, actor="test"
             )
         )
         session.add(saved)

@@ -90,7 +90,12 @@ def lock_execution(sql, *, app_id: str | None = None, session_id: str | None = N
     ):
         raise ConflictError("workflow writer was superseded")
     context = commit.context if commit else {}
-    if context.get("paused") or int((context.get("task_control") or {}).get("generation", 0)) != fence.generation:
+    if (
+        context.get("paused")
+        or context.get("task_status") == "abandoned"
+        or (context.get("task_control") or {}).get("conversation_clear")
+        or int((context.get("task_control") or {}).get("generation", 0)) != fence.generation
+    ):
         raise ConflictError("task execution stopped or superseded")
 
 
@@ -135,7 +140,7 @@ def adopt_committed_generation(context) -> None:
         fence.generation = generation(context)
 
 
-def lock_task_admission(sql, session_id: str) -> None:
+def lock_task_admission(sql, session_id: str, *, test_input_id: str | None = None) -> None:
     """Public native admission also obeys Stop when no worker scope exists."""
     row = sql.scalar(select(DifyBuilderSession).where(DifyBuilderSession.id == session_id).with_for_update())
     if row is None:
@@ -146,5 +151,12 @@ def lock_task_admission(sql, session_id: str) -> None:
             DifyBuilderSessionCommit.version == row.version,
         )
     )
-    if context is None or context.get("paused"):
-        raise ConflictError("task is paused")
+    if (
+        context is None
+        or context.get("paused")
+        or context.get("task_status") == "abandoned"
+        or (context.get("task_control") or {}).get("conversation_clear")
+    ):
+        raise ConflictError("task is paused or abandoned")
+    if test_input_id is not None and context.get("test_input_ref") != test_input_id:
+        raise ConflictError("test belongs to a superseded task")

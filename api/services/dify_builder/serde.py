@@ -33,9 +33,11 @@ def context_to_dict(fc: DifyBuilderContext) -> dict[str, Any]:
     str/int/bool/list/dict/None -- so the result is JSON-safe as-is.
     """
     from services.dify_builder.code_risk_assessment import validated_assessments
+    from services.dify_builder.task_lifecycle import validated_task_summaries
 
     result = asdict(fc)
     result["code_risk_assessments"] = validated_assessments(fc.code_risk_assessments)
+    result["task_summaries"] = [asdict(summary) for summary in validated_task_summaries(fc.task_summaries)]
     return result
 
 
@@ -48,6 +50,7 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
     yields a valid ``DifyBuilderContext``.
     """
     from services.dify_builder.code_risk_assessment import validated_assessments
+    from services.dify_builder.task_lifecycle import validated_task_summaries
 
     diagnosis = Diagnosis(**d["diagnosis"]) if d.get("diagnosis") else None
     staged_repair = [MutationIntent(**m) for m in d.get("staged_repair", [])]
@@ -96,6 +99,10 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         last_edit_rejection=d.get("last_edit_rejection", ""),
         paused=bool(d.get("paused", False)),
         task_control=dict(d.get("task_control") or {}),
+        logical_task_id=str(d.get("logical_task_id") or ""),
+        logical_task_ordinal=max(0, int(d.get("logical_task_ordinal") or 0)),
+        task_status=d.get("task_status", ""),
+        task_summaries=validated_task_summaries(d.get("task_summaries")),
         checkpoint_seq=int(d.get("checkpoint_seq", 0)),
         last_structure_fingerprint=d.get("last_structure_fingerprint", ""),
         recovery_class=d.get("recovery_class", ""),

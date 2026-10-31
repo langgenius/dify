@@ -160,6 +160,8 @@ class DifyBuilderRun(BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=
 
     id: Mapped[str] = mapped_column(StringUUID, insert_default=lambda: str(uuidv7()), default=None)
     session_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # Logical business task; NULL preserves legacy evidence without inventing lineage.
+    origin_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     kind: Mapped[str] = mapped_column(String(50), nullable=False)
     dify_run_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     status: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -173,6 +175,40 @@ class DifyBuilderRun(BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=
     elapsed_ms: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
     immutable: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=None)
 
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), default=None
+    )
+
+
+class DifyBuilderFixIntent(BuilderRowIdentity, TypeBase, kw_only=True, eq=False, repr=False):
+    """Independent intake: preparing a Fix never advances an active Session CAS."""
+
+    __tablename__ = "dify_builder_fix_intents"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="dify_builder_fix_intent_pkey"),
+        sa.UniqueConstraint("session_id", "client_action_id", name="builder_fix_intent_action_unique"),
+        sa.UniqueConstraint("session_id", "decision_id", name="builder_fix_intent_decision_unique"),
+        sa.Index("builder_fix_intent_owner_idx", "tenant_id", "owner_account_id", "app_id", "session_id"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, insert_default=lambda: str(uuidv7()), default=None)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    owner_account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    session_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    target_task_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    client_action_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    input_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    source: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
+    model_config: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    decision_id: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
+    decision_kind: Mapped[str | None] = mapped_column(String(32), nullable=True, default=None)
+    enqueue: Mapped[str] = mapped_column(String(16), nullable=False, default="unreserved")
+    command_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    activated_version: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
+    response: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), default=None
     )

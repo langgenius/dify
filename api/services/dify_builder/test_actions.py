@@ -16,7 +16,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.dify_builder.errors import BadRequestError, ConflictError
 from core.dify_builder.models import Actor
-from models.dify_builder import DifyBuilderConversationItem, DifyBuilderExecutionRequest, DifyBuilderSession
+from models.dify_builder import (
+    DifyBuilderConversationItem,
+    DifyBuilderExecutionRequest,
+    DifyBuilderSession,
+    DifyBuilderSessionCommit,
+)
 from models.dify_builder_native_tests import (
     NativeInvocationState,
     NativePayloadObject,
@@ -122,7 +127,15 @@ class BuilderTestActions:
             return sql.scalar(
                 select(DifyBuilderConversationItem.payload)
                 .join(DifyBuilderSession, DifyBuilderSession.id == DifyBuilderConversationItem.session_id)
+                .join(
+                    DifyBuilderSessionCommit,
+                    (DifyBuilderSessionCommit.session_id == DifyBuilderSession.id)
+                    & (DifyBuilderSessionCommit.version == DifyBuilderSession.version),
+                )
                 .where(
+                    DifyBuilderSessionCommit.context["task_control"]["conversation_clear"]["version"]
+                    .as_integer()
+                    .is_(None),
                     DifyBuilderSession.id == session_id,
                     DifyBuilderSession.tenant_id == actor.tenant_id,
                     DifyBuilderSession.owner_account_id == actor.account_id,
@@ -141,7 +154,16 @@ class BuilderTestActions:
         with self.sessions() as sql:
             return sql.scalar(
                 select(DifyBuilderExecutionRequest.id)
+                .join(DifyBuilderSession, DifyBuilderSession.id == DifyBuilderExecutionRequest.session_id)
+                .join(
+                    DifyBuilderSessionCommit,
+                    (DifyBuilderSessionCommit.session_id == DifyBuilderSession.id)
+                    & (DifyBuilderSessionCommit.version == DifyBuilderSession.version),
+                )
                 .where(
+                    DifyBuilderSessionCommit.context["task_control"]["conversation_clear"]["version"]
+                    .as_integer()
+                    .is_(None),
                     DifyBuilderExecutionRequest.tenant_id == actor.tenant_id,
                     DifyBuilderExecutionRequest.actor_id == actor.account_id,
                     DifyBuilderExecutionRequest.session_id == session_id,
