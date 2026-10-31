@@ -2,40 +2,25 @@ import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/ap
 import type * as React from 'react'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { RetrievalConfig } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { PermissionLevel } from '@/models/permission'
+import { consoleQuery } from '@/service/console'
+import { updateDatasetSetting } from '@/service/datasets'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { RETRIEVE_METHOD } from '@/types/app'
 import Item from '../index'
 
-vi.mock('../../settings-modal', () => ({
-  default: ({
-    onSave,
-    onCancel,
-    currentDataset,
-  }: {
-    currentDataset: DatasetDetailWithPartialMembersResponse
-    onCancel: () => void
-    onSave: (newDataset: DatasetDetailWithPartialMembersResponse) => void
-  }) => (
-    <div>
-      <div>Mock settings modal</div>
-      <button
-        onClick={() =>
-          onSave({
-            ...currentDataset,
-            retrieval_model_dict: { ...currentDataset.retrieval_model_dict, top_k: 6 },
-          })
-        }
-      >
-        Save changes
-      </button>
-      <button onClick={onCancel}>Close</button>
-    </div>
-  ),
+vi.mock('@/service/datasets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/datasets')>()),
+  updateDatasetSetting: vi.fn(),
 }))
+
+const render = createNuqsTestRenderer(renderWithConsoleQuery)
 
 const baseRetrievalConfig: RetrievalConfig = {
   search_method: RETRIEVE_METHOD.semantic,
@@ -124,14 +109,22 @@ const renderItem = (
   const onSave = vi.fn()
   const onRemove = vi.fn()
 
-  render(<Item config={config} onSave={onSave} onRemove={onRemove} {...props} />)
+  const { queryClient } = createConsoleQueryWrapper()
+  seedModelProviderQueries(queryClient, [])
+  queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
+    accounts: [],
+  })
+  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryKey(), {
+    retrieval_method: [RETRIEVE_METHOD.semantic],
+  })
+  render(<Item config={config} onSave={onSave} onRemove={onRemove} {...props} />, { queryClient })
 
   return { onSave, onRemove }
 }
 
 describe('dataset-config/card-item', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.mocked(updateDatasetSetting).mockResolvedValue(createDataset())
   })
 
   it('should render dataset details with indexing and external badges', () => {
@@ -176,9 +169,18 @@ describe('dataset-config/card-item', () => {
     })
     await user.click(editButton)
 
-    expect(await screen.findByText('Mock settings modal'))!.toBeInTheDocument()
-    await user.click(await screen.findByText('Save changes'))
+    const topK = await screen.findByRole('textbox', { name: 'appDebug.datasetConfig.top_k' })
+    await user.click(topK)
+    await user.keyboard('{ControlOrMeta>}a{/ControlOrMeta}6{Tab}')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
+    expect(updateDatasetSetting).toHaveBeenCalledWith({
+      datasetId: dataset.id,
+      body: expect.objectContaining({
+        name: dataset.name,
+        retrieval_model: expect.objectContaining({ top_k: 6, score_threshold: 0 }),
+      }),
+    })
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -188,7 +190,9 @@ describe('dataset-config/card-item', () => {
       )
     })
     await waitFor(() => {
-      expect(screen.queryByText('Mock settings modal')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }),
+      ).not.toBeInTheDocument()
     })
   })
 
