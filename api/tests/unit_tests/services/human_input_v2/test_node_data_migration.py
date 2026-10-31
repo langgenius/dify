@@ -1,6 +1,8 @@
+import ast
 import inspect
 from collections.abc import Sequence
 from dataclasses import FrozenInstanceError
+from types import ModuleType
 from typing import Never, override
 from uuid import uuid4
 
@@ -33,6 +35,42 @@ from services.human_input_v2.workspace_member_email_lookup import SQLAlchemyWork
 
 _EMAIL_METHOD_ID = "11111111-1111-4111-8111-111111111111"
 _WEBAPP_METHOD_ID = "22222222-2222-4222-8222-222222222222"
+_ALLOWED_SHARED_MODEL_CONTRACTS = frozenset(
+    {
+        "models.human_input_contracts",
+        "models.human_input_delivery",
+        "models.human_input_entities",
+    }
+)
+_FORBIDDEN_INFRASTRUCTURE_IMPORT_PREFIXES = (
+    "extensions.ext_database",
+    "flask",
+    "models",
+    "repositories",
+    "sqlalchemy",
+)
+
+
+def _module_imports(module: ModuleType) -> set[str]:
+    tree = ast.parse(inspect.getsource(module))
+    imported_modules = {alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names}
+    imported_modules.update(
+        node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module is not None
+    )
+    return imported_modules
+
+
+def _forbidden_infrastructure_imports(module: ModuleType) -> list[str]:
+    violations: list[str] = []
+    for imported_module in _module_imports(module):
+        if imported_module in _ALLOWED_SHARED_MODEL_CONTRACTS:
+            continue
+        if any(
+            imported_module == prefix or imported_module.startswith(f"{prefix}.")
+            for prefix in _FORBIDDEN_INFRASTRUCTURE_IMPORT_PREFIXES
+        ):
+            violations.append(imported_module)
+    return sorted(violations)
 
 
 def _member_node(title: str, *member_ids: str) -> HumanInputNodeDataFull:
@@ -535,16 +573,11 @@ def test_batch_aggregates_blockers_discards_valid_results_and_retries_equivalent
 
 
 def test_success_blocked_and_repeated_requests_have_no_persistence_write_boundary() -> None:
+    assert _forbidden_infrastructure_imports(service_module) == []
+
     service_source = inspect.getsource(service_module)
-    for forbidden_dependency in (
-        "extensions.ext_database",
-        "models.",
-        "repositories.",
-        "db.session",
-        ".commit(",
-        ".flush(",
-    ):
-        assert forbidden_dependency not in service_source
+    for forbidden_write in ("db.session", ".commit(", ".flush("):
+        assert forbidden_write not in service_source
 
     lookup = _ReadOnlyBoundarySpy()
     service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
@@ -694,6 +727,4 @@ def test_composition_injects_sql_lookup_and_core_converter_has_no_infrastructure
     assert isinstance(service, HumanInputNodeDataMigrationService)
     assert isinstance(service._member_email_lookup, SQLAlchemyWorkspaceMemberEmailLookup)
 
-    converter_source = inspect.getsource(migration_module)
-    for forbidden_import in ("flask", "sqlalchemy", "models", "repositories"):
-        assert forbidden_import not in converter_source
+    assert _forbidden_infrastructure_imports(migration_module) == []

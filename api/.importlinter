@@ -92,7 +92,6 @@ ignore_imports =
     core.rag.summary_index.summary_index -> tasks.generate_summary_index_task
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.file_service
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
-    core.tools.tool_manager -> services.tools.legacy_builtin_tools_manage_service
     core.tools.tool_manager -> services.tools.legacy_mcp_tools_manage_service
     core.tools.tool_manager -> services.tools.legacy_tools_transform_service
     core.workflow.node_runtime -> services.tools.legacy_builtin_tools_manage_service
