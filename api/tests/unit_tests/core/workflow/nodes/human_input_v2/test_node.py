@@ -12,7 +12,6 @@ from core.app.entities.queue_entities import (
     QueueHumanInputFormTimeoutEvent,
     QueueNodeSucceededEvent,
 )
-from enums.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import (
     FileInput,
     FileListInput,
@@ -33,7 +32,7 @@ from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormReq
 from core.workflow.nodes.human_input_v2.node import HumanInputNode
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, HumanInputRuntime, PreparedForm
 from core.workflow.workflow_entry import WorkflowEntry
-from enums.human_input import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from enums.human_input import ButtonStyle, HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from graphon.engine_events import (
     EngineEvent,
     NodeRunFailedEvent,
