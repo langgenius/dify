@@ -139,13 +139,13 @@ class WebhookTriggerDebugEventPoller(TriggerDebugEventPoller):
         if not webhook_event:
             return None
 
-        from services.trigger.webhook_service import WebhookService
+        from services.trigger.webhook_service import build_webhook_workflow_inputs
 
         payload = webhook_event.payload or {}
         workflow_inputs = payload.get("inputs")
         if workflow_inputs is None:
             webhook_data = payload.get("webhook_data", {})
-            workflow_inputs = WebhookService.build_workflow_inputs(webhook_data)
+            workflow_inputs = build_webhook_workflow_inputs(webhook_data)
 
         workflow_args: Mapping[str, Any] = {
             "inputs": workflow_inputs or {},
