@@ -1,5 +1,4 @@
 from datetime import datetime
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,11 +20,12 @@ from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2
 from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.system_variables import build_system_variables
 from enums.human_input import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from graphon.engine.filter import EngineEventFilterContext
 from graphon.engine_events import GraphRunPausedEvent, NodeRunStartedEvent, NodeRunSucceededEvent
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from models.account import Account
 from models.human_input_contracts import PauseFormSnapshot
 from models.human_input_entities import SelectInputConfig, StringListSource
@@ -38,6 +38,7 @@ from services.workflow.execution.adapters.human_input_events import (
     enrich_graph_pause_reasons,
 )
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
+from services.workflow.execution.contracts import WorkflowRunEntry
 
 
 def _prepared_v2_form(*, form_id: str = "form-2") -> PreparedForm:
@@ -158,9 +159,17 @@ def test_pause_converter_preserves_mixed_version_order_and_uses_v2_snapshot() ->
     assert isinstance(responses[2], WorkflowPauseStreamResponse)
     assert responses[0].data.form_version == "2"
     assert responses[0].data.form_token == "v2-token"
-    assert responses[0].data.inputs[0].option_source.value == ["Frozen"]
+    v2_input = responses[0].data.inputs[0]
+    assert isinstance(v2_input, SelectInputConfig)
+    v2_options = v2_input.option_source
+    assert isinstance(v2_options, StringListSource)
+    assert v2_options.value == ["Frozen"]
     assert responses[1].data.form_version == "1"
-    assert responses[1].data.inputs[0].option_source.value == ["One", "Two"]
+    v1_input = responses[1].data.inputs[0]
+    assert isinstance(v1_input, SelectInputConfig)
+    v1_options = v1_input.option_source
+    assert isinstance(v1_options, StringListSource)
+    assert v1_options.value == ["One", "Two"]
     assert [reason["TYPE"] for reason in responses[2].data.reasons] == [
         "human_input_required",
         "scheduled_pause",
@@ -228,7 +237,10 @@ def test_notification_adapter_dispatches_only_v1_with_generic_delivery_task(monk
 def test_event_publisher_uses_v2_form_id_for_completion() -> None:
     queue_manager = MagicMock()
     publisher = WorkflowEventPublisher(queue_manager, notify_pause=MagicMock())
-    entry = SimpleNamespace(graph_engine=SimpleNamespace(runtime_state=SimpleNamespace(variable_pool=VariablePool())))
+    entry: WorkflowRunEntry = MagicMock()
+    entry.graph_engine = MagicMock(
+        runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
+    )
     event = NodeRunHumanInputV2FormFilledEvent(
         id="execution-2",
         form_id="form-2",
@@ -248,15 +260,16 @@ def test_event_publisher_uses_v2_form_id_for_completion() -> None:
 
 
 def test_event_filter_does_not_synthesize_v1_completion_for_v2_node() -> None:
-    v2_node = SimpleNamespace(
-        id="node-2",
-        node_type=BuiltinNodeTypes.HUMAN_INPUT,
-        version=lambda: "2",
-    )
-    root_node = SimpleNamespace(id="start", node_type=BuiltinNodeTypes.START, version=lambda: "1")
-    context = SimpleNamespace(
-        graph=SimpleNamespace(root_node=root_node, nodes={v2_node.id: v2_node}),
-        runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0),
+    v2_node = MagicMock(id="node-2", node_type=BuiltinNodeTypes.HUMAN_INPUT)
+    v2_node.version.return_value = "2"
+    root_node = MagicMock(id="start", node_type=BuiltinNodeTypes.START)
+    root_node.version.return_value = "1"
+    graph = MagicMock(root_node=root_node, nodes={v2_node.id: v2_node})
+    context = EngineEventFilterContext(
+        graph=graph,
+        runtime_state=ReadOnlyRuntimeStateWrapper(
+            RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
+        ),
     )
     event_filter = HumanInputFormEventFilter(form_repository=MagicMock())
     event_filter.initialize(context)
