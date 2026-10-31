@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
 import { build, createServer } from 'vite'
@@ -219,6 +219,11 @@ test('Vite refreshes command sources when a new backend input is added', async (
     server: { port: 0 },
   })
   t.after(() => server.close())
+  const watcherEvents = []
+  server.watcher.on('all', (event, file) => {
+    if (file.startsWith(`${directory}${sep}`) && watcherEvents.length < 30)
+      watcherEvents.push([event, file.slice(directory.length + 1)])
+  })
   // A new file created during Chokidar's initial scan is not an `add` event
   // when ignoreInitial is enabled (notably on Linux).
   const watcherReady = new Promise((resolve) => server.watcher.once('ready', resolve))
@@ -230,12 +235,29 @@ test('Vite refreshes command sources when a new backend input is added', async (
   assert.match((await server.transformRequest(url)).code, /pets/)
   const extra = join(directory, 'extra.txt')
   const refreshed = new Promise((resolve, reject) => {
+    const messages = []
     const timeout = setTimeout(
-      () => reject(new Error('No Vite reload after adding a backend input')),
+      () =>
+        reject(
+          new Error(
+            `No Vite reload after adding a backend input: ${JSON.stringify({
+              watched: server.watcher.getWatched()[directory] ?? [],
+              events: watcherEvents,
+              messages,
+            })}`,
+          ),
+        ),
       10000,
     )
     const send = server.ws.send.bind(server.ws)
     server.ws.send = (...args) => {
+      const payload = args[0]
+      if (
+        typeof payload?.triggeredBy === 'string' &&
+        payload.triggeredBy.startsWith(`${directory}${sep}`) &&
+        messages.length < 30
+      )
+        messages.push([payload.type, payload.triggeredBy.slice(directory.length + 1)])
       if (args[0]?.type === 'full-reload' && args[0].triggeredBy === extra) {
         clearTimeout(timeout)
         resolve()
