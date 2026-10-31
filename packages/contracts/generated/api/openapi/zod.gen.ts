@@ -128,6 +128,67 @@ export const zAgentAppInfoPatch = z.object({
 })
 
 /**
+ * AgentDescribeInfo
+ */
+export const zAgentDescribeInfo = z.object({
+  agent_id: z.string(),
+  app_id: z.string(),
+  description: z.string(),
+  name: z.string(),
+  published: z.boolean(),
+  role: z.string(),
+  service_api_enabled: z.boolean(),
+  updated_at: z.string(),
+})
+
+/**
+ * AgentListQuery
+ */
+export const zAgentListQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  name: z.string().max(200).nullish(),
+  page: z.int().gte(1).optional().default(1),
+  published: z.boolean().nullish(),
+})
+
+/**
+ * AgentListRow
+ */
+export const zAgentListRow = z.object({
+  agent_id: z.string(),
+  app_id: z.string(),
+  description: z.string(),
+  name: z.string(),
+  published: z.boolean(),
+  role: z.string(),
+  updated_at: z.string(),
+})
+
+/**
+ * AgentRunPayload
+ *
+ * A run of an Agent, addressed by `agent_id`; the workspace comes from the path.
+ */
+export const zAgentRunPayload = z.object({
+  attachments: z
+    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
+    .nullish(),
+  auto_generate_name: z.boolean().optional().default(true),
+  conversation_id: z.string().nullish(),
+  files: z
+    .record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    )
+    .nullish(),
+  inputs: z.record(z.string(), z.unknown()).optional(),
+  query: z.string(),
+})
+
+/**
  * AgentServiceApi
  */
 export const zAgentServiceApi = z.object({
@@ -732,6 +793,28 @@ export const zHint = z.object({
   input: z.record(z.string(), z.unknown()),
   op: z.string(),
   summary: z.string(),
+})
+
+/**
+ * AgentDescribeResponse
+ */
+export const zAgentDescribeResponse = z.object({
+  hints: z.array(zHint).optional(),
+  info: zAgentDescribeInfo.nullish(),
+  input_schema: z.record(z.string(), z.unknown()).nullish(),
+  parameters: z.record(z.string(), z.unknown()).nullish(),
+})
+
+/**
+ * AgentListResponse
+ */
+export const zAgentListResponse = z.object({
+  data: z.array(zAgentListRow),
+  has_more: z.boolean(),
+  hints: z.array(zHint).optional(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -3430,6 +3513,60 @@ export const zGetWorkspacesByWorkspaceIdPath = z.object({
  * Workspace detail
  */
 export const zGetWorkspacesByWorkspaceIdResponse = zWorkspaceDetailResponse
+
+export const zGetWorkspacesByWorkspaceIdAgentsPath = z.object({
+  workspace_id: z.string(),
+})
+
+export const zGetWorkspacesByWorkspaceIdAgentsQuery = z.object({
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  name: z.string().max(200).optional(),
+  page: z.int().gte(1).optional().default(1),
+  published: z.boolean().optional(),
+})
+
+/**
+ * Agent list
+ */
+export const zGetWorkspacesByWorkspaceIdAgentsResponse = zAgentListResponse
+
+export const zGetWorkspacesByWorkspaceIdAgentsByAgentIdPath = z.object({
+  agent_id: z.string(),
+  workspace_id: z.string(),
+})
+
+export const zGetWorkspacesByWorkspaceIdAgentsByAgentIdQuery = z.object({
+  fields: z.string().optional(),
+})
+
+/**
+ * Agent description
+ */
+export const zGetWorkspacesByWorkspaceIdAgentsByAgentIdResponse = zAgentDescribeResponse
+
+export const zPostWorkspacesByWorkspaceIdAgentsByAgentIdRunBody = zAgentRunPayload
+
+export const zPostWorkspacesByWorkspaceIdAgentsByAgentIdRunPath = z.object({
+  agent_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Run result (SSE stream)
+ */
+export const zPostWorkspacesByWorkspaceIdAgentsByAgentIdRunResponse = zEventStreamResponse
+
+export const zPostWorkspacesByWorkspaceIdAgentsByAgentIdTestBody = zAgentRunPayload
+
+export const zPostWorkspacesByWorkspaceIdAgentsByAgentIdTestPath = z.object({
+  agent_id: z.string(),
+  workspace_id: z.string(),
+})
+
+/**
+ * Run result (SSE stream)
+ */
+export const zPostWorkspacesByWorkspaceIdAgentsByAgentIdTestResponse = zEventStreamResponse
 
 export const zPostWorkspacesByWorkspaceIdAppsAdvancedChatBody = zCreateAppPayload
 

@@ -1,13 +1,17 @@
 import logging
 from collections.abc import Sequence
-from typing import Any
+from datetime import datetime
+from typing import Any, NamedTuple
 from uuid import UUID
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from constants.model_template import default_app_templates
-from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
+from core.agent.publish_visibility import (
+    agent_has_workflow_callable_active_snapshot,
+    workflow_callable_active_snapshot_filter,
+)
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
@@ -45,14 +49,26 @@ from services.agent.errors import (
 from services.agent.knowledge_spaces import validate_agent_knowledge_spaces
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
 from services.app.agent_app_contracts import AgentReferencingWorkflow
-from services.app_service import AppService, CreateAppParams
+from services.app_service import AppListParams, AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
+from services.entities.app_entities import AppListBaseParams
 from services.rbac_agent_access_service import initialize_agent_rbac_access
 from services.system_feature_service import SystemFeatureService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
+
+
+class RosterAgentEntry(NamedTuple):
+    agent_id: str
+    app_id: str
+    name: str
+    description: str
+    role: str
+    published: bool
+    updated_at: datetime
+    service_api_enabled: bool
 
 
 class AgentRosterService:
@@ -912,6 +928,100 @@ class AgentRosterService:
         ).all()
         return {agent.app_id: agent for agent in agents if agent.app_id and agent.id}
 
+    def limit_to_accessible_agents(
+        self, params: AppListBaseParams, *, tenant_id: str, accessible_agent_ids: set[str] | None
+    ) -> None:
+        """Narrow an Agent App list to the visible Agents: ``None`` is unfiltered, an empty set matches none."""
+        if accessible_agent_ids is None:
+            return
+        if not accessible_agent_ids:
+            params.accessible_app_ids = []
+            return
+
+        params.accessible_app_ids = self.load_app_ids_for_agents(
+            tenant_id=tenant_id, agent_ids=sorted(accessible_agent_ids)
+        )
+
+    def list_openapi_roster_agents(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        page: int,
+        limit: int,
+        name: str | None,
+        published: bool | None,
+        accessible_agent_ids: set[str] | None,
+    ) -> tuple[list[RosterAgentEntry], int]:
+        """List the Agent Apps the OpenAPI caller can reach, with the console list's visibility rules.
+
+        Read-only: it never touches the debug conversations the console list serializers create.
+        """
+        params = AppListParams(
+            page=page,
+            limit=limit,
+            mode="agent",
+            status=AppStatus.NORMAL,
+            openapi_visible=True,
+            name=name,
+            agent_is_runnable=published,
+        )
+        self.limit_to_accessible_agents(params, tenant_id=tenant_id, accessible_agent_ids=accessible_agent_ids)
+
+        pagination = AppService().get_paginate_apps(account_id, tenant_id, params, self._session)
+        if pagination is None:
+            return [], 0
+
+        agents_by_app_id = self.load_app_backing_agents_by_app_id(
+            tenant_id=tenant_id, app_ids=[str(app.id) for app in pagination.items]
+        )
+        runnable_agent_ids = self._load_runnable_agent_ids(
+            tenant_id=tenant_id, agent_ids=[agent.id for agent in agents_by_app_id.values()]
+        )
+        entries = [
+            self._roster_entry(app, agent, agent.id in runnable_agent_ids)
+            for app in pagination.items
+            if (agent := agents_by_app_id.get(str(app.id))) is not None
+        ]
+        return entries, pagination.total
+
+    def describe_openapi_roster_agent(self, *, tenant_id: str, agent_id: str, app: App) -> RosterAgentEntry:
+        """One Agent App's roster entry, read-only like the list.
+
+        The Agent is read by its own id: `Agent.app_id` is not unique, so the
+        app cannot name it.
+        """
+        agent = self._get_app_backed_agent(tenant_id=tenant_id, agent_id=agent_id)
+        runnable = agent_has_workflow_callable_active_snapshot(session=self._session, agent=agent)
+        return self._roster_entry(app, agent, runnable)
+
+    def _load_runnable_agent_ids(self, *, tenant_id: str, agent_ids: Sequence[str]) -> set[str]:
+        """The Agents among `agent_ids` that have a published version a run can use."""
+        if not agent_ids:
+            return set()
+        return set(
+            self._session.scalars(
+                select(Agent.id).where(
+                    Agent.tenant_id == tenant_id,
+                    Agent.id.in_(agent_ids),
+                    workflow_callable_active_snapshot_filter(),
+                )
+            )
+        )
+
+    @staticmethod
+    def _roster_entry(app: App, agent: Agent, runnable: bool) -> RosterAgentEntry:
+        return RosterAgentEntry(
+            agent_id=agent.id,
+            app_id=str(app.id),
+            name=app.name,
+            description=app.description,
+            role=agent.role,
+            published=runnable,
+            updated_at=app.updated_at,
+            service_api_enabled=app.enable_api,
+        )
+
     def load_app_ids_for_agents(self, *, tenant_id: str, agent_ids: Sequence[str]) -> list[str]:
         """Return active Agent App ids for the requested roster Agents."""
         if not agent_ids:
@@ -952,14 +1062,7 @@ class AgentRosterService:
         )
         return AgentSoulConfig.model_validate(version.config_snapshot_dict)
 
-    def get_agent_app_model(self, *, tenant_id: str, agent_id: str) -> App:
-        """Resolve the Agent App hidden behind an app-backed Agent id.
-
-        The public /agent route uses Agent ids, while the runtime and legacy app
-        APIs still operate on App ids internally. Only app-backed roster Agents
-        are accepted here; workflow-only Agents and historical standalone roster
-        Agents are not Agent App resources.
-        """
+    def _get_app_backed_agent(self, *, tenant_id: str, agent_id: str) -> Agent:
         agent = self._session.scalar(
             select(Agent)
             .where(
@@ -974,6 +1077,17 @@ class AgentRosterService:
         )
         if agent is None or agent.app_id is None:
             raise AgentNotFoundError()
+        return agent
+
+    def get_agent_app_model(self, *, tenant_id: str, agent_id: str) -> App:
+        """Resolve the Agent App hidden behind an app-backed Agent id.
+
+        The public /agent route uses Agent ids, while the runtime and legacy app
+        APIs still operate on App ids internally. Only app-backed roster Agents
+        are accepted here; workflow-only Agents and historical standalone roster
+        Agents are not Agent App resources.
+        """
+        agent = self._get_app_backed_agent(tenant_id=tenant_id, agent_id=agent_id)
 
         app = self._session.scalar(
             select(App)

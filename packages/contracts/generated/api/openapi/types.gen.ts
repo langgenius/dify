@@ -105,6 +105,67 @@ export type AgentAppInfoPatch = {
   use_icon_as_answer_icon?: boolean | null
 }
 
+export type AgentDescribeInfo = {
+  agent_id: string
+  app_id: string
+  description: string
+  name: string
+  published: boolean
+  role: string
+  service_api_enabled: boolean
+  updated_at: string
+}
+
+export type AgentDescribeResponse = {
+  hints?: Array<Hint>
+  info?: AgentDescribeInfo | null
+  input_schema?: {
+    [key: string]: unknown
+  } | null
+  parameters?: {
+    [key: string]: unknown
+  } | null
+}
+
+export type AgentListQuery = {
+  limit?: number
+  name?: string | null
+  page?: number
+  published?: boolean | null
+}
+
+export type AgentListResponse = {
+  data: Array<AgentListRow>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
+  page: number
+  total: number
+}
+
+export type AgentListRow = {
+  agent_id: string
+  app_id: string
+  description: string
+  name: string
+  published: boolean
+  role: string
+  updated_at: string
+}
+
+export type AgentRunPayload = {
+  attachments?: Array<Blob | File> | null
+  auto_generate_name?: boolean
+  conversation_id?: string | null
+  files?: {
+    [key: string]: Blob | File | Array<Blob | File>
+  } | null
+  inputs?: {
+    [key: string]: unknown
+  }
+  query: string
+}
+
 export type AgentServiceApi = {
   access_ready: boolean
   api_rph?: number
@@ -3748,6 +3809,112 @@ export type GetWorkspacesByWorkspaceIdResponses = {
 
 export type GetWorkspacesByWorkspaceIdResponse =
   GetWorkspacesByWorkspaceIdResponses[keyof GetWorkspacesByWorkspaceIdResponses]
+
+export type GetWorkspacesByWorkspaceIdAgentsData = {
+  body?: never
+  path: {
+    workspace_id: string
+  }
+  query?: {
+    limit?: number
+    name?: string
+    page?: number
+    published?: boolean
+  }
+  url: '/workspaces/{workspace_id}/agents'
+}
+
+export type GetWorkspacesByWorkspaceIdAgentsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdAgentsError =
+  GetWorkspacesByWorkspaceIdAgentsErrors[keyof GetWorkspacesByWorkspaceIdAgentsErrors]
+
+export type GetWorkspacesByWorkspaceIdAgentsResponses = {
+  200: AgentListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdAgentsResponse =
+  GetWorkspacesByWorkspaceIdAgentsResponses[keyof GetWorkspacesByWorkspaceIdAgentsResponses]
+
+export type GetWorkspacesByWorkspaceIdAgentsByAgentIdData = {
+  body?: never
+  path: {
+    agent_id: string
+    workspace_id: string
+  }
+  query?: {
+    fields?: string
+  }
+  url: '/workspaces/{workspace_id}/agents/{agent_id}'
+}
+
+export type GetWorkspacesByWorkspaceIdAgentsByAgentIdErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdAgentsByAgentIdError =
+  GetWorkspacesByWorkspaceIdAgentsByAgentIdErrors[keyof GetWorkspacesByWorkspaceIdAgentsByAgentIdErrors]
+
+export type GetWorkspacesByWorkspaceIdAgentsByAgentIdResponses = {
+  200: AgentDescribeResponse
+}
+
+export type GetWorkspacesByWorkspaceIdAgentsByAgentIdResponse =
+  GetWorkspacesByWorkspaceIdAgentsByAgentIdResponses[keyof GetWorkspacesByWorkspaceIdAgentsByAgentIdResponses]
+
+export type PostWorkspacesByWorkspaceIdAgentsByAgentIdRunData = {
+  body: AgentRunPayload
+  path: {
+    agent_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/agents/{agent_id}:run'
+}
+
+export type PostWorkspacesByWorkspaceIdAgentsByAgentIdRunErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdAgentsByAgentIdRunError =
+  PostWorkspacesByWorkspaceIdAgentsByAgentIdRunErrors[keyof PostWorkspacesByWorkspaceIdAgentsByAgentIdRunErrors]
+
+export type PostWorkspacesByWorkspaceIdAgentsByAgentIdRunResponses = {
+  200: EventStreamResponse
+}
+
+export type PostWorkspacesByWorkspaceIdAgentsByAgentIdRunResponse =
+  PostWorkspacesByWorkspaceIdAgentsByAgentIdRunResponses[keyof PostWorkspacesByWorkspaceIdAgentsByAgentIdRunResponses]
+
+export type PostWorkspacesByWorkspaceIdAgentsByAgentIdTestData = {
+  body: AgentRunPayload
+  path: {
+    agent_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/agents/{agent_id}:test'
+}
+
+export type PostWorkspacesByWorkspaceIdAgentsByAgentIdTestErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdAgentsByAgentIdTestError =
+  PostWorkspacesByWorkspaceIdAgentsByAgentIdTestErrors[keyof PostWorkspacesByWorkspaceIdAgentsByAgentIdTestErrors]
+
+export type PostWorkspacesByWorkspaceIdAgentsByAgentIdTestResponses = {
+  200: EventStreamResponse
+}
+
+export type PostWorkspacesByWorkspaceIdAgentsByAgentIdTestResponse =
+  PostWorkspacesByWorkspaceIdAgentsByAgentIdTestResponses[keyof PostWorkspacesByWorkspaceIdAgentsByAgentIdTestResponses]
 
 export type PostWorkspacesByWorkspaceIdAppsAdvancedChatData = {
   body: CreateAppPayload

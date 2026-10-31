@@ -104,6 +104,48 @@ class AppListResponse(PaginationEnvelope[AppListRow]):
     pass
 
 
+class AgentListQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(None, max_length=200, description="Filter by a name substring")
+    published: bool | None = Field(
+        None,
+        description=(
+            "true lists Agents that have a published version a run can use; false lists Agents that have none yet"
+        ),
+    )
+
+
+class AgentListRow(BaseModel):
+    agent_id: str
+    app_id: str
+    name: str
+    description: str
+    role: str
+    published: bool = Field(
+        description="true when the Agent has a published version a run can use, even if its draft was edited since"
+    )
+    updated_at: str
+
+
+class AgentListResponse(PaginationEnvelope[AgentListRow]):
+    pass
+
+
+class AgentDescribeInfo(AgentListRow):
+    service_api_enabled: bool
+
+
+class AgentDescribeResponse(Hinted):
+    info: AgentDescribeInfo | None = None
+    parameters: dict[str, Any] | None = Field(
+        default=None, description="The published version's inputs; null while the Agent has no published version"
+    )
+    input_schema: dict[str, Any] | None = Field(
+        default=None, description="JSON Schema of a run's body; null while the Agent has no published version"
+    )
+
+
 class PermittedExternalAppsListResponse(PaginationEnvelope[AppListRow]):
     pass
 
@@ -355,8 +397,8 @@ class _WorkflowVersionFields(BaseModel):
     workflow_id: str | None = Field(default=None, description="Pin a published workflow version")
 
 
-class RunPayloadBase(BaseModel):
-    """What every run takes; each mode's payload adds its own fields and forbids the rest."""
+class RunInputs(BaseModel):
+    """What a run feeds the app; a route addressed by something other than the app id builds on this alone."""
 
     inputs: dict[str, Any] = Field(
         default_factory=dict,
@@ -377,6 +419,11 @@ class RunPayloadBase(BaseModel):
         default=None,
         description="Local file paths attached to the run itself (the app's `sys.files`), not to a variable",
     )
+
+
+class RunPayloadBase(RunInputs):
+    """What every app run takes; each mode's payload adds its own fields and forbids the rest."""
+
     workspace_id: UUIDStrOrEmpty | None = Field(default=None, description="Workspace that owns the app")
 
 
@@ -388,9 +435,7 @@ class DraftWorkflowRunPayload(RunPayloadBase):
     model_config = ConfigDict(extra="forbid")
 
 
-class ChatRunPayload(RunPayloadBase, _ConversationFields):
-    model_config = ConfigDict(extra="forbid")
-
+class _ChatQueryFields(BaseModel):
     query: str = Field(description="User message")
 
     @field_validator("query")
@@ -400,6 +445,25 @@ class ChatRunPayload(RunPayloadBase, _ConversationFields):
         if not value:
             raise ValueError("query must not be blank")
         return value
+
+
+class ChatRunPayload(_ChatQueryFields, RunPayloadBase, _ConversationFields):
+    model_config = ConfigDict(extra="forbid")
+
+
+class AgentRunPayload(RunInputs, _ConversationFields, _ChatQueryFields):
+    """A run of an Agent, addressed by `agent_id`; the workspace comes from the path."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    inputs: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Variables declared by the Agent. The exact shape is per Agent: read `input_schema` from "
+            "describe.agent. A file variable takes a Dify file mapping (remote url or upload id) here, "
+            "or a local path in `files`, not both."
+        ),
+    )
 
 
 class AdvancedChatRunPayload(ChatRunPayload, _WorkflowVersionFields):

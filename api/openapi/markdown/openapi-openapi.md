@@ -1370,6 +1370,86 @@ Upload a file to use as an input variable when running the app
 | 200 | Workspace detail | **application/json**: [WorkspaceDetailResponse](#workspacedetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /workspaces/{workspace_id}/agents
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| name | query | Filter by a name substring | No | string |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| published | query | true lists Agents that have a published version a run can use; false lists Agents that have none yet | No | boolean |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent list | **application/json**: [AgentListResponse](#agentlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/agents/{agent_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| fields | query |  | No | string |
+| agent_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent description | **application/json**: [AgentDescribeResponse](#agentdescriberesponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/agents/{agent_id}:run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [AgentRunPayload](#agentrunpayload)<br>**multipart/form-data**: [AgentRunPayload](#agentrunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/agents/{agent_id}:test
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [AgentRunPayload](#agentrunpayload)<br>**multipart/form-data**: [AgentRunPayload](#agentrunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /workspaces/{workspace_id}/apps/advanced-chat
 #### Parameters
 
@@ -2334,6 +2414,73 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 | name | string | App name | No |
 | role | string | The agent's role; empty string clears it | No |
 | use_icon_as_answer_icon | boolean | Show the app icon on answers | No |
+
+#### AgentDescribeInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string |  | Yes |
+| app_id | string |  | Yes |
+| description | string |  | Yes |
+| name | string |  | Yes |
+| published | boolean | true when the Agent has a published version a run can use, even if its draft was edited since | Yes |
+| role | string |  | Yes |
+| service_api_enabled | boolean |  | Yes |
+| updated_at | string |  | Yes |
+
+#### AgentDescribeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| info | [AgentDescribeInfo](#agentdescribeinfo) |  | No |
+| input_schema | object | JSON Schema of a run's body; null while the Agent has no published version | No |
+| parameters | object | The published version's inputs; null while the Agent has no published version | No |
+
+#### AgentListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| name | string | Filter by a name substring | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| published | boolean | true lists Agents that have a published version a run can use; false lists Agents that have none yet | No |
+
+#### AgentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AgentListRow](#agentlistrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### AgentListRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string |  | Yes |
+| app_id | string |  | Yes |
+| description | string |  | Yes |
+| name | string |  | Yes |
+| published | boolean | true when the Agent has a published version a run can use, even if its draft was edited since | Yes |
+| role | string |  | Yes |
+| updated_at | string |  | Yes |
+
+#### AgentRunPayload
+
+A run of an Agent, addressed by `agent_id`; the workspace comes from the path.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
+| conversation_id | string | Continue an existing conversation | No |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| inputs | object | Variables declared by the Agent. The exact shape is per Agent: read `input_schema` from describe.agent. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
+| query | string | User message | Yes |
 
 #### AgentServiceApi
 

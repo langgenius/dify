@@ -7,7 +7,6 @@ from contextlib import ExitStack
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum, auto
-from functools import singledispatch
 from typing import Final
 from unittest.mock import patch
 
@@ -23,7 +22,7 @@ import libs.oauth_bearer as oauth_bearer_module
 import libs.rate_limit as rate_limit_module
 from app_factory import create_flask_app_with_configs
 from constants.oauth_bearer import Scope, TokenType
-from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPermission, Workspace
+from controllers.common.rbac import AgentBehindApp, AgentId, PlainApp, RBACCheck, RBACPermission, Workspace
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._app_settings import REGULAR_MODES
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
@@ -65,6 +64,7 @@ from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import BearerAuthenticator, ResolvedRow, sha256_hex
 from models import AppMode as _requirements_AppMode
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.enums import EndUserType
 from models.model import App, EndUser
 from models.model import AppMode as _auth_matrix_AppMode
@@ -82,6 +82,7 @@ from tests.helpers.unit.controllers.openapi.auth._world import (
     CLIENT_ID,
     TOKEN_ID,
     account_subject,
+    canonical,
     make_account,
     make_app,
     make_ctx,
@@ -399,6 +400,7 @@ class Trait(StrEnum):
     """
 
     APP_SCOPED = auto()
+    AGENT_SCOPED = auto()
     ACCOUNT_PRIMARY = auto()
     EXTERNAL_REACHABLE = auto()
     ENTERPRISE_ONLY = auto()
@@ -414,6 +416,8 @@ class Case(StrEnum):
     LOW_ROLE = auto()
     APP_API_DISABLED = auto()
     UNKNOWN_APP = auto()
+    NON_MEMBER_AND_APP_API_DISABLED = auto()
+    NON_MEMBER_AND_UNKNOWN_APP = auto()
     FOREIGN_WORKSPACE_QUERY = auto()
     EDITION_NOT_ENTERPRISE = auto()
     LICENSE_INVALID = auto()
@@ -490,6 +494,7 @@ DENY_NON_MEMBER = Expect(404, "workspace not found")
 DENY_ROLE = Expect(403, "insufficient workspace role")
 DENY_API_DISABLED = Expect(403, ServiceApiDisabled.description)
 DENY_UNKNOWN_APP = Expect(404, "app not found")
+DENY_UNKNOWN_AGENT = Expect(404, "agent not found")
 DENY_ACCESS_MODE = Expect(403, "subject_not_allowed_for_access_mode")
 DENY_MODE_UNRESOLVED = Expect(403, "app or access mode not loaded")
 DENY_PRIVATE_APP = Expect(403, "user_not_allowed_for_private_app")
@@ -702,6 +707,25 @@ ROUTES: tuple[Route, ...] = (
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
     Route("skills.import", "POST", "/workspaces/{workspace_id}/skills/imports", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route("agents.list", "GET", "/workspaces/{workspace_id}/agents", frozenset({Trait.ACCOUNT_PRIMARY})),
+    Route(
+        "agents.describe",
+        "GET",
+        "/workspaces/{workspace_id}/agents/{agent_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.AGENT_SCOPED}),
+    ),
+    Route(
+        "agent_run.run",
+        "POST",
+        "/workspaces/{workspace_id}/agents/{agent_id}:run",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.AGENT_SCOPED}),
+    ),
+    Route(
+        "agent_run.test",
+        "POST",
+        "/workspaces/{workspace_id}/agents/{agent_id}:test",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED, Trait.AGENT_SCOPED}),
+    ),
     Route(
         "app_dsl.import",
         "POST",
@@ -1102,6 +1126,8 @@ CASE_REQUIRES: dict[Case, frozenset[Trait]] = {
     Case.LOW_ROLE: frozenset({Trait.ACCOUNT_PRIMARY}),
     Case.APP_API_DISABLED: frozenset({Trait.APP_SCOPED}),
     Case.UNKNOWN_APP: frozenset({Trait.APP_SCOPED}),
+    Case.NON_MEMBER_AND_APP_API_DISABLED: frozenset({Trait.AGENT_SCOPED}),
+    Case.NON_MEMBER_AND_UNKNOWN_APP: frozenset({Trait.AGENT_SCOPED}),
     Case.FOREIGN_WORKSPACE_QUERY: frozenset({Trait.APP_SCOPED}),
     Case.EDITION_NOT_ENTERPRISE: frozenset({Trait.ENTERPRISE_ONLY}),
     Case.LICENSE_INVALID: frozenset(),
@@ -1134,6 +1160,8 @@ SCENARIOS: dict[Case, Scenario] = {
     Case.LOW_ROLE: Scenario(bearer=Bearer.ACCOUNT_LOW_ROLE),
     Case.APP_API_DISABLED: Scenario(bearer=Bearer.PRIMARY, app_api_enabled=False),
     Case.UNKNOWN_APP: Scenario(bearer=Bearer.PRIMARY, unknown_app=True),
+    Case.NON_MEMBER_AND_APP_API_DISABLED: Scenario(bearer=Bearer.ACCOUNT_OUTSIDER, app_api_enabled=False),
+    Case.NON_MEMBER_AND_UNKNOWN_APP: Scenario(bearer=Bearer.ACCOUNT_OUTSIDER, unknown_app=True),
     Case.FOREIGN_WORKSPACE_QUERY: Scenario(bearer=Bearer.PRIMARY, foreign_workspace_query=True),
     Case.EDITION_NOT_ENTERPRISE: Scenario(bearer=Bearer.PRIMARY, edition=DeploymentEdition.COMMUNITY),
     Case.LICENSE_INVALID: Scenario(bearer=Bearer.PRIMARY, license_status=LicenseStatus.EXPIRED),
@@ -1326,6 +1354,14 @@ _ACCOUNT_EDITOR_APP: dict[Case, Expect] = {
     Case.RBAC_ON_LOW_ROLE: ADMIT,
 }
 
+_AGENT_ROUTE_ANSWERS: dict[Case, Expect] = {
+    Case.UNKNOWN_APP: DENY_UNKNOWN_AGENT,
+    Case.NON_MEMBER_AND_APP_API_DISABLED: DENY_NON_MEMBER,
+    Case.NON_MEMBER_AND_UNKNOWN_APP: DENY_NON_MEMBER,
+}
+"""On an agent route the workspace comes from the request, so a non-member
+learns neither whether the Agent exists nor whether it has its Service API on."""
+
 _ACCOUNT_READER_SETTINGS: dict[Case, Expect] = {**_ACCOUNT_READER_APP, Case.APP_API_DISABLED: ADMIT}
 _ACCOUNT_EDITOR_SETTINGS: dict[Case, Expect] = {**_ACCOUNT_EDITOR_APP, Case.APP_API_DISABLED: ADMIT}
 
@@ -1359,6 +1395,8 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "workspaces.members.update_role": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "plugins.install": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "skills.list": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
+    "agents.list": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    "agents.describe": {**_ACCOUNT_READER_APP, **_AGENT_ROUTE_ANSWERS},
     "skills.publish": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "skills.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "model_providers.credential.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
@@ -1380,6 +1418,8 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "app_dsl.export": dict(_ACCOUNT_EDITOR_APP),
     "app_dsl.package_export": dict(_ACCOUNT_EDITOR_APP),
     "app_run.draft.workflow": dict(_ACCOUNT_EDITOR_APP),
+    "agent_run.run": {**_DUAL_SUBJECT_RUN, Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT, **_AGENT_ROUTE_ANSWERS},
+    "agent_run.test": {**_ACCOUNT_EDITOR_APP, **_AGENT_ROUTE_ANSWERS},
     "app_workflow.run.list": dict(_ACCOUNT_READER_APP),
     "app_workflow.run.describe": dict(_ACCOUNT_READER_APP),
     "app_workflow.run.nodes": dict(_ACCOUNT_READER_APP),
@@ -1646,6 +1686,22 @@ def _settings_req(
     return (*base, CheckWorkspaceRole(roles)) if roles is not None else base
 
 
+_REQ_AGENT_RUN = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckWorkspaceMember(),
+    CheckAppApiEnabled(),
+    CheckScope(Scope.APPS_RUN),
+    CheckRBACPermission(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())),
+    CheckAppAccess(),
+)
+_REQ_AGENT_DESCRIBE = (
+    CheckSubject(allowed=_ACCOUNT),
+    CheckWorkspaceMember(),
+    CheckAppApiEnabled(),
+    CheckScope(Scope.APPS_READ),
+    CheckRBACPermission(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())),
+)
+_REQ_AGENT_TEST = (*_REQ_AGENT_RUN[:-1], CheckWorkspaceRole(_EDITOR_UP))
 _RESOURCE_RUN = (CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)), *_REQ_RUN[1:])
 
 DECLARED: dict[str, tuple[Requirement, ...]] = {
@@ -1662,6 +1718,8 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "account.sessions.revoke_one": _REQ_ACCOUNT_FULL,
     "apps.describe": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_APP_DESCRIBE[1:]),
     "apps.list": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_ACCOUNT_APPS_READ_MEMBER[1:]),
+    "agents.list": _REQ_ACCOUNT_APPS_READ_MEMBER,
+    "agents.describe": _REQ_AGENT_DESCRIBE,
     "workspaces.list": (
         CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
         *_REQ_ACCOUNT_WORKSPACE_READ[1:],
@@ -1704,6 +1762,8 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "app_dsl.export": _REQ_DSL_APP,
     "app_dsl.package_export": _REQ_DSL_PACKAGE_APP,
     "app_dsl.check_dependencies": _REQ_DSL_APP,
+    "agent_run.run": _REQ_AGENT_RUN,
+    "agent_run.test": _REQ_AGENT_TEST,
     "app_run.workflow": _RESOURCE_RUN,
     "app_run.chat": _RESOURCE_RUN,
     "app_run.advanced_chat": _RESOURCE_RUN,
@@ -1924,6 +1984,8 @@ class World:
     other_workspace_id: str
     app_id: str
     disabled_app_id: str
+    agent_id: str
+    disabled_agent_id: str
     member_account_id: str
     low_role_account_id: str
     outsider_account_id: str
@@ -2014,8 +2076,10 @@ def _url(route: Route, world: World, scenario: Scenario, bearer: Bearer | None) 
         app_id = world.disabled_app_id
     else:
         app_id = world.app_id
+    agent_id = world.disabled_agent_id if not scenario.app_api_enabled else world.agent_id
     ids = {
         "app_id": app_id,
+        "agent_id": str(uuid.uuid4()) if scenario.unknown_app else agent_id,
         "workspace_id": world.workspace_id,
         # The caller's own session: the access service 404s any other id.
         "session_id": world.session_ids.get(bearer, str(uuid.uuid4())) if bearer else str(uuid.uuid4()),
@@ -2144,41 +2208,6 @@ def _endpoint_spec(app: Flask, rule: Rule, method: str) -> EndpointSpec | None:
     return handler.__spec__ if hasattr(handler, "__spec__") else None
 
 
-@singledispatch
-def _config(_requirement: Requirement) -> object:
-    return None
-
-
-@_config.register
-def _(requirement: CheckSubject) -> object:
-    return requirement.allowed
-
-
-@_config.register
-def _(requirement: CheckAppMode) -> object:
-    return requirement.modes
-
-
-@_config.register
-def _(requirement: CheckScope) -> object:
-    return requirement.scope
-
-
-@_config.register
-def _(requirement: CheckRBACPermission) -> object:
-    return tuple((check.scene, repr(check.locator)) for check in requirement.checks)
-
-
-@_config.register
-def _(requirement: CheckWorkspaceRole) -> object:
-    return requirement.allowed_roles
-
-
-def _canonical(requirement: Requirement) -> tuple[type[Requirement], object]:
-    """`Requirement` has no `__eq__`, so compare by type plus the config that sets it apart."""
-    return type(requirement), _config(requirement)
-
-
 def _spec_for(app: Flask, route: Route) -> EndpointSpec | None:
     for rule in app.url_map.iter_rules():
         if str(rule) == _rule_path(route) and route.method in (rule.methods or set()):
@@ -2234,6 +2263,8 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ),
     ("get", "/workspaces/{workspace_id}/knowledge-bases"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/skills"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/agents"): frozenset({"200", "422", "default"}),
+    ("get", "/workspaces/{workspace_id}/agents/{agent_id}"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}"): frozenset({"200", "default"}),
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}/versions"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/skills/{skill_id}/archive"): frozenset({"200", "422", "default"}),
@@ -2280,6 +2311,8 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/apps/{app_id}/runs/{run_id}:stop"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/tasks/{task_id}:stop"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/workflow:run"): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/agents/{agent_id}:run"): frozenset({"200", "422", "default"}),
+    ("post", "/workspaces/{workspace_id}/agents/{agent_id}:test"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/chat:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/advanced-chat:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/completion:run"): frozenset({"200", "422", "default"}),
@@ -2410,6 +2443,8 @@ class TestAuthMatrixCases:
             other_workspace_id=str(uuid.uuid4()),
             app_id=str(uuid.uuid4()),
             disabled_app_id=str(uuid.uuid4()),
+            agent_id=str(uuid.uuid4()),
+            disabled_agent_id=str(uuid.uuid4()),
             member_account_id=str(uuid.uuid4()),
             low_role_account_id=str(uuid.uuid4()),
             outsider_account_id=str(uuid.uuid4()),
@@ -2431,6 +2466,29 @@ class TestAuthMatrixCases:
                 enable_api=enable_api,
             )
 
+        def roster_agent(agent_id: str, *, enable_api: bool) -> list[object]:
+            app_id = str(uuid.uuid4())
+            return [
+                App(
+                    id=app_id,
+                    tenant_id=built.workspace_id,
+                    name="matrix agent",
+                    description="",
+                    mode=_auth_matrix_AppMode.AGENT,
+                    enable_site=False,
+                    enable_api=enable_api,
+                ),
+                Agent(
+                    id=agent_id,
+                    tenant_id=built.workspace_id,
+                    name=f"matrix agent {agent_id}",
+                    scope=AgentScope.ROSTER,
+                    source=AgentSource.AGENT_APP,
+                    app_id=app_id,
+                    status=AgentStatus.ACTIVE,
+                ),
+            ]
+
         workspace = Tenant(name="matrix workspace")
         workspace.id = built.workspace_id
         other_workspace = Tenant(name="other workspace")
@@ -2444,6 +2502,8 @@ class TestAuthMatrixCases:
             account(built.outsider_account_id, "outsider@example.com"),
             application(built.app_id, enable_api=True),
             application(built.disabled_app_id, enable_api=False),
+            *roster_agent(built.agent_id, enable_api=True),
+            *roster_agent(built.disabled_agent_id, enable_api=False),
             TenantAccountJoin(
                 tenant_id=built.workspace_id,
                 account_id=built.member_account_id,
@@ -2574,7 +2634,7 @@ class TestAuthMatrixCases:
         """
         spec = _spec_for(matrix_app, route)
         assert spec is not None, route.id
-        assert [*map(_canonical, spec.requirements)] == [*map(_canonical, DECLARED[route.id])]
+        assert [*map(canonical, spec.requirements)] == [*map(canonical, DECLARED[route.id])]
 
     @staticmethod
     @pytest.fixture
