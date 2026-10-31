@@ -20,6 +20,7 @@ import { createRouter } from '../dist/tooling/router.js'
 
 const root = resolve(import.meta.dirname, '..')
 const repo = resolve(root, '../..')
+const builderLifecycleContracts = join(repo, 'packages/contracts/fixtures/builder-lifecycle')
 const specDir = process.env.DIFY_OPENAPI_DIR ?? resolve(root, '../contracts/openapi')
 const enforceAlignment = process.argv.includes('--check')
 const consoleOnly = process.argv.includes('--console')
@@ -50,7 +51,10 @@ report.compilerVersion = spawnSync(
   [join(root, 'node_modules/typescript/bin/tsc'), '--version'],
   { encoding: 'utf8' },
 ).stdout.trim()
-report.generatedFiles = [...globSync(join(repo, 'packages/contracts/generated/api/**/*.ts'))]
+report.generatedFiles = [
+  ...globSync(join(repo, 'packages/contracts/generated/api/**/*.ts')),
+  ...(consoleOnly ? globSync(join(builderLifecycleContracts, '*.gen.ts')) : []),
+]
   .sort()
   .map((file) => ({
     file: relative(repo, file),
@@ -63,6 +67,7 @@ const contracts = new Map()
 const contractFiles = consoleOnly
   ? [
       ...globSync(join(repo, 'packages/contracts/generated/api/console/**/orpc.gen.ts')),
+      join(builderLifecycleContracts, 'orpc.gen.ts'),
       join(repo, 'packages/contracts/generated/enterprise/orpc.gen.ts'),
       join(repo, 'packages/contracts/generated/enterprise-app-deploy/orpc.gen.ts'),
     ]
