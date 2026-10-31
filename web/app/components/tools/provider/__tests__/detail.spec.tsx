@@ -6,6 +6,7 @@ import {
 } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
@@ -369,4 +370,40 @@ it('opens an action with read-only parameter details and returns to its provider
     expect(screen.queryByRole('dialog', { name: 'Search' })).not.toBeInTheDocument(),
   )
   expect(screen.getByRole('button', { name: 'Search' })).toBeInTheDocument()
+})
+
+it.each([
+  { collection: builtin, apiName: 'builtinTools', expected: 'Search' },
+  { collection: custom, apiName: 'customDetail', expected: 'Search' },
+  { collection: workflow, apiName: 'workflowDetail', expected: 'Workflow Tool' },
+] as const)(
+  'reports $apiName loading failures and recovers on retry',
+  async ({ collection, apiName, expected }) => {
+    const user = userEvent.setup()
+    api[apiName].mockRejectedValueOnce(new Error('Provider unavailable'))
+    renderDetail(collection)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Provider unavailable')
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(api[apiName]).toHaveBeenCalledTimes(2)
+    if (apiName === 'workflowDetail')
+      expect(screen.getByRole('link', { name: 'tools.openInStudio' })).toBeInTheDocument()
+    else expect(screen.getByRole('button', { name: expected })).toBeInTheDocument()
+  },
+)
+
+it('keeps custom tool edits open after saving fails and retries successfully', async () => {
+  const user = userEvent.setup()
+  api.customUpdate.mockRejectedValueOnce(new Error('Provider save denied'))
+  const { onRefreshData } = renderDetail(custom)
+  await user.click(await screen.findByRole('button', { name: 'tools.createTool.editAction' }))
+  const editor = await screen.findByRole('dialog', { name: 'tools.createTool.editTitle' })
+  const notify = vi.spyOn(toast, 'error')
+  await user.click(within(editor).getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(notify).toHaveBeenCalledExactlyOnceWith('Provider save denied'))
+  expect(editor).toBeInTheDocument()
+  expect(onRefreshData).not.toHaveBeenCalled()
+  await user.click(within(editor).getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(onRefreshData).toHaveBeenCalledOnce())
+  notify.mockRestore()
 })

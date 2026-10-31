@@ -318,6 +318,40 @@ describe('useAuth', () => {
 
   // openConfirmDelete with credential only (no model): deleteCredentialId set, deleteModel stays null
 
+  it.each(['activate', 'delete'])(
+    'reports a failed credential %s and releases the action for retry',
+    async (action) => {
+      const error = new Error('Credential access denied')
+      const request =
+        action === 'activate' ? mockActiveProviderCredential : mockDeleteProviderCredential
+      request.mockRejectedValueOnce(error)
+      const { result } = renderHook(
+        () => useAuth(provider, ConfigurationMethodEnum.predefinedModel),
+        { wrapper: createWrapper },
+      )
+      if (action === 'delete') act(() => result.current.openConfirmDelete(credential, model))
+      await act(async () => {
+        await expect(
+          action === 'activate'
+            ? result.current.handleActiveCredential(credential)
+            : result.current.handleConfirmDelete(),
+        ).rejects.toBe(error)
+      })
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'Credential access denied',
+      })
+      expect(result.current.doingAction).toBe(false)
+      expect(mockHandleRefreshModel).not.toHaveBeenCalled()
+      await act(async () => {
+        if (action === 'activate') await result.current.handleActiveCredential(credential)
+        else await result.current.handleConfirmDelete()
+      })
+      expect(request).toHaveBeenCalledTimes(2)
+      expect(mockHandleRefreshModel).toHaveBeenCalledOnce()
+    },
+  )
+
   // doingActionRef guard: second handleConfirmDelete call while first is in progress is a no-op
   it('should ignore a second handleConfirmDelete call while the first is still in progress', async () => {
     const deferred = createDeferred<{ result: string }>()

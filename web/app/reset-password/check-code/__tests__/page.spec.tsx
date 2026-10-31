@@ -98,4 +98,19 @@ describe('ResetPasswordCheckCodePage', () => {
     expect(codeInput).toHaveFocus()
     expect(consoleClient.forgotPassword.validity.post).not.toHaveBeenCalled()
   })
+  it('retains the code after a server failure and allows a successful retry', async () => {
+    const user = userEvent.setup()
+    vi.mocked(consoleClient.forgotPassword.validity.post).mockRejectedValueOnce(
+      new Error('Code expired'),
+    )
+    render(<CheckCodePage />)
+    const code = screen.getByRole('textbox', { name: 'login.checkCode.verificationCode' })
+    await user.type(code, '123456{Enter}')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Code expired')
+    expect(code).toHaveValue('123456')
+    expect(mockPush).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+    await waitFor(() => expect(mockPush).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
 })
