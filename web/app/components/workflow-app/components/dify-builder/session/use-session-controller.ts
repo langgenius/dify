@@ -14,6 +14,7 @@ import type {
   SessionView,
 } from '../types'
 import type { SessionCommandOptions, SessionRunEvents, SessionStreamOutcome } from './types'
+import { isEqual } from 'es-toolkit/predicate'
 import { useAtomValue, useSetAtom, useStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef } from 'react'
@@ -863,8 +864,11 @@ export function useDifyBuilderSessionController(
       expectTerminalEvent,
       startsSession = false,
       prepareDraft = true,
+      prepareDispatch,
       trace,
-    }: SessionCommandOptions) => {
+    }: SessionCommandOptions & {
+      prepareDispatch?: (signal: AbortSignal) => Promise<SessionCommandOptions['trace']>
+    }) => {
       const startingView = store.get(difyBuilderSessionViewAtom)
       const startingVersion = startsSession
         ? 0
@@ -908,7 +912,16 @@ export function useDifyBuilderSessionController(
           // previous session's frames mixed into this session's export.
           traceRef.current.clear()
         }
-        if (trace) traceRef.current.append({ dir: 'out', kind: trace.kind, payload: trace.payload })
+        // Recovery refreshes its request after the save barrier. Prepare before
+        // recording the outbound request so Trace describes the body sent.
+        const dispatchTrace = prepareDispatch ? await prepareDispatch(controller.signal) : trace
+        if (controller.signal.aborted) return false
+        if (dispatchTrace)
+          traceRef.current.append({
+            dir: 'out',
+            kind: dispatchTrace.kind,
+            payload: dispatchTrace.payload,
+          })
         commandStarted = true
         const observedAtStart = nativeObservationRef.current
         const events = await openStream(controller.signal)
@@ -1566,7 +1579,10 @@ export function useDifyBuilderSessionController(
           selectedId,
         )
       const selectedAction = view.actions?.find((action) => action.id === selectedId)
-      if (nativeControl && !selectedAction) return false
+      const recoveryAction =
+        typeof selectedId === 'string' &&
+        ['check_recovery', 'recovery_continue', 'restart'].includes(selectedId)
+      if ((nativeControl || recoveryAction) && !selectedAction) return false
       // Preserve explicit targets from the originating card: stale targets must
       // reach the backend guard rather than silently binding to a newer request.
       const actionPayload = { ...selectedAction?.payload, ...payload }
@@ -1584,38 +1600,83 @@ export function useDifyBuilderSessionController(
           pendingActionRef.current = { signature, id: globalThis.crypto.randomUUID() }
         clientActionId = pendingActionRef.current.id
       }
+      let requestView = view
+      const actionTrace = () => ({
+        kind: 'action',
+        payload: {
+          action_id: actionId,
+          payload: actionPayload,
+          base_version: requestView.version,
+          base_app_revision: requestView.app_revision?.current ?? '',
+          client_action_id: clientActionId,
+        },
+      })
       const succeeded = await runCommand({
         knownSessionId: view.session_id,
         // These control an already admitted immutable attempt; do not save or
         // rewrite the canvas while approving, cancelling or resuming it.
         prepareDraft: !nativeControl,
         expectTerminalEvent: actionId !== 'update_model',
+        prepareDispatch: recoveryAction
+          ? async (signal) => {
+              const ownsSession = () => {
+                const activeSessionId = store.get(difyBuilderActiveSessionIdAtom)
+                return (
+                  (!activeSessionId || activeSessionId === view.session_id) &&
+                  store.get(difyBuilderSessionViewAtom)?.session_id === view.session_id
+                )
+              }
+              const sameSelection = (candidate: SessionView) => {
+                const action = candidate.actions?.find((action) => action.id === selectedId)
+                return (
+                  Boolean(action) &&
+                  isEqual(action, selectedAction) &&
+                  // Autosave advances valid_at_version; action/card identify the interaction.
+                  candidate.active_interaction?.action_id === view.active_interaction?.action_id &&
+                  candidate.active_interaction?.card_seq === view.active_interaction?.card_seq
+                )
+              }
+              signal.throwIfAborted()
+              if (!ownsSession()) throw new Error(t(($) => $['taskControl.conflict']))
+              const observedAtStart = nativeObservationRef.current
+              const snapshot = await getSession(view.session_id, signal)
+              signal.throwIfAborted()
+              const current = store.get(difyBuilderSessionViewAtom)
+              if (!ownsSession() || snapshot.session_id !== view.session_id || !current)
+                throw new Error(t(($) => $['taskControl.conflict']))
+              const selectionValid = sameSelection(current) && sameSelection(snapshot)
+              traceRef.current.append({
+                dir: 'in',
+                kind: 'session_snapshot',
+                payload: snapshot,
+                version: snapshot.version,
+              })
+              if (!applySessionView(snapshot, observedAtStart) || !selectionValid)
+                throw new Error(t(($) => $['taskControl.conflict']))
+              // Keep the user's original payload. A replacement action/card
+              // requires a new selection, even if it has the same action ID.
+              requestView = snapshot
+              return actionTrace()
+            }
+          : undefined,
         openStream: (signal) =>
           runSessionAction(
             view.session_id,
             actionId,
             actionPayload,
-            view.version,
-            view.app_revision?.current ?? '',
+            requestView.version,
+            requestView.app_revision?.current ?? '',
             signal,
             receiptSnapshot,
             clientActionId,
           ),
-        trace: {
-          kind: 'action',
-          payload: {
-            action_id: actionId,
-            payload: actionPayload,
-            base_version: view.version,
-            client_action_id: clientActionId,
-          },
-        },
+        trace: actionTrace(),
       })
       // Also handles a refresh that completed before this command promise resumed.
       if (succeeded && pendingRetestRef.current) continueRetest()
       return succeeded
     },
-    [continueRetest, runCommand, store],
+    [applySessionView, continueRetest, runCommand, store, t],
   )
 
   const sendMessage = useCallback(
