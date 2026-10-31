@@ -8,6 +8,9 @@
   "apps.fullTip2": "계획 한도에 도달했습니다.",
   "apps.fullTip2des": "비활성 애플리케이션을 정리하여 사용량을 줄이거나 저희에게 문의하는 것이 좋습니다.",
   "buyPermissionDeniedTip": "구독하려면 엔터프라이즈 관리자에게 문의하세요",
+  "errors.operationFailed": "이 요청을 완료할 수 없습니다. 나중에 다시 시도해 주세요. 문제가 계속되면 지원팀에 문의하세요.",
+  "errors.requestInProgress": "이전 요청이 아직 처리 중입니다. 잠시 후 다시 시도해 주세요.",
+  "errors.unavailable": "이 서비스는 일시적으로 사용할 수 없습니다. 나중에 다시 시도해 주세요.",
   "plans.community.btnText": "커뮤니티 시작하기",
   "plans.community.description": "개인 사용자, 소규모 팀 또는 비상업적 프로젝트를 위한",
   "plans.community.features": [

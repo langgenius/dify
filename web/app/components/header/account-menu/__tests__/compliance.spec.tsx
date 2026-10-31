@@ -1,4 +1,5 @@
 import { Menu, MenuContent, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { ORPCError } from '@orpc/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render as renderWithoutPricing, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -14,12 +15,13 @@ const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 const mockDownloadCompliance = vi.hoisted(() => vi.fn())
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const responses = { 'compliance.download.get': mockDownloadCompliance }
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'compliance.download.get': mockDownloadCompliance,
-    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, responses),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, responses),
   }
 })
 vi.mock('@/service/base', () => ({
@@ -99,10 +101,9 @@ describe('Compliance', () => {
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     await user.click(screen.getByText('common.compliance.gdpr'))
     await waitFor(() =>
-      expect(consoleClient.compliance.download.get).toHaveBeenCalledWith(
-        { query: { doc_name: 'GDPR' } },
-        { context: { silent: true } },
-      ),
+      expect(consoleClient.compliance.download.get).toHaveBeenCalledWith({
+        query: { doc_name: 'GDPR' },
+      }),
     )
     expect(onPricingUrlUpdate).not.toHaveBeenCalled()
   })
@@ -118,35 +119,47 @@ describe('Compliance', () => {
       await user.click(getComplianceMenuItem('common.compliance.soc2Type1'))
 
       await waitFor(() => {
-        expect(consoleClient.compliance.download.get).toHaveBeenCalledWith(
-          { query: { doc_name: 'SOC2_Type_I' } },
-          { context: { silent: true } },
-        )
+        expect(consoleClient.compliance.download.get).toHaveBeenCalledWith({
+          query: { doc_name: 'SOC2_Type_I' },
+        })
         expect(downloadUrl).toHaveBeenCalledWith({ url: mockUrl })
         expect(toastSuccessSpy).toHaveBeenCalledWith('common.operation.downloadSuccess')
       })
     })
 
-    it('should handle download mutation error', async () => {
+    it.each([
+      ['compliance_download_forbidden', 403, 'common.compliance.downloadForbidden'],
+      ['compliance_document_not_found', 404, 'common.compliance.documentNotFound'],
+      ['compliance_rate_limit', 429, 'common.compliance.rateLimit'],
+      ['billing_request_in_progress', 429, 'billing.errors.requestInProgress'],
+      ['billing_unavailable', 503, 'billing.errors.unavailable'],
+      ['billing_operation_failed', 502, 'billing.errors.operationFailed'],
+    ])('shows the message for %s', async (code, status, message) => {
+      const user = userEvent.setup()
+      vi.mocked(consoleClient.compliance.download.get).mockRejectedValue(
+        new ORPCError(code, { defined: true, status, message: 'Backend text' }),
+      )
+      seedFeatures(queryClient, { billing: { subscription: { plan: 'team' } } })
+
+      await openMenuAndRender()
+      await user.click(getComplianceMenuItem('common.compliance.soc2Type1'))
+
+      await waitFor(() => expect(toastErrorSpy).toHaveBeenCalledWith(message))
+    })
+
+    it('falls back to the generic billing message for undeclared errors', async () => {
       const user = userEvent.setup()
       vi.mocked(consoleClient.compliance.download.get).mockRejectedValue(
         new Error('Download failed'),
       )
       seedFeatures(queryClient, { billing: { subscription: { plan: 'team' } } })
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       await openMenuAndRender()
       await user.click(getComplianceMenuItem('common.compliance.soc2Type1'))
 
-      await waitFor(() => {
-        expect(consoleClient.compliance.download.get).toHaveBeenCalledWith(
-          { query: { doc_name: 'SOC2_Type_I' } },
-          { context: { silent: true } },
-        )
-        expect(toastErrorSpy).toHaveBeenCalledWith('common.operation.downloadFailed')
-      })
-      expect(consoleSpy).toHaveBeenCalled()
-      consoleSpy.mockRestore()
+      await waitFor(() =>
+        expect(toastErrorSpy).toHaveBeenCalledWith('billing.errors.operationFailed'),
+      )
     })
 
     it('should handle upgrade click on badge for sandbox plan', async () => {
