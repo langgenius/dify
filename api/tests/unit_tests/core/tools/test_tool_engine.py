@@ -163,6 +163,80 @@ def test_convert_tool_response_to_str_and_extract_binary_messages():
         )
 
 
+@pytest.mark.parametrize("mime_type", [None, ""], ids=["none", "empty"])
+def test_extract_binary_messages_treat_an_empty_mimetype_as_missing(mime_type: str | None) -> None:
+    """Empty MIME metadata must preserve URLs and use the inferred or default type."""
+    messages = [
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.IMAGE,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/a.png"),
+            meta={"mime_type": mime_type},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.IMAGE_LINK,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/b.png"),
+            meta={"mime_type": mime_type},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BINARY_LINK,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/c.unknown-ext"),
+            meta={"mime_type": mime_type},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BLOB,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/d.unknown-ext"),
+            meta={"mime_type": mime_type, "filename": "d"},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.LINK,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/e.unknown-ext"),
+            meta={"mime_type": mime_type},
+        ),
+    ]
+
+    binaries = list(ToolEngine._extract_tool_response_binary_and_text(messages))
+
+    # the image paths keep guessing from the url, the others fall back to octet-stream
+    assert [b.mimetype for b in binaries] == [
+        "image/png",
+        "image/png",
+        "application/octet-stream",
+        "application/octet-stream",
+        "application/octet-stream",
+    ]
+    assert [b.url for b in binaries] == [
+        "https://example.com/a.png",
+        "https://example.com/b.png",
+        "https://example.com/c.unknown-ext",
+        "https://example.com/d.unknown-ext",
+        "https://example.com/e.unknown-ext",
+    ]
+
+
+def test_extract_binary_messages_keep_an_explicit_mimetype():
+    messages = [
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.IMAGE,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/a.png"),
+            meta={"mime_type": "image/gif"},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BLOB,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/b.docx"),
+            meta={"mime_type": "text/plain"},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.LINK,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/c.txt"),
+            meta={"mime_type": "application/pdf"},
+        ),
+    ]
+
+    binaries = list(ToolEngine._extract_tool_response_binary_and_text(messages))
+
+    assert [b.mimetype for b in binaries] == ["image/gif", "text/plain", "application/pdf"]
+
+
 @pytest.mark.parametrize("json_first", [True, False])
 @pytest.mark.parametrize(
     ("text", "json_object"),
