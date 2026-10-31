@@ -317,6 +317,7 @@
   "preflight.pluginMissing": "{{count}} integrações não instalados",
   "reset": "Iniciar uma nova conversa",
   "resourceNeedsAuthorization": "Autorização necessária",
+  "resourceNeedsSetup": "Configuração necessária",
   "resourceReady": "Configurado · execução não verificada",
   "runTest": "Executar o teste",
   "running": "Executando",

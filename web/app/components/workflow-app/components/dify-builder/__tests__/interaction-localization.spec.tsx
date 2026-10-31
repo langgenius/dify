@@ -328,6 +328,13 @@ describe('Builder interaction language', () => {
                 meta: 'Goal',
                 readiness: 'missing_config',
               },
+              {
+                id: 'resource-knowledge',
+                kind: 'knowledge',
+                label: 'Knowledge',
+                meta: '12 documents',
+                readiness: 'waiting_setup',
+              },
             ],
           },
         },
@@ -340,6 +347,14 @@ describe('Builder interaction language', () => {
     const yes = screen.getByRole('checkbox', { name: 'Yes' })
     expect(goal).toHaveAccessibleDescription(`Yes · ${chineseBuilder.resourceReady}`)
     expect(yes).toHaveAccessibleDescription(`Goal · ${chineseBuilder.resourceNeedsAuthorization}`)
+    const knowledge = screen.getByRole('checkbox', { name: 'Knowledge' })
+    expect(knowledge).toBeChecked()
+    expect(knowledge).toBeEnabled()
+    expect(knowledge).toHaveAccessibleDescription(
+      `12 documents · ${chineseBuilder.resourceNeedsSetup}`,
+    )
+    expect(getI18n()?.language).toBe('en-US')
+    await user.click(knowledge)
     await user.click(goal)
     await user.click(yes)
     await user.click(submit)

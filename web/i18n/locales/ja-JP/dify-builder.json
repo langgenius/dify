@@ -313,6 +313,7 @@
   "preflight.pluginMissing": "{{count}} 個のインテグレーションがインストールされていません",
   "reset": "新しい会話を開始",
   "resourceNeedsAuthorization": "認証が必要",
+  "resourceNeedsSetup": "セットアップが必要",
   "resourceReady": "設定済み・実行状態は未確認",
   "runTest": "テストを実行",
   "running": "実行中",

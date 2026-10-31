@@ -323,6 +323,7 @@
   "preflight.pluginMissing": "{{count}} інтеграцій не встановлено",
   "reset": "Почати нову розмову",
   "resourceNeedsAuthorization": "Потрібна авторизація",
+  "resourceNeedsSetup": "Потрібне налаштування",
   "resourceReady": "Налаштовано · роботу не перевірено",
   "runTest": "Запустити тест",
   "running": "Запущено",

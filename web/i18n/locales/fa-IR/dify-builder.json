@@ -313,6 +313,7 @@
   "preflight.pluginMissing": "{{count}} یکپارچه‌سازی نصب نشده است",
   "reset": "شروع گفت‌وگوی جدید",
   "resourceNeedsAuthorization": "نیاز به مجوز",
+  "resourceNeedsSetup": "نیاز به راه‌اندازی",
   "resourceReady": "پیکربندی شده · اجرا بررسی نشده",
   "runTest": "اجرای آزمون",
   "running": "در حال اجرا",

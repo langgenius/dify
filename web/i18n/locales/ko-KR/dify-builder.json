@@ -313,6 +313,7 @@
   "preflight.pluginMissing": "{{count}}개의 통합이 설치되지 않았습니다",
   "reset": "새 대화 시작",
   "resourceNeedsAuthorization": "인증 필요",
+  "resourceNeedsSetup": "설정 필요",
   "resourceReady": "설정 완료 · 실행 상태 미확인",
   "runTest": "테스트 실행",
   "running": "실행 중",

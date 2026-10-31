@@ -3673,6 +3673,7 @@ export default interface Resources {
     'preflight.pluginMissing': '{{count}} integrations not installed'
     reset: 'Start a new conversation'
     resourceNeedsAuthorization: 'Authorization required'
+    resourceNeedsSetup: 'Setup required'
     resourceReady: 'Configured · runtime unverified'
     runTest: 'Run the test'
     running: 'Running'

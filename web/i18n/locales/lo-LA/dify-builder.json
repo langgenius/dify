@@ -313,6 +313,7 @@
   "preflight.pluginMissing": "ການເຊື່ອມຕໍ່ {{count}} ລາຍການຍັງບໍ່ໄດ້ຕິດຕັ້ງ",
   "reset": "ເລີ່ມການສົນທະນາໃໝ່",
   "resourceNeedsAuthorization": "ຕ້ອງການການອະນຸຍາດ",
+  "resourceNeedsSetup": "ຕ້ອງຕັ້ງຄ່າ",
   "resourceReady": "ຕັ້ງຄ່າແລ້ວ · ຍັງບໍ່ໄດ້ກວດສອບການເຮັດວຽກ",
   "runTest": "ດຳເນີນການທົດສອບ",
   "running": "ກຳລັງລັນ",

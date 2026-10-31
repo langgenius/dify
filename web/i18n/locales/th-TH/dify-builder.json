@@ -313,6 +313,7 @@
   "preflight.pluginMissing": "{{count}} การผสานรวมยังไม่ได้ติดตั้ง",
   "reset": "เริ่มการสนทนาใหม่",
   "resourceNeedsAuthorization": "ต้องได้รับการอนุญาต",
+  "resourceNeedsSetup": "ต้องตั้งค่า",
   "resourceReady": "กำหนดค่าแล้ว · ยังไม่ตรวจสอบการทำงาน",
   "runTest": "เรียกใช้การทดสอบ",
   "running": "กำลัง เรียก ใช้",
