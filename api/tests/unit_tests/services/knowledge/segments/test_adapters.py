@@ -3,7 +3,7 @@ from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
 from unittest.mock import create_autospec, patch
 
 import pytest
@@ -53,6 +53,7 @@ from services.knowledge.segments.application import (
     SegmentListFilter,
     SegmentModelGuard,
     SegmentModelProviderError,
+    SegmentStatusUpdateError,
 )
 
 
@@ -454,6 +455,7 @@ class IndexRedisStub:
 class VectorProbe:
     active_transactions: set[Connection]
     fail: bool = False
+    dispatch_unavailable: bool = False
     writes: int = 0
     deleted_ids: list[str] = field(default_factory=list)
     tasks: list[tuple[str, tuple[object, ...]]] = field(default_factory=list)
@@ -530,6 +532,8 @@ def indexing_probe(
 
     def dispatch(kind: str, *args: object) -> None:
         assert not active
+        if probe.dispatch_unavailable:
+            raise RuntimeError("broker unavailable")
         probe.tasks.append((kind, args))
 
     gateway = indexing_module.SegmentIndexingGateway(
@@ -979,6 +983,46 @@ def test_child_query_escapes_wildcards_and_enforces_complete_scope(
     assert page is not None
     assert page.total == 1
     assert [child.content for child in page.items] == ["50%_literal"]
+
+
+@pytest.mark.parametrize("action", ["enable", "disable"])
+def test_status_retry_after_dispatch_failure_reaches_index(
+    indexing_probe: IndexingProbe, sqlite_session_factory: sessionmaker[Session], action: Literal["enable", "disable"]
+) -> None:
+    app, _, probe = indexing_probe
+    context = RequestContext("request", None, "author", "workspace-1")
+    with sqlite_session_factory.begin() as session:
+        segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
+        segment.enabled = action != "enable"
+        session.add(segment)
+        session.add(_segment("foreign", "workspace-2", "dataset-1", "document-1"))
+
+    probe.dispatch_unavailable = True
+    with pytest.raises(SegmentStatusUpdateError, match="broker unavailable"):
+        app.change_segment_status(
+            context,
+            dataset_id="dataset-1",
+            document_id="document-1",
+            segment_ids=["segment-1", "foreign"],
+            action=action,
+        )
+    with sqlite_session_factory() as session:
+        segment = session.get(DocumentSegment, "segment-1")
+        assert segment is not None
+        assert segment.enabled == (action == "enable")
+        disabled_at = segment.disabled_at
+        disabled_by = segment.disabled_by
+    assert probe.tasks == []
+
+    probe.dispatch_unavailable = False
+    app.change_segment_status(
+        context, dataset_id="dataset-1", document_id="document-1", segment_ids=["segment-1", "foreign"], action=action
+    )
+    assert probe.tasks == [(action, (["segment-1"], "dataset-1", "document-1"))]
+    with sqlite_session_factory() as session:
+        segment = session.get(DocumentSegment, "segment-1")
+        assert segment is not None
+        assert (segment.disabled_at, segment.disabled_by) == (disabled_at, disabled_by)
 
 
 def test_batch_status_and_delete_only_modify_scoped_segments(
