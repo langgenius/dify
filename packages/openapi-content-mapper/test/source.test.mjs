@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { join, resolve, sep } from 'node:path'
+import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
 import { pathToFileURL } from 'node:url'
@@ -231,35 +231,13 @@ for (const external of [false, true]) {
       root: frontend,
       logLevel: 'silent',
       plugins: [openapi()],
-      server: { port: 0, fs: { allow: [directory] } },
+      server: {
+        port: 0,
+        fs: { allow: [directory] },
+        watch: { useFsEvents: false, usePolling: false },
+      },
     })
     t.after(() => server.close())
-    const watcherEvents = []
-    server.watcher.on('all', (event, file) => {
-      if (file.startsWith(`${directory}${sep}`) && watcherEvents.length < 30)
-        watcherEvents.push([event, file.slice(directory.length + 1)])
-    })
-    const messages = []
-    const send = server.ws.send.bind(server.ws)
-    server.ws.send = (...args) => {
-      const payload = args[0]
-      if (
-        typeof payload?.triggeredBy === 'string' &&
-        payload.triggeredBy.startsWith(`${directory}${sep}`) &&
-        messages.length < 30
-      )
-        messages.push([payload.type, payload.triggeredBy.slice(directory.length + 1)])
-      return send(...args)
-    }
-    t.after(() =>
-      t.diagnostic(
-        JSON.stringify({
-          watched: server.watcher.getWatched()[directory] ?? [],
-          events: watcherEvents,
-          messages,
-        }),
-      ),
-    )
     // New files created during the initial scan are ignored by Chokidar.
     const watcherReady = new Promise((resolve) => server.watcher.once('ready', resolve))
     await server.listen()
