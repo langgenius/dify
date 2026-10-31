@@ -142,7 +142,7 @@ const DocumentTableRow = React.memo(
               <TooltipContent>{doc.name}</TooltipContent>
             </Tooltip>
             {doc.summary_index_status && (
-              <div className="ms-1 hidden shrink-0 group-hover:flex">
+              <div className="ms-1 flex shrink-0">
                 <SummaryStatus status={doc.summary_index_status} />
               </div>
             )}
