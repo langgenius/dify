@@ -2,6 +2,7 @@ import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/s
 import type { VarInInspect } from '@/types/workflow'
 import { act, waitFor } from '@testing-library/react'
 import { useStoreApi } from 'reactflow'
+import { toast } from '@/app/notifications'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowCanvasHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus, VarType } from '../../types'
@@ -14,6 +15,8 @@ const mockFetchNodeInspectVars = vi.hoisted(() => vi.fn())
 const mockDoDeleteAllInspectorVars = vi.hoisted(() => vi.fn())
 const mockInvalidateConversationVarValues = vi.hoisted(() => vi.fn())
 const mockInvalidateSysVarValues = vi.hoisted(() => vi.fn())
+
+vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 const schemaTypeDefinitions: SchemaDefinitionItemResponse[] = [
   {
@@ -209,9 +212,18 @@ describe('useInspectVarsCrudCommon', () => {
     ])
     expect(store.getState().nodesWithInspectVars).toEqual([])
   })
-  it.each(['variable', 'node'] as const)(
-    'keeps inspected values when %s deletion fails and removes them only after success',
-    async (target) => {
+  it.each(
+    (['variable', 'node'] as const).flatMap((target) =>
+      [
+        new Error('Delete failed'),
+        new TypeError('Failed to fetch'),
+        new DOMException('The operation timed out.', 'TimeoutError'),
+        new DOMException('The operation was aborted.', 'AbortError'),
+      ].map((error) => ({ target, error })),
+    ),
+  )(
+    'preserves inspected values and allows retry after $target deletion rejects with $error.name',
+    async ({ target, error }) => {
       const { result, store } = renderWorkflowCanvasHook(
         () => ({ ...useInspectVarsCrudCommon(), flow: useStoreApi() }),
         { nodes },
@@ -233,16 +245,19 @@ describe('useInspectVarsCrudCommon', () => {
         target === 'variable'
           ? result.current.deleteInspectVar('node-1', 'var-1')
           : result.current.deleteNodeInspectorVars('node-1')
-      deleteRequest.mockRejectedValueOnce(new Error('Delete failed'))
+      deleteRequest.mockRejectedValueOnce(error)
       await act(async () => {
         await expect(deleteValues()).resolves.toBeUndefined()
       })
       expect(store.getState().nodesWithInspectVars[0]?.vars).toEqual([createInspectVar()])
+      if (error.name === 'AbortError') expect(toast.error).not.toHaveBeenCalled()
+      else expect(toast.error).toHaveBeenCalledExactlyOnceWith(error.message)
       deleteRequest.mockResolvedValueOnce(undefined)
       await act(async () => {
         await deleteValues()
       })
       expect(store.getState().nodesWithInspectVars.flatMap((node) => node.vars ?? [])).toEqual([])
+      expect(toast.error).toHaveBeenCalledTimes(error.name === 'AbortError' ? 0 : 1)
     },
   )
 

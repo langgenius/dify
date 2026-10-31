@@ -166,25 +166,19 @@ describe('TransferOwnershipContent', () => {
     expect(
       consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post,
     ).toHaveBeenCalledWith({ body: {} })
-    expect(consoleClient.workspaces.current.members.ownerTransferCheck.post).toHaveBeenCalledWith(
-      {
-        body: { code: '123456', token: 'step-token' },
-      },
-      { context: { silent: true } },
-    )
+    expect(consoleClient.workspaces.current.members.ownerTransferCheck.post).toHaveBeenCalledWith({
+      body: { code: '123456', token: 'step-token' },
+    })
     expect(await screen.findByText(/members\.transferModal\.transferLabel/i)).toBeInTheDocument()
     await selectNewOwnerAndSubmit(user)
 
     await waitFor(() => {
       expect(
         consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post,
-      ).toHaveBeenCalledWith(
-        {
-          params: { member_id: 'new-owner-id' },
-          body: { token: 'final-token' },
-        },
-        { context: { silent: true } },
-      )
+      ).toHaveBeenCalledWith({
+        params: { member_id: 'new-owner-id' },
+        body: { token: 'final-token' },
+      })
       expect(window.location.reload).toHaveBeenCalled()
     })
   })
@@ -263,28 +257,49 @@ describe('TransferOwnershipContent', () => {
     })
   })
 
-  it('should not show a modal-level toast and should stay on start step when sending verification email fails', async () => {
+  it('shows a send failure inline and allows retry without advancing the step', async () => {
     const user = userEvent.setup()
+    mockEmailVerification()
     vi.mocked(
       consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post,
-    ).mockRejectedValue(new Error('network error'))
+    ).mockRejectedValueOnce(new Error('Email delivery unavailable'))
     renderModal()
     await user.click(
       screen.getByRole('button', { name: /members\.transferModal\.sendVerifyCode/i }),
     )
-
-    // The base service layer surfaces the real backend error. The modal itself
-    // must NOT show an additional toast (e.g. "Error sending verification code: undefined").
-    await waitFor(() => {
-      expect(
-        consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post,
-      ).toHaveBeenCalled()
-    })
+    expect(await screen.findByRole('alert')).toHaveTextContent('Email delivery unavailable')
     expect(mockNotify).not.toHaveBeenCalled()
-    // Should remain on the start step instead of advancing to the verify step.
-    expect(
+    await user.click(
       screen.getByRole('button', { name: /members\.transferModal\.sendVerifyCode/i }),
-    ).toBeInTheDocument()
+    )
+    expect(
+      await screen.findByRole('textbox', { name: /members\.transferModal\.codeLabel/i }),
+    ).toBeVisible()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('preserves the verification code after a resend failure and allows retry', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const user = userEvent.setup()
+    mockEmailVerification()
+    renderModal()
+    await user.click(
+      screen.getByRole('button', { name: /members\.transferModal\.sendVerifyCode/i }),
+    )
+    const code = await screen.findByRole('textbox', { name: /members\.transferModal\.codeLabel/i })
+    await user.type(code, '123456')
+    await act(async () => vi.advanceTimersByTimeAsync(60000))
+    vi.mocked(
+      consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post,
+    ).mockRejectedValueOnce(new Error('Email rate limit reached'))
+    await user.click(screen.getByRole('button', { name: /members\.transferModal\.resend$/i }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Email rate limit reached')
+    expect(code).toHaveValue('123456')
+    expect(mockNotify).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: /members\.transferModal\.resend$/i }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(code).toHaveValue('123456')
+    expect(screen.getByText(/members\.transferModal\.resendCount/i)).toBeVisible()
   })
 
   it('should show error when ownership transfer fails', async () => {

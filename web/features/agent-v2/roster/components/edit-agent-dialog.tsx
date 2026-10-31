@@ -17,6 +17,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { createAgentIconSelection, getAgentIconKey } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
 
@@ -30,6 +31,7 @@ type EditAgentFormSessionProps = {
   agent: AgentFormSource
   nameInputRef: Ref<HTMLInputElement>
   pending: boolean
+  error?: unknown
   onCancel: () => void
   onSubmit: (formValues: AgentFormValues, agentIcon: AgentIconSelection) => void
 }
@@ -51,6 +53,7 @@ function EditAgentFormSession({
   agent,
   nameInputRef,
   pending,
+  error,
   onCancel,
   onSubmit,
 }: EditAgentFormSessionProps) {
@@ -105,6 +108,11 @@ function EditAgentFormSession({
           iconAriaLabel={t(($) => $['roster.createForm.changeIcon'], { ns: 'agentRoster' })}
           onIconChange={setAgentIcon}
         />
+        {!!error && !pending && (
+          <p role="alert" className="px-6 system-sm-regular text-text-destructive">
+            {getErrorMessage(error) ?? tCommon(($) => $['api.actionFailed'])}
+          </p>
+        )}
         <DialogFooter>
           <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
             {tCommon(($) => $['operation.cancel'])}
@@ -163,13 +171,23 @@ export function EditAgentDialog({ agent, open, onOpenChange }: EditAgentDialogPr
 
   return (
     <>
-      <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
+      <Dialog
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            updateAgentMutation.reset()
+          }
+        }}
+        open={open}
+        onOpenChange={handleOpenChange}
+        disablePointerDismissal
+      >
         <DialogContent initialFocus={nameInputRef} className="w-130">
           <EditAgentFormSession
             key={agent.id}
             agent={agent}
             nameInputRef={nameInputRef}
             pending={updateAgentMutation.isPending}
+            error={updateAgentMutation.error}
             onCancel={() => onOpenChange(false)}
             onSubmit={handleSubmit}
           />

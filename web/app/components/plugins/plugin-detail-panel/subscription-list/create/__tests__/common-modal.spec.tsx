@@ -91,23 +91,17 @@ it('initializes a builder, verifies entered credentials and submits validated co
     <CommonCreateModal createType={SupportedCreationMethods.APIKEY} onClose={onClose} />,
   )
   await waitFor(() =>
-    expect(requests.create).toHaveBeenCalledExactlyOnceWith(
-      {
-        params: { provider: 'provider-a' },
-        body: { credential_type: TriggerCredentialType.ApiKey },
-      },
-      { context: { silent: true } },
-    ),
+    expect(requests.create).toHaveBeenCalledExactlyOnceWith({
+      params: { provider: 'provider-a' },
+      body: { credential_type: TriggerCredentialType.ApiKey },
+    }),
   )
   await user.type(screen.getByRole('textbox', { name: /API key/ }), 'secret')
   await user.click(screen.getByRole('button', { name: verifyName }))
-  expect(requests.verify).toHaveBeenCalledWith(
-    {
-      params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
-      body: { credentials: { api_key: 'secret' } },
-    },
-    { context: { silent: true } },
-  )
+  expect(requests.verify).toHaveBeenCalledWith({
+    params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
+    body: { credentials: { api_key: 'secret' } },
+  })
   expect(
     await screen.findByRole('button', { name: 'pluginTrigger.modal.common.verifying' }),
   ).toBeDisabled()
@@ -125,13 +119,10 @@ it('initializes a builder, verifies entered credentials and submits validated co
   await user.type(screen.getByRole('textbox', { name: /Repository/ }), 'dify')
   await user.click(screen.getByRole('button', { name: createName }))
   await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
-  expect(requests.build).toHaveBeenCalledExactlyOnceWith(
-    {
-      params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
-      body: { name: 'Repo updates', parameters: { repo: 'dify' } },
-    },
-    { context: { silent: true } },
-  )
+  expect(requests.build).toHaveBeenCalledExactlyOnceWith({
+    params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
+    body: { name: 'Repo updates', parameters: { repo: 'dify' } },
+  })
   expect(requests.refetch).toHaveBeenCalledOnce()
 })
 
@@ -155,7 +146,6 @@ it('shows a verification failure and lets the user correct credentials before co
   await screen.findByRole('textbox', { name: subscriptionName })
   expect(requests.verify).toHaveBeenLastCalledWith(
     expect.objectContaining({ body: { credentials: { api_key: 'correct' } } }),
-    { context: { silent: true } },
   )
 })
 
@@ -198,21 +188,15 @@ it('debounces manual property edits and validates them before creating the subsc
   await user.type(screen.getByRole('textbox', { name: /Channel/ }), 'release')
   expect(requests.update).not.toHaveBeenCalled()
   await waitFor(() =>
-    expect(requests.update).toHaveBeenCalledExactlyOnceWith(
-      {
-        params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
-        body: { properties: { channel: 'release' } },
-      },
-      { context: { silent: true } },
-    ),
+    expect(requests.update).toHaveBeenCalledExactlyOnceWith({
+      params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
+      body: { properties: { channel: 'release' } },
+    }),
   )
   await user.click(screen.getByRole('button', { name: createName }))
-  expect(requests.build).toHaveBeenCalledWith(
-    {
-      params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
-      body: { name: 'Manual updates' },
-    },
-    { context: { silent: true } },
-  )
+  expect(requests.build).toHaveBeenCalledWith({
+    params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
+    body: { name: 'Manual updates' },
+  })
   await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
 })

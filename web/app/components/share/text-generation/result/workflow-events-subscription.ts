@@ -16,12 +16,12 @@ export const createWorkflowEventsSubscription = ({ onAbort }: { onAbort?: () => 
   let disposed = false
   let retriedDisconnect = false
   let generation = 0
-  let waiters: Array<(ready: boolean) => void> = []
+  let waiters: Array<{ resolve: (ready: boolean) => void; reject: (error: Error) => void }> = []
 
   const resolveWaiters = (isReady: boolean) => {
     const pending = waiters
     waiters = []
-    pending.forEach((resolve) => resolve(isReady))
+    pending.forEach(({ resolve }) => resolve(isReady))
   }
 
   const dispose = () => {
@@ -107,11 +107,24 @@ export const createWorkflowEventsSubscription = ({ onAbort }: { onAbort?: () => 
         )
         handlers.getAbortController?.(controller)
       },
-      onCompleted: onDisconnected,
-      onError: () => {
-        // A failed read before the pause snapshot must block the write and be retryable.
-        if (waiters.length) retriedDisconnect = true
+      onCompleted: (hasError, message) => {
+        if (hasError) options.onError?.(message ?? '')
+        else onDisconnected()
+      },
+      onError: (message, code, identity) => {
+        if (!isCurrent()) return
+        // Let the submitting form show the error while keeping preparation retryable.
+        if (waiters.length) {
+          retriedDisconnect = true
+          const pending = waiters
+          waiters = []
+          pending.forEach(({ reject }) => reject(new Error(message)))
+          onDisconnected()
+          return
+        }
+        const exhausted = retriedDisconnect && !paused && !terminal
         onDisconnected()
+        if (exhausted) handlers.onError?.(message, code, identity)
       },
     }
     // oxlint-disable-next-line typescript/no-deprecated -- Generated events contracts return a complete string and omit the pause/snapshot query; this subscription needs incremental SSE with WebApp passport auth and abort control.
@@ -135,8 +148,8 @@ export const createWorkflowEventsSubscription = ({ onAbort }: { onAbort?: () => 
         paused = false
         return true
       }
-      const isReady = await new Promise<boolean>((resolve) => {
-        waiters.push(resolve)
+      const isReady = await new Promise<boolean>((resolve, reject) => {
+        waiters.push({ resolve, reject })
         subscribe()
       })
       if (isReady && active && ready) {

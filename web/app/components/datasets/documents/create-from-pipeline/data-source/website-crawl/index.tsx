@@ -6,10 +6,11 @@ import type {
   DataSourceNodeErrorResponse,
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
+import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import {
@@ -47,11 +48,12 @@ const WebsiteCrawl = ({
   supportBatchUpload = true,
   onCredentialChange,
 }: WebsiteCrawlProps) => {
-  const { t } = useTranslation(['datasetCreation'])
+  const { t } = useTranslation(['datasetCreation', 'common'])
   const docLink = useDocLink()
   const [totalNum, setTotalNum] = useState(0)
   const [crawledNum, setCrawledNum] = useState(0)
   const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
+  const lastInputsRef = useRef<Record<string, unknown> | undefined>(undefined)
   const pipelineId = useDatasetDetailContextWithSelector((s) => s.dataset?.pipeline_id)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { crawlResult, step, checkedCrawlResult, previewIndex, currentCredentialId } =
@@ -89,9 +91,19 @@ const WebsiteCrawl = ({
   const isCrawlFinished = step === CrawlStep.finished
   const isRunning = step === CrawlStep.running
   const showError = isCrawlFinished && crawlErrorMessage
+  const requestGenerationRef = useRef(0)
+  const requestControllerRef = useRef<AbortController | null>(null)
   const datasourceNodeRunURL = !isInPipeline
     ? `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${nodeId}/run`
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
+
+  useEffect(
+    () => () => {
+      requestGenerationRef.current += 1
+      requestControllerRef.current?.abort()
+    },
+    [datasourceNodeRunURL, currentCredentialId],
+  )
 
   const handleCheckedCrawlResultChange = useCallback(
     (checkedCrawlResult: CrawlResultItem[]) => {
@@ -111,9 +123,26 @@ const WebsiteCrawl = ({
   )
 
   const handleRun = useCallback(
-    async (value: Record<string, any>) => {
+    async (value: Record<string, unknown>) => {
       const { setStep, setCrawlResult, currentCredentialId } = dataSourceStore.getState()
 
+      const generation = ++requestGenerationRef.current
+      requestControllerRef.current?.abort()
+      let settled = false
+      const isCurrentRequest = () =>
+        !settled &&
+        generation === requestGenerationRef.current &&
+        currentCredentialId === dataSourceStore.getState().currentCredentialId
+      lastInputsRef.current = value
+      setCrawlErrorMessage('')
+      const handleError = (message: string) => {
+        if (!isCurrentRequest()) return
+        settled = true
+        setCrawlErrorMessage(
+          message || t(($) => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' }),
+        )
+        setStep(CrawlStep.finished)
+      }
       setStep(CrawlStep.running)
       ssePost(
         datasourceNodeRunURL,
@@ -126,11 +155,20 @@ const WebsiteCrawl = ({
           },
         },
         {
+          getAbortController: (controller) => {
+            if (isCurrentRequest()) requestControllerRef.current = controller
+            else controller.abort()
+          },
+          onCompleted: (_hasError, message) => handleError(message ?? ''),
+          onError: handleError,
           onDataSourceNodeProcessing: (data: DataSourceNodeProcessingResponse) => {
+            if (!isCurrentRequest()) return
             setTotalNum(data.total ?? 0)
             setCrawledNum(data.completed ?? 0)
           },
           onDataSourceNodeCompleted: (data: DataSourceNodeCompletedResponse) => {
+            if (!isCurrentRequest()) return
+            settled = true
             const { data: crawlData, time_consuming } = data
             const crawlResultData = {
               data: crawlData as CrawlResultItem[],
@@ -142,10 +180,7 @@ const WebsiteCrawl = ({
             setStep(CrawlStep.finished)
           },
           onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
-            setCrawlErrorMessage(
-              error.error || t(($) => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' }),
-            )
-            setStep(CrawlStep.finished)
+            handleError(error.error)
           },
         },
       )
@@ -154,7 +189,7 @@ const WebsiteCrawl = ({
   )
 
   const handleSubmit = useCallback(
-    (value: Record<string, any>) => {
+    (value: Record<string, unknown>) => {
       handleRun(value)
     },
     [handleRun],
@@ -197,11 +232,19 @@ const WebsiteCrawl = ({
         <div className="relative flex flex-col">
           {isRunning && <Crawling crawledNum={crawledNum} totalNum={totalNum} />}
           {showError && (
-            <ErrorMessage
-              className="mt-2"
-              title={t(($) => $[`${I18N_PREFIX}.exceptionErrorTitle`], { ns: 'datasetCreation' })}
-              errorMsg={crawlErrorMessage}
-            />
+            <div role="alert" className="mt-2">
+              <ErrorMessage
+                title={t(($) => $[`${I18N_PREFIX}.exceptionErrorTitle`], { ns: 'datasetCreation' })}
+                errorMsg={crawlErrorMessage}
+              />
+              <Button
+                onClick={() => {
+                  if (lastInputsRef.current) void handleRun(lastInputsRef.current)
+                }}
+              >
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </div>
           )}
           {isCrawlFinished && !showError && (
             <CrawledResult

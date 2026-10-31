@@ -13,6 +13,7 @@ import {
 } from '@/app/components/api-key/api-key-dialog-content'
 import { ApiKeyListContent } from '@/app/components/api-key/api-key-list-content'
 import { CreatedApiKeyDialog } from '@/app/components/api-key/created-api-key-dialog'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { consoleQuery } from '@/service/console'
 
 type ApiSecretKeyButtonProps = {
@@ -27,9 +28,14 @@ export function ApiSecretKeyButton({
   disabled = false,
 }: ApiSecretKeyButtonProps) {
   const { t } = useTranslation(['appApi'])
-  const createKey = useMutation(consoleQuery.apps.byResourceId.apiKeys.post.mutationOptions())
+  const notifyError = useErrorNotification()
+  const createKey = useMutation(
+    consoleQuery.apps.byResourceId.apiKeys.post.mutationOptions({ onError: notifyError }),
+  )
   const deleteKey = useMutation(
-    consoleQuery.apps.byResourceId.apiKeys.byApiKeyId.delete.mutationOptions(),
+    consoleQuery.apps.byResourceId.apiKeys.byApiKeyId.delete.mutationOptions({
+      onError: notifyError,
+    }),
   )
   const pending = createKey.isPending || deleteKey.isPending
   const keys = useQuery(

@@ -1,7 +1,7 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { Shape } from '@/app/components/workflow/store/workflow'
-import { waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -134,6 +134,33 @@ describe('useWorkflowInit', () => {
     mockSyncWorkflowDraft.mockReset()
   })
 
+  it.each(['fetch', 'create'])(
+    'exposes %s failures and recovers when initialization is retried',
+    async (stage) => {
+      const error = new Error('Workflow service unavailable')
+      if (stage === 'fetch')
+        mockFetchWorkflowDraft
+          .mockReset()
+          .mockRejectedValueOnce(error)
+          .mockResolvedValue(draftResponse)
+      else {
+        mockSyncWorkflowDraft
+          .mockRejectedValueOnce(error)
+          .mockResolvedValue({ hash: 'saved-hash', updated_at: 1 })
+        mockFetchWorkflowDraft.mockResolvedValue(draftResponse)
+      }
+      const { result } = renderHook(() => useWorkflowInit())
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+      expect(result.current.error).toBe(error)
+      expect(result.current.data).toBeUndefined()
+      await act(async () => {
+        await result.current.refetch()
+      })
+      expect(result.current.error).toBeUndefined()
+      expect(result.current.data?.hash).toBe('server-hash')
+      expect(result.current.isLoading).toBe(false)
+    },
+  )
   it.each([undefined, { x: 120, y: -80, zoom: 0.75 }])(
     'should preserve the initial draft viewport as %j',
     async (viewport) => {

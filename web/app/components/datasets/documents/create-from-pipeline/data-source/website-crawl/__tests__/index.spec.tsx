@@ -144,6 +144,7 @@ function setup({
   return { store, onCredentialChange }
 }
 function callbacks(): {
+  onError: (message: string) => void
   onDataSourceNodeProcessing: (data: DataSourceNodeProcessingResponse) => void
   onDataSourceNodeCompleted: (data: DataSourceNodeCompletedResponse) => void
   onDataSourceNodeError: (data: DataSourceNodeErrorResponse) => void
@@ -308,3 +309,53 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
+
+it('ends a crawl on transport failure and retries with the submitted inputs', async () => {
+  const user = userEvent.setup()
+  const { store } = setup()
+  await user.click(
+    await screen.findByRole('button', { name: 'datasetCreation.stepOne.website.run' }),
+  )
+  await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+  const body = ssePost.mock.lastCall![1].body
+  act(() => callbacks().onError('Crawler unavailable'))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Crawler unavailable')
+  expect(store.getState().step).toBe(CrawlStep.finished)
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+  expect(ssePost.mock.lastCall![1].body).toEqual(body)
+  complete()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(store.getState().websitePages).toEqual(pages)
+})
+
+it.each(['error', 'completion'])(
+  'ignores old crawl %s after switching credentials and completing a fresh crawl',
+  async (event) => {
+    const user = userEvent.setup()
+    const { store } = setup()
+    await user.click(
+      await screen.findByRole('button', { name: 'datasetCreation.stepOne.website.run' }),
+    )
+    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+    const earlier = callbacks()
+    await user.click(screen.getByRole('button', { name: /First credential/ }))
+    await user.click(await screen.findByText('Second credential'))
+    await user.click(
+      await screen.findByRole('button', { name: 'datasetCreation.stepOne.website.run' }),
+    )
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    complete()
+    act(() => {
+      if (event === 'error') earlier.onError('Earlier crawl failed')
+      else
+        earlier.onDataSourceNodeCompleted({
+          event: 'datasource_completed',
+          time_consuming: 0,
+          data: [],
+        })
+    })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(store.getState().websitePages).toEqual(pages)
+  },
+)

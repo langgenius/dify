@@ -86,9 +86,7 @@ export function Popup({
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { mutateAsync: publishWorkflow } = useMutation(
-    consoleQuery.rag.pipelines.byPipelineId.workflows.publish.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.rag.pipelines.byPipelineId.workflows.publish.post.mutationOptions(),
   )
   const workflowStore = useWorkflowStore()
   const { data: isAllowPublishAsCustomKnowledgePipelineTemplate } = useQuery(
@@ -269,7 +267,7 @@ export function Popup({
             disabled
           >
             <div className="flex grow items-center">
-              <RiPlayCircleLine className="mr-2 size-4" />
+              <RiPlayCircleLine className="me-2 size-4" />
               {t(($) => $['common.goToAddDocuments'], { ns: 'pipeline' })}
             </div>
             <RiArrowRightUpLine className="size-4 shrink-0" />
@@ -283,7 +281,7 @@ export function Popup({
             )}
           >
             <div className="flex grow items-center">
-              <RiPlayCircleLine className="mr-2 size-4" />
+              <RiPlayCircleLine className="me-2 size-4" />
               {t(($) => $['common.goToAddDocuments'], { ns: 'pipeline' })}
             </div>
             <RiArrowRightUpLine className="size-4 shrink-0" />
@@ -300,7 +298,7 @@ export function Popup({
             )}
           >
             <div className="flex grow items-center">
-              <RiTerminalBoxLine className="mr-2 size-4" />
+              <RiTerminalBoxLine className="me-2 size-4" />
               {t(($) => $['common.accessAPIReference'], { ns: 'workflow' })}
             </div>
             <RiArrowRightUpLine className="size-4 shrink-0" />
@@ -312,7 +310,7 @@ export function Popup({
             disabled
           >
             <div className="flex grow items-center">
-              <RiTerminalBoxLine className="mr-2 size-4" />
+              <RiTerminalBoxLine className="me-2 size-4" />
               {t(($) => $['common.accessAPIReference'], { ns: 'workflow' })}
             </div>
             <RiArrowRightUpLine className="size-4 shrink-0" />
@@ -332,7 +330,7 @@ export function Popup({
           <div className="flex grow items-center gap-x-2 overflow-hidden">
             <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4 shrink-0" />
             <span
-              className="grow truncate text-left"
+              className="grow truncate text-start"
               title={t(($) => $['common.publishAs'], { ns: 'pipeline' })}
             >
               {t(($) => $['common.publishAs'], { ns: 'pipeline' })}

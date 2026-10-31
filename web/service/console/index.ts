@@ -14,7 +14,7 @@ import {
 
 export type ConsoleClientContext = TanstackQueryOperationContext & {
   keepalive?: boolean
-  silent?: boolean
+
   onResponseHeaders?: (headers: Headers) => void
 }
 

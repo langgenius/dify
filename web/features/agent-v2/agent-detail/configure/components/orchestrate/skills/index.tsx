@@ -67,7 +67,7 @@ function AgentSkillAddMenuItem({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="flex w-full min-w-0 items-start gap-3 rounded-lg px-2 py-2 text-left outline-hidden hover:not-disabled:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex w-full min-w-0 items-start gap-3 rounded-lg px-2 py-2 text-start outline-hidden hover:not-disabled:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
     >
       <span
         aria-hidden
@@ -130,7 +130,7 @@ function WorkspaceSkillRow({
       onFocus={() => onPreview(skill)}
       onMouseEnter={() => onPreview(skill)}
       className={cn(
-        'flex h-8 w-full min-w-0 items-center gap-1 rounded-lg pr-2.5 pl-3 text-left outline-hidden hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        'flex h-8 w-full min-w-0 items-center gap-1 rounded-lg ps-3 pe-2.5 text-start outline-hidden hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         selected && 'bg-state-base-hover',
         isPending && 'cursor-wait opacity-60',
       )}
@@ -264,7 +264,7 @@ function WorkspaceSkillSelector({
         <div className="border-b border-divider-subtle p-2">
           <div className="relative">
             <SearchInput
-              className={keyword ? '[&_input]:pr-14' : '[&_input]:pr-9'}
+              className={keyword ? '[&_input]:pe-14' : '[&_input]:pe-9'}
               value={keyword}
               onValueChange={setKeyword}
               placeholder={t(($) => $['agentDetail.configure.skills.workspaceSelector.search'])}
@@ -272,7 +272,7 @@ function WorkspaceSkillSelector({
             <div
               className={cn(
                 'absolute top-1/2 size-6 -translate-y-1/2',
-                keyword ? 'right-7' : 'right-1.5',
+                keyword ? 'inset-e-7' : 'inset-e-1.5',
               )}
             >
               <TagFilter
@@ -328,7 +328,7 @@ function WorkspaceSkillSelector({
           <span aria-hidden className="i-ri-arrow-right-up-line size-3" />
         </Link>
       </div>
-      <div className="absolute top-13 -left-61 w-60 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
+      <div className="absolute -inset-s-61 top-13 w-60 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
         <WorkspaceSkillPreview skill={previewSkill} />
       </div>
     </div>
@@ -365,7 +365,7 @@ function WorkspaceAgentSkillItem({
         href={`/skills/${skill.id}`}
         target="_blank"
         rel="noreferrer"
-        className="flex h-full w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+        className="flex h-full w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-start outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
       >
         <span
           aria-hidden
@@ -401,7 +401,7 @@ function WorkspaceAgentSkillItem({
             name: displayName,
           })}
           className={cn(
-            'pointer-events-none absolute top-1/2 right-1 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
+            'pointer-events-none absolute inset-e-1 top-1/2 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
             isRemoveHighlighted && 'text-text-destructive!',
           )}
           onClick={(event) => event.stopPropagation()}
@@ -483,11 +483,7 @@ export function AgentSkills() {
   })
   const hasLoadedAgentSkillBindings = agentSkillBindingsQuery.data !== undefined
   const { isPending: isReplacingAgentSkillBindings, mutate: replaceAgentSkillBindings } =
-    useMutation(
-      consoleQuery.workspaces.current.agents.byAgentId.skills.put.mutationOptions({
-        context: { silent: true },
-      }),
-    )
+    useMutation(consoleQuery.workspaces.current.agents.byAgentId.skills.put.mutationOptions())
   const workspaceSkills = agentSkillBindingsQuery.data?.data ?? []
   const boundSkillIds =
     agentSkillBindingsQuery.data?.skill_ids ?? workspaceSkills.map((skill) => skill.id)

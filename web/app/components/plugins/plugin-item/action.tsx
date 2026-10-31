@@ -20,6 +20,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
@@ -53,6 +54,8 @@ const Action: FC<Props> = ({
   onDelete,
   meta,
 }) => {
+  const notifyError = useErrorNotification()
+
   const { t } = useTranslation(['common', 'plugin'])
   const [isShowPluginInfo, { setTrue: showPluginInfo, setFalse: hidePluginInfo }] =
     useBoolean(false)
@@ -104,6 +107,7 @@ const Action: FC<Props> = ({
         onDelete()
       }
     } catch (error) {
+      notifyError(error)
       console.error('uninstallPlugin error', error)
     } finally {
       hideDeleting()
@@ -116,6 +120,7 @@ const Action: FC<Props> = ({
     invalidateInstalledPluginList,
     onDelete,
     showDeleting,
+    notifyError,
   ])
   return (
     <div className="flex space-x-1">

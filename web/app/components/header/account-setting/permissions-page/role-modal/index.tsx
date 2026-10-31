@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { getEnterpriseDocUrl } from '@/context/i18n'
 import { getDocLanguage } from '@/i18n/language'
+import { getErrorMessage } from '@/utils/error-message'
 import PermissionField from './permission-field'
 
 export type RoleModalMode = 'create' | 'view' | 'edit'
@@ -44,6 +45,7 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
   const [desc, setDesc] = useState(role?.description ?? '')
   const [permissionKeys, setPermissionKeys] = useState<string[]>(role?.permission_keys ?? [])
 
+  const [submitError, setSubmitError] = useState<unknown>()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const readonly = mode === 'view'
 
@@ -57,12 +59,13 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
 
   const handleSubmit = async () => {
     if (isSubmitting) return
+    setSubmitError(undefined)
     setIsSubmitting(true)
     try {
       await onSubmit?.({ name: name.trim(), description: desc.trim(), permissionKeys })
       onClose()
-    } catch {
-      // The mutation reports the error; keep the draft available for retry.
+    } catch (error) {
+      setSubmitError(error)
     } finally {
       setIsSubmitting(false)
     }
@@ -114,6 +117,11 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
             onChange={setPermissionKeys}
             readonly={readonly}
           />
+          {!!submitError && (
+            <p role="alert" className="system-sm-regular text-text-destructive">
+              {getErrorMessage(submitError) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </p>
+          )}
         </DialogBody>
         <DialogFooter>
           <a

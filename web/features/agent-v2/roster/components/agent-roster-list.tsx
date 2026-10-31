@@ -106,9 +106,9 @@ function AgentRosterSkeleton() {
               <SkeletonRectangle className="my-0 h-2 w-3/4 rounded-md opacity-10" />
             </div>
           </div>
-          <div className="flex items-center pt-2 pr-3 pb-3 pl-4">
+          <div className="flex items-center ps-4 pe-3 pt-2 pb-3">
             <SkeletonRectangle className="my-0 h-3 w-6 rounded-md opacity-12" />
-            <SkeletonRectangle className="my-0 ml-2.5 h-3 w-28 rounded-md opacity-10" />
+            <SkeletonRectangle className="my-0 ms-2.5 h-3 w-28 rounded-md opacity-10" />
           </div>
         </div>
       ))}
@@ -412,7 +412,7 @@ function AgentRosterItem({
           </div>
         </div>
       )}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex min-w-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex min-w-0 items-center ps-4 pe-3 pt-2 pb-3 system-xs-regular text-text-tertiary">
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           {hasPublishedReferences ? (
             <AgentWorkflowReferencesMenu
@@ -470,9 +470,7 @@ export function AgentRosterList({
   const isBusy = state.status === 'pending' || (state.status === 'ready' && state.isFetching)
   const [deleteDialog] = useState(() => createAlertDialogHandle<DeleteAgentDialogPayload>())
   const scrollViewportRef = useRef<HTMLDivElement>(null)
-  const deletion = useMutation(
-    consoleQuery.agent.byAgentId.delete.mutationOptions({ context: { silent: true } }),
-  )
+  const deletion = useMutation(consoleQuery.agent.byAgentId.delete.mutationOptions())
 
   return (
     <>

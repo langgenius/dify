@@ -146,27 +146,21 @@ function DocumentMetadataCardContent() {
       if (!editBaseline) throw new Error('Missing metadata edit baseline')
       const defaultValue = documentMetadataDefaultValue(type)
       if (retryableCreateName !== name) {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post(
-          {
-            body: { name, type },
-            params: { control_space_id: controlSpaceId },
-          },
-          { context: { silent: true } },
-        )
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post({
+          body: { name, type },
+          params: { control_space_id: controlSpaceId },
+        })
         // Only a confirmed field lets a retry skip creation and go straight to the document update.
         markCreateRetryable(name)
       }
       const response =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch(
-          {
-            body: { expectedRowVersion: editBaseline.rowVersion, patch: { [name]: defaultValue } },
-            params: {
-              control_space_id: controlSpaceId,
-              document_id: document.id,
-            },
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
+          body: { expectedRowVersion: editBaseline.rowVersion, patch: { [name]: defaultValue } },
+          params: {
+            control_space_id: controlSpaceId,
+            document_id: document.id,
           },
-          { context: { silent: true } },
-        )
+        })
       return { document: logicalDocumentFromApi(response), name, type, value: defaultValue }
     },
     onError: (error) => {
@@ -194,16 +188,13 @@ function DocumentMetadataCardContent() {
       patch: Record<string, unknown>
       rowVersion: number
     }) =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch(
-        {
-          body: { expectedRowVersion: rowVersion, patch },
-          params: {
-            control_space_id: controlSpaceId,
-            document_id: document.id,
-          },
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
+        body: { expectedRowVersion: rowVersion, patch },
+        params: {
+          control_space_id: controlSpaceId,
+          document_id: document.id,
         },
-        { context: { silent: true } },
-      ),
+      }),
     onError: (error) => {
       toast.error(
         getErrorMessage(error) ?? t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }),
@@ -268,7 +259,7 @@ function DocumentMetadataCardContent() {
         </p>
         <Button className="mt-2" disabled={!canEdit} onClick={startEditing} variant="primary">
           {t(($) => $['metadata.documentMetadata.startLabeling'], { ns: 'dataset' })}
-          <span aria-hidden className="ml-1 i-ri-arrow-right-line size-4" />
+          <span aria-hidden className="ms-1 i-ri-arrow-right-line size-4" />
         </Button>
       </section>
     )
@@ -330,7 +321,7 @@ function DocumentMetadataCardContent() {
         </h2>
         {!editing && canEdit && (
           <Button onClick={startEditing} size="small" variant="ghost">
-            <span aria-hidden className="mr-1 i-ri-edit-line size-3.5" />
+            <span aria-hidden className="me-1 i-ri-edit-line size-3.5" />
             {tCommon(($) => $['operation.edit'])}
           </Button>
         )}

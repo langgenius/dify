@@ -264,7 +264,6 @@ describe('consoleQuery transport context', () => {
     const consoleQuery = await loadConsoleQueryWithRequest(request)
     const options = consoleQuery.apps.byAppId.export.get.queryOptions({
       input: { params: { app_id: 'app-1' } },
-      context: { silent: true },
     })
     const result = await options.queryFn({
       signal: new AbortController().signal,
@@ -301,7 +300,7 @@ describe('consoleQuery transport context', () => {
     expect(new Uint8Array(await audio.arrayBuffer())).toEqual(bytes)
   })
 
-  it('should forward silent context to the base request transport', async () => {
+  it('should use the base transport without notification options', async () => {
     const request = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({}), {
         status: 200,
@@ -317,9 +316,6 @@ describe('consoleQuery transport context', () => {
           agent_id: 'agent-1',
         },
       },
-      context: {
-        silent: true,
-      },
     })
 
     await expect(
@@ -331,7 +327,6 @@ describe('consoleQuery transport context', () => {
       expect.any(Object),
       expect.objectContaining({
         fetchCompat: true,
-        silent: true,
       }),
     )
   })

@@ -2,15 +2,20 @@ import type { PropsWithChildren } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { createHttpError } from '@/service/http-error'
-import { useAgentConfigureBuildDraftData } from '../use-agent-configure-build-draft'
+import {
+  useAgentConfigureBuildDraftActions,
+  useAgentConfigureBuildDraftData,
+} from '../use-agent-configure-build-draft'
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(),
+  finalize: vi.fn(),
+  apply: vi.fn(),
   toastError: vi.fn(),
 }))
 
 vi.mock('@/app/notifications', () => ({
-  toast: { error: mocks.toastError },
+  toast: { error: mocks.toastError, success: vi.fn() },
 }))
 
 vi.mock('@/service/console', async (importOriginal) => {
@@ -20,6 +25,8 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'agent.byAgentId.buildDraft.get': mocks.request,
+      'agent.byAgentId.buildChat.finalize.post': mocks.finalize,
+      'agent.byAgentId.buildDraft.apply.post': mocks.apply,
     }),
   }
 })
@@ -88,4 +95,49 @@ describe('build draft refresh errors', () => {
     expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('HTTP 500')
     expect(setSoulSourceOverride).not.toHaveBeenCalled()
   })
+})
+
+describe('applying a build draft', () => {
+  it.each(['finalize', 'apply'] as const)(
+    'reports a failed %s request once and allows retry',
+    async (operation) => {
+      mocks.finalize.mockReset().mockResolvedValue({})
+      mocks.apply.mockReset().mockResolvedValue({})
+      mocks[operation].mockRejectedValueOnce(new Error('Apply failed'))
+      const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+      const resetBuildChatSession = vi.fn().mockResolvedValue(undefined)
+      const rebaseComposerDraft = vi.fn()
+      const wrapper = ({ children }: PropsWithChildren) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      )
+      const { result } = renderHook(
+        () =>
+          useAgentConfigureBuildDraftActions({
+            agentId: 'agent-1',
+            isActive: true,
+            rebaseComposerDraft,
+            refetchBuildDraft: vi.fn().mockResolvedValue({}),
+            refetchComposer: vi.fn().mockResolvedValue({}),
+            resetBuildChatSession,
+            saveDraft: vi.fn().mockResolvedValue(undefined),
+            setSoulSourceOverride: vi.fn(),
+          }),
+        { wrapper },
+      )
+
+      await act(async () => result.current.applyBuildDraft())
+
+      expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('Apply failed')
+      expect(result.current.isApplyingBuildDraft).toBe(false)
+      expect(resetBuildChatSession).not.toHaveBeenCalled()
+      expect(rebaseComposerDraft).not.toHaveBeenCalled()
+      if (operation === 'finalize') expect(mocks.apply).not.toHaveBeenCalled()
+
+      await act(async () => result.current.applyBuildDraft())
+
+      expect(mocks.toastError).toHaveBeenCalledTimes(1)
+      expect(resetBuildChatSession).toHaveBeenCalledOnce()
+      expect(rebaseComposerDraft).toHaveBeenCalledOnce()
+    },
+  )
 })

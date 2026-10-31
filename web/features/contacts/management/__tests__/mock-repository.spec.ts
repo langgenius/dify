@@ -288,10 +288,9 @@ describe('Enterprise Platform contact API repository', () => {
         kind: 'added',
         contactIds: [candidate.id],
       })
-      expect(client.contacts.platform.post).toHaveBeenCalledWith(
-        { body: { candidate_ids: [candidate.id] } },
-        { context: { silent: true } },
-      )
+      expect(client.contacts.platform.post).toHaveBeenCalledWith({
+        body: { candidate_ids: [candidate.id] },
+      })
     },
   )
 
@@ -314,14 +313,12 @@ describe('Enterprise Platform contact API repository', () => {
       total: 41,
       has_more: true,
     })
-    expect(client.organizationCandidates.get).toHaveBeenCalledWith(
-      { query: { keyword: 'member', page: 2, limit: 20 } },
-      { context: { silent: true } },
-    )
-    expect(client.contacts.batch.get).toHaveBeenCalledWith(
-      { query: { contact_ids: [candidate.id] } },
-      { context: { silent: true } },
-    )
+    expect(client.organizationCandidates.get).toHaveBeenCalledWith({
+      query: { keyword: 'member', page: 2, limit: 20 },
+    })
+    expect(client.contacts.batch.get).toHaveBeenCalledWith({
+      query: { contact_ids: [candidate.id] },
+    })
     vi.mocked(client.organizationCandidates.get).mockResolvedValue({
       data: [candidate],
       page: 3,
@@ -338,10 +335,9 @@ describe('Enterprise Platform contact API repository', () => {
       total: 41,
       has_more: false,
     })
-    expect(client.organizationCandidates.get).toHaveBeenLastCalledWith(
-      { query: { keyword: undefined, page: 3, limit: 20 } },
-      { context: { silent: true } },
-    )
+    expect(client.organizationCandidates.get).toHaveBeenLastCalledWith({
+      query: { keyword: undefined, page: 3, limit: 20 },
+    })
   })
 
   it('preserves candidate and membership lookup failures instead of showing unverified available contacts', async () => {
@@ -401,10 +397,9 @@ describe('Enterprise Platform contact API repository', () => {
       kind: 'added',
       contactIds: [candidate.id],
     })
-    expect(client.contacts.platform.post).toHaveBeenCalledWith(
-      { body: { candidate_ids: [candidate.id] } },
-      { context: { silent: true } },
-    )
+    expect(client.contacts.platform.post).toHaveBeenCalledWith({
+      body: { candidate_ids: [candidate.id] },
+    })
     await expect(
       repository.addPlatformContacts({ ...command, upgradeExternalContacts: true }),
     ).resolves.toEqual({ kind: 'external_upgrade_unsupported' })
@@ -726,7 +721,7 @@ describe('contacts IM API repository', () => {
     await expect(repository.listIMChannels?.()).resolves.toEqual([
       { id: 'slack-channel', provider: 'slack' },
     ])
-    expect(channelClient.get).toHaveBeenCalledWith(undefined, { context: { silent: true } })
+    expect(channelClient.get).toHaveBeenCalledWith(undefined)
   })
 
   it('searches synced identities with server pagination and preserves binding status', async () => {
@@ -747,10 +742,9 @@ describe('contacts IM API repository', () => {
       page: 2,
       limit: 20,
     })
-    expect(client.imIdentities.get).toHaveBeenCalledWith(
-      { query: { keyword: 'Member', page: 2, limit: 20 } },
-      { context: { silent: true } },
-    )
+    expect(client.imIdentities.get).toHaveBeenCalledWith({
+      query: { keyword: 'Member', page: 2, limit: 20 },
+    })
     expect(result).toMatchObject({ data: [identity], has_more: false })
   })
 
@@ -768,14 +762,14 @@ describe('contacts IM API repository', () => {
       identityId: 'identity-2',
       override: true,
     })
-    expect(client.contacts.byContactId.imBindings.put).toHaveBeenCalledWith(
-      { params: { contact_id: contact.id }, body: { identity_id: 'identity-1' } },
-      { context: { silent: true } },
-    )
-    expect(client.contacts.byContactId.imOverride.put).toHaveBeenCalledWith(
-      { params: { contact_id: contact.id }, body: { identity_id: 'identity-2' } },
-      { context: { silent: true } },
-    )
+    expect(client.contacts.byContactId.imBindings.put).toHaveBeenCalledWith({
+      params: { contact_id: contact.id },
+      body: { identity_id: 'identity-1' },
+    })
+    expect(client.contacts.byContactId.imOverride.put).toHaveBeenCalledWith({
+      params: { contact_id: contact.id },
+      body: { identity_id: 'identity-2' },
+    })
   })
 
   it('deletes default bindings and resets workspace overrides by contact ID through their own endpoints', async () => {
@@ -787,14 +781,12 @@ describe('contacts IM API repository', () => {
       contactId: contact.id,
       binding: { ...contact.im_bindings[0]!, scope: 'workspace' },
     })
-    expect(client.contacts.byContactId.imBindings.delete).toHaveBeenCalledWith(
-      { params: { contact_id: contact.id } },
-      { context: { silent: true } },
-    )
-    expect(client.contacts.byContactId.imOverride.delete).toHaveBeenCalledWith(
-      { params: { contact_id: contact.id } },
-      { context: { silent: true } },
-    )
+    expect(client.contacts.byContactId.imBindings.delete).toHaveBeenCalledWith({
+      params: { contact_id: contact.id },
+    })
+    expect(client.contacts.byContactId.imOverride.delete).toHaveBeenCalledWith({
+      params: { contact_id: contact.id },
+    })
   })
 
   it('unbinds the contact default binding without requiring an effective binding ID', async () => {
@@ -804,12 +796,9 @@ describe('contacts IM API repository', () => {
       contactId: contact.id,
     })
 
-    expect(client.contacts.byContactId.imBindings.delete).toHaveBeenCalledExactlyOnceWith(
-      {
-        params: { contact_id: contact.id },
-      },
-      { context: { silent: true } },
-    )
+    expect(client.contacts.byContactId.imBindings.delete).toHaveBeenCalledExactlyOnceWith({
+      params: { contact_id: contact.id },
+    })
     expect(client.contacts.byContactId.imOverride.delete).not.toHaveBeenCalled()
     expect(client.contacts.byContactId.imBindings.put).not.toHaveBeenCalled()
     expect(client.contacts.byContactId.imOverride.put).not.toHaveBeenCalled()
@@ -836,12 +825,9 @@ describe('contacts IM API repository', () => {
         }),
       ).rejects.toMatchObject({ code })
 
-      expect(client.contacts.byContactId.imBindings.delete).toHaveBeenCalledExactlyOnceWith(
-        {
-          params: { contact_id: contact.id },
-        },
-        { context: { silent: true } },
-      )
+      expect(client.contacts.byContactId.imBindings.delete).toHaveBeenCalledExactlyOnceWith({
+        params: { contact_id: contact.id },
+      })
       expect(client.contacts.byContactId.imOverride.delete).not.toHaveBeenCalled()
     },
   )

@@ -13,10 +13,13 @@ const SnippetCreateButton = () => {
   const {
     canCreateAndModifySnippet,
     createSnippetMutation,
+    createError,
+    isCreateSnippetDialogOpen: isCreateDialogOpen,
+    handleOpenCreateSnippetDialog,
+    handleCloseCreateSnippetDialog,
     handleCreateSnippet,
     isCreatingSnippet,
   } = useCreateSnippet()
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const isSubmitting = isCreatingSnippet || createSnippetMutation.isPending
@@ -48,12 +51,12 @@ const SnippetCreateButton = () => {
             className="mb-1 flex w-full cursor-pointer items-center rounded-lg px-2 py-1.75 text-[13px] leading-4.5 font-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
             onClick={() => {
               setIsMenuOpen(false)
-              setIsCreateDialogOpen(true)
+              handleOpenCreateSnippetDialog()
             }}
           >
             <span
               aria-hidden
-              className="mr-2 i-custom-vender-line-files-file-plus-01 size-4 shrink-0"
+              className="me-2 i-custom-vender-line-files-file-plus-01 size-4 shrink-0"
             />
             <span>{t(($) => $.createFromBlank)}</span>
           </button>
@@ -67,7 +70,7 @@ const SnippetCreateButton = () => {
           >
             <span
               aria-hidden
-              className="mr-2 i-custom-vender-line-files-file-arrow-01 size-4 shrink-0"
+              className="me-2 i-custom-vender-line-files-file-arrow-01 size-4 shrink-0"
             />
             <span>{t(($) => $.importDSLFile)}</span>
           </button>
@@ -78,11 +81,9 @@ const SnippetCreateButton = () => {
         <CreateSnippetDialog
           isOpen={isCreateDialogOpen}
           isSubmitting={isSubmitting}
-          onClose={() => setIsCreateDialogOpen(false)}
-          onConfirm={async (payload) => {
-            await handleCreateSnippet(payload)
-            setIsCreateDialogOpen(false)
-          }}
+          error={createError}
+          onClose={handleCloseCreateSnippetDialog}
+          onConfirm={handleCreateSnippet}
         />
       )}
       {isImportDialogOpen && (

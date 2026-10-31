@@ -42,9 +42,9 @@ const SnippetInfoMenu = ({ snippet }: SnippetInfoMenuProps) => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
-  const updateSnippetMutation = useUpdateSnippetMutation({ silent: true })
-  const exportSnippetMutation = useExportSnippetMutation({ silent: true })
-  const deleteSnippetMutation = useDeleteSnippetMutation({ silent: true })
+  const updateSnippetMutation = useUpdateSnippetMutation()
+  const exportSnippetMutation = useExportSnippetMutation()
+  const deleteSnippetMutation = useDeleteSnippetMutation()
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const canManageSnippet = canManageSnippets(workspacePermissionKeys)
   const canShowOperations = canCreateAndModifySnippet || canManageSnippet

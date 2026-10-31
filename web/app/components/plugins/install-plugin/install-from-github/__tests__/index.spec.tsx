@@ -116,9 +116,7 @@ it('submits the URL with Enter, installs the selected release, and waits for asy
   expect(nextButton()).toBeDisabled()
   const button = await loadPackage(user)
   expect(fetchReleases).toHaveBeenCalledExactlyOnceWith('https://ungh.cc/repos/owner/repo/releases')
-  expect(upload).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v1.0.0', 'plugin.difypkg', {
-    silent: true,
-  })
+  expect(upload).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v1.0.0', 'plugin.difypkg')
   await user.click(button)
   await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())
   const pendingButton = screen.getByRole('button', { name: 'plugin.installModal.installing' })
@@ -326,9 +324,7 @@ it('blocks repeated upload and backward navigation until the selected package fi
   expect(back).toBeDisabled()
   await user.click(next)
   await user.click(back)
-  expect(upload).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v1.0.0', 'plugin.difypkg', {
-    silent: true,
-  })
+  expect(upload).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v1.0.0', 'plugin.difypkg')
   expect(
     screen.queryByRole('button', { name: 'plugin.installModal.install' }),
   ).not.toBeInTheDocument()

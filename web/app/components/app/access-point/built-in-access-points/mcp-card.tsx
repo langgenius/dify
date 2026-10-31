@@ -61,7 +61,6 @@ export function MCPAccessPointCard({
     queryClient.invalidateQueries({ queryKey: serverDetailQueryOptions.queryKey })
   const updateServerMutation = useMutation(
     consoleQuery.apps.byAppId.server.put.mutationOptions({
-      context: { silent: true },
       scope: {
         id: `app-mcp-toggle:${appInfo.id}`,
       },

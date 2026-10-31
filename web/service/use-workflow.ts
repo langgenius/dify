@@ -1,6 +1,5 @@
 import type { UseQueryOptions } from '@tanstack/react-query'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
-import type { ConsoleClientContext } from '@/service/console'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
@@ -100,17 +99,15 @@ type UpdateVersionParams = {
   releaseNotes: string
 }
 
-export const useUpdateWorkflow = (context?: ConsoleClientContext) => {
+export const useUpdateWorkflow = () => {
   const { mutateAsync: updateAppVersion } = useMutation(
-    consoleQuery.apps.byAppId.workflows.byWorkflowId.patch.mutationOptions({ context }),
+    consoleQuery.apps.byAppId.workflows.byWorkflowId.patch.mutationOptions({}),
   )
   const { mutateAsync: updatePipelineVersion } = useMutation(
-    consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.patch.mutationOptions({
-      context,
-    }),
+    consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.patch.mutationOptions({}),
   )
   const { mutateAsync: updateSnippetVersion } = useMutation(
-    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.patch.mutationOptions({ context }),
+    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.patch.mutationOptions({}),
   )
   const mutateAsync = useCallback(
     ({ resource, versionId, title, releaseNotes }: UpdateVersionParams) => {
@@ -138,17 +135,15 @@ export const useUpdateWorkflow = (context?: ConsoleClientContext) => {
   return { mutateAsync }
 }
 
-export const useDeleteWorkflow = (resource: EditorResource, context?: ConsoleClientContext) => {
+export const useDeleteWorkflow = (resource: EditorResource) => {
   const { mutateAsync: deleteAppVersion } = useMutation(
-    consoleQuery.apps.byAppId.workflows.byWorkflowId.delete.mutationOptions({ context }),
+    consoleQuery.apps.byAppId.workflows.byWorkflowId.delete.mutationOptions({}),
   )
   const { mutateAsync: deletePipelineVersion } = useMutation(
-    consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.delete.mutationOptions({
-      context,
-    }),
+    consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.delete.mutationOptions({}),
   )
   const { mutateAsync: deleteSnippetVersion } = useMutation(
-    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.delete.mutationOptions({ context }),
+    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.delete.mutationOptions({}),
   )
 
   return useCallback(
@@ -176,20 +171,17 @@ export const useRestoreWorkflow = (resource: EditorResource) => {
     mutationFn: (versionId: string) => {
       switch (resource.kind) {
         case 'app':
-          return consoleClient.apps.byAppId.workflows.byWorkflowId.restore.post(
-            { params: { app_id: resource.appId, workflow_id: versionId } },
-            { context: { silent: true } },
-          )
+          return consoleClient.apps.byAppId.workflows.byWorkflowId.restore.post({
+            params: { app_id: resource.appId, workflow_id: versionId },
+          })
         case 'knowledge-pipeline':
-          return consoleClient.rag.pipelines.byPipelineId.workflows.byWorkflowId.restore.post(
-            { params: { pipeline_id: resource.pipelineId, workflow_id: versionId } },
-            { context: { silent: true } },
-          )
+          return consoleClient.rag.pipelines.byPipelineId.workflows.byWorkflowId.restore.post({
+            params: { pipeline_id: resource.pipelineId, workflow_id: versionId },
+          })
         case 'snippet':
-          return consoleClient.snippets.bySnippetId.workflows.byWorkflowId.restore.post(
-            { params: { snippet_id: resource.snippetId, workflow_id: versionId } },
-            { context: { silent: true } },
-          )
+          return consoleClient.snippets.bySnippetId.workflows.byWorkflowId.restore.post({
+            params: { snippet_id: resource.snippetId, workflow_id: versionId },
+          })
       }
     },
   })
@@ -202,7 +194,6 @@ function lastRunQueryOptions(resource: EditorResource, nodeId: string, enabled: 
         input: { params: { app_id: resource.appId, node_id: nodeId } },
         enabled,
         retry: 0,
-        context: { silent: true },
       })
     case 'knowledge-pipeline':
       return consoleQuery.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions(
@@ -210,7 +201,6 @@ function lastRunQueryOptions(resource: EditorResource, nodeId: string, enabled: 
           input: { params: { pipeline_id: resource.pipelineId, node_id: nodeId } },
           enabled,
           retry: 0,
-          context: { silent: true },
         },
       )
     case 'snippet':
@@ -219,7 +209,6 @@ function lastRunQueryOptions(resource: EditorResource, nodeId: string, enabled: 
           input: { params: { snippet_id: resource.snippetId, node_id: nodeId } },
           enabled,
           retry: 0,
-          context: { silent: true },
         },
       )
   }

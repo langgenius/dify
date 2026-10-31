@@ -14,20 +14,20 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
-import { ORPCError } from '@orpc/client'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 type EditAccountNameFormProps = {
   name: string
+  error?: unknown
   isPending: boolean
   onSave: (name: string) => Promise<void>
 }
 
-function EditAccountNameForm({ name, isPending, onSave }: EditAccountNameFormProps) {
+function EditAccountNameForm({ name, isPending, error, onSave }: EditAccountNameFormProps) {
   const { t } = useTranslation(['common', 'accountSettings'])
   const [draftName, setDraftName] = useState(name)
 
@@ -54,6 +54,11 @@ function EditAccountNameForm({ name, isPending, onSave }: EditAccountNameFormPro
             readOnly={isPending}
           />
         </Field>
+        {!!error && !isPending && (
+          <p role="alert" className="system-sm-regular text-text-destructive">
+            {getErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+          </p>
+        )}
       </DialogBody>
       <DialogFooter>
         <DialogClose render={<Button disabled={isPending} />}>
@@ -76,17 +81,17 @@ export function EditAccountNameDialog({ name }: { name: string }) {
     try {
       await updateProfile.mutateAsync({ body: { name } })
       actionsRef.current?.close()
-    } catch (error) {
-      // HTTP error notifications are owned by the request layer.
-      // Only report a failure that never produced a response.
-      if (!(error instanceof ORPCError) && error instanceof Error && error.message)
-        toast.error(error.message)
+    } catch {
+      // The form renders the mutation error and keeps the draft for retry.
     }
   }
 
   return (
     <Dialog
       actionsRef={actionsRef}
+      onOpenChangeComplete={(open) => {
+        if (!open) updateProfile.reset()
+      }}
       onOpenChange={(open, details) => {
         if (!open && updateProfile.isPending && details.reason !== 'imperative-action')
           details.cancel()
@@ -96,7 +101,12 @@ export function EditAccountNameDialog({ name }: { name: string }) {
         {t(($) => $['operation.edit'])}
       </DialogTrigger>
       <DialogContent className="w-105">
-        <EditAccountNameForm name={name} isPending={updateProfile.isPending} onSave={handleSave} />
+        <EditAccountNameForm
+          error={updateProfile.error}
+          name={name}
+          isPending={updateProfile.isPending}
+          onSave={handleSave}
+        />
       </DialogContent>
     </Dialog>
   )

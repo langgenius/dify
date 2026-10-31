@@ -2,8 +2,11 @@ import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/type
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { toast } from '@/app/notifications'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import CommentsPanel from '../index'
+
+const fetchComments = vi.hoisted(() => vi.fn())
 
 function setup() {
   const { queryClient } = createConsoleQueryWrapper({
@@ -47,6 +50,10 @@ const commentFixtures: WorkflowCommentBasic[] = [
   },
 ]
 
+beforeEach(() => {
+  fetchComments.mockReset().mockResolvedValue({ data: commentFixtures })
+})
+
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
   collaborationManager: { onCommentsUpdate: () => () => {} },
 }))
@@ -56,7 +63,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'apps.byAppId.workflow.comments.get': async () => ({ data: commentFixtures }),
+      'apps.byAppId.workflow.comments.get': fetchComments,
       'apps.byAppId.workflow.comments.byCommentId.get': async ({
         params,
       }: {
@@ -103,4 +110,21 @@ it('hides and restores resolved comments when the filter changes', async () => {
   expect(screen.getByText('my open thread')).toBeInTheDocument()
   await user.click(screen.getByRole('switch'))
   expect(screen.getByText('others resolved thread')).toBeInTheDocument()
+})
+
+it('shows initial loading errors instead of an empty list and retries inline', async () => {
+  const user = userEvent.setup()
+  const notify = vi.spyOn(toast, 'error')
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+  fetchComments.mockRejectedValueOnce(new Error('Comments unavailable'))
+  setup()
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Comments unavailable')
+  expect(screen.queryByText('workflowComments.comments.noComments')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  expect(await screen.findByText('my open thread')).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(notify).not.toHaveBeenCalled()
+  notify.mockRestore()
+  log.mockRestore()
 })

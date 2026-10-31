@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { consoleQuery } from '@/service/console'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '../content-inset'
 import { selectToolsWithProvider } from '../utils/query-select'
@@ -84,11 +85,14 @@ const MCPList = ({
   const editingProvider = list.find((provider) => provider.id === editingProviderID)
   const deletingProvider = list.find((provider) => provider.id === deletingProviderID)
   const detailProvider = editingProvider || deletingProvider ? undefined : currentProvider
+  const notifyError = useErrorNotification()
   const { mutateAsync: updateMCP } = useMutation(
-    consoleQuery.workspaces.current.toolProvider.mcp.put.mutationOptions(),
+    consoleQuery.workspaces.current.toolProvider.mcp.put.mutationOptions({ onError: notifyError }),
   )
   const { mutateAsync: deleteMCP, isPending: isDeleting } = useMutation(
-    consoleQuery.workspaces.current.toolProvider.mcp.delete.mutationOptions(),
+    consoleQuery.workspaces.current.toolProvider.mcp.delete.mutationOptions({
+      onError: notifyError,
+    }),
   )
 
   const handleCreate = async (provider: ToolWithProvider) => {

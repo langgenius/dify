@@ -7,6 +7,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { useSendDeleteAccountEmail } from '../state'
@@ -17,6 +18,8 @@ type DeleteAccountProps = {
 }
 
 export default function CheckEmail(props: DeleteAccountProps) {
+  const notifyError = useErrorNotification()
+
   const { t } = useTranslation(['common', 'accountSettings'])
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -34,9 +37,17 @@ export default function CheckEmail(props: DeleteAccountProps) {
       const ret = await getDeleteEmailVerifyCode()
       if (ret.result === 'success') props.onConfirm()
     } catch (error) {
+      notifyError(error)
       console.error(error)
     }
-  }, [getDeleteEmailVerifyCode, isSendingEmail, props, userInputEmail, userProfileEmail])
+  }, [
+    getDeleteEmailVerifyCode,
+    isSendingEmail,
+    props,
+    userInputEmail,
+    userProfileEmail,
+    notifyError,
+  ])
 
   return (
     <Form

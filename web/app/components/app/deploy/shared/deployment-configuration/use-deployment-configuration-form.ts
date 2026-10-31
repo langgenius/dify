@@ -119,5 +119,6 @@ export function useDeploymentConfigurationForm({
     formRef,
     handleSubmit,
     isDeploying: deployMutation.isPending,
+    submitError: deployMutation.isPending ? null : deployMutation.error,
   }
 }

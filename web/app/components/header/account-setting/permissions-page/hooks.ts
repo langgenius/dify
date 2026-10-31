@@ -12,6 +12,8 @@ export const useRoleGroups = (params: RoleListRequest) => {
     fetchNextPage,
     hasNextPage,
     error,
+    refetch,
+    isFetching,
   } = useInfiniteQuery(workspaceRoleListInfiniteOptions(params))
 
   const roleGroups = useMemo(() => formatRoleGroups(roleList), [roleList])
@@ -23,5 +25,7 @@ export const useRoleGroups = (params: RoleListRequest) => {
     fetchNextPage,
     hasNextPage,
     error,
+    refetch,
+    isFetching,
   }
 }

@@ -201,7 +201,7 @@ function SkillPlaceholderState({
               <button
                 type="button"
                 disabled={actions.creating || actions.importing}
-                className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={actions.onCreate}
               >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section">
@@ -225,7 +225,7 @@ function SkillPlaceholderState({
               <button
                 type="button"
                 disabled={actions.creating || actions.importing}
-                className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={actions.onImport}
               >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section">
@@ -268,9 +268,7 @@ function DeleteSkillDialog({
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const queryClient = useQueryClient()
   const deleteMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions(),
   )
   const referencesQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
@@ -428,9 +426,7 @@ function SkillCard({
   const draftStatusId = useId()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const duplicateMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
   )
   const exportMutation = useMutation({
     mutationFn: () => fetchSkillArchiveBlob(skill.id),
@@ -590,7 +586,7 @@ function SkillCard({
           </Menu>
         </div>
       </div>
-      <div className="pointer-events-none absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">
+      <div className="pointer-events-none absolute inset-s-3 inset-e-3 top-26 flex h-6.5 min-w-0 items-start">
         <div className="pointer-events-auto w-full min-w-0">
           <SkillCardTags
             skillId={skill.id}
@@ -1025,15 +1021,9 @@ export default function SkillsPage() {
   const [keyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
   const [selectedTags] = useQueryState(skillQueryParamNames.tag, skillTagQueryParser)
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
-  const createMutation = useMutation(
-    consoleQuery.workspaces.current.skills.post.mutationOptions({
-      context: { silent: true },
-    }),
-  )
+  const createMutation = useMutation(consoleQuery.workspaces.current.skills.post.mutationOptions())
   const importMutation = useMutation(
-    consoleQuery.workspaces.current.skills.import.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workspaces.current.skills.import.post.mutationOptions(),
   )
   const skillsQuery = useInfiniteQuery({
     ...consoleQuery.workspaces.current.skills.get.infiniteOptions({

@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { jsonToCSV } from 'react-papaparse'
 import { useLocale } from '#i18n'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { LanguagesSupported } from '@/i18n/language'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
@@ -145,8 +146,10 @@ const HeaderOptions: FC<Props> = ({ appId, onAdded, controlUpdateList }) => {
 
   const [showBulkImportModal, setShowBulkImportModal] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const notifyError = useErrorNotification()
   const clearAllMutation = useMutation(
     consoleQuery.apps.byAppId.annotations.delete.mutationOptions({
+      onError: notifyError,
       onSuccess: () => {
         onAdded()
         setShowClearConfirm(false)

@@ -1,6 +1,7 @@
 import type { Viewport } from 'reactflow'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { act, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { WorkflowInitializationProbe } from '@/app/components/workflow/__tests__/workflow-initialization-probe'
 import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base/default'
@@ -135,5 +136,17 @@ describe('RagPipeline', () => {
     expect(requests.draft).toHaveBeenCalledExactlyOnceWith(
       '/rag/pipelines/pipeline-1/workflows/draft',
     )
+  })
+  it('shows a failed draft load in the editor and retries without mounting an empty canvas', async () => {
+    const user = userEvent.setup()
+    requests.draft.mockRejectedValueOnce(new Error('Pipeline temporarily unavailable'))
+    renderPipeline()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Pipeline temporarily unavailable')
+    expect(screen.queryByRole('status', { name: 'Initialized nodes' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    await expectGraph()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

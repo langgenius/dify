@@ -175,8 +175,8 @@ describe('console commands shared with public apps', () => {
     await stopWorkflowMessage('app', 'workflow-task', AppSourceType.webApp)
     await stopWorkflowMessage('app', '', AppSourceType.installedApp, 'installed')
     expect(publicPost.mock.calls).toEqual([
-      ['chat-messages/chat-task/stop', {}, undefined],
-      ['workflows/tasks/workflow-task/stop', {}, undefined],
+      ['chat-messages/chat-task/stop'],
+      ['workflows/tasks/workflow-task/stop'],
     ])
     expect(request).not.toHaveBeenCalled()
   })
@@ -256,7 +256,6 @@ describe('console message queries and feedback', () => {
     expect(new URL(request.mock.calls[0]![0]).pathname).toBe(
       '/console/api/installed-apps/installed-1/saved-messages',
     )
-    expect(request.mock.calls[0]?.[2]?.silent).toBe(true)
     request.mockResolvedValueOnce(Response.json({ answer: 'Another answer' }))
     await expect(
       fetchMoreLikeThis('message-1', AppSourceType.installedApp, 'installed-1'),

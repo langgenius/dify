@@ -116,13 +116,10 @@ describe('SnippetInfoMenu', () => {
       await user.type(description, 'Updated description')
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
       await waitFor(() =>
-        expect(mockUpdateMutate).toHaveBeenCalledWith(
-          {
-            params: { snippet_id: mockSnippet.id },
-            body: { name: 'Updated snippet', description: 'Updated description' },
-          },
-          { context: { silent: true } },
-        ),
+        expect(mockUpdateMutate).toHaveBeenCalledWith({
+          params: { snippet_id: mockSnippet.id },
+          body: { name: 'Updated snippet', description: 'Updated description' },
+        }),
       )
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     })
@@ -141,13 +138,10 @@ describe('SnippetInfoMenu', () => {
       await user.click(screen.getByText('snippet.menu.exportSnippet'))
 
       await waitFor(() => {
-        expect(mockExportMutateAsync).toHaveBeenCalledWith(
-          {
-            params: { snippet_id: mockSnippet.id },
-            query: { include_secret: 'false', workflow_id: undefined },
-          },
-          { context: { silent: true } },
-        )
+        expect(mockExportMutateAsync).toHaveBeenCalledWith({
+          params: { snippet_id: mockSnippet.id },
+          query: { include_secret: 'false', workflow_id: undefined },
+        })
       })
 
       expect(mockDownloadBlob).toHaveBeenCalledWith({
@@ -191,10 +185,7 @@ describe('SnippetInfoMenu', () => {
       await user.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
 
       await waitFor(() =>
-        expect(mockDeleteMutate).toHaveBeenCalledWith(
-          { params: { snippet_id: mockSnippet.id } },
-          { context: { silent: true } },
-        ),
+        expect(mockDeleteMutate).toHaveBeenCalledWith({ params: { snippet_id: mockSnippet.id } }),
       )
       await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/snippets'))
       expect(mockToastSuccess).toHaveBeenCalledWith('snippet.deleted')

@@ -151,7 +151,6 @@ function AgentConfigurePageComposerSession({
   })
   const refreshDebugConversationMutation = useMutation(
     consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
-      context: { silent: true },
       onSuccess: ({
         debug_conversation_id,
         debug_conversation_has_messages,

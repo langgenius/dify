@@ -66,7 +66,6 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
   const form = useQuery(
     consoleQuery.form.humanInput.v2.byFormToken.get.queryOptions({
       input: { params: { form_token: formToken } },
-      context: { silent: true },
       select: normalizeConsoleFormDefinition,
       retry: false,
       staleTime: 0,
@@ -84,11 +83,7 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
     )
     return () => window.clearTimeout(timer)
   }, [expiresAt, now])
-  const submission = useMutation(
-    consoleQuery.form.humanInput.v2.byFormToken.post.mutationOptions({
-      context: { silent: true },
-    }),
-  )
+  const submission = useMutation(consoleQuery.form.humanInput.v2.byFormToken.post.mutationOptions())
   const errorKind =
     expiresAt !== undefined && expiresAt <= now
       ? 'expired'

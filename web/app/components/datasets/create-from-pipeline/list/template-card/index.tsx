@@ -42,14 +42,13 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
   const queryClient = useQueryClient()
   const { refetch: getPipelineTemplateInfo } = useQuery(
     consoleQuery.rag.pipeline.templates.byTemplateId.get.queryOptions({
-      context: { silent: true },
       input: { params: { template_id: pipeline.id }, query: { type } },
       enabled: false,
       select: selectPipelineTemplate,
     }),
   )
   const { mutate: createDataset } = useMutation(
-    consoleQuery.rag.pipeline.dataset.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.rag.pipeline.dataset.post.mutationOptions(),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const invalidDatasetList = useCallback(() => {
@@ -110,9 +109,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
   }, [])
 
   const { mutate: exportPipelineDSL, isPending: isExporting } = useMutation(
-    consoleQuery.rag.pipeline.customized.templates.byTemplateId.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.rag.pipeline.customized.templates.byTemplateId.post.mutationOptions(),
   )
 
   const handleExportDSL = useCallback(() => {

@@ -381,7 +381,7 @@ describe('Contact IM server synchronization', () => {
       startedBy: null,
       durationMs: null,
     })
-    expect(client.imSyncRuns.post).toHaveBeenCalledWith(undefined, { context: { silent: true } })
+    expect(client.imSyncRuns.post).toHaveBeenCalledWith(undefined)
   })
 
   it('treats a missing latest run as empty but preserves network and server failures for retry', async () => {

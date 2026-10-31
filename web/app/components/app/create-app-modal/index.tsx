@@ -90,9 +90,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
-  const { mutateAsync: createApp } = useMutation(
-    consoleQuery.apps.post.mutationOptions({ context: { silent: true } }),
-  )
+  const { mutateAsync: createApp } = useMutation(consoleQuery.apps.post.mutationOptions())
   const creatingRef = useRef(false)
   const [isCreating, setIsCreating] = useState(false)
 
@@ -246,7 +244,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                 <div className="mb-2 flex items-center">
                   <button
                     type="button"
-                    className="flex cursor-pointer items-center border-0 bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                    className="flex cursor-pointer items-center border-0 bg-transparent p-0 text-start focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                     onClick={() => setIsAppTypeExpanded(!isAppTypeExpanded)}
                   >
                     <span className="system-2xs-medium-uppercase text-text-tertiary">
@@ -254,7 +252,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                     </span>
                     <span
                       aria-hidden
-                      className={`ml-1 i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`}
+                      className={`ms-1 i-ri-arrow-right-s-line size-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`}
                     />
                   </button>
                 </div>
@@ -344,7 +342,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                   >
                     {t(($) => $['newApp.captionDescription'], { ns: 'app' })}
                   </label>
-                  <span className="ml-1 system-xs-regular text-text-tertiary">
+                  <span className="ms-1 system-xs-regular text-text-tertiary">
                     ({t(($) => $['newApp.optional'], { ns: 'app' })})
                   </span>
                 </div>
@@ -361,7 +359,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
             <div className="flex items-center justify-between pt-5 pb-10">
               <button
                 type="button"
-                className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left system-xs-regular text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-start system-xs-regular text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={onCreateFromTemplate}
               >
                 <span>{t(($) => $['newApp.noIdeaTip'], { ns: 'app' })}</span>
@@ -391,7 +389,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
           </div>
         </div>
         <div className="relative flex h-full flex-1 shrink justify-start overflow-hidden">
-          <div className="absolute top-0 right-0 left-0 h-6 border-b border-b-divider-subtle 2xl:h-34.75"></div>
+          <div className="absolute inset-s-0 inset-e-0 top-0 h-6 border-b border-b-divider-subtle 2xl:h-34.75"></div>
           <div className="max-w-190 border-x border-x-divider-subtle">
             <div className="h-6 2xl:h-34.75" />
             <AppPreview mode={appMode} />
@@ -457,7 +455,7 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
     <button
       type="button"
       className={cn(
-        'relative box-content h-21 w-47.75 cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3 text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        'relative box-content h-21 w-47.75 cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3 text-start shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         active
           ? 'shadow-md outline-[1.5px] outline-components-option-card-option-selected-border outline-solid'
           : '',

@@ -419,31 +419,25 @@ export function RetrievalRuntimeController() {
           return
         if (session.signal.aborted) return
         const plan =
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.plan.post(
-            {
-              body: {
-                mode: 'research',
-                query: cleanQuery,
-                ...(imageReferences.length ? { queryImages: imageReferences } : {}),
-              },
-              params: { control_space_id: knowledgeSpaceId },
-            },
-            { context: { silent: true } },
-          )
-        if (session.signal.aborted) return
-        const task = await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.post(
-          {
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.plan.post({
             body: {
-              budgetUsd: plan.budget.budget_usd,
               mode: 'research',
               query: cleanQuery,
               ...(imageReferences.length ? { queryImages: imageReferences } : {}),
-              topK: plan.retrieval_plan.top_k,
             },
             params: { control_space_id: knowledgeSpaceId },
+          })
+        if (session.signal.aborted) return
+        const task = await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.post({
+          body: {
+            budgetUsd: plan.budget.budget_usd,
+            mode: 'research',
+            query: cleanQuery,
+            ...(imageReferences.length ? { queryImages: imageReferences } : {}),
+            topK: plan.retrieval_plan.top_k,
           },
-          { context: { silent: true } },
-        )
+          params: { control_space_id: knowledgeSpaceId },
+        })
         if (session.signal.aborted) return
         setAdmittedResearchTasks((current) => ({ ...current, [task.id]: task }))
         setResearchPlans((current) => ({ ...current, [task.id]: plan }))
@@ -491,12 +485,9 @@ export function RetrievalRuntimeController() {
     async (taskId: string) => {
       if (!canQuery) return
       try {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.delete(
-          {
-            params: { control_space_id: knowledgeSpaceId, task_id: taskId },
-          },
-          { context: { silent: true } },
-        )
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.delete({
+          params: { control_space_id: knowledgeSpaceId, task_id: taskId },
+        })
         await Promise.all([refetchResearchTasks(), refetchResearchPartials()])
       } catch (error) {
         toast.error(getErrorMessage(error) ?? t(($) => $.taskActionFailed))

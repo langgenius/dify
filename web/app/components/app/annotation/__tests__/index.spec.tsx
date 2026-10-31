@@ -408,3 +408,15 @@ it('keeps the editor and drafts mounted through repeated refreshes of empty filt
   )
   expect(api.edit).toHaveBeenCalledTimes(2)
 })
+
+it.each(['config', 'list'] as const)(
+  'shows a failed %s request and recovers without leaving annotations',
+  async (request) => {
+    api[request].mockRejectedValueOnce(new Error('Annotations unavailable'))
+    const user = setup()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Annotations unavailable')
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(api[request]).toHaveBeenCalledTimes(2)
+  },
+)

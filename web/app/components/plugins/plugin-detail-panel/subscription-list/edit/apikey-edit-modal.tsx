@@ -78,7 +78,7 @@ const StatusStep = ({
 }) => {
   const className = `flex items-center gap-1 system-2xs-semibold-uppercase ${
     isActive ? 'text-state-accent-solid' : 'text-text-tertiary'
-  } ${clickable ? 'cursor-pointer rounded bg-transparent p-0 text-left hover:text-text-secondary focus-visible:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden' : ''}`
+  } ${clickable ? 'cursor-pointer rounded bg-transparent p-0 text-start hover:text-text-secondary focus-visible:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden' : ''}`
 
   const content = (
     <>
@@ -133,9 +133,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
     null,
   )
 
-  const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription({
-    silent: true,
-  })
+  const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription()
   const { mutate: verifyCredentials, isPending: isVerifying } = useVerifyTriggerSubscription()
 
   const parametersSchema = useMemo<ParametersSchema[]>(

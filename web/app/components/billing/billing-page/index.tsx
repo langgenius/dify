@@ -20,7 +20,6 @@ const Billing: FC = () => {
   const billingQuery = useQuery(
     consoleQuery.billing.invoices.get.queryOptions({
       enabled: deploymentEdition === 'CLOUD' && isCurrentWorkspaceManager,
-      context: { silent: true },
     }),
   )
   const billingUrl = billingQuery.data?.url

@@ -183,3 +183,16 @@ it('selects an available credential through the real authorization menu', async 
     ).not.toBeInTheDocument(),
   )
 })
+
+it('offers retry when loading tool settings fails', async () => {
+  const user = userEvent.setup()
+  api.builtin.mockRejectedValueOnce(new Error('Tool unavailable'))
+  renderTool({
+    collection: selectToolProvider(createToolProviderFixture({ ...provider, tools: [] })),
+    isBuiltIn: true,
+  })
+  expect(await screen.findByRole('alert')).toHaveTextContent('Tool unavailable')
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  expect(await screen.findByRole('textbox', { name: /Setting Param/ })).toHaveValue('value')
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})

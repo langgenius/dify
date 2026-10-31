@@ -54,7 +54,7 @@ const EmptyDatasetCreationContent = ({
     onPendingChange(true)
     setIsSubmitting(true)
     try {
-      const dataset = await createEmptyDataset({ name: inputValue }, { silent: true })
+      const dataset = await createEmptyDataset({ name: inputValue })
       invalidDatasetList()
       trackEvent('create_empty_datasets', {
         name: inputValue,

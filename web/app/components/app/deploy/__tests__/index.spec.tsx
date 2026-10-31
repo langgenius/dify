@@ -1851,7 +1851,7 @@ describe('AppDeploy', () => {
     ).toHaveLength(1)
   })
 
-  it('shows deploy API failures through the fetch toast without an inline configuration error', async () => {
+  it('shows deploy API failures in the configuration form and permits retry', async () => {
     const user = userEvent.setup()
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const request = input instanceof Request ? input : new Request(input, init)
@@ -1881,11 +1881,14 @@ describe('AppDeploy', () => {
       within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
     )
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Deployment service unavailable')
-    })
+    expect(await within(configurationDialog).findByRole('alert')).toHaveTextContent(
+      'Deployment service unavailable',
+    )
     expect(configurationDialog).toBeInTheDocument()
-    expect(within(configurationDialog).queryByRole('alert')).not.toBeInTheDocument()
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(
+      within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
+    ).toBeEnabled()
   })
 
   it('refreshes all environments after deployment polling finishes', async () => {

@@ -29,15 +29,12 @@ import { getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
 
 const stopAgentChatMessageResponding = (agentId: string, taskId: string) => {
-  return consoleClient.agent.byAgentId.chatMessages.byTaskId.stop.post(
-    {
-      params: {
-        agent_id: agentId,
-        task_id: taskId,
-      },
+  return consoleClient.agent.byAgentId.chatMessages.byTaskId.stop.post({
+    params: {
+      agent_id: agentId,
+      task_id: taskId,
     },
-    { context: { silent: true } },
-  )
+  })
 }
 
 const fetchAgentSuggestedQuestions = (agentId: string, messageId: string) => {

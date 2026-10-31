@@ -313,6 +313,42 @@ it('keeps the loaded plugin and confirmation usable when refreshing the summary 
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
 })
 
+it.each(['info', 'checkUpdate'])(
+  'reports a failed detail request from the %s action',
+  async (action) => {
+    api.detail.mockRejectedValueOnce(new Error('Plugin details unavailable'))
+    const { user } = setup({
+      summary: summary({ source: 'github' }),
+      providerLabel: 'Provider Plugin',
+    })
+    await openActions(user)
+    await user.click(
+      screen.getByRole('menuitem', { name: `plugin.detailPanel.operation.${action}` }),
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'Plugin details unavailable' }),
+    ).toBeInTheDocument()
+    expect(api.detail).toHaveBeenCalledOnce()
+  },
+)
+
+it('shows a removal request error in the confirmation and allows retrying', async () => {
+  api.uninstall.mockRejectedValueOnce(new Error('Plugin removal denied'))
+  const { user } = setup()
+  await openActions(user)
+  await user.click(screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.remove' }))
+  const dialog = await screen.findByRole('alertdialog')
+  const confirm = within(dialog).getByRole('button', { name: 'common.operation.confirm' })
+  await user.click(confirm)
+
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent('Plugin removal denied')
+  expect(dialog).toBeInTheDocument()
+  await user.click(confirm)
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(api.uninstall).toHaveBeenCalledTimes(2)
+})
+
 it('keeps a failed removal retryable without loading plugin details and refreshes caches after success', async () => {
   const removal = createDeferred<Awaited<ReturnType<typeof api.uninstall>>>()
   api.uninstall.mockReturnValueOnce(removal.promise)

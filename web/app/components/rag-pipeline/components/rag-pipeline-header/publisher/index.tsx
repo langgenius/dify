@@ -29,9 +29,7 @@ const Publisher = () => {
   const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
   const queryClient = useQueryClient()
   const { mutateAsync: publishAsCustomizedPipeline } = useMutation(
-    consoleQuery.rag.pipelines.byPipelineId.customized.publish.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.rag.pipelines.byPipelineId.customized.publish.post.mutationOptions(),
   )
   const [showPublishAsKnowledgePipelineModal, setShowPublishAsKnowledgePipelineModal] =
     useState(false)

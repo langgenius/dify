@@ -139,13 +139,10 @@ export function SourceActions({
     runAction(
       'sync',
       () =>
-        consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post(
-          {
-            headers: { 'Idempotency-Key': createIdempotencyKey() },
-            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-          },
-          { context: { silent: true } },
-        ),
+        consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post({
+          headers: { 'Idempotency-Key': createIdempotencyKey() },
+          params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+        }),
       applyAcceptedWorkflow,
       ensureModelSetupReady,
     )
@@ -158,10 +155,9 @@ export function SourceActions({
     return runAction(
       'sync',
       () =>
-        consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post(
-          { params: { control_space_id: knowledgeSpaceId, run_id: retryWorkflowId } },
-          { context: { silent: true } },
-        ),
+        consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post({
+          params: { control_space_id: knowledgeSpaceId, run_id: retryWorkflowId },
+        }),
       applyAcceptedWorkflow,
       ensureModelSetupReady,
     )
@@ -172,16 +168,13 @@ export function SourceActions({
       'toggle',
       async () =>
         sourceFromApi(
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch(
-            {
-              body: {
-                ...(source.version === undefined ? {} : { expectedVersion: source.version }),
-                status: source.status === 'disabled' ? 'active' : 'disabled',
-              },
-              params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
+            body: {
+              ...(source.version === undefined ? {} : { expectedVersion: source.version }),
+              status: source.status === 'disabled' ? 'active' : 'disabled',
             },
-            { context: { silent: true } },
-          ),
+            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          }),
         ),
       (updatedSource) => {
         const nextSyncWorkflow =
@@ -202,13 +195,10 @@ export function SourceActions({
       'edit',
       async () =>
         sourceFromApi(
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch(
-            {
-              body: values,
-              params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-            },
-            { context: { silent: true } },
-          ),
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
+            body: values,
+            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          }),
           { useResponseStatus: true },
         ),
       acceptSourceSnapshot,
@@ -219,15 +209,12 @@ export function SourceActions({
       'remove',
       async () => {
         if (source.version === undefined) throw new Error('Source version is required')
-        return consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete(
-          {
-            body: { expectedRevision: source.version },
-            headers: { 'Idempotency-Key': createIdempotencyKey() },
-            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-            query: { documents: 'keep' },
-          },
-          { context: { silent: true } },
-        )
+        return consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete({
+          body: { expectedRevision: source.version },
+          headers: { 'Idempotency-Key': createIdempotencyKey() },
+          params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          query: { documents: 'keep' },
+        })
       },
       () => removeSourceFromList(source.id),
     )

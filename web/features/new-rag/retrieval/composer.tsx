@@ -40,9 +40,7 @@ export function RetrievalComposer() {
   const setUploading = useSetAtom(retrievalComposerUploadPendingAtom)
   const run = useSetAtom(runRetrievalAtom)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const upload = useMutation(
-    consoleQuery.files.upload.post.mutationOptions({ context: { silent: true } }),
-  )
+  const upload = useMutation(consoleQuery.files.upload.post.mutationOptions())
 
   const selectImages = async (files: FileList | null) => {
     if (!files?.length || disabled || uploading) return
@@ -122,7 +120,7 @@ export function RetrievalComposer() {
                     ns: 'knowledgeRetrieval',
                     name: image.name,
                   })}
-                  className="absolute -top-1 -right-1 shadow-xs"
+                  className="absolute -inset-e-1 -top-1 shadow-xs"
                   disabled={disabled || uploading}
                   onClick={() => removeImage(image.uploadFileId)}
                 >

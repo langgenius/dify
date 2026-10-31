@@ -28,7 +28,6 @@ export function useKnowledgeModelSetupGuard(knowledgeSpaceId: string) {
   const checkPromiseRef = useRef<Promise<KnowledgeFsSettingsResponse> | undefined>(undefined)
   const settingsQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.settings.get.queryOptions({
-      context: { silent: true },
       input: { params: { control_space_id: knowledgeSpaceId } },
     }),
   )

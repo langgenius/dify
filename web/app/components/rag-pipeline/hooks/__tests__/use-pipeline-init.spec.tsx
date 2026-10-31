@@ -78,7 +78,7 @@ describe('usePipelineInit', () => {
     mockFetchWorkflowDraft.mockReturnValue(pending.promise)
     const { result, store } = renderPipelineInit()
 
-    expect(result.current).toEqual({ data: undefined, isLoading: true })
+    expect(result.current).toMatchObject({ data: undefined, isLoading: true })
     expect(mockFetchWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
       '/rag/pipelines/test-pipeline-id/workflows/draft',
     )
@@ -86,7 +86,7 @@ describe('usePipelineInit', () => {
 
     await act(async () => pending.resolve(draft))
 
-    await waitFor(() => expect(result.current).toEqual({ data: draft, isLoading: false }))
+    await waitFor(() => expect(result.current).toMatchObject({ data: draft, isLoading: false }))
     expect(store.getState()).toMatchObject({
       isWorkflowDataLoaded: true,
       draftUpdatedAt: draft.updated_at * 1000,

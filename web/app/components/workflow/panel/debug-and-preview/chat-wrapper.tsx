@@ -3,9 +3,11 @@ import type { ChatWrapperRefType } from './index'
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import Chat from '@/app/components/base/chat/chat'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -37,6 +39,7 @@ const ChatWrapper = ({
 }: ChatWrapperProps & {
   ref: React.RefObject<ChatWrapperRefType | null>
 }) => {
+  const { t } = useTranslation(['common'])
   const nodes = useNodes<StartNodeType>()
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
   const startVariables = startNode?.data.variables
@@ -104,6 +107,7 @@ const ChatWrapper = ({
 
   const {
     conversationId,
+    resumeFailure,
     chatList,
     handleStop,
     isResponding,
@@ -217,6 +221,12 @@ const ChatWrapper = ({
 
   return (
     <>
+      {resumeFailure && (
+        <div role="alert" className="flex items-center gap-3 px-4 py-2">
+          <p className="system-sm-regular text-text-destructive">{resumeFailure.message}</p>
+          <Button onClick={resumeFailure.retry}>{t(($) => $['operation.retry'])}</Button>
+        </div>
+      )}
       <Chat
         config={
           {

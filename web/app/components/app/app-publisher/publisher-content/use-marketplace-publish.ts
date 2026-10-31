@@ -13,12 +13,9 @@ export function useMarketplacePublish(appId?: string) {
 
     setIsPublishing(true)
     try {
-      const response = await consoleClient.apps.byAppId.publishToCreatorsPlatform.post(
-        {
-          params: { app_id: appId },
-        },
-        { context: { silent: true } },
-      )
+      const response = await consoleClient.apps.byAppId.publishToCreatorsPlatform.post({
+        params: { app_id: appId },
+      })
       if (response.redirect_url) window.open(response.redirect_url, '_blank')
     } catch (error) {
       toast.error(

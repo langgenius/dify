@@ -52,9 +52,7 @@ const MemberMenu = ({
     isError: roleSaveFailed,
     reset: resetRoleSave,
   } = useMutation(
-    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions(),
   )
 
   const handleOpenAssignRoles = () => {

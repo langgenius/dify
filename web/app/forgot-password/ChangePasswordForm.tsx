@@ -19,6 +19,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
 import { useVerifyForgotPasswordToken } from '@/service/use-common'
+import { getErrorMessage } from '@/utils/error-message'
 import { basePath } from '@/utils/var'
 
 type PasswordFormValues = {
@@ -27,6 +28,9 @@ type PasswordFormValues = {
 }
 
 const ChangePasswordForm = () => {
+  const [requestError, setRequestError] = useState<unknown>()
+  const { t: tRequestError } = useTranslation(['common'])
+
   const { t } = useTranslation(['common', 'login', 'accountSettings'])
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
@@ -51,6 +55,7 @@ const ChangePasswordForm = () => {
 
   const handleChangePassword = useCallback(
     async (formValues: PasswordFormValues) => {
+      setRequestError(undefined)
       if (isSubmitting) return
       const resetToken = verifyTokenRes?.token ?? ''
 
@@ -64,7 +69,8 @@ const ChangePasswordForm = () => {
           },
         })
         setShowSuccess(true)
-      } catch {
+      } catch (error) {
+        setRequestError(error)
         await revalidateToken()
       } finally {
         setIsSubmitting(false)
@@ -117,6 +123,11 @@ const ChangePasswordForm = () => {
                 void handleChangePassword(formValues)
               }}
             >
+              {!!requestError && (
+                <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+                  {getErrorMessage(requestError) ?? tRequestError(($) => $['api.actionFailed'])}
+                </p>
+              )}
               <Field
                 name="password"
                 validate={(value) => {

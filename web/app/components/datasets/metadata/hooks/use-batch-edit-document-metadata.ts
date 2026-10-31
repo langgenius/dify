@@ -10,6 +10,7 @@ import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
 import { useMemo } from 'react'
 import { toast } from '@/app/notifications'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { consoleQuery } from '@/service/console'
 import { UpdateType } from '../types'
 
@@ -127,8 +128,11 @@ const useBatchEditDocumentMetadata = ({
     })
     return res
   }
+  const notifyError = useErrorNotification()
   const { mutateAsync: updateDocumentMetadata } = useMutation(
-    consoleQuery.datasets.byDatasetId.documents.metadata.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.documents.metadata.post.mutationOptions({
+      onError: notifyError,
+    }),
   )
   const handleSave = async (
     editedList: MetadataItemWithEdit[],

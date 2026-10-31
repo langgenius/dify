@@ -305,7 +305,7 @@ describe('Header layout components', () => {
       })
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'workflowHistory.versionHistory.action.restoreFailure',
+        message: 'Restore failed',
       })
     })
 

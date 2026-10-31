@@ -15,6 +15,7 @@ import {
   toNodeOutputVars,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { consoleQuery } from '@/service/console'
 import {
   useDeleteAllInspectorVars,
@@ -31,6 +32,7 @@ import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-withou
 import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
 
 export const useInspectVarsCrudCommon = () => {
+  const notifyError = useErrorNotification()
   const resource = useAtomValue(editorResourceAtom)
   const workflowStore = useWorkflowStore()
   const store = useStoreApi()
@@ -221,14 +223,14 @@ export const useInspectVarsCrudCommon = () => {
       if (hasNodeInspectVar(nodeId, varId)) {
         try {
           await doDeleteInspectVar(varId)
-        } catch {
-          // The Console transport reports the failure; preserve the inspected values.
+        } catch (error) {
+          notifyError(error)
           return
         }
         deleteInspectVar(nodeId, varId)
       }
     },
-    [doDeleteInspectVar, workflowStore, hasNodeInspectVar],
+    [doDeleteInspectVar, workflowStore, hasNodeInspectVar, notifyError],
   )
 
   const resetConversationVar = useCallback(
@@ -245,14 +247,14 @@ export const useInspectVarsCrudCommon = () => {
       if (hasNodeInspectVars(nodeId)) {
         try {
           await doDeleteNodeInspectorVars(nodeId)
-        } catch {
-          // The Console transport reports the failure; preserve the inspected values.
+        } catch (error) {
+          notifyError(error)
           return
         }
         deleteNodeInspectVars(nodeId)
       }
     },
-    [doDeleteNodeInspectorVars, workflowStore, hasNodeInspectVars],
+    [doDeleteNodeInspectorVars, workflowStore, hasNodeInspectVars, notifyError],
   )
 
   const deleteAllInspectorVars = useCallback(async () => {

@@ -19,6 +19,7 @@ import Badge from '@/app/components/base/badge'
 import { ApiKeyModal, usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
@@ -74,8 +75,11 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
     pendingOperationCredentialId,
   } = usePluginAuthAction(pluginPayload, handleAuthUpdate)
   const changeCredentialIdRef = useRef<string | undefined>(undefined)
+  const notifyError = useErrorNotification()
   const { mutateAsync: getPluginOAuthUrl } = useMutation(
-    consoleQuery.oauth.plugin.byProviderId.datasource.getAuthorizationUrl.get.mutationOptions(),
+    consoleQuery.oauth.plugin.byProviderId.datasource.getAuthorizationUrl.get.mutationOptions({
+      onError: notifyError,
+    }),
   )
   const handleOAuth = useCallback(async () => {
     const { authorization_url } = await getPluginOAuthUrl({

@@ -226,12 +226,9 @@ describe('useAnnotationConfig', () => {
       pending = result.current.handleEnableAnnotation(defaultConfig.embedding_model, 0.95)
     })
     expect(result.current.config).toEqual(defaultConfig)
-    expect(queryAnnotationJobStatus).toHaveBeenCalledExactlyOnceWith(
-      {
-        params: { app_id: 'test-app', action: 'enable', job_id: 'test-job-id' },
-      },
-      { context: { silent: true } },
-    )
+    expect(queryAnnotationJobStatus).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'test-app', action: 'enable', job_id: 'test-job-id' },
+    })
     await act(async () => vi.advanceTimersByTimeAsync(1999))
     expect(queryAnnotationJobStatus).toHaveBeenCalledTimes(1)
     await act(async () => {

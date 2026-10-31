@@ -118,3 +118,12 @@ it('opens the selected role and saves edited fields with its existing permission
     },
   })
 })
+
+it('shows a failed role list request and retries loading roles', async () => {
+  mocks.list.mockRejectedValueOnce(new Error('Roles unavailable'))
+  const user = setup()
+  expect(await screen.findByRole('alert')).toHaveTextContent('Roles unavailable')
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  expect(await screen.findByText('Custom manager')).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})

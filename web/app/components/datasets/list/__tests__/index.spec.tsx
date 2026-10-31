@@ -9,6 +9,7 @@ import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
 import { stepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
 import { useNewKnowledgeGuideDismissedValue } from '@/features/new-rag/list/storage'
+import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   createConsoleQueryWrapper,
@@ -135,6 +136,34 @@ it('offers creation from the first empty state only when permitted', async () =>
   expect(
     screen.queryByRole('button', { name: 'dataset.externalAPIPanelTitle' }),
   ).not.toBeInTheDocument()
+})
+
+it('shows an initial load failure and retries without losing the active filters', async () => {
+  api.datasets.mockRejectedValueOnce(new Error('Knowledge is temporarily unavailable'))
+  const { user } = setup({}, undefined, '?creator_ids=creator-2')
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Knowledge is temporarily unavailable')
+  expect(screen.queryByText('dataset.firstEmpty.title')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+  expect(await screen.findByRole('link', { name: 'Test Dataset' })).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(api.datasets).toHaveBeenLastCalledWith({
+    query: expect.objectContaining({ creator_ids: ['creator-2'] }),
+  })
+})
+
+it('retains loaded cards without an automatic error when a background refresh fails', async () => {
+  const { queryClient } = setup()
+  await screen.findByRole('link', { name: 'Test Dataset' })
+  api.datasets.mockRejectedValue(new Error('Background refresh failed'))
+
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  })
+
+  expect(screen.getByRole('link', { name: 'Test Dataset' })).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 })
 
 it('shows a permission empty state without dataset creation access', async () => {

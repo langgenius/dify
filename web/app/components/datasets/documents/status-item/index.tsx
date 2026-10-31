@@ -59,11 +59,9 @@ const StatusItem = ({
   const { enabled = false, archived = false, id = '' } = detail || {}
   const documents = consoleQuery.datasets.byDatasetId.documents
   const { mutateAsync: changeDocumentStatus } = useMutation(
-    documents.status.byAction.batch.patch.mutationOptions({ context: { silent: true } }),
+    documents.status.byAction.batch.patch.mutationOptions(),
   )
-  const { mutateAsync: deleteDocuments } = useMutation(
-    documents.delete.mutationOptions({ context: { silent: true } }),
-  )
+  const { mutateAsync: deleteDocuments } = useMutation(documents.delete.mutationOptions())
   const onOperate = async (operationName: OperationName) => {
     if (!canEdit) return
 

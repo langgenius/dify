@@ -869,4 +869,25 @@ describe('useSegmentListData', () => {
       expect(queryClient.getQueryData(currentKey)).toBeUndefined()
     })
   })
+  it.each([
+    new Error('Document is being indexed'),
+    new TypeError('Failed to fetch'),
+    new DOMException('Request timed out', 'TimeoutError'),
+  ])('reports a failed save and retains the segment for retry: %s', async (error) => {
+    mockUpdateSegment.mockRejectedValueOnce(error)
+    const { result } = renderHook(() => useSegmentListData(defaultOptions), {
+      wrapper: createWrapper(),
+    })
+    await act(async () => {
+      await result.current.handleUpdateSegment('seg-1', 'updated', '', [], [])
+    })
+    expect(mockNotify).toHaveBeenCalledExactlyOnceWith({ type: 'error', message: error.message })
+    expect(defaultOptions.onCloseSegmentDetail).not.toHaveBeenCalled()
+    expect(mockEventEmitter.emit).toHaveBeenCalledWith('update-segment-done')
+    expect(mockEventEmitter.emit).not.toHaveBeenCalledWith('update-segment-success')
+    await act(async () => {
+      await result.current.handleUpdateSegment('seg-1', 'updated', '', [], [])
+    })
+    expect(defaultOptions.onCloseSegmentDetail).toHaveBeenCalledOnce()
+  })
 })

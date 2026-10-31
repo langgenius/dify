@@ -5,7 +5,6 @@ import type {
   SnippetDetail as SnippetDetailUIModel,
   SnippetListItem as SnippetListItemUIModel,
 } from '@/models/snippet'
-import type { ConsoleClientContext } from '@/service/console'
 import type {
   CreateSnippetPayload,
   IncrementSnippetUseCountResponse,
@@ -220,41 +219,35 @@ export const useCreateSnippetMutation = () => {
   })
 }
 
-export const useUpdateSnippetMutation = (context?: ConsoleClientContext) => {
+export const useUpdateSnippetMutation = () => {
   const queryClient = useQueryClient()
 
   return useMutation<SnippetContract, Error, UpdateSnippetInput>({
     mutationKey: customizedSnippetsContract.bySnippetId.patch.mutationKey(),
     mutationFn: ({ params, body }) =>
-      customizedSnippetsClient.bySnippetId.patch(
-        {
-          params: {
-            snippet_id: params.snippetId,
-          },
-          body,
+      customizedSnippetsClient.bySnippetId.patch({
+        params: {
+          snippet_id: params.snippetId,
         },
-        { context },
-      ),
+        body,
+      }),
     onSuccess: () => {
       invalidateSnippetQueries(queryClient)
     },
   })
 }
 
-export const useDeleteSnippetMutation = (context?: ConsoleClientContext) => {
+export const useDeleteSnippetMutation = () => {
   const queryClient = useQueryClient()
 
   return useMutation<unknown, Error, SnippetIdInput>({
     mutationKey: customizedSnippetsContract.bySnippetId.delete.mutationKey(),
     mutationFn: ({ params }) =>
-      customizedSnippetsClient.bySnippetId.delete(
-        {
-          params: {
-            snippet_id: params.snippetId,
-          },
+      customizedSnippetsClient.bySnippetId.delete({
+        params: {
+          snippet_id: params.snippetId,
         },
-        { context },
-      ),
+      }),
     onSuccess: () => {
       invalidateSnippetQueries(queryClient)
     },
@@ -278,24 +271,21 @@ export const useIncrementSnippetUseCountMutation = () => {
   })
 }
 
-export const useExportSnippetMutation = (context?: ConsoleClientContext) => {
+export const useExportSnippetMutation = () => {
   return useMutation<string, Error, { snippetId: string; include?: boolean; workflowId?: string }>({
     mutationFn: ({ snippetId, include = false, workflowId }) => {
-      return customizedSnippetsClient.bySnippetId.export.get(
-        {
-          params: { snippet_id: snippetId },
-          query: {
-            include_secret: include ? 'true' : 'false',
-            workflow_id: workflowId,
-          },
+      return customizedSnippetsClient.bySnippetId.export.get({
+        params: { snippet_id: snippetId },
+        query: {
+          include_secret: include ? 'true' : 'false',
+          workflow_id: workflowId,
         },
-        { context },
-      )
+      })
     },
   })
 }
 
-export const useImportSnippetDSLMutation = (context?: ConsoleClientContext) => {
+export const useImportSnippetDSLMutation = () => {
   const queryClient = useQueryClient()
 
   return useMutation<
@@ -310,12 +300,9 @@ export const useImportSnippetDSLMutation = (context?: ConsoleClientContext) => {
         yaml_url: yamlUrl,
       }
 
-      return customizedSnippetsClient.imports.post(
-        {
-          body,
-        },
-        { context },
-      )
+      return customizedSnippetsClient.imports.post({
+        body,
+      })
     },
     onSuccess: () => {
       invalidateSnippetQueries(queryClient)
@@ -323,19 +310,16 @@ export const useImportSnippetDSLMutation = (context?: ConsoleClientContext) => {
   })
 }
 
-export const useConfirmSnippetImportMutation = (context?: ConsoleClientContext) => {
+export const useConfirmSnippetImportMutation = () => {
   const queryClient = useQueryClient()
 
   return useMutation<SnippetDSLImportResponse, Error, { importId: string }>({
     mutationFn: ({ importId }) => {
-      return customizedSnippetsClient.imports.byImportId.confirm.post(
-        {
-          params: {
-            import_id: importId,
-          },
+      return customizedSnippetsClient.imports.byImportId.confirm.post({
+        params: {
+          import_id: importId,
         },
-        { context },
-      )
+      })
     },
     onSuccess: () => {
       invalidateSnippetQueries(queryClient)

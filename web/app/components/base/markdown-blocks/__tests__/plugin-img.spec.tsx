@@ -9,13 +9,7 @@ import { getMarkdownImageURL } from '../utils'
 
 const { request } = vi.hoisted(() => ({
   request:
-    vi.fn<
-      (
-        url: string,
-        init: RequestInit,
-        options: { request: Request; silent?: boolean },
-      ) => Promise<Response>
-    >(),
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
 }))
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
@@ -87,7 +81,6 @@ it('shares normalized resource requests between image and paragraph consumers an
     pluginInfo.pluginUniqueIdentifier,
   )
   expect(options.request.method).toBe('GET')
-  expect(options.silent).toBe(true)
   const cached = queryClient.getQueryData(
     consoleQuery.workspaces.current.plugin.asset.get.queryKey({
       input: {
@@ -186,7 +179,6 @@ it('inherits asset retries from the client and stays silent when the first HTTP 
     expect(screen.getByTestId('gallery-image')).toHaveAttribute('src', 'blob:asset-1'),
   )
   expect(request).toHaveBeenCalledTimes(2)
-  expect(request.mock.calls.every(([, , options]) => options.silent === true)).toBe(true)
   expect(errorToast).not.toHaveBeenCalled()
 })
 

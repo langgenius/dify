@@ -13,8 +13,12 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 export default function CheckCode() {
+  const [requestError, setRequestError] = useState<unknown>()
+  const { t: tRequestError } = useTranslation(['common'])
+
   const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -26,6 +30,7 @@ export default function CheckCode() {
   useDocumentTitle(pageTitle)
 
   const handleGetEMailVerificationCode = async () => {
+    setRequestError(undefined)
     try {
       if (!email) {
         toast.error(t(($) => $['error.emailEmpty'], { ns: 'login' }))
@@ -46,6 +51,7 @@ export default function CheckCode() {
         router.push(`/webapp-reset-password/check-code?${params.toString()}`)
       }
     } catch (error) {
+      setRequestError(error)
       console.error(error)
     } finally {
       setIsLoading(false)
@@ -65,6 +71,11 @@ export default function CheckCode() {
       </div>
 
       <form onSubmit={noop}>
+        {!!requestError && (
+          <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+            {getErrorMessage(requestError) ?? tRequestError(($) => $['api.actionFailed'])}
+          </p>
+        )}
         <input type="text" className="hidden" />
         <div className="mb-2">
           <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
@@ -105,7 +116,7 @@ export default function CheckCode() {
         <div className="inline-block rounded-full bg-background-default-dimmed p-1">
           <RiArrowLeftLine size={12} />
         </div>
-        <span className="ml-2 system-xs-regular">{t(($) => $.backToLogin, { ns: 'login' })}</span>
+        <span className="ms-2 system-xs-regular">{t(($) => $.backToLogin, { ns: 'login' })}</span>
       </Link>
     </div>
   )

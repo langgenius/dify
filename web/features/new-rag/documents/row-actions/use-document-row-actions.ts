@@ -115,16 +115,13 @@ export function useRenameDocumentAction(document: LogicalDocument) {
   const { invalidateDocuments, knowledgeSpaceId } = useDocumentInvalidation()
   const { mutateAsync: renameDocument } = useMutation({
     mutationFn: (title: string) =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch(
-        {
-          body: {
-            expectedRowVersion: document.rowVersion,
-            patch: { displayName: title },
-          },
-          params: { control_space_id: knowledgeSpaceId, document_id: document.id },
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
+        body: {
+          expectedRowVersion: document.rowVersion,
+          patch: { displayName: title },
         },
-        { context: { silent: true } },
-      ),
+        params: { control_space_id: knowledgeSpaceId, document_id: document.id },
+      }),
   })
 
   const run = useCallback(
@@ -164,12 +161,9 @@ export function useDownloadDocumentAction(
   const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const { mutateAsync: downloadDocument } = useMutation({
     mutationFn: () =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.download.get(
-        {
-          params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-        },
-        { context: { silent: true } },
-      ),
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.download.get({
+        params: { control_space_id: knowledgeSpaceId, document_id: document.id },
+      }),
   })
 
   const run = useCallback(async () => {
@@ -214,13 +208,10 @@ export function useToggleDocumentAvailabilityAction(
   const { invalidateDocuments, knowledgeSpaceId } = useDocumentInvalidation()
   const { mutateAsync: toggleDocument } = useMutation({
     mutationFn: () =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.patch(
-        {
-          body: { enabled: !document.enabled, expectedRowVersion: document.rowVersion },
-          params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-        },
-        { context: { silent: true } },
-      ),
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.patch({
+        body: { enabled: !document.enabled, expectedRowVersion: document.rowVersion },
+        params: { control_space_id: knowledgeSpaceId, document_id: document.id },
+      }),
   })
 
   const run = useCallback(async () => {
@@ -258,14 +249,11 @@ export function useRemoveDocumentAction() {
     reset,
   } = useMutation({
     mutationFn: (document: LogicalDocument) =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete(
-        {
-          body: { expectedRevision: document.rowVersion },
-          headers: { 'Idempotency-Key': createRequestId() },
-          params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-        },
-        { context: { silent: true } },
-      ),
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete({
+        body: { expectedRevision: document.rowVersion },
+        headers: { 'Idempotency-Key': createRequestId() },
+        params: { control_space_id: knowledgeSpaceId, document_id: document.id },
+      }),
   })
 
   const run = async (documentId: string) => {
@@ -316,7 +304,6 @@ export function useRetryDocumentTaskAction(
               task_kind: currentTask.taskKind,
             },
           },
-          { context: { silent: true } },
         ),
       ),
   })
@@ -364,9 +351,7 @@ export function useReindexDocumentAction(document: LogicalDocument, status: Docu
   const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'reindex')
   const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
   const { mutateAsync: reindexDocument } = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
   )
 
   const run = useCallback(async () => {

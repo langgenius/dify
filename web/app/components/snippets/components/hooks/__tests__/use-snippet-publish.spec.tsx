@@ -128,13 +128,10 @@ describe('useSnippetPublish', () => {
       })
       await waitFor(() => expect(result.current.isPublishing).toBe(false))
 
-      expect(mockMutateAsync).toHaveBeenCalledWith(
-        {
-          params: { snippet_id: 'snippet-1' },
-          body: {},
-        },
-        { context: { silent: true } },
-      )
+      expect(mockMutateAsync).toHaveBeenCalledWith({
+        params: { snippet_id: 'snippet-1' },
+        body: {},
+      })
       expect(queryClient.getQueryData(detailKey)).toMatchObject({ is_published: true })
       expect(store.getState().publishedAt).toBe(1_712_345_678_000)
       expect(queryClient.getQueryData(historyKey)).toBeUndefined()

@@ -81,7 +81,6 @@ export function WebAppAccessCard({
   })
   const toggleSiteMutation = useMutation(
     consoleQuery.apps.byAppId.siteEnable.post.mutationOptions({
-      context: { silent: true },
       scope: {
         id: `agent-web-app-toggle:${agentId}`,
       },
@@ -106,7 +105,6 @@ export function WebAppAccessCard({
   )
   const resetAccessTokenMutation = useMutation(
     consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
-      context: { silent: true },
       onSuccess: (site) => {
         queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
           agentDetailQueryKey,
@@ -131,9 +129,7 @@ export function WebAppAccessCard({
       },
     }),
   )
-  const updateSiteMutation = useMutation(
-    consoleQuery.apps.byAppId.site.post.mutationOptions({ context: { silent: true } }),
-  )
+  const updateSiteMutation = useMutation(consoleQuery.apps.byAppId.site.post.mutationOptions())
   const pendingEnabled = toggleSiteMutation.variables?.body.enable_site
   const optimisticEnabled =
     toggleSiteMutation.isPending && pendingEnabled !== undefined

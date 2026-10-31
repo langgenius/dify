@@ -143,7 +143,6 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
     try {
       const detail = await queryClient.query({
         ...consoleQuery.explore.apps.byAppId.get.queryOptions({
-          context: { silent: true },
           input: { params: { app_id: currApp.app_id } },
         }),
         staleTime: 0,
@@ -215,7 +214,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-divider-burn py-3">
-        <div className="min-w-45 pl-5">
+        <div className="min-w-45 ps-5">
           <span className="title-xl-semi-bold text-text-primary">
             {t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
           </span>
@@ -271,7 +270,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
             />
           </div>
         )}
-        <div className="h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2">
+        <div className="h-full flex-1 shrink-0 grow overflow-auto border-s border-divider-burn p-6 pt-2">
           {searchFilteredList && searchFilteredList.length > 0 && (
             <>
               <div className="pt-4 pb-1">

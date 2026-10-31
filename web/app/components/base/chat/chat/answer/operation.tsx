@@ -26,6 +26,7 @@ import Log from '@/app/components/base/chat/chat/log'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import AnnotationCtrlButton from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button'
 import NewAudioButton from '@/app/components/base/new-audio-button'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { useChatContext } from '../context'
 
 type OperationProps = {
@@ -223,6 +224,7 @@ function Operation({
     return `${label}: ${ratingLabel}`
   }
 
+  const notifyError = useErrorNotification()
   const handleFeedback = async (
     rating: 'like' | 'dislike' | null,
     content?: string,
@@ -238,7 +240,8 @@ function Operation({
       if (target === 'admin') setAdminFeedbackOverride(nextFeedback)
       else setUserFeedbackOverride(nextFeedback)
       return true
-    } catch {
+    } catch (error) {
+      notifyError(error)
       return false
     }
   }

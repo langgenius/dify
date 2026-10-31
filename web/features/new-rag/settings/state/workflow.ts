@@ -66,16 +66,16 @@ const setKnowledgeSettingsSavePendingAtom = atom(
 
 const spaceApi = consoleQuery.knowledgeFs.spaces.byControlSpaceId
 const saveSpaceMutationAtom = atomWithMutation(() =>
-  spaceApi.patch.mutationOptions({ retry: false, context: { silent: true } }),
+  spaceApi.patch.mutationOptions({ retry: false }),
 )
 const saveMembersMutationAtom = atomWithMutation(() =>
-  spaceApi.members.put.mutationOptions({ retry: false, context: { silent: true } }),
+  spaceApi.members.put.mutationOptions({ retry: false }),
 )
 const saveExternalMutationAtom = atomWithMutation(() =>
-  spaceApi.externalAccess.put.mutationOptions({ retry: false, context: { silent: true } }),
+  spaceApi.externalAccess.put.mutationOptions({ retry: false }),
 )
 const saveSettingsMutationAtom = atomWithMutation(() =>
-  spaceApi.settings.patch.mutationOptions({ retry: false, context: { silent: true } }),
+  spaceApi.settings.patch.mutationOptions({ retry: false }),
 )
 
 function snapshotQueries(control_space_id: string) {
@@ -83,7 +83,6 @@ function snapshotQueries(control_space_id: string) {
     input: { params: { control_space_id } },
     staleTime: 0,
     retry: false as const,
-    context: { silent: true },
   }
   return {
     space: spaceApi.get.queryOptions(options),
@@ -156,7 +155,6 @@ export const saveKnowledgeSettingsAtom = atom(
             input: { params: { ...params, migration_id: progress.id } },
             staleTime: 0,
             retry: false,
-            context: { silent: true },
           }),
         )
         if (migration.run_state === 'succeeded') {

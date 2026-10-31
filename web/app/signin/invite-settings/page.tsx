@@ -30,6 +30,7 @@ import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
+import { getErrorMessage } from '@/utils/error-message'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone, timezones } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
@@ -65,6 +66,9 @@ const getInitialLanguage = (locale: Locale): Locale => {
 }
 
 export default function InviteSettingsPage() {
+  const [requestError, setRequestError] = useState<unknown>()
+  const { t: tRequestError } = useTranslation(['common'])
+
   const { t } = useTranslation(['common', 'login'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const router = useRouter()
@@ -146,6 +150,7 @@ export default function InviteSettingsPage() {
   }, [router, searchParams, shouldReturnToSignIn])
 
   const handleActivate = useCallback(async () => {
+    setRequestError(undefined)
     try {
       if (isActivating) return
       if (!isInvitationForCurrentAccount) return
@@ -167,7 +172,8 @@ export default function InviteSettingsPage() {
         await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
         replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
       }
-    } catch {
+    } catch (error) {
+      setRequestError(error)
       recheck()
       setIsActivating(false)
     }
@@ -229,6 +235,11 @@ export default function InviteSettingsPage() {
           void handleActivate()
         }}
       >
+        {!!requestError && (
+          <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+            {getErrorMessage(requestError) ?? tRequestError(($) => $['api.actionFailed'])}
+          </p>
+        )}
         {requiresAccountSetup && (
           <>
             <Field

@@ -19,6 +19,7 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { consoleQuery } from '@/service/console'
 import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
+import { getErrorMessage } from '@/utils/error-message'
 import { useAutoGenModel } from '../auto-gen-model-storage'
 import IdeaOutput from './idea-output'
 import InstructionEditorInBasic from './instruction-editor'
@@ -51,11 +52,11 @@ const TryLabel: FC<{
   return (
     <button
       type="button"
-      className="mt-2 mr-1 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2"
+      className="me-1 mt-2 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2"
       onClick={onClick}
     >
       <span aria-hidden className={`${iconClassName} size-4 text-text-tertiary`} />
-      <div className="ml-1 text-xs font-medium text-text-secondary">{text}</div>
+      <div className="ms-1 text-xs font-medium text-text-secondary">{text}</div>
     </button>
   )
 }
@@ -132,6 +133,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     useSessionStorageState<string>(
       `improve-instruction-${flowId}${isBasicMode ? '' : `-${nodeId}${editorId ? `-${editorId}` : ''}`}`,
     )
+  const [requestError, setRequestError] = useState<string>()
   const [ideaOutput, setIdeaOutput] = useState<string>('')
 
   type TemplateKey = (typeof tryList)[number]['key']
@@ -218,6 +220,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   const onGenerate = async () => {
     if (!isValid()) return
     if (isLoading) return
+    setRequestError(undefined)
     setLoadingTrue()
     try {
       let apiRes: GenRes
@@ -252,6 +255,9 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         }
       }
       if (!hasError) addVersion(apiRes)
+    } catch (error) {
+      if (!(error instanceof Error && error.name === 'AbortError'))
+        setRequestError(getErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' }))
     } finally {
       setLoadingFalse()
     }
@@ -270,7 +276,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     >
       <DialogContent className="w-285 xl:h-[min(680px,calc(100dvh-2rem))] xl:overflow-hidden">
         <div className="flex min-h-0 flex-col xl:h-full xl:flex-row">
-          <div className="min-w-0 border-divider-regular p-6 xl:h-full xl:flex-1 xl:overflow-y-auto xl:border-r">
+          <div className="min-w-0 border-divider-regular p-6 xl:h-full xl:flex-1 xl:overflow-y-auto xl:border-e">
             <div className="mb-5">
               <DialogTitle
                 // oxlint-disable-next-line shadcn/no-restyle -- Gradient generator title keeps its own type; the module class paints the gradient.
@@ -298,7 +304,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             {isBasicMode && (
               <div className="mt-4">
                 <div className="flex items-center">
-                  <div className="mr-3 shrink-0 text-xs leading-4.5 font-semibold text-text-tertiary uppercase">
+                  <div className="me-3 shrink-0 text-xs leading-4.5 font-semibold text-text-tertiary uppercase">
                     {t(($) => $['generate.tryIt'], { ns: 'appGeneration' })}
                   </div>
                   <div
@@ -359,6 +365,11 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               </div>
               <IdeaOutput value={ideaOutput} onChange={setIdeaOutput} />
 
+              {requestError && (
+                <p role="alert" className="mt-2 system-sm-regular text-text-destructive">
+                  {requestError}
+                </p>
+              )}
               <div className="mt-7 flex flex-wrap justify-end gap-2">
                 <Button onClick={onClose}>
                   {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appGeneration' })}

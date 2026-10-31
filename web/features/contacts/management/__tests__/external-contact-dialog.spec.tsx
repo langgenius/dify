@@ -290,15 +290,12 @@ describe('ExternalContactDialog pending state', () => {
       }
       await waitFor(() => {
         if (mode === 'create')
-          expect(contactsClient.external.post).toHaveBeenCalledWith(
-            { body: expectedBody },
-            expect.anything(),
-          )
+          expect(contactsClient.external.post).toHaveBeenCalledWith({ body: expectedBody })
         else
-          expect(contactsClient.external.byContactId.patch).toHaveBeenCalledWith(
-            { params: { contact_id: savedContact.id }, body: expectedBody },
-            expect.anything(),
-          )
+          expect(contactsClient.external.byContactId.patch).toHaveBeenCalledWith({
+            params: { contact_id: savedContact.id },
+            body: expectedBody,
+          })
       })
       expect(uploadAvatar).toHaveBeenCalledTimes(2)
     },
@@ -330,13 +327,10 @@ describe('ExternalContactDialog pending state', () => {
     await user.click(screen.getByRole('button', { name: 'contacts.external.save' }))
 
     await waitFor(() =>
-      expect(updateContact).toHaveBeenCalledWith(
-        {
-          params: { contact_id: contact.id },
-          body: { name: 'Evan', email: contact.email },
-        },
-        expect.anything(),
-      ),
+      expect(updateContact).toHaveBeenCalledWith({
+        params: { contact_id: contact.id },
+        body: { name: 'Evan', email: contact.email },
+      }),
     )
     expect(uploadAvatar).not.toHaveBeenCalled()
   })
@@ -398,13 +392,12 @@ describe('ExternalContactDialog pending state', () => {
       await user.click(save)
       const body = { name: validName, email: contact.email }
       await waitFor(() => {
-        if (mode === 'create')
-          expect(contacts.external.post).toHaveBeenCalledWith({ body }, expect.anything())
+        if (mode === 'create') expect(contacts.external.post).toHaveBeenCalledWith({ body })
         else
-          expect(contacts.external.byContactId.patch).toHaveBeenCalledWith(
-            { params: { contact_id: contact.id }, body },
-            expect.anything(),
-          )
+          expect(contacts.external.byContactId.patch).toHaveBeenCalledWith({
+            params: { contact_id: contact.id },
+            body,
+          })
       })
     },
   )
@@ -466,10 +459,7 @@ describe('ExternalContactDialog pending state', () => {
       await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
 
       await waitFor(() =>
-        expect(contacts.external.post).toHaveBeenCalledWith(
-          { body: { name: 'Evan', email } },
-          expect.anything(),
-        ),
+        expect(contacts.external.post).toHaveBeenCalledWith({ body: { name: 'Evan', email } }),
       )
     },
   )

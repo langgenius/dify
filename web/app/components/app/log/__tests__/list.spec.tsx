@@ -532,9 +532,7 @@ it('opens and closes the workflow run selected from an answer', async () => {
     'aria-selected',
     'true',
   )
-  await waitFor(() =>
-    expect(api.run).toHaveBeenCalledWith('/apps/app-1/workflow-runs/run-1', { silent: true }),
-  )
+  await waitFor(() => expect(api.run).toHaveBeenCalledWith('/apps/app-1/workflow-runs/run-1'))
   expect(await screen.findByRole('link', { name: 'app.tracing.run.viewTrace' })).toHaveAttribute(
     'href',
     'https://cloud.langfuse.com/trace/run-1',
@@ -542,12 +540,9 @@ it('opens and closes the workflow run selected from an answer', async () => {
   expect(api.externalTrace).toHaveBeenCalledWith({
     params: { app_id: 'app-1', source_kind: 'workflow', source_id: 'run-1' },
   })
-  expect(api.tracing).toHaveBeenCalledWith(
-    {
-      url: '/apps/app-1/workflow-runs/run-1/node-executions',
-    },
-    { silent: true },
-  )
+  expect(api.tracing).toHaveBeenCalledWith({
+    url: '/apps/app-1/workflow-runs/run-1/node-executions',
+  })
   await user.click(within(runDialog).getByRole('button', { name: 'common.operation.close' }))
   await waitFor(() => expect(runDialog).not.toBeInTheDocument())
 })
@@ -749,4 +744,43 @@ it('keeps desktop details open while interacting outside and switching to anothe
   expect(await screen.findByText('Assistant reply message-2')).toBeVisible()
   expect(screen.queryByText('Assistant reply message-1')).not.toBeInTheDocument()
   expect(onRefresh).not.toHaveBeenCalled()
+})
+
+it('keeps loaded history and retries a failed older-message request with the same cursor', async () => {
+  const user = userEvent.setup()
+  api.messages
+    .mockResolvedValueOnce({
+      data: [
+        createChatMessage('message-1', { parent_message_id: 'older-message' }),
+        createChatMessage('message-2', { parent_message_id: 'message-1' }),
+        createChatMessage('message-3', { parent_message_id: 'message-2' }),
+        createChatMessage('message-4', { parent_message_id: 'message-3' }),
+      ],
+      has_more: true,
+      limit: 10,
+    })
+    .mockRejectedValueOnce(new Error('History unavailable'))
+    .mockResolvedValueOnce({
+      data: [createChatMessage('older-message')],
+      has_more: false,
+      limit: 10,
+    })
+  renderConversationList({ searchParams: '?conversation_id=conversation-1' })
+  const history = await screen.findByRole('log')
+  await within(history).findByText('Assistant reply message-1')
+  Object.defineProperties(history, {
+    clientHeight: { configurable: true, value: 100 },
+    scrollHeight: { configurable: true, value: 500 },
+    scrollTop: { configurable: true, value: -400 },
+  })
+  fireEvent.scroll(history)
+  expect(await screen.findByRole('alert')).toHaveTextContent('History unavailable')
+  expect(within(history).getByText('Assistant reply message-1')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  expect(await within(history).findByText('Assistant reply older-message')).toBeVisible()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(api.messages).toHaveBeenLastCalledWith({
+    params: { app_id: 'app-1' },
+    query: { conversation_id: 'conversation-1', limit: 10, first_id: 'message-1' },
+  })
 })

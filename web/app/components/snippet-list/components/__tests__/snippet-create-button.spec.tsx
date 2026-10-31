@@ -126,6 +126,27 @@ describe('SnippetCreateButton', () => {
     })
   })
 
+  it.each(['create', 'draft'])('keeps the form and reports a failed %s request', async (stage) => {
+    const user = userEvent.setup()
+    mockCreateMutateAsync.mockResolvedValue({ id: 'snippet-123' })
+    mockSyncDraftWorkflow.mockResolvedValue({ result: 'success', hash: 'hash', updated_at: 1 })
+    const request = stage === 'create' ? mockCreateMutateAsync : mockSyncDraftWorkflow
+    request.mockRejectedValueOnce(new Error('Snippet service unavailable'))
+    render(<SnippetCreateButton />)
+    await user.click(screen.getByRole('button', { name: 'snippet.create' }))
+    await user.click(screen.getByRole('button', { name: 'snippet.createFromBlank' }))
+    const name = screen.getByRole('textbox', { name: 'workflow.snippet.nameLabel' })
+    await user.type(name, 'Retry snippet')
+    await user.click(screen.getByRole('button', { name: 'workflow.snippet.confirm' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Snippet service unavailable')
+    expect(name).toHaveValue('Retry snippet')
+    expect(mockPush).not.toHaveBeenCalled()
+    expect(mockToastError).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'workflow.snippet.confirm' }))
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-123/orchestrate'))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
   it('should import a snippet from a DSL URL', async () => {
     const user = userEvent.setup()
     mockImportMutateAsync.mockResolvedValue({
@@ -149,16 +170,13 @@ describe('SnippetCreateButton', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     await waitFor(() => {
-      expect(mockImportMutateAsync).toHaveBeenCalledWith(
-        {
-          body: {
-            mode: 'yaml-url',
-            yaml_content: undefined,
-            yaml_url: 'https://example.com/snippet.yml',
-          },
+      expect(mockImportMutateAsync).toHaveBeenCalledWith({
+        body: {
+          mode: 'yaml-url',
+          yaml_content: undefined,
+          yaml_url: 'https://example.com/snippet.yml',
         },
-        { context: { silent: true } },
-      )
+      })
     })
     expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-imported/orchestrate')
   })

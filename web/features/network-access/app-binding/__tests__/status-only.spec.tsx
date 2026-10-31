@@ -6,7 +6,6 @@ import { initReactI18next } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import deploymentTranslations from '@/i18n/locales/en-US/deployments.json'
 import { consoleQuery } from '@/service/console'
-import { clearRequestErrorToasts } from '@/service/request-error-toast'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AccessControlEntry } from '..'
 
@@ -76,10 +75,6 @@ beforeEach(async () => {
     })
 })
 
-afterEach(() => {
-  for (const request of requests) clearRequestErrorToasts(request)
-})
-
 describe('Normal member Access Control status', () => {
   it.each([
     {
@@ -129,7 +124,7 @@ describe('Normal member Access Control status', () => {
       })
       expect(screen.queryByRole('button', { name: /Access Control/ })).not.toBeInTheDocument()
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      expect(toast.error).toHaveBeenCalledExactlyOnceWith(message)
+      expect(toast.error).not.toHaveBeenCalled()
       expectOnlyStatusRequest()
     },
   )

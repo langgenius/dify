@@ -278,9 +278,7 @@ describe('PermissionSetModal', () => {
       'Agent reviewers',
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-    await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed'),
-    )
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unavailable'))
     expect(screen.getByRole('textbox', { name: /permissionSet.nameLabel/ })).toHaveValue(
       'Agent reviewers',
     )

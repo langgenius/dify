@@ -17,6 +17,7 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { consoleQuery } from '@/service/console'
 import { generateRule } from '@/service/debug'
+import { getErrorMessage } from '@/utils/error-message'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
 import { useAutoGenModel } from '../auto-gen-model-storage'
 import IdeaOutput from '../automatic/idea-output'
@@ -87,6 +88,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
   const [instructionFromSessionStorage, setInstructionFromSessionStorage] =
     useSessionStorageState<string>(`improve-instruction-${flowId}-${nodeId}`)
 
+  const [requestError, setRequestError] = useState<string>()
   const [ideaOutput, setIdeaOutput] = useState<string>('')
 
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
@@ -148,6 +150,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
   const onGenerate = async () => {
     if (!isValid()) return
     if (isLoading) return
+    setRequestError(undefined)
     setLoadingTrue()
     try {
       const { error, ...res } = await generateRule({
@@ -168,6 +171,9 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
       } else {
         addVersion(res)
       }
+    } catch (error) {
+      if (!(error instanceof Error && error.name === 'AbortError'))
+        setRequestError(getErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' }))
     } finally {
       setLoadingFalse()
     }
@@ -191,7 +197,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
     >
       <DialogContent className="h-[min(680px,calc(100dvh-2rem))] w-full min-w-285 overflow-hidden">
         <div className="relative flex h-full min-h-0 flex-wrap">
-          <div className="h-full w-142.5 shrink-0 overflow-y-auto border-r border-divider-regular p-6">
+          <div className="h-full w-142.5 shrink-0 overflow-y-auto border-e border-divider-regular p-6">
             <div className="mb-5">
               <div className={`text-lg leading-7 font-bold ${s.textGradient}`}>
                 {t(($) => $['codegen.title'], { ns: 'appGeneration' })}
@@ -228,6 +234,11 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
               </div>
               <IdeaOutput value={ideaOutput} onChange={setIdeaOutput} />
 
+              {requestError && (
+                <p role="alert" className="mt-2 system-sm-regular text-text-destructive">
+                  {requestError}
+                </p>
+              )}
               <div className="mt-7 flex justify-end space-x-2">
                 <Button onClick={onClose}>
                   {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appGeneration' })}

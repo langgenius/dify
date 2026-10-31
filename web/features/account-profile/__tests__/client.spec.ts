@@ -43,7 +43,7 @@ it.each<{
         meta: { currentVersion, currentEnv },
       })
       expect(new URL(request.mock.calls[0]![0]).pathname).toBe('/console/api/account/profile')
-      expect(request.mock.calls[0]?.[2]).toMatchObject({ silent: true })
+      expect(request.mock.calls[0]?.[2]).toMatchObject({})
       expect(request.mock.calls[0]?.[2]?.request?.method).toBe('GET')
     } finally {
       client.clear()

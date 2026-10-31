@@ -15,6 +15,7 @@ export const usePipelineInit = () => {
   const workflowStore = useWorkflowStore()
   const { nodes: nodesTemplate, edges: edgesTemplate } = usePipelineTemplate()
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
+  const [error, setError] = useState<unknown>()
   const [isLoading, setIsLoading] = useState(true)
   const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const knowledgeName = useDatasetDetailContextWithSelector((s) => s.dataset)?.name
@@ -68,27 +69,29 @@ export const usePipelineInit = () => {
             notInitialWorkflow: true,
             shouldAutoOpenStartNodeSelector: true,
           })
-          consoleClient.rag.pipelines.byPipelineId.workflows.draft
-            .post(
-              {
-                params: { pipeline_id: pipelineId },
-                body: {
-                  graph: {
-                    nodes: nodesTemplate,
-                    edges: edgesTemplate,
-                  },
-                  environment_variables: [],
+          try {
+            const res = await consoleClient.rag.pipelines.byPipelineId.workflows.draft.post({
+              params: { pipeline_id: pipelineId },
+              body: {
+                graph: {
+                  nodes: nodesTemplate,
+                  edges: edgesTemplate,
                 },
+                environment_variables: [],
               },
-              { context: { silent: true } },
-            )
-            .then((res) => {
-              const { setDraftUpdatedAt } = workflowStore.getState()
-              setDraftUpdatedAt(res.updated_at)
-              handleGetInitialWorkflowData()
             })
+            const { setDraftUpdatedAt } = workflowStore.getState()
+            setDraftUpdatedAt(res.updated_at)
+            await handleGetInitialWorkflowData()
+          } catch (initializationError) {
+            setError(initializationError)
+            setIsLoading(false)
+          }
+          return
         }
       }
+      setError(error)
+      setIsLoading(false)
     }
   }, [nodesTemplate, edgesTemplate, workflowStore, pipelineId])
 
@@ -97,6 +100,12 @@ export const usePipelineInit = () => {
   }, [])
 
   return {
+    error,
+    refetch: () => {
+      setError(undefined)
+      setIsLoading(true)
+      return handleGetInitialWorkflowData()
+    },
     data,
     isLoading,
   }

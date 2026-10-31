@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { useModalContext } from '@/context/modal-context'
 import { consoleQuery } from '@/service/console'
 import { useInvalidateCheckInstalled } from '@/service/use-plugins'
@@ -67,8 +68,10 @@ export const usePluginOperations = ({
     modalStates,
   ])
 
+  const notifyError = useErrorNotification()
   const remove = useMutation(
     consoleQuery.workspaces.current.plugin.uninstall.post.mutationOptions({
+      onError: notifyError,
       onSuccess: async (response) => {
         if (!response.success) return
         await handlePluginUpdated(true)

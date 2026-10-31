@@ -1620,7 +1620,6 @@ function ConnectedSourceWorkflowSession({
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get.queryOptions({
       input: { params: { control_space_id: knowledgeSpaceId } },
-      context: { silent: true },
       retry: false,
       select: sourceProviderListFromApi,
     }),
@@ -1633,7 +1632,6 @@ function ConnectedSourceWorkflowSession({
   )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
-      context: { silent: true },
       input: (pageParam) => ({
         params: { control_space_id: knowledgeSpaceId },
         query: {

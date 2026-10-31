@@ -577,6 +577,42 @@ describe('useChat – handleResume', () => {
       })
       expect(result.current.isResponding).toBe(false)
     })
+
+    it('exposes a stream failure and retries the same run while preserving the conversation', async () => {
+      const { result } = await setupResumeWithTree()
+      const chatBeforeFailure = result.current.chatList
+      const controller = new AbortController()
+      act(() => {
+        capturedResumeOptions.getAbortController(controller)
+        capturedResumeOptions.onError('Stream unavailable')
+      })
+
+      expect(result.current.resumeFailure?.message).toBe('Stream unavailable')
+      expect(result.current.chatList).toEqual(chatBeforeFailure)
+      act(() => result.current.resumeFailure!.retry())
+
+      expect(controller.signal.aborted).toBe(true)
+      expect(mockSseGet).toHaveBeenLastCalledWith(
+        '/workflow/wfr-1/events?include_state_snapshot=true&continue_on_pause=true',
+        {},
+        expect.any(Object),
+      )
+      expect(result.current.resumeFailure).toBeUndefined()
+      expect(result.current.chatList).toEqual(chatBeforeFailure)
+    })
+
+    it('ignores errors from an intentionally stopped subscription', async () => {
+      const { result } = await setupResumeWithTree()
+      const controller = new AbortController()
+      act(() => {
+        capturedResumeOptions.getAbortController(controller)
+        result.current.handleStop()
+        capturedResumeOptions.onError('AbortError: The operation was aborted')
+      })
+
+      expect(result.current.resumeFailure).toBeUndefined()
+      expect(result.current.isResponding).toBe(false)
+    })
   })
 
   describe('onMessageEnd', () => {

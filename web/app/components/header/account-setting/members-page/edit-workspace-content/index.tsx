@@ -46,14 +46,11 @@ const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) => {
     if (isSubmitting || isSaveUnavailable) return
     setIsSubmitting(true)
     try {
-      await consoleClient.workspaces.info.post(
-        {
-          body: {
-            name: normalizedName,
-          },
+      await consoleClient.workspaces.info.post({
+        body: {
+          name: normalizedName,
         },
-        { context: { silent: true } },
-      )
+      })
       location.assign(`${location.origin}`)
     } catch (error) {
       toast.error(

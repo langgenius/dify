@@ -34,6 +34,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { AppSourceType } from '@/service/share'
+import { getErrorMessage } from '@/utils/error-message'
 import {
   applyAnnotationAdded,
   applyAnnotationEdited,
@@ -127,61 +128,65 @@ function DetailPanel({ appDetail, detail, onFeedback, initialMessages }: IDetail
     [allChatItems, threadChatItems],
   )
 
+  const [historyError, setHistoryError] = useState<unknown>()
   const [isLoading, setIsLoading] = useState(false)
 
-  const loadMoreMessages = useCallback(async () => {
-    if (isLoading || !hasMore || !appDetail.id || !detail.id) return
+  const loadMoreMessages = useCallback(
+    async (retry = false) => {
+      if (isLoading || (!retry && historyError) || !hasMore || !appDetail.id || !detail.id) return
 
-    // Throttle using ref to persist across re-renders
-    const now = Date.now()
-    if (now - lastLoadTimeRef.current < SCROLL_DEBOUNCE_MS) return
-    lastLoadTimeRef.current = now
+      // Throttle using ref to persist across re-renders
+      const now = Date.now()
+      if (!retry && now - lastLoadTimeRef.current < SCROLL_DEBOUNCE_MS) return
+      lastLoadTimeRef.current = now
 
-    setIsLoading(true)
+      setHistoryError(undefined)
+      setIsLoading(true)
 
-    try {
-      const params: GetAppsByAppIdChatMessagesData['query'] = {
-        conversation_id: detail.id,
-        limit: 10,
+      try {
+        const params: GetAppsByAppIdChatMessagesData['query'] = {
+          conversation_id: detail.id,
+          limit: 10,
+        }
+
+        // Use ref for pagination anchor to avoid stale closure issues
+        if (oldestAnswerId) {
+          params.first_id = oldestAnswerId
+        }
+
+        const messageRes = await consoleClient.apps.byAppId.chatMessages.get({
+          params: { app_id: appDetail.id },
+          query: params,
+        })
+
+        if (!messageRes.data || messageRes.data.length === 0) {
+          setHasMore(false)
+          return
+        }
+
+        if (messageRes.data.length > 0) {
+          const varValues = getStringInputs(messageRes.data.at(-1)!.inputs)
+          setVarValues(varValues)
+        }
+
+        setHasMore(messageRes.has_more)
+
+        const newItems = getFormattedChatList(
+          messageRes.data,
+          detail.id,
+          timezone!,
+          t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+        )
+
+        setAllChatItems((items) => mergeUniqueChatItems(items, newItems))
+      } catch (error) {
+        setHistoryError(error)
+      } finally {
+        setIsLoading(false)
       }
-
-      // Use ref for pagination anchor to avoid stale closure issues
-      if (oldestAnswerId) {
-        params.first_id = oldestAnswerId
-      }
-
-      const messageRes = await consoleClient.apps.byAppId.chatMessages.get({
-        params: { app_id: appDetail.id },
-        query: params,
-      })
-
-      if (!messageRes.data || messageRes.data.length === 0) {
-        setHasMore(false)
-        return
-      }
-
-      if (messageRes.data.length > 0) {
-        const varValues = getStringInputs(messageRes.data.at(-1)!.inputs)
-        setVarValues(varValues)
-      }
-
-      setHasMore(messageRes.has_more)
-
-      const newItems = getFormattedChatList(
-        messageRes.data,
-        detail.id,
-        timezone!,
-        t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-      )
-
-      setAllChatItems((items) => mergeUniqueChatItems(items, newItems))
-    } catch (error) {
-      console.error(error)
-      setHasMore(false)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [detail.id, hasMore, isLoading, timezone, t, appDetail, oldestAnswerId])
+    },
+    [detail.id, hasMore, isLoading, timezone, t, appDetail, oldestAnswerId, historyError],
+  )
 
   const handleScroll = useCallback(() => {
     const scrollableDiv = document.getElementById('scrollableDiv')
@@ -238,6 +243,16 @@ function DetailPanel({ appDetail, detail, onFeedback, initialMessages }: IDetail
         </div>
       </div>
       <div className="mx-1 mb-1 grow overflow-auto rounded-b-xl bg-background-section-burn">
+        {!!historyError && (
+          <div role="alert" className="p-3 system-sm-regular text-text-destructive">
+            <p>
+              {getErrorMessage(historyError) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </p>
+            <Button onClick={() => void loadMoreMessages(true)}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        )}
         {!isChatMode ? (
           completionMessage && (
             <div className="px-6 py-4">
