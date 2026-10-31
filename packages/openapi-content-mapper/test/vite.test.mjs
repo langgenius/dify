@@ -39,6 +39,20 @@ test('Vite watches new sidecars beside a symlink outside its root', async (t) =>
   const watcherReady = new Promise((resolve) => server.watcher.once('ready', resolve))
   await server.listen()
   await watcherReady
+  // Chokidar emits ready only once. Observe the real NodeFs handler finishing
+  // the later external-directory registration before creating new sidecars.
+  const handler = server.watcher._nodeFsHandler
+  const handleDir = handler._handleDir
+  const directoryReady = new Promise((resolve) => {
+    handler._handleDir = async function (...args) {
+      const result = await handleDir.apply(this, args)
+      if (args[0] === dir) resolve()
+      return result
+    }
+  })
+  t.after(() => {
+    handler._handleDir = handleDir
+  })
   await server.transformRequest('/entry.ts')
   const url = `/@fs${file}`
   await server.transformRequest(url)
@@ -63,6 +77,7 @@ test('Vite watches new sidecars beside a symlink outside its root', async (t) =>
         return send(...args)
       }
     })
+    await Promise.race([directoryReady, refreshed])
     writeFileSync(sidecar, source)
     await refreshed
     const path = kind === 'queries' ? ['pets'] : ['pets', 'get']
