@@ -89,7 +89,7 @@ export default function VerifyEmail(props: DeleteAccountProps) {
         <Button onClick={props.onCancel}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
-        <Countdown onResend={sendEmail} />
+        <Countdown onResend={() => sendEmail(undefined, { onError: notifyError })} />
       </DialogFooter>
     </Form>
   )

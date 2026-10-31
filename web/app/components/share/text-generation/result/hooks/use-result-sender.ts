@@ -127,6 +127,22 @@ export const useResultSender = ({
       return true
     }
 
+    const getAbortController = (controller: AbortController) => {
+      runState.abortControllerRef.current = controller
+      controller.signal.addEventListener(
+        'abort',
+        () => {
+          if (isEnd || isTimeout || runState.abortControllerRef.current !== controller) return
+          if (stopInactiveRequest()) return
+          isEnd = true
+          runState.setRespondingFalse()
+          runState.resetRunState()
+          onCompleted(runState.getCompletionRes(), taskId, false)
+        },
+        { once: true },
+      )
+    }
+
     void (async () => {
       await sleep(TEXT_GENERATION_TIMEOUT_MS)
       if (!isEnd) {
@@ -163,9 +179,7 @@ export const useResultSender = ({
         taskId,
       })
 
-      otherOptions.getAbortController = (controller) => {
-        runState.abortControllerRef.current = controller
-      }
+      otherOptions.getAbortController = getAbortController
       const onError = otherOptions.onError
       otherOptions.onError = (message) => {
         if (stopInactiveRequest() || runState.abortControllerRef.current?.signal.aborted) return
@@ -237,9 +251,7 @@ export const useResultSender = ({
           runState.setCompletionRes(completionChunks.join(''))
         },
         onError: handleCompletionError,
-        getAbortController: (abortController) => {
-          runState.abortControllerRef.current = abortController
-        },
+        getAbortController,
       },
       appSourceType,
       appId,

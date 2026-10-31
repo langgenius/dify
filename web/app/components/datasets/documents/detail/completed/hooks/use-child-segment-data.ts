@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
@@ -59,6 +60,7 @@ export const useChildSegmentData = (
     updateSegmentInCache,
   } = options
   const { t } = useTranslation(['common', 'datasetDocuments'])
+  const notifyError = useErrorNotification()
   const { eventEmitter } = useEventEmitterContextContext()
   const queryClient = useQueryClient()
   const datasetId = useDocumentContext((s) => s.datasetId) || ''
@@ -229,9 +231,10 @@ export const useChildSegmentData = (
             eventEmitter?.emit('update-child-segment-done')
           },
         },
-      )
+      ).catch(notifyError)
     },
     [
+      notifyError,
       datasetId,
       documentId,
       parentMode,

@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { ChunkingMode } from '@/models/datasets'
 import { usePathname } from '@/next/navigation'
@@ -72,6 +73,7 @@ export const useSegmentListData = (
     clearSelection,
   } = options
   const { t } = useTranslation(['common', 'datasetDocuments'])
+  const notifyError = useErrorNotification()
   const pathname = usePathname()
   const { eventEmitter } = useEventEmitterContextContext()
   const queryClient = useQueryClient()
@@ -326,9 +328,10 @@ export const useSegmentListData = (
             eventEmitter?.emit('update-segment-done')
           },
         },
-      )
+      ).catch(notifyError)
     },
     [
+      notifyError,
       datasetId,
       documentId,
       docForm,

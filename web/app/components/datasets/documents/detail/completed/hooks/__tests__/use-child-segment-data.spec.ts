@@ -322,10 +322,9 @@ describe('useChildSegmentData', () => {
     const { result, queryClient } = renderChildren()
     const original = queryClient.getQueryData(parentKey)
     await act(async () => {
-      await expect(
-        result.current.handleUpdateChildChunk('segment-1', 'child-1', 'Updated content'),
-      ).rejects.toThrow('Update failed')
+      await result.current.handleUpdateChildChunk('segment-1', 'child-1', 'Updated content')
     })
+    expect(mockNotify).toHaveBeenCalledExactlyOnceWith({ type: 'error', message: 'Update failed' })
     expect(queryClient.getQueryData(parentKey)).toEqual(original)
     expect(defaultOptions.onCloseChildSegmentDetail).not.toHaveBeenCalled()
     expect(mockEventEmitter.emit).toHaveBeenCalledWith('update-child-segment-done')
