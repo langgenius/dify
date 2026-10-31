@@ -10,7 +10,6 @@ import logging
 from typing import Any
 
 from celery import shared_task
-from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from graphon.enums import WorkflowExecutionStatus
@@ -18,6 +17,7 @@ from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from repositories.entities.workflow_execution import WorkflowExecution
+from repositories.workflow.execution_write_repository import save_workflow_run
 
 logger = logging.getLogger(__name__)
 
@@ -51,25 +51,17 @@ def save_workflow_execution_task(
             # Deserialize execution data
             execution = WorkflowExecution.model_validate(execution_data)
 
-            # Check if workflow run already exists
-            existing_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == execution.id_).with_for_update())
-
-            if existing_run:
-                # Update existing workflow run
-                _update_workflow_run_from_execution(existing_run, execution)
-                logger.debug("Updated existing workflow run: %s", execution.id_)
-            else:
-                # Create new workflow run
-                workflow_run = _create_workflow_run_from_execution(
-                    execution=execution,
-                    tenant_id=tenant_id,
-                    app_id=app_id,
-                    triggered_from=WorkflowRunTriggeredFrom(triggered_from),
-                    creator_user_id=creator_user_id,
-                    creator_user_role=CreatorUserRole(creator_user_role),
-                )
-                session.add(workflow_run)
-                logger.debug("Created new workflow run: %s", execution.id_)
+            workflow_run = _create_workflow_run_from_execution(
+                execution=execution,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                triggered_from=WorkflowRunTriggeredFrom(triggered_from),
+                creator_user_id=creator_user_id,
+                creator_user_role=CreatorUserRole(creator_user_role),
+            )
+            if not save_workflow_run(session, workflow_run):
+                logger.debug("Ignored stale workflow run update: %s", execution.id_)
+                return True
 
             session.commit()
             return True
@@ -114,6 +106,7 @@ def _create_workflow_run_from_execution(
     workflow_run.elapsed_time = execution.elapsed_time
     workflow_run.total_tokens = execution.total_tokens
     workflow_run.total_steps = execution.total_steps
+    workflow_run.exceptions_count = execution.exceptions_count
     workflow_run.created_by_role = creator_user_role
     workflow_run.created_by = creator_user_id
     workflow_run.created_at = execution.started_at
