@@ -252,9 +252,10 @@ describe('Pricing Modal Flow', () => {
       await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
 
       await waitFor(() => {
-        expect(mockGetSubscription).toHaveBeenCalledWith({
-          query: { plan: 'professional', interval: 'month' },
-        })
+        expect(mockGetSubscription).toHaveBeenCalledWith(
+          { query: { plan: 'professional', interval: 'month' } },
+          { context: { silent: true } },
+        )
         expect(navigateToCheckout).toHaveBeenCalledWith('https://pay.example.com')
       })
     })
@@ -273,9 +274,10 @@ describe('Pricing Modal Flow', () => {
       await user.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
 
       await waitFor(() => {
-        expect(mockGetSubscription).toHaveBeenCalledWith({
-          query: { plan: 'professional', interval: 'year' },
-        })
+        expect(mockGetSubscription).toHaveBeenCalledWith(
+          { query: { plan: 'professional', interval: 'year' } },
+          { context: { silent: true } },
+        )
         expect(navigateToCheckout).toHaveBeenCalledWith('https://pay.example.com')
       })
     })
