@@ -64,7 +64,6 @@ from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
 from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
-from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
 from graphon.enums import (
@@ -84,6 +83,7 @@ from models import Account, EndUser
 from models.human_input import HumanInputForm
 from models.workflow import WorkflowRun
 from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 
 # Maps the entry surface a workflow was invoked from to the HITL surface that
 # its resume tokens must be filtered for. Surfaces not in this map fall back to

@@ -9,9 +9,6 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend import FakeAgentBackendRunClient, FakeAgentBackendScenario
-from core.app.apps.workflow.app_config_manager import WorkflowAppConfig as CoreWorkflowAppConfig
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager as CoreWorkflowAppQueueManager
-from core.app.apps.workflow.app_runner import WorkflowAppRunner as CoreWorkflowAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
@@ -401,14 +398,17 @@ def make_workflow_runner(
     return runner, workflow_repository, node_repository
 
 
-def _make_legacy_workflow_runner(
-    sqlite_engine: Engine, *, human_input: bool = False
+def _make_disallowed_human_input_runner(
+    sqlite_engine: Engine,
+    workflow_runtime: WorkflowExecutionDependencies,
+    *,
+    human_input: bool = False,
 ) -> tuple[
-    CoreWorkflowAppRunner,
+    WorkflowAppRunner,
     SQLAlchemyWorkflowExecutionRepository,
     SQLAlchemyWorkflowNodeExecutionRepository,
 ]:
-    """Build the live core runner retained until atomic source activation migrates in #43680."""
+    """Build a service runner for callers that explicitly disallow Human Input."""
     tenant_id, app_id, workflow_id, user_id, run_id = (str(uuid4()) for _ in range(5))
     graph: dict[str, list[dict[str, object]]] = {
         "nodes": [{"id": "start", "data": {"type": "start", **StartNodeData(title="Start").model_dump(mode="json")}}],
@@ -447,7 +447,7 @@ def _make_legacy_workflow_runner(
     entity = WorkflowAppGenerateEntity(
         user_from=UserFrom.ACCOUNT,
         task_id=str(uuid4()),
-        app_config=CoreWorkflowAppConfig(
+        app_config=WorkflowAppConfig(
             tenant_id=tenant_id, app_id=app_id, workflow_id=workflow_id, app_mode=AppMode.WORKFLOW
         ),
         inputs={},
@@ -459,7 +459,7 @@ def _make_legacy_workflow_runner(
     )
     user = Account(name="Workflow Tester", email=f"{user_id}@example.com")
     user.id = user_id
-    queue = CoreWorkflowAppQueueManager(entity.task_id, user_id, entity.invoke_from, AppMode.WORKFLOW)
+    queue = WorkflowAppQueueManager(entity.task_id, user_id, entity.invoke_from, AppMode.WORKFLOW)
     workflow_repository = SQLAlchemyWorkflowExecutionRepository(
         sqlite_engine,
         tenant_id=tenant_id,
@@ -474,13 +474,13 @@ def _make_legacy_workflow_runner(
         app_id=app_id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
-    runner = CoreWorkflowAppRunner(
+    runner = WorkflowAppRunner(
+        runtime=workflow_runtime,
         application_generate_entity=entity,
         queue_manager=queue,
         variable_loader=DUMMY_VARIABLE_LOADER,
-        workflow=workflow,
+        workflow=workflow_snapshot(workflow),
         system_user_id=user_id,
-        execution_driver=WorkflowRunAgg.run,
     )
     return runner, workflow_repository, node_repository
 
@@ -662,12 +662,14 @@ class TestWorkflowRunAggCases:
 
     @staticmethod
     def test_late_form_submission_is_refreshed_before_the_real_queue_closes(
-        sqlite_session: Session, workflow_runtime: WorkflowExecutionDependencies
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        workflow_runtime: WorkflowExecutionDependencies,
     ) -> None:
         from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent
-        from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
         from enums.human_input import HumanInputFormStatus
         from graphon.engine_events import NodeRunStartedEvent
+        from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
         from tests.unit_tests.core.app.apps.test_workflow_app_runner import (
             _build_runner,
             _make_paused_workflow,
@@ -683,7 +685,7 @@ class TestWorkflowRunAggCases:
         for event in _resume_events(runner, entry):
             runner.handle_event(entry, event)
             if isinstance(event, NodeRunStartedEvent):
-                HumanInputFormSubmissionRepository().mark_submitted(
+                HumanInputFormSubmissionRepository(sessions=sqlite_session_factory).mark_submitted(
                     form_id=late.id,
                     recipient_id=None,
                     selected_action_id="approve",
@@ -700,11 +702,13 @@ class TestWorkflowRunAggCases:
     @staticmethod
     @pytest.mark.usefixtures("_local_storage")
     def test_durable_pause_resumes_with_one_form_completion_and_continuing_indexes(
-        sqlite_engine: Engine, workflow_runtime: WorkflowExecutionDependencies
+        sqlite_engine: Engine,
+        sqlite_session_factory: sessionmaker[Session],
+        workflow_runtime: WorkflowExecutionDependencies,
     ) -> None:
         from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent, QueueWorkflowStartedEvent
-        from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
         from models.human_input import HumanInputForm
+        from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
 
         original, workflow_repository, node_repository = make_workflow_runner(
             sqlite_engine, workflow_runtime, human_input=True
@@ -720,7 +724,7 @@ class TestWorkflowRunAggCases:
             assert form is not None
             form_id = form.id
             snapshot = WorkflowResumptionContext.loads(storage.load(pause.state_object_key).decode())
-        HumanInputFormSubmissionRepository().mark_submitted(
+        HumanInputFormSubmissionRepository(sessions=sqlite_session_factory).mark_submitted(
             form_id=form_id,
             recipient_id=None,
             selected_action_id="approve",
@@ -991,6 +995,7 @@ class TestWorkflowRunAggCases:
     def test_elapsed_time_accumulates_across_pauses_and_matches_delayed_stream_responses(
         monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
+        sqlite_session_factory: sessionmaker[Session],
         workflow_runtime: WorkflowExecutionDependencies,
         terminal_event: GraphRunSucceededEvent
         | GraphRunPartialSucceededEvent
@@ -999,11 +1004,11 @@ class TestWorkflowRunAggCases:
         status: WorkflowExecutionStatus,
     ) -> None:
         from core.app.entities.task_entities import WorkflowPauseStreamResponse
-        from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
         from core.workflow.system_variables import build_system_variables
         from enums.human_input import HumanInputFormStatus
         from graphon.entities import WorkflowStartReason
         from models.human_input import HumanInputForm
+        from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
         from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
 
         clock = [100.0]
@@ -1098,7 +1103,7 @@ class TestWorkflowRunAggCases:
                 entity = snapshot.get_generate_entity()
                 assert isinstance(entity, WorkflowAppGenerateEntity)
                 assert entity.workflow_execution_timing.elapsed_time == snapshot.elapsed_time == total
-                HumanInputFormSubmissionRepository().mark_submitted(
+                HumanInputFormSubmissionRepository(sessions=sqlite_session_factory).mark_submitted(
                     form_id=form_id,
                     recipient_id=None,
                     selected_action_id="approve",
@@ -1200,10 +1205,14 @@ class TestWorkflowRunAggCases:
             assert all(form.status == HumanInputFormStatus.EXPIRED for form in forms)
 
     @staticmethod
-    def test_legacy_caller_rejects_human_input_before_creating_run_or_form(sqlite_engine: Engine) -> None:
+    def test_legacy_caller_rejects_human_input_before_creating_run_or_form(
+        sqlite_engine: Engine, workflow_runtime: WorkflowExecutionDependencies
+    ) -> None:
         from models.human_input import HumanInputForm
 
-        runner, workflow_repository, node_repository = _make_legacy_workflow_runner(sqlite_engine, human_input=True)
+        runner, workflow_repository, node_repository = _make_disallowed_human_input_runner(
+            sqlite_engine, workflow_runtime, human_input=True
+        )
         runner.application_generate_entity.allow_human_input = False
         with pytest.raises(ValueError, match="Human Input nodes are not supported"):
             WorkflowRunAgg.run(runner, None, workflow_repository, node_repository)

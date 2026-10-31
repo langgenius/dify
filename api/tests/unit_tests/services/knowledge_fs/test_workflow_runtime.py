@@ -10,8 +10,6 @@ from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DifyRunContext
-from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.node_runtime import build_knowledge_fs_node_dependencies
 from extensions import ext_application_services
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
@@ -22,6 +20,8 @@ from services.knowledge_fs import workflow_runtime
 from services.knowledge_fs.knowledge_retrieval_v2.knowledge_retrieval_v2_node import KnowledgeRetrievalV2Node
 from services.knowledge_fs.resource import KnowledgeResourceRef
 from services.knowledge_fs.retrieval_contracts import KnowledgeFSAppBindingPayload, KnowledgeFSRetrievalTestPayload
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory
+from services.workflow.execution.adapters.node_runtime import build_knowledge_fs_node_dependencies
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

@@ -51,7 +51,7 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
+from graphon.node_events import RunRetrieverResourceEvent, StreamChunkEvent, StreamCompletedEvent
 from graphon.runtime import InitParams, RuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import (
@@ -401,12 +401,18 @@ class CancelFailingStreamBackendClient(FailingStreamBackendClient):
 
 
 def _drain_event_stream(node: DifyAgentNode):
-    return node._consume_event_stream(
+    stream = node._consume_event_stream(
         "run-1",
         inputs={},
         process_data={"workflow_agent_binding_id": "binding-1"},
         metadata={"agent_backend": {}},
+        stream_text=False,
     )
+    while True:
+        try:
+            next(stream)
+        except StopIteration as stop:
+            return stop.value
 
 
 def _node(
@@ -703,18 +709,81 @@ def test_agent_node_passes_execution_id_to_session_store_and_runtime_request_bui
     assert context.node_execution_id == execution_id
 
 
-def test_agent_node_records_agent_message_delta_without_text_stream(tool_providers):
+def test_agent_node_run_streams_agent_message_delta_as_text_chunks(tool_providers):
     events = list(_node(tool_providers=tool_providers, agent_backend_client=AgentMessageDeltaBackendClient())._run())
 
-    assert not any(isinstance(event, StreamChunkEvent) for event in events)
-    assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert events[:2] == [
+        StreamChunkEvent(selector=["agent-node", "text"], chunk="hello ", is_final=False),
+        StreamChunkEvent(selector=["agent-node", "text"], chunk="", is_final=True),
+    ]
+    assert len(events) == 3
+    result = cast(StreamCompletedEvent, events[2]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent"}
     agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
     assert agent_backend["status"] == "succeeded"
     assert agent_backend["agent_message_delta_count"] == 1
     assert agent_backend["agent_message_delta_length"] == len("hello ")
+
+
+def test_agent_node_streams_text_and_emits_trusted_knowledge_sources(tool_providers) -> None:
+    from pydantic_ai.messages import FunctionToolResultEvent, ToolReturnPart
+
+    citation = {
+        "id": "kfs_" + "a" * 32,
+        "control_space_id": "00000000-0000-4000-8000-000000000001",
+        "space_name": "Docs",
+        "node_id": "node",
+        "document_asset_id": "doc",
+        "artifact_hash": "hash",
+    }
+
+    class KnowledgeAndTextBackendClient(FakeAgentBackendRunClient):
+        def _events(self, run_id: str):
+            created_at = datetime(2026, 1, 1, tzinfo=UTC)
+            knowledge_result = ToolReturnPart(
+                tool_name="knowledge_query",
+                tool_call_id="call-1",
+                content={"knowledge_fs_citations": [citation]},
+                metadata={"knowledge_fs_citations": [citation]},
+            )
+            return (
+                RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at),
+                PydanticAIStreamRunEvent(
+                    id="2-0",
+                    run_id=run_id,
+                    created_at=created_at,
+                    data=FunctionToolResultEvent(part=knowledge_result),
+                ),
+                PydanticAIStreamRunEvent(
+                    id="3-0",
+                    run_id=run_id,
+                    created_at=created_at,
+                    data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
+                    agent_message_delta="hello ",
+                ),
+                RunSucceededEvent(
+                    id="4-0",
+                    run_id=run_id,
+                    created_at=created_at,
+                    data=RunSucceededEventData(
+                        output={"text": "hello agent"},
+                        session_snapshot=SessionSnapshot(layers={}),
+                    ),
+                ),
+            )
+
+    events = list(_node(tool_providers=tool_providers, agent_backend_client=KnowledgeAndTextBackendClient())._run())
+
+    assert events[:2] == [
+        StreamChunkEvent(selector=["agent-node", "text"], chunk="hello ", is_final=False),
+        StreamChunkEvent(selector=["agent-node", "text"], chunk="", is_final=True),
+    ]
+    resource_event = cast(RunRetrieverResourceEvent, events[2])
+    assert resource_event.retriever_resources[0]["knowledge_fs_citation"]["id"] == citation["id"]
+    result = cast(StreamCompletedEvent, events[3]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs == {"text": "hello agent"}
 
 
 def test_agent_node_structured_run_keeps_agent_message_delta_out_of_text_stream(tool_providers):
