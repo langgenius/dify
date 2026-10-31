@@ -3,7 +3,6 @@ import re
 import unittest
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import MagicMock
 from zoneinfo import ZoneInfoNotFoundError
 
 import pytest
@@ -569,7 +568,7 @@ def test_to_schedule_config_should_raise_for_cron_mode_without_expression() -> N
         ScheduleService.to_schedule_config(node_config=node_config)
 
 
-def test_to_schedule_config_should_build_from_visual_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_to_schedule_config_should_build_from_visual_mode() -> None:
     # Arrange
     node_config = NodeConfigDict(
         id="node-1",
@@ -582,7 +581,6 @@ def test_to_schedule_config_should_build_from_visual_mode(monkeypatch: pytest.Mo
             }
         ),
     )
-    monkeypatch.setattr(ScheduleService, "visual_to_cron", MagicMock(return_value="30 9 * * *"))
 
     # Act
     result = ScheduleService.to_schedule_config(node_config=node_config)
