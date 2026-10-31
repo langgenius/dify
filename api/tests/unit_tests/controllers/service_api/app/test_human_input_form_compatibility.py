@@ -26,7 +26,6 @@ from werkzeug.test import TestResponse
 
 from controllers.service_api import wraps
 from controllers.service_api.app import human_input_form as controller
-from enums.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import (
     FileInput,
     FileListInput,
@@ -37,7 +36,7 @@ from core.human_input_v2.resolved_form import (
 )
 from core.human_input_v2.shared.values import TenantId
 from core.workflow.nodes.human_input_v2.entities import Initiator
-from enums.human_input import HumanInputFormStatus, RecipientType
+from enums.human_input import ButtonStyle, HumanInputFormStatus, RecipientType
 from extensions.ext_application_services import ApplicationServices
 from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowExecutionStatus
