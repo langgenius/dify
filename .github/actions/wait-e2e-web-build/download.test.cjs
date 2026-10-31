@@ -116,7 +116,9 @@ test('retries transient GitHub API failures and still downloads the selected bui
   const execute = options.execute
   let failures = 0
   const delays = []
-  options.sleep = async (ms) => { delays.push(ms) }
+  options.sleep = async (ms) => {
+    delays.push(ms)
+  }
   options.execute = async (command, args, config) => {
     if (args[0] === 'api' && args[1].includes('/jobs?') && failures++ < 2) {
       const error = new Error('gh: Server Error (HTTP 502)')
@@ -132,11 +134,16 @@ test('retries transient GitHub API failures and still downloads the selected bui
 })
 
 test('limits retries and does not retry authorization failures', async () => {
-  for (const [status, attempts, waits] of [[502, 4, 3], [403, 1, 0]]) {
+  for (const [status, attempts, waits] of [
+    [502, 4, 3],
+    [403, 1, 0],
+  ]) {
     const { calls, options } = fixture()
     let attempted = 0
     const delays = []
-    options.sleep = async (ms) => { delays.push(ms) }
+    options.sleep = async (ms) => {
+      delays.push(ms)
+    }
     options.execute = async () => {
       attempted++
       const error = new Error(`gh: Error (HTTP ${status})`)

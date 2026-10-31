@@ -46,7 +46,8 @@ async function downloadWebBuild({
         ])
         return JSON.parse(stdout)
       } catch (error) {
-        if (attempt >= retryDelays.length || !/\bHTTP (?:429|5\d\d)\b/.test(error.stderr || '')) throw error
+        if (attempt >= retryDelays.length || !/\bHTTP (?:429|5\d\d)\b/.test(error.stderr || ''))
+          throw error
         console.warn(`GitHub API temporarily unavailable; retrying in ${retryDelays[attempt]}ms`)
         await sleep(retryDelays[attempt])
       }
