@@ -83,6 +83,8 @@ _THINK_OPEN_TAG = "<think>"
 _THINK_CLOSE_TAG = "</think>"
 _THINK_TAG_PATTERN = re.compile(r"<think>(.*?)</think>", re.DOTALL)
 _DETAIL_HIGH = "high"
+# ToolCallPart.provider_details key holding the plugin's own id when the adapter renamed a call.
+_PROVIDER_TOOL_CALL_ID_DETAIL = "dify_provider_tool_call_id"
 logger = logging.getLogger(__name__)
 
 
@@ -363,10 +365,11 @@ def _map_messages_to_prompt_messages(
     model_request_parameters: ModelRequestParameters,
 ) -> list[PromptMessage]:
     prompt_messages: list[PromptMessage] = []
+    provider_tool_call_ids = _collect_provider_tool_call_ids(messages)
 
     for message in messages:
         if isinstance(message, ModelRequest):
-            prompt_messages.extend(_map_model_request_to_prompt_messages(message))
+            prompt_messages.extend(_map_model_request_to_prompt_messages(message, provider_tool_call_ids))
         elif isinstance(message, ModelResponse):
             assistant_message = _map_model_response_to_prompt_message(message)
             if assistant_message is not None:
@@ -413,7 +416,33 @@ def _order_system_messages_first(
     return [SystemPromptMessage(content="\n\n".join(system_contents)), *non_system_messages]
 
 
-def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptMessage]:
+def _collect_provider_tool_call_ids(messages: Sequence[ModelMessage]) -> dict[str, str]:
+    """Map adapter-assigned tool call ids in history back to the ids their plugin produced."""
+    provider_ids: dict[str, str] = {}
+    for message in messages:
+        if not isinstance(message, ModelResponse):
+            continue
+        for part in message.parts:
+            if isinstance(part, ToolCallPart):
+                provider_id = _provider_tool_call_id(part)
+                if provider_id is not None:
+                    provider_ids[part.tool_call_id] = provider_id
+    return provider_ids
+
+
+def _provider_tool_call_id(part: ToolCallPart) -> str | None:
+    """Return the plugin's original id when ``_chunk_tool_call_ids`` had to rename this call."""
+    details = part.provider_details
+    if details is None:
+        return None
+    provider_id = details.get(_PROVIDER_TOOL_CALL_ID_DETAIL)
+    return provider_id if isinstance(provider_id, str) and provider_id else None
+
+
+def _map_model_request_to_prompt_messages(
+    message: ModelRequest,
+    provider_tool_call_ids: Mapping[str, str],
+) -> list[PromptMessage]:
     prompt_messages: list[PromptMessage] = []
 
     for part in message.parts:
@@ -423,7 +452,12 @@ def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptM
         elif isinstance(part, UserPromptPart):
             prompt_messages.append(UserPromptMessage(content=_map_user_prompt_content(part.content)))
         elif isinstance(part, ToolReturnPart):
-            prompt_messages.append(_map_tool_return_part_to_prompt_message(part))
+            prompt_messages.append(
+                _map_tool_return_part_to_prompt_message(
+                    part,
+                    tool_call_id=provider_tool_call_ids.get(part.tool_call_id, part.tool_call_id),
+                )
+            )
         elif isinstance(part, RetryPromptPart):
             if part.tool_name is None:
                 prompt_messages.append(UserPromptMessage(content=part.model_response()))
@@ -431,7 +465,7 @@ def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptM
                 prompt_messages.append(
                     ToolPromptMessage(
                         content=part.model_response(),
-                        tool_call_id=part.tool_call_id,
+                        tool_call_id=provider_tool_call_ids.get(part.tool_call_id, part.tool_call_id),
                         name=part.tool_name,
                     )
                 )
@@ -443,7 +477,7 @@ def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptM
     return prompt_messages
 
 
-def _map_tool_return_part_to_prompt_message(part: ToolReturnPart) -> ToolPromptMessage:
+def _map_tool_return_part_to_prompt_message(part: ToolReturnPart, *, tool_call_id: str) -> ToolPromptMessage:
     items = part.content_items(mode="str")
     if len(items) == 1 and isinstance(items[0], str):
         content: str | list[PromptMessageContentUnionTypes] | None = items[0]
@@ -460,7 +494,7 @@ def _map_tool_return_part_to_prompt_message(part: ToolReturnPart) -> ToolPromptM
                 raise UnexpectedModelBehavior(f"Unsupported daemon tool message content: {type(item).__name__}")
         content = content_items or None
 
-    return ToolPromptMessage(content=content, tool_call_id=part.tool_call_id, name=part.tool_name)
+    return ToolPromptMessage(content=content, tool_call_id=tool_call_id, name=part.tool_name)
 
 
 def _map_model_response_to_prompt_message(
@@ -488,7 +522,7 @@ def _map_model_response_to_prompt_message(
         elif isinstance(part, ToolCallPart):
             tool_calls.append(
                 AssistantPromptMessage.ToolCall(
-                    id=part.tool_call_id or f"tool-call-{index}-{part.tool_name}",
+                    id=_provider_tool_call_id(part) or part.tool_call_id or f"tool-call-{index}-{part.tool_name}",
                     type="function",
                     function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                         name=part.tool_name,
@@ -722,20 +756,64 @@ def _chunk_to_stream_events(
             else:
                 events.append(parts_manager.handle_part(vendor_part_id=None, part=part))
 
-    for index, tool_call in enumerate(message.tool_calls):
-        tool_call_id = _normalize_tool_call_id(tool_call.id)
-        vendor_id = tool_call_id or f"chunk-{chunk_sequence}-tool-{index}"
+    tool_call_ids = _chunk_tool_call_ids(message.tool_calls, chunk_sequence)
+    for tool_call, (tool_call_id, provider_tool_call_id) in zip(message.tool_calls, tool_call_ids, strict=True):
         events.append(
             parts_manager.handle_tool_call_part(
-                vendor_part_id=vendor_id,
+                vendor_part_id=tool_call_id,
                 tool_name=tool_call.function.name,
                 args=tool_call.function.arguments,
-                tool_call_id=tool_call_id or vendor_id,
+                tool_call_id=tool_call_id,
                 provider_name=provider_name,
+                provider_details=(
+                    {_PROVIDER_TOOL_CALL_ID_DETAIL: provider_tool_call_id}
+                    if provider_tool_call_id is not None
+                    else None
+                ),
             )
         )
 
     return events
+
+
+def _chunk_tool_call_ids(
+    tool_calls: Sequence[AssistantPromptMessage.ToolCall],
+    chunk_sequence: int,
+) -> list[tuple[str, str | None]]:
+    """Return ``(tool_call_id, renamed_provider_id)`` for each tool call in one gateway chunk.
+
+    A non-empty plugin id names one call across chunks, so a later chunk repeating that id
+    updates the same part. Entries inside one chunk are always distinct calls, but some plugins
+    fall back to the function name as the id, so parallel calls of one tool can share it. Later
+    duplicates get a ``-<n>`` suffix: Pydantic AI overwrites parts that share a vendor id and
+    rejects duplicate ``tool_call_id`` values in one batch. Suffixes depend only on the order
+    within the chunk, so a plugin that re-emits its accumulated tool-call list keeps updating the
+    same parts. The second item is the plugin id for renamed calls (``None`` otherwise) so prompt
+    history can send that id back unchanged.
+    """
+    provider_ids = [_normalize_tool_call_id(tool_call.id) for tool_call in tool_calls]
+    reserved_ids = {provider_id for provider_id in provider_ids if provider_id is not None}
+    occurrences: dict[str, int] = {}
+    tool_call_ids: list[tuple[str, str | None]] = []
+
+    for index, provider_id in enumerate(provider_ids):
+        if provider_id is None:
+            tool_call_ids.append((f"chunk-{chunk_sequence}-tool-{index}", None))
+            continue
+        occurrence = occurrences.get(provider_id, 0) + 1
+        occurrences[provider_id] = occurrence
+        if occurrence == 1:
+            tool_call_ids.append((provider_id, None))
+            continue
+        suffix = occurrence
+        tool_call_id = f"{provider_id}-{suffix}"
+        while tool_call_id in reserved_ids:
+            suffix += 1
+            tool_call_id = f"{provider_id}-{suffix}"
+        reserved_ids.add(tool_call_id)
+        tool_call_ids.append((tool_call_id, provider_id))
+
+    return tool_call_ids
 
 
 def _map_assistant_content_to_response_parts(

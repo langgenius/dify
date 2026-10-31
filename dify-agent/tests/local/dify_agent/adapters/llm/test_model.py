@@ -10,6 +10,7 @@ from uuid import uuid4
 import httpx
 import pytest
 from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
+from pydantic_ai import Agent
 from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior, UserError
 from pydantic_ai.messages import (
     InstructionPart,
@@ -46,6 +47,15 @@ from ._test_support import (
     make_usage,
     single_text_chunk,
 )
+
+
+def _tool_call(tool_name: str, arguments: str) -> AssistantPromptMessage.ToolCall:
+    """Build a plugin tool call that uses the function name as its id."""
+    return AssistantPromptMessage.ToolCall(
+        id=tool_name,
+        type="function",
+        function=AssistantPromptMessage.ToolCall.ToolCallFunction(name=tool_name, arguments=arguments),
+    )
 
 
 class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
@@ -899,6 +909,203 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cast(ToolCallPart, response.parts[1]).tool_call_id, "chunk-1-tool-0")
         self.assertEqual(cast(ToolCallPart, response.parts[0]).args, '{"script":"lookup find"}')
         self.assertEqual(cast(ToolCallPart, response.parts[1]).args, '{"script":"lookup out"}')
+
+    async def test_request_stream_keeps_parallel_tool_calls_that_share_a_plugin_id(self) -> None:
+        # Some plugins (e.g. Tongyi, or Ollama when the server omits ids) use the function name as the id.
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content="",
+                            tool_calls=[
+                                _tool_call("lookup", '{"query":"first"}'),
+                                _tool_call("lookup", '{"query":"second"}'),
+                                _tool_call("lookup", '{"query":"third"}'),
+                            ],
+                        ),
+                    ),
+                ),
+            )
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="ollama",
+            )
+
+            async with adapter.request_stream(
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            ) as stream:
+                _ = [event async for event in stream]
+                response = stream.get()
+
+        tool_calls = [cast(ToolCallPart, part) for part in response.parts]
+        self.assertEqual([part.part_kind for part in tool_calls], ["tool-call", "tool-call", "tool-call"])
+        self.assertEqual([part.tool_call_id for part in tool_calls], ["lookup", "lookup-2", "lookup-3"])
+        self.assertEqual(
+            [part.args for part in tool_calls],
+            ['{"query":"first"}', '{"query":"second"}', '{"query":"third"}'],
+        )
+        self.assertIsNone(tool_calls[0].provider_details)
+        self.assertEqual(tool_calls[1].provider_details, {"dify_provider_tool_call_id": "lookup"})
+        self.assertEqual(tool_calls[2].provider_details, {"dify_provider_tool_call_id": "lookup"})
+
+    async def test_request_stream_updates_reemitted_tool_call_lists_in_place(self) -> None:
+        # Plugins that accumulate tool calls may re-send the whole list on every chunk.
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content="",
+                            tool_calls=[_tool_call("lookup", '{"query":"first"}')],
+                        ),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(
+                            content="",
+                            tool_calls=[
+                                _tool_call("lookup", '{"query":"first"}'),
+                                _tool_call("lookup", '{"query":"second"}'),
+                            ],
+                        ),
+                    ),
+                ),
+            )
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="ollama",
+            )
+
+            async with adapter.request_stream(
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            ) as stream:
+                _ = [event async for event in stream]
+                response = stream.get()
+
+        tool_calls = [cast(ToolCallPart, part) for part in response.parts]
+        self.assertEqual([part.tool_call_id for part in tool_calls], ["lookup", "lookup-2"])
+        self.assertEqual([part.args for part in tool_calls], ['{"query":"first"}', '{"query":"second"}'])
+
+    async def test_request_sends_plugin_tool_call_ids_back_for_renamed_calls(self) -> None:
+        messages = [
+            ModelRequest(parts=[UserPromptPart("hello")]),
+            ModelResponse(
+                parts=[
+                    ToolCallPart(tool_name="lookup", args='{"query":"first"}', tool_call_id="lookup"),
+                    ToolCallPart(
+                        tool_name="lookup",
+                        args='{"query":"second"}',
+                        tool_call_id="lookup-2",
+                        provider_name="dify",
+                        provider_details={"dify_provider_tool_call_id": "lookup"},
+                    ),
+                ]
+            ),
+            ModelRequest(
+                parts=[
+                    ToolReturnPart(tool_name="lookup", content="first result", tool_call_id="lookup"),
+                    RetryPromptPart(content="bad query", tool_name="lookup", tool_call_id="lookup-2"),
+                ]
+            ),
+        ]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            prompt_messages = payload["target"]["prompt_messages"]
+
+            self.assertEqual([message["role"] for message in prompt_messages], ["user", "assistant", "tool", "tool"])
+            self.assertEqual([call["id"] for call in prompt_messages[1]["tool_calls"]], ["lookup", "lookup"])
+            self.assertEqual(
+                [call["function"]["arguments"] for call in prompt_messages[1]["tool_calls"]],
+                ['{"query":"first"}', '{"query":"second"}'],
+            )
+            self.assertEqual([message["tool_call_id"] for message in prompt_messages[2:]], ["lookup", "lookup"])
+
+            return build_stream_response(*single_text_chunk("adapter response"))
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="ollama",
+            )
+
+            response = await adapter.request(
+                messages,
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            )
+
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+
+    async def test_agent_runs_every_parallel_tool_call_that_shares_a_plugin_id(self) -> None:
+        requests: list[dict[str, object]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(json.loads(request.content.decode("utf-8")))
+            if len(requests) == 1:
+                return build_stream_response(
+                    LLMResultChunk(
+                        model="demo-model",
+                        delta=LLMResultChunkDelta(
+                            index=0,
+                            message=AssistantPromptMessage(
+                                content="",
+                                tool_calls=[
+                                    _tool_call("lookup", '{"query":"first"}'),
+                                    _tool_call("lookup", '{"query":"second"}'),
+                                ],
+                            ),
+                            finish_reason="tool_calls",
+                        ),
+                    ),
+                )
+            return build_stream_response(*single_text_chunk("done"))
+
+        seen_queries: list[str] = []
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="ollama",
+            )
+            agent = Agent(adapter)
+
+            @agent.tool_plain
+            async def lookup(query: str) -> str:
+                seen_queries.append(query)
+                return f"result for {query}"
+
+            result = await agent.run("look up both")
+
+        self.assertEqual(result.output, "done")
+        self.assertEqual(sorted(seen_queries), ["first", "second"])
+        follow_up = cast(list[dict[str, object]], cast(dict[str, object], requests[1]["target"])["prompt_messages"])
+        tool_messages = [message for message in follow_up if message["role"] == "tool"]
+        self.assertEqual([message["tool_call_id"] for message in tool_messages], ["lookup", "lookup"])
+        self.assertEqual(
+            [message["content"] for message in tool_messages],
+            ["result for first", "result for second"],
+        )
 
     async def test_request_splits_embedded_thinking_tags_into_parts(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:
