@@ -104,7 +104,7 @@ def dispatch_triggered_workflows_async(
             provider_id,
         )
 
-        subscription = application_services().workspaces.trigger_subscriptions.get_for_execution(
+        subscription = application_services().triggers.subscriptions.get_for_execution(
             tenant_id=tenant_id,
             subscription_id=subscription_id,
         )
@@ -112,7 +112,7 @@ def dispatch_triggered_workflows_async(
             logger.error("Subscription not found: %s", subscription_id)
             return {"status": "failed", "error": "Subscription not found"}
 
-        workflow_dispatched = application_services().workspaces.trigger_workflow_dispatch.dispatch(
+        workflow_dispatched = application_services().triggers.plugin_workflow_dispatch.dispatch(
             user_id=user_id,
             events=events,
             subscription=subscription,
@@ -125,7 +125,7 @@ def dispatch_triggered_workflows_async(
             timestamp=timestamp,
             request_id=request_id,
             subscription=subscription,
-            debug_events=application_services().workspaces.trigger_debug_events,
+            debug_events=application_services().triggers.debug_events,
         )
 
         return {

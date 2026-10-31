@@ -41,7 +41,7 @@ def test_unsupported_node_keeps_validation_error(harness: _Harness) -> None:
         from graphon.entities.graph_config import NodeConfigDictAdapter
 
         with pytest.raises(ValueError, match="unable to create event poller for node type start"):
-            application_services().workspaces.trigger_debug.poll(
+            application_services().triggers.debug.poll(
                 node_config=NodeConfigDictAdapter.validate_python(
                     {"id": "start", "data": {"type": "start", "title": "Start"}}
                 ),

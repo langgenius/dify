@@ -270,7 +270,7 @@ def test_committed_changes_succeed_when_redis_cache_invalidation_is_unavailable(
                 invalidate_cache=invalidate_cache,
             )
             harness.app.extensions["application_services"] = replace(
-                services, workspaces=replace(services.workspaces, trigger_subscription_management=management)
+                services, triggers=replace(services.triggers, subscription_management=management)
             )
             try:
                 response = Context().run(

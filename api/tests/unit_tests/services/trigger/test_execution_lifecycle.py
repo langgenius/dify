@@ -517,9 +517,7 @@ def test_each_worker_entrypoint_uses_injected_execution_service(
         redis=redis,
     )
     previous = app.extensions.get("application_services")
-    app.extensions["application_services"] = replace(
-        services, workspaces=replace(services.workspaces, trigger_executions=service)
-    )
+    app.extensions["application_services"] = replace(services, triggers=replace(services.triggers, executions=service))
     try:
         task.run({"workflow_trigger_log_id": execution.log.id})
     finally:

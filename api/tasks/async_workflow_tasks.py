@@ -45,19 +45,19 @@ logger = logging.getLogger(__name__)
 @shared_task(queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE)
 def execute_workflow_professional(task_data_dict: dict[str, Any]) -> None:
     task_data = WorkflowTaskData.model_validate(task_data_dict)
-    application_services().workspaces.trigger_executions.execute(task_data.workflow_trigger_log_id)
+    application_services().triggers.executions.execute(task_data.workflow_trigger_log_id)
 
 
 @shared_task(queue=AsyncWorkflowQueue.TEAM_QUEUE)
 def execute_workflow_team(task_data_dict: dict[str, Any]) -> None:
     task_data = WorkflowTaskData.model_validate(task_data_dict)
-    application_services().workspaces.trigger_executions.execute(task_data.workflow_trigger_log_id)
+    application_services().triggers.executions.execute(task_data.workflow_trigger_log_id)
 
 
 @shared_task(queue=AsyncWorkflowQueue.SANDBOX_QUEUE)
 def execute_workflow_sandbox(task_data_dict: dict[str, Any]) -> None:
     task_data = WorkflowTaskData.model_validate(task_data_dict)
-    application_services().workspaces.trigger_executions.execute(task_data.workflow_trigger_log_id)
+    application_services().triggers.executions.execute(task_data.workflow_trigger_log_id)
 
 
 @shared_task(name="resume_workflow_execution")
@@ -151,7 +151,7 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
     generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
     start_time = datetime.now(UTC)
     graph_engine_layers = []
-    trigger_logs = application_services().workspaces.trigger_execution_logs
+    trigger_logs = application_services().triggers.execution_logs
     trigger_log = trigger_logs.find_for_run(
         tenant_id=workflow_run.tenant_id, app_id=workflow_run.app_id, workflow_run_id=task_data.workflow_run_id
     )
