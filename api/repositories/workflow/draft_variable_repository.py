@@ -12,9 +12,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql.expression import and_, or_
 
 from configs import dify_config
-from core.app.file_access import DatabaseFileAccessController
-from factories.file_factory import StorageKeyLoader
-from graphon.file import File
 from graphon.variables import Segment
 from graphon.variables.consts import SELECTORS_LENGTH
 from graphon.variables.types import SegmentType
@@ -306,12 +303,6 @@ class WorkflowDraftVariableRepository:
                     )
                 )
             )
-
-    def load_file_keys(self, tenant_id: str, files: list[File]) -> None:
-        with self._sessions() as session:
-            StorageKeyLoader(
-                session, tenant_id=tenant_id, access_controller=DatabaseFileAccessController()
-            ).load_storage_keys(files)
 
     def save(self, variables: Sequence[WorkflowDraftVariable], files: Sequence[WorkflowDraftVariableFile]) -> None:
         with self._sessions.begin() as session:
