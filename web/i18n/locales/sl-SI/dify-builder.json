@@ -323,6 +323,7 @@
   "preflight.pluginMissing": "{{count}} integracijaov ni nameščenih",
   "reset": "Začni nov pogovor",
   "resourceNeedsAuthorization": "Potrebna je odobritev",
+  "resourceNeedsSetup": "Potrebna je nastavitev",
   "resourceReady": "Nastavljeno · izvajanje ni preverjeno",
   "runTest": "Zaženi test",
   "running": "Tek",

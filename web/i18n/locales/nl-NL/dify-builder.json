@@ -313,6 +313,7 @@
   "preflight.pluginMissing": "{{count}} integraties niet geïnstalleerd",
   "reset": "Een nieuw gesprek starten",
   "resourceNeedsAuthorization": "Autorisatie vereist",
+  "resourceNeedsSetup": "Instellen vereist",
   "resourceReady": "Geconfigureerd · uitvoering niet gecontroleerd",
   "runTest": "Test uitvoeren",
   "running": "Running",

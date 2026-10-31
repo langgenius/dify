@@ -313,6 +313,7 @@
   "preflight.pluginMissing": "{{count}} entegrasyon yüklenmedi",
   "reset": "Yeni bir konuşma başlat",
   "resourceNeedsAuthorization": "Yetkilendirme gerekli",
+  "resourceNeedsSetup": "Kurulum gerekli",
   "resourceReady": "Yapılandırıldı · çalışma durumu doğrulanmadı",
   "runTest": "Testi çalıştır",
   "running": "Çalışıyor",

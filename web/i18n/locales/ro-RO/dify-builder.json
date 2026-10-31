@@ -317,6 +317,7 @@
   "preflight.pluginMissing": "{{count}} integrări neinstalate",
   "reset": "Începe o conversație nouă",
   "resourceNeedsAuthorization": "Autorizare necesară",
+  "resourceNeedsSetup": "Configurare necesară",
   "resourceReady": "Configurat · execuție neverificată",
   "runTest": "Rulează testul",
   "running": "Rulând",

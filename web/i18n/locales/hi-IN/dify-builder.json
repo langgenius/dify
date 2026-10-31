@@ -313,6 +313,7 @@
   "preflight.pluginMissing": "{{count}} एकीकरण इंस्टॉल नहीं हैं",
   "reset": "नई बातचीत शुरू करें",
   "resourceNeedsAuthorization": "अनुमति आवश्यक है",
+  "resourceNeedsSetup": "सेटअप आवश्यक है",
   "resourceReady": "कॉन्फ़िगर किया गया · संचालन सत्यापित नहीं",
   "runTest": "परीक्षण चलाएँ",
   "running": "चल रहा है",
