@@ -384,7 +384,6 @@ it('saves the trusted graph on a directed request and acknowledges the persisted
         graph: expect.objectContaining({ nodes: [expect.objectContaining({ id: 'start' })] }),
       }),
     }),
-    expect.anything(),
   )
   expect(collaborationManager.refreshGraphSynchronously).toHaveBeenCalled()
 })
@@ -441,7 +440,6 @@ it('saves newly applied features when a follower requests synchronization', asyn
         features: expect.objectContaining({ opening_statement: 'latest-model' }),
       }),
     }),
-    expect.anything(),
   )
 })
 

@@ -7,6 +7,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { DialogClose, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
+import { getErrorMessage } from '@/utils/error-message'
 import { DeploymentConfigurationContent } from './content'
 import { useDeploymentConfigurationForm } from './use-deployment-configuration-form'
 import { useDeploymentConfigurationQueries } from './use-deployment-configuration-queries'
@@ -43,18 +44,25 @@ export function DeploymentConfiguration({
     environmentId: request.environmentId,
     workflowId: version.id,
   })
-  const { canDeploy, clearFieldError, fieldError, formRef, handleSubmit, isDeploying } =
-    useDeploymentConfigurationForm({
-      appId,
-      configurationValues,
-      disabled,
-      environmentId: request.environmentId,
-      invalidateAppEnvironmentsOnSuccess,
-      queryState,
-      workflowId: version.id,
-      onClose,
-      onDeploymentStarted,
-    })
+  const {
+    canDeploy,
+    clearFieldError,
+    fieldError,
+    formRef,
+    handleSubmit,
+    isDeploying,
+    submitError,
+  } = useDeploymentConfigurationForm({
+    appId,
+    configurationValues,
+    disabled,
+    environmentId: request.environmentId,
+    invalidateAppEnvironmentsOnSuccess,
+    queryState,
+    workflowId: version.id,
+    onClose,
+    onDeploymentStarted,
+  })
 
   return (
     <form ref={formRef} className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
@@ -64,7 +72,7 @@ export function DeploymentConfiguration({
             <IconButton
               aria-label={tCommon(($) => $['operation.close'])}
               size="lg"
-              className="absolute top-5 right-5"
+              className="absolute inset-e-5 top-5"
               type="button"
             >
               <span aria-hidden className="i-ri-close-line size-4" />
@@ -72,13 +80,13 @@ export function DeploymentConfiguration({
           }
         />
       )}
-      <header className={cn('shrink-0', embedded ? 'px-3 pt-3.5 pb-1' : 'px-5 pt-5 pr-14 pb-1')}>
+      <header className={cn('shrink-0', embedded ? 'px-3 pt-3.5 pb-1' : 'px-5 pe-14 pt-5 pb-1')}>
         {onBack && (
           <Button
             type="button"
             size="small"
             variant="ghost-accent"
-            className="-ml-1 h-6 gap-1 px-1 system-xs-semibold-uppercase"
+            className="-ms-1 h-6 gap-1 px-1 system-xs-semibold-uppercase"
             onClick={onBack}
           >
             <span aria-hidden className="i-ri-arrow-left-line size-4" />
@@ -108,6 +116,11 @@ export function DeploymentConfiguration({
         version={version}
       />
 
+      {submitError && (
+        <p role="alert" className="px-6 pt-3 system-sm-regular text-text-destructive">
+          {getErrorMessage(submitError) ?? tCommon(($) => $['api.actionFailed'])}
+        </p>
+      )}
       <footer
         className={cn(
           'flex shrink-0 justify-end gap-2',

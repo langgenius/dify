@@ -40,6 +40,7 @@ import { setLocaleOnClient } from '@/i18n/client'
 import { languages } from '@/i18n/language'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { timezones } from '@/utils/timezone'
 
 type TimezoneOption = (typeof timezones)[number]
@@ -219,6 +220,12 @@ export default function PreferencePage() {
           </ComboboxPortal>
         </Combobox>
       </div>
+      {updateProfile.error && !updateProfile.isPending && (
+        <p role="alert" className="system-sm-regular text-text-destructive">
+          {getErrorMessage(updateProfile.error) ??
+            t(($) => $['api.actionFailed'], { ns: 'common' })}
+        </p>
+      )}
     </div>
   )
 }

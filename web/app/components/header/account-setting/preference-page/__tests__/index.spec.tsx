@@ -265,7 +265,7 @@ describe('PreferencePage - Interactions', () => {
     expect(mockRefresh).toHaveBeenCalledOnce()
   })
 
-  it('should show one request-layer error and restore controls when language saving fails', async () => {
+  it('should show an inline error and restore controls when language saving fails', async () => {
     const chinese = getLanguageOption('zh-Hans')
     await mockProfileFailure('Update failed')
 
@@ -273,7 +273,7 @@ describe('PreferencePage - Interactions', () => {
 
     await selectOption('common.language.displayLanguage', chinese.name)
 
-    expect(await screen.findAllByText('Update failed')).toHaveLength(1)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Update failed')
     await waitFor(() =>
       expect(
         screen.getByRole('combobox', { name: 'common.language.displayLanguage' }),
@@ -333,7 +333,7 @@ describe('PreferencePage - Interactions', () => {
     await waitFor(() => expect(trigger).toHaveTextContent(midwayTimezone.name))
   }, 15000)
 
-  it('should show one request-layer error and preserve the saved timezone on failure', async () => {
+  it('should show an inline error and preserve the saved timezone on failure', async () => {
     const midwayTimezone = getTimezoneOption('Pacific/Midway')
     await mockProfileFailure('Timezone failed')
 
@@ -341,7 +341,7 @@ describe('PreferencePage - Interactions', () => {
 
     await selectOption('common.language.timezone', midwayTimezone.name)
 
-    expect(await screen.findAllByText('Timezone failed')).toHaveLength(1)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Timezone failed')
     await waitFor(() =>
       expect(
         screen.getByRole('combobox', { name: 'common.language.timezone' }),

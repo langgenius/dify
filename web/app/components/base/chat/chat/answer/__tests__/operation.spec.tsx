@@ -165,11 +165,15 @@ describe('Operation', () => {
         await user.type(input, 'Needs more detail')
         await user.click(screen.getByRole('button', { name: 'common.operation.submit' }))
         await waitFor(() => expect(input).not.toHaveAttribute('readonly'))
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'common.feedback.title' })).toBeInTheDocument()
         expect(input).toHaveValue('Needs more detail')
         await user.type(input, ' please')
         await user.click(screen.getByRole('button', { name: 'common.operation.submit' }))
-        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+        await waitFor(() =>
+          expect(
+            screen.queryByRole('dialog', { name: 'common.feedback.title' }),
+          ).not.toBeInTheDocument(),
+        )
         expect(onFeedback).toHaveBeenLastCalledWith('msg-1', {
           rating: 'dislike',
           content: 'Needs more detail please',
