@@ -408,6 +408,28 @@ it('disables configuring a workflow tool without tool.manage', async () => {
   expect(screen.getByRole('button', { name: /navigation.common.workflowAsTool/ })).toBeDisabled()
 })
 
+it.each(['chat', 'workflow'] as const)(
+  'shows a %s publish error and clears it after retry',
+  async (mode) => {
+    const user = userEvent.setup()
+    const error = vi.spyOn(toast, 'error')
+    const onPublish = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Publish permission denied'))
+      .mockResolvedValue(undefined)
+    renderPublisher({ app: { mode }, props: { onPublish } })
+    await user.click(trigger())
+    await user.click(publishUpdate())
+    expect(await screen.findByRole('alert')).toHaveTextContent('Publish permission denied')
+    expect(publishUpdate()).toBeEnabled()
+    expect(error).not.toHaveBeenCalled()
+    await user.click(publishUpdate())
+    expect(await screen.findByRole('button', { name: 'workflow.common.published' })).toBeDisabled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(onPublish).toHaveBeenCalledTimes(2)
+  },
+)
+
 it('keeps failed publish and restore actions available for retry', async () => {
   const user = userEvent.setup()
   const onPublish = vi

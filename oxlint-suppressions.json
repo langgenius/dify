@@ -241,11 +241,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/app-publisher/built-in-publisher/summary-section.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/app/app-publisher/environment-deployment-flow/latest-version-row.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2

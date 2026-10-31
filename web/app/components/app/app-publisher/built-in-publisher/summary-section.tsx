@@ -9,6 +9,7 @@ import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
+import { getErrorMessage } from '@/utils/error-message'
 import { APP_PUBLISH_HOTKEY } from '../hotkeys'
 import PublishWithMultipleModel from '../publish-with-multiple-model'
 import { PublisherTimelineMarker } from '../shared/timeline-marker'
@@ -39,6 +40,7 @@ type PublisherSummarySectionProps = Pick<
   isWorkflowApp?: boolean
   onEditVersion?: () => void
   published: boolean
+  publishError?: unknown
   upgradeHighlightStyle: CSSProperties
   versionInfo?: PublisherVersionInfo | null
 }
@@ -58,12 +60,13 @@ export function PublisherSummarySection({
   onEditVersion,
   publishDisabled = false,
   published,
+  publishError,
   publishedAt,
   startNodeLimitExceeded = false,
   upgradeHighlightStyle,
   versionInfo,
 }: PublisherSummarySectionProps) {
-  const { t } = useTranslation(['workflow', 'workflowHistory'])
+  const { t } = useTranslation(['workflow', 'workflowHistory', 'common'])
   const hasPublishedVersion = Boolean(publishedAt)
   const publishedTimestamp =
     publishedAt || (versionInfo?.created_at ? versionInfo.created_at * 1000 : undefined)
@@ -189,6 +192,11 @@ export function PublisherSummarySection({
           </div>
         )}
       </div>
+      {!!publishError && (
+        <p role="alert" className="system-sm-regular text-text-destructive">
+          {getErrorMessage(publishError) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+        </p>
+      )}
       <div className="flex w-full flex-col">
         {debugWithMultipleModel ? (
           <PublishWithMultipleModel
@@ -242,7 +250,7 @@ export function PublisherSummarySection({
           </>
         )}
       </div>
-      <div className="flex items-center gap-1 py-0.5 pr-0.5 pl-1">
+      <div className="flex items-center gap-1 py-0.5 ps-1 pe-0.5">
         <PublisherTimelineMarker position="bottom" />
         <p role="status" className="min-w-0 flex-1 truncate system-xs-regular text-text-tertiary">
           {published ? (

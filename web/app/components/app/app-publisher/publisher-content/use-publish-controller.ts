@@ -60,6 +60,7 @@ export function usePublishController({
   supportsMultiEnvironment,
 }: UsePublishControllerParams) {
   const [published, setPublished] = useState(false)
+  const [publishError, setPublishError] = useState<unknown>()
   const [isPublishing, setIsPublishing] = useState(false)
   const publishingRef = useRef(false)
   const queryClient = useQueryClient()
@@ -119,10 +120,12 @@ export function usePublishController({
   async function handlePublish(params?: AppPublisherPublishParams) {
     if (publishingRef.current) return
     publishingRef.current = true
+    setPublishError(undefined)
     setIsPublishing(true)
     try {
       await publishApp(params)
     } catch (error) {
+      if (!(error instanceof Error && error.name === 'AbortError')) setPublishError(error)
       console.warn('[app-publisher] publish failed', error)
       setPublished(false)
     } finally {
@@ -178,8 +181,12 @@ export function usePublishController({
     isPublishedWorkflowSuccess,
     isWorkflowApp,
     published,
+    publishError,
     publishedWorkflow,
     publishWorkflowTool,
-    resetPublished: () => setPublished(false),
+    resetPublished: () => {
+      setPublished(false)
+      setPublishError(undefined)
+    },
   }
 }
