@@ -79,6 +79,8 @@ from services.human_input_v2.form_service import (
     FormExecutionContext,
     HumanInputFormService,
 )
+from services.tools.provider_queries import ToolProviderIcons
+from services.workflow.execution.ports import ExecutionContexts
 
 _TENANT = TenantId("00000000-0000-0000-0000-000000000001")
 _APP = "00000000-0000-0000-0000-000000000002"
@@ -1521,8 +1523,8 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     monkeypatch: pytest.MonkeyPatch,
     recipient: Initiator | OnetimeEmail,
     *,
-    workflow_contexts,
-    tool_providers,
+    workflow_contexts: ExecutionContexts,
+    tool_providers: ToolProviderIcons,
 ) -> None:
     from core.app.entities.queue_entities import QueueWorkflowPausedEvent
     from core.app.entities.task_entities import (

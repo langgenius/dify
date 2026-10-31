@@ -1,6 +1,8 @@
 """Credential composition tests for the canonical tool runtime manager."""
 
+from collections.abc import Generator
 from types import SimpleNamespace
+from typing import Never
 from unittest.mock import Mock, patch
 
 import pytest
@@ -13,7 +15,7 @@ from services.tools.tool_manager import ToolManager
 
 
 @pytest.fixture(autouse=True)
-def _restore_credential_resolver():
+def _restore_credential_resolver() -> Generator[None]:
     previous = ToolManager._credential_resolver
     try:
         yield
@@ -64,7 +66,7 @@ def test_builtin_runtime_uses_configured_serialized_credential_resolver() -> Non
 def test_builtin_runtime_preserves_refresh_coordination_unavailable_error() -> None:
     tool = Mock()
 
-    def unavailable(**_kwargs: object):
+    def unavailable(**_kwargs: object) -> Never:
         raise CredentialRefreshUnavailableError
 
     ToolManager.configure_credential_resolver(unavailable)
