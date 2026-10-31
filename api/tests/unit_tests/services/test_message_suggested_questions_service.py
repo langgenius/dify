@@ -56,6 +56,7 @@ from services.message_suggested_questions_service import (
     SuggestedQuestionsInvokeFrom,
 )
 from tests.helpers.unit.core.model_fixtures import make_model_instance
+from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
 
 @dataclass(frozen=True)
@@ -197,7 +198,9 @@ def harness(
             message,
             sqlite_session_factory,
             queries,
-            MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()),
+            MessageSuggestedQuestionsService(
+                queries=queries, generator=SuggestedQuestionsGenerator(trace_scopes=untraced_scopes())
+            ),
             read_sessions,
             scoped_sessions,
         )

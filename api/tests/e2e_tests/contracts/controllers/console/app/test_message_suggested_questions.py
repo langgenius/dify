@@ -8,6 +8,7 @@ from http import HTTPStatus
 from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.testing import RecordingEgress
 from flask import Flask
 from sqlalchemy import Connection, Engine, delete, event, func, select, text, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
@@ -47,7 +48,6 @@ from repositories.message_repository import MessageRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.app.agent_app_service import AgentAppAccessService
-from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService
 from services.entities.message_entities import MessageAccount
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
@@ -60,6 +60,7 @@ from services.recommended_app_package_service import RecommendedAppPackageServic
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
 from tests.helpers.unit.rbac_fakes import RBACDomain
+from tests.helpers.unit.services.tracing_ports import deployment_provider_configs, untraced_scopes
 
 
 @dataclass
@@ -187,7 +188,7 @@ def harness(
         rbac_members=rbac_domain.rbac.members,
         tracing_configs=AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=sqlite_session_factory),
-            provider=OpsTraceManagerGateway(),
+            provider=deployment_provider_configs(RecordingEgress([], grpc_target=None)),
         ),
         oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis),
         recommended_packages=RecommendedAppPackageService(
@@ -204,7 +205,9 @@ def harness(
     services = _Services(
         app_services,
         _Agents(AgentAppAccessService(references=AgentAppRepository(session_factory=sqlite_session_factory))),
-        MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()),
+        MessageSuggestedQuestionsService(
+            queries=queries, generator=SuggestedQuestionsGenerator(trace_scopes=untraced_scopes())
+        ),
         rbac_domain.rbac,
     )
     flask_app.extensions["application_services"] = services

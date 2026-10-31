@@ -19,7 +19,6 @@ class _CollectionResponse(BaseModel):
 
 @shared_task(
     name="schedule.collect_agent_sandbox_usage.collect_agent_sandbox_usage",
-    queue="ops_trace",
     soft_time_limit=270,
     time_limit=300,
     ignore_result=True,

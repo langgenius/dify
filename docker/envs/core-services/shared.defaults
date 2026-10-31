@@ -1,0 +1,28 @@
+# Docker-specific defaults, loaded before optional env files and docker/.env.
+# Keep runtime defaults in the application or Compose; only Docker overrides belong here.
+# Override these values in docker/.env or the matching envs/*.env file, not here.
+CONSOLE_CORS_ALLOW_ORIGINS=*
+TRIGGER_URL=http://localhost
+ENDPOINT_URL_TEMPLATE=http://localhost/e/{hook_id}
+MIGRATION_ENABLED=true
+LOG_FILE=/app/logs/server.log
+LOG_DATEFORMAT=%Y-%m-%d %H:%M:%S
+CELERY_WORKER_AMOUNT=4
+DB_HOST=db_postgres
+DB_PASSWORD=difyai123456
+REDIS_HOST=redis
+REDIS_PASSWORD=difyai123456
+REDIS_KEEPALIVE=true
+CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-difyai123456}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/1
+OPENDAL_FS_ROOT=storage
+VECTOR_STORE=weaviate
+WEAVIATE_ENDPOINT=http://weaviate:8080
+WEAVIATE_API_KEY=WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+WEAVIATE_GRPC_ENDPOINT=grpc://weaviate:50051
+SSRF_PROXY_HTTP_URL=http://ssrf_proxy:3128
+SSRF_PROXY_HTTPS_URL=http://ssrf_proxy:3128
+PLUGIN_DAEMON_URL=http://plugin_daemon:5002
+PLUGIN_DAEMON_KEY=lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+PLUGIN_MAX_PACKAGE_SIZE=52428800
+AGENT_BACKEND_BASE_URL=http://agent_backend:5050
+NEXT_PUBLIC_ENABLE_AGENT_V2=true

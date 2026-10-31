@@ -7,6 +7,7 @@
 # Shared configuration using YAML anchors and env_file
 x-shared-api-worker-config: &shared-api-worker-config
   env_file:
+    - ./envs/core-services/shared.defaults
     - path: ./envs/core-services/shared.env
       required: false
     - path: ./envs/core-services/api.env
@@ -73,6 +74,7 @@ x-shared-api-worker-config: &shared-api-worker-config
 
 x-shared-worker-config: &shared-worker-config
   env_file:
+    - ./envs/core-services/shared.defaults
     - path: ./envs/core-services/shared.env
       required: false
     - path: ./envs/core-services/worker.env
@@ -147,6 +149,7 @@ x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
   # Match the two-hour default task deadline plus shutdown margin for long document jobs.
   stop_grace_period: 125m
   env_file:
+    - ./envs/core-services/shared.defaults
     - path: ./envs/core-services/shared.env
       required: false
     - path: ./envs/core-services/worker.env
@@ -184,6 +187,7 @@ x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
 
 x-shared-worker-beat-config: &shared-worker-beat-config
   env_file:
+    - ./envs/core-services/shared.defaults
     - path: ./envs/core-services/shared.env
       required: false
     - path: ./envs/core-services/worker-beat.env
@@ -469,6 +473,7 @@ services:
     image: langgenius/dify-web:1.18.0
     restart: always
     env_file:
+      - ./envs/core-services/shared.defaults
       - path: ./envs/core-services/web.env
         required: false
       - path: ./envs/security.env
@@ -514,7 +519,7 @@ services:
       POSTGRES_DB: ${DB_DATABASE:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     command: >
-      postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
+      postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-200}'
                -c 'shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}'
                -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
                -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'

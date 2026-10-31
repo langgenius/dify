@@ -45,6 +45,7 @@ from services.message_suggested_questions_service import (
 )
 from services.resource_access_token_service import ResourceAccessTokenService
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
+from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
 
 @dataclass(frozen=True)
@@ -186,7 +187,9 @@ def harness(
     queries = SuggestedQuestionsQuery(
         session_factory=query_factory, repository=MessageRepository(session_factory=query_factory)
     )
-    service = MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator())
+    service = MessageSuggestedQuestionsService(
+        queries=queries, generator=SuggestedQuestionsGenerator(trace_scopes=untraced_scopes())
+    )
     app.extensions["application_services"] = _Services(
         app_definitions=AppDefinitionQueryService(
             definitions=AppDefinitionQueryRepository(session_factory=admission_factory), builtin_icon_url_prefix=""

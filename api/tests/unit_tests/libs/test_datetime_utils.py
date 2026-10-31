@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 import pytz
 
-from libs.datetime_utils import naive_utc_now, parse_time_range, to_utc_timestamp, utc_now
+from libs.datetime_utils import Timing, measure_time, naive_utc_now, parse_time_range, to_utc_timestamp, utc_now
 
 
 def test_utc_now(monkeypatch: pytest.MonkeyPatch):
@@ -46,6 +46,27 @@ def test_naive_utc_now(monkeypatch: pytest.MonkeyPatch):
 )
 def test_to_utc_timestamp(value: datetime.datetime):
     assert to_utc_timestamp(value) == 1704067200
+
+
+def test_measure_time_yields_aware_utc_timing() -> None:
+    with measure_time() as timer:
+        pass
+
+    assert timer.started_at.tzinfo is datetime.UTC
+    assert timer.ended_at.tzinfo is datetime.UTC
+    assert timer.ended_at >= timer.started_at
+
+
+def test_measure_time_records_end_when_block_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    started_at = datetime.datetime(2026, 8, 26, 12, tzinfo=datetime.UTC)
+    ended_at = started_at + datetime.timedelta(seconds=2)
+    clock = iter([started_at, ended_at])
+    monkeypatch.setattr("libs.datetime_utils._now_func", lambda tz: next(clock).astimezone(tz))
+
+    with pytest.raises(RuntimeError, match="boom"), measure_time() as timer:
+        raise RuntimeError("boom")
+
+    assert timer == Timing(started_at=started_at, ended_at=ended_at)
 
 
 class TestParseTimeRange:
