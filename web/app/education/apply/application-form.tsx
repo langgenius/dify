@@ -1,7 +1,10 @@
 'use client'
 
+import type { contract } from '@dify/contracts/api/console/account/orpc.gen'
 import type { SubscriptionModel } from '@dify/contracts/api/console/features/types.gen'
 import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ErrorFromErrorMap, InferContractRouterErrorMap } from '@orpc/contract'
+import type { TFunction } from 'i18next'
 import type { ReactNode } from 'react'
 import type { EducationRole } from './types'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -10,10 +13,12 @@ import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { Field, FieldDescription, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
+import { isDefinedError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { billingErrorMessageKey } from '@/app/components/billing/billing-error'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
@@ -35,21 +40,44 @@ const AppliedEducationCase = {
   noPaymentPermission: 'noPaymentPermission',
 } as const
 
+type EducationApplyError = ErrorFromErrorMap<
+  InferContractRouterErrorMap<typeof contract.account.education.post>
+>
+
+function educationApplyErrorMessage(
+  error: EducationApplyError,
+  t: TFunction<['billing', 'common', 'education']>,
+) {
+  const code = isDefinedError(error) ? error.code : undefined
+  switch (code) {
+    case 'education_activate_failed':
+      return t(($) => $.activateFailed, { ns: 'education' })
+    case 'education_activate_limit':
+      return t(($) => $.tooManyAttempts, { ns: 'education' })
+    default:
+      return t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' })
+  }
+}
+
 type EducationApplyPageProps = {
   plan: SubscriptionModel['plan']
   token: string
 }
 
 const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
-  const { t } = useTranslation(['common', 'education'])
+  const { t } = useTranslation(['billing', 'common', 'education'])
   const queryClient = useQueryClient()
   const [schoolName, setSchoolName] = useState('')
   const [role, setRole] = useState<EducationRole>('Student')
   const [agreements, setAgreements] = useState<string[]>([])
   const [hasSubmittedEducation, setHasSubmittedEducation] = useState(false)
   const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false)
-  const { isPending, mutate: educationAdd } = useMutation(
-    consoleQuery.account.education.post.mutationOptions(),
+  const {
+    error: submitError,
+    isPending,
+    mutate: educationAdd,
+  } = useMutation(
+    consoleQuery.account.education.post.mutationOptions({ context: { silent: true } }),
   )
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
@@ -108,8 +136,8 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
           throw new Error('Failed to open billing page')
         },
         {
-          onError: (err) => {
-            toast.error(err.message || String(err))
+          onError: (error) => {
+            toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
           },
         },
       )
@@ -150,7 +178,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
         <div className="flex w-full flex-col items-start gap-3">
           <div className="flex w-full items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
             <span
-              className="mt-0.5 mr-2 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
+              className="me-2 mt-0.5 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
               aria-hidden="true"
             />
             <div className="system-md-regular text-text-warning">
@@ -179,7 +207,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
       <div className="flex w-full flex-col items-start gap-3">
         <div className="flex w-full items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
           <span
-            className="mt-0.5 mr-2 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
+            className="me-2 mt-0.5 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
             aria-hidden="true"
           />
           <div className="system-md-regular text-text-warning">
@@ -279,6 +307,11 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
           >
             {t(($) => $.submit, { ns: 'education' })}
           </Button>
+          {submitError && (
+            <p role="alert" className="mt-2 system-sm-regular text-text-destructive">
+              {educationApplyErrorMessage(submitError, t)}
+            </p>
+          )}
           <div className="mt-5 mb-4 h-px bg-linear-to-r from-[rgba(16,24,40,0.08)]" />
           <a
             className="flex items-center system-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
@@ -287,7 +320,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
             rel="noopener noreferrer"
           >
             {t(($) => $.learn, { ns: 'education' })}
-            <span className="ml-1 i-ri-external-link-line size-3" aria-hidden="true" />
+            <span className="ms-1 i-ri-external-link-line size-3" aria-hidden="true" />
           </a>
         </Form>
       )}
