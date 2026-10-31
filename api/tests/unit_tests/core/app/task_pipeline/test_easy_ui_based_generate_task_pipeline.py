@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from collections.abc import Generator, Iterator, Sequence
 from dataclasses import dataclass
@@ -14,6 +15,7 @@ import pytest
 from sqlalchemy import Engine as _easy_ui_based_generate_task_pipeline_Engine
 from sqlalchemy import event
 from sqlalchemy.engine import Engine as _easy_ui_message_end_files_Engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import (
@@ -1833,6 +1835,60 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert trace_task.message_id == "msg"
             assert trace_task.kwargs["trace_session_id"] == "session-1"
             assert len(sent_payloads) == 1
+
+        def test_message_end_keeps_answer_when_provider_last_used_write_fails(
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            sqlite_session_factory: sessionmaker[Session],
+            caplog: pytest.LogCaptureFixture,
+        ) -> None:
+            """A failed provider last_used write must not roll back the saved answer."""
+            from events.event_handlers.update_provider_when_message_created import handle as update_provider_on_message
+
+            conversation = _make_conversation(AppMode.CHAT)
+            message = _make_message()
+            with sqlite_session_factory() as session:
+                session.add_all([conversation, message])
+                session.commit()
+
+            application_generate_entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
+            application_generate_entity.model_conf = make_model_config(provider="openai", model="gpt-4o", mode="chat")
+            pipeline = EasyUIBasedGenerateTaskPipeline(
+                application_generate_entity=application_generate_entity,
+                queue_manager=_FakeQueueManager(),
+                conversation=conversation,
+                message=message,
+                stream=True,
+            )
+            llm_result = LLMResult(
+                model="gpt-4o",
+                prompt_messages=[],
+                message=AssistantPromptMessage(content="streamed answer"),
+                usage=LLMUsage.empty_usage(),
+            )
+            _set_queue_events(pipeline, [_queue_message(QueueMessageEndEvent(llm_result=llm_result))])
+
+            def fail_last_used_write(_updates: object) -> None:
+                raise SQLAlchemyError("provider last_used update failed")
+
+            monkeypatch.setattr(
+                "events.event_handlers.update_provider_when_message_created._execute_provider_updates",
+                fail_last_used_write,
+            )
+            monkeypatch.setattr(
+                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.message_was_created.send",
+                lambda sender, **kwargs: update_provider_on_message(sender, **kwargs),
+            )
+
+            with caplog.at_level(logging.WARNING, logger="events.event_handlers.update_provider_when_message_created"):
+                list(pipeline._process_stream_response(publisher=None))
+
+            with sqlite_session_factory() as session:
+                saved = session.get(Message, message.id)
+
+            assert saved is not None
+            assert saved.answer == "streamed answer"
+            assert "saved answer will be kept" in caplog.text
 
         def test_save_stopped_message_preserves_backend_reported_usage(
             self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
