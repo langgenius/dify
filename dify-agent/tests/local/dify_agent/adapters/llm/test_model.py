@@ -1056,6 +1056,69 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
 
+    async def test_request_scopes_restored_plugin_ids_to_the_response_that_renamed_them(self) -> None:
+        # A later response may carry a real plugin id equal to an id generated in an earlier response.
+        messages = [
+            ModelRequest(parts=[UserPromptPart("hello")]),
+            ModelResponse(
+                parts=[
+                    ToolCallPart(tool_name="lookup", args='{"query":"first"}', tool_call_id="lookup"),
+                    ToolCallPart(
+                        tool_name="lookup",
+                        args='{"query":"second"}',
+                        tool_call_id="lookup-2",
+                        provider_name="dify",
+                        provider_details={"dify_provider_tool_call_id": "lookup"},
+                    ),
+                ]
+            ),
+            ModelRequest(
+                parts=[
+                    ToolReturnPart(tool_name="lookup", content="first result", tool_call_id="lookup"),
+                    ToolReturnPart(tool_name="lookup", content="second result", tool_call_id="lookup-2"),
+                ]
+            ),
+            ModelResponse(
+                parts=[ToolCallPart(tool_name="lookup-2", args='{"query":"third"}', tool_call_id="lookup-2")]
+            ),
+            ModelRequest(
+                parts=[
+                    ToolReturnPart(tool_name="lookup-2", content="third result", tool_call_id="lookup-2"),
+                    RetryPromptPart(content="bad query", tool_name="lookup-2", tool_call_id="lookup-2"),
+                ]
+            ),
+        ]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            prompt_messages = payload["target"]["prompt_messages"]
+
+            self.assertEqual(
+                [message["role"] for message in prompt_messages],
+                ["user", "assistant", "tool", "tool", "assistant", "tool", "tool"],
+            )
+            self.assertEqual([call["id"] for call in prompt_messages[1]["tool_calls"]], ["lookup", "lookup"])
+            self.assertEqual([message["tool_call_id"] for message in prompt_messages[2:4]], ["lookup", "lookup"])
+            self.assertEqual([call["id"] for call in prompt_messages[4]["tool_calls"]], ["lookup-2"])
+            self.assertEqual([message["tool_call_id"] for message in prompt_messages[5:]], ["lookup-2", "lookup-2"])
+
+            return build_stream_response(*single_text_chunk("adapter response"))
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="ollama",
+            )
+
+            response = await adapter.request(
+                messages,
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            )
+
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+
     async def test_agent_runs_every_parallel_tool_call_that_shares_a_plugin_id(self) -> None:
         requests: list[dict[str, object]] = []
 
