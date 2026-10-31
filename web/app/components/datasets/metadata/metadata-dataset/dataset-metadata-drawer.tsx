@@ -64,7 +64,7 @@ type ItemProps = {
   disabled?: boolean
   payload: MetadataItemWithValueLength
   onRename?: () => void
-  onDelete?: () => void
+  onDelete?: () => Promise<void>
 }
 const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }) => {
   const { t } = useTranslation(['common', 'dataset'])
@@ -77,10 +77,19 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
   const deleteBtnRef = useRef<HTMLButtonElement>(null)
   const isDeleteHovering = useHover(deleteBtnRef)
   const deleteActionsRef = useRef<AlertDialogActions>(null)
-  const handleDelete = useCallback(() => {
-    deleteActionsRef.current?.close()
-    onDelete?.()
-  }, [onDelete])
+  const [isDeleting, setIsDeleting] = useState(false)
+  const handleDelete = useCallback(async () => {
+    if (isDeleting) return
+    setIsDeleting(true)
+    try {
+      await onDelete?.()
+      deleteActionsRef.current?.close()
+    } catch {
+      // The owner reports the failure; keep the dialog open so the user can retry.
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [isDeleting, onDelete])
 
   return (
     <div
@@ -120,7 +129,12 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
             >
               <span className="i-ri-edit-line size-4" aria-hidden="true" />
             </IconButton>
-            <AlertDialog actionsRef={deleteActionsRef}>
+            <AlertDialog
+              actionsRef={deleteActionsRef}
+              onOpenChange={(open, details) => {
+                if (!open && isDeleting && details.reason !== 'imperative-action') details.cancel()
+              }}
+            >
               <AlertDialogTrigger
                 ref={deleteBtnRef}
                 render={
@@ -146,10 +160,10 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancelButton>
+                  <AlertDialogCancelButton disabled={isDeleting}>
                     {t(($) => $['operation.cancel'], { ns: 'common' })}
                   </AlertDialogCancelButton>
-                  <AlertDialogConfirmButton onClick={handleDelete}>
+                  <AlertDialogConfirmButton loading={isDeleting} onClick={handleDelete}>
                     {t(($) => $['operation.confirm'], { ns: 'common' })}
                   </AlertDialogConfirmButton>
                 </AlertDialogFooter>

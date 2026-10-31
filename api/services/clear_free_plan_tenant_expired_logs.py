@@ -372,7 +372,7 @@ class ClearFreePlanTenantExpiredLogs:
             try:
                 if (
                     dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
-                    or BillingService.get_info(tenant_id)["subscription"]["plan"] == CloudPlan.SANDBOX
+                    or BillingService.get_info(tenant_id).subscription.plan == CloudPlan.SANDBOX
                 ):
                     # only process sandbox tenant
                     with sessionmaker(db.engine).begin() as session:

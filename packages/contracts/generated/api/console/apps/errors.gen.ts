@@ -202,6 +202,14 @@ const zUnsupportedAudioTypeError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zConversationNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('conversation_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
 const zAppSuggestedQuestionsAfterAnswerDisabledError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -223,6 +231,94 @@ const zMessageFeedbackRatingRequiredError = /* @__PURE__ */ (() =>
     z.object({
       code: z.literal('message_feedback_rating_required'),
       status: z.literal(400),
+    }),
+  ))()
+
+const zNetworkAccessUnsupportedAppModeError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_unsupported_app_mode'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zNetworkAccessForbiddenError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_forbidden'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zNetworkAccessNotEntitledError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_not_entitled'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zNetworkAccessRoleDeniedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_role_denied'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zBillingOperationFailedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('billing_operation_failed'),
+      status: z.literal(502),
+    }),
+  ))()
+
+const zBillingUnavailableError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('billing_unavailable'),
+      status: z.literal(503),
+    }),
+  ))()
+
+const zNetworkAccessInvalidInputError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_invalid_input'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zNetworkAccessUnsupportedAccessPointsError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_unsupported_access_points'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('paid_plan_required'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zNetworkAccessGroupNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_group_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
+const zNetworkAccessVersionConflictError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_version_conflict'),
+      status: z.literal(409),
     }),
   ))()
 
@@ -508,7 +604,15 @@ export const get4Errors = { app_not_found: { status: 404, data: zAppNotFoundErro
 
 export const get5Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post8Errors = { rate_limit_error: { status: 429, data: zRateLimitError } }
+export const post6Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+
+export const post9Errors = { rate_limit_error: { status: 429, data: zRateLimitError } }
+
+export const post10Errors = {
+  agent_not_bound: { status: 400, data: zAgentNotBoundError },
+  agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  app_not_found: { status: 404, data: zAppNotFoundError },
+}
 
 export const get6Errors = {
   agent_not_bound: { status: 400, data: zAgentNotBoundError },
@@ -534,7 +638,7 @@ export const get8Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
 }
 
-export const post9Errors = {
+export const post11Errors = {
   agent_not_bound: { status: 400, data: zAgentNotBoundError },
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   app_not_found: { status: 404, data: zAppNotFoundError },
@@ -546,7 +650,7 @@ export const get9Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
 }
 
-export const post10Errors = {
+export const post12Errors = {
   agent_not_bound: { status: 400, data: zAgentNotBoundError },
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   app_not_found: { status: 404, data: zAppNotFoundError },
@@ -594,7 +698,7 @@ export const get15Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
 }
 
-export const post13Errors = {
+export const post15Errors = {
   no_file_uploaded: { status: 400, data: zNoFileUploadedError },
   too_many_files: { status: 400, data: zTooManyFilesError },
 }
@@ -603,7 +707,7 @@ export const get20Errors = { app_not_found: { status: 404, data: zAppNotFoundErr
 
 export const delete4Errors = { bad_request: { status: 400, data: zBadRequestError } }
 
-export const post17Errors = {
+export const post19Errors = {
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
   app_not_found: { status: 404, data: zAppNotFoundError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
@@ -618,9 +722,15 @@ export const post17Errors = {
   unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
 }
 
-export const delete5Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const delete5Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+}
 
-export const get24Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const get24Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+}
 
 export const get25Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
@@ -638,22 +748,28 @@ export const get26Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const post18Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post20Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
 export const get27Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
 }
 
-export const delete6Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const delete6Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+}
 
-export const get28Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const get28Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+}
 
 export const get29Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post19Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post21Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post20Errors = {
+export const post22Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
@@ -668,7 +784,7 @@ export const get31Errors = {
   roster_agent_package_export_failed: { status: 500, data: zRosterAgentPackageExportFailedError },
 }
 
-export const post23Errors = {
+export const post25Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
   message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
@@ -679,25 +795,57 @@ export const get32Errors = {
   app_unavailable: { status: 400, data: zAppUnavailableError },
 }
 
-export const post25Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post27Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const get33Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const get33Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+  network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+  network_access_unsupported_app_mode: { status: 400, data: zNetworkAccessUnsupportedAppModeError },
+}
 
-export const get34Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const get34Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+  network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+  network_access_unsupported_app_mode: { status: 400, data: zNetworkAccessUnsupportedAppModeError },
+}
 
-export const putErrors = { app_not_found: { status: 404, data: zAppNotFoundError } }
-
-export const post28Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
-
-export const get35Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
-
-export const post29Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
-
-export const put2Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const putErrors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+  network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+  network_access_invalid_input: { status: 400, data: zNetworkAccessInvalidInputError },
+  network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+  network_access_unsupported_access_points: {
+    status: 400,
+    data: zNetworkAccessUnsupportedAccessPointsError,
+  },
+  network_access_unsupported_app_mode: { status: 400, data: zNetworkAccessUnsupportedAppModeError },
+  network_access_version_conflict: { status: 409, data: zNetworkAccessVersionConflictError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
 
 export const post30Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
+export const get35Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+
 export const post31Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+
+export const put2Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+
+export const post32Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+
+export const post33Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
 export const get36Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
@@ -723,7 +871,7 @@ export const get44Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const post34Errors = {
+export const post36Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
@@ -733,7 +881,7 @@ export const post34Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const post35Errors = {
+export const post37Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   invalid_tracing_config: { status: 400, data: zInvalidTracingConfigError },
   trace_config_not_found: { status: 404, data: zTraceConfigNotFoundError },
@@ -772,7 +920,7 @@ export const patchErrors = {
   unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
 }
 
-export const post36Errors = {
+export const post38Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   invalid_tracing_config: { status: 400, data: zInvalidTracingConfigError },
   trace_config_already_exists: { status: 409, data: zTraceConfigAlreadyExistsError },
@@ -782,7 +930,7 @@ export const post36Errors = {
   unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
 }
 
-export const post37Errors = {
+export const post39Errors = {
   tracing_already_accepted: { status: 409, data: zTracingAlreadyAcceptedError },
   tracing_duplicate_acknowledgement_required: {
     status: 409,
@@ -799,7 +947,7 @@ export const get48Errors = {
   tracing_source_not_found: { status: 404, data: zTracingSourceNotFoundError },
 }
 
-export const post38Errors = {
+export const post40Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   app_trigger_not_found: { status: 404, data: zAppTriggerNotFoundError },
 }
@@ -816,7 +964,7 @@ export const get53Errors = { app_not_found: { status: 404, data: zAppNotFoundErr
 
 export const get54Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post40Errors = {
+export const post42Errors = {
   agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
   app_not_found: { status: 404, data: zAppNotFoundError },
   binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
@@ -855,12 +1003,12 @@ export const put3Errors = {
   forbidden: { status: 403, data: zForbiddenError },
 }
 
-export const post41Errors = {
+export const post43Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   forbidden: { status: 403, data: zForbiddenError },
 }
 
-export const post42Errors = {
+export const post44Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   forbidden: { status: 403, data: zForbiddenError },
 }
@@ -885,7 +1033,7 @@ export const get60Errors = {
   forbidden: { status: 403, data: zForbiddenError },
 }
 
-export const post43Errors = {
+export const post45Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   forbidden: { status: 403, data: zForbiddenError },
 }
@@ -902,9 +1050,11 @@ export const get68Errors = {
   draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
 }
 
+export const post52Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+
 export const get69Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post52Errors = {
+export const post55Errors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   agent_version_conflict_error: { status: 409, data: zAgentVersionConflictError },
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
@@ -912,9 +1062,9 @@ export const post52Errors = {
   invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
 }
 
-export const post53Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post56Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const post54Errors = {
+export const post57Errors = {
   agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
@@ -924,7 +1074,7 @@ export const post54Errors = {
   plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
 }
 
-export const post55Errors = {
+export const post58Errors = {
   agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
   app_not_found: { status: 404, data: zAppNotFoundError },
   invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
@@ -947,7 +1097,7 @@ export const put5Errors = {
   plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
 }
 
-export const post58Errors = { rate_limit_error: { status: 429, data: zRateLimitError } }
+export const post61Errors = { rate_limit_error: { status: 429, data: zRateLimitError } }
 
 export const get73Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
@@ -972,9 +1122,9 @@ export const get76Errors = {
   workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
 }
 
-export const post59Errors = { rate_limit_error: { status: 429, data: zRateLimitError } }
+export const post62Errors = { rate_limit_error: { status: 429, data: zRateLimitError } }
 
-export const post60Errors = { rate_limit_error: { status: 429, data: zRateLimitError } }
+export const post63Errors = { rate_limit_error: { status: 429, data: zRateLimitError } }
 
 export const get79Errors = {
   draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
@@ -984,7 +1134,7 @@ export const get80Errors = {
   draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
 }
 
-export const post61Errors = {
+export const post64Errors = {
   draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
 }
 
@@ -1016,7 +1166,7 @@ export const get86Errors = {
   webhook_trigger_not_found: { status: 404, data: zWebhookTriggerNotFoundError },
 }
 
-export const post64Errors = {
+export const post67Errors = {
   agent_not_published: { status: 409, data: zAgentNotPublishedError },
   max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
 }

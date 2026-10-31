@@ -224,6 +224,7 @@ type RenderOptions = {
   hasEditPermission?: boolean
   enableExploreBanner?: boolean
   enableLearnApp?: boolean
+  enableMarketplace?: boolean
   extra?: ReactNode
   deploymentEdition?: DeploymentEdition
   searchParams?: Record<string, string>
@@ -250,6 +251,7 @@ const renderHomeContent = ({
       deployment_edition: options.deploymentEdition ?? 'COMMUNITY',
       enable_explore_banner: options.enableExploreBanner ?? false,
       enable_learn_app: options.enableLearnApp ?? true,
+      enable_marketplace: options.enableMarketplace ?? false,
     },
   })
   queryClient.setQueryData(
@@ -541,6 +543,20 @@ describe('HomeContent', () => {
       ).not.toBeInTheDocument()
     })
 
+    it('links more templates to Marketplace only when Marketplace is enabled', () => {
+      const { unmount } = renderHomeContent({ enableMarketplace: true })
+
+      expect(screen.getByRole('link', { name: 'explore.apps.viewMore' })).toHaveAttribute(
+        'href',
+        expect.stringContaining('/templates'),
+      )
+
+      unmount()
+      renderHomeContent({ enableMarketplace: false })
+
+      expect(screen.queryByRole('link', { name: 'explore.apps.viewMore' })).not.toBeInTheDocument()
+    })
+
     it('should hide learn dify templates when learn app is disabled', () => {
       mockExploreData = {
         categories: ['Writing'],
@@ -761,9 +777,7 @@ describe('HomeContent', () => {
       await user.click(screen.getByRole('button', { name: 'Alpha' }))
       await user.click(await screen.findByRole('button', { name: /common.operation.create/ }))
 
-      await waitFor(() =>
-        expect(toastMocks.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'),
-      )
+      await waitFor(() => expect(toastMocks.error).toHaveBeenCalledWith('Unavailable'))
       expect(importDSL).not.toHaveBeenCalled()
     })
 

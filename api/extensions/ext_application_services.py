@@ -62,6 +62,8 @@ from extensions.ext_storage import storage
 from libs.helper import RateLimiter
 from libs.passport import PassportService
 from models.model import EndUser
+from models.tool_runtime_contracts import WorkflowToolStore
+from models.utils.file_input_compat import restore_input_files
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
@@ -80,7 +82,8 @@ from repositories.app_definition_query_repository import AppDefinitionQueryRepos
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
-from repositories.conversation_variable_query_repository import ConversationVariableQueryRepository
+from repositories.conversation_repository import ConversationRepository
+from repositories.conversation_variable_repository import ConversationVariableRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -151,6 +154,12 @@ from services.app_tracing_config_service import AppTracingConfigService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.conversation_command_service import ConversationCommandService
+from services.conversation_name_generator import generate_conversation_name
+from services.conversation_name_service import ConversationNameService
+from services.conversation_query_service import ConversationQueryService
+from services.conversation_service import ConversationService
+from services.conversation_variable_command_service import ConversationVariableCommandService
 from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
 from services.enterprise.enterprise_service import EnterpriseService
@@ -339,11 +348,15 @@ class ApplicationServices:
     app_previews: AppPreviewQueryService
     app_sites: AppSiteService
     conversation_variables: ConversationVariableQuery
+    conversation_variable_commands: ConversationVariableCommandService
     app_statistics: AppStatisticQuery
     app_tracing_configs: AppTracingConfigService
     agent_tracing_configs: AgentTracingConfigService
     billing_portal: BillingPortalService
     compliance_downloads: ComplianceDownloadService
+    conversation_names: ConversationNameService
+    conversation_commands: ConversationCommandService
+    conversation_queries: ConversationQueryService
     data_sources: DataSourceServices
     knowledge: KnowledgeServices
     app_scoped_end_users: AppScopedEndUserServices
@@ -532,12 +545,19 @@ def build_application_services(
     )
     oauth_server = _build_oauth_server_service(database_client=database_client, redis=redis)
     tools = build_tool_services(database_client)
+    workflow_variables = build_workflow_variable_service(database_client=database_client)
     console_apps = ConsoleAppRepository(session_factory=database_client)
     rbac = build_rbac_services(
         workspaces=workspace_repository,
         workspace_members=workspace_members,
         apps=console_apps,
         datasets=dataset_dependencies.datasets,
+    )
+    console_workflows = build_console_workflow_service(
+        database_client=database_client,
+        redis=redis,
+        variables=workflow_variables,
+        rbac_members=rbac.members,
     )
     tracing_configs = AppTracingConfigService(
         configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
@@ -548,13 +568,13 @@ def build_application_services(
         oauth=oauth_server,
         recommended_packages=recommended_app_packages,
         tool_providers=tools.tool_providers,
-        workflow_queries=tools.workflow_queries,
+        workflow_tools=cast(WorkflowToolStore, tools.workflow_queries),
+        workflow_publisher=console_workflows,
         repository=console_apps,
         rbac_members=rbac.members,
         tracing_configs=tracing_configs,
     )
     tags = TagApplicationService(tags=TagRepository(session_factory=database_client))
-    workflow_variables = build_workflow_variable_service(database_client=database_client)
     knowledge = build_knowledge_services(
         variables=workflow_variables,
         database_client=database_client,
@@ -610,6 +630,16 @@ def build_application_services(
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
     )
+    conversations = ConversationRepository(session_factory=database_client)
+    conversation_names = ConversationNameService(conversations=conversations, generate_name=generate_conversation_name)
+    conversation_commands = ConversationCommandService(
+        conversations=conversations, enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup
+    )
+    message_files = MessageFileResolver()
+    conversation_queries = ConversationQueryService(
+        conversations=conversations, restore_inputs=restore_input_files, files=message_files
+    )
+    conversation_variables = ConversationVariableRepository(session_factory=database_client)
     annotations = AnnotationRepository(session_factory=database_client)
     messages = MessageRepository(session_factory=database_client)
     suggested_questions = SuggestedQuestionsQuery(
@@ -621,9 +651,7 @@ def build_application_services(
     return ApplicationServices(
         tools=tools,
         human_input_debug=build_human_input_debug_service(database_client=database_client),
-        console_workflows=build_console_workflow_service(
-            database_client=database_client, redis=redis, variables=workflow_variables, rbac_members=rbac.members
-        ),
+        console_workflows=console_workflows,
         workflow_drafts=build_workflow_drafts(database_client),
         workflow_variables=workflow_variables,
         console_workflow_variables=build_console_workflow_variables(
@@ -662,6 +690,9 @@ def build_application_services(
             disable_task=disable_annotation_reply_task.delay,
         ),
         rbac=rbac,
+        conversation_names=conversation_names,
+        conversation_commands=conversation_commands,
+        conversation_queries=conversation_queries,
         accounts=account_services,
         apps=apps,
         credential_queries=CredentialQueryRepository(session_factory=database_client),
@@ -681,7 +712,8 @@ def build_application_services(
         app_sites=AppSiteService(
             sites=AppSiteCommandRepository(session_factory=database_client),
         ),
-        conversation_variables=ConversationVariableQueryRepository(session_factory=database_client),
+        conversation_variables=conversation_variables,
+        conversation_variable_commands=ConversationVariableCommandService(variables=conversation_variables),
         app_api_keys=build_app_api_key_service(database_client=database_client),
         dataset_api_keys=build_dataset_api_key_service(
             database_client=database_client,
@@ -738,6 +770,9 @@ def build_application_services(
         ),
         installed_apps=build_installed_app_services(
             variables=workflow_variables,
+            conversation_queries=conversation_queries,
+            conversation_names=conversation_names,
+            conversation_commands=conversation_commands,
             database_client=database_client,
             webapp_access=webapp_access,
             get_workspace_role=workspace_repository.get_account_role,
@@ -783,9 +818,10 @@ def build_application_services(
         message_feedbacks=MessageFeedbackService(repository=messages),
         message_queries=MessageQueryService(
             messages=messages,
-            files=MessageFileResolver(),
+            files=message_files,
             extra_contents=ExecutionExtraContentReader(
-                repository=SQLAlchemyExecutionExtraContentRepository(session_maker=database_client)
+                repository=SQLAlchemyExecutionExtraContentRepository(session_maker=database_client),
+                session_factory=database_client,
             ),
         ),
         message_file_previews=MessageFilePreviewService(
@@ -832,11 +868,7 @@ def build_application_services(
             notifications=BillingNotificationGateway(),
         ),
         network_access_groups=NetworkAccessGroupService(
-            control_plane=NetworkAccessGroupGateway(
-                base_url=dify_config.NETWORK_ACCESS_API_URL,
-                fallback_base_url=BillingService.base_url,
-                secret_key=BillingService.secret_key,
-            ),
+            control_plane=NetworkAccessGroupGateway(),
             apps=SQLAlchemyNetworkAccessGroupAppRepository(session_factory=database_client),
             memberships=workspace_repository,
             entitlement=BillingNetworkAccessGroupEntitlementGateway(),
@@ -869,6 +901,7 @@ def build_application_services(
             workflow_runs=workflow_run_repository,
             node_executions=workflow_node_execution_repository,
             tool_providers=tools.tool_providers,
+            session_factory=database_client,
         ),
         workspaces=workspace_services,
         workflow_app_logs=WorkflowAppLogQueryService(
@@ -908,10 +941,12 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
+    from extensions.application_services.tools import resolve_tool_credentials
     from extensions.ext_login import bind_account_loader
 
     app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
     ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
+    ToolManager.configure_credential_resolver(resolve_tool_credentials)
     services = build_application_services(
         database_client=get_session_maker(),
         deployment_edition=dify_config.DEPLOYMENT_EDITION,

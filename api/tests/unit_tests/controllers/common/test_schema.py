@@ -164,6 +164,23 @@ class TestSchemaCases:
         assert list(namespace.models) == ["UserModel"]
 
     @staticmethod
+    @pytest.mark.parametrize("strict", [False, True])
+    def test_register_schema_model_keeps_annotated_enum_names_stable(strict: bool):
+        from controllers.common.schema import register_schema_model
+
+        enum_types = [StrEnum("StableStatus", {"ACTIVE": "active"}, module=__name__) for _ in range(2)]
+        snapshots = []
+        for enum_type in enum_types:
+            model = create_model("StatusPayload", status=(enum_type, Field(strict=strict)))
+            namespace = Namespace("test")
+
+            register_schema_model(namespace, model)
+
+            snapshots.append({name: registered.__schema__ for name, registered in namespace.models.items()})
+
+        assert snapshots[0] == snapshots[1]
+
+    @staticmethod
     def test_register_schema_model_rejects_different_model_with_same_name():
         from controllers.common.schema import SchemaNameCollisionError, register_schema_model
 

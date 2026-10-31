@@ -48,8 +48,7 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
         },
       }),
       initialPageParam: 0,
-      getNextPageParam: (lastPage, pages) =>
-        lastPage.has_next ? (lastPage.curr_page ?? pages.length - 1) + 1 : undefined,
+      getNextPageParam: (lastPage) => (lastPage.has_next ? lastPage.curr_page + 1 : undefined),
     }),
     enabled: hasSearchQuery && !!debouncedSearchQuery,
     placeholderData: keepPreviousData,

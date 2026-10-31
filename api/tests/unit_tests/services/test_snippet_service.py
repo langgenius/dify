@@ -31,6 +31,7 @@ from models.workflow import (
 )
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
 from services.snippet_service import SnippetService
+from services.tag_application_service import TagApplicationService
 from services.workflow.snippet_policy import validate_snippet_graph_forbidden_nodes
 from tests.helpers.unit.model_factories import make_account
 
@@ -173,6 +174,53 @@ def test_get_snippets_applies_filters_and_paginates(
     assert total == 3
     assert has_more is False
     get_target_ids.assert_called_once_with(tag_type="snippet", tenant_id="tenant-1", tag_ids=["tag-1"], match_all=True)
+
+
+@pytest.mark.parametrize(
+    ("keyword", "expected_id"),
+    [
+        ("search%", "percent-literal"),
+        ("search_", "underscore-literal"),
+        ("C:\\p", "backslash-literal"),
+    ],
+    ids=["percent", "underscore", "backslash"],
+)
+def test_get_snippets_keyword_treats_like_wildcards_literally(
+    application_tags: TagApplicationService,
+    sqlite_session: Session,
+    keyword: str,
+    expected_id: str,
+) -> None:
+    snippet_names = {
+        "percent-literal": "search% term",
+        "percent-decoy": "search term",
+        "underscore-literal": "search_term",
+        "underscore-decoy": "searchXterm",
+        "backslash-literal": "C:\\path",
+        "backslash-decoy": "C:path",
+    }
+    for snippet_id, name in snippet_names.items():
+        sqlite_session.add(
+            CustomizedSnippet(
+                id=snippet_id,
+                tenant_id="tenant-1",
+                name=name,
+                description="",
+                type=SnippetType.NODE,
+                created_by="account-1",
+                is_published=True,
+            )
+        )
+    sqlite_session.flush()
+    service = build_snippet_service(session=sqlite_session)
+
+    result, total, has_more = service.get_snippets(
+        tenant_id="tenant-1", session=sqlite_session, keyword=keyword, tags=application_tags
+    )
+
+    assert {s.id for s in result} == {expected_id}
+    assert total == 1
+    assert has_more is False
 
 
 def test_update_snippet_allows_duplicate_names(sqlite_session: Session) -> None:
@@ -717,8 +765,10 @@ def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch
     archive_storage.delete_object.assert_called_once_with("tenant-1/app_id=snippet-1/run.json")
 
 
-def test_workflow_run_queries_delegate_to_repositories(monkeypatch: pytest.MonkeyPatch, *, tool_providers) -> None:
-    service = SnippetService.__new__(SnippetService)
+def test_workflow_run_queries_delegate_to_repositories(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, *, tool_providers
+) -> None:
+    service = build_snippet_service(session=sqlite_session)
     workflow_run_repo = SimpleNamespace(
         get_paginated_workflow_runs=Mock(return_value=SimpleNamespace(data=[])),
         get_workflow_run_by_id=Mock(return_value=WorkflowRun(id="run-1")),
@@ -729,8 +779,6 @@ def test_workflow_run_queries_delegate_to_repositories(monkeypatch: pytest.Monke
     )
     service._workflow_run_repo = workflow_run_repo
     service._node_execution_service_repo = node_execution_repo
-    service._session = Mock()
-    service._session_maker = Mock()
     snippet = _snippet()
     expected_traces = [SimpleNamespace(id="node-execution-1:retry:1"), SimpleNamespace(id="node-execution-1")]
     mock_assemble = Mock(return_value=expected_traces)

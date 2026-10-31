@@ -41,6 +41,7 @@ from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
+from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -195,6 +196,7 @@ class SnippetGenerateService:
             app_model=app_proxy,
             workflow=workflow,
             user=user,
+            execution_identity=build_workflow_execution_identity(user),
             args=args,
             invoke_from=invoke_from,
             streaming=streaming,
@@ -382,6 +384,7 @@ class SnippetGenerateService:
                 workflow=workflow,
                 node_id=node_id,
                 user=user,
+                execution_identity=build_workflow_execution_identity(user),
                 args=args,
                 streaming=streaming,
             )
@@ -428,6 +431,7 @@ class SnippetGenerateService:
                 workflow=workflow,
                 node_id=node_id,
                 user=user,
+                execution_identity=build_workflow_execution_identity(user),
                 args=args,
                 streaming=streaming,
             )

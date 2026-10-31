@@ -14,6 +14,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.entities.queue_entities import NodeExecutionSnapshot
 from core.credit_usage import CreditUsageAppType
 from core.workflow.nodes.human_input.pause_reason import PauseReason
+from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     build_system_variables,
@@ -248,7 +249,13 @@ class PipelineRunner:
         node_run_index: int = 1,
         node_execution_snapshots: tuple[NodeExecutionSnapshot, ...] = (),
         pause_reasons: Sequence[PauseReason] = (),
+        human_input_v2_forms: Mapping[str, PreparedForm] | None = None,
     ) -> None:
+        """Update document status and publish an event with its prepared V2 forms.
+
+        The caller supplies forms belonging to every V2 pause reason in this run.
+        Successful publication retains their presentation data in the queue.
+        """
         self._update_document_status(
             event,
             workspace_id=self._dataset_workspace_id,
@@ -261,6 +268,7 @@ class PipelineRunner:
             node_run_index=node_run_index,
             node_execution_snapshots=node_execution_snapshots,
             pause_reasons=pause_reasons,
+            human_input_v2_forms=human_input_v2_forms,
         )
 
     def _init_rag_pipeline_graph(

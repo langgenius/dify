@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "Seçilmiş kontaktlar bu iş sahəsindən həmişəlik silinəcək. Bu əməliyyatı geri qaytarmaq mümkün deyil.",
+  "directory.removalTitle": "Kontaktlar silinsin?",
+  "imPlatform.bindingDialog.clearSavedCredential": "Saxlanmış dəyəri sil",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Yadda saxladıqda bu saxlanmış dəyər silinəcək.",
+  "imPlatform.bindingDialog.replacementRequired": "Bu autentifikasiya məlumatları başqa bir IM tenantına aiddir və birbaşa yadda saxlanıla bilməz. Tenantı dəyişmək üçün cari IM kanalını əvəz etmək lazımdır. Bu zaman həm avtomatik, həm də əl ilə yaradılmış bütün IM əlaqələndirmələri silinəcək. Əvəzləmədən sonra kontaktları yenidən sinxronlaşdırın.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Konfiqurasiya saxlanıldı, lakin təfərrüatları yükləmək mümkün olmadı. Bu dialoqu bağlayıb yenidən açın.",
+  "imPlatform.bindingDialog.undoClearCredential": "Silməni geri al"
+}

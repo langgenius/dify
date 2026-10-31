@@ -16,7 +16,12 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
 from core.app.layers.pause_state_persist_layer import (
     WorkflowResumptionContext,
     _AdvancedChatAppGenerateEntityWrapper,
@@ -70,6 +75,7 @@ def _build_advanced_chat_generate_entity(conversation_id: str | None) -> Advance
 
 def _build_workflow_generate_entity(stream: bool) -> WorkflowAppGenerateEntity:
     return WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task-id",
         inputs={},
         files=[],
@@ -105,6 +111,10 @@ def test_worker_passes_its_binding_resolver_to_generation(
     runner._run_app(app=app, workflow=workflow, user=user, pause_state_config=MagicMock())
     assert generator.call_args.kwargs["runtime"] is runner._runtime
     assert runner._runtime.agent_bindings._sessions is sqlite_session_factory
+    if app_mode == AppMode.WORKFLOW:
+        execution_identity = generator.return_value.generate.call_args.kwargs["execution_identity"]
+        assert execution_identity.user_id == user.id
+        assert execution_identity.user_from == UserFrom.ACCOUNT
 
 
 def _decode_published_payload(payload: bytes) -> dict[str, object] | str:

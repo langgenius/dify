@@ -1,5 +1,6 @@
 import type { UseQueryOptions } from '@tanstack/react-query'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
+import type { ConsoleClientContext } from '@/service/console'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
@@ -99,15 +100,17 @@ type UpdateVersionParams = {
   releaseNotes: string
 }
 
-export const useUpdateWorkflow = () => {
+export const useUpdateWorkflow = (context?: ConsoleClientContext) => {
   const { mutateAsync: updateAppVersion } = useMutation(
-    consoleQuery.apps.byAppId.workflows.byWorkflowId.patch.mutationOptions(),
+    consoleQuery.apps.byAppId.workflows.byWorkflowId.patch.mutationOptions({ context }),
   )
   const { mutateAsync: updatePipelineVersion } = useMutation(
-    consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.patch.mutationOptions(),
+    consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.patch.mutationOptions({
+      context,
+    }),
   )
   const { mutateAsync: updateSnippetVersion } = useMutation(
-    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.patch.mutationOptions(),
+    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.patch.mutationOptions({ context }),
   )
   const mutateAsync = useCallback(
     ({ resource, versionId, title, releaseNotes }: UpdateVersionParams) => {
@@ -135,15 +138,17 @@ export const useUpdateWorkflow = () => {
   return { mutateAsync }
 }
 
-export const useDeleteWorkflow = (resource: EditorResource) => {
+export const useDeleteWorkflow = (resource: EditorResource, context?: ConsoleClientContext) => {
   const { mutateAsync: deleteAppVersion } = useMutation(
-    consoleQuery.apps.byAppId.workflows.byWorkflowId.delete.mutationOptions(),
+    consoleQuery.apps.byAppId.workflows.byWorkflowId.delete.mutationOptions({ context }),
   )
   const { mutateAsync: deletePipelineVersion } = useMutation(
-    consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.delete.mutationOptions(),
+    consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.delete.mutationOptions({
+      context,
+    }),
   )
   const { mutateAsync: deleteSnippetVersion } = useMutation(
-    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.delete.mutationOptions(),
+    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.delete.mutationOptions({ context }),
   )
 
   return useCallback(
