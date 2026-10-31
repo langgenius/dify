@@ -2,15 +2,16 @@
 
 This is the only module that reads the billing URLs and secret, and only the generated modules
 call `request`; ruff's banned-api rule (TID251) rejects both anywhere else.
-Network failures, timeouts, throttling, and 5xx raise the service's `UpstreamUnavailableError`
-(a `BillingUpstreamUnavailableError`); any other non-200 status or an enforced response that
-fails model validation raises its `UpstreamInvalidResponseError` (a
-`BillingUpstreamInvalidResponseError`). Each generated module passes its own error types in
-`ServiceErrors`. For a non-200 status, the error carries the status code, the parsed Kratos
-error body, and its reason typed by the service's generated `ErrorReason`. A reason outside it
-is kept as `UnknownErrorReason` and logged with `logger.error` (reported to Sentry): the service
-shipped a reason before this client was regenerated. Callers map reasons to their own errors;
-this module branches on none.
+Each generated operation passes the `ServiceErrors` of its proto service. Network failures,
+timeouts, throttling, and 5xx raise that service's `<Service>UpstreamUnavailableError` (a
+`BillingUpstreamUnavailableError`); any other non-200 status or an enforced response that fails
+model validation raises its `<Service>UpstreamInvalidResponseError` (a
+`BillingUpstreamInvalidResponseError`). For a non-200 status, the error carries the status code,
+the parsed Kratos error body, and its reason typed by the service's `<Service>ErrorReason`. A
+reason outside it is kept as `UnknownErrorReason` and logged with `logger.error` (reported to
+Sentry): either the billing service shipped a reason before this client was regenerated, or it
+returned a reason outside the declared set of that service. Callers map reasons to their own
+errors; this module branches on none.
 
 Response validation is observed before it is enforced. For a path not in
 `ENFORCED_RESPONSE_PATHS`, a body that fails validation is logged with `logger.exception`
@@ -194,7 +195,8 @@ def _error_details(
     if is_reason(reason):
         return body, reason
     logger.error(
-        "Unknown %s error reason %s from %s %s; regenerate the billing client",
+        "Unknown %s error reason %s from %s %s: regenerate the billing client, "
+        "or the billing service returned a reason outside this service's declared set",
         upstream,
         _NON_REASON_CHARACTERS.sub("", reason)[:64],
         method,

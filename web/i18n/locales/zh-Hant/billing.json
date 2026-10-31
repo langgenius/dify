@@ -8,6 +8,9 @@
   "apps.fullTip2": "計劃限制已達",
   "apps.fullTip2des": "建議清除不活躍的應用程式以釋放使用空間，或聯繫我們。",
   "buyPermissionDeniedTip": "請聯絡企業管理員訂閱",
+  "errors.operationFailed": "無法完成此請求，請稍後重試。如果問題持續發生，請聯絡支援團隊。",
+  "errors.requestInProgress": "上一個請求仍在處理中，請稍後再試。",
+  "errors.unavailable": "服務暫時無法使用，請稍後再試。",
   "plans.community.btnText": "開始使用社區",
   "plans.community.description": "適用於個別用戶、小型團隊或非商業項目",
   "plans.community.features": [

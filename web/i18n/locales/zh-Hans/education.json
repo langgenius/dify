@@ -1,4 +1,5 @@
 {
+  "activateFailed": "无法激活教育优惠。您当前的教育认证可能仍在有效期内，或者此邮箱已不符合认证条件。",
   "applied.activeSubscription.description": "你当前有生效中的订阅。订阅到期后即可使用教育优惠。请前往 <stripeLink>Stripe</stripeLink> 确认你的订阅。",
   "applied.noPaymentPermission.description": "你没有此工作空间的付款权限。请切换到你可以管理账单的工作空间，以使用教育优惠。",
   "applied.noPaymentPermission.returnHome": "返回 Dify",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "100% 独家优惠券",
   "toVerifiedTip.end": "。",
   "toVerifiedTip.front": "您现在符合教育版认证的资格。请在下方输入您的教育信息，以完成认证流程，并领取 Dify  Professional 版的",
-  "useEducationDiscount": "使用教育优惠"
+  "tooManyAttempts": "尝试次数过多，请稍后再试。",
+  "useEducationDiscount": "使用教育优惠",
+  "verifyFailed": "无法验证您的教育身份。如果您最近完成过认证，当前的教育认证可能仍在有效期内；否则请稍后重试。"
 }
