@@ -9,7 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity
 from models.model import DifySetup
+from repositories.human_input_v2.contact import ContactError, ContactErrorCode
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from services.account.contracts import SetupInput
 from services.account.service import AccountSetupProvisioner
@@ -39,11 +42,30 @@ def test_creation_hashes_password_and_keeps_registration_ip(
     assert stored.normalized_email == "new@example.com"
     assert stored.password != "Valid123!"
     assert stored.last_login_ip == "203.0.113.1"
+    contact = sqlite_session.scalars(
+        select(HumanInputContactIdentity).where(HumanInputContactIdentity.account_id == account.id)
+    ).one()
+    assert contact.subject_type == ContactSubjectType.ACCOUNT
     assert account.status == "active"
     assert account.initialized_at is None
     assert account_domain.accounts.authenticate("New@Example.com", "Valid123!").id == account.id
     with pytest.raises(AccountPasswordError):
         account_domain.accounts.authenticate(account.email, "wrong")
+
+
+def test_creation_rolls_back_account_when_contact_creation_fails(
+    account_domain: AccountDomain,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_contact(*_args: object, **_kwargs: object) -> None:
+        raise ContactError(ContactErrorCode.CONFLICT, "Contact creation failed")
+
+    monkeypatch.setattr(SQLAlchemyContactRepository, "provision_account_backed_contact", fail_contact)
+    with pytest.raises(ContactError, match="Contact creation failed"):
+        account_domain.accounts.create_account("new@example.com", "New", "en-US")
+    assert sqlite_session.scalar(select(Account.id)) is None
+    assert sqlite_session.scalar(select(HumanInputContactIdentity.id)) is None
 
 
 @pytest.mark.parametrize(
@@ -102,6 +124,10 @@ def test_registration_initializes_and_creates_owner_membership(
     assert memberships[0].account_id == account.id
     assert memberships[0].role == TenantAccountRole.OWNER
     assert not memberships[0].current
+    contact = sqlite_session.scalars(
+        select(HumanInputContactIdentity).where(HumanInputContactIdentity.account_id == account.id)
+    ).one()
+    assert contact.subject_type == ContactSubjectType.ACCOUNT
     account_domain.policy.try_join_default_workspace.assert_called_once_with(account.id)
 
 
@@ -189,6 +215,7 @@ def test_setup_cleans_partial_state_on_failure(
     assert sqlite_session.scalar(select(Account.id)) is None
     assert sqlite_session.scalar(select(Tenant.id)) is None
     assert sqlite_session.scalar(select(DifySetup.version)) is None
+    assert sqlite_session.scalar(select(HumanInputContactIdentity.id)) is None
 
 
 def test_setup_persists_initialized_owner_before_telemetry(

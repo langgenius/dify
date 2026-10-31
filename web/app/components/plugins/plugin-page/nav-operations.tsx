@@ -13,8 +13,8 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { useDocLink } from '@/context/i18n'
+import { marketplaceLinks } from '@/features/marketplace/links'
 
 type GuideMenuItemProps = {
   href: string
@@ -65,7 +65,7 @@ function getOptions(docLink: (path: DocPathWithoutLang) => string): {
       labelKey: 'pluginPublishGuide',
     },
     {
-      href: MARKETPLACE_URL_PREFIX.replace('marketplace', 'creators'),
+      href: marketplaceLinks.creatorCenter,
       icon: <span className="i-ri-book-open-line size-4 shrink-0 text-text-tertiary" />,
       labelKey: 'templatePublishingGuide',
     },

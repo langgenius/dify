@@ -4,6 +4,7 @@ import json
 from typing import cast
 
 import pytest
+from fakeredis.aioredis import FakeRedis as AsyncFakeRedis
 from pydantic import JsonValue
 
 from dify_agent.protocol.snapshot import SessionSnapshot
@@ -22,7 +23,7 @@ from dify_agent.protocol.schemas import (
     utc_now,
 )
 from dify_agent.runtime.cancellation import RunCancellationIntent
-from dify_agent.runtime.event_sink import RunFinalizationResult
+from dify_agent.runtime.event_sink import RunFinalizationResult, RunStreamSealedError
 from dify_agent.storage.redis_run_store import (
     DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH,
     DEFAULT_RUN_RETENTION_SECONDS,
@@ -354,7 +355,10 @@ def test_wait_for_cancellation_ignores_public_events() -> None:
         redis.commands.clear()
         observer = asyncio.create_task(store.wait_for_cancellation(record.run_id))
         await asyncio.sleep(0)
-        _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
+        _ = redis._append_stream_entry(
+            f"test:runs:{record.run_id}:events",
+            {"payload": RUN_EVENT_ADAPTER.dump_json(RunStartedEvent(run_id=record.run_id), exclude={"id"}).decode()},
+        )
         await asyncio.sleep(0)
         assert observer.done() is False
         xread_commands = [command for command in redis.commands if command[0] == "xread"]
@@ -375,49 +379,139 @@ def test_wait_for_cancellation_ignores_public_events() -> None:
     assert asyncio.run(scenario()).reason == "cancelled"
 
 
-def test_append_event_serializes_typed_event_without_id_and_expires_run_keys() -> None:
+def test_append_event_maps_eval_script_arguments_and_result() -> None:
     redis = FakeRedis()
+    redis.eval_result = [1, "running", "7-0"]
     store = RedisRunStore(redis, prefix="test", run_retention_seconds=60)  # pyright: ignore[reportArgumentType]
 
     event_id = asyncio.run(store.append_event(RunStartedEvent(id="local", run_id="run-1")))
 
-    assert event_id == "1-0"
-    pipeline_commands = [command for command in redis.commands if command[0] == "pipeline"]
-    assert len(pipeline_commands) == 1
-    assert pipeline_commands[0][1] is True
-    xadd_commands = [command for command in redis.commands if command[0] == "xadd"]
-    assert len(xadd_commands) == 1
-    fields = xadd_commands[0][2]
-    assert isinstance(fields, dict)
-    assert '"id"' not in str(fields["payload"])
-    assert '"type":"run_started"' in str(fields["payload"])
-    assert xadd_commands[0][3:] == (DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH, True)
-    expire_commands = {command for command in redis.commands if command[0] == "expire"}
-    assert expire_commands == {
-        ("expire", "test:runs:run-1:events", 60),
-        ("expire", "test:runs:run-1:record", 60),
-    }
-    assert ("execute",) in redis.commands
+    assert event_id == "7-0"
+    eval_commands = [command for command in redis.commands if command[0] == "eval"]
+    assert len(eval_commands) == 1
+    script, numkeys, record_key, events_key, payload, maxlen, ttl = eval_commands[0][1:]
+    assert numkeys == 2
+    assert (record_key, events_key) == ("test:runs:run-1:record", "test:runs:run-1:events")
+    assert '"id"' not in payload
+    assert '"type":"run_started"' in payload
+    assert maxlen == str(DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH)
+    assert ttl == "60"
 
 
-def test_append_event_keeps_only_the_configured_number_of_entries() -> None:
-    redis = FakeRedis()
-    store = RedisRunStore(
-        redis,  # pyright: ignore[reportArgumentType]
-        prefix="test",
-        run_retention_seconds=60,
-        run_event_stream_max_length=2,
-    )
-
+def test_append_event_persists_while_running_and_refreshes_ttls() -> None:
     async def scenario() -> None:
-        for _ in range(3):
-            _ = await store.append_event(RunStartedEvent(run_id="run-1"))
+        client = AsyncFakeRedis()
+        store = RedisRunStore(client, prefix="test", run_retention_seconds=60)
+        record = await store.create_run()
+
+        event_id = await store.append_event(RunStartedEvent(run_id=record.run_id))
+
+        assert event_id.endswith("-0")
+        page = await store.get_events(record.run_id)
+        assert [event.type for event in page.events] == ["run_started"]
+        assert page.events[0].id == event_id
+        events_ttl = await client.ttl(f"test:runs:{record.run_id}:events")
+        record_ttl = await client.ttl(f"test:runs:{record.run_id}:record")
+        assert 0 < events_ttl <= 60
+        assert 0 < record_ttl <= 60
 
     asyncio.run(scenario())
 
-    assert len(redis.streams["test:runs:run-1:events"]) == 2
-    xadd_commands = [command for command in redis.commands if command[0] == "xadd"]
-    assert all(command[3:] == (2, True) for command in xadd_commands)
+
+def test_append_event_keeps_only_the_configured_number_of_entries() -> None:
+    async def scenario() -> None:
+        client = AsyncFakeRedis()
+        store = RedisRunStore(
+            client,
+            prefix="test",
+            run_retention_seconds=60,
+            run_event_stream_max_length=2,
+        )
+        record = await store.create_run()
+
+        for _ in range(3):
+            _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
+
+        entries = await client.xrange(f"test:runs:{record.run_id}:events")
+        assert len(entries) == 2
+
+    asyncio.run(scenario())
+
+
+def test_append_event_winning_first_keeps_terminal_last() -> None:
+    async def scenario() -> None:
+        client = AsyncFakeRedis()
+        store = RedisRunStore(client, prefix="test", run_retention_seconds=60)
+        record = await store.create_run()
+
+        first = await store.append_event(RunStartedEvent(run_id=record.run_id))
+        finalization = await store.finalize_run(
+            RunFailedEvent(run_id=record.run_id, data=RunFailedEventData(error="boom"))
+        )
+
+        assert finalization.applied
+        assert finalization.event_id is not None and finalization.event_id > first
+        page = await store.get_events(record.run_id)
+        assert [event.type for event in page.events] == ["run_started", "run_failed"]
+
+    asyncio.run(scenario())
+
+
+def test_append_event_is_rejected_after_terminal_finalization() -> None:
+    async def scenario() -> None:
+        client = AsyncFakeRedis()
+        store = RedisRunStore(client, prefix="test", run_retention_seconds=60)
+        record = await store.create_run()
+        finalization = await store.finalize_run(
+            RunFailedEvent(run_id=record.run_id, data=RunFailedEventData(error="boom"))
+        )
+        assert finalization.applied
+        events_key = f"test:runs:{record.run_id}:events"
+        _ = await client.expire(events_key, 30)
+
+        with pytest.raises(RunStreamSealedError) as sealed:
+            await store.append_event(RunStartedEvent(run_id=record.run_id))
+
+        assert sealed.value.run_id == record.run_id
+        assert sealed.value.status == "failed"
+        page = await store.get_events(record.run_id)
+        assert [event.type for event in page.events] == ["run_failed"]
+        assert await client.ttl(events_key) == 30
+
+    asyncio.run(scenario())
+
+
+def test_append_event_is_rejected_after_cancellation_wins() -> None:
+    async def scenario() -> None:
+        client = AsyncFakeRedis()
+        store = RedisRunStore(client, prefix="test", run_retention_seconds=60)
+        record = await store.create_run()
+        _ = await store.request_cancellation(record.run_id, CancelRunRequest(reason="user"))
+        intent = await store.get_cancellation_intent(record.run_id)
+        assert intent is not None
+        _ = await store.finalize_cancellation(record.run_id, intent)
+
+        with pytest.raises(RunStreamSealedError) as sealed:
+            await store.append_event(RunStartedEvent(run_id=record.run_id))
+
+        assert sealed.value.status == "cancelled"
+        page = await store.get_events(record.run_id)
+        assert [event.type for event in page.events] == ["run_cancelled"]
+
+    asyncio.run(scenario())
+
+
+def test_append_event_raises_when_run_record_is_missing() -> None:
+    async def scenario() -> None:
+        client = AsyncFakeRedis()
+        store = RedisRunStore(client, prefix="test", run_retention_seconds=60)
+
+        with pytest.raises(RunNotFoundError):
+            await store.append_event(RunStartedEvent(run_id="missing"))
+
+        assert not await client.exists("test:runs:missing:events")
+
+    asyncio.run(scenario())
 
 
 def test_get_events_round_trips_run_succeeded_output_and_session_snapshot() -> None:
@@ -523,8 +617,16 @@ def test_iter_events_ends_after_replaying_terminal_event(terminal_type: str) -> 
 
     async def scenario() -> list[str]:
         record = await store.create_run()
+        events_key = f"test:runs:{record.run_id}:events"
         for _ in range(101):
-            _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
+            _ = redis._append_stream_entry(
+                events_key,
+                {
+                    "payload": RUN_EVENT_ADAPTER.dump_json(
+                        RunStartedEvent(run_id=record.run_id), exclude={"id"}
+                    ).decode()
+                },
+            )
         terminal = _terminal_event(terminal_type, record.run_id)
         _ = redis._append_stream_entry(
             f"test:runs:{record.run_id}:events",
@@ -550,7 +652,10 @@ def test_iter_events_ends_after_live_terminal_event(terminal_type: str) -> None:
 
     async def scenario() -> str:
         record = await store.create_run()
-        started_id = await store.append_event(RunStartedEvent(run_id=record.run_id))
+        started_id = redis._append_stream_entry(
+            f"test:runs:{record.run_id}:events",
+            {"payload": RUN_EVENT_ADAPTER.dump_json(RunStartedEvent(run_id=record.run_id), exclude={"id"}).decode()},
+        )
         events = store.iter_events(record.run_id)
         assert (await anext(events)).id == started_id
         next_event = asyncio.ensure_future(anext(events))

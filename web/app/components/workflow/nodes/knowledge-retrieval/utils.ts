@@ -61,7 +61,10 @@ export const getSelectedDatasetsMode = (
   if (allHighQuality || allEconomic) mixtureHighQualityAndEconomic = false
 
   if (allHighQuality)
-    inconsistentEmbeddingModel = uniq(datasets.map((item) => item.embedding_model)).length > 1
+    // Weighted score needs one embedding space, so the provider matters as much as the model name.
+    inconsistentEmbeddingModel =
+      uniq(datasets.map((item) => `${item.embedding_model_provider}/${item.embedding_model}`))
+        .length > 1
 
   return {
     allHighQuality,

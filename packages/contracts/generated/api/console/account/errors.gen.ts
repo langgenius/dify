@@ -106,11 +106,51 @@ const zEmailCodeAccountDeletionRateLimitExceededError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zBillingRequestInProgressError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('billing_request_in_progress'),
+      status: z.literal(429),
+    }),
+  ))()
+
+const zBillingOperationFailedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('billing_operation_failed'),
+      status: z.literal(502),
+    }),
+  ))()
+
+const zBillingUnavailableError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('billing_unavailable'),
+      status: z.literal(503),
+    }),
+  ))()
+
+const zEducationActivateFailedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('education_activate_failed'),
+      status: z.literal(400),
+    }),
+  ))()
+
 const zEducationActivateLimitError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
       code: z.literal('education_activate_limit'),
       status: z.literal(429),
+    }),
+  ))()
+
+const zEducationVerifyFailedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('education_verify_failed'),
+      status: z.literal(400),
     }),
   ))()
 
@@ -162,15 +202,13 @@ const zInvalidAccountPasswordError = /* @__PURE__ */ (() =>
     }),
   ))()
 
-export const postErrors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
-
-export const post2Errors = {
+export const postErrors = {
   account_in_freeze: { status: 400, data: zAccountInFreezeError },
   email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
   email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
 }
 
-export const post3Errors = {
+export const post2Errors = {
   account_in_freeze: { status: 400, data: zAccountInFreezeError },
   account_not_found: { status: 400, data: zAccountNotFoundError },
   email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
@@ -178,14 +216,14 @@ export const post3Errors = {
   invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
 }
 
-export const post4Errors = {
+export const post3Errors = {
   email_change_limit: { status: 429, data: zEmailChangeLimitError },
   email_code_error: { status: 400, data: zEmailCodeError },
   invalid_email: { status: 400, data: zInvalidEmailError },
   invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
 }
 
-export const post5Errors = {
+export const post4Errors = {
   account_not_found: { status: 400, data: zAccountNotFoundError },
   email_change_rate_limit_exceeded: { status: 429, data: zEmailChangeRateLimitExceededError },
   email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
@@ -201,34 +239,47 @@ export const get2Errors = {
   },
 }
 
-export const post7Errors = {
+export const post6Errors = {
   invalid_account_deletion_code: { status: 400, data: zInvalidAccountDeletionCodeError },
+}
+
+export const get3Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
 }
 
 export const get4Errors = {
   account_not_found: { status: 400, data: zAccountNotFoundError },
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  education_verify_failed: { status: 400, data: zEducationVerifyFailedError },
   education_verify_limit: { status: 429, data: zEducationVerifyLimitError },
 }
 
-export const post8Errors = {
+export const get5Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+}
+
+export const post7Errors = {
   account_not_found: { status: 400, data: zAccountNotFoundError },
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  education_activate_failed: { status: 400, data: zEducationActivateFailedError },
   education_activate_limit: { status: 429, data: zEducationActivateLimitError },
 }
 
-export const post9Errors = {
+export const post8Errors = {
   account_already_inited: { status: 400, data: zAccountAlreadyInitedError },
   account_not_found: { status: 400, data: zAccountNotFoundError },
   invalid_invitation_code: { status: 400, data: zInvalidInvitationCodeError },
   missing_invitation_code: { status: 400, data: zMissingInvitationCodeError },
 }
 
-export const post10Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
-
-export const post11Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
-
-export const post12Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
-
-export const post13Errors = {
+export const post9Errors = {
   account_not_found: { status: 400, data: zAccountNotFoundError },
   current_password_incorrect: { status: 400, data: zCurrentPasswordIncorrectError },
   invalid_account_password: { status: 400, data: zInvalidAccountPasswordError },
@@ -237,5 +288,3 @@ export const post13Errors = {
 export const get7Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
 
 export const patchErrors = { account_not_found: { status: 400, data: zAccountNotFoundError } }
-
-export const post14Errors = { account_not_found: { status: 400, data: zAccountNotFoundError } }

@@ -71,6 +71,9 @@ ignore = [
 "libs/gmpy2_pkcs10aep_cipher.py" = [
     "N803", # invalid-argument-name
 ]
+"services/billing_client/*" = [
+    "TID251", # the billing client is the one place that reads billing settings and calls the transport
+]
 "tests/*" = [
     "T201", # allow print in tests,
     "S110", # allow ignoring exceptions in tests code (currently)
@@ -81,6 +84,21 @@ msg = "Use Pydantic payload/query models instead of reqparse."
 
 [lint.flake8-tidy-imports.banned-api."flask_restx.reqparse.RequestParser"]
 msg = "Use Pydantic payload/query models instead of reqparse."
+
+[lint.flake8-tidy-imports.banned-api."configs.dify_config.BILLING_API_URL"]
+msg = "Only services.billing_client reaches billing/saas. Call a generated operation from services.billing_client instead."
+
+[lint.flake8-tidy-imports.banned-api."configs.dify_config.BILLING_API_SECRET_KEY"]
+msg = "Only services.billing_client reaches billing/saas. Call a generated operation from services.billing_client instead."
+
+[lint.flake8-tidy-imports.banned-api."configs.dify_config.BILLING_QUOTA_API_URL"]
+msg = "Only services.billing_client reaches billing/saas. Call a generated operation from services.billing_client instead."
+
+[lint.flake8-tidy-imports.banned-api."configs.dify_config.NETWORK_ACCESS_API_URL"]
+msg = "Only services.billing_client reaches billing/saas. Call a generated operation from services.billing_client instead."
+
+[lint.flake8-tidy-imports.banned-api."services.billing_client.transport.request"]
+msg = "Allowlist the operation in api/dev/generate_billing_client.py, regenerate, and call the generated function."
 
 [lint.isort]
 known-first-party = ["graphon"]

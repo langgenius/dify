@@ -57,7 +57,6 @@
   "stepByStepTour.markTaskIncomplete": "Contrassegna {{title}} come incompleto",
   "stepByStepTour.minimize": "Riduci a icona",
   "stepByStepTour.progressAriaValueText": "{{completed}} di {{total}} passaggi completati",
-  "stepByStepTour.restore": "Apri lo step-by-step tour",
   "stepByStepTour.skip": "Salta il tour",
   "stepByStepTour.skipRecovery.dismiss": "Ho capito",
   "stepByStepTour.skipRecovery.label": "Suggerimento di ripristino dello Step-by-step Tour",

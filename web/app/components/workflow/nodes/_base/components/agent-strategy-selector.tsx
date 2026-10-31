@@ -7,7 +7,7 @@ import type {
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTitle, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,7 +17,7 @@ import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hook
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import PluginList from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { useGetLanguage } from '@/context/i18n'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import { renderI18nObject } from '@/i18n/metadata'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
@@ -66,10 +66,7 @@ type AgentStrategySelectorProps = {
 }
 
 export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) => {
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const marketplace = useMarketplace()
 
   const { value, onChange } = props
   const [open, setOpen] = useState(false)
@@ -124,14 +121,14 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
   }, [marketplacePlugins, providers.data])
 
   useEffect(() => {
-    if (!enable_marketplace) return
+    if (!marketplace) return
     if (query) {
       fetchPlugins({
         query,
         category: PluginCategoryEnum.agent,
       })
     }
-  }, [enable_marketplace, fetchPlugins, query])
+  }, [marketplace, fetchPlugins, query])
 
   const pluginRef = useRef<ListRef>(null)
 
@@ -250,8 +247,9 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
               }}
               className="h-full max-h-full max-w-none overflow-y-auto"
             />
-            {enable_marketplace && (
+            {marketplace && (
               <PluginList
+                marketplace={marketplace}
                 ref={pluginRef}
                 wrapElemRef={wrapElemRef}
                 list={notInstalledPlugins}
