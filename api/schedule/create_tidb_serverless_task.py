@@ -1,17 +1,18 @@
 import time
 
 import click
+from celery import shared_task
 from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
-import app
 from configs import dify_config
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
 
 
-@app.celery.task(queue="dataset")
+@shared_task(queue="dataset")
 def create_tidb_serverless_task():
     click.echo(click.style("Start create tidb serverless task.", fg="green"))
     if not dify_config.CREATE_TIDB_SERVICE_JOB_ENABLED:
@@ -30,15 +31,15 @@ def create_tidb_serverless_task():
             iterations_per_thread = 20
             create_clusters(iterations_per_thread)
 
-        except Exception as e:
-            click.echo(click.style(f"Error: {e}", fg="red"))
-            break
+            except Exception as e:
+                click.echo(click.style(f"Error: {e}", fg="red"))
+                break
 
     end_at = time.perf_counter()
     click.echo(click.style(f"Create tidb serverless task success latency: {end_at - start_at}", fg="green"))
 
 
-def create_clusters(batch_size):
+def create_clusters(batch_size, session: Session):
     try:
         # TODO: maybe we can set the default value for the following parameters in the config file
         new_clusters = TidbService.batch_create_tidb_serverless_cluster(
@@ -61,7 +62,7 @@ def create_clusters(batch_size):
                 active=False,
                 status=TidbAuthBindingStatus.CREATING,
             )
-            db.session.add(tidb_auth_binding)
-        db.session.commit()
+            session.add(tidb_auth_binding)
+        session.commit()
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"))
