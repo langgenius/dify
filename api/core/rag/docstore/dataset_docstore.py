@@ -120,24 +120,23 @@ class DatasetDocumentStore:
                 self.add_multimodel_documents_binding(
                     segment_id=segment_document.id, multimodel_documents=doc.attachments, session=session
                 )
-                if save_child:
-                    if doc.children:
-                        for position, child in enumerate(doc.children, start=1):
-                            assert self._document_id
-                            child_segment = ChildChunk(
-                                tenant_id=self._dataset.tenant_id,
-                                dataset_id=self._dataset.id,
-                                document_id=self._document_id,
-                                segment_id=segment_document.id,
-                                position=position,
-                                index_node_id=child.metadata.get("doc_id"),
-                                index_node_hash=child.metadata.get("doc_hash"),
-                                content=child.page_content,
-                                word_count=len(child.page_content),
-                                type=SegmentType.AUTOMATIC,
-                                created_by=self._user_id,
-                            )
-                            session.add(child_segment)
+                if save_child and doc.children:
+                    for position, child in enumerate(doc.children, start=1):
+                        assert self._document_id
+                        child_segment = ChildChunk(
+                            tenant_id=self._dataset.tenant_id,
+                            dataset_id=self._dataset.id,
+                            document_id=self._document_id,
+                            segment_id=segment_document.id,
+                            position=position,
+                            index_node_id=child.metadata.get("doc_id"),
+                            index_node_hash=child.metadata.get("doc_hash"),
+                            content=child.page_content,
+                            word_count=len(child.page_content),
+                            type=SegmentType.AUTOMATIC,
+                            created_by=self._user_id,
+                        )
+                        session.add(child_segment)
             else:
                 segment_document.content = doc.page_content
                 if doc.metadata.get("answer"):

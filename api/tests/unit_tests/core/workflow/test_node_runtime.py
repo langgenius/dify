@@ -698,9 +698,8 @@ class TestParameterExtractorExecutionBehaviorCases:
         prompts = result.process_data.get("prompts", [])
 
         for prompt in prompts:
-            if prompt.get("role") == "user":
-                if "<structure>" in prompt.get("text"):
-                    assert '<structure>\n{"type": "object"' in prompt.get("text")
+            if prompt.get("role") == "user" and "<structure>" in prompt.get("text"):
+                assert '<structure>\n{"type": "object"' in prompt.get("text")
 
     @staticmethod
     @pytest.mark.usefixtures("setup_model_mock")

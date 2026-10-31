@@ -56,26 +56,25 @@ limit 1000"""
                         continue
 
                     retrieval_model_changed = False
-                    if retrieval_model:
-                        if (
-                            "reranking_model" in retrieval_model
-                            and "reranking_provider_name" in retrieval_model["reranking_model"]
-                            and retrieval_model["reranking_model"]["reranking_provider_name"]
-                            and "/" not in retrieval_model["reranking_model"]["reranking_provider_name"]
-                        ):
-                            click.echo(
-                                click.style(
-                                    f"[{processed_count}] Migrating {table_name} {record_id} "
-                                    f"(reranking_provider_name: "
-                                    f"{retrieval_model['reranking_model']['reranking_provider_name']})",
-                                    fg="white",
-                                )
+                    if retrieval_model and (
+                        "reranking_model" in retrieval_model
+                        and "reranking_provider_name" in retrieval_model["reranking_model"]
+                        and retrieval_model["reranking_model"]["reranking_provider_name"]
+                        and "/" not in retrieval_model["reranking_model"]["reranking_provider_name"]
+                    ):
+                        click.echo(
+                            click.style(
+                                f"[{processed_count}] Migrating {table_name} {record_id} "
+                                f"(reranking_provider_name: "
+                                f"{retrieval_model['reranking_model']['reranking_provider_name']})",
+                                fg="white",
                             )
-                            # update google to langgenius/gemini/google etc.
-                            retrieval_model["reranking_model"]["reranking_provider_name"] = ModelProviderID(
-                                retrieval_model["reranking_model"]["reranking_provider_name"]
-                            ).to_string()
-                            retrieval_model_changed = True
+                        )
+                        # update google to langgenius/gemini/google etc.
+                        retrieval_model["reranking_model"]["reranking_provider_name"] = ModelProviderID(
+                            retrieval_model["reranking_model"]["reranking_provider_name"]
+                        ).to_string()
+                        retrieval_model_changed = True
 
                     click.echo(
                         click.style(
