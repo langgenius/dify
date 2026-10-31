@@ -2,6 +2,7 @@ import json
 import logging
 import time
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, NewType, TypedDict
 
@@ -52,9 +53,11 @@ from core.workflow.human_input_policy import (
     HumanInputSurface,
     disposition_for_surface,
     enrich_human_input_pause_reasons,
-    resolve_human_input_pause_reason_inputs,
+    resolve_variable_select_input_options,
 )
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
+from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from graphon.entities import WorkflowStartReason
 from graphon.enums import (
@@ -65,6 +68,7 @@ from graphon.enums import (
 )
 from graphon.file import FILE_MODEL_IDENTITY, File
 from graphon.runtime import RuntimeState
+from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
 from graphon.variables.variables import Variable
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
@@ -103,7 +107,40 @@ class EndUserCreatedByDict(TypedDict):
 CreatedByDict = AccountCreatedByDict | EndUserCreatedByDict
 
 
+@dataclass(frozen=True, slots=True)
+class _HumanInputPauseOutput:
+    """Keep a form event paired with its entry in the workflow pause response."""
+
+    response: HumanInputRequiredResponse
+    pause_reason: dict[str, Any]
+
+
 class WorkflowResponseConverter:
+    @staticmethod
+    def human_input_v2_required_data(prepared: PreparedForm, *, node_id: str) -> HumanInputRequiredResponse.Data:
+        """Project a V2 form snapshot into the existing HITL wire contract.
+
+        The caller must supply the node-owned snapshot captured during this run.
+        The returned payload preserves its resolved inputs and never resolves a
+        legacy V1 token.
+        """
+        reason = build_human_input_v2_pause_reason(
+            prepared.form.resolved_form, form_id=prepared.form.id, node_id=node_id
+        )
+        return HumanInputRequiredResponse.Data(
+            form_version=reason.form_version,
+            form_id=reason.form_id,
+            node_id=node_id,
+            node_title=reason.node_title,
+            form_content=reason.form_content,
+            inputs=reason.inputs,
+            actions=reason.actions,
+            resolved_default_values=reason.resolved_default_values,
+            expiration_time=to_utc_timestamp(prepared.form.expiration_time),
+            display_in_ui=prepared.form_token is not None,
+            form_token=prepared.form_token.get_secret_value() if prepared.form_token is not None else None,
+        )
+
     _truncator: BaseTruncator
 
     def __init__(
@@ -331,72 +368,45 @@ class WorkflowResponseConverter:
         encoded_outputs = self._encode_outputs(event.outputs) or {}
         if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             encoded_outputs = {}
-        variable_pool = graph_runtime_state.variable_pool
-        resolved_reasons = resolve_human_input_pause_reason_inputs(
-            event.reasons,
-            variable_pool=variable_pool,
-        )
-        pause_reasons = [reason.model_dump(mode="json") for reason in resolved_reasons]
-        human_input_form_ids = [reason.form_id for reason in resolved_reasons if isinstance(reason, HumanInputRequired)]
-        expiration_times_by_form_id: dict[str, datetime] = {}
-        display_in_ui_by_form_id: dict[str, bool] = {}
-        dispositions_by_form_id: dict[str, FormDisposition] = {}
-        if human_input_form_ids:
-            config = self._application_generate_entity.app_config
-            forms = self._contexts.pause_forms(
-                tenant_id=config.tenant_id,
-                app_id=config.app_id,
-                workflow_run_id=run_id,
-                form_ids=human_input_form_ids,
+        v1_outputs = iter(
+            self._human_input_v1_pause_responses(
+                reasons=[
+                    reason
+                    for reason in event.reasons
+                    if isinstance(reason, HumanInputRequired) and reason.form_version == "1"
+                ],
+                task_id=task_id,
+                variable_pool=graph_runtime_state.variable_pool,
             )
-            hitl_surface = _INVOKE_FROM_TO_HITL_SURFACE.get(self._application_generate_entity.invoke_from)
-            for form in forms:
-                expiration_times_by_form_id[form.id] = form.expiration_time
-                try:
-                    definition_payload = json.loads(form.form_definition) if form.form_definition else {}
-                except (TypeError, json.JSONDecodeError):
-                    definition_payload = {}
-                display_in_ui_by_form_id[form.id] = bool(definition_payload.get("display_in_ui"))
-                dispositions_by_form_id[form.id] = disposition_for_surface(form.recipients, surface=hitl_surface)
-
-        # Reconnect paths must preserve the same pause-reason contract as live streams;
-        # otherwise clients see schema drift after resume.
-        pause_reasons = enrich_human_input_pause_reasons(
-            pause_reasons,
-            dispositions_by_form_id=dispositions_by_form_id,
-            expiration_times_by_form_id={
-                form_id: to_utc_timestamp(expiration_time)
-                for form_id, expiration_time in expiration_times_by_form_id.items()
-            },
         )
-
+        v2_outputs = iter(
+            self._human_input_v2_pause_responses(
+                reasons=[
+                    reason
+                    for reason in event.reasons
+                    if isinstance(reason, HumanInputRequired) and reason.form_version == "2"
+                ],
+                forms=event.human_input_v2_forms,
+                task_id=task_id,
+            )
+        )
         responses: list[StreamResponse] = []
-
-        for reason in resolved_reasons:
-            if isinstance(reason, HumanInputRequired):
-                expiration_time = expiration_times_by_form_id.get(reason.form_id)
-                if expiration_time is None:
-                    raise ValueError(f"HumanInputForm not found for pause reason, form_id={reason.form_id}")
-                disposition = dispositions_by_form_id.get(reason.form_id)
-                responses.append(
-                    HumanInputRequiredResponse(
-                        task_id=task_id,
-                        workflow_run_id=run_id,
-                        data=HumanInputRequiredResponse.Data(
-                            form_id=reason.form_id,
-                            node_id=reason.node_id,
-                            node_title=reason.node_title,
-                            form_content=reason.form_content,
-                            inputs=reason.inputs,
-                            actions=reason.actions,
-                            display_in_ui=display_in_ui_by_form_id.get(reason.form_id, False),
-                            form_token=disposition.form_token if disposition else None,
-                            approval_channels=list(disposition.approval_channels) if disposition else [],
-                            resolved_default_values=reason.resolved_default_values,
-                            expiration_time=to_utc_timestamp(expiration_time),
-                        ),
-                    )
-                )
+        pause_reasons: list[dict[str, Any]] = []
+        # Each version owns its complete conversion; merge in the original event
+        # order, including scheduling reasons interleaved with approval forms.
+        for reason in event.reasons:
+            if not isinstance(reason, HumanInputRequired):
+                pause_reasons.append(reason.model_dump(mode="json"))
+                continue
+            match reason.form_version:
+                case "1":
+                    converted = next(v1_outputs)
+                case "2":
+                    converted = next(v2_outputs)
+                case _:
+                    raise ValueError(f"Unsupported Human Input form version: {reason.form_version}")
+            responses.append(converted.response)
+            pause_reasons.append(converted.pause_reason)
 
         responses.append(
             WorkflowPauseStreamResponse(
@@ -833,6 +843,109 @@ class WorkflowResponseConverter:
                 steps=event.steps,
             ),
         )
+
+    def _human_input_v1_pause_responses(
+        self,
+        *,
+        reasons: Sequence[HumanInputRequired],
+        task_id: str,
+        variable_pool: ReadOnlyVariablePool,
+    ) -> list[_HumanInputPauseOutput]:
+        """Resolve V1 inputs, access channels, and both response payloads.
+
+        The supplied reasons must all describe V1 forms for this workflow run.
+        Missing form snapshots fail the conversion instead of emitting a
+        partially trusted pause payload.
+        """
+        if not reasons:
+            return []
+        run_id = self._ensure_workflow_run_id()
+        resolved_reasons = [
+            reason.model_copy(
+                update={
+                    "inputs": resolve_variable_select_input_options(reason.inputs, variable_pool=variable_pool),
+                }
+            )
+            for reason in reasons
+        ]
+        form_ids = [reason.form_id for reason in resolved_reasons]
+        expiration_times: dict[str, datetime] = {}
+        display_in_ui: dict[str, bool] = {}
+        dispositions: dict[str, FormDisposition] = {}
+        config = self._application_generate_entity.app_config
+        surface = _INVOKE_FROM_TO_HITL_SURFACE.get(self._application_generate_entity.invoke_from)
+        forms = self._contexts.pause_forms(
+            tenant_id=config.tenant_id,
+            app_id=config.app_id,
+            workflow_run_id=run_id,
+            form_ids=form_ids,
+        )
+        for form in forms:
+            expiration_times[form.id] = form.expiration_time
+            try:
+                definition_payload = json.loads(form.form_definition) if form.form_definition else {}
+            except (TypeError, json.JSONDecodeError):
+                definition_payload = {}
+            display_in_ui[form.id] = bool(definition_payload.get("display_in_ui"))
+            dispositions[form.id] = disposition_for_surface(form.recipients, surface=surface)
+        # Preserve the legacy pause-reason fields, which differ from the
+        # human_input_required data payload (notably display_in_ui).
+        pause_reasons = enrich_human_input_pause_reasons(
+            [reason.model_dump(mode="json") for reason in resolved_reasons],
+            dispositions_by_form_id=dispositions,
+            expiration_times_by_form_id={
+                form_id: to_utc_timestamp(value) for form_id, value in expiration_times.items()
+            },
+        )
+        outputs: list[_HumanInputPauseOutput] = []
+        for reason, payload in zip(resolved_reasons, pause_reasons, strict=True):
+            expiration_time = expiration_times.get(reason.form_id)
+            if expiration_time is None:
+                raise ValueError(f"HumanInputForm not found for pause reason, form_id={reason.form_id}")
+            disposition = dispositions.get(reason.form_id)
+            response = HumanInputRequiredResponse(
+                task_id=task_id,
+                workflow_run_id=run_id,
+                data=HumanInputRequiredResponse.Data(
+                    form_version=reason.form_version,
+                    form_id=reason.form_id,
+                    node_id=reason.node_id,
+                    node_title=reason.node_title,
+                    form_content=reason.form_content,
+                    inputs=reason.inputs,
+                    actions=reason.actions,
+                    display_in_ui=display_in_ui.get(reason.form_id, False),
+                    form_token=disposition.form_token if disposition else None,
+                    approval_channels=list(disposition.approval_channels) if disposition else [],
+                    resolved_default_values=reason.resolved_default_values,
+                    expiration_time=to_utc_timestamp(expiration_time),
+                ),
+            )
+            outputs.append(_HumanInputPauseOutput(response=response, pause_reason=payload))
+        return outputs
+
+    def _human_input_v2_pause_responses(
+        self,
+        *,
+        reasons: Sequence[HumanInputRequired],
+        forms: Mapping[str, PreparedForm],
+        task_id: str,
+    ) -> list[_HumanInputPauseOutput]:
+        """Build both V2 response payloads from the snapshots emitted by nodes."""
+        if not reasons:
+            return []
+        run_id = self._ensure_workflow_run_id()
+        outputs: list[_HumanInputPauseOutput] = []
+        for reason in reasons:
+            prepared = forms.get(reason.form_id)
+            if prepared is None:
+                raise ValueError(f"Human Input v2 node did not supply its form snapshot: {reason.form_id}")
+            data = self.human_input_v2_required_data(prepared, node_id=reason.node_id)
+            response = HumanInputRequiredResponse(task_id=task_id, workflow_run_id=run_id, data=data)
+            payload = reason.model_dump(mode="json")
+            payload.update(data.model_dump(mode="json"))
+            outputs.append(_HumanInputPauseOutput(response=response, pause_reason=payload))
+        return outputs
 
     @classmethod
     def fetch_files_from_node_outputs(cls, outputs_dict: Mapping[str, Any] | None) -> Sequence[Mapping[str, Any]]:

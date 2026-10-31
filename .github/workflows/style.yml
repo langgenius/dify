@@ -81,6 +81,10 @@ jobs:
         if: inputs.run-python-style
         run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
 
+      - name: Check Billing Client Is Generated From Snapshot
+        if: inputs.run-python-style
+        run: uv run --project api --dev python api/dev/generate_billing_client.py --check
+
       - name: Run No New Getattr Guard
         if: inputs.run-python-style
         run: uv run --project api python scripts/check_no_new_getattr.py --base-rev "${{ inputs.base-rev }}"
@@ -102,6 +106,18 @@ jobs:
         env:
           GUARD_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}
         run: uv run --project api python scripts/check_no_new_base_model.py --base-rev "$GUARD_BASE_REV"
+
+      - name: Run No New Cast Guard
+        if: inputs.run-python-style
+        env:
+          GUARD_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}
+        run: uv run --project api python scripts/check_no_new_cast.py --base-rev "$GUARD_BASE_REV"
+
+      - name: Run No New Constructor Bypass Guard
+        if: inputs.run-python-style
+        env:
+          GUARD_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}
+        run: uv run --project api python scripts/check_no_new_constructor_bypass.py --base-rev "$GUARD_BASE_REV"
 
       - name: Run No New Test Doubles Guard
         if: inputs.run-python-style || inputs.run-dify-agent-style

@@ -2,7 +2,6 @@ import { atom } from 'jotai'
 import { selectAtom } from 'jotai/utils'
 import { knowledgeFsTaskFailureMessageKey } from '../../knowledge-fs-task-error'
 import { documentDisplayStatus, sourceName, taskGraphIsActive, taskNeedsAttention } from '../model'
-import { MAX_AUTO_CURSOR_PAGES } from '../tasks/recovery'
 import { activeTasksAtom, documentTaskByDocumentAtom, drawerTasksAtom } from '../tasks/state'
 import { documentFilterAtom, documentSearchAtom } from './inputs'
 import {
@@ -15,7 +14,6 @@ import {
   documentsQueryHasNextPageAtom,
   documentsQueryIsFetchingNextPageAtom,
   documentsQueryIsFetchNextPageErrorAtom,
-  documentsQueryPageCountAtom,
   sourceNamesAtom,
   sourcesQueryErrorAtom,
   sourcesQueryHasDataAtom,
@@ -83,22 +81,8 @@ export const filterActiveAtom = atom((get) => {
   return get(documentFilterAtom) !== 'all' || Boolean(get(documentSearchAtom).trim())
 })
 
-export const filteredDocumentsAtom = atom((get) => {
-  const filter = get(documentFilterAtom)
-  const normalizedSearch = get(documentSearchAtom).trim().toLocaleLowerCase()
-  const sourceNames = get(sourceNamesAtom)
-  const statuses = get(documentStatusesAtom)
-
-  return get(documentsAtom).filter((document) => {
-    if (filter !== 'all' && statuses.get(document.id) !== filter) return false
-    if (!normalizedSearch) return true
-    const resolvedSourceName =
-      (document.sourceId && sourceNames.get(document.sourceId)) ?? sourceName(document)
-    return `${document.title} ${resolvedSourceName ?? ''}`
-      .toLocaleLowerCase()
-      .includes(normalizedSearch)
-  })
-})
+// The list endpoint filters the entire collection before paginating matches.
+export const filteredDocumentsAtom = documentsAtom
 
 const documentSnapshotPendingAtom = atom((get) => !get(documentsQueryHasDataAtom))
 
@@ -144,12 +128,7 @@ export const documentListPaginationAtom = atom((get) => {
   const isFetchingNextSourcePage = get(sourcesQueryIsFetchingNextPageAtom)
 
   return {
-    completingResults: Boolean(
-      filterActive &&
-      !get(documentsQueryIsFetchNextPageErrorAtom) &&
-      ((hasNextDocumentPage && get(documentsQueryPageCountAtom) < MAX_AUTO_CURSOR_PAGES) ||
-        isFetchingNextDocumentPage),
-    ),
+    completingResults: Boolean(filterActive && isFetchingNextDocumentPage),
     filterActive,
     hasNextDocumentPage,
     hasNextPage: hasNextDocumentPage || hasRelevantNextSourcePage,
@@ -335,8 +314,9 @@ export const taskTriggerFactsAtom = atom((get) => ({
 }))
 
 export const documentsToolbarFactsAtom = atom((get) => ({
-  showTasks: get(showTasksAtom) || Boolean(get(tasksQueryErrorAtom)),
-  statusPending: get(dependencyResultsIncompleteAtom),
+  showTasks:
+    (get(documentsAtom).length > 0 || get(filterActiveAtom)) &&
+    (get(showTasksAtom) || Boolean(get(tasksQueryErrorAtom))),
 }))
 
 export const documentRenderWindowIdentityAtom = atom(

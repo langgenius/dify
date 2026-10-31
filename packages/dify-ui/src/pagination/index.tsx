@@ -380,9 +380,7 @@ function PaginationPageJump({
       {...props}
       ref={mergedSummaryRef}
       type="button"
-      aria-label={
-        ariaLabel ?? `Edit page number, current page ${pagination.page} of ${pagination.totalPages}`
-      }
+      aria-label={ariaLabel ?? `${pagination.page}/${pagination.totalPages}: Edit page number`}
       className={(state) =>
         cn(
           'inline-flex h-7 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 system-xs-medium text-text-secondary tabular-nums hover:cursor-text hover:bg-state-base-hover-alt',

@@ -17,11 +17,13 @@ from docx.opc.part import Part
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from httpx import Response
+from PIL import Image
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 import core.rag.extractor.word_extractor as we
 from core.rag.extractor.word_extractor import WordExtractor
+from extensions.storage.opendal_storage import OpenDALStorage
 from models.model import UploadFile
 from tests.helpers.unit.config_override import apply_config_overrides
 
@@ -742,3 +744,63 @@ def test_parse_cell_paragraph_hyperlink_in_table_cell_mailto():
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+@pytest.fixture
+def local_image_storage(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> OpenDALStorage:
+    local_storage = OpenDALStorage(scheme="fs", root=str(tmp_path / "storage"))
+    monkeypatch.setattr(we.storage, "storage_runner", local_storage, raising=False)
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
+    return local_storage
+
+
+@pytest.mark.parametrize("part_name", ["image1.png", "logo.png", "Logo.PNG"])
+def test_extract_preserves_image_relationships_regardless_of_part_name(
+    tmp_path: Path, sqlite_session: Session, local_image_storage: OpenDALStorage, part_name: str
+) -> None:
+    png = io.BytesIO()
+    Image.new("RGB", (2, 2), "red").save(png, format="PNG")
+    image_bytes = png.getvalue()
+    png.seek(0)
+    doc = Document()
+    doc.add_paragraph("Before logo")
+    doc.add_picture(png)
+    doc.add_paragraph("After logo")
+    image_rel = next(rel for rel in doc.part.rels.values() if rel.reltype == RT.IMAGE)
+    image_rel.target_part._partname = PackURI(f"/word/media/{part_name}")
+    path = tmp_path / "logo.docx"
+    doc.save(str(path))
+    assert len(Document(str(path)).inline_shapes) == 1
+
+    content = (
+        WordExtractor(
+            str(path),
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000002",
+            session=sqlite_session,
+        )
+        .extract()[0]
+        .page_content
+    )
+
+    upload = sqlite_session.scalars(select(UploadFile)).one()
+    image_link = f"![image](http://files.local/files/{upload.id}/file-preview)"
+    assert content.index("Before logo") < content.index(image_link) < content.index("After logo")
+    assert local_image_storage.load_once(upload.key) == image_bytes
+
+
+def test_extract_ignores_non_image_relationship_with_image_in_target(
+    tmp_path: Path, sqlite_session: Session, local_image_storage: OpenDALStorage
+) -> None:
+    doc = Document()
+    doc.add_paragraph("Visible text")
+    metadata = Part(PackURI("/word/image-metadata.xml"), "application/xml", b"<metadata/>")
+    doc.part.rels.add_relationship(RT.CUSTOM_XML, metadata, "rIdMetadata")
+    path = tmp_path / "metadata.docx"
+    doc.save(str(path))
+
+    content = WordExtractor(str(path), "tenant", "user", session=sqlite_session).extract()[0].page_content
+
+    assert content == "Visible text"
+    assert sqlite_session.scalars(select(UploadFile)).all() == []
+    assert not local_image_storage.exists("image_files/")

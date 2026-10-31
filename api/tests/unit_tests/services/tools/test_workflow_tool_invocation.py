@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import pytest
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolParameter
@@ -13,6 +13,7 @@ from models import Account
 from models.model import App, AppMode, EndUser
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
+from repositories.entities.workflow_execution import WorkflowExecutionIdentity
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.tools.workflow.tool import WorkflowTool
 from services.workflow.contracts import WorkflowSnapshot
@@ -57,6 +58,7 @@ class _WorkflowQueries:
 
 @dataclass(frozen=True)
 class _GenerateCall:
+    execution_identity: WorkflowExecutionIdentity
     app_model: App
     workflow: WorkflowSnapshot
     user: Account | EndUser
@@ -82,6 +84,7 @@ def test_public_invoke_passes_explicit_session_and_injects_service_generator_dep
     def generate(
         generator: WorkflowAppGenerator,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: WorkflowSnapshot,
         user: Account | EndUser,
@@ -95,6 +98,7 @@ def test_public_invoke_passes_explicit_session_and_injects_service_generator_dep
         generators.append(generator)
         calls.append(
             _GenerateCall(
+                execution_identity=execution_identity,
                 app_model=app_model,
                 workflow=workflow,
                 user=user,
@@ -148,6 +152,7 @@ def test_public_invoke_passes_explicit_session_and_injects_service_generator_dep
 
     assert calls == [
         _GenerateCall(
+            execution_identity=WorkflowExecutionIdentity(user_id=actor.id, user_from=UserFrom.ACCOUNT),
             app_model=app,
             workflow=workflow_snapshot(workflow),
             user=actor,

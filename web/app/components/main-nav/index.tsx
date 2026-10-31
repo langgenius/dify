@@ -10,9 +10,14 @@ import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import StepByStepTourMount from '@/app/components/step-by-step-tour/mount'
-import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
+import {
+  isCurrentWorkspaceDatasetOperatorAtom,
+  isCurrentWorkspaceManagerAtom,
+} from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
+import { useMarketplace } from '@/features/marketplace/client'
 import { useCanViewSkills } from '@/features/skills/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
@@ -29,14 +34,18 @@ const WebAppsSection = lazy(() => import('./components/web-apps-section'))
 
 export function MainNav({ className, initialPlatform }: MainNavProps) {
   const { t } = useTranslation(['common', 'navigation'])
+  const { t: tContacts } = useTranslation(['contacts'])
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const marketplaceEnabled = useMarketplace() !== null
   const { data: currentEnv } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.meta.currentEnv,
   })
   const agentV2Enabled = isAgentV2Enabled()
+  const contactsEnabled = isContactsManagementEnabled()
   const canViewSkills = useCanViewSkills()
   const { data: enableSkill } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -51,25 +60,39 @@ export function MainNav({ className, initialPlatform }: MainNavProps) {
       MAIN_NAV_ROUTES.filter((route) =>
         isMainNavRouteVisible(route, {
           agentV2Enabled,
+          canViewContacts: isCurrentWorkspaceManager,
+          contactsEnabled,
           canViewSkills,
           isCurrentWorkspaceDatasetOperator,
-          marketplaceEnabled: systemFeatures.enable_marketplace,
+          marketplaceEnabled,
           skillEnabled: enableSkill === true,
         }),
-      ).map((route) => ({
-        href: route.href,
-        label: 'label' in route ? route.label : t(($) => $[route.labelKey], { ns: 'navigation' }),
-        active: route.active,
-        icon: route.icon,
-        activeIcon: route.activeIcon,
-      })),
+      ).map((route) => {
+        const label =
+          'label' in route
+            ? route.label
+            : route.key === 'contacts'
+              ? tContacts(($) => $['directory.title'])
+              : t(($) => $[route.labelKey], { ns: 'navigation' })
+
+        return {
+          href: route.href,
+          label,
+          active: route.active,
+          icon: route.icon,
+          activeIcon: route.activeIcon,
+        }
+      }),
     [
       agentV2Enabled,
+      contactsEnabled,
       canViewSkills,
       enableSkill,
       isCurrentWorkspaceDatasetOperator,
-      systemFeatures.enable_marketplace,
+      isCurrentWorkspaceManager,
+      marketplaceEnabled,
       t,
+      tContacts,
     ],
   )
 

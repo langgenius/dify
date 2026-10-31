@@ -1,8 +1,9 @@
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../../types'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { DataType } from '../../types'
 import DatasetMetadataDrawer from '../dataset-metadata-drawer'
 
@@ -152,6 +153,35 @@ describe('DatasetMetadataDrawer', () => {
       }),
     )
     await waitFor(() => expect(defaultProps.onRemove).toHaveBeenCalledExactlyOnceWith('2'))
+  })
+
+  it('keeps the delete confirmation open while pending and after a failure', async () => {
+    const user = userEvent.setup()
+    const request = createDeferred<void>()
+    const onRemove = vi.fn().mockReturnValueOnce(request.promise).mockResolvedValueOnce(undefined)
+    render(<DatasetMetadataDrawer {...defaultProps} onRemove={onRemove} />)
+    await user.click(screen.getAllByRole('button', { name: 'common.operation.remove' })[1]!)
+    const dialog = await screen.findByRole('alertdialog')
+    const confirm = within(dialog).getByRole('button', { name: 'common.operation.confirm' })
+    const cancel = within(dialog).getByRole('button', { name: 'common.operation.cancel' })
+
+    await user.click(confirm)
+    expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    expect(cancel).toBeDisabled()
+    await user.click(confirm)
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('alertdialog')).toBeVisible()
+    expect(onRemove).toHaveBeenCalledExactlyOnceWith('2')
+
+    await act(async () => request.reject(new Error('delete failed')))
+    await waitFor(() => expect(confirm).not.toHaveAttribute('aria-disabled', 'true'))
+    expect(screen.getByRole('alertdialog')).toBeVisible()
+    expect(mockToastNotify).not.toHaveBeenCalled()
+
+    await user.click(confirm)
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(onRemove).toHaveBeenCalledTimes(2)
+    expect(mockToastNotify).toHaveBeenCalledTimes(1)
   })
 
   it.each([false, true])(
