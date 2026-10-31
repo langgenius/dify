@@ -1,8 +1,9 @@
 """App trigger management with workspace-scoped, bounded database transactions."""
 
+from collections.abc import Sequence
 from typing import override
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
@@ -15,6 +16,7 @@ from services.trigger.app_trigger_store import (
     AppTriggerNotFoundError,
     AppTriggerRecord,
     AppTriggerStore,
+    PublishedAppTrigger,
     WebhookTriggerNotFoundError,
     WebhookTriggerRecord,
 )
@@ -90,3 +92,48 @@ class SQLAlchemyAppTriggerRepository(AppTriggerStore):
             trigger.status = AppTriggerStatus.ENABLED if enabled else AppTriggerStatus.DISABLED
             session.flush()
             return _trigger_record(trigger)
+
+    def sync_publication(
+        self, *, session: Session, tenant_id: str, app_id: str, triggers: Sequence[PublishedAppTrigger]
+    ) -> None:
+        """Join the publication transaction; registration must roll back with its graph.
+
+        WorkflowService currently owns the publication Session and its version-counter
+        lock. Do not commit or create a second transaction here. Remove this borrowed
+        Session once publication exposes a unit of work for all graph registrations.
+        """
+        existing = {
+            trigger.node_id: trigger
+            for trigger in session.scalars(
+                select(AppTrigger).where(AppTrigger.tenant_id == tenant_id, AppTrigger.app_id == app_id)
+            )
+        }
+        current_node_ids = {trigger.node_id for trigger in triggers}
+        for node_id, trigger in existing.items():
+            if node_id not in current_node_ids:
+                session.delete(trigger)
+        for trigger in triggers:
+            stored = existing.get(trigger.node_id)
+            if stored is None:
+                session.add(
+                    AppTrigger(
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                        node_id=trigger.node_id,
+                        trigger_type=trigger.trigger_type,
+                        title=trigger.title,
+                        provider_name=trigger.provider_name,
+                        status=AppTriggerStatus.ENABLED,
+                    )
+                )
+            elif trigger.title and trigger.title != stored.title:
+                # Preserve status and provider/type metadata for existing node IDs.
+                stored.title = trigger.title
+
+    def mark_tenant_triggers_rate_limited(self, tenant_id: str) -> None:
+        with self._session_factory.begin() as session:
+            session.execute(
+                update(AppTrigger)
+                .where(AppTrigger.tenant_id == tenant_id, AppTrigger.status == AppTriggerStatus.ENABLED)
+                .values(status=AppTriggerStatus.RATE_LIMITED)
+            )

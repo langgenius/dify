@@ -1154,6 +1154,7 @@ name = App trigger management contracts are framework and persistence neutral
 type = forbidden
 source_modules =
     services.trigger.app_trigger_store
+    services.trigger.app_trigger_service
 forbidden_modules =
     configs
     controllers
