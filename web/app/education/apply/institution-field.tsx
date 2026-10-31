@@ -15,6 +15,7 @@ import {
 } from '@langgenius/dify-ui/autocomplete'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { SpinnerIcon } from '@langgenius/dify-ui/spinner'
+import { isDefinedError } from '@orpc/client'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useId, useRef, useState } from 'react'
@@ -30,7 +31,7 @@ type InstitutionFieldProps = {
 }
 
 const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
-  const { t } = useTranslation(['common', 'education'])
+  const { t } = useTranslation(['billing', 'common', 'education'])
   const inputId = useId()
   const listRef = useRef<HTMLDivElement>(null)
   const [isPopupOpen, setIsPopupOpen] = useState(false)
@@ -38,7 +39,7 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300)
   const hasSearchQuery = !!searchQuery
   const isDebouncing = hasSearchQuery && searchQuery !== debouncedSearchQuery
-  const { data, fetchNextPage, hasNextPage, isError, isFetching } = useInfiniteQuery({
+  const { data, error, fetchNextPage, hasNextPage, isError, isFetching } = useInfiniteQuery({
     ...consoleQuery.account.education.autocomplete.get.infiniteOptions({
       input: (pageParam) => ({
         query: {
@@ -49,6 +50,7 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
       }),
       initialPageParam: 0,
       getNextPageParam: (lastPage) => (lastPage.has_next ? lastPage.curr_page + 1 : undefined),
+      context: { silent: true },
     }),
     enabled: hasSearchQuery && !!debouncedSearchQuery,
     placeholderData: keepPreviousData,
@@ -62,6 +64,10 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
     else if (isError) footerState = 'error'
     else if (hasNextPage) footerState = 'loading'
   }
+  const errorMessage =
+    isDefinedError(error) && error.code === 'billing_unavailable'
+      ? t(($) => $['errors.unavailable'], { ns: 'billing' })
+      : t(($) => $['dynamicSelect.error'], { ns: 'common' })
   const shouldShowEmpty = shouldOpenPopup && footerState === null && suggestions.length === 0
   const canLoadMore = shouldOpenPopup && hasNextPage && !isLoading && !isError
 
@@ -134,7 +140,7 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
                     ) : null}
                     {footerState === 'error' ? (
                       <span className="system-sm-regular text-text-destructive">
-                        {t(($) => $['dynamicSelect.error'], { ns: 'common' })}
+                        {errorMessage}
                       </span>
                     ) : (
                       <SpinnerIcon />
@@ -152,7 +158,7 @@ const InstitutionField = ({ value, onValueChange }: InstitutionFieldProps) => {
                   {shouldOpenPopup && isLoading
                     ? t(($) => $.loading, { ns: 'common' })
                     : footerState === 'error'
-                      ? t(($) => $['dynamicSelect.error'], { ns: 'common' })
+                      ? errorMessage
                       : null}
                 </span>
               </AutocompleteStatus>

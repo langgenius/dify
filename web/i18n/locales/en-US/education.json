@@ -1,4 +1,5 @@
 {
+  "activateFailed": "We couldn't activate your education discount. Your current Education Verified status may still be active, or this email is no longer eligible.",
   "applied.activeSubscription.description": "You have an active subscription. You can use the education discount after your subscription expires. Confirm your subscription in <stripeLink>Stripe</stripeLink>.",
   "applied.noPaymentPermission.description": "You don't have payment permission in this workspace. Please switch to a workspace where you can manage billing to use the education discount.",
   "applied.noPaymentPermission.returnHome": "Back to Dify",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "exclusive 100% coupon",
   "toVerifiedTip.end": "for the Dify Professional Plan.",
   "toVerifiedTip.front": "You are now eligible for Education Verified status. Please enter your education information below to complete the process and receive an",
-  "useEducationDiscount": "Use education discount"
+  "tooManyAttempts": "Too many attempts. Please try again later.",
+  "useEducationDiscount": "Use education discount",
+  "verifyFailed": "We couldn't verify your education status. If you verified recently, your current Education Verified status may still be active. Otherwise, please try again later."
 }
