@@ -12,7 +12,6 @@ from core.app.entities.queue_entities import (
     QueueHumanInputFormTimeoutEvent,
     QueueNodeSucceededEvent,
 )
-from enums.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import (
     FileInput,
     FileListInput,
@@ -33,7 +32,7 @@ from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormReq
 from core.workflow.nodes.human_input_v2.node import HumanInputNode
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, HumanInputRuntime, PreparedForm
 from core.workflow.workflow_entry import WorkflowEntry
-from enums.human_input import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from enums.human_input import ButtonStyle, HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from graphon.engine_events import (
     EngineEvent,
     NodeRunFailedEvent,
@@ -56,6 +55,8 @@ from models.human_input_entities import (
     StringSource,
 )
 from repositories.human_input_v2.form_repository import Form, FormSubmission
+from services.tools.provider_queries import ToolProviderIcons
+from services.workflow.execution.ports import ExecutionContexts
 from tests.unit_tests.core.app.apps.common.test_workflow_response_converter import (
     _workflow_response_converter_human_input_build_converter as _build_converter,
 )
@@ -270,7 +271,13 @@ def test_reentry_consumes_the_new_persisted_outcome(form: Form) -> None:
 
 
 @pytest.mark.parametrize("status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.TIMEOUT])
-def test_actual_graph_queue_response_path_preserves_order_and_fields(form: Form, status: HumanInputFormStatus) -> None:
+def test_actual_graph_queue_response_path_preserves_order_and_fields(
+    form: Form,
+    status: HumanInputFormStatus,
+    *,
+    workflow_contexts: ExecutionContexts,
+    tool_providers: ToolProviderIcons,
+) -> None:
     form = submit(form) if status == HumanInputFormStatus.SUBMITTED else replace(form, status=status)
     node, _ = build_node(form)
     runner = create_autospec(WorkflowBasedAppRunner, instance=True)
@@ -279,7 +286,7 @@ def test_actual_graph_queue_response_path_preserves_order_and_fields(form: Form,
         WorkflowBasedAppRunner.handle_event(runner, entry, event)
     queue_events = [call.args[0] for call in runner._publish_event.call_args_list]
     assert isinstance(queue_events[1], QueueNodeSucceededEvent)
-    converter = _build_converter()
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     converter.workflow_start_to_stream_response(
         task_id="task-1", workflow_run_id="run-1", workflow_id="wf-1", reason=WorkflowStartReason.INITIAL
     )
@@ -336,7 +343,9 @@ def test_dify_projection_serializes_the_runtime_token_without_a_graph_reason(for
     }
 
 
-def test_file_segments_survive_node_graph_queue_and_response(form: Form) -> None:
+def test_file_segments_survive_node_graph_queue_and_response(
+    form: Form, *, workflow_contexts: ExecutionContexts, tool_providers: ToolProviderIcons
+) -> None:
     attachment = File(
         file_id="file-1",
         file_type=FileType.DOCUMENT,
@@ -377,7 +386,7 @@ def test_file_segments_survive_node_graph_queue_and_response(form: Form) -> None
     queue_event = runner._publish_event.call_args.args[0]
     assert isinstance(queue_event.submitted_data["attachment"], FileSegment)
     assert isinstance(queue_event.submitted_data["files"], ArrayFileSegment)
-    converter = _build_converter()
+    converter = _build_converter(workflow_contexts=workflow_contexts, tool_providers=tool_providers)
     converter.workflow_start_to_stream_response(
         task_id="task-1", workflow_run_id="run-1", workflow_id="wf-1", reason=WorkflowStartReason.INITIAL
     )
