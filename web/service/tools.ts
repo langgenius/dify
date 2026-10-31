@@ -5,6 +5,7 @@ import type {
   WorkflowToolProviderParameter,
   WorkflowToolProviderRequest,
 } from '@/app/components/tools/types'
+import type { ConsoleClientContext } from '@/service/console'
 import {
   selectApiSchemaParameters,
   selectBuiltinProviderTools,
@@ -139,10 +140,14 @@ export const testAPIAvailable = (payload: {
 
 export const createWorkflowToolProvider = (
   payload: WorkflowToolProviderRequest & { workflow_app_id: string },
+  context?: ConsoleClientContext,
 ) => {
-  return toolProvider.workflow.create.post({
-    body: { ...payload, parameters: toWorkflowToolParameters(payload.parameters) },
-  })
+  return toolProvider.workflow.create.post(
+    {
+      body: { ...payload, parameters: toWorkflowToolParameters(payload.parameters) },
+    },
+    { context },
+  )
 }
 
 export const saveWorkflowToolProvider = (
@@ -151,16 +156,20 @@ export const saveWorkflowToolProvider = (
       workflow_app_id: string
       workflow_tool_id: string
     }>,
+  context?: ConsoleClientContext,
 ) => {
   const { workflow_tool_id } = payload
   if (!workflow_tool_id) throw new Error('workflow_tool_id is required to update a workflow tool')
-  return toolProvider.workflow.update.post({
-    body: {
-      ...payload,
-      workflow_tool_id,
-      parameters: toWorkflowToolParameters(payload.parameters),
+  return toolProvider.workflow.update.post(
+    {
+      body: {
+        ...payload,
+        workflow_tool_id,
+        parameters: toWorkflowToolParameters(payload.parameters),
+      },
     },
-  })
+    { context },
+  )
 }
 
 export const fetchWorkflowToolDetail = (toolID: string) => {

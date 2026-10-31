@@ -12,7 +12,7 @@ from services.workflow.execution.generation_service import consume_stream
 
 
 @pytest.fixture(autouse=True)
-def reset_active_tasks() -> None:
+def reset_active_tasks() -> Generator[None]:
     reset_active_workflow_tasks()
     yield
     reset_active_workflow_tasks()

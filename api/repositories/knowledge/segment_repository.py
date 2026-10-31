@@ -33,15 +33,17 @@ from models.dataset import (
 from models.enums import IndexingStatus, SegmentStatus, SegmentType, SummaryStatus
 from models.vector import VectorConfiguration
 from repositories.knowledge.dataset_read_repository import (
+    SegmentReadBatch,
     get_dataset_keyword_table,
     get_segment_attachment_files,
     get_segment_child_chunks,
     is_retrieved_segment_owned,
+    load_segment_read_batch,
 )
 from repositories.knowledge.dataset_repository import _get_dataset
 from repositories.knowledge.document_repository import _get_document, require_indexing_document
 from repositories.knowledge.keyword_table_repository import persist_keyword_table
-from repositories.knowledge.segment_read_adapter import get_segment_attachments, sign_segment_content
+from repositories.knowledge.segment_read_adapter import format_segment_attachments, sign_segment_content
 from repositories.knowledge.vector_configuration_repository import resolve_vector_configuration
 from services.knowledge.entities.segments import ChildChunkRecord, SegmentAttachmentRecord, SegmentRecord
 from services.knowledge.indexing.execution import IndexingDocument
@@ -246,11 +248,13 @@ class SQLAlchemySegmentRepository:
                 if items
                 else {}
             )
+            batch = load_segment_read_batch(items, session=session)
             return SegmentPage(
                 items=tuple(
                     _segment_data(
                         segment,
                         summaries[segment.id].summary_content if segment.id in summaries else None,
+                        batch,
                         session,
                     )
                     for segment in items
@@ -307,6 +311,7 @@ class SQLAlchemySegmentRepository:
                 keywords=tuple(keywords)
                 if isinstance(keywords, list) and all(isinstance(keyword, str) for keyword in keywords)
                 else None,
+                answer=segment.answer,
             )
 
     def get_segments(self, document_ref: DocumentRef, segment_ids: Sequence[str]) -> tuple[SegmentIndexTarget, ...]:
@@ -648,8 +653,9 @@ def _child_state(child: ChildChunk) -> ChildChunkState:
 
 def _detail(session: Session, segment: DocumentSegment, document: Document) -> SegmentDetail:
     summary = _summary(session, segment)
+    batch = load_segment_read_batch([segment], session=session)
     return SegmentDetail(
-        data=_segment_data(segment, summary.summary_content if summary else None, session),
+        data=_segment_data(segment, summary.summary_content if summary else None, batch, session),
         doc_form=str(document.doc_form),
     )
 
@@ -689,7 +695,9 @@ def _get_child_chunk(session: Session, segment_ref: SegmentRef, child_chunk_id: 
     )
 
 
-def _segment_data(segment: DocumentSegment, summary: str | None, session: Session) -> SegmentRecord:
+def _segment_data(
+    segment: DocumentSegment, summary: str | None, batch: SegmentReadBatch, session: Session
+) -> SegmentRecord:
     return SegmentRecord.model_validate(
         {
             "id": segment.id,
@@ -717,8 +725,8 @@ def _segment_data(segment: DocumentSegment, summary: str | None, session: Sessio
             "stopped_at": segment.stopped_at,
             "sign_content": sign_segment_content(segment, session=session),
             "summary": summary,
-            "child_chunks": get_segment_child_chunks(segment, session=session, include_full_doc=False),
-            "attachments": get_segment_attachments(segment, session=session),
+            "child_chunks": batch.child_chunks.get(segment.id, []),
+            "attachments": format_segment_attachments(batch.attachments.get(segment.id, [])),
         }
     )
 

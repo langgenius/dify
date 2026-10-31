@@ -5100,41 +5100,51 @@ class TestDatasetRetrievalCases:
                 )
             assert results == []
 
-        def test_single_retrieve_rejects_dataset_outside_available_datasets(self, retrieval: DatasetRetrieval) -> None:
-            available_dataset = _dataset(id="ds-1", name="Available DS", description=None)
-            session = MagicMock()
-            session.scalar.return_value = _dataset(
-                id="ds-2",
-                name="Foreign DS",
-                provider="external",
-                tenant_id="tenant-2",
-                retrieval_model={},
-            )
+        def test_single_retrieve_rejects_dataset_outside_available_datasets(
+            self,
+            retrieval: DatasetRetrieval,
+            sqlite_engine: Engine,
+            sqlite_session_factory: sessionmaker[Session],
+        ) -> None:
+            database = RetrievalDatabase(session_maker=sqlite_session_factory)
+            available_dataset = _persist_dataset(database, dataset_id="ds-1")
+            # The router's choice shares the caller's tenant, so only the allowlist can reject it.
+            _persist_dataset(database, dataset_id="ds-2", provider="external")
+            executed_statements: list[object] = []
 
-            with (
-                patch("services.knowledge.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls,
-                patch.object(
-                    retrieval,
-                    "_external_retrieve",
-                    return_value=[],
-                ) as mock_external_retrieve,
-                patch.object(retrieval, "_on_query") as mock_on_query,
-            ):
-                mock_router_cls.return_value.invoke.return_value = ("ds-2", LLMUsage.empty_usage())
-                results = retrieval.single_retrieve(
-                    app_id="app-1",
-                    tenant_id="tenant-1",
-                    user_id="user-1",
-                    user_from="workflow",
-                    query="python",
-                    available_datasets=[available_dataset],
-                    model_instance=Mock(),
-                    model_config=Mock(),
-                    planning_strategy=PlanningStrategy.REACT_ROUTER,
-                )
+            def capture_statement(*args: object) -> None:
+                executed_statements.append(args[1])
+
+            event.listen(sqlite_engine, "before_execute", capture_statement)
+            try:
+                with (
+                    patch(
+                        "services.knowledge.retrieval.dataset_retrieval.ReactMultiDatasetRouter"
+                    ) as mock_router_cls,
+                    patch.object(
+                        retrieval,
+                        "_external_retrieve",
+                        return_value=[],
+                    ) as mock_external_retrieve,
+                    patch.object(retrieval, "_on_query") as mock_on_query,
+                ):
+                    mock_router_cls.return_value.invoke.return_value = ("ds-2", LLMUsage.empty_usage())
+                    results = retrieval.single_retrieve(
+                        app_id="app-1",
+                        tenant_id="tenant-1",
+                        user_id="user-1",
+                        user_from="workflow",
+                        query="python",
+                        available_datasets=[available_dataset],
+                        model_instance=Mock(),
+                        model_config=Mock(),
+                        planning_strategy=PlanningStrategy.REACT_ROUTER,
+                    )
+            finally:
+                event.remove(sqlite_engine, "before_execute", capture_statement)
 
             assert results == []
-            session.scalar.assert_not_called()
+            assert executed_statements == []
             mock_external_retrieve.assert_not_called()
             mock_on_query.assert_not_called()
 
@@ -5561,25 +5571,41 @@ class TestDatasetRetrievalCases:
             assert len(locking_statements) == 1
             mock_trace.assert_called_once()
 
-        def test_on_retrieval_end_retries_postgres_deadlock(self, retrieval: DatasetRetrieval) -> None:
+        def test_on_retrieval_end_retries_postgres_deadlock(
+            self, retrieval: DatasetRetrieval, sqlite_session_factory: sessionmaker[Session]
+        ) -> None:
             deadlock = DBAPIError(
                 "UPDATE document_segments",
                 {},
                 SimpleNamespace(sqlstate="40P01"),
                 connection_invalidated=False,
             )
-            doc = _doc(provider="dify")
-            retry_session = MagicMock()
+            database = RetrievalDatabase(session_maker=sqlite_session_factory)
+            _persist_document(database, dataset_id="dataset-1", document_id="document-1")
+            segment = _persist_segment(database, dataset_id="dataset-1", document_id="document-1")
+            doc = _doc(provider="dify", dataset_id="dataset-1", document_id="document-1", doc_id="node-1")
+            update_attempts: list[str] = []
 
-            with (
-                patch("extensions.ext_database.db", SimpleNamespace(engine=self.orm_engine)),
-                patch.object(retrieval._records._sessions, "begin") as mock_begin,
-                patch.object(retrieval, "_send_trace_task") as mock_trace,
-            ):
-                mock_begin.side_effect = [deadlock, nullcontext(retry_session)]
-                retrieval._on_retrieval_end(tenant_id="tenant-1", documents=[doc], message_id="m1", timer={"cost": 1})
+            def deadlock_first_update(_conn, _cursor, statement: str, _parameters, _context, _executemany) -> None:
+                if statement.startswith("UPDATE document_segments"):
+                    update_attempts.append(statement)
+                    if len(update_attempts) == 1:
+                        raise deadlock
 
-            assert mock_begin.call_count == 2
+            event.listen(self.orm_engine, "before_cursor_execute", deadlock_first_update)
+            try:
+                with patch.object(retrieval, "_send_trace_task") as mock_trace:
+                    retrieval._on_retrieval_end(
+                        tenant_id="tenant-1", documents=[doc], message_id="m1", timer={"cost": 1}
+                    )
+            finally:
+                event.remove(self.orm_engine, "before_cursor_execute", deadlock_first_update)
+
+            assert len(update_attempts) == 2
+            # The rolled-back attempt must not count: the seeded hit_count of 5 grows by exactly one.
+            assert (
+                self.orm_session.scalar(select(DocumentSegment.hit_count).where(DocumentSegment.id == segment.id)) == 6
+            )
             mock_trace.assert_called_once_with("m1", [doc], {"cost": 1})
 
         @pytest.mark.parametrize(

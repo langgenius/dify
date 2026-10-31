@@ -83,6 +83,7 @@ class ApprovalChannel(StrEnum):
     """Where a paused human input form can be approved, surfaced to API callers."""
 
     EMAIL = "email"
+    IM = "im"
     WEB_APP = "web_app"
     CONSOLE = "console"
 
@@ -91,6 +92,7 @@ class RecipientType(StrEnum):
     # Second value = the approval channel this recipient maps to (surfaced in `approval_channels`).
     EMAIL_MEMBER = "email_member", ApprovalChannel.EMAIL
     EMAIL_EXTERNAL = "email_external", ApprovalChannel.EMAIL
+    INSTANT_MESSAGE = "instant_message", ApprovalChannel.IM
     # STANDALONE_WEB_APP is used by the standalone web app.
     #
     # It's not used while running workflows / chatflows containing HumanInput
@@ -118,9 +120,37 @@ class RecipientType(StrEnum):
 class DeliveryMethodType(enum.StrEnum):
     WEBAPP = enum.auto()
     EMAIL = enum.auto()
+    IM = enum.auto()
 
 
 class EmailRecipientType(enum.StrEnum):
     BOUND = "member"
     MEMBER = BOUND
     EXTERNAL = "external"
+
+
+class InstantMessageProvider(enum.StrEnum):
+    SLACK = "slack"
+    TEAMS = "teams"
+    DISCORD = "discord"
+
+
+class InstantMessageRecipientType(enum.StrEnum):
+    CHANNEL = "channel"
+    USER = "user"
+
+
+__all__ = [
+    "ApprovalChannel",
+    "ButtonStyle",
+    "DeliveryMethodType",
+    "EmailRecipientType",
+    "FormInputType",
+    "HumanInputFormKind",
+    "HumanInputFormStatus",
+    "InstantMessageProvider",
+    "InstantMessageRecipientType",
+    "RecipientType",
+    "TimeoutUnit",
+    "ValueSourceType",
+]

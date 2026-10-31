@@ -20,6 +20,7 @@ from models.model import EndUser
 from models.workflow import Workflow
 from models.workflow import WorkflowType as ModelWorkflowType
 from services.app_generate_service import AppGenerateService
+from services.billing_client import billing
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from tests.e2e_tests.containers.helpers import generate_valid_password
@@ -76,16 +77,12 @@ class TestAppGenerateService:
             patch("configs.dify_config") as mock_global_dify_config,
         ):
             # Setup default mock returns for billing service
-            mock_billing_service.quota_reserve.return_value = {
-                "reservation_id": "test-reservation-id",
-                "available": 100,
-                "reserved": 1,
-            }
-            mock_billing_service.quota_commit.return_value = {
-                "available": 99,
-                "reserved": 0,
-                "refunded": 0,
-            }
+            mock_billing_service.quota_reserve.return_value = billing.QuotaReserveReply(
+                reservation_id="test-reservation-id", available=100, reserved=1
+            )
+            mock_billing_service.quota_commit.return_value = billing.QuotaCommitReply(
+                available=99, reserved=0, refunded=0
+            )
 
             # Supply persisted workflow reads while keeping execution selection intact.
             graph = json.dumps(

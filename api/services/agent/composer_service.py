@@ -151,7 +151,12 @@ class AgentComposerService:
             snapshot_id=snapshot_id,
         )
         return cls._serialize_workflow_state(
-            session=session, binding=binding, agent=agent, version=version, account_id=account_id
+            session=session,
+            binding=binding,
+            agent=agent,
+            version=version,
+            account_id=account_id,
+            include_draft_files=snapshot_id is None,
         )
 
     @classmethod
@@ -207,101 +212,108 @@ class AgentComposerService:
         account_id: str,
         payload: ComposerSavePayload,
     ) -> dict[str, Any]:
-        if payload.variant != ComposerVariant.WORKFLOW:
-            raise ValueError("Workflow composer endpoint only accepts workflow variant")
+        # Read and lock the latest draft before any ORM autoflush can write a cached snapshot.
+        with session.no_autoflush:
+            if payload.variant != ComposerVariant.WORKFLOW:
+                raise ValueError("Workflow composer endpoint only accepts workflow variant")
 
-        _backfill_cli_tool_ids(payload.agent_soul)
-        _validate_composer_payload_for_strategy(payload)
-        if payload.agent_soul is not None:
-            validate_agent_knowledge_spaces(
+            _backfill_cli_tool_ids(payload.agent_soul)
+            _validate_composer_payload_for_strategy(payload)
+            if payload.agent_soul is not None:
+                validate_agent_knowledge_spaces(
+                    session=session,
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    agent_soul=payload.agent_soul,
+                )
+            if payload.save_strategy in _PUBLISH_SAVE_STRATEGIES:
+                cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=payload.agent_soul)
+            workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
+            binding = cls._lock_workflow_binding(session=session, workflow=workflow, node_id=node_id)
+            retirement_candidates = (
+                {binding.agent_id}
+                if binding is not None
+                and binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+                and binding.agent_id
+                and payload.save_strategy
+                in {
+                    ComposerSaveStrategy.SAVE_AS_NEW_AGENT,
+                    ComposerSaveStrategy.SAVE_TO_ROSTER,
+                }
+                else set()
+            )
+
+            match payload.save_strategy:
+                case ComposerSaveStrategy.NODE_JOB_ONLY:
+                    binding = cls._save_node_job_only(
+                        session=session,
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                        workflow_id=workflow.id,
+                        node_id=node_id,
+                        account_id=account_id,
+                        binding=binding,
+                        payload=payload,
+                    )
+                case ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION:
+                    binding = cls._save_to_current_version(
+                        session=session, tenant_id=tenant_id, account_id=account_id, binding=binding, payload=payload
+                    )
+                case ComposerSaveStrategy.SAVE_AS_NEW_VERSION:
+                    binding = cls._save_as_new_version(
+                        session=session, tenant_id=tenant_id, account_id=account_id, binding=binding, payload=payload
+                    )
+                case ComposerSaveStrategy.SAVE_AS_NEW_AGENT:
+                    binding = cls._save_as_new_agent(
+                        session=session,
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                        workflow_id=workflow.id,
+                        node_id=node_id,
+                        account_id=account_id,
+                        binding=binding,
+                        payload=payload,
+                    )
+                case ComposerSaveStrategy.SAVE_TO_ROSTER:
+                    binding = cls._save_to_roster(
+                        session=session,
+                        tenant_id=tenant_id,
+                        account_id=account_id,
+                        binding=binding,
+                        payload=payload,
+                    )
+
+            session.flush()
+            agent = cls._get_agent_if_present(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
+            version_id = (
+                agent.active_config_snapshot_id
+                if agent and binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+                else binding.current_snapshot_id
+            )
+            version = cls._get_version_if_present(
                 session=session,
                 tenant_id=tenant_id,
-                account_id=account_id,
-                agent_soul=payload.agent_soul,
+                agent_id=agent.id if agent else None,
+                version_id=version_id,
             )
-        if payload.save_strategy in _PUBLISH_SAVE_STRATEGIES:
-            cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=payload.agent_soul)
-        workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
-        binding = cls._lock_workflow_binding(session=session, workflow=workflow, node_id=node_id)
-        retirement_candidates = (
-            {binding.agent_id}
-            if binding is not None
-            and binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
-            and binding.agent_id
-            and payload.save_strategy
-            in {
-                ComposerSaveStrategy.SAVE_AS_NEW_AGENT,
-                ComposerSaveStrategy.SAVE_TO_ROSTER,
-            }
-            else set()
-        )
-
-        match payload.save_strategy:
-            case ComposerSaveStrategy.NODE_JOB_ONLY:
-                binding = cls._save_node_job_only(
-                    session=session,
-                    tenant_id=tenant_id,
-                    app_id=app_id,
-                    workflow_id=workflow.id,
-                    node_id=node_id,
-                    account_id=account_id,
-                    binding=binding,
-                    payload=payload,
-                )
-            case ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION:
-                binding = cls._save_to_current_version(
-                    session=session, tenant_id=tenant_id, account_id=account_id, binding=binding, payload=payload
-                )
-            case ComposerSaveStrategy.SAVE_AS_NEW_VERSION:
-                binding = cls._save_as_new_version(
-                    session=session, tenant_id=tenant_id, account_id=account_id, binding=binding, payload=payload
-                )
-            case ComposerSaveStrategy.SAVE_AS_NEW_AGENT:
-                binding = cls._save_as_new_agent(
-                    session=session,
-                    tenant_id=tenant_id,
-                    app_id=app_id,
-                    workflow_id=workflow.id,
-                    node_id=node_id,
-                    account_id=account_id,
-                    binding=binding,
-                    payload=payload,
-                )
-            case ComposerSaveStrategy.SAVE_TO_ROSTER:
-                binding = cls._save_to_roster(
-                    session=session,
-                    tenant_id=tenant_id,
-                    account_id=account_id,
-                    binding=binding,
-                    payload=payload,
-                )
-
-        session.flush()
-        agent = AgentConfigRepository.get_agent(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
-        version_id = (
-            agent.active_config_snapshot_id
-            if agent and binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
-            else binding.current_snapshot_id
-        )
-        version = AgentConfigRepository.get_snapshot(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=agent.id if agent else None,
-            version_id=version_id,
-        )
-        state = cls._serialize_workflow_state(
-            session=session, binding=binding, agent=agent, version=version, account_id=account_id
-        )
-        state["validation"] = cls.collect_validation_findings(payload=payload)
-        session.commit()
-        WorkflowAgentRetirementService(
-            WorkflowAgentRetirementRepository(sessionmaker(bind=session.get_bind(), expire_on_commit=False))
-        ).retire_unowned(
-            tenant_id=tenant_id,
-            agent_ids=retirement_candidates,
-            account_id=account_id,
-        )
-        return state
+            state = cls._serialize_workflow_state(
+                session=session,
+                binding=binding,
+                agent=agent,
+                version=version,
+                account_id=account_id,
+                include_draft_files=True,
+            )
+            state["validation"] = cls.collect_validation_findings(payload=payload)
+            session.commit()
+            WorkflowAgentRetirementService(
+                WorkflowAgentRetirementRepository(sessionmaker(bind=session.get_bind(), expire_on_commit=False))
+            ).retire_unowned(
+                tenant_id=tenant_id,
+                agent_ids=retirement_candidates,
+                account_id=account_id,
+            )
+            return state
 
     @classmethod
     def copy_workflow_composer_from_roster(
@@ -330,7 +342,12 @@ class AgentComposerService:
                 version_id=binding.current_snapshot_id,
             )
             return cls._serialize_workflow_state(
-                session=session, binding=binding, agent=agent, version=version, account_id=account_id
+                session=session,
+                binding=binding,
+                agent=agent,
+                version=version,
+                account_id=account_id,
+                include_draft_files=True,
             )
 
         if binding.binding_type != WorkflowAgentBindingType.ROSTER_AGENT:
@@ -389,7 +406,12 @@ class AgentComposerService:
             version_id=inline_agent.active_config_snapshot_id,
         )
         return cls._serialize_workflow_state(
-            session=session, binding=binding, agent=inline_agent, version=version, account_id=account_id
+            session=session,
+            binding=binding,
+            agent=inline_agent,
+            version=version,
+            account_id=account_id,
+            include_draft_files=True,
         )
 
     @classmethod
@@ -433,10 +455,11 @@ class AgentComposerService:
         cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
     ) -> AgentConfigDraft:
         """Prepare a persisted normal draft for an explicit configuration write."""
-        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
-        return AgentConfigRepository.normal_draft(
-            session=session, tenant_id=tenant_id, agent=agent, created_by=account_id
-        )
+        with session.no_autoflush:
+            agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
+            return cls.get_or_create_normal_agent_draft(
+                session=session, tenant_id=tenant_id, agent=agent, created_by=account_id
+            )
 
     @classmethod
     def load_agent_soul_for_debug(
@@ -524,13 +547,14 @@ class AgentComposerService:
         payload: ComposerSavePayload,
     ) -> dict[str, Any]:
         try:
-            return cls._save_agent_app_composer_impl(
-                session=session,
-                tenant_id=tenant_id,
-                app_id=app_id,
-                account_id=account_id,
-                payload=payload,
-            )
+            with session.no_autoflush:
+                return cls._save_agent_app_composer_impl(
+                    session=session,
+                    tenant_id=tenant_id,
+                    app_id=app_id,
+                    account_id=account_id,
+                    payload=payload,
+                )
         except IntegrityError as exc:
             raise AgentNameConflictError() from exc
 
@@ -604,30 +628,32 @@ class AgentComposerService:
     def save_agent_composer(
         cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str, payload: ComposerSavePayload
     ) -> dict[str, Any]:
-        if payload.variant != ComposerVariant.AGENT_APP:
-            raise ValueError("Agent composer endpoint only accepts agent_app variant")
-        if payload.save_strategy != ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION:
-            raise InvalidComposerConfigError(
-                "Agent composer only saves the normal draft. Use the publish endpoint to create a version."
+        # Read and lock the latest draft before any ORM autoflush can write a cached snapshot.
+        with session.no_autoflush:
+            if payload.variant != ComposerVariant.AGENT_APP:
+                raise ValueError("Agent composer endpoint only accepts agent_app variant")
+            if payload.save_strategy != ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION:
+                raise InvalidComposerConfigError(
+                    "Agent composer only saves the normal draft. Use the publish endpoint to create a version."
+                )
+            if payload.agent_soul is None:
+                raise ValueError("agent_soul is required")
+            _backfill_cli_tool_ids(payload.agent_soul)
+            _validate_composer_payload_for_strategy(payload)
+            validate_agent_knowledge_spaces(
+                session=session,
+                tenant_id=tenant_id,
+                account_id=account_id,
+                agent_soul=payload.agent_soul,
             )
-        if payload.agent_soul is None:
-            raise ValueError("agent_soul is required")
-        _backfill_cli_tool_ids(payload.agent_soul)
-        _validate_composer_payload_for_strategy(payload)
-        validate_agent_knowledge_spaces(
-            session=session,
-            tenant_id=tenant_id,
-            account_id=account_id,
-            agent_soul=payload.agent_soul,
-        )
-        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
-        return cls._save_agent_composer_for_agent(
-            session=session,
-            tenant_id=tenant_id,
-            agent=agent,
-            account_id=account_id,
-            payload=payload,
-        )
+            agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
+            return cls._save_agent_composer_for_agent(
+                session=session,
+                tenant_id=tenant_id,
+                agent=agent,
+                account_id=account_id,
+                payload=payload,
+            )
 
     @classmethod
     def _save_agent_composer_for_agent(
@@ -649,7 +675,7 @@ class AgentComposerService:
             session=session,
             tenant_id=tenant_id,
             agent=agent,
-            agent_soul=payload.agent_soul,
+            agent_soul=AgentSoulConfig.model_validate(draft.config_snapshot_dict),
             home_snapshot_id=draft.home_snapshot_id,
         )
 
@@ -914,28 +940,30 @@ class AgentComposerService:
     def save_agent_app_build_draft(
         cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str, payload: ComposerSavePayload
     ) -> dict[str, Any]:
-        if payload.agent_soul is None:
-            raise ValueError("agent_soul is required")
-        _backfill_cli_tool_ids(payload.agent_soul)
-        ComposerConfigValidator.validate_draft_save_payload(payload)
-        validate_agent_knowledge_spaces(
-            session=session,
-            tenant_id=tenant_id,
-            account_id=account_id,
-            agent_soul=payload.agent_soul,
-        )
-        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
-        build_draft = cls._save_agent_draft(
-            session=session,
-            tenant_id=tenant_id,
-            agent=agent,
-            draft_type=AgentConfigDraftType.DEBUG_BUILD,
-            account_id=account_id,
-            agent_soul=payload.agent_soul,
-            account_id_for_audit=account_id,
-        )
-        session.flush()
-        return cls._serialize_build_draft_state(build_draft)
+        # Read and lock the latest draft before any ORM autoflush can write a cached snapshot.
+        with session.no_autoflush:
+            if payload.agent_soul is None:
+                raise ValueError("agent_soul is required")
+            _backfill_cli_tool_ids(payload.agent_soul)
+            ComposerConfigValidator.validate_draft_save_payload(payload)
+            validate_agent_knowledge_spaces(
+                session=session,
+                tenant_id=tenant_id,
+                account_id=account_id,
+                agent_soul=payload.agent_soul,
+            )
+            agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
+            build_draft = cls._save_agent_draft(
+                session=session,
+                tenant_id=tenant_id,
+                agent=agent,
+                draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                account_id=account_id,
+                agent_soul=payload.agent_soul,
+                account_id_for_audit=account_id,
+            )
+            session.flush()
+            return cls._serialize_build_draft_state(build_draft)
 
     @classmethod
     def apply_agent_app_build_draft(
@@ -1485,45 +1513,67 @@ class AgentComposerService:
                     binding=binding,
                     payload=payload,
                 )
-            if payload.node_job is not None:
-                binding.node_job_config = payload.node_job
             if payload.agent_soul is not None and binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT:
-                current_snapshot = AgentConfigRepository.require_snapshot(
+                agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
+                session.flush([agent])
+                agent = cls._require_agent(
+                    session=session, tenant_id=tenant_id, agent_id=binding.agent_id, for_update=True
+                )
+                if agent.scope != AgentScope.WORKFLOW_ONLY:
+                    raise ValueError("Inline workflow agent binding must point to a workflow-only agent")
+                binding = cls._require_binding(
+                    cls._get_workflow_binding(
+                        session=session,
+                        tenant_id=tenant_id,
+                        workflow_id=workflow_id,
+                        node_id=node_id,
+                        for_update=True,
+                    )
+                )
+                if binding.agent_id != agent.id or binding.binding_type != WorkflowAgentBindingType.INLINE_AGENT:
+                    raise AgentVersionConflictError()
+                current_snapshot = cls._require_version(
                     session=session,
                     tenant_id=tenant_id,
                     agent_id=binding.agent_id,
                     version_id=binding.current_snapshot_id,
                 )
-                version = cls._update_current_version(
-                    session=session,
-                    current_snapshot=current_snapshot,
-                    account_id=account_id,
-                    agent_soul=payload.agent_soul,
-                    operation=AgentConfigRevisionOperation.SAVE_CURRENT_VERSION,
-                    version_note=payload.version_note,
-                )
-                agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
-                if agent.scope != AgentScope.WORKFLOW_ONLY:
-                    raise ValueError("Inline workflow agent binding must point to a workflow-only agent")
-                agent.active_config_snapshot_id = version.id
-                agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
-                agent.active_config_is_published = True
-                agent.updated_by = account_id
-                binding.current_snapshot_id = version.id
-                normal_draft = AgentConfigRepository.get_draft(
+                normal_draft = cls._get_agent_draft(
                     session=session,
                     tenant_id=tenant_id,
                     agent_id=agent.id,
                     draft_type=AgentConfigDraftType.DRAFT,
                     account_id=None,
+                    for_update=True,
                 )
-                if normal_draft is not None and AgentConfigRepository.rebase_workflow_draft(
+                current_soul = AgentSoulConfig.model_validate(
+                    normal_draft.config_snapshot_dict
+                    if normal_draft is not None and normal_draft.base_snapshot_id == current_snapshot.id
+                    else current_snapshot.config_snapshot_dict
+                )
+                agent_soul = cls._preserve_omitted_config_files(payload.agent_soul, current_soul)
+                version = cls._update_current_version(
+                    session=session,
+                    current_snapshot=current_snapshot,
+                    account_id=account_id,
+                    agent_soul=agent_soul,
+                    operation=AgentConfigRevisionOperation.SAVE_CURRENT_VERSION,
+                    version_note=payload.version_note,
+                )
+                agent.active_config_snapshot_id = version.id
+                agent.active_config_has_model = agent_soul_has_model(agent_soul)
+                agent.active_config_is_published = True
+                agent.updated_by = account_id
+                binding.current_snapshot_id = version.id
+                if normal_draft is not None and cls._rebase_workflow_only_normal_draft(
                     agent=agent,
                     draft=normal_draft,
                     snapshot=version,
                     updated_by=account_id,
                 ):
                     session.flush()
+            if payload.node_job is not None:
+                binding.node_job_config = payload.node_job
             binding.updated_by = account_id
             return binding
 
@@ -2053,6 +2103,148 @@ class AgentComposerService:
         return agent
 
     @classmethod
+    def _get_agent_draft(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent_id: str,
+        draft_type: AgentConfigDraftType,
+        account_id: str | None,
+        for_update: bool = False,
+    ) -> AgentConfigDraft | None:
+        stmt = select(AgentConfigDraft).where(
+            AgentConfigDraft.tenant_id == tenant_id,
+            AgentConfigDraft.agent_id == agent_id,
+            AgentConfigDraft.draft_type == draft_type,
+        )
+        if draft_type == AgentConfigDraftType.DEBUG_BUILD:
+            stmt = stmt.where(AgentConfigDraft.account_id == account_id)
+        else:
+            stmt = stmt.where(AgentConfigDraft.account_id.is_(None))
+        if for_update:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True, autoflush=False)
+        return session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
+
+    @classmethod
+    def get_or_create_normal_agent_draft(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent: Agent,
+        created_by: str | None,
+    ) -> AgentConfigDraft:
+        """Resolve the normal Draft, rebasing only stale workflow-owned rows."""
+        return cls._get_or_create_agent_draft(
+            session=session,
+            tenant_id=tenant_id,
+            agent=agent,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            created_by=created_by,
+        )
+
+    @staticmethod
+    def _rebase_workflow_only_normal_draft(
+        *,
+        agent: Agent,
+        draft: AgentConfigDraft,
+        snapshot: AgentConfigSnapshot,
+        updated_by: str | None,
+    ) -> bool:
+        """Sync a stale normal Draft's base_snapshot_id, home_snapshot_id, config_snapshot, and updated_by."""
+
+        if (
+            agent.scope != AgentScope.WORKFLOW_ONLY
+            or draft.draft_type != AgentConfigDraftType.DRAFT
+            or draft.account_id is not None
+            or not agent.active_config_snapshot_id
+            or draft.base_snapshot_id == agent.active_config_snapshot_id
+            or snapshot.id != agent.active_config_snapshot_id
+        ):
+            return False
+        draft.base_snapshot_id = snapshot.id
+        draft.home_snapshot_id = snapshot.home_snapshot_id
+        draft.config_snapshot = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+        draft.updated_by = updated_by
+        return True
+
+    @classmethod
+    def _get_or_create_agent_draft(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent: Agent,
+        draft_type: AgentConfigDraftType,
+        account_id: str | None,
+        created_by: str | None,
+    ) -> AgentConfigDraft:
+        # All draft writers lock the parent before checking for an absent draft.
+        # Locking a draft query alone cannot serialize concurrent first writes.
+        # Preserve caller-owned Agent edits before refreshing its locked database state.
+        # An UPDATE itself acquires the parent lock; do not flush an older cached Draft here.
+        session.flush([agent])
+        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent.id, for_update=True)
+        draft = cls._get_agent_draft(
+            session=session,
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            draft_type=draft_type,
+            account_id=account_id,
+            for_update=True,
+        )
+        if draft is not None:
+            if (
+                agent.scope == AgentScope.WORKFLOW_ONLY
+                and draft_type == AgentConfigDraftType.DRAFT
+                and draft.account_id is None
+                and agent.active_config_snapshot_id
+                and draft.base_snapshot_id != agent.active_config_snapshot_id
+            ):
+                active_snapshot = cls._get_version_if_present(
+                    session=session,
+                    tenant_id=tenant_id,
+                    agent_id=agent.id,
+                    version_id=agent.active_config_snapshot_id,
+                )
+                if active_snapshot is None:
+                    raise AgentVersionNotFoundError()
+                if cls._rebase_workflow_only_normal_draft(
+                    agent=agent,
+                    draft=draft,
+                    snapshot=active_snapshot,
+                    updated_by=agent.updated_by or agent.created_by,
+                ):
+                    session.flush()
+            return draft
+        base_snapshot = cls._get_version_if_present(
+            session=session,
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            version_id=agent.active_config_snapshot_id,
+        )
+        if base_snapshot is None:
+            raise AgentVersionNotFoundError()
+        agent_soul = AgentSoulConfig.model_validate(base_snapshot.config_snapshot_dict)
+        draft = AgentConfigDraft(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            draft_type=draft_type,
+            account_id=account_id if draft_type == AgentConfigDraftType.DEBUG_BUILD else None,
+            draft_owner_key=account_id if draft_type == AgentConfigDraftType.DEBUG_BUILD and account_id else "",
+            base_snapshot_id=base_snapshot.id,
+            home_snapshot_id=base_snapshot.home_snapshot_id,
+            config_snapshot=agent_soul,
+            created_by=created_by,
+            updated_by=created_by,
+        )
+        session.add(draft)
+        session.flush()
+        return draft
+
+    @classmethod
     def _save_agent_draft(
         cls,
         *,
@@ -2065,7 +2257,7 @@ class AgentComposerService:
         account_id_for_audit: str,
         base_snapshot_id: str | None = None,
     ) -> AgentConfigDraft:
-        draft = AgentConfigRepository.get_or_create_draft(
+        draft = cls._get_or_create_agent_draft(
             session=session,
             tenant_id=tenant_id,
             agent=agent,
@@ -2073,7 +2265,9 @@ class AgentComposerService:
             account_id=account_id,
             created_by=account_id_for_audit,
         )
-        draft.config_snapshot = agent_soul
+        draft.config_snapshot = cls._preserve_omitted_config_files(
+            agent_soul, AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+        )
         if base_snapshot_id is not None:
             draft.base_snapshot_id = base_snapshot_id
         elif draft.base_snapshot_id is None:
@@ -2083,6 +2277,13 @@ class AgentComposerService:
             agent.active_config_is_published = False
         session.flush()
         return draft
+
+    @staticmethod
+    def _preserve_omitted_config_files(agent_soul: AgentSoulConfig, current_soul: AgentSoulConfig) -> AgentSoulConfig:
+        """An omitted asset list preserves the locked state; an explicit list replaces it, including an empty one."""
+        if "config_files" in agent_soul.model_fields_set:
+            return agent_soul
+        return agent_soul.model_copy(update={"config_files": current_soul.config_files})
 
     @classmethod
     def _serialize_draft(cls, draft: AgentConfigDraft | None) -> dict[str, Any] | None:
@@ -2125,22 +2326,21 @@ class AgentComposerService:
 
     @classmethod
     def _get_workflow_binding(
-        cls, *, session: Session, tenant_id: str, workflow_id: str, node_id: str
+        cls, *, session: Session, tenant_id: str, workflow_id: str, node_id: str, for_update: bool = False
     ) -> WorkflowAgentNodeBinding | None:
         # Composer always operates against the draft workflow row, so this lookup
         # is scoped to ``workflow_version="draft"``. Published bindings are
         # materialized by WorkflowAgentPublishService.copy_agent_node_bindings_to_published
         # and are not edited through the Composer.
-        return session.scalar(
-            select(WorkflowAgentNodeBinding)
-            .where(
-                WorkflowAgentNodeBinding.tenant_id == tenant_id,
-                WorkflowAgentNodeBinding.workflow_id == workflow_id,
-                WorkflowAgentNodeBinding.workflow_version == _DRAFT_WORKFLOW_VERSION,
-                WorkflowAgentNodeBinding.node_id == node_id,
-            )
-            .limit(1)
+        stmt = select(WorkflowAgentNodeBinding).where(
+            WorkflowAgentNodeBinding.tenant_id == tenant_id,
+            WorkflowAgentNodeBinding.workflow_id == workflow_id,
+            WorkflowAgentNodeBinding.workflow_version == _DRAFT_WORKFLOW_VERSION,
+            WorkflowAgentNodeBinding.node_id == node_id,
         )
+        if for_update:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True, autoflush=False)
+        return session.scalar(stmt.limit(1))
 
     @staticmethod
     def _lock_workflow_binding(
@@ -2163,10 +2363,15 @@ class AgentComposerService:
         return binding
 
     @classmethod
-    def _require_agent(cls, *, session: Session, tenant_id: str, agent_id: str | None) -> Agent:
+    def _require_agent(
+        cls, *, session: Session, tenant_id: str, agent_id: str | None, for_update: bool = False
+    ) -> Agent:
         if not agent_id:
             raise AgentNotFoundError()
-        agent = session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).limit(1))
+        stmt = select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id)
+        if for_update:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True, autoflush=False)
+        agent = session.scalar(stmt.limit(1))
         if not agent:
             raise AgentNotFoundError()
         return agent
@@ -2177,6 +2382,32 @@ class AgentComposerService:
         if not account:
             raise ValueError("Account not found")
         return account
+
+    @classmethod
+    def _get_agent_if_present(cls, *, session: Session, tenant_id: str, agent_id: str | None) -> Agent | None:
+        return AgentConfigRepository.get_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
+
+    @classmethod
+    def _require_version(
+        cls, *, session: Session, tenant_id: str, agent_id: str | None, version_id: str | None
+    ) -> AgentConfigSnapshot:
+        return AgentConfigRepository.require_snapshot(
+            session=session,
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            version_id=version_id,
+        )
+
+    @classmethod
+    def _get_version_if_present(
+        cls, *, session: Session, tenant_id: str, agent_id: str | None, version_id: str | None
+    ) -> AgentConfigSnapshot | None:
+        return AgentConfigRepository.get_snapshot(
+            session=session,
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            version_id=version_id,
+        )
 
     @staticmethod
     def _serialize_effective_outputs(node_job: WorkflowNodeJobConfig) -> list[dict[str, Any]]:
@@ -2214,6 +2445,7 @@ class AgentComposerService:
         agent: Agent | None,
         version: AgentConfigSnapshot | None,
         account_id: str | None = None,
+        include_draft_files: bool,
     ) -> dict[str, Any]:
         locked = bool(agent and agent.scope == AgentScope.ROSTER)
         save_options = [ComposerSaveStrategy.NODE_JOB_ONLY.value]
@@ -2258,9 +2490,9 @@ class AgentComposerService:
                 "can_unlock": locked,
                 "reason": "roster_agent_shared_version" if locked else "workflow_only_agent",
             },
-            "agent_soul": cls._workflow_agent_soul_config(version.config_snapshot_dict)
-            if version
-            else AgentSoulConfig().model_dump(mode="json"),
+            "agent_soul": cls._workflow_agent_soul_state(
+                session=session, agent=agent, version=version, include_draft_files=include_draft_files
+            ),
             "node_job": binding.node_job_config_dict,
             "effective_declared_outputs": cls._serialize_effective_outputs(
                 WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
@@ -2339,6 +2571,37 @@ class AgentComposerService:
             "created_by": version.created_by,
             "created_at": to_timestamp(version.created_at),
         }
+
+    @classmethod
+    def _workflow_agent_soul_state(
+        cls,
+        *,
+        session: Session,
+        agent: Agent | None,
+        version: AgentConfigSnapshot | None,
+        include_draft_files: bool,
+    ) -> dict[str, Any]:
+        """Return the node's Agent Soul with the file list its next node save would persist.
+
+        Inline file uploads and deletes write the workflow-only Agent's normal Draft. While that Draft is
+        based on the bound snapshot, its ``config_files`` are the current list for the node. An explicitly
+        requested snapshot (``include_draft_files`` false) keeps its own files.
+        """
+        if version is None:
+            return AgentSoulConfig().model_dump(mode="json")
+        agent_soul = cls._workflow_agent_soul_config(version.config_snapshot_dict)
+        if not include_draft_files or agent is None or agent.scope != AgentScope.WORKFLOW_ONLY:
+            return agent_soul
+        normal_draft = cls._get_agent_draft(
+            session=session,
+            tenant_id=agent.tenant_id,
+            agent_id=agent.id,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+        )
+        if normal_draft is not None and normal_draft.base_snapshot_id == version.id:
+            agent_soul["config_files"] = normal_draft.config_snapshot_dict.get("config_files", [])
+        return agent_soul
 
     @staticmethod
     def _workflow_agent_soul_config(config_snapshot: dict[str, Any]) -> dict[str, Any]:

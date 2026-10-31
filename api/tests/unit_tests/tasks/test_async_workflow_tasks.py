@@ -170,7 +170,7 @@ def test_resume_workflow_projects_the_persisted_workflow_before_resuming(
     workflow_run_repository.delete_workflow_pause.assert_called_once_with(pause_entity)
 
 
-def test_workflow_not_found_error_message_is_a_single_formatted_string():
+def test_workflow_not_found_error_message_is_a_single_formatted_string() -> None:
     # Regression: previously raised with printf-style positional args
     # ("...%s...", id1, id2), which made Exception store them as a tuple
     # and str(exc) rendered the literal tuple instead of a readable message.
@@ -188,7 +188,7 @@ def test_workflow_not_found_error_message_is_a_single_formatted_string():
     assert exc.args == ("Workflow not found: workflow_run_id=wr-123, workflow_id=wf-456",)
 
 
-def test_app_not_found_error_message_is_a_single_formatted_string():
+def test_app_not_found_error_message_is_a_single_formatted_string() -> None:
     # Same regression check for the _AppNotFoundError raise site in the same
     # function (resume_workflow_execution).
     app_id = "app-789"
@@ -223,7 +223,7 @@ def _collect_raise_calls_in(func_name: str) -> list[ast.Call]:
     return raises
 
 
-def test_resume_workflow_execution_raises_do_not_use_printf_positional_args():
+def test_resume_workflow_execution_raises_do_not_use_printf_positional_args() -> None:
     """Regression: ``resume_workflow_execution`` previously raised
     ``WorkflowNotFoundError("Workflow not found: workflow_run_id=%s, ...", run_id, wf_id)``
     and ``_AppNotFoundError("App not found: app_id=%s, ...", app_id, run_id)``.

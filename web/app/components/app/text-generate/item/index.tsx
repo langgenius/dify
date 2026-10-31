@@ -22,6 +22,7 @@ import {
   submitHumanInputForm,
   updateFeedback,
 } from '@/service/share'
+import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import GenerationActionGroups from './action-groups'
 import {
@@ -39,6 +40,7 @@ type IGenerationItemProps = {
   className?: string
   isError: boolean
   onRetry: () => void
+  prepareHumanInputSubmission?: () => Promise<boolean>
   content: any
   messageId?: string | null
   conversationId?: string
@@ -69,6 +71,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   className,
   isError,
   onRetry,
+  prepareHumanInputSubmission,
   content,
   messageId,
   isLoading,
@@ -192,11 +195,17 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }, [workflowProcessData])
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
-      if (appSourceType === AppSourceType.installedApp)
-        await submitHumanInputFormService(formToken, formData)
-      else await submitHumanInputForm(formToken, formData)
+      const form = workflowProcessData?.humanInputFormDataList?.find(
+        (item) => item.form_token === formToken,
+      )
+      if (appSourceType === AppSourceType.installedApp) {
+        await submitHumanInputFormService(formToken, formData, form?.form_version)
+      } else if (appSourceType === AppSourceType.webApp) {
+        if (prepareHumanInputSubmission && !(await prepareHumanInputSubmission())) return
+        await submitWebAppHumanInputForm(formToken, formData, form?.form_version)
+      } else await submitHumanInputForm(formToken, formData)
     },
-    [appSourceType],
+    [appSourceType, prepareHumanInputSubmission, workflowProcessData?.humanInputFormDataList],
   )
 
   return (
@@ -237,11 +246,11 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               {!workflowProcessData && taskId && (
                 <div
                   className={cn(
-                    'sticky top-0 left-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 system-2xs-medium-uppercase text-text-accent-secondary',
+                    'sticky inset-s-0 top-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 system-2xs-medium-uppercase text-text-accent-secondary',
                     isError && 'text-text-destructive',
                   )}
                 >
-                  <RiPlayList2Line className="mr-1 size-3" />
+                  <RiPlayList2Line className="me-1 size-3" />
                   <span>{t(($) => $['generation.execution'], { ns: 'share' })}</span>
                   <span className="px-1">·</span>
                   <span>{getGenerationTaskLabel(taskId, depth)}</span>
@@ -265,7 +274,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 isMobile &&
                   (childMessageId || isQuerying) &&
                   depth < MAX_GENERATION_DEPTH &&
-                  'pl-10',
+                  'ps-10',
               )}
             >
               {!isWorkflow && (
@@ -274,7 +283,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 </span>
               )}
               {/* action buttons */}
-              <div className="absolute right-2 bottom-1 flex items-center">
+              <div className="absolute inset-e-2 bottom-1 flex items-center">
                 <GenerationActionGroups
                   appSourceType={appSourceType}
                   content={content}
@@ -304,13 +313,13 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               <div
                 className={cn(
                   'absolute -top-8 flex h-8.25 w-4 justify-center',
-                  isMobile ? 'left-4.25' : 'left-[50%] translate-x-[-50%]',
+                  isMobile ? 'inset-s-4.25' : 'inset-s-[50%] translate-x-[-50%]',
                 )}
               >
                 <div className="h-full w-0.5 bg-divider-regular"></div>
                 <div
                   className={cn(
-                    'absolute left-0 flex h-4 w-4 items-center justify-center rounded-2xl border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 shadow-xs',
+                    'absolute inset-s-0 flex h-4 w-4 items-center justify-center rounded-2xl border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 shadow-xs',
                     isMobile ? 'top-[3.5px]' : 'top-2',
                   )}
                 >

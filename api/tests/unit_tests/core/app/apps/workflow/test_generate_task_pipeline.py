@@ -10,7 +10,7 @@ from sqlalchemy.pool import QueuePool
 
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.draft_variable_saver import NoopDraftVariableSaver
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueErrorEvent,
@@ -97,6 +97,7 @@ def log_store():
 def build_pipeline(runtime, invoke_from, user, *, tool_providers, run_id: str = "run-id"):
     workflow = make_workflow(workflow_id="workflow-id", app_id="app-id", tenant_id="tenant-id", features="{}")
     entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER if isinstance(user, EndUser) else UserFrom.ACCOUNT,
         task_id="task-id",
         app_config=WorkflowUIBasedAppConfig(
             tenant_id=workflow.tenant_id,
@@ -344,6 +345,7 @@ class TestGenerateTaskPipelineCoreCases:
             assert response.data.reasons == [
                 {
                     "TYPE": "human_input_required",
+                    "form_version": "1",
                     "form_id": "form-1",
                     "node_id": "node-1",
                     "node_title": "Human Input",

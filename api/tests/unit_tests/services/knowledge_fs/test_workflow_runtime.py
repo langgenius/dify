@@ -42,8 +42,8 @@ class _RecordingPort:
     def list_metadata_fields(self, **kwargs: object) -> object:
         return self._record("list_metadata_fields", **kwargs)
 
-    def upsert(self, **kwargs: object) -> object:
-        return self._record("upsert", **kwargs)
+    def upsert_for_app(self, **kwargs: object) -> object:
+        return self._record("upsert_for_app", **kwargs)
 
 
 @dataclass
@@ -126,9 +126,9 @@ def test_application_registers_lazy_workflow_runtime_dependencies(monkeypatch: p
         capabilities.upsert(
             tenant_id="tenant", actor_account_id="actor", control_space_id="space", payload=binding_payload
         )
-        is runtime.app_bindings.results["upsert"]
+        is runtime.app_bindings.results["upsert_for_app"]
     )
-    assert runtime.app_bindings.calls["upsert"] == [
+    assert runtime.app_bindings.calls["upsert_for_app"] == [
         {"tenant_id": "tenant", "actor_account_id": "actor", "control_space_id": "space", "payload": binding_payload}
     ]
     assert len(resolve_runtime.calls) == 3

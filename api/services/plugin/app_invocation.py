@@ -32,6 +32,7 @@ from services.knowledge.retrieval.ports import DatasetRetrievalFactory
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.chatflow.app_generator import AdvancedChatAppGenerator
 from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
+from services.workflow_execution_identity import build_workflow_execution_identity
 
 
 class AppScopedEndUserProvisioner(Protocol):
@@ -241,6 +242,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             app_model=app,
             workflow=workflow,
             user=user,
+            execution_identity=build_workflow_execution_identity(user),
             args={"inputs": inputs, "files": files},
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=stream,

@@ -5,7 +5,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Literal
 from unittest.mock import Mock
 
 import pytest
@@ -65,7 +65,10 @@ def _workflow_pause_details_api_mock_application_services(monkeypatch: pytest.Mo
 
 class TestWorkflowPauseDetailsApiCases:
     @staticmethod
-    def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize("form_version", ["1", "2"])
+    def test_pause_details_returns_backstage_input_url(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, form_version: Literal["1", "2"]
+    ) -> None:
         apply_config_overrides(monkeypatch, APP_WEB_URL="https://web.example.com/")
         workflow_runs = Mock()
         workflow_runs.get_pause_details.return_value = WorkflowRunPauseDetails(
@@ -75,6 +78,7 @@ class TestWorkflowPauseDetailsApiCases:
                     node_id="node-1",
                     node_title="Ask Name",
                     form_id="form-1",
+                    form_version=form_version,
                     form_token="backstage-token",
                 ),
             ),
@@ -97,6 +101,7 @@ class TestWorkflowPauseDetailsApiCases:
                     "pause_type": {
                         "type": "human_input",
                         "form_id": "form-1",
+                        "form_version": form_version,
                         "backstage_input_url": "https://web.example.com/form/backstage-token",
                     },
                 }
@@ -517,6 +522,7 @@ class TestWorkflowRunApiCases:
         sqlite_session_factory: sessionmaker[Session], tool_providers: ToolProviderRepository
     ) -> WorkflowRunService:
         return WorkflowRunService(
+            session_factory=sqlite_session_factory,
             workflow_runs=DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory),
             node_executions=DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory),
             tool_providers=tool_providers,
