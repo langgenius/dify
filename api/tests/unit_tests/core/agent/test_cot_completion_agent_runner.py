@@ -3,13 +3,13 @@ import json
 import pytest
 from pytest_mock import MockerFixture
 
-from core.agent.cot_completion_agent_runner import CotCompletionAgentRunner
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from services.agent.chat.cot_completion_runner import CotCompletionAgentRunner
 
 # -----------------------------
 # Fixtures
@@ -26,7 +26,7 @@ def runner(mocker: MockerFixture, dummy_tool_factory):
     runner._agent_scratchpad = []
 
     mocker.patch(
-        "core.agent.cot_completion_agent_runner.jsonable_encoder",
+        "services.agent.chat.cot_completion_runner.jsonable_encoder",
         side_effect=lambda tools: [{"name": t.name} for t in tools],
     )
 

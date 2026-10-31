@@ -13,8 +13,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from sqlalchemy import Engine as _easy_ui_based_generate_task_pipeline_Engine
 from sqlalchemy import event
-from sqlalchemy.engine import Engine as _easy_ui_message_end_files_Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     AppAdditionalFeatures,
@@ -58,20 +57,22 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
     StreamEvent,
 )
-from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager
-from extensions.ext_redis import RedisClientWrapper
+from extensions import ext_redis
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
 from models.enums import ConversationFromSource, CreatorUserRole
-from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from models.model import App, AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from repositories.app.generation_repository import AppGenerationRepository
+from services.app.generation.adapters.message_pipeline import EasyUIBasedGenerateTaskPipeline
+from services.errors.message import MessageNotExistsError
 from tests.helpers.unit.core.model_fixtures import make_model_config
-from tests.helpers.unit.model_factories import make_upload_file
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_message, make_upload_file
 
 
 class _QueueManager(AppQueueManager):
@@ -213,6 +214,7 @@ class TestEasyUiBasedGenerateTaskPipelineCases:
         @pytest.fixture
         def pipeline(
             self,
+            app_records,
             application_generate_entity,
             queue_manager,
             conversation,
@@ -222,6 +224,7 @@ class TestEasyUiBasedGenerateTaskPipelineCases:
         ):
             """Create an EasyUIBasedGenerateTaskPipeline instance with mocked dependencies."""
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
                 conversation=conversation,
@@ -337,9 +340,7 @@ class TestEasyUiBasedGenerateTaskPipelineCases:
             # Assert
             assert len(responses) == 1
             assert task_state.llm_result == result
-            session = pipeline._save_message.call_args.kwargs["session"]
-            assert isinstance(session, Session)
-            assert committed_sessions == [session]
+            assert "session" not in pipeline._save_message.call_args.kwargs
             pipeline._message_end_to_stream_response.assert_called_once()
 
         def test_error_event(self, pipeline, committed_sessions):
@@ -359,12 +360,8 @@ class TestEasyUiBasedGenerateTaskPipelineCases:
 
             # Assert
             assert len(responses) == 1
-            session = pipeline.handle_error.call_args.kwargs["session"]
-            assert isinstance(session, Session)
-            assert committed_sessions == [session]
-            pipeline.handle_error.assert_called_once_with(
-                event=error_event, session=session, message_id="test-message-id"
-            )
+            assert len(committed_sessions) == 1
+            pipeline.handle_error.assert_called_once_with(event=error_event)
             pipeline.error_to_stream_response.assert_called_once()
 
         def test_ping_event(self, pipeline):
@@ -448,10 +445,8 @@ class TestEasyUiBasedGenerateTaskPipelineCases:
             list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
 
             # Assert
-            session = pipeline._save_message.call_args.kwargs["session"]
-            assert isinstance(session, Session)
-            assert committed_sessions == [session]
-            pipeline._save_message.assert_called_once_with(session=session, trace_manager=trace_manager)
+            assert "session" not in pipeline._save_message.call_args.kwargs
+            pipeline._save_message.assert_called_once_with(trace_manager=trace_manager, preserve_existing_usage=False)
 
         def test_multiple_events_sequence(self, pipeline, mock_message_cycle_manager, task_state):
             """Test handling multiple events in sequence."""
@@ -496,6 +491,7 @@ class TestEasyUiBasedGenerateTaskPipelineCases:
 class _DummyModelConf:
     def __init__(self) -> None:
         self.model = "mock"
+        self.mode = "chat"
 
 
 class _UnknownQueueEvent:
@@ -713,6 +709,7 @@ def _make_entity(entity_cls, app_mode: AppMode):
 
 
 def _make_pipeline(
+    app_records,
     entity_cls: type[ChatAppGenerateEntity] | type[CompletionAppGenerateEntity] = ChatAppGenerateEntity,
     app_mode: AppMode = AppMode.CHAT,
     *,
@@ -720,6 +717,7 @@ def _make_pipeline(
 ) -> tuple[EasyUIBasedGenerateTaskPipeline, _FakeQueueManager]:
     queue_manager = _FakeQueueManager()
     pipeline = EasyUIBasedGenerateTaskPipeline(
+        records=app_records,
         application_generate_entity=_make_entity(entity_cls, app_mode),
         queue_manager=queue_manager,
         conversation=_make_conversation(app_mode),
@@ -742,11 +740,12 @@ def _set_method(obj: object, name: str, value: object) -> None:
 
 class TestEasyUiBasedGenerateTaskPipelineCoreCases:
     class TestEasyUiBasedGenerateTaskPipeline:
-        def test_to_blocking_response_chat(self):
+        def test_to_blocking_response_chat(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
 
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -762,11 +761,12 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             assert response.data.answer == "answer"
 
-        def test_to_blocking_response_completion(self):
+        def test_to_blocking_response_completion(self, app_records):
             conversation = _make_conversation(AppMode.COMPLETION)
             message = _make_message()
 
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(CompletionAppGenerateEntity, AppMode.COMPLETION),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -782,11 +782,12 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             assert response.data.answer == "answer"
 
-        def test_listen_audio_msg_returns_none_when_no_publisher(self):
+        def test_listen_audio_msg_returns_none_when_no_publisher(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
 
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -796,11 +797,12 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             assert pipeline._listen_audio_msg(publisher=None, task_id="task") is None
 
-        def test_process_stream_response_handles_chunks_and_end(self, monkeypatch: pytest.MonkeyPatch):
+        def test_process_stream_response_handles_chunks_and_end(self, app_records, monkeypatch: pytest.MonkeyPatch):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
 
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -845,24 +847,6 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             _set_method(pipeline, "_message_end_to_stream_response", _message_end)
             _set_method(pipeline, "_save_message", lambda **kwargs: None)
 
-            class _Session:
-                def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
-                    pass
-
-                def __enter__(self):
-                    return self
-
-                def __exit__(self, exc_type, exc, tb):
-                    return False
-
-                def commit(self):
-                    return None
-
-            monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-                lambda: _Session(),
-            )
-
             responses = list(pipeline._process_stream_response(publisher=None))
 
             message_response = next(item for item in responses if isinstance(item, MessageStreamResponse))
@@ -873,11 +857,12 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert isinstance(responses[-1], MessageEndStreamResponse)
             assert pipeline._task_state.llm_result.message.content == "done"
 
-        def test_handle_output_moderation_chunk_directs_output(self):
+        def test_handle_output_moderation_chunk_directs_output(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
 
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -901,7 +886,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert any(isinstance(event, QueueLLMChunkEvent) for event in events)
             assert any(isinstance(event, QueueStopEvent) for event in events)
 
-        def test_handle_stop_updates_usage(self, monkeypatch: pytest.MonkeyPatch):
+        def test_handle_stop_updates_usage(self, app_records, monkeypatch: pytest.MonkeyPatch):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
 
@@ -940,6 +925,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             )
 
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=application_generate_entity,
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -960,7 +946,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                     return 10 if len(calls) == 1 else 5
 
             monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.ModelInstance",
+                "services.app.generation.adapters.message_pipeline.ModelInstance",
                 _FakeModelInstance,
             )
 
@@ -969,11 +955,12 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert pipeline._task_state.llm_result.usage.prompt_tokens == 10
             assert pipeline._task_state.llm_result.usage.completion_tokens == 5
 
-        def test_record_files_builds_file_payloads(self, monkeypatch: pytest.MonkeyPatch):
+        def test_record_files_builds_file_payloads(self, app_records, monkeypatch: pytest.MonkeyPatch):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
 
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1012,31 +999,6 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 )
             ]
 
-            class _Result:
-                def __init__(self, items):
-                    self._items = items
-
-                def all(self):
-                    return self._items
-
-            class _Session:
-                def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
-                    self.calls = 0
-
-                def __enter__(self):
-                    return self
-
-                def __exit__(self, exc_type, exc, tb):
-                    return False
-
-                def scalars(self, *args, **kwargs):
-                    self.calls += 1
-                    return _Result(message_files if self.calls == 1 else upload_files)
-
-            monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-                lambda: _Session(),
-            )
             monkeypatch.setattr(
                 "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url",
                 lambda **kwargs: "signed-url",
@@ -1046,17 +1008,23 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 lambda **kwargs: "signed-tool",
             )
 
+            monkeypatch.setattr(
+                app_records, "message_files", lambda identity: (message_files, {file.id: file for file in upload_files})
+            )
             response = pipeline._message_end_to_stream_response()
             files = response.files
 
             assert files
             assert len(files) == 3
 
-        def test_process_stream_response_handles_annotation_and_error(self, monkeypatch: pytest.MonkeyPatch):
+        def test_process_stream_response_handles_annotation_and_error(
+            self, app_records, monkeypatch: pytest.MonkeyPatch
+        ):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
 
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1097,31 +1065,13 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             _set_method(
                 pipeline._message_cycle_manager,
                 "handle_annotation_reply",
-                lambda event, session: _AnnotationReply(content="annotated"),
+                lambda event: _AnnotationReply(content="annotated"),
             )
             _set_method(pipeline, "_agent_thought_to_stream_response", _agent_thought_response)
             _set_method(pipeline._message_cycle_manager, "message_file_to_stream_response", _file_response)
             _set_method(pipeline, "_agent_message_to_stream_response", _agent_message_response)
             _set_method(pipeline, "handle_error", lambda **kwargs: ValueError("boom"))
             _set_method(pipeline, "error_to_stream_response", lambda err: ErrorStreamResponse(task_id="task", err=err))
-
-            class _Session:
-                def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
-                    pass
-
-                def __enter__(self):
-                    return self
-
-                def __exit__(self, exc_type, exc, tb):
-                    return False
-
-                def commit(self):
-                    return None
-
-            monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-                lambda: _Session(),
-            )
 
             responses = list(pipeline._process_stream_response(publisher=None))
 
@@ -1135,13 +1085,16 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert isinstance(responses[-1].err, ValueError)
             assert pipeline._task_state.llm_result.message.content == "annotated"
 
-        def test_process_stream_response_error_event_adds_trace_task(self, monkeypatch: pytest.MonkeyPatch):
+        def test_process_stream_response_error_event_adds_trace_task(
+            self, app_records, monkeypatch: pytest.MonkeyPatch
+        ):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             application_generate_entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
             application_generate_entity.extras = {"trace_session_id": "session-1"}
 
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=application_generate_entity,
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1155,21 +1108,6 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             trace_manager_double = _TraceManagerDouble()
             trace_manager = cast(TraceQueueManager, trace_manager_double)
 
-            class _Session:
-                def __enter__(self):
-                    return self
-
-                def __exit__(self, exc_type, exc, tb):
-                    return False
-
-                def commit(self):
-                    return None
-
-            monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-                lambda: _Session(),
-            )
-
             responses = list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
 
             assert len(responses) == 1
@@ -1181,11 +1119,12 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert trace_task.message_id == "msg"
             assert trace_task.kwargs["trace_session_id"] == "session-1"
 
-        def test_agent_thought_to_stream_response_returns_payload(self, monkeypatch: pytest.MonkeyPatch):
+        def test_agent_thought_to_stream_response_returns_payload(self, app_records, monkeypatch: pytest.MonkeyPatch):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
 
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1195,35 +1134,21 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             agent_thought = _agent_thought()
 
-            class _Session:
-                def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
-                    pass
-
-                def __enter__(self):
-                    return self
-
-                def __exit__(self, exc_type, exc, tb):
-                    return False
-
-                def scalar(self, *args, **kwargs):
-                    return agent_thought
-
-            monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-                lambda: _Session(),
-            )
-
+            monkeypatch.setattr(app_records, "agent_thought", lambda identity, thought_id: agent_thought)
             response = pipeline._agent_thought_to_stream_response(QueueAgentThoughtEvent(agent_thought_id="thought"))
 
             assert response is not None
             assert response.id == "thought"
             assert response.thought == "t"
 
-        def test_agent_thought_to_stream_response_normalizes_null_display_fields(self, monkeypatch: pytest.MonkeyPatch):
+        def test_agent_thought_to_stream_response_normalizes_null_display_fields(
+            self, app_records, monkeypatch: pytest.MonkeyPatch
+        ):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
 
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1239,23 +1164,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             agent_thought.tool_input = None
             agent_thought.message_files = None
 
-            class _Session:
-                def __init__(self, *args, **kwargs):
-                    pass
-
-                def __enter__(self):
-                    return self
-
-                def __exit__(self, exc_type, exc, tb):
-                    return False
-
-                def scalar(self, *args, **kwargs):
-                    return agent_thought
-
-            monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-                lambda: _Session(),
-            )
+            monkeypatch.setattr(app_records, "agent_thought", lambda identity, thought_id: agent_thought)
             response = pipeline._agent_thought_to_stream_response(QueueAgentThoughtEvent(agent_thought_id="thought"))
 
             assert response is not None
@@ -1265,10 +1174,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert response.tool_input == ""
             assert response.model_dump(mode="json")["message_files"] == []
 
-        def test_process_routes_to_stream_and_starts_conversation_name_generation(self):
+        def test_process_routes_to_stream_and_starts_conversation_name_generation(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1290,10 +1200,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 conversation_id="conv", query="hello", message_id="msg"
             )
 
-        def test_process_routes_to_blocking_for_completion_mode(self):
+        def test_process_routes_to_blocking_for_completion_mode(self, app_records):
             conversation = _make_conversation(AppMode.COMPLETION)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(CompletionAppGenerateEntity, AppMode.COMPLETION),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1313,10 +1224,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert result == "blocking"
             pipeline._message_cycle_manager.generate_conversation_name.assert_not_called()
 
-        def test_to_blocking_response_raises_error_stream_exception(self):
+        def test_to_blocking_response_raises_error_stream_exception(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1330,10 +1242,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             with pytest.raises(ValueError, match="stream error"):
                 pipeline._to_blocking_response(_gen())
 
-        def test_to_blocking_response_raises_when_generator_ends_without_message_end(self):
+        def test_to_blocking_response_raises_when_generator_ends_without_message_end(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1347,10 +1260,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             with pytest.raises(RuntimeError, match="queue listening stopped unexpectedly"):
                 pipeline._to_blocking_response(_gen())
 
-        def test_to_stream_response_wraps_completion_stream_events(self):
+        def test_to_stream_response_wraps_completion_stream_events(self, app_records):
             conversation = _make_conversation(AppMode.COMPLETION)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(CompletionAppGenerateEntity, AppMode.COMPLETION),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1366,10 +1280,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert isinstance(response, CompletionAppStreamResponse)
             assert response.message_id == "msg"
 
-        def test_to_stream_response_wraps_chat_stream_events(self):
+        def test_to_stream_response_wraps_chat_stream_events(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1385,10 +1300,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert isinstance(response, ChatbotAppStreamResponse)
             assert response.conversation_id == "conv"
 
-        def test_listen_audio_msg_returns_audio_response_for_non_finish_audio(self):
+        def test_listen_audio_msg_returns_audio_response_for_non_finish_audio(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1405,10 +1321,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert isinstance(response, MessageAudioStreamResponse)
             assert response.audio == "abc"
 
-        def test_listen_audio_msg_returns_none_for_finish_audio(self):
+        def test_listen_audio_msg_returns_none_for_finish_audio(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1422,10 +1339,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             assert pipeline._listen_audio_msg(publisher=publisher, task_id="task") is None
 
-        def test_wrapper_process_stream_response_without_tts_publisher(self):
+        def test_wrapper_process_stream_response_without_tts_publisher(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1439,7 +1357,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             assert responses == [payload]
 
-        def test_wrapper_process_stream_response_with_tts_publisher(self, monkeypatch: pytest.MonkeyPatch):
+        def test_wrapper_process_stream_response_with_tts_publisher(self, app_records, monkeypatch: pytest.MonkeyPatch):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
@@ -1447,6 +1365,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 "text_to_speech": {"autoPlay": "enabled", "enabled": True, "voice": "v", "language": "en"}
             }
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=entity,
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1471,7 +1390,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             _set_method(pipeline, "_listen_audio_msg", lambda publisher, task_id: next(audio_calls))
             _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([payload]))
             monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
+                "services.app.generation.adapters.message_pipeline.AppGeneratorTTSPublisher",
                 lambda tenant_id, voice, language, app_type: _Publisher(),
             )
 
@@ -1482,7 +1401,9 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert isinstance(responses[-1], MessageAudioEndStreamResponse)
             assert "audio_type" not in responses[-1].model_dump()
 
-        def test_wrapper_process_stream_response_waits_for_the_audio_terminal(self, monkeypatch: pytest.MonkeyPatch):
+        def test_wrapper_process_stream_response_waits_for_the_audio_terminal(
+            self, app_records, monkeypatch: pytest.MonkeyPatch
+        ):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
@@ -1490,6 +1411,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 "text_to_speech": {"autoPlay": "enabled", "enabled": True, "voice": "v", "language": "en"}
             }
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=entity,
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1513,7 +1435,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([]))
             monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
+                "services.app.generation.adapters.message_pipeline.AppGeneratorTTSPublisher",
                 lambda tenant_id, voice, language, app_type: _Publisher(),
             )
             responses = list(pipeline._wrapper_process_stream_response())
@@ -1522,7 +1444,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert isinstance(responses[-1], MessageAudioEndStreamResponse)
 
         def test_wrapper_process_stream_response_ends_audio_before_reporting_tts_error(
-            self, monkeypatch: pytest.MonkeyPatch
+            self, app_records, monkeypatch: pytest.MonkeyPatch
         ):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
@@ -1531,6 +1453,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 "text_to_speech": {"autoPlay": "enabled", "enabled": True, "voice": "v", "language": "en"}
             }
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=entity,
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1552,7 +1475,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([]))
             monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
+                "services.app.generation.adapters.message_pipeline.AppGeneratorTTSPublisher",
                 lambda tenant_id, voice, language, app_type: _Publisher(),
             )
 
@@ -1562,7 +1485,9 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert isinstance(responses[-1], ErrorStreamResponse)
             assert responses[-1].err is error
 
-        def test_wrapper_process_stream_response_ends_audio_before_a_main_error(self, monkeypatch: pytest.MonkeyPatch):
+        def test_wrapper_process_stream_response_ends_audio_before_a_main_error(
+            self, app_records, monkeypatch: pytest.MonkeyPatch
+        ):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
@@ -1570,6 +1495,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 "text_to_speech": {"autoPlay": "enabled", "enabled": True, "voice": "v", "language": "en"}
             }
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=entity,
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1581,7 +1507,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             error = ErrorStreamResponse(task_id="task", err=RuntimeError("generation failed"))
             _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([error]))
             monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
+                "services.app.generation.adapters.message_pipeline.AppGeneratorTTSPublisher",
                 lambda tenant_id, voice, language, app_type: publisher,
             )
 
@@ -1593,11 +1519,12 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             publisher.publish.assert_not_called()
 
         def test_process_stream_response_handles_stop_event_and_output_replacement(
-            self, monkeypatch: pytest.MonkeyPatch
+            self, app_records, monkeypatch: pytest.MonkeyPatch
         ):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1620,24 +1547,6 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 lambda: MessageEndStreamResponse(task_id="task", id="msg"),
             )
 
-            class _Session:
-                def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
-                    pass
-
-                def __enter__(self):
-                    return self
-
-                def __exit__(self, exc_type, exc, tb):
-                    return False
-
-                def commit(self):
-                    return None
-
-            monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-                lambda: _Session(),
-            )
-
             responses = list(pipeline._process_stream_response(publisher=None))
 
             assert isinstance(responses[0], MessageReplaceStreamResponse)
@@ -1645,10 +1554,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert isinstance(responses[1], MessageEndStreamResponse)
             pipeline._handle_stop.assert_called_once()
 
-        def test_process_stream_response_handles_retriever_unknown_and_empty_chunk(self):
+        def test_process_stream_response_handles_retriever_unknown_and_empty_chunk(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1681,10 +1591,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert responses == []
             assert handled["retriever"] == 1
 
-        def test_process_stream_response_skips_when_output_moderation_directs_chunk(self):
+        def test_process_stream_response_skips_when_output_moderation_directs_chunk(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1703,10 +1614,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             assert responses == []
 
-        def test_process_stream_response_ignores_unsupported_chunk_content_types(self):
+        def test_process_stream_response_ignores_unsupported_chunk_content_types(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1731,10 +1643,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert responses[0].answer == "ok"
             assert pipeline._task_state.llm_result.message.content == "ok"
 
-        def test_process_stream_response_skips_none_chunk_content(self):
+        def test_process_stream_response_skips_none_chunk_content(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1755,10 +1668,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             pipeline._message_cycle_manager.message_to_stream_response.assert_not_called()
             assert pipeline._task_state.llm_result.message.content == ""
 
-        def test_process_stream_response_reaches_post_loop_branch_with_thread_reference(self):
+        def test_process_stream_response_reaches_post_loop_branch_with_thread_reference(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1771,13 +1685,14 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert list(pipeline._process_stream_response(publisher=None)) == []
 
         def test_save_message_persists_fields_and_emits_trace(
-            self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+            self, app_records, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
         ):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             application_generate_entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
             application_generate_entity.extras = {"trace_session_id": "session-1"}
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=application_generate_entity,
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1796,34 +1711,33 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             conversation_obj = _make_conversation(AppMode.CHAT)
             session = sqlite_session
             session.add_all([conversation_obj, message_obj])
-            session.flush()
+            session.commit()
             trace_manager_double = _TraceManagerDouble()
             trace_manager = cast(TraceQueueManager, trace_manager_double)
             sent_payloads: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
             monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.PromptMessageUtil.prompt_messages_to_prompt_for_saving",
-                lambda mode, prompt_messages: "serialized-prompt",
+                "services.app.generation.adapters.message_pipeline.PromptMessageUtil.prompt_messages_to_prompt_for_saving",
+                lambda mode, prompt_messages: [{"role": "user", "text": "serialized-prompt"}],
             )
             monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.PromptTemplateParser.remove_template_variables",
+                "services.app.generation.adapters.message_pipeline.PromptTemplateParser.remove_template_variables",
                 lambda text: text.replace("{{name}}", "").strip(),
             )
             monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.naive_utc_now",
+                "repositories.app.generation_repository.naive_utc_now",
                 lambda: datetime(2024, 1, 1, tzinfo=UTC),
             )
+            monkeypatch.setattr("services.app.generation.adapters.message_pipeline.time.perf_counter", lambda: 15.0)
             monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.time.perf_counter", lambda: 15.0
-            )
-            monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.message_was_created.send",
+                "services.app.generation.adapters.message_pipeline.message_was_created.send",
                 lambda *args, **kwargs: sent_payloads.append((args, kwargs)),
             )
 
-            pipeline._save_message(session=session, trace_manager=trace_manager)
+            pipeline._save_message(trace_manager=trace_manager)
 
-            assert message_obj.message == "serialized-prompt"
+            session.refresh(message_obj)
+            assert message_obj.message == [{"role": "user", "text": "serialized-prompt"}]
             assert message_obj.answer == "hello"
             assert message_obj.provider_response_latency == 5.0
             trace_manager_double.add_trace_task.assert_called_once()
@@ -1835,9 +1749,10 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert len(sent_payloads) == 1
 
         def test_save_stopped_message_preserves_backend_reported_usage(
-            self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+            self, app_records, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
         ) -> None:
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=_make_conversation(AppMode.CHAT),
@@ -1853,18 +1768,19 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             message.total_price = Decimal("0.21")
             message.message_metadata = json.dumps({"usage": {"total_tokens": 21}})
             sqlite_session.add_all([_make_conversation(AppMode.CHAT), message])
-            sqlite_session.flush()
+            sqlite_session.commit()
             monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.PromptMessageUtil.prompt_messages_to_prompt_for_saving",
-                lambda _mode, _prompt_messages: "",
+                "services.app.generation.adapters.message_pipeline.PromptMessageUtil.prompt_messages_to_prompt_for_saving",
+                lambda _mode, _prompt_messages: [],
             )
             monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.message_was_created.send",
+                "services.app.generation.adapters.message_pipeline.message_was_created.send",
                 lambda *_args, **_kwargs: None,
             )
 
-            pipeline._save_message(session=sqlite_session, preserve_existing_usage=True)
+            pipeline._save_message(preserve_existing_usage=True)
 
+            sqlite_session.refresh(message)
             assert message.message_tokens == 13
             assert message.answer_tokens == 8
             assert message.total_price == Decimal("0.21")
@@ -1874,11 +1790,13 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
         @pytest.mark.parametrize("metadata", ["{", "[]"])
         def test_save_stopped_message_recovers_invalid_existing_metadata(
             self,
+            app_records,
             metadata: str,
             monkeypatch: pytest.MonkeyPatch,
             sqlite_session: Session,
         ) -> None:
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=_make_conversation(AppMode.CHAT),
@@ -1894,41 +1812,42 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             message.total_price = Decimal("0.21")
             message.message_metadata = metadata
             sqlite_session.add_all([_make_conversation(AppMode.CHAT), message])
-            sqlite_session.flush()
+            sqlite_session.commit()
             monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.PromptMessageUtil.prompt_messages_to_prompt_for_saving",
-                lambda _mode, _prompt_messages: "",
+                "services.app.generation.adapters.message_pipeline.PromptMessageUtil.prompt_messages_to_prompt_for_saving",
+                lambda _mode, _prompt_messages: [],
             )
             monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.message_was_created.send",
+                "services.app.generation.adapters.message_pipeline.message_was_created.send",
                 lambda *_args, **_kwargs: None,
             )
 
-            pipeline._save_message(session=sqlite_session, preserve_existing_usage=True)
+            pipeline._save_message(preserve_existing_usage=True)
 
+            sqlite_session.refresh(message)
             assert message.message_tokens == 13
             assert message.answer_tokens == 8
             assert message.total_price == Decimal("0.21")
 
-        def test_save_message_raises_when_message_not_found(self, sqlite_session: Session):
+        def test_save_message_raises_when_message_not_found(self, app_records, sqlite_session: Session):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
                 message=message,
                 stream=False,
             )
-            session = sqlite_session
+            with pytest.raises(MessageNotExistsError):
+                pipeline._save_message()
 
-            with pytest.raises(ValueError, match="message msg not found"):
-                pipeline._save_message(session=session)
-
-        def test_save_message_raises_when_conversation_not_found(self, sqlite_session: Session):
+        def test_save_message_raises_when_conversation_not_found(self, app_records, sqlite_session: Session):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1937,15 +1856,18 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             )
             session = sqlite_session
             session.add(_make_message())
-            session.flush()
+            session.commit()
 
-            with pytest.raises(ValueError, match="Conversation conv not found"):
-                pipeline._save_message(session=session)
+            with pytest.raises(MessageNotExistsError):
+                pipeline._save_message()
 
-        def test_message_end_to_stream_response_includes_usage_metadata(self, monkeypatch: pytest.MonkeyPatch):
+        def test_message_end_to_stream_response_includes_usage_metadata(
+            self, app_records, monkeypatch: pytest.MonkeyPatch
+        ):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1954,38 +1876,19 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             )
             pipeline._task_state.llm_result.usage = LLMUsage.from_metadata({"prompt_tokens": 1, "completion_tokens": 2})
 
-            class _Result:
-                def all(self):
-                    return []
-
-            class _Session:
-                def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
-                    pass
-
-                def __enter__(self):
-                    return self
-
-                def __exit__(self, exc_type, exc, tb):
-                    return False
-
-                def scalars(self, *args, **kwargs):
-                    return _Result()
-
-            monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-                lambda: _Session(),
-            )
-
             response = pipeline._message_end_to_stream_response()
 
             assert response.id == "msg"
             usage_metadata = cast(dict[str, object], response.metadata["usage"])
             assert usage_metadata["prompt_tokens"] == 1
 
-        def test_record_files_returns_empty_list_when_message_has_no_files(self, monkeypatch: pytest.MonkeyPatch):
+        def test_record_files_returns_empty_list_when_message_has_no_files(
+            self, app_records, monkeypatch: pytest.MonkeyPatch
+        ):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -1993,36 +1896,17 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 stream=False,
             )
 
-            class _Result:
-                def all(self):
-                    return []
-
-            class _Session:
-                def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
-                    pass
-
-                def __enter__(self):
-                    return self
-
-                def __exit__(self, exc_type, exc, tb):
-                    return False
-
-                def scalars(self, *args, **kwargs):
-                    return _Result()
-
-            monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-                lambda: _Session(),
-            )
-
             response = pipeline._message_end_to_stream_response()
 
             assert response.files == []
 
-        def test_record_files_handles_local_fallback_and_tool_url_variants(self, monkeypatch: pytest.MonkeyPatch):
+        def test_record_files_handles_local_fallback_and_tool_url_variants(
+            self, app_records, monkeypatch: pytest.MonkeyPatch
+        ):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -2053,31 +1937,6 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 ),
             ]
 
-            class _Result:
-                def __init__(self, items):
-                    self._items = items
-
-                def all(self):
-                    return self._items
-
-            class _Session:
-                def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
-                    self.calls = 0
-
-                def __enter__(self):
-                    return self
-
-                def __exit__(self, exc_type, exc, tb):
-                    return False
-
-                def scalars(self, *args, **kwargs):
-                    self.calls += 1
-                    return _Result(message_files if self.calls == 1 else [])
-
-            monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-                lambda: _Session(),
-            )
             monkeypatch.setattr(
                 "core.app.task_pipeline.message_file_utils.file_helpers.get_signed_file_url",
                 lambda **kwargs: "local-fallback-signed",
@@ -2087,6 +1946,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 lambda **kwargs: "tool-signed",
             )
 
+            monkeypatch.setattr(app_records, "message_files", lambda identity: (message_files, {}))
             response = pipeline._message_end_to_stream_response()
             files = response.files
 
@@ -2095,10 +1955,11 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert files[1]["filename"] == "file.txt"
             assert files[2]["extension"] == ".bin"
 
-        def test_agent_message_to_stream_response_builds_payload(self):
+        def test_agent_message_to_stream_response_builds_payload(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -2111,10 +1972,13 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert response.id == "msg"
             assert response.answer == "hello"
 
-        def test_agent_thought_to_stream_response_returns_none_when_not_found(self, monkeypatch: pytest.MonkeyPatch):
+        def test_agent_thought_to_stream_response_returns_none_when_not_found(
+            self, app_records, monkeypatch: pytest.MonkeyPatch
+        ):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -2122,32 +1986,15 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 stream=True,
             )
 
-            class _Session:
-                def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
-                    pass
-
-                def __enter__(self):
-                    return self
-
-                def __exit__(self, exc_type, exc, tb):
-                    return False
-
-                def scalar(self, *args, **kwargs):
-                    return None
-
-            monkeypatch.setattr(
-                "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
-                lambda: _Session(),
-            )
-
             response = pipeline._agent_thought_to_stream_response(QueueAgentThoughtEvent(agent_thought_id="missing"))
 
             assert response is None
 
-        def test_handle_output_moderation_chunk_appends_token_when_not_directing(self):
+        def test_handle_output_moderation_chunk_appends_token_when_not_directing(self, app_records):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
+                records=app_records,
                 application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
                 queue_manager=_FakeQueueManager(),
                 conversation=conversation,
@@ -2170,6 +2017,12 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             assert result is False
             assert appended_tokens == ["next-token"]
 
+    @staticmethod
+    @pytest.fixture(autouse=True)
+    def generation_app(sqlite_session):
+        sqlite_session.add(make_app(app_id="app", tenant_id="tenant"))
+        sqlite_session.commit()
+
 
 """Exercise message-end file serialization against persisted SQLite rows.
 
@@ -2178,7 +2031,7 @@ and the fallback used when a local message file references a missing upload.
 """
 
 
-SQLITE_MODELS = (MessageFile, UploadFile)
+SQLITE_MODELS = (App, Conversation, Message, MessageFile, UploadFile)
 
 
 class TestEasyUiMessageEndFilesCases:
@@ -2190,27 +2043,39 @@ class TestEasyUiMessageEndFilesCases:
     class TestMessageEndStreamResponseFiles:
         """Verify message-end file payloads from actual ORM query results."""
 
-        @pytest.fixture(autouse=True)
-        def bind_sqlite_engine(
-            self, sqlite_engine: _easy_ui_message_end_files_Engine, monkeypatch: pytest.MonkeyPatch
-        ) -> None:
-            """Bind sessions opened by the pipeline to the per-test SQLite engine."""
-
-            sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-            monkeypatch.setattr("core.db.session_factory._session_maker", sqlite_session_maker)
-
         @pytest.fixture
         def pipeline(
-            self, monkeypatch: pytest.MonkeyPatch, redis_transport: tuple[RedisClientWrapper, MagicMock]
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            redis_transport: tuple[ext_redis.RedisClientWrapper, MagicMock],
+            app_records: AppGenerationRepository,
+            sqlite_session: Session,
         ) -> EasyUIBasedGenerateTaskPipeline:
-            """Construct the pipeline with validated request, model, and task state."""
+            """Construct the service adapter with real request models and injected records."""
             monkeypatch.setattr("core.app.apps.base_app_queue_manager.redis_client", redis_transport[0])
+            app = make_app()
+            conversation = make_conversation(inputs={}, from_source=ConversationFromSource.API)
+            message = make_message(
+                message_id=str(uuid.uuid4()),
+                inputs={},
+                query="hello",
+                message={},
+                answer="",
+                message_unit_price=Decimal(0),
+                answer_unit_price=Decimal(0),
+                currency="USD",
+                from_source=ConversationFromSource.API,
+                created_at=datetime.now(),
+            )
+            sqlite_session.add_all([app, conversation, message])
+            sqlite_session.commit()
+
             request = ChatAppGenerateEntity(
                 task_id=str(uuid.uuid4()),
                 app_config=EasyUIBasedAppConfig(
-                    tenant_id="tenant-id",
-                    app_id="app-id",
-                    app_mode=AppMode.CHAT,
+                    tenant_id=app.tenant_id,
+                    app_id=app.id,
+                    app_mode=app.mode,
                     app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
                     app_model_config_dict={},
                     model=ModelConfigEntity(provider="test-provider", model="test-model"),
@@ -2223,22 +2088,12 @@ class TestEasyUiMessageEndFilesCases:
                 stream=True,
                 invoke_from=InvokeFrom.WEB_APP,
             )
-            conversation = Conversation(
-                id=str(uuid.uuid4()),
-                app_id="app-id",
-                mode=AppMode.CHAT,
-                name="Conversation",
-                from_source=ConversationFromSource.API,
-                _inputs={},
-            )
-            message = Message(id=str(uuid.uuid4()))
-            message.created_at = datetime.now()
             queue = MessageBasedAppQueueManager(
                 task_id=request.task_id,
                 user_id=request.user_id,
                 invoke_from=request.invoke_from,
                 conversation_id=conversation.id,
-                app_mode=AppMode.CHAT,
+                app_mode=app.mode,
                 message_id=message.id,
             )
             return EasyUIBasedGenerateTaskPipeline(
@@ -2247,6 +2102,7 @@ class TestEasyUiMessageEndFilesCases:
                 conversation=conversation,
                 message=message,
                 stream=True,
+                records=app_records,
             )
 
         @staticmethod
@@ -2298,7 +2154,7 @@ class TestEasyUiMessageEndFilesCases:
             """Create upload metadata matching the local message-file reference."""
 
             upload = UploadFile(
-                tenant_id=str(uuid.uuid4()),
+                tenant_id="tenant-1",
                 storage_type=StorageType.LOCAL,
                 key="uploads/test_image.png",
                 name="test_image.png",

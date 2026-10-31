@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from unittest.mock import Mock, patch
 
-from core.app.apps.workflow.stop_aware_ready_queue import (
-    StopAwareReadyQueue,
-    attach_stop_aware_ready_queue,
-)
 from graphon.engine.ready_queue import StartTask
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.runtime.execution import GraphExecution
+from services.workflow.execution.adapters.workflow.stop_aware_ready_queue import (
+    StopAwareReadyQueue,
+    attach_stop_aware_ready_queue,
+)
 
 
 def _start_task(node_id: str = "next-node") -> StartTask:
@@ -25,7 +25,7 @@ def test_ready_queue_accepts_work_while_run_is_active() -> None:
     task = _start_task()
 
     with patch(
-        "core.app.apps.workflow.stop_aware_ready_queue.is_app_task_stop_flag_set",
+        "services.workflow.execution.adapters.workflow.stop_aware_ready_queue.is_app_task_stop_flag_set",
         return_value=False,
     ):
         queue.put(task)
@@ -38,7 +38,7 @@ def test_ready_queue_rejects_next_node_after_graph_abort() -> None:
     queue = StopAwareReadyQueue(inner, task_id="task-1", graph_execution=_graph_execution(aborted=True))
 
     with patch(
-        "core.app.apps.workflow.stop_aware_ready_queue.is_app_task_stop_flag_set",
+        "services.workflow.execution.adapters.workflow.stop_aware_ready_queue.is_app_task_stop_flag_set",
         return_value=False,
     ):
         queue.put(_start_task())
@@ -51,7 +51,7 @@ def test_ready_queue_rejects_next_node_when_stop_flag_is_set() -> None:
     queue = StopAwareReadyQueue(inner, task_id="task-1", graph_execution=_graph_execution())
 
     with patch(
-        "core.app.apps.workflow.stop_aware_ready_queue.is_app_task_stop_flag_set",
+        "services.workflow.execution.adapters.workflow.stop_aware_ready_queue.is_app_task_stop_flag_set",
         return_value=True,
     ) as stop_flag:
         queue.put(_start_task("code-node"))

@@ -1,17 +1,13 @@
 import json
-from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import event, select
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-import core.app.apps.advanced_chat.app_runner as module
+import services.workflow.execution.adapters.chatflow.app_runner as module
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.advanced_chat import app_runner as app_runner_module
-from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent
 from core.moderation.base import ModerationError
@@ -21,11 +17,16 @@ from models import App as _app_runner_conversation_variables_App
 from models import Conversation as _app_runner_conversation_variables_Conversation
 from models import ConversationVariable
 from models import Message as _app_runner_conversation_variables_Message
+from models.annotation_reply import AnnotationReply
+from models.enums import ConversationFromSource
 from models.model import App as _app_runner_input_moderation_App
-from models.model import AppMode, IconType, MessageAnnotation
+from models.model import AppMode, IconType
 from models.model import Conversation as _app_runner_input_moderation_Conversation
 from models.model import Message as _app_runner_input_moderation_Message
 from models.workflow import Workflow, WorkflowType
+from repositories.workflow.definition_repository import workflow_snapshot
+from services.workflow.execution.adapters.chatflow.app_runner import AdvancedChatAppRunner
+from services.workflow.execution.ports import WorkflowRuntime
 
 """SQLite-backed conversation-variable synchronization tests for AdvancedChatAppRunner."""
 
@@ -48,7 +49,7 @@ def _variable(variable_id: str, name: str, value: str):
     )
 
 
-def _runner(workflow_variables: list[object]) -> AdvancedChatAppRunner:
+def _runner(workflow_variables: list[object], workflow_runtime: WorkflowRuntime) -> AdvancedChatAppRunner:
     workflow = Workflow(
         id="55555555-5555-5555-5555-555555555555",
         tenant_id="66666666-6666-6666-6666-666666666666",
@@ -68,18 +69,10 @@ def _runner(workflow_variables: list[object]) -> AdvancedChatAppRunner:
         message=_app_runner_conversation_variables_Message(id="77777777-7777-7777-7777-777777777777"),
         dialogue_count=1,
         variable_loader=MagicMock(),
-        workflow=workflow,
+        workflow=workflow_snapshot(workflow),
         system_user_id="44444444-4444-4444-4444-444444444444",
         app=_app_runner_conversation_variables_App(id=APP_ID, tenant_id=workflow.tenant_id),
-    )
-
-
-def _bind_runner_sessions(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    engine = sqlite_session.get_bind()
-    monkeypatch.setattr(
-        app_runner_module,
-        "create_session",
-        lambda: Session(engine, expire_on_commit=False),
+        runtime=workflow_runtime,
     )
 
 
@@ -94,17 +87,34 @@ def _persist_variable(session: Session, *, variable: object, conversation_id: st
     session.commit()
 
 
+def _persist_conversation(session: Session, conversation_id: str = CONVERSATION_ID) -> None:
+    session.add(
+        _app_runner_conversation_variables_Conversation(
+            id=conversation_id,
+            app_id=APP_ID,
+            mode=AppMode.ADVANCED_CHAT,
+            name="Conversation",
+            _inputs={},
+            from_source=ConversationFromSource.API,
+        )
+    )
+    session.commit()
+
+
 class TestAppRunnerConversationVariablesCases:
     @staticmethod
     @pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
-    def test_missing_conversation_variables_are_added(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    def test_missing_conversation_variables_are_added(
+        sqlite_session: Session, *, workflow_runtime: WorkflowRuntime
+    ) -> None:
         existing_variable = _variable(VAR_1_ID, "existing_var", "default1")
         new_variable = _variable(VAR_2_ID, "new_var", "default2")
+        _persist_conversation(sqlite_session)
+        _persist_conversation(sqlite_session, OTHER_CONVERSATION_ID)
         _persist_variable(sqlite_session, variable=existing_variable)
         _persist_variable(sqlite_session, variable=new_variable, conversation_id=OTHER_CONVERSATION_ID)
-        _bind_runner_sessions(monkeypatch, sqlite_session)
 
-        variables = _runner([existing_variable, new_variable])._initialize_conversation_variables()
+        variables = _runner([existing_variable, new_variable], workflow_runtime)._initialize_conversation_variables()
 
         assert [variable.id for variable in variables] == [VAR_1_ID, VAR_2_ID]
         persisted = sqlite_session.scalars(
@@ -116,14 +126,14 @@ class TestAppRunnerConversationVariablesCases:
 
     @staticmethod
     @pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
-    def test_no_variables_creates_all(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    def test_no_variables_creates_all(sqlite_session: Session, *, workflow_runtime: WorkflowRuntime) -> None:
         workflow_variables = [
             _variable(VAR_1_ID, "var1", "default1"),
             _variable(VAR_2_ID, "var2", "default2"),
         ]
-        _bind_runner_sessions(monkeypatch, sqlite_session)
+        _persist_conversation(sqlite_session)
 
-        variables = _runner(workflow_variables)._initialize_conversation_variables()
+        variables = _runner(workflow_variables, workflow_runtime)._initialize_conversation_variables()
 
         assert [variable.id for variable in variables] == [VAR_1_ID, VAR_2_ID]
         persisted = sqlite_session.scalars(select(ConversationVariable).order_by(ConversationVariable.id)).all()
@@ -131,16 +141,16 @@ class TestAppRunnerConversationVariablesCases:
 
     @staticmethod
     @pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
-    def test_all_variables_exist_no_changes(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    def test_all_variables_exist_no_changes(sqlite_session: Session, *, workflow_runtime: WorkflowRuntime) -> None:
         workflow_variables = [
             _variable(VAR_1_ID, "var1", "default1"),
             _variable(VAR_2_ID, "var2", "default2"),
         ]
+        _persist_conversation(sqlite_session)
         for variable in workflow_variables:
             _persist_variable(sqlite_session, variable=variable)
-        _bind_runner_sessions(monkeypatch, sqlite_session)
 
-        variables = _runner(workflow_variables)._initialize_conversation_variables()
+        variables = _runner(workflow_variables, workflow_runtime)._initialize_conversation_variables()
 
         assert [variable.id for variable in variables] == [VAR_1_ID, VAR_2_ID]
         persisted = sqlite_session.scalars(select(ConversationVariable)).all()
@@ -149,12 +159,12 @@ class TestAppRunnerConversationVariablesCases:
     @staticmethod
     @pytest.mark.parametrize("sqlite_session", [(ConversationVariable,)], indirect=True)
     def test_non_uuid_conversation_variable_is_created_once(
-        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        sqlite_session: Session, *, workflow_runtime: WorkflowRuntime
     ) -> None:
         author_id = "opt-comp-prompt-var"
         variable = _variable(author_id, "optimization_comparison_prompt", "-")
-        _bind_runner_sessions(monkeypatch, sqlite_session)
-        runner = _runner([variable])
+        _persist_conversation(sqlite_session)
+        runner = _runner([variable], workflow_runtime)
 
         first = runner._initialize_conversation_variables()
         second = runner._initialize_conversation_variables()
@@ -185,7 +195,7 @@ MINIMAL_GRAPH = {
 def _patch_common_run_deps(runner: AdvancedChatAppRunner):
     """Context manager that patches common heavy deps used by run()."""
     return patch.multiple(
-        "core.app.apps.advanced_chat.app_runner",
+        "services.workflow.execution.adapters.chatflow.app_runner",
         RedisChannel=MagicMock(),
         redis_client=MagicMock(),
         WorkflowEntry=MagicMock(**{"return_value.run.return_value": iter([])}),
@@ -196,7 +206,7 @@ def _patch_common_run_deps(runner: AdvancedChatAppRunner):
 class TestAppRunnerInputModerationCases:
     @staticmethod
     @pytest.fixture
-    def build_runner(sqlite_session: Session):
+    def build_runner(sqlite_session: Session, *, workflow_runtime: WorkflowRuntime):
         """Construct a minimal AdvancedChatAppRunner with heavy dependencies mocked."""
         app_id = str(uuid4())
         workflow_id = str(uuid4())
@@ -205,7 +215,14 @@ class TestAppRunnerInputModerationCases:
         # Mocks for constructor args
         mock_queue_manager = MagicMock()
 
-        conversation = _app_runner_input_moderation_Conversation(id=str(uuid4()), app_id=app_id)
+        conversation = _app_runner_input_moderation_Conversation(
+            id=str(uuid4()),
+            app_id=app_id,
+            mode=AppMode.ADVANCED_CHAT,
+            name="Test",
+            _inputs={},
+            from_source=ConversationFromSource.API,
+        )
         message = _app_runner_input_moderation_Message(id=str(uuid4()), app_id=app_id, conversation_id=conversation.id)
         workflow = Workflow(
             id=workflow_id,
@@ -233,7 +250,7 @@ class TestAppRunnerInputModerationCases:
             enable_site=False,
             enable_api=False,
         )
-        sqlite_session.add(app)
+        sqlite_session.add_all([app, conversation])
         sqlite_session.commit()
 
         gen = AdvancedChatAppGenerateEntity(
@@ -255,9 +272,10 @@ class TestAppRunnerInputModerationCases:
             message=message,
             dialogue_count=1,
             variable_loader=MagicMock(),
-            workflow=workflow,
+            workflow=workflow_snapshot(workflow),
             system_user_id=str(uuid4()),
             app=app,
+            runtime=workflow_runtime,
         )
 
         return runner
@@ -304,7 +322,7 @@ class TestAppRunnerInputModerationCases:
                 return_value=(True, overridden_inputs, overridden_query),
             ) as mock_moderate,
             patch.object(runner, "handle_annotation_reply", return_value=False) as mock_anno,
-            patch.object(runner, "_init_graph", return_value=MagicMock()) as mock_init_graph,
+            patch.object(runner._graphs, "build", return_value=MagicMock()) as mock_init_graph,
         ):
             runner.prepare()
 
@@ -339,7 +357,7 @@ class TestAppRunnerInputModerationCases:
                     runner.application_generate_entity.query,
                 ),
             ) as mock_handle,
-            patch.object(runner, "_init_graph") as mock_init_graph,
+            patch.object(runner._graphs, "build") as mock_init_graph,
             patch.object(runner, "handle_annotation_reply") as mock_anno,
         ):
             runner.prepare()
@@ -350,58 +368,38 @@ class TestAppRunnerInputModerationCases:
             mock_init_graph.assert_not_called()
 
     @staticmethod
-    def test_run_publishes_annotation_after_commit(build_runner, sqlite_engine: Engine):
+    def test_run_publishes_annotation_after_commit(build_runner):
         runner = build_runner
         events: list[str] = []
 
-        def record_commit(session: Session) -> None:
-            if session.get_bind() is sqlite_engine:
-                events.append("commit")
-
-        event.listen(Session, "after_commit", record_commit)
-        annotation_reply = MessageAnnotation(
-            app_id=runner._app.id,
-            question="question",
-            content="annotated answer",
-            account_id=str(uuid4()),
-        )
+        def query_annotation(**_kwargs):
+            events.append("commit")
+            return AnnotationReply(id="annotation-id", content="annotated answer")
 
         def publish(event):
             if isinstance(event, QueueAnnotationReplyEvent):
                 events.append("publish")
 
         with (
-            _patch_common_run_deps(runner),
-            patch.object(
-                runner,
-                "handle_input_moderation",
-                return_value=(
-                    False,
-                    runner.application_generate_entity.inputs,
-                    runner.application_generate_entity.query,
-                ),
-            ),
-            patch.object(runner, "handle_annotation_reply", return_value=annotation_reply),
-            patch.object(runner, "_publish_event", side_effect=publish),
+            patch.object(runner, "moderation_for_inputs", return_value=(False, {}, "raw-query")),
+            patch.object(runner._runtime.annotation_replies, "query", side_effect=query_annotation),
+            patch.object(runner._events, "_publish_event", side_effect=publish),
             patch.object(runner, "_complete_with_stream_output"),
         ):
-            runner.prepare()
-        event.remove(Session, "after_commit", record_commit)
+            assert runner.prepare() is None
 
         assert events == ["commit", "publish"]
 
     @staticmethod
-    def test_run_closes_scoped_session_before_workflow_run(build_runner, sqlite_session_factory: sessionmaker[Session]):
+    def test_run_closes_scoped_session_before_workflow_run(build_runner):
         runner = build_runner
         events = []
 
-        @contextmanager
-        def observed_session():
-            with sqlite_session_factory() as session:
-                yield session
-            events.append("close")
-
         workflow_entry = MagicMock()
+
+        def initialize_conversation_variables():
+            events.append("close")
+            return []
 
         def run_workflow(**kwargs):
             events.append("run")
@@ -410,7 +408,6 @@ class TestAppRunnerInputModerationCases:
         workflow_entry.run.side_effect = run_workflow
 
         with (
-            patch.object(module, "create_session", observed_session),
             patch.object(module, "RedisChannel"),
             patch.object(module, "redis_client"),
             patch.object(module, "WorkflowEntry", return_value=workflow_entry),
@@ -423,9 +420,9 @@ class TestAppRunnerInputModerationCases:
                     runner.application_generate_entity.query,
                 ),
             ),
-            patch.object(runner, "handle_annotation_reply", return_value=False),
-            patch.object(runner, "_initialize_conversation_variables", return_value=[]),
-            patch.object(runner, "_init_graph", return_value=MagicMock()),
+            patch.object(runner, "handle_annotation_reply", return_value=None),
+            patch.object(runner, "_initialize_conversation_variables", side_effect=initialize_conversation_variables),
+            patch.object(runner._graphs, "build", return_value=MagicMock()),
         ):
             prepared = runner.prepare()
             assert prepared is not None

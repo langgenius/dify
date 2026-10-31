@@ -70,15 +70,15 @@ from repositories.entities.workflow_execution import WorkflowExecution
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
-from services import workflow_persistence as persistence_mod
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
-from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from services.workflow.execution.adapters import persistence as persistence_mod
+from services.workflow.execution.adapters.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """Verify the workflow persistence layer fans Inspector deltas to redis pub/sub.
 
-The hook lives in ``services/workflow_persistence.py``:
+The hook lives in ``services.workflow.execution.adapters.persistence``:
 every ``_handle_node_*`` and the terminal ``_handle_graph_run_*`` handlers
 call into ``services.workflow.inspector_events.publish_node_changed`` /
 ``publish_workflow_completed`` after the DB write succeeds. Those calls are
@@ -921,7 +921,7 @@ class TestPersistenceLayerCases:
             layer, _, _, _ = _make_layer()
 
             monkeypatch.setattr(
-                "core.workflow.workflow_entry.WorkflowEntry.handle_special_values",
+                "services.workflow.execution.adapters.workflow_entry.WorkflowEntry.handle_special_values",
                 lambda inputs: inputs,
             )
 
