@@ -29,6 +29,7 @@ from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachment
 from models.enums import ConversationFromSource
 from models.model import App, Conversation, Message, MessageFile, UploadFile
 from models.oauth import DatasourceProvider
+from services.data_source.entities.credential import DatasourceCredentialRecord
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from tests.helpers.unit.model_factories import (
     make_app,
@@ -268,22 +269,20 @@ def test_datasource_node_reads_injected_credential_before_plugin_stream(
         session.add(record)
     calls: list[str] = []
 
-    def decrypt(
-        _self: object,
-        *,
-        tenant_id: str,
-        datasource_provider: DatasourceProvider,
-        plugin_id: str,
-        provider: str,
-    ) -> dict[str, str]:
-        assert (tenant_id, plugin_id, provider) == ("tenant", "vendor/notion", "notion")
+    def decrypt(_self: object, datasource_provider: DatasourceCredentialRecord) -> dict[str, str]:
         assert databases.kw["bind"].pool.checkedout() == 0
-        assert datasource_provider.id == record.id
+        assert (
+            datasource_provider.id,
+            datasource_provider.workspace_id,
+            datasource_provider.plugin_id,
+            datasource_provider.provider,
+            datasource_provider.encrypted_credentials,
+        ) == (record.id, "tenant", "vendor/notion", "notion", {"secret": "encrypted"})
         calls.append("decrypt")
         return {"secret": "clear"}
 
     monkeypatch.setattr(
-        "services.data_source.provider_service.DatasourceProviderService.decrypt_datasource_provider_credentials",
+        "services.data_source.credential_adapters.PluginDatasourceCredentialCodec.decrypt",
         decrypt,
     )
     node = factory(
