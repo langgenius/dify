@@ -4,7 +4,7 @@
     "title": "",
     "version": "0.0.1"
   },
-  "x-dify-saas-commit": "04f8d88cc15c5f62f14f8843a54f3e2e7e09ee5a",
+  "x-dify-saas-commit": "2d358b5a0555440b30d8601f5e786a15e28a2345",
   "paths": {
     "/v1/account": {
       "delete": {
@@ -591,6 +591,18 @@
   },
   "components": {
     "schemas": {
+      "AccountErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY"
+        ],
+        "type": "string",
+        "description": "Reasons returned by the Account service: values of the proto enum dify.saas.api.saas.CommonErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
+      },
       "AddDeleteFeedbackReply": {
         "type": "object",
         "properties": {
@@ -801,7 +813,8 @@
             "format": "int32"
           },
           "reason": {
-            "$ref": "#/components/schemas/ErrorReason"
+            "type": "string",
+            "description": "Error reason. The possible values for an operation are listed in the dify.saas.api.saas.<Service>ErrorReason schema of its service, where <Service> is the operationId prefix before the underscore."
           },
           "message": {
             "type": "string"
@@ -814,32 +827,6 @@
           }
         },
         "description": "Error body returned with every non-2xx response."
-      },
-      "ErrorReason": {
-        "enum": [
-          "",
-          "CODEC",
-          "VALIDATOR",
-          "UNKNOWN",
-          "INVALID_SECRET_KEY",
-          "INVALID_ARGUMENT",
-          "INTERNAL_ERROR",
-          "INVALID_NETWORK_ACCESS_INPUT",
-          "TENANT_NOT_FOUND",
-          "NETWORK_ACCESS_GROUP_NOT_FOUND",
-          "APP_NOT_FOUND",
-          "NETWORK_ACCESS_APP_STILL_EXISTS",
-          "TENANT_ARCHIVED",
-          "NETWORK_ACCESS_FORBIDDEN",
-          "NETWORK_ACCESS_NOT_ENTITLED",
-          "NETWORK_ACCESS_VERSION_CONFLICT",
-          "NETWORK_ACCESS_GROUP_NAME_CONFLICT",
-          "NETWORK_ACCESS_GROUP_BOUND",
-          "NETWORK_ACCESS_CACHE_UNAVAILABLE"
-        ],
-        "type": "string",
-        "description": "Values of dify.saas.api.saas.ErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
-        "properties": {}
       },
       "GetAccountNotificationReply": {
         "type": "object",
@@ -1154,6 +1141,44 @@
           "accessPoints"
         ]
       },
+      "SaasNetworkAccessPolicyErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "INVALID_ARGUMENT",
+          "INTERNAL_ERROR",
+          "INVALID_NETWORK_ACCESS_INPUT",
+          "TENANT_NOT_FOUND",
+          "NETWORK_ACCESS_GROUP_NOT_FOUND",
+          "APP_NOT_FOUND",
+          "NETWORK_ACCESS_APP_STILL_EXISTS",
+          "TENANT_ARCHIVED",
+          "NETWORK_ACCESS_FORBIDDEN",
+          "NETWORK_ACCESS_NOT_ENTITLED",
+          "NETWORK_ACCESS_VERSION_CONFLICT",
+          "NETWORK_ACCESS_GROUP_NAME_CONFLICT",
+          "NETWORK_ACCESS_GROUP_BOUND",
+          "NETWORK_ACCESS_CACHE_UNAVAILABLE"
+        ],
+        "type": "string",
+        "description": "Reasons returned by the SaasNetworkAccessPolicy service: values of the proto enums dify.saas.api.saas.CommonErrorReason and dify.saas.api.saas.SaasNetworkAccessPolicyErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
+      },
+      "SaasNotificationErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY"
+        ],
+        "type": "string",
+        "description": "Reasons returned by the SaasNotification service: values of the proto enum dify.saas.api.saas.CommonErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
+      },
       "TenantUtmReply": {
         "type": "object",
         "properties": {
@@ -1239,6 +1264,18 @@
           "expectedVersion",
           "actorAccountId"
         ]
+      },
+      "UtmErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY"
+        ],
+        "type": "string",
+        "description": "Reasons returned by the Utm service: values of the proto enum dify.saas.api.saas.CommonErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
       }
     }
   }
