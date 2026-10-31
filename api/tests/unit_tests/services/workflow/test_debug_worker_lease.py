@@ -227,7 +227,7 @@ def test_resumed_runner_does_not_treat_previous_pause_as_current_completion(
     from time import monotonic
 
     from core.app.apps.base_app_queue_manager import AppQueueManager
-    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+    from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
     from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
     from graphon.runtime import RuntimeState, VariablePool
     from graphon.variable_loader import DUMMY_VARIABLE_LOADER
@@ -245,6 +245,7 @@ def test_resumed_runner_does_not_treat_previous_pause_as_current_completion(
     entity = WorkflowAppGenerateEntity.model_construct(
         app_config=WorkflowAppConfig.model_construct(app_id="app", app_mode=AppMode.WORKFLOW),
         invoke_from=InvokeFrom.DEBUGGER,
+        user_from=UserFrom.ACCOUNT,
         user_id="account",
         task_id="task",
         extras={},
