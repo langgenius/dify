@@ -918,7 +918,8 @@ class TestHumanInputRepositoryCases:
         with pytest.raises(ValueError, match="requires a workflow_execution_id"):
             repo.create_form(params)
 
-        entity = repo.create_form(params.model_copy(update={"workflow_execution_id": "run"}))
+        params.workflow_execution_id = "run"
+        entity = repo.create_form(params)
 
         repository_session.expire_all()
         persisted = repository_session.get(HumanInputForm, entity.id)
