@@ -101,8 +101,9 @@ def test_concurrent_and_sequential_calls_refresh_once() -> None:
     assert lock.keys == [("tool", "workspace", "credential")] * 4
 
 
-@pytest.mark.parametrize("expires_at", [-1, int(time.time()) + 3600])
-def test_valid_credentials_do_not_acquire_a_lock(expires_at: int) -> None:
+@pytest.mark.parametrize("expires_in", [None, 3600], ids=["no-expiry", "future"])
+def test_valid_credentials_do_not_acquire_a_lock(expires_in: int | None) -> None:
+    expires_at = -1 if expires_in is None else int(time.time()) + expires_in
     store, runtime, lock = (
         CredentialStore(_record(expires_at=expires_at)),
         CredentialRuntime(),
