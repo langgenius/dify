@@ -102,6 +102,49 @@ describe('Signup Check Code Page', () => {
     expect(codeInput).toHaveFocus()
     expect(mockVerifyCode).not.toHaveBeenCalled()
   })
+
+  it('shows a rejected verification and clears it after a successful retry', async () => {
+    mockVerifyCode.mockRejectedValueOnce(new Error('Verification code has expired'))
+    const user = userEvent.setup()
+    render(<CheckCode />)
+
+    const codeInput = screen.getByRole('textbox', { name: 'login.checkCode.verificationCode' })
+    await user.type(codeInput, '123456{Enter}')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Verification code has expired')
+    expect(codeInput).toHaveValue('123456')
+    expect(mockPush).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+    await waitFor(() => expect(mockPush).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('shows a resend failure and uses the new token after retry', async () => {
+    mockSubmitMail
+      .mockRejectedValueOnce(new Error('Too many email requests'))
+      .mockResolvedValueOnce({ result: 'success', data: 'replacement-token' })
+    const user = userEvent.setup()
+    render(<CheckCode />)
+
+    await user.click(screen.getByRole('button', { name: 'resend-code' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Too many email requests')
+    expect(mockReplace).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'resend-code' }))
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'login.checkCode.verificationCode' }),
+      '123456{Enter}',
+    )
+    await waitFor(() =>
+      expect(mockVerifyCode).toHaveBeenCalledWith({
+        body: { email: 'user@example.com', code: '123456', token: 'replacement-token' },
+      }),
+    )
+  })
 })
 
 vi.mock('@/service/console', async (importOriginal) => {

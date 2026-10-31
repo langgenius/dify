@@ -13,7 +13,7 @@ import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
@@ -23,6 +23,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
+import { getErrorMessage } from '@/utils/error-message'
 import { sendGAEvent } from '@/utils/gtag'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
@@ -51,6 +52,7 @@ const ChangePasswordForm = () => {
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')
   const locale = useLocale()
+  const [requestError, setRequestError] = useState<unknown>()
 
   const formActionsRef = useRef<FormActions>(null)
   const confirmPasswordRef = useRef<HTMLInputElement>(null)
@@ -63,6 +65,7 @@ const ChangePasswordForm = () => {
   const handleSubmit = useCallback(
     async (formValues: PasswordFormValues) => {
       if (isPending) return
+      setRequestError(undefined)
       try {
         const res = await register({
           body: {
@@ -95,7 +98,7 @@ const ChangePasswordForm = () => {
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
       } catch (error) {
-        console.error(error)
+        if (!(error instanceof Error && error.name === 'AbortError')) setRequestError(error)
       }
     },
     [token, register, locale, queryClient, router, searchParams, isPending],
@@ -118,6 +121,11 @@ const ChangePasswordForm = () => {
             actionsRef={formActionsRef}
             onFormSubmit={(formValues) => void handleSubmit(formValues)}
           >
+            {!!requestError && (
+              <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+                {getErrorMessage(requestError) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+              </p>
+            )}
             <Field
               name="password"
               validate={(value) => {

@@ -83,6 +83,32 @@ describe('Signup Set Password Page', () => {
   })
 
   describe('Registration payload', () => {
+    it.each([new Error('Registration token has expired'), new TypeError('Failed to fetch')])(
+      'shows registration failures and preserves the form for retry: %s',
+      async (error) => {
+        mockRegister.mockRejectedValueOnce(error)
+        const user = userEvent.setup()
+        renderWithQueryClient(<ChangePasswordForm />)
+
+        const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
+        const confirmPasswordInput = screen.getByLabelText(
+          'accountSettings.account.confirmPassword',
+        )
+        await user.type(passwordInput, 'ValidPass123!')
+        await user.type(confirmPasswordInput, 'ValidPass123!{Enter}')
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(error.message)
+        expect(passwordInput).toHaveValue('ValidPass123!')
+        expect(confirmPasswordInput).toHaveValue('ValidPass123!')
+        expect(mockReplace).not.toHaveBeenCalled()
+
+        mockRegister.mockResolvedValueOnce({ result: 'success', data: {} })
+        await user.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
+        await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/'))
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      },
+    )
+
     it('should submit locale and browser timezone when setting password', async () => {
       const user = userEvent.setup()
       renderWithQueryClient(<ChangePasswordForm />)

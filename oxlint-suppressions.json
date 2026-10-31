@@ -6193,11 +6193,6 @@
       "count": 3
     }
   },
-  "web/app/signup/check-code/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/context/hooks/use-trigger-events-limit-modal.ts": {
     "eslint-react/set-state-in-effect": {
       "count": 1
