@@ -63,7 +63,7 @@ def test_schedule_runtime_refreshes_ttl_and_consumes_due_event(events: RedisTrig
     runtime = TriggerDebugService(
         events=events,
         schedules=events,
-        invoke_plugin_event=application_services().workspaces.trigger_events.invoke_debug,
+        invoke_plugin_event=application_services().triggers.events.invoke_debug,
         now=lambda: now,
     )
     node = NodeConfigDictAdapter.validate_python(
@@ -108,7 +108,7 @@ def test_schedule_runtime_handles_timezone_aware_cached_times(events: RedisTrigg
     debug = TriggerDebugService(
         events=events,
         schedules=events,
-        invoke_plugin_event=application_services().workspaces.trigger_events.invoke_debug,
+        invoke_plugin_event=application_services().triggers.events.invoke_debug,
         now=lambda: now.replace(tzinfo=None),
     )
     node = NodeConfigDictAdapter.validate_python(
@@ -161,7 +161,7 @@ def test_webhook_payload_and_first_available_selection(
     events: RedisTriggerDebugRepository, payload: dict[str, object], expected: dict[str, object]
 ) -> None:
     tenant, app = str(uuid4()), str(uuid4())
-    debug = application_services().workspaces.trigger_debug
+    debug = application_services().triggers.debug
     node = NodeConfigDictAdapter.validate_python(
         {"id": "webhook", "data": {"type": "trigger-webhook", "title": "Webhook"}}
     )

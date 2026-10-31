@@ -77,7 +77,7 @@ def test_missing_debug_subscription_uses_injected_reader_without_flask_context(
 def _get(harness: _Harness, tenant_id: str, subscription_id: str) -> TriggerSubscriptionRuntime | None:
     def run() -> TriggerSubscriptionRuntime | None:
         with harness.app.app_context():
-            return application_services().workspaces.trigger_subscriptions.get_for_execution(
+            return application_services().triggers.subscriptions.get_for_execution(
                 tenant_id=tenant_id, subscription_id=subscription_id
             )
 
