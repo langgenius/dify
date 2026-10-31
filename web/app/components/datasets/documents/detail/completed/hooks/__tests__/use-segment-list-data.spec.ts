@@ -174,7 +174,7 @@ const defaultOptions = {
   importStatus: undefined as SegmentImportStatus | undefined,
   currentPage: 1,
   limit: 10,
-  onCloseSegmentDetail: vi.fn(),
+  onCloseSegmentDetailIfCurrent: vi.fn(),
   clearSelection: vi.fn(),
 }
 
@@ -587,12 +587,12 @@ describe('useSegmentListData', () => {
     it('should call updateSegment with correct params', async () => {
       mockUpdateSegment.mockResolvedValue({ data: createMockSegment() })
 
-      const onCloseSegmentDetail = vi.fn()
+      const onCloseSegmentDetailIfCurrent = vi.fn()
       const { result } = renderHook(
         () =>
           useSegmentListData({
             ...defaultOptions,
-            onCloseSegmentDetail,
+            onCloseSegmentDetailIfCurrent,
           }),
         {
           wrapper: createWrapper(),
@@ -617,11 +617,11 @@ describe('useSegmentListData', () => {
         },
       })
       expectOtherStatusListsMarkedStale()
+      expect(onCloseSegmentDetailIfCurrent).toHaveBeenCalledWith('seg-1')
       expect(mockNotify).toHaveBeenCalledWith({
         type: 'success',
         message: 'common.actionMsg.modifiedSuccessfully',
       })
-      expect(onCloseSegmentDetail).toHaveBeenCalled()
       expect(mockEventEmitter.emit).toHaveBeenCalledWith('update-segment')
       expect(mockEventEmitter.emit).toHaveBeenCalledWith('update-segment-success')
       expect(mockEventEmitter.emit).toHaveBeenCalledWith('update-segment-done')
@@ -630,12 +630,12 @@ describe('useSegmentListData', () => {
     it('should not close modal when needRegenerate is true', async () => {
       mockUpdateSegment.mockResolvedValue({ data: createMockSegment() })
 
-      const onCloseSegmentDetail = vi.fn()
+      const onCloseSegmentDetailIfCurrent = vi.fn()
       const { result } = renderHook(
         () =>
           useSegmentListData({
             ...defaultOptions,
-            onCloseSegmentDetail,
+            onCloseSegmentDetailIfCurrent,
           }),
         {
           wrapper: createWrapper(),
@@ -646,7 +646,7 @@ describe('useSegmentListData', () => {
         await result.current.handleUpdateSegment('seg-1', 'content', '', [], [], 'summary', true)
       })
 
-      expect(onCloseSegmentDetail).not.toHaveBeenCalled()
+      expect(onCloseSegmentDetailIfCurrent).not.toHaveBeenCalled()
       expect(mockUpdateSegment).toHaveBeenCalledWith(
         expect.objectContaining({
           body: {
