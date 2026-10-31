@@ -399,7 +399,7 @@ const normalizeCodegenSchemas = (document: SwaggerDocument) => {
   findSchemas(document)
 }
 
-const normalizeApiSwagger = (document: SwaggerDocument) => {
+export const normalizeApiSwagger = (document: SwaggerDocument) => {
   normalizeOpaqueContractResponses(document)
   filterContractOperations(document)
   addOperationIds(document)
@@ -476,7 +476,7 @@ const selectReferencedSchemas = (
   return selectedSchemas
 }
 
-const cloneDocumentWithPaths = (
+export const cloneDocumentWithPaths = (
   document: SwaggerDocument,
   paths: Record<string, Record<string, unknown>>,
 ) => {
@@ -701,7 +701,7 @@ export const orpcErrorMaps = (document: SwaggerDocument): Map<string, OrpcErrorE
   return errorMaps
 }
 
-const createApiConfig = (job: ApiJob): UserConfig => ({
+export const createApiConfig = (job: ApiJob): UserConfig => ({
   input: job.document,
   logs: {
     file: false,

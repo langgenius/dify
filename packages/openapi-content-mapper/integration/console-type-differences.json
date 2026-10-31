@@ -560,6 +560,10 @@
     "compatible",
     "raw-stream-vs-event-iterator"
   ],
+  "console POST /dify-builder/sessions/{session_id}/fix-intents": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
   "console POST /dify-builder/sessions/{session_id}/messages": [
     "compatible",
     "raw-stream-vs-event-iterator"

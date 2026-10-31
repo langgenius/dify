@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import { test } from 'node:test'
 import { consoleRouterContract } from '../../contracts/console.ts'
+import { contract as builderLifecycleContract } from '../../contracts/fixtures/builder-lifecycle/orpc.gen.ts'
 import {
   composeConsoleDocuments,
   loadConsoleDocument,
@@ -45,6 +46,7 @@ test('every existing Console member retains its name, HTTP method and route', (t
     visited.add(operation)
   }
   walk(consoleRouterContract)
+  walk(builderLifecycleContract)
   assert.equal(
     visited.size,
     operations.size,
