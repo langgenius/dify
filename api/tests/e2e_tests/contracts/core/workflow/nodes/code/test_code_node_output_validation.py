@@ -71,13 +71,21 @@ def test_transform_result_validates_nested_values_and_limits() -> None:
 
     overlong = valid | {"string_validator": "1" * (dify_config.CODE_MAX_STRING_LENGTH + 1)}
     with pytest.raises(
-        ValueError, match=("The length of output variable `string_validator` must be less than 400000 characters")
+        ValueError,
+        match=(
+            "The length of output variable `string_validator` must be less than "
+            f"{dify_config.CODE_MAX_STRING_LENGTH} characters"
+        ),
     ):
         node._transform_result(overlong, outputs)
 
-    oversized_array = valid | {"number_array_validator": [1, 2, 3, 3.333] * 2000}
+    oversized_array = valid | {"number_array_validator": [1] * (dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH + 1)}
     with pytest.raises(
-        ValueError, match=("The length of output variable `number_array_validator` must be less than 1000 elements\\.")
+        ValueError,
+        match=(
+            "The length of output variable `number_array_validator` must be less than "
+            rf"{dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH} elements\."
+        ),
     ):
         node._transform_result(oversized_array, outputs)
 

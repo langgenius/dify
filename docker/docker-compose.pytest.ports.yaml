@@ -1,4 +1,8 @@
 services:
+  redis:
+    ports:
+      - "${EXPOSE_REDIS_PORT:-6379}:6379"
+
   weaviate:
     ports:
       - "${EXPOSE_WEAVIATE_PORT:-8080}:8080"
