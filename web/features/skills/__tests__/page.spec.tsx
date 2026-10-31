@@ -1003,23 +1003,30 @@ describe('SkillsPage', () => {
     expect(mocks.push).toHaveBeenCalledWith('/skills/duplicated-skill?rename=true')
   })
 
-  it('stays on the skill list when duplication fails', async () => {
-    const user = userEvent.setup()
-    mocks.duplicateSkillMutationFn.mockRejectedValue(new Error('Duplicate failed'))
-    renderSkillsPage()
+  it.each([
+    ['Duplicate failed', 'Duplicate failed'],
+    ['workspace skill limit exceeded', 'skill.skillManagement.errors.workspaceLimit'],
+    ['', 'skill.skillManagement.duplicateFailed'],
+  ])(
+    'stays on the skill list and reports the duplication failure: %s',
+    async (message, expected) => {
+      const user = userEvent.setup()
+      mocks.duplicateSkillMutationFn.mockRejectedValue(new Error(message))
+      renderSkillsPage()
 
-    await user.click(
-      await screen.findByRole('button', {
-        name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
-      }),
-    )
-    await user.click(await screen.findByText('common.operation.duplicate'))
+      await user.click(
+        await screen.findByRole('button', {
+          name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
+        }),
+      )
+      await user.click(await screen.findByText('common.operation.duplicate'))
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('skill.skillManagement.duplicateFailed')
-    })
-    expect(mocks.push).not.toHaveBeenCalled()
-  })
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledExactlyOnceWith(expected)
+      })
+      expect(mocks.push).not.toHaveBeenCalled()
+    },
+  )
 
   it.each(['version-1', null])(
     'downloads the skill archive whether published or draft: %s',
@@ -1265,9 +1272,12 @@ describe('SkillsPage', () => {
     await user.click(screen.getByRole('option', { name: 'sales' }))
     await user.keyboard('{Escape}')
     await waitFor(() =>
-      expect(mocks.bindTag).toHaveBeenCalledWith({
-        body: { type: 'skill', target_id: 'skill-1', tag_ids: ['tag-sales'] },
-      }),
+      expect(mocks.bindTag).toHaveBeenCalledWith(
+        {
+          body: { type: 'skill', target_id: 'skill-1', tag_ids: ['tag-sales'] },
+        },
+        { context: { silent: true } },
+      ),
     )
     await user.click(await within(card).findByRole('combobox', { name: 'support, sales' }))
     expect(screen.getByRole('option', { name: 'sales' })).toHaveAttribute('aria-selected', 'true')

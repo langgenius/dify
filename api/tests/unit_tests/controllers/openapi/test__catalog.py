@@ -22,7 +22,7 @@ from controllers.openapi._catalog import (
 )
 from controllers.openapi._errors import OpenApiErrorCode
 from controllers.openapi._models import Hinted
-from controllers.openapi.auth.spec import EndpointSpec, Kind, spec_of
+from controllers.openapi.auth.spec import Effect, EndpointSpec, Kind, spec_of
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 OP_ID_RE = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$")
@@ -97,9 +97,40 @@ def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[st
     assert streaming == per_mode | draft | {"get.run.event"}
 
 
+# Every op whose effect differs from its HTTP method, plus one default per method.
+@pytest.mark.parametrize(
+    ("op", "effect"),
+    [
+        ("reset.webapp", Effect.DESTRUCTIVE),
+        ("reset.webapp.agent", Effect.DESTRUCTIVE),
+        ("restore.console_app.version", Effect.DESTRUCTIVE),
+        ("import.console_app.dsl", Effect.DESTRUCTIVE),
+        ("confirm.console_app.dsl_import", Effect.DESTRUCTIVE),
+        ("stop.run", Effect.DESTRUCTIVE),
+        ("stop.task", Effect.DESTRUCTIVE),
+        ("check.console_app.dsl", Effect.READ),
+        ("run.console_app.chat", Effect.WRITE),
+        ("get.run.event", Effect.READ),
+    ],
+)
+def test_catalog_rows_carry_the_op_effect(ops: dict[str, CatalogOp], op: str, effect: Effect) -> None:
+    assert ops[op]["effect"] == effect.value
+
+
 def test_run_entries_carry_path_bind_kind_and_flags(ops: dict[str, CatalogOp]) -> None:
     chat = ops["run.console_app.chat"]
-    assert set(chat) == {"summary", "method", "path", "kind", "input", "bind", "internal", "deprecated", "examples"}
+    assert set(chat) == {
+        "summary",
+        "method",
+        "path",
+        "kind",
+        "effect",
+        "input",
+        "bind",
+        "internal",
+        "deprecated",
+        "examples",
+    }
     assert (chat["method"], chat["path"], chat["kind"]) == (
         "POST",
         "/openapi/v1/apps/{app_id}/chat:run",

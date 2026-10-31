@@ -1,6 +1,7 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
 import type { ModelProviderPluginSummary } from './index'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Trans, useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
@@ -18,8 +19,7 @@ type ModelProviderPageBodyProps = {
   showEmptyProvider: boolean
   showConfiguredProviders: boolean
   showNotConfiguredProviders: boolean
-  showMarketplace: boolean
-  enableMarketplace: boolean
+  marketplace: MarketplaceLinks | null
   searchText: string
   pluginSummaryMap: Map<string, ModelProviderPluginSummary>
   onOpenMarketplace?: () => void
@@ -162,8 +162,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
   showEmptyProvider,
   showConfiguredProviders,
   showNotConfiguredProviders,
-  showMarketplace,
-  enableMarketplace,
+  marketplace,
   searchText,
   pluginSummaryMap,
   onOpenMarketplace,
@@ -190,7 +189,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
       )}
       {showEmptyProvider && (
         <EmptyProviderState
-          enableMarketplace={enableMarketplace}
+          enableMarketplace={marketplace !== null}
           stepByStepTourTarget={
             !showConfiguredProviders && !showNotConfiguredProviders
               ? STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction
@@ -222,9 +221,10 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
           />
         </div>
       )}
-      {showMarketplace && (
+      {!isLoadingModelProviders && marketplace && (
         <div>
           <InstallFromMarketplace
+            marketplace={marketplace}
             searchText={searchText}
             onOpenMarketplace={onOpenMarketplace}
             stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderInstall}

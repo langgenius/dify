@@ -170,10 +170,13 @@ describe('AgentLogModal', () => {
     const { rerender } = render(<AgentLogModal appId="old-app" {...mockProps} />)
     rerender(<AgentLogModal appId="new-app" {...mockProps} />)
     await screen.findByText('New executor')
-    expect(fetchAgentLogDetail).toHaveBeenLastCalledWith({
-      params: { app_id: 'new-app' },
-      query: { conversation_id: mockLog.conversationId, message_id: mockLog.id },
-    })
+    expect(fetchAgentLogDetail).toHaveBeenLastCalledWith(
+      {
+        params: { app_id: 'new-app' },
+        query: { conversation_id: mockLog.conversationId, message_id: mockLog.id },
+      },
+      { context: { silent: true } },
+    )
     await act(async () => {
       resolveOldResponse({ ...response, meta: { ...response.meta, executor: 'Old executor' } })
       await pending
@@ -199,10 +202,13 @@ describe('AgentLogModal', () => {
     )
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument())
-    expect(fetchAgentLogDetail).toHaveBeenLastCalledWith({
-      params: { app_id: 'app-id' },
-      query: { conversation_id: mockLog.conversationId, message_id: 'next-message' },
-    })
+    expect(fetchAgentLogDetail).toHaveBeenLastCalledWith(
+      {
+        params: { app_id: 'app-id' },
+        query: { conversation_id: mockLog.conversationId, message_id: 'next-message' },
+      },
+      { context: { silent: true } },
+    )
   })
 
   it('ignores a failed request after its record has been replaced', async () => {

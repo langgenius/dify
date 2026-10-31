@@ -24,6 +24,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import EndpointModal from './endpoint-modal'
 
 type Props = Readonly<{
@@ -42,28 +43,34 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
     isShowEndpointModal,
     { setTrue: showEndpointModalConfirm, setFalse: hideEndpointModalConfirm },
   ] = useBoolean(false)
-  const showSaveError = () => {
-    toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+  const showSaveError = (error: unknown) => {
+    toast.error(
+      getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+    )
   }
   const { mutate: enableEndpoint, isPending: isEnabling } = useMutation(
     consoleQuery.workspaces.current.endpoints.enable.post.mutationOptions({
+      context: { silent: true },
       onError: showSaveError,
     }),
   )
   const { mutate: disableEndpoint, isPending: isDisabling } = useMutation(
     consoleQuery.workspaces.current.endpoints.disable.post.mutationOptions({
+      context: { silent: true },
       onSuccess: hideDisableConfirm,
       onError: showSaveError,
     }),
   )
   const { mutate: deleteEndpoint, isPending: isDeleting } = useMutation(
     consoleQuery.workspaces.current.endpoints.byId.delete.mutationOptions({
+      context: { silent: true },
       onSuccess: () => deleteActionsRef.current?.close(),
       onError: showSaveError,
     }),
   )
   const { mutate: updateEndpoint, isPending: isUpdating } = useMutation(
     consoleQuery.workspaces.current.endpoints.byId.patch.mutationOptions({
+      context: { silent: true },
       onSuccess: hideEndpointModalConfirm,
       onError: showSaveError,
     }),

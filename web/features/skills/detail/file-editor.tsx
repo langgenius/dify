@@ -20,6 +20,7 @@ import { toast } from '@/app/notifications'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import { fetchSkillFileBlob } from '../client'
 import { FileTabs } from './file-tabs'
 import {
@@ -318,8 +319,8 @@ export function FileEditor({
       if (!file) return
       downloadBlob({ data: blob, fileName: getPathBaseName(file.path) })
     },
-    onError: () => {
-      toast.error(t(($) => $['skillManagement.detail.loadFailed']))
+    onError: (error) => {
+      toast.error(getErrorMessage(error) ?? t(($) => $['skillManagement.detail.loadFailed']))
     },
   })
 
@@ -1065,7 +1066,7 @@ export function FileEditor({
   }
 
   return (
-    <div className="relative my-1 mr-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-background-default inset-ring-[0.5px] inset-ring-divider-subtle">
+    <div className="relative my-1 me-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-background-default inset-ring-[0.5px] inset-ring-divider-subtle">
       <FileTabs
         endAction={
           onOpenBuilder && (
@@ -1092,7 +1093,8 @@ export function FileEditor({
         ) : isTextContentError ? (
           <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-divider-regular bg-background-default">
             <p className="system-sm-regular text-text-tertiary">
-              {t(($) => $['skillManagement.detail.loadFailed'])}
+              {getErrorMessage(textContentQuery.error) ??
+                t(($) => $['skillManagement.detail.loadFailed'])}
             </p>
           </div>
         ) : isMarkdown && markdownMode === 'live' ? (
@@ -1422,11 +1424,12 @@ export function FileEditor({
         ) : canPreviewBinaryFile && binaryPreviewQuery.isError ? (
           <div className="flex h-full items-center justify-center bg-background-default">
             <p className="system-sm-regular text-text-tertiary">
-              {t(($) => $['skillManagement.detail.loadFailed'])}
+              {getErrorMessage(binaryPreviewQuery.error) ??
+                t(($) => $['skillManagement.detail.loadFailed'])}
             </p>
           </div>
         ) : isSkillImageFile(file) && fileObjectUrl ? (
-          <div className="flex h-full items-center justify-center overflow-hidden bg-background-default pt-1 pr-4 pb-2 pl-4">
+          <div className="flex h-full items-center justify-center overflow-hidden bg-background-default ps-4 pe-4 pt-1 pb-2">
             <img
               src={fileObjectUrl}
               alt={file.path}
@@ -1434,7 +1437,7 @@ export function FileEditor({
             />
           </div>
         ) : isSkillPdfFile(file) && fileObjectUrl ? (
-          <div className="h-full overflow-hidden bg-background-default pt-1 pl-3">
+          <div className="h-full overflow-hidden bg-background-default ps-3 pt-1">
             <SkillPdfPreview fileName={file.path} url={fileObjectUrl} />
           </div>
         ) : (
