@@ -1,7 +1,7 @@
 """Persistence-owned credential queries and visibility filtering shared across domains."""
 
 from collections.abc import Sequence
-from typing import cast, override
+from typing import override
 
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.engine import CursorResult
@@ -115,7 +115,8 @@ class CredentialQueryRepository(CredentialQuery):
                     updated_at=naive_utc_now(),
                 )
             )
-            return cast(CursorResult[object], result).rowcount == 1
+            assert isinstance(result, CursorResult)
+            return result.rowcount == 1
 
     @override
     def list_models(self, *, workspace_id: str, provider: str, actor_id: str | None) -> Sequence[ModelCredentialRecord]:

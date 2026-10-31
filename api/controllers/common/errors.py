@@ -193,9 +193,9 @@ def register_credential_refresh_error_handler(api: ExternalApi) -> None:
         status = HTTPStatus.SERVICE_UNAVAILABLE
         return {"code": "service_unavailable", "message": str(error), "status": status.value}, status.value
 
-    cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(
-        CredentialRefreshUnavailableError, last=False
-    )
+    handlers: object = api.error_handlers
+    assert isinstance(handlers, OrderedDict)
+    handlers.move_to_end(CredentialRefreshUnavailableError, last=False)
     api.document_error_handler(
         CredentialRefreshUnavailableError, status=HTTPStatus.SERVICE_UNAVAILABLE, code="service_unavailable"
     )
