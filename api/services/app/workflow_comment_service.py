@@ -1,19 +1,24 @@
-"""Application boundary for Console workflow canvas comments.
+"""Application service for Console workflow canvas comments.
 
 Comments belong to an app rather than to a workflow version. Every read and write is scoped by the complete
-workspace -> app -> comment -> reply owner chain, and only the creator of a comment or reply may edit or delete it.
-Mention notifications are dispatched only after the store has committed the write.
+workspace -> app -> comment -> reply owner chain. The service orchestrates and makes no business decisions: reads
+return records from the query port; writes turn input into the domain model's value objects before any database work,
+so malformed input fails first, then let a `WorkflowCommentAgg` apply the thread's rules inside one change of the thread
+repository. After the change commits, the service handles the aggregate's domain events by sending mention
+notifications. Use cases return records, so the transport layer never receives an aggregate.
 """
 
-import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
+from libs.uuid_utils import uuidv7
 from machinery.context import RequestContext
+from services.app.workflow_comment_agg import WorkflowCommentAgg, WorkflowCommentContent, WorkflowCommentMentions
+from services.app.workflow_comment_errors import WorkflowCommentAppNotFoundError
 
-MAX_COMMENT_CONTENT_LENGTH = 1000
 MENTION_EXCERPT_LENGTH = 200
 
 
@@ -137,17 +142,11 @@ class MentionRecipient:
 
 @dataclass(frozen=True, slots=True)
 class MentionContext:
-    """Values read inside the write transaction for building mention notifications."""
+    """Values read after a change commits, for building its mention notifications."""
 
     app_name: str | None
     commenter_name: str | None
     recipients: tuple[MentionRecipient, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class WorkflowCommentWrite[T]:
-    result: T
-    mentions: MentionContext
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,15 +160,8 @@ class WorkflowCommentMentionNotification:
     app_url: str
 
 
-class WorkflowCommentStore(Protocol):
-    """Persistence for workflow comments, always scoped by workspace and app.
-
-    Write methods run in one bounded transaction. They raise `WorkflowCommentNotFoundError` or
-    `WorkflowCommentReplyNotFoundError` when the target is outside the scope, and
-    `WorkflowCommentPermissionError` when `actor_id` did not create it. Mention IDs are already
-    normalized; the store keeps only workspace members and reports recipients for newly mentioned
-    members other than the actor.
-    """
+class WorkflowCommentQueries(Protocol):
+    """Read-only access for workflow comments, always scoped by workspace and app; returns records and plain values."""
 
     def app_exists(self, *, workspace_id: str, app_id: str) -> bool:
         """Return whether Console may address the app (normal status, not a hidden backing app)."""
@@ -181,41 +173,56 @@ class WorkflowCommentStore(Protocol):
 
     def get_comment(self, *, workspace_id: str, app_id: str, comment_id: str) -> WorkflowCommentDetail: ...
 
-    def insert_comment(
-        self, *, workspace_id: str, app_id: str, actor_id: str, draft: WorkflowCommentDraft
-    ) -> WorkflowCommentWrite[WorkflowCommentCreated]: ...
-
-    def update_comment(
-        self, *, workspace_id: str, app_id: str, comment_id: str, actor_id: str, edit: WorkflowCommentEdit
-    ) -> WorkflowCommentWrite[WorkflowCommentUpdated]: ...
-
-    def delete_comment(self, *, workspace_id: str, app_id: str, comment_id: str, actor_id: str) -> None:
-        """Delete the comment with its replies and mentions."""
+    def workspace_member_ids(self, *, workspace_id: str, user_ids: Sequence[str]) -> frozenset[str]:
+        """Return which of `user_ids` are members of the workspace."""
         ...
 
-    def resolve_comment(
-        self, *, workspace_id: str, app_id: str, comment_id: str, actor_id: str
-    ) -> WorkflowCommentResolved:
-        """Mark the comment resolved by any member; an already resolved comment is returned unchanged."""
+    def mention_context(
+        self, *, workspace_id: str, app_id: str, actor_id: str, user_ids: Sequence[str]
+    ) -> MentionContext:
+        """Return the context for notifying `user_ids`, limited to workspace members with an email address."""
         ...
 
-    def insert_reply(
-        self, *, workspace_id: str, app_id: str, comment_id: str, actor_id: str, draft: WorkflowCommentReplyDraft
-    ) -> WorkflowCommentWrite[WorkflowCommentCreated]: ...
 
-    def update_reply(
-        self,
-        *,
-        workspace_id: str,
-        app_id: str,
-        comment_id: str,
-        reply_id: str,
-        actor_id: str,
-        draft: WorkflowCommentReplyDraft,
-    ) -> WorkflowCommentWrite[WorkflowCommentUpdated]: ...
+class WorkflowCommentThreads(Protocol):
+    """Repository of `WorkflowCommentAgg` threads, always scoped by workspace and app.
 
-    def delete_reply(self, *, workspace_id: str, app_id: str, comment_id: str, reply_id: str, actor_id: str) -> None:
-        """Delete the reply with its mentions."""
+    It accepts and returns only the aggregate, rebuilds it from storage without re-running the checks that guard new
+    input, and makes no business decisions. `change_comment` loads a thread with its comment row locked; the caller
+    applies the aggregate's behavior inside the block, and leaving the block saves what changed in the same
+    transaction and commits. Operations raise `WorkflowCommentNotFoundError` when the thread is outside the scope or
+    gone.
+
+    Concurrency, rule by rule:
+    - Every rule a change applies is decided by the aggregate on state read under the comment row lock, so changes to
+      one thread run one after another and each sees the last one: creator-only edits, the one-way resolution that
+      keeps its first resolver, reply lookups, and which users a change newly mentions.
+    - Content, positions, and mention lists keep the values of the latest change.
+    - Deleting reads only `created_by`, which never changes, so it loads without a lock; the delete locks the comment
+      row and raises `WorkflowCommentNotFoundError` when the thread was deleted since the load.
+    - Not protected: workspace membership is read before the change, so a membership removed in between can still be
+      stored as a mention. Notifications reach only users who are members when they are sent.
+    """
+
+    def load_comment(self, *, workspace_id: str, app_id: str, comment_id: str) -> WorkflowCommentAgg:
+        """Return the thread with its replies and mentions, for a decision that needs no lock."""
+        ...
+
+    def add_comment(self, *, comment: WorkflowCommentAgg) -> None:
+        """Insert a new thread with its replies and mentions."""
+        ...
+
+    def change_comment(
+        self, *, workspace_id: str, app_id: str, comment_id: str
+    ) -> AbstractContextManager[WorkflowCommentAgg]:
+        """Yield the locked thread; leaving the block saves only what changed, and an error rolls back everything.
+
+        Run nothing but the aggregate's behavior inside the block: no port calls and no external I/O.
+        """
+        ...
+
+    def delete_comment(self, *, comment: WorkflowCommentAgg) -> None:
+        """Delete the thread with its replies and mentions."""
         ...
 
 
@@ -223,141 +230,109 @@ class WorkflowCommentMentionNotifier(Protocol):
     def notify(self, notifications: Sequence[WorkflowCommentMentionNotification]) -> None: ...
 
 
-class WorkflowCommentError(Exception):
-    """Base class for framework-neutral workflow comment failures."""
-
-
-class WorkflowCommentAppNotFoundError(WorkflowCommentError):
-    def __init__(self) -> None:
-        super().__init__("App not found")
-
-
-class WorkflowCommentNotFoundError(WorkflowCommentError):
-    def __init__(self) -> None:
-        super().__init__("Comment not found")
-
-
-class WorkflowCommentReplyNotFoundError(WorkflowCommentError):
-    def __init__(self) -> None:
-        super().__init__("Reply not found")
-
-
-class WorkflowCommentPermissionError(WorkflowCommentError):
-    """Raised when an account edits or deletes a comment or reply it did not create."""
-
-
-class InvalidWorkflowCommentContentError(WorkflowCommentError):
-    pass
-
-
-class InvalidMentionedUserIdError(WorkflowCommentError):
-    def __init__(self, user_id: str) -> None:
-        super().__init__(f"{user_id} is not a valid uuid.")
-
-
 class WorkflowCommentService:
     def __init__(
         self,
         *,
-        comments: WorkflowCommentStore,
+        threads: WorkflowCommentThreads,
+        queries: WorkflowCommentQueries,
         notifier: WorkflowCommentMentionNotifier,
         console_web_url: str,
+        now: Callable[[], datetime],
     ) -> None:
-        self._comments = comments
+        self._threads = threads
+        self._queries = queries
         self._notifier = notifier
         self._console_web_url = console_web_url.rstrip("/")
+        self._now = now
 
     def ensure_app(self, context: RequestContext, app_id: str) -> None:
-        if not self._comments.app_exists(workspace_id=context.active_workspace_id, app_id=app_id):
+        if not self._queries.app_exists(workspace_id=context.active_workspace_id, app_id=app_id):
             raise WorkflowCommentAppNotFoundError
 
     def list_comments(self, context: RequestContext, app_id: str) -> tuple[WorkflowCommentSummary, ...]:
         self.ensure_app(context, app_id)
-        return tuple(self._comments.list_comments(workspace_id=context.active_workspace_id, app_id=app_id))
+        return tuple(self._queries.list_comments(workspace_id=context.active_workspace_id, app_id=app_id))
 
     def get_comment(self, context: RequestContext, app_id: str, comment_id: str) -> WorkflowCommentDetail:
         self.ensure_app(context, app_id)
-        return self._comments.get_comment(
-            workspace_id=context.active_workspace_id, app_id=app_id, comment_id=comment_id
-        )
+        return self._queries.get_comment(workspace_id=context.active_workspace_id, app_id=app_id, comment_id=comment_id)
 
     def create_comment(
         self, context: RequestContext, app_id: str, draft: WorkflowCommentDraft
     ) -> WorkflowCommentCreated:
         self.ensure_app(context, app_id)
-        _validate_content(draft.content)
-        write = self._comments.insert_comment(
+        content = WorkflowCommentContent(draft.content)
+        mentions = self._members_only(context, WorkflowCommentMentions.parse(draft.mentioned_user_ids))
+        comment = WorkflowCommentAgg.start(
+            comment_id=str(uuidv7()),
             workspace_id=context.active_workspace_id,
             app_id=app_id,
             actor_id=context.account_id,
-            draft=WorkflowCommentDraft(
-                content=draft.content,
-                position_x=draft.position_x,
-                position_y=draft.position_y,
-                mentioned_user_ids=normalize_mentioned_user_ids(draft.mentioned_user_ids),
-            ),
+            content=content,
+            position_x=draft.position_x,
+            position_y=draft.position_y,
+            mentions=mentions,
+            now=self._now(),
         )
-        self._notify(app_id, draft.content, write.mentions)
-        return write.result
+        self._threads.add_comment(comment=comment)
+        self._handle_events(context, app_id, comment)
+        return WorkflowCommentCreated(id=comment.id, created_at=comment.created_at)
 
     def update_comment(
         self, context: RequestContext, app_id: str, comment_id: str, edit: WorkflowCommentEdit
     ) -> WorkflowCommentUpdated:
         self.ensure_app(context, app_id)
-        _validate_content(edit.content)
-        mentioned_user_ids = edit.mentioned_user_ids
-        write = self._comments.update_comment(
-            workspace_id=context.active_workspace_id,
-            app_id=app_id,
-            comment_id=comment_id,
-            actor_id=context.account_id,
-            edit=WorkflowCommentEdit(
-                content=edit.content,
+        content = WorkflowCommentContent(edit.content)
+        mentions = (
+            None
+            if edit.mentioned_user_ids is None
+            else self._members_only(context, WorkflowCommentMentions.parse(edit.mentioned_user_ids))
+        )
+        with self._change(context, app_id, comment_id) as comment:
+            comment.edit(
+                actor_id=context.account_id,
+                content=content,
                 position_x=edit.position_x,
                 position_y=edit.position_y,
-                mentioned_user_ids=(
-                    normalize_mentioned_user_ids(mentioned_user_ids) if mentioned_user_ids is not None else None
-                ),
-            ),
-        )
-        self._notify(app_id, edit.content, write.mentions)
-        return write.result
+                mentions=mentions,
+                now=self._now(),
+            )
+        self._handle_events(context, app_id, comment)
+        return WorkflowCommentUpdated(id=comment.id, updated_at=comment.updated_at)
 
     def delete_comment(self, context: RequestContext, app_id: str, comment_id: str) -> None:
         self.ensure_app(context, app_id)
-        self._comments.delete_comment(
-            workspace_id=context.active_workspace_id,
-            app_id=app_id,
-            comment_id=comment_id,
-            actor_id=context.account_id,
+        comment = self._threads.load_comment(
+            workspace_id=context.active_workspace_id, app_id=app_id, comment_id=comment_id
         )
+        comment.ensure_removable_by(context.account_id)
+        self._threads.delete_comment(comment=comment)
 
     def resolve_comment(self, context: RequestContext, app_id: str, comment_id: str) -> WorkflowCommentResolved:
         self.ensure_app(context, app_id)
-        return self._comments.resolve_comment(
-            workspace_id=context.active_workspace_id,
-            app_id=app_id,
-            comment_id=comment_id,
-            actor_id=context.account_id,
+        with self._change(context, app_id, comment_id) as comment:
+            comment.resolve(actor_id=context.account_id, now=self._now())
+        return WorkflowCommentResolved(
+            id=comment.id,
+            resolved=comment.resolved,
+            resolved_at=comment.resolved_at,
+            resolved_by=comment.resolved_by,
         )
 
     def create_reply(
         self, context: RequestContext, app_id: str, comment_id: str, draft: WorkflowCommentReplyDraft
     ) -> WorkflowCommentCreated:
         self.ensure_app(context, app_id)
-        _validate_content(draft.content)
-        write = self._comments.insert_reply(
-            workspace_id=context.active_workspace_id,
-            app_id=app_id,
-            comment_id=comment_id,
-            actor_id=context.account_id,
-            draft=WorkflowCommentReplyDraft(
-                content=draft.content,
-                mentioned_user_ids=normalize_mentioned_user_ids(draft.mentioned_user_ids),
-            ),
-        )
-        self._notify(app_id, draft.content, write.mentions)
-        return write.result
+        content = WorkflowCommentContent(draft.content)
+        mentions = self._members_only(context, WorkflowCommentMentions.parse(draft.mentioned_user_ids))
+        reply_id = str(uuidv7())
+        with self._change(context, app_id, comment_id) as comment:
+            comment.add_reply(
+                reply_id=reply_id, actor_id=context.account_id, content=content, mentions=mentions, now=self._now()
+            )
+        self._handle_events(context, app_id, comment)
+        return WorkflowCommentCreated(id=reply_id, created_at=comment.reply(reply_id).created_at)
 
     def update_reply(
         self,
@@ -368,30 +343,45 @@ class WorkflowCommentService:
         draft: WorkflowCommentReplyDraft,
     ) -> WorkflowCommentUpdated:
         self.ensure_app(context, app_id)
-        _validate_content(draft.content)
-        write = self._comments.update_reply(
-            workspace_id=context.active_workspace_id,
-            app_id=app_id,
-            comment_id=comment_id,
-            reply_id=reply_id,
-            actor_id=context.account_id,
-            draft=WorkflowCommentReplyDraft(
-                content=draft.content,
-                mentioned_user_ids=normalize_mentioned_user_ids(draft.mentioned_user_ids),
-            ),
-        )
-        self._notify(app_id, draft.content, write.mentions)
-        return write.result
+        content = WorkflowCommentContent(draft.content)
+        mentions = self._members_only(context, WorkflowCommentMentions.parse(draft.mentioned_user_ids))
+        with self._change(context, app_id, comment_id) as comment:
+            comment.edit_reply(
+                reply_id=reply_id, actor_id=context.account_id, content=content, mentions=mentions, now=self._now()
+            )
+        self._handle_events(context, app_id, comment)
+        return WorkflowCommentUpdated(id=reply_id, updated_at=comment.reply(reply_id).updated_at)
 
     def delete_reply(self, context: RequestContext, app_id: str, comment_id: str, reply_id: str) -> None:
         self.ensure_app(context, app_id)
-        self._comments.delete_reply(
-            workspace_id=context.active_workspace_id,
-            app_id=app_id,
-            comment_id=comment_id,
-            reply_id=reply_id,
-            actor_id=context.account_id,
+        with self._change(context, app_id, comment_id) as comment:
+            comment.remove_reply(reply_id=reply_id, actor_id=context.account_id)
+
+    def _change(
+        self, context: RequestContext, app_id: str, comment_id: str
+    ) -> AbstractContextManager[WorkflowCommentAgg]:
+        return self._threads.change_comment(
+            workspace_id=context.active_workspace_id, app_id=app_id, comment_id=comment_id
         )
+
+    def _members_only(self, context: RequestContext, mentions: WorkflowCommentMentions) -> WorkflowCommentMentions:
+        """Read which mentioned users are workspace members before the change, since membership is not the thread's."""
+        if not mentions.user_ids:
+            return mentions
+        return mentions.among(
+            self._queries.workspace_member_ids(workspace_id=context.active_workspace_id, user_ids=mentions.user_ids)
+        )
+
+    def _handle_events(self, context: RequestContext, app_id: str, comment: WorkflowCommentAgg) -> None:
+        """Notify the users a committed change newly mentioned."""
+        for event in comment.pull_events():
+            mentions = self._queries.mention_context(
+                workspace_id=context.active_workspace_id,
+                app_id=app_id,
+                actor_id=event.actor_id,
+                user_ids=event.user_ids,
+            )
+            self._notify(app_id, event.content, mentions)
 
     def _notify(self, app_id: str, content: str, mentions: MentionContext) -> None:
         if not mentions.recipients:
@@ -416,20 +406,6 @@ class WorkflowCommentService:
         )
 
 
-def normalize_mentioned_user_ids(mentioned_user_ids: Sequence[str]) -> tuple[str, ...]:
-    """Return deduplicated user IDs in input order, skipping empty IDs and rejecting malformed ones."""
-    unique_user_ids: dict[str, None] = {}
-    for user_id in mentioned_user_ids:
-        if not user_id:
-            continue
-        try:
-            uuid.UUID(user_id)
-        except ValueError as error:
-            raise InvalidMentionedUserIdError(user_id) from error
-        unique_user_ids.setdefault(user_id, None)
-    return tuple(unique_user_ids)
-
-
 def format_comment_excerpt(content: str, max_length: int = MENTION_EXCERPT_LENGTH) -> str:
     """Trim comment content for email display."""
     trimmed = content.strip()
@@ -438,12 +414,3 @@ def format_comment_excerpt(content: str, max_length: int = MENTION_EXCERPT_LENGT
     if max_length <= 3:
         return trimmed[:max_length]
     return f"{trimmed[: max_length - 3].rstrip()}..."
-
-
-def _validate_content(content: str) -> None:
-    if len(content.strip()) == 0:
-        raise InvalidWorkflowCommentContentError("Comment content cannot be empty")
-    if len(content) > MAX_COMMENT_CONTENT_LENGTH:
-        raise InvalidWorkflowCommentContentError(
-            f"Comment content cannot exceed {MAX_COMMENT_CONTENT_LENGTH} characters"
-        )

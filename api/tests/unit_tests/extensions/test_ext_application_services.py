@@ -29,6 +29,7 @@ from extensions.application_services.app import AppServices
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from graphon.model_runtime.entities.model_entities import ModelType
+from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import AppStatus, ConversationFromSource, CustomizeTokenStrategy
@@ -668,9 +669,11 @@ def test_build_application_services_wires_workflow_comment_boundary(
     )
 
     assert isinstance(services.workflow_comments, WorkflowCommentService)
-    assert isinstance(services.workflow_comments._comments, WorkflowCommentRepository)
-    assert services.workflow_comments._comments._session_factory is sqlite_session_factory
+    assert isinstance(services.workflow_comments._threads, WorkflowCommentRepository)
+    assert services.workflow_comments._threads._session_factory is sqlite_session_factory
+    assert services.workflow_comments._queries is services.workflow_comments._threads
     assert isinstance(services.workflow_comments._notifier, CeleryWorkflowCommentMentionNotifier)
+    assert services.workflow_comments._now is naive_utc_now
 
 
 def test_build_application_services_wires_app_statistic_boundary(
