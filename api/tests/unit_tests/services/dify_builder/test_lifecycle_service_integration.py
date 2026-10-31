@@ -1,11 +1,14 @@
 """Service integration keeps cleared reads and lifecycle controls graph-free."""
 
+from typing import NoReturn
+
 import pytest
 
 from core.dify_builder.contract import RunStatus
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Session
 from core.dify_builder.state import PcState
+from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
 from tests.unit_tests.services.dify_builder.test_service import (
     ACCOUNT_ID,
@@ -17,8 +20,8 @@ from tests.unit_tests.services.dify_builder.test_service import (
 pytest_plugins = ["tests.unit_tests.services.dify_builder.test_service"]
 
 
-def test_cleared_session_read_is_empty_and_does_not_read_the_workflow(repo) -> None:
-    def forbidden(*_args, **_kwargs):
+def test_cleared_session_read_is_empty_and_does_not_read_the_workflow(repo: SqlDifyBuilderRepository) -> None:
+    def forbidden(*_args: object, **_kwargs: object) -> NoReturn:
         pytest.fail("cleared projection must not read workflow or enqueue")
 
     session = Session(
@@ -57,7 +60,7 @@ def test_cleared_session_read_is_empty_and_does_not_read_the_workflow(repo) -> N
         service.submit_action(session.id, actor, Action(kind="check_recovery", base_version=1))
 
 
-def test_service_task_metadata_uses_logical_identity_not_execution_generation(repo) -> None:
+def test_service_task_metadata_uses_logical_identity_not_execution_generation(repo: SqlDifyBuilderRepository) -> None:
     session = Session(
         app_id=APP_ID,
         tenant_id=TENANT_ID,
@@ -90,7 +93,7 @@ def test_cleared_stream_never_emits_preexisting_payload() -> None:
     assert "private old text" not in frames[0]
 
 
-def test_abandoned_message_starts_one_fresh_task_before_worker_dispatch(repo) -> None:
+def test_abandoned_message_starts_one_fresh_task_before_worker_dispatch(repo: SqlDifyBuilderRepository) -> None:
     from services.dify_builder.task_controls import generation
 
     session = Session(
@@ -127,8 +130,10 @@ def test_abandoned_message_starts_one_fresh_task_before_worker_dispatch(repo) ->
     assert not context.paused
     assert generation(context) == 5
     assert len(enqueued) == 1
-    assert enqueued[0][1].kind == "send_edit_goal"
-    assert enqueued[0][1].execution_generation == 5
+    dispatched_action = enqueued[0][1]
+    assert isinstance(dispatched_action, Action)
+    assert dispatched_action.kind == "send_edit_goal"
+    assert dispatched_action.execution_generation == 5
     assert [item.payload["text"] for item in repo.list_conversation(session.id) if item.kind == "user"] == ["new goal"]
     replay = service.submit_action(
         session.id,
@@ -140,7 +145,7 @@ def test_abandoned_message_starts_one_fresh_task_before_worker_dispatch(repo) ->
     assert repo.get_session(session.id)[0].version == head.version
 
 
-def test_existing_create_fix_reuses_conversation_and_sees_atomic_source_run(repo) -> None:
+def test_existing_create_fix_reuses_conversation_and_sees_atomic_source_run(repo: SqlDifyBuilderRepository) -> None:
     from models.model import App, AppMode
     from services.dify_builder.fix_intent_repository import SqlFixIntentRepository
     from tests.unit_tests.services.dify_builder.test_fix_intents import native_run
@@ -172,7 +177,7 @@ def test_existing_create_fix_reuses_conversation_and_sees_atomic_source_run(repo
     assert source.origin_task_id == first.task_id
 
 
-def test_abandoned_goal_stream_replay_emits_terminal_without_dispatch(repo) -> None:
+def test_abandoned_goal_stream_replay_emits_terminal_without_dispatch(repo: SqlDifyBuilderRepository) -> None:
     session = Session(
         app_id=APP_ID,
         tenant_id=TENANT_ID,

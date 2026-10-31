@@ -2,6 +2,9 @@
 
 import importlib
 from dataclasses import asdict
+from functools import partial
+from types import ModuleType
+from typing import NoReturn
 
 import pytest
 from sqlalchemy import select
@@ -53,17 +56,17 @@ def seed(repo: SqlDifyBuilderRepository) -> Session:
     return session
 
 
-def lifecycle():
+def lifecycle() -> ModuleType:
     return importlib.import_module("services.dify_builder.conversation_lifecycle")
 
 
-def forbidden(*_args, **_kwargs):
+def forbidden(*_args: object, **_kwargs: object) -> NoReturn:
     raise AssertionError("clear must not inspect workflow, build ordinary view, or dispatch")
 
 
 def test_clear_requires_confirmation_and_permanently_hides_history_without_graph_reads(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
-):
+) -> None:
     session = seed(repo)
     service._get_app_revision_fn = forbidden
     service._read_task_dsl_fn = forbidden
@@ -100,12 +103,12 @@ def test_clear_requires_confirmation_and_permanently_hides_history_without_graph
 @pytest.mark.parametrize("write", ["checkpoint", "run", "input"])
 def test_clear_fences_late_insert_in_its_sql_transaction(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository, write: str
-):
+) -> None:
     session = seed(repo)
     fence = ExecutionFence(session.id, 3, lambda: require_active(repo, session.id, 3), {})
     lifecycle().clear(service, session.id, _actor(), base_version=1, client_action_id="clear", confirmed=True)
 
-    def late_insert():
+    def late_insert() -> None:
         if write == "checkpoint":
             repo.create_checkpoint(
                 Checkpoint(session_id=session.id, state=session.current_state), Snapshot(session_id=session.id)
@@ -121,7 +124,7 @@ def test_clear_fences_late_insert_in_its_sql_transaction(
 
 def test_clear_keeps_run_evidence_and_rejects_cross_owner_or_key_reuse(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
-):
+) -> None:
     session = seed(repo)
     run = Run(kind="verify", status="failed", immutable=True, inputs_ref="inputs")
     repo.save_run(session.id, run)
@@ -145,7 +148,7 @@ def test_clear_keeps_run_evidence_and_rejects_cross_owner_or_key_reuse(
 
 def test_abandon_keeps_transcript_but_invalidates_cards_and_switch_stop_is_view_free(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
-):
+) -> None:
     session = seed(repo)
     service._build_session_view = forbidden
     owner = lifecycle()
@@ -163,8 +166,8 @@ def test_abandon_keeps_transcript_but_invalidates_cards_and_switch_stop_is_view_
 
 def test_create_fix_selects_existing_owner_session_under_app_lock(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
-):
-    from models.model import App
+) -> None:
+    from models.model import App, AppMode, IconType
 
     with repo._session_factory() as sql, sql.begin():
         sql.add(
@@ -172,10 +175,10 @@ def test_create_fix_selects_existing_owner_session_under_app_lock(
                 id=APP_ID,
                 tenant_id=TENANT_ID,
                 name="app",
-                mode="workflow",
+                mode=AppMode.WORKFLOW,
                 enable_api=True,
                 enable_site=True,
-                icon_type="emoji",
+                icon_type=IconType.EMOJI,
                 icon="",
                 icon_background="",
             )
@@ -198,7 +201,9 @@ def test_create_fix_selects_existing_owner_session_under_app_lock(
     assert selected.id != first.id
 
 
-def test_clearing_another_conversation_does_not_hide_current_owner_history(service, repo):
+def test_clearing_another_conversation_does_not_hide_current_owner_history(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     first = seed(repo)
     second = seed(repo)
     lifecycle().clear(service, first.id, _actor(), base_version=1, client_action_id="clear", confirmed=True)
@@ -206,7 +211,9 @@ def test_clearing_another_conversation_does_not_hide_current_owner_history(servi
     assert repo.list_builder_material(first.id, _actor()) == []
 
 
-def test_abandon_replay_does_not_release_a_later_task_writer(service, repo):
+def test_abandon_replay_does_not_release_a_later_task_writer(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     from services.dify_builder.task_lifecycle import advance_task_identity
 
     session = seed(repo)
@@ -222,7 +229,9 @@ def test_abandon_replay_does_not_release_a_later_task_writer(service, repo):
     assert service._session_lock.current_owner(session.id) == token
 
 
-def test_switch_stop_does_not_pause_a_task_that_completed_before_lock(service, repo):
+def test_switch_stop_does_not_pause_a_task_that_completed_before_lock(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     session = seed(repo)
     current, context = repo.get_session(session.id)
     repo.compare_and_advance(session.id, current.version, PcState.BUILD_COMPLETE, context, [])
@@ -233,7 +242,9 @@ def test_switch_stop_does_not_pause_a_task_that_completed_before_lock(service, r
     assert not context.paused
 
 
-def test_clear_revokes_retained_native_scope_without_claiming_cleanup(service, repo):
+def test_clear_revokes_retained_native_scope_without_claiming_cleanup(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     from datetime import UTC, datetime, timedelta
 
     from models.dify_builder import DifyBuilderExecutionRequest
@@ -279,17 +290,21 @@ def test_clear_revokes_retained_native_scope_without_claiming_cleanup(service, r
         assert sql.get(DifyBuilderExecutionRequest, request_id).state == "running"
 
 
-def test_abandoned_goal_activation_is_atomic_and_once_only(service, repo):
+def test_abandoned_goal_activation_is_atomic_and_once_only(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     session = seed(repo)
     receipt = lifecycle().abandon(service, session.id, _actor(), base_version=1, client_action_id="abandon")
-    kwargs = {
-        "base_version": receipt["version"],
-        "client_turn_id": "fresh-goal",
-        "text": "New synthetic goal",
-        "app_revision": "current-revision",
-        "dsl": {"graph": {"nodes": []}},
-    }
-    current, context, activated = repo.activate_abandoned_continuation(session.id, _actor(), **kwargs)
+    activate = partial(
+        repo.activate_abandoned_continuation,
+        session.id,
+        _actor(),
+        base_version=receipt["version"],
+        client_turn_id="fresh-goal",
+        app_revision="current-revision",
+        dsl={"graph": {"nodes": list[object]()}},
+    )
+    current, context, activated = activate(text="New synthetic goal")
     assert activated
     assert current.current_state == PcState.EDIT_CAPABILITY_CHECK
     assert not context.paused
@@ -299,16 +314,18 @@ def test_abandoned_goal_activation_is_atomic_and_once_only(service, repo):
     assert context.goal_text == "New synthetic goal"
     assert context.attachment_material == []
     assert repo.list_conversation(session.id)[-1].payload["turn_id"] == "fresh-goal"
-    again, _, activated = repo.activate_abandoned_continuation(session.id, _actor(), **kwargs)
+    again, _, activated = activate(text="New synthetic goal")
     assert not activated
     assert again.version == current.version
     assert len(repo.list_conversation(session.id)) == 3
     with pytest.raises(ConflictError):
-        repo.activate_abandoned_continuation(session.id, _actor(), **{**kwargs, "text": "Different goal"})
+        activate(text="Different goal")
 
 
 @pytest.mark.parametrize("operation", ["clear", "abandon"])
-def test_independent_resume_cannot_revive_closed_task(service, repo, operation):
+def test_independent_resume_cannot_revive_closed_task(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, operation: str
+) -> None:
     service._read_task_dsl_fn = forbidden
     session = seed(repo)
     if operation == "clear":
@@ -322,13 +339,15 @@ def test_independent_resume_cannot_revive_closed_task(service, repo, operation):
     assert repo.get_session(session.id)[1].paused
 
 
-def test_resume_rechecks_abandon_after_its_dsl_read(service, repo):
+def test_resume_rechecks_abandon_after_its_dsl_read(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     session = seed(repo)
     stopped = service.stop_task(session.id, _actor(), base_version=1, client_action_id="stop")
 
-    def read_then_abandon(*_args):
+    def read_then_abandon(*_args: object) -> tuple[dict[str, object], str]:
         lifecycle().abandon(service, session.id, _actor(), base_version=stopped.version, client_action_id="abandon")
-        return {}, "current-revision"
+        return dict[str, object](), "current-revision"
 
     service._read_task_dsl_fn = read_then_abandon
     with pytest.raises(ConflictError):
@@ -338,7 +357,9 @@ def test_resume_rechecks_abandon_after_its_dsl_read(service, repo):
     assert context.paused
 
 
-def test_test_command_history_does_not_bypass_clear_boundary(service, repo):
+def test_test_command_history_does_not_bypass_clear_boundary(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     from services.dify_builder.test_actions import BuilderTestActions
 
     session = seed(repo)
@@ -356,7 +377,9 @@ def test_test_command_history_does_not_bypass_clear_boundary(service, repo):
     assert actions.find_command(actor=_actor(), session_id=session.id, command_id="old-command") is None
 
 
-def test_abandoned_goal_rejects_autosave_after_dsl_capture(service, repo):
+def test_abandoned_goal_rejects_autosave_after_dsl_capture(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     import json
 
     from models.workflow import Workflow
@@ -371,7 +394,7 @@ def test_abandoned_goal_rejects_autosave_after_dsl_capture(service, repo):
             type="workflow",
             version="draft",
             created_by=ACCOUNT_ID,
-            graph=json.dumps({"nodes": [], "edges": []}),
+            graph=json.dumps({"nodes": list[object](), "edges": []}),
             features="{}",
             environment_variables=[],
             conversation_variables=[],
@@ -398,7 +421,9 @@ def test_abandoned_goal_rejects_autosave_after_dsl_capture(service, repo):
     assert len(repo.list_conversation(session.id)) == 2
 
 
-def test_immutable_unknown_run_cannot_be_erased_by_abandon_and_fresh_goal(service, repo):
+def test_immutable_unknown_run_cannot_be_erased_by_abandon_and_fresh_goal(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     session = seed(repo)
     run = Run(kind="verify", status="unknown", immutable=True)
     repo.save_run(session.id, run)
@@ -422,7 +447,9 @@ def test_immutable_unknown_run_cannot_be_erased_by_abandon_and_fresh_goal(servic
     assert repo.get_run(run.id).status == "unknown"
 
 
-def test_clear_never_replays_an_older_abandon_receipt(service, repo):
+def test_clear_never_replays_an_older_abandon_receipt(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository
+) -> None:
     session = seed(repo)
     abandoned = lifecycle().abandon(service, session.id, _actor(), base_version=1, client_action_id="old-abandon")
     lifecycle().clear(
