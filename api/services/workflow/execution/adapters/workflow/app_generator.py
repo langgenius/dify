@@ -42,6 +42,8 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from repositories.entities.workflow_execution import WorkflowExecutionIdentity
+from services.app.file_input_defaults import grant_file_default_access
 from services.app.generation.input_adapter import AppInputAdapter
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.node_factory import get_default_root_node_id
@@ -84,6 +86,7 @@ class WorkflowAppGenerator(AppInputAdapter):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: WorkflowSnapshot,
         user: Account | EndUser,
@@ -103,6 +106,7 @@ class WorkflowAppGenerator(AppInputAdapter):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: WorkflowSnapshot,
         user: Account | EndUser,
@@ -122,6 +126,7 @@ class WorkflowAppGenerator(AppInputAdapter):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: WorkflowSnapshot,
         user: Account | EndUser,
@@ -140,6 +145,7 @@ class WorkflowAppGenerator(AppInputAdapter):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: WorkflowSnapshot,
         user: Account | EndUser,
@@ -210,7 +216,8 @@ class WorkflowAppGenerator(AppInputAdapter):
                 file_upload_config=file_extra_config,
                 inputs=inputs,
                 files=list(system_files),
-                user_id=user.id,
+                user_id=execution_identity.user_id,
+                user_from=execution_identity.user_from,
                 stream=streaming,
                 invoke_from=invoke_from,
                 allow_human_input=allow_human_input,
@@ -344,6 +351,7 @@ class WorkflowAppGenerator(AppInputAdapter):
             user=user,
             invoke_from=invoke_from,
         ):
+            grant_file_default_access(application_generate_entity.app_config.variables)
             if self._cancellation is not None:
                 self._cancellation.raise_if_cancelled()
             # init queue manager
@@ -408,6 +416,8 @@ class WorkflowAppGenerator(AppInputAdapter):
         user: Account | EndUser,
         args: Mapping[str, Any],
         streaming: bool = True,
+        *,
+        execution_identity: WorkflowExecutionIdentity,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
@@ -434,7 +444,8 @@ class WorkflowAppGenerator(AppInputAdapter):
             app_config=app_config,
             inputs={},
             files=[],
-            user_id=user.id,
+            user_id=execution_identity.user_id,
+            user_from=execution_identity.user_from,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={
@@ -491,6 +502,8 @@ class WorkflowAppGenerator(AppInputAdapter):
         user: Account | EndUser,
         args: Mapping[str, Any],
         streaming: bool = True,
+        *,
+        execution_identity: WorkflowExecutionIdentity,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
@@ -517,7 +530,8 @@ class WorkflowAppGenerator(AppInputAdapter):
             app_config=app_config,
             inputs={},
             files=[],
-            user_id=user.id,
+            user_id=execution_identity.user_id,
+            user_from=execution_identity.user_from,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={

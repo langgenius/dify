@@ -36,6 +36,7 @@ from models.utils.file_input_compat import build_file_from_stored_mapping
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.ports import WorkflowRuntime
+from services.workflow_execution_identity import build_workflow_execution_identity
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
@@ -135,6 +136,7 @@ class WorkflowTool(Tool):
             generator_args.update(extract_trace_session_id_from_args({"trace_session_id": self._trace_session_id}))
 
         result = generator.generate(
+            execution_identity=build_workflow_execution_identity(user),
             app_model=app,
             workflow=workflow,
             user=user,

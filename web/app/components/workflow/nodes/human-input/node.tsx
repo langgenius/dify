@@ -4,20 +4,30 @@ import type { NodeProps } from '@/app/components/workflow/types'
 import { RiMailSendFill, RiRobot2Fill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { NodeSourceHandle } from '../_base/components/node-handle'
+import Badge from '@/app/components/base/badge'
+import { ENABLE_HITL_IM } from '@/config'
+import { isLegacyHumanInputNodeData } from '../human-input-v2/migration/policy'
+import HumanInputNodeBranches from './shared/node-branches'
 import { DeliveryMethodType } from './types'
 
 const i18nPrefix = 'nodes.humanInput'
 
 const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
-  const { t } = useTranslation(['workflowHumanInput'])
+  const { t } = useTranslation(['workflowHumanInput', 'workflow'])
 
   const { data } = props
   const deliveryMethods = data.delivery_methods
-  const userActions = data.user_actions
 
   return (
     <>
+      {ENABLE_HITL_IM && isLegacyHumanInputNodeData(data) && (
+        <div className="px-2.5 pb-1">
+          <Badge
+            text={t(($) => $['nodes.humanInputMigration.oldVersion'], { ns: 'workflow' })}
+            className="border-text-warning-secondary text-text-warning-secondary"
+          />
+        </div>
+      )}
       {deliveryMethods.length > 0 && (
         <div className="space-y-0.5 py-1">
           <div className="px-2.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
@@ -47,35 +57,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
           </div>
         </div>
       )}
-      <div className="space-y-0.5 py-1">
-        {userActions.length > 0 && (
-          <>
-            {userActions.map((userAction) => (
-              <div
-                key={userAction.id}
-                className="relative flex flex-row-reverse items-center px-4 py-1"
-              >
-                <span className="truncate system-xs-semibold-uppercase text-text-secondary">
-                  {userAction.id}
-                </span>
-                <NodeSourceHandle
-                  {...props}
-                  handleId={userAction.id}
-                  handleClassName="top-1/2! -right-[9px]! -translate-y-1/2!"
-                />
-              </div>
-            ))}
-          </>
-        )}
-        <div className="relative flex flex-row-reverse items-center px-4 py-1">
-          <div className="truncate system-xs-semibold-uppercase text-text-secondary">Timeout</div>
-          <NodeSourceHandle
-            {...props}
-            handleId="__timeout"
-            handleClassName="top-1/2! -right-[9px]! -translate-y-1/2!"
-          />
-        </div>
-      </div>
+      <HumanInputNodeBranches {...props} />
     </>
   )
 }

@@ -130,10 +130,13 @@ describe('AgentLogDetail', () => {
 
       await renderAndWaitForData()
 
-      expect(fetchAgentLogDetail).toHaveBeenCalledWith({
-        params: { app_id: 'app-id' },
-        query: { conversation_id: 'conv-id', message_id: 'msg-id' },
-      })
+      expect(fetchAgentLogDetail).toHaveBeenCalledWith(
+        {
+          params: { app_id: 'app-id' },
+          query: { conversation_id: 'conv-id', message_id: 'msg-id' },
+        },
+        { context: { silent: true } },
+      )
     })
   })
 

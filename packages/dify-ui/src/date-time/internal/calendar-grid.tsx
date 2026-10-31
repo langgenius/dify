@@ -37,8 +37,16 @@ function fromCalendarDate(date: Date): string {
 }
 
 function StyledDayButton(props: React.ComponentProps<typeof DayButton>) {
+  // Keep the visible numeral independently addressable (e.g. 15, not only 15th),
+  // while retaining DayPicker's localized full date, today and selected labels.
+  // DayPicker supplies formatDay's string as children and labelDayButton's label.
+  const visibleDay = String(props.children)
   return (
-    <DayButton {...props} aria-current={props.modifiers.today ? 'date' : undefined}>
+    <DayButton
+      {...props}
+      aria-label={`${visibleDay}: ${props['aria-label']}`}
+      aria-current={props.modifiers.today ? 'date' : undefined}
+    >
       {props.children}
       {props.modifiers.today && !props.modifiers.selected && (
         <span

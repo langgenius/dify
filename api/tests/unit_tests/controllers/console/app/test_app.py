@@ -55,10 +55,6 @@ from controllers.console.app import (
     workflow_draft_variable as workflow_draft_variable_module,
 )
 from controllers.console.app import (
-    workflow_statistic as workflow_statistic_module,
-)
-from controllers.console.app import workflow_trigger as workflow_trigger_module
-from controllers.console.app import (
     wraps as wraps_module,
 )
 from controllers.console.app.app import CreateAppPayload
@@ -78,8 +74,6 @@ from controllers.console.app.workflow_draft_variable import (
     WorkflowDraftVariableListQuery,
     WorkflowDraftVariableUpdatePayload,
 )
-from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
-from controllers.console.app.workflow_trigger import ParserEnable, WebhookTriggerQuery
 from fields import app_fields
 from fields.app_model_config_response import AppModelConfigResponse
 from libs.login import AccountWithTenant
@@ -125,7 +119,6 @@ from services.entities.app_entities import (
     UpdateAppParams,
 )
 from services.entities.dsl_entities import Import, ImportStatus
-from services.trigger.app_trigger_store import WebhookTriggerRecord
 from tests.helpers.unit.config_override import apply_config_overrides
 
 """Unit coverage for console app controller contracts and response mapping."""
@@ -646,225 +639,6 @@ class TestAppApisCases:
                 [{"id": "env-a", "name": "a", "value_type": "string", "value": "new-a"}],
                 deleted_ids=["env-b"],
             )
-
-    class TestWorkflowStatisticEndpoints:
-        def test_workflow_statistic_time_range(self):
-            query = WorkflowStatisticQuery(start="2024-01-01", end="2024-12-31")
-            assert query.start == "2024-01-01"
-
-        def test_workflow_statistic_blank_to_none(self):
-            query = WorkflowStatisticQuery(start="", end="")
-            assert query.start is None
-            assert query.end is None
-
-        def test_workflow_daily_runs_statistic(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-            service = MagicMock()
-            service.get_daily_runs.return_value = [{"date": "2024-01-01", "runs": 2}]
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "application_services",
-                lambda: SimpleNamespace(workflow_statistics=service),
-            )
-            self._patch_statistic_time_range(monkeypatch)
-
-            api = workflow_statistic_module.WorkflowDailyRunsStatistic()
-            method = unwrap(api.get)
-            request_context = _make_request_context()
-
-            with database_app.test_request_context("/"):
-                response = method(
-                    api,
-                    WorkflowStatisticQuery(),
-                    request_context,
-                    app_model=_make_app("app-1", tenant_id="t1"),
-                )
-
-            assert response == {"data": [{"date": "2024-01-01", "runs": 2}]}
-            service.get_daily_runs.assert_called_once_with(
-                request_context,
-                app_id="app-1",
-                start_date=None,
-                end_date=None,
-                timezone="UTC",
-            )
-
-        def test_workflow_daily_terminals_statistic(self, database_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-            service = MagicMock()
-            service.get_daily_terminals.return_value = [{"date": "2024-01-02", "terminal_count": 3}]
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "application_services",
-                lambda: SimpleNamespace(workflow_statistics=service),
-            )
-            self._patch_statistic_time_range(monkeypatch)
-
-            api = workflow_statistic_module.WorkflowDailyTerminalsStatistic()
-            method = unwrap(api.get)
-            request_context = _make_request_context()
-
-            with database_app.test_request_context("/"):
-                response = method(
-                    api,
-                    WorkflowStatisticQuery(),
-                    request_context,
-                    app_model=_make_app("app-1", tenant_id="t1"),
-                )
-
-            assert response == {"data": [{"date": "2024-01-02", "terminal_count": 3}]}
-            service.get_daily_terminals.assert_called_once_with(
-                request_context,
-                app_id="app-1",
-                start_date=None,
-                end_date=None,
-                timezone="UTC",
-            )
-
-        def test_workflow_daily_token_cost_statistic(
-            self,
-            database_app: Flask,
-            monkeypatch: pytest.MonkeyPatch,
-        ) -> None:
-            service = MagicMock()
-            service.get_daily_token_costs.return_value = [{"date": "2024-01-03", "token_count": 4}]
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "application_services",
-                lambda: SimpleNamespace(workflow_statistics=service),
-            )
-            self._patch_statistic_time_range(monkeypatch)
-
-            api = workflow_statistic_module.WorkflowDailyTokenCostStatistic()
-            method = unwrap(api.get)
-            request_context = _make_request_context()
-
-            with database_app.test_request_context("/"):
-                response = method(
-                    api,
-                    WorkflowStatisticQuery(),
-                    request_context,
-                    app_model=_make_app("app-1", tenant_id="t1"),
-                )
-
-            assert response == {"data": [{"date": "2024-01-03", "token_count": 4}]}
-            service.get_daily_token_costs.assert_called_once_with(
-                request_context,
-                app_id="app-1",
-                start_date=None,
-                end_date=None,
-                timezone="UTC",
-            )
-
-        def test_workflow_average_app_interaction_statistic(
-            self,
-            database_app: Flask,
-            monkeypatch: pytest.MonkeyPatch,
-        ) -> None:
-            service = MagicMock()
-            service.get_average_app_interactions.return_value = [{"date": "2024-01-04", "interactions": 2.5}]
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "application_services",
-                lambda: SimpleNamespace(workflow_statistics=service),
-            )
-            self._patch_statistic_time_range(monkeypatch)
-
-            api = workflow_statistic_module.WorkflowAverageAppInteractionStatistic()
-            method = unwrap(api.get)
-            request_context = _make_request_context()
-
-            with database_app.test_request_context("/"):
-                response = method(
-                    api,
-                    WorkflowStatisticQuery(),
-                    request_context,
-                    app_model=_make_app("app-1", tenant_id="t1"),
-                )
-
-            assert response == {"data": [{"date": "2024-01-04", "interactions": 2.5}]}
-            service.get_average_app_interactions.assert_called_once_with(
-                request_context,
-                app_id="app-1",
-                start_date=None,
-                end_date=None,
-                timezone="UTC",
-            )
-
-        def test_workflow_statistic_invalid_time_range(self, monkeypatch: pytest.MonkeyPatch) -> None:
-            account = _make_account()
-            account.timezone = "UTC"
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "current_account_with_tenant",
-                lambda: SimpleNamespace(account=account),
-            )
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "parse_time_range",
-                MagicMock(side_effect=ValueError("invalid range")),
-            )
-
-            with pytest.raises(BadRequest, match="invalid range"):
-                workflow_statistic_module._resolve_statistic_time_range(WorkflowStatisticQuery())
-
-        @staticmethod
-        def _patch_statistic_time_range(monkeypatch: pytest.MonkeyPatch) -> None:
-            account = _make_account()
-            account.timezone = "UTC"
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "current_account_with_tenant",
-                lambda: SimpleNamespace(account=account),
-            )
-            monkeypatch.setattr(
-                workflow_statistic_module,
-                "parse_time_range",
-                lambda *_args, **_kwargs: (None, None),
-            )
-
-    class TestWorkflowTriggerEndpoints:
-        def test_webhook_trigger_payload(self):
-            payload = WebhookTriggerQuery(node_id="node-1")
-            assert payload.node_id == "node-1"
-
-            enable_payload = ParserEnable(trigger_id="trigger-1", enable_trigger=True)
-            assert enable_payload.enable_trigger is True
-
-        def test_webhook_trigger_api_get(
-            self,
-            database_app: Flask,
-            monkeypatch: pytest.MonkeyPatch,
-        ) -> None:
-            api = workflow_trigger_module.WebhookTriggerApi()
-            method = unwrap(api.get)
-            trigger = WebhookTriggerRecord(
-                id="trigger-1",
-                node_id="node-1",
-                webhook_id="webhook-1",
-                created_at=datetime(2024, 1, 1),
-            )
-            triggers = MagicMock()
-            triggers.get_webhook.return_value = trigger
-            monkeypatch.setattr(
-                workflow_trigger_module,
-                "application_services",
-                lambda: SimpleNamespace(apps=SimpleNamespace(triggers=triggers)),
-            )
-            context = _make_request_context()
-
-            with database_app.test_request_context("/?node_id=node-1"):
-                result = method(
-                    api,
-                    WebhookTriggerQuery(node_id="node-1"),
-                    context,
-                    app_id=uuid.UUID(_APP_APIS_APP_ID),
-                )
-
-            assert isinstance(result, dict)
-            assert {"id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", "created_at"} <= set(
-                result.keys()
-            )
-            assert result["webhook_id"] == "webhook-1"
-            triggers.get_webhook.assert_called_once_with(context, _APP_APIS_APP_ID, "node-1")
 
     class TestWrapsEndpoints:
         def test_get_app_model_context(self):

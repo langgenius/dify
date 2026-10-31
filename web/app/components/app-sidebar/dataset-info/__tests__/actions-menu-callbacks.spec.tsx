@@ -161,10 +161,13 @@ describe('ActionsMenu callback coverage', () => {
     await user.type(name, 'Renamed dataset')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     await waitFor(() =>
-      expect(mockUpdateDatasetSetting).toHaveBeenCalledWith({
-        datasetId: 'dataset-1',
-        body: expect.objectContaining({ name: 'Renamed dataset' }),
-      }),
+      expect(mockUpdateDatasetSetting).toHaveBeenCalledWith(
+        {
+          datasetId: 'dataset-1',
+          body: expect.objectContaining({ name: 'Renamed dataset' }),
+        },
+        { silent: true },
+      ),
     )
 
     await waitFor(() => {
@@ -252,7 +255,7 @@ describe('ActionsMenu callback coverage', () => {
     await user.click(screen.getByText('datasetPipeline.operations.exportPipeline'))
 
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith('app.exportFailed')
+      expect(mockToast).toHaveBeenCalledWith('export failed')
     })
   })
 

@@ -24,6 +24,7 @@ import {
 } from '@/app/components/base/icon-picker'
 import { toast } from '@/app/notifications'
 import { updateDatasetSetting } from '@/service/datasets'
+import { getErrorMessage } from '@/utils/error-message'
 
 type RenameDatasetModalProps = {
   open: boolean
@@ -50,25 +51,44 @@ const RenameDatasetModal = ({
   onOpenChange,
   dataset,
   onSuccess,
-}: RenameDatasetModalProps) => (
-  <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="w-130">
-      <RenameDatasetForm
-        dataset={dataset}
-        onSuccess={onSuccess}
-        onClose={() => onOpenChange(false)}
-      />
-    </DialogContent>
-  </Dialog>
-)
+}: RenameDatasetModalProps) => {
+  const [loading, setLoading] = useState(false)
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && loading) {
+          details.cancel()
+          return
+        }
+        onOpenChange(nextOpen)
+      }}
+    >
+      <DialogContent className="w-130">
+        <RenameDatasetForm
+          dataset={dataset}
+          loading={loading}
+          onLoadingChange={setLoading}
+          onSuccess={onSuccess}
+          onClose={() => onOpenChange(false)}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 function RenameDatasetForm({
   dataset,
   onSuccess,
   onClose,
-}: Pick<RenameDatasetModalProps, 'dataset' | 'onSuccess'> & { onClose: () => void }) {
+  loading,
+  onLoadingChange,
+}: Pick<RenameDatasetModalProps, 'dataset' | 'onSuccess'> & {
+  onClose: () => void
+  loading: boolean
+  onLoadingChange: (loading: boolean) => void
+}) {
   const { t } = useTranslation(['common', 'datasetSettings'])
-  const [loading, setLoading] = useState(false)
   const [name, setName] = useState<string>(dataset.name)
   const [description, setDescription] = useState(dataset.description ?? '')
   const externalKnowledgeId = dataset.external_knowledge_info?.external_knowledge_id
@@ -90,12 +110,13 @@ function RenameDatasetForm({
     setAppIcon(icon)
   }, [])
   const onConfirm = useCallback(async () => {
+    if (loading) return
     if (!name.trim()) {
       toast.error(t(($) => $['form.nameError'], { ns: 'datasetSettings' }))
       return
     }
     try {
-      setLoading(true)
+      onLoadingChange(true)
       const body: DatasetUpdatePayload = {
         name,
         description,
@@ -110,16 +131,21 @@ function RenameDatasetForm({
         body.external_knowledge_id = externalKnowledgeId
         body.external_knowledge_api_id = externalKnowledgeApiId
       }
-      await updateDatasetSetting({
-        datasetId: dataset.id,
-        body,
-      })
+      await updateDatasetSetting(
+        {
+          datasetId: dataset.id,
+          body,
+        },
+        { silent: true },
+      )
       if (onSuccess) onSuccess()
       onClose()
-    } catch {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
     } finally {
-      setLoading(false)
+      onLoadingChange(false)
     }
   }, [
     appIcon,
@@ -128,6 +154,8 @@ function RenameDatasetForm({
     externalKnowledgeApiId,
     externalKnowledgeId,
     name,
+    loading,
+    onLoadingChange,
     onClose,
     onSuccess,
     t,
@@ -142,7 +170,10 @@ function RenameDatasetForm({
     >
       <DialogHeader>
         <DialogTitle>{t(($) => $.title, { ns: 'datasetSettings' })}</DialogTitle>
-        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        <DialogHeaderCloseButton
+          disabled={loading}
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+        />
       </DialogHeader>
       <DialogBody>
         <IconPicker value={appIcon} onValueChange={handleSelectAppIcon}>
@@ -186,7 +217,7 @@ function RenameDatasetForm({
         </Field>
       </DialogBody>
       <DialogFooter>
-        <Button type="button" onClick={onClose}>
+        <Button type="button" disabled={loading} onClick={onClose}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <Button type="submit" loading={loading} variant="primary">

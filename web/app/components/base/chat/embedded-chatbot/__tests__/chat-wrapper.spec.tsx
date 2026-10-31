@@ -7,12 +7,8 @@ import { UserActionButtonType } from '@/app/components/workflow/nodes/human-inpu
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 // oxlint-disable-next-line no-restricted-imports -- Exercise the existing chat SSE transport at its network boundary.
 import { sseGet, ssePost } from '@/service/base'
-import {
-  AppSourceType,
-  fetchSuggestedQuestions,
-  stopChatMessageResponding,
-  submitHumanInputForm,
-} from '@/service/share'
+import { AppSourceType, fetchSuggestedQuestions, stopChatMessageResponding } from '@/service/share'
+import { submitWebAppHumanInputForm as submitHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitInstalledHumanInput } from '@/service/workflow'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createChatConfigFixture, createChatFileFixture } from '@/test/fixtures/chat'
@@ -269,7 +265,11 @@ describe('Embedded chatbot orchestration', () => {
       await waitFor(() =>
         expect(
           installed ? submitInstalledHumanInput : submitHumanInputForm,
-        ).toHaveBeenCalledExactlyOnceWith('form-token', { inputs: {}, action: 'approve' }),
+        ).toHaveBeenCalledExactlyOnceWith(
+          'form-token',
+          { inputs: {}, action: 'approve' },
+          undefined,
+        ),
       )
       expect(installed ? submitHumanInputForm : submitInstalledHumanInput).not.toHaveBeenCalled()
     },
@@ -418,3 +418,5 @@ describe('Embedded chatbot orchestration', () => {
     expect(screen.getByText('Welcome to the app')).toBeVisible()
   })
 })
+
+vi.mock('@/service/webapp-human-input', () => ({ submitWebAppHumanInputForm: vi.fn() }))

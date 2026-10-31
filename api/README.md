@@ -60,6 +60,8 @@ Leave `SECRET_KEY` empty to let Dify generate a persistent key in the storage di
 
 ## Testing
 
+Test real production behavior with real objects. Do not use mocks, `SimpleNamespace`, or other shortcuts that bypass real testing.
+
 Backend unit-test directories must exactly mirror the production code's relative directory structure, and filenames must match the production filenames with a `test_` prefix. For example, `api/libs/schedule_utils.py` maps to `api/tests/unit_tests/libs/test_schedule_utils.py`.
 
 Apply the same rule to provider-local suites: `<provider>/src/<package>/module.py` maps to `<provider>/tests/unit_tests/src/<package>/test_module.py`.

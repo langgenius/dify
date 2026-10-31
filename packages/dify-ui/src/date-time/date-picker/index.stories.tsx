@@ -142,7 +142,7 @@ export const NativeForm: Story = {
   play: async ({ canvasElement, userEvent }) => {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
-    const trigger = canvas.getByRole('button', { name: 'Start date (required)' })
+    const trigger = canvas.getByRole('button', { name: 'Start date (required) Select date' })
     await userEvent.click(canvas.getByRole('button', { name: 'Save' }))
     await expect(canvas.queryByRole('status', { name: 'Submitted values' })).not.toBeInTheDocument()
     await expect(trigger).toHaveFocus()
@@ -151,7 +151,7 @@ export const NativeForm: Story = {
       /Choose a calendar date; no time zone is stored.*Choose a start date/,
     )
     for (const [label, name] of [
-      ['Start date (required)', 'Start date (required)'],
+      ['Start date (required)', 'Start date (required) Select date'],
       ['Start time', /^Start time\b/],
       ['Reminder (UTC)', /^Reminder \(UTC\)/],
     ] as const) {
@@ -179,7 +179,7 @@ export const NativeForm: Story = {
       reminder: '2025-01-15T13:30:00.000Z',
     })
     await userEvent.click(canvas.getByRole('button', { name: 'Reset' }))
-    await waitFor(() => expect(trigger).toHaveAccessibleName('Start date (required)'))
+    await waitFor(() => expect(trigger).toHaveAccessibleName('Start date (required) Select date'))
     await expect(trigger).not.toHaveAttribute('aria-invalid', 'true')
     await expect(canvas.queryByRole('status', { name: 'Submitted values' })).not.toBeInTheDocument()
   },
@@ -253,12 +253,12 @@ export const RTL: Story = {
     await userEvent.click(trigger)
     await body.findByRole('dialog', { name: 'Start date' })
     await waitFor(() =>
-      expect(body.getByRole('button', { name: /^الأربعاء، 15 جانفي 2025/ })).toHaveFocus(),
+      expect(body.getByRole('button', { name: /^15: الأربعاء، 15 جانفي 2025/ })).toHaveFocus(),
     )
     await userEvent.keyboard('{ArrowLeft}')
-    await expect(body.getByRole('button', { name: 'الخميس، 16 جانفي 2025' })).toHaveFocus()
+    await expect(body.getByRole('button', { name: '16: الخميس، 16 جانفي 2025' })).toHaveFocus()
     await userEvent.keyboard('{ArrowRight}')
-    await expect(body.getByRole('button', { name: /^الأربعاء، 15 جانفي 2025/ })).toHaveFocus()
+    await expect(body.getByRole('button', { name: /^15: الأربعاء، 15 جانفي 2025/ })).toHaveFocus()
     const heading = body.getByRole('button', { name: /Choose month and year:/ })
     await userEvent.click(heading)
     const months = await body.findByRole('listbox', { name: 'Month' })
@@ -358,11 +358,11 @@ export const FieldAndForm: Story = {
     const page = within(canvasElement.ownerDocument.body)
     await userEvent.click(canvas.getByRole('button', { name: 'Submit booking' }))
     await expect(canvas.getByText('Choose a departure date.')).toBeVisible()
-    const trigger = canvas.getByRole('button', { name: 'Departure date' })
+    const trigger = canvas.getByRole('button', { name: 'Departure date Select date' })
     await expect(trigger).toHaveFocus()
     await userEvent.click(trigger)
     await userEvent.click(
-      await page.findByRole('button', { name: 'Wednesday, January 15th, 2025' }),
+      await page.findByRole('button', { name: '15: Wednesday, January 15th, 2025' }),
     )
     await expect(canvas.getByLabelText('Last change')).toHaveTextContent('Date: item-press')
     await userEvent.click(canvas.getByRole('button', { name: 'Departure time 1:30 PM' }))
@@ -377,7 +377,7 @@ export const FieldAndForm: Story = {
       '{"departureDate":"2025-01-15","departureTime":"14:30","meetingInstant":"2025-01-15T18:30:00.000Z"}',
     )
     await userEvent.click(canvas.getByRole('button', { name: 'Reset booking' }))
-    await expect(canvas.getByRole('button', { name: 'Departure date' })).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Departure date Select date' })).toBeVisible()
     await expect(canvas.getByRole('button', { name: 'Departure time 1:30 PM' })).toBeVisible()
     await expect(canvas.queryByText('Choose a departure date.')).not.toBeInTheDocument()
   },
