@@ -17,6 +17,7 @@ from core.tools.errors import (
     ToolProviderNotFoundError,
 )
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.entities.agent_tool_inner import AgentToolInvokeRequest, AgentToolInvokeResponse
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
 from services.tools.tool_engine import ToolEngine
@@ -87,6 +88,8 @@ class AgentToolInvocationGateway:
                     )
                 ) as transformed:
                     transformed_messages = list(transformed)
+        except CredentialRefreshUnavailableError:
+            raise
         except ToolProviderNotFoundError as exc:
             raise AgentToolInnerServiceError(
                 error_code="agent_tool_declaration_not_found",
