@@ -1,4 +1,5 @@
 {
+  "activateFailed": "Nu am putut activa reducerea educațională. Verificarea educațională actuală poate fi încă activă sau acest e-mail nu mai este eligibil.",
   "applied.activeSubscription.description": "Ai un abonament activ. Poți folosi reducerea educațională după expirarea abonamentului. Confirmați abonamentul în <stripeLink>Stripe</stripeLink>.",
   "applied.noPaymentPermission.description": "Nu ai permisiunea de plată în acest workspace. Te rugăm să treci la un workspace unde poți gestiona facturarea pentru a folosi reducerea educațională.",
   "applied.noPaymentPermission.returnHome": "Înapoi la Dify",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "cupom exclusiv 100%",
   "toVerifiedTip.end": "pentru Planul Profesional Dify.",
   "toVerifiedTip.front": "Sunteți acum eligibil pentru statutul de Educație Verificată. Vă rugăm să introduceți informațiile despre educația dumneavoastră mai jos pentru a finaliza procesul și a primi un",
-  "useEducationDiscount": "Folosește reducerea educațională"
+  "tooManyAttempts": "Prea multe încercări. Încercați din nou mai târziu.",
+  "useEducationDiscount": "Folosește reducerea educațională",
+  "verifyFailed": "Nu am putut verifica statutul dvs. educațional. Dacă v-ați verificat recent, verificarea educațională actuală poate fi încă activă. În caz contrar, încercați din nou mai târziu."
 }
