@@ -45,9 +45,9 @@ class UnknownErrorReason:
 class BillingUpstreamError(BillingError):
     """A billing or saas call failed.
 
-    `status_code` and `body` are set when the upstream answered with a non-200 status. Each
-    generated service module subclasses this with a `reason` typed by its own `ErrorReason`;
-    catch that subclass to read the reason.
+    `status_code` and `body` are set when the upstream answered with a non-200 status. The
+    generated modules subclass this per proto service with a `reason` typed by that service's
+    `<Service>ErrorReason`; catch that subclass to read the reason.
     """
 
     def __init__(self, *args: object, status_code: int | None = None, body: UpstreamErrorBody | None = None) -> None:

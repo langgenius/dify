@@ -49,13 +49,17 @@ def _source_spec() -> generator.JsonObject:
                     "type": "object",
                     "properties": {
                         "code": {"type": "integer", "description": "HTTP status code.", "format": "int32"},
-                        "reason": {"$ref": f"{PREFIX}ErrorReason"},
+                        "reason": {"type": "string", "description": "See <Service>ErrorReason."},
                         "message": {"type": "string"},
                         "metadata": {"type": "object", "additionalProperties": {"type": "string"}},
                     },
                 },
-                "dify.saas.api.billing.ErrorReason": {
-                    "enum": ["", "CODEC", "REQUEST_IN_PROGRESS"],
+                "dify.saas.api.billing.BillingSubscriptionErrorReason": {
+                    "enum": ["", "CODEC", "MISSING_PLAN"],
+                    "type": "string",
+                },
+                "dify.saas.api.billing.BillingCouponErrorReason": {
+                    "enum": ["", "CODEC", "BILLING_COUPON_NOT_FOUND"],
                     "type": "string",
                 },
             }
@@ -78,7 +82,12 @@ def test_snapshot_keeps_only_allowlisted_operations_and_reachable_schemas() -> N
 
     assert snapshot[generator.SNAPSHOT_COMMIT_KEY] == "abc123"
     assert list(snapshot["paths"]) == ["/v1/subscription/info"]
-    assert sorted(snapshot["components"]["schemas"]) == ["Error", "ErrorReason", "GetSubscriptionInfoReply", "Quota"]
+    assert sorted(snapshot["components"]["schemas"]) == [
+        "BillingSubscriptionErrorReason",
+        "Error",
+        "GetSubscriptionInfoReply",
+        "Quota",
+    ]
     assert "coupon" not in generator.render_snapshot(snapshot).lower()
 
 
@@ -107,11 +116,42 @@ def test_rendered_module_types_fields_and_operations() -> None:
     assert "renewed_at: datetime\n" in source
     assert "def subscription_get_subscription_info() -> GetSubscriptionInfoReply:" in source
     assert '"/subscription/info",' in source
-    assert 'type ErrorReason = Literal["", "CODEC", "REQUEST_IN_PROGRESS"]' in source
-    assert "errors=ERRORS," in source
-    assert "class UpstreamError(BillingUpstreamError):" in source
-    assert "reason: ErrorReason | UnknownErrorReason | None = None," in source
+    assert 'type BillingSubscriptionErrorReason = Literal["", "CODEC", "MISSING_PLAN"]' in source
+    assert "def _is_billing_subscription_error_reason(value: str) -> TypeIs[BillingSubscriptionErrorReason]:" in source
+    assert "errors=BILLING_SUBSCRIPTION_ERRORS," in source
+    assert "class BillingSubscriptionUpstreamError(BillingUpstreamError):" in source
+    assert "reason: BillingSubscriptionErrorReason | UnknownErrorReason | None = None," in source
+    assert (
+        "class BillingSubscriptionUpstreamUnavailableError(BillingSubscriptionUpstreamError, "
+        "BillingUpstreamUnavailableError):"
+    ) in source
+    assert "BILLING_SUBSCRIPTION_ERRORS = ServiceErrors(" in source
+    assert "Coupon" not in source
     assert "class Error(" not in source
+    assert "ErrorReason =" not in source.replace("BillingSubscriptionErrorReason =", "")
+
+
+def test_rendered_module_gives_each_service_its_own_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(
+        generator.ALLOWED_OPERATIONS,
+        "billing",
+        (
+            generator.AllowedOperation("GET", "/v1/subscription/info", "BILLING"),
+            generator.AllowedOperation("GET", "/v1/coupons/stripe", "BILLING"),
+        ),
+    )
+    snapshot = generator.build_snapshot("billing", _source_spec(), "abc123")
+
+    source = generator.render_module("billing", snapshot)
+
+    assert {"BillingCouponErrorReason", "BillingSubscriptionErrorReason"} <= set(snapshot["components"]["schemas"])
+    subscription, coupon = (
+        source.partition(f"def {name}(")[2].partition("\n\n\n")[0]
+        for name in ("subscription_get_subscription_info", "coupon_list_stripe_coupons")
+    )
+    assert "errors=BILLING_SUBSCRIPTION_ERRORS," in subscription
+    assert "errors=BILLING_COUPON_ERRORS," in coupon
+    assert "class BillingCouponUpstreamError(BillingUpstreamError):" in source
 
 
 def test_long_operation_docstring_is_wrapped() -> None:
@@ -150,13 +190,49 @@ def test_snapshot_rejects_allowlisted_operation_missing_from_spec() -> None:
 
 
 @pytest.mark.usefixtures("subscription_info_only")
-@pytest.mark.parametrize("name", ["Error", "ErrorReason"])
-def test_snapshot_rejects_spec_without_error_schema(name: str) -> None:
+def test_snapshot_rejects_spec_without_error_schema() -> None:
     source = _source_spec()
-    del source["components"]["schemas"][f"dify.saas.api.billing.{name}"]
+    del source["components"]["schemas"]["dify.saas.api.billing.Error"]
 
-    with pytest.raises(generator.GenerationError, match=f"error schema dify.saas.api.billing.{name}"):
+    with pytest.raises(generator.GenerationError, match="error schema dify.saas.api.billing.Error "):
         generator.build_snapshot("billing", source, "abc123")
+
+
+@pytest.mark.usefixtures("subscription_info_only")
+def test_snapshot_rejects_operation_without_its_service_reason_schema() -> None:
+    source = _source_spec()
+    del source["components"]["schemas"]["dify.saas.api.billing.BillingSubscriptionErrorReason"]
+
+    with pytest.raises(
+        generator.GenerationError,
+        match=r"BillingSubscription_GetSubscriptionInfo\) has no dify.saas.api.billing.BillingSubscriptionErrorReason",
+    ):
+        generator.build_snapshot("billing", source, "abc123")
+
+
+@pytest.mark.usefixtures("subscription_info_only")
+@pytest.mark.parametrize("operation_id", ["GetSubscriptionInfo", "_GetSubscriptionInfo", "BillingSubscription_", ""])
+def test_snapshot_rejects_operation_id_without_service_prefix(operation_id: str) -> None:
+    source = _source_spec()
+    source["paths"]["/v1/subscription/info"]["get"]["operationId"] = operation_id
+
+    with pytest.raises(generator.GenerationError, match="has no `<Service>_` prefix"):
+        generator.build_snapshot("billing", source, "abc123")
+
+
+@pytest.mark.usefixtures("subscription_info_only")
+def test_rendering_rejects_snapshot_whose_reason_schemas_drift_from_its_operations() -> None:
+    snapshot = generator.build_snapshot("billing", _source_spec(), "abc123")
+    schemas = snapshot["components"]["schemas"]
+    schemas["BillingCouponErrorReason"] = {"enum": [""], "type": "string"}
+
+    with pytest.raises(generator.GenerationError, match=r"unused \['BillingCouponErrorReason'\]"):
+        generator.render_module("billing", snapshot)
+
+    del schemas["BillingCouponErrorReason"], schemas["BillingSubscriptionErrorReason"]
+
+    with pytest.raises(generator.GenerationError, match=r"missing \['BillingSubscriptionErrorReason'\]"):
+        generator.render_module("billing", snapshot)
 
 
 @pytest.mark.usefixtures("subscription_info_only")
@@ -169,16 +245,35 @@ def test_rendering_rejects_error_body_that_drifts_from_the_transport() -> None:
         generator.render_module("billing", snapshot)
 
 
-def test_committed_snapshots_keep_each_service_reasons_apart() -> None:
-    billing_reasons, saas_reasons = (
-        generator.load_snapshot(service)["components"]["schemas"]["ErrorReason"]["enum"]
+def test_committed_snapshots_keep_only_the_reasons_of_called_services() -> None:
+    reason_schemas = {
+        service: {
+            name: schema["enum"]
+            for name, schema in generator.load_snapshot(service)["components"]["schemas"].items()
+            if name.endswith("ErrorReason")
+        }
         for service in generator.SERVICES
-    )
+    }
 
-    assert "REQUEST_IN_PROGRESS" in billing_reasons
-    assert "REQUEST_IN_PROGRESS" not in saas_reasons
-    assert "NETWORK_ACCESS_VERSION_CONFLICT" in saas_reasons
-    assert "NETWORK_ACCESS_VERSION_CONFLICT" not in billing_reasons
+    assert sorted(reason_schemas["billing"]) == [
+        "BillingComplianceErrorReason",
+        "BillingEducationErrorReason",
+        "BillingInvoiceErrorReason",
+        "BillingModelProviderErrorReason",
+        "BillingQuotaErrorReason",
+        "BillingSubscriptionErrorReason",
+    ]
+    assert sorted(reason_schemas["saas"]) == [
+        "AccountErrorReason",
+        "SaasNetworkAccessPolicyErrorReason",
+        "SaasNotificationErrorReason",
+        "UtmErrorReason",
+    ]
+    education = reason_schemas["billing"]["BillingEducationErrorReason"]
+    assert "EDUCATION_VERIFY_FAILED" in education
+    assert "COMPLIANCE_DOCUMENT_NOT_FOUND" not in education
+    assert "NETWORK_ACCESS_VERSION_CONFLICT" in reason_schemas["saas"]["SaasNetworkAccessPolicyErrorReason"]
+    assert "NETWORK_ACCESS_VERSION_CONFLICT" not in reason_schemas["saas"]["AccountErrorReason"]
 
 
 def test_committed_client_matches_snapshots() -> None:
