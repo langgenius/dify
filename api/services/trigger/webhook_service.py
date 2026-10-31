@@ -30,15 +30,15 @@ from factories import file_factory
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.file import FileTransferMethod
 from graphon.variables.types import ArrayValidation, SegmentType
-from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
+from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, EndUserType
 from models.model import App, EndUser
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
-from services.async_workflow_service import AsyncWorkflowService
+from services.async_workflow_service import TriggerWorkflowDispatcher
 from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaService
 from services.trigger.app_trigger_service import AppTriggerService
-from services.workflow.entities import WebhookTriggerData
+from services.workflow.entities import TriggerActor, WebhookTriggerData
 from services.workflow_service import WorkflowService
 
 try:
@@ -808,6 +808,7 @@ class WebhookService:
         *,
         end_users: WebhookEndUserProvisioner,
         trigger_status: AppTriggerService,
+        workflow_dispatch: TriggerWorkflowDispatcher,
     ) -> None:
         """Trigger workflow execution via AsyncWorkflowService.
 
@@ -846,10 +847,9 @@ class WebhookService:
                 raise
 
             try:
-                # NOTE: don not use `with sessionmaker(bind=db.engine, expire_on_commit=False).begin()`
-                # trigger_workflow_async need to handle multiple session commits internally
-                with Session(db.engine, expire_on_commit=False) as session:
-                    AsyncWorkflowService.trigger_workflow_async(end_user, trigger_data, session=session)
+                workflow_dispatch.trigger_workflow_async(
+                    actor=TriggerActor(id=end_user.id, role=CreatorUserRole.END_USER), trigger_data=trigger_data
+                )
                 quota_charge.commit()
             except Exception:
                 quota_charge.refund()

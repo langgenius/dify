@@ -39,10 +39,11 @@ from models.trigger import (
 from models.workflow import Workflow
 from schedule import workflow_schedule_task
 from schedule.workflow_schedule_task import poll_workflow_schedules
+from services.async_workflow_service import AsyncWorkflowService
 from services.system_feature_service import SystemFeatureService
-from services.trigger import webhook_service
 from services.trigger.schedule_service import ScheduleService
 from services.trigger.subscription_query_service import TriggerSubscriptionRuntime
+from services.workflow.entities import TriggerActor, TriggerData
 from services.workflow_service import WorkflowService
 from tasks import trigger_processing_tasks
 
@@ -196,7 +197,10 @@ def test_webhook_trigger_creates_trigger_log(
     db_session_with_containers.add_all([webhook_trigger, app_trigger])
     db_session_with_containers.commit()
 
-    def _fake_trigger_workflow_async(user: Any, trigger_data: Any, *, session: Session) -> SimpleNamespace:
+    def _fake_trigger_workflow_async(
+        self: AsyncWorkflowService, *, actor: TriggerActor, trigger_data: TriggerData
+    ) -> SimpleNamespace:
+        session = db_session_with_containers
         log = WorkflowTriggerLog(
             tenant_id=trigger_data.tenant_id,
             app_id=trigger_data.app_id,
@@ -220,7 +224,7 @@ def test_webhook_trigger_creates_trigger_log(
         return SimpleNamespace(workflow_trigger_log_id=log.id, task_id=None, status="queued", queue="test")
 
     monkeypatch.setattr(
-        webhook_service.AsyncWorkflowService,
+        AsyncWorkflowService,
         "trigger_workflow_async",
         _fake_trigger_workflow_async,
     )
@@ -515,7 +519,10 @@ def test_schedule_trigger_creates_trigger_log(
     db_session_with_containers.commit()
 
     # Mock AsyncWorkflowService to create WorkflowTriggerLog
-    def _fake_trigger_workflow_async(user: Any, trigger_data: Any, *, session: Session) -> SimpleNamespace:
+    def _fake_trigger_workflow_async(
+        self: AsyncWorkflowService, *, actor: TriggerActor, trigger_data: TriggerData
+    ) -> SimpleNamespace:
+        session = db_session_with_containers
         log = WorkflowTriggerLog(
             tenant_id=trigger_data.tenant_id,
             app_id=trigger_data.app_id,
@@ -539,7 +546,7 @@ def test_schedule_trigger_creates_trigger_log(
         return SimpleNamespace(workflow_trigger_log_id=log.id, task_id=None, status="queued", queue="test")
 
     monkeypatch.setattr(
-        workflow_schedule_tasks.AsyncWorkflowService,
+        AsyncWorkflowService,
         "trigger_workflow_async",
         _fake_trigger_workflow_async,
     )
