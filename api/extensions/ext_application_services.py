@@ -866,10 +866,12 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
+    from extensions.application_services.tools import resolve_tool_credentials
     from extensions.ext_login import bind_account_loader
 
     app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
     ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
+    ToolManager.configure_credential_resolver(resolve_tool_credentials)
     services = build_application_services(
         database_client=get_session_maker(),
         deployment_edition=dify_config.DEPLOYMENT_EDITION,
