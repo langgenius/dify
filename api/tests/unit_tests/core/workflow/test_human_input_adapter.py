@@ -10,7 +10,7 @@ from core.workflow.human_input_adapter import (
     is_human_input_webapp_enabled,
     parse_human_input_delivery_methods,
 )
-from enums.human_input import DeliveryMethodType
+from enums.human_input import DeliveryMethodType, InstantMessageProvider, InstantMessageRecipientType
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from graphon.runtime import VariablePool
@@ -18,9 +18,10 @@ from models.human_input_delivery import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
-    InteractiveSurfaceDeliveryMethod,
-    _InteractiveSurfaceDeliveryConfig,
+    InstantMessageDeliveryMethod,
 )
+from models.human_input_delivery import InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod
+from models.human_input_delivery import _InteractiveSurfaceDeliveryConfig as _WebAppDeliveryConfig
 
 
 def test_render_body_template_replaces_variable_values():
@@ -175,6 +176,35 @@ def test_parse_human_input_delivery_methods_normalizes_legacy_recipient_keys() -
 
 def test_parse_human_input_delivery_methods_returns_empty_for_non_lists() -> None:
     assert parse_human_input_delivery_methods({"delivery_methods": None}) == []
+
+
+def test_parse_human_input_delivery_methods_accepts_instant_message_config() -> None:
+    methods = parse_human_input_delivery_methods(
+        {
+            "delivery_methods": [
+                {
+                    "type": DeliveryMethodType.IM,
+                    "config": {
+                        "provider": "slack",
+                        "message": "Review {{#node.value#}}",
+                        "recipients": {
+                            "items": [
+                                {"type": "channel", "channel_id": "C123"},
+                                {"type": "user", "user_id": "U123"},
+                            ]
+                        },
+                    },
+                }
+            ]
+        }
+    )
+
+    assert len(methods) == 1
+    method = methods[0]
+    assert isinstance(method, InstantMessageDeliveryMethod)
+    assert method.config.provider == InstantMessageProvider.SLACK
+    assert method.config.recipients.items[0].type == InstantMessageRecipientType.CHANNEL
+    assert method.config.recipients.items[1].type == InstantMessageRecipientType.USER
 
 
 def test_is_human_input_webapp_enabled_checks_enabled_delivery_methods() -> None:
@@ -351,7 +381,7 @@ def test_adapt_human_input_node_data_for_graph_accepts_models() -> None:
                 {
                     "type": DeliveryMethodType.WEBAPP,
                     "enabled": True,
-                    "config": _InteractiveSurfaceDeliveryConfig().model_dump(mode="python"),
+                    "config": _WebAppDeliveryConfig().model_dump(mode="python"),
                 }
             ]
         )
@@ -443,7 +473,7 @@ def test_email_delivery_method_extracts_variable_selectors_skips_short_selectors
 
 
 def test_webapp_delivery_method_uses_empty_selector_set() -> None:
-    method = InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig())
+    method = WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())
 
     assert method.extract_variable_selectors() == ()
 

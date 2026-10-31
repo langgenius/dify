@@ -21,6 +21,7 @@ from models.enums import AppStatus
 from models.model import App, AppMode
 from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.tool_invocation_service import AgentToolInnerService
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.entities.agent_tool_inner import AgentToolInvokeRequest
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
 from services.tools.agent_invocation_gateway import AgentToolInvocationGateway
@@ -237,6 +238,21 @@ def test_invoke_maps_tool_invoke_error_without_private_tool_engine_helper(
             _service(sqlite_session, runtime).invoke(_request())
 
     assert exc_info.value.error_code == "agent_tool_invoke_failed"
+    assert not sqlite_session.in_transaction()
+
+
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_invoke_preserves_credential_refresh_unavailable_error(
+    sqlite_session: Session, *, workflow_runtime: WorkflowRuntime
+) -> None:
+    _persist_app(sqlite_session)
+    error = CredentialRefreshUnavailableError()
+
+    with patch("services.tools.agent_invocation_gateway.ToolManager.get_agent_tool_runtime", side_effect=error):
+        with pytest.raises(CredentialRefreshUnavailableError) as exc_info:
+            _service(sqlite_session, workflow_runtime).invoke(_request())
+
+    assert exc_info.value is error
     assert not sqlite_session.in_transaction()
 
 

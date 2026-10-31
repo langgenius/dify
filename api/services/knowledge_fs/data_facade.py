@@ -44,6 +44,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentChunkResponse,
     KnowledgeFSDocumentCompilationJobResponse,
     KnowledgeFSDocumentDeletePayload,
+    KnowledgeFSDocumentDisplayStatus,
     KnowledgeFSDocumentDownloadDescriptor,
     KnowledgeFSDocumentListResponse,
     KnowledgeFSDocumentMetadataPayload,
@@ -673,13 +674,20 @@ class KnowledgeFSDataFacade:
         account_id: str,
         control_space_id: str,
         cursor: str | None,
+        limit: int = 50,
+        query: str | None = None,
+        status: KnowledgeFSDocumentDisplayStatus | None = None,
     ) -> KnowledgeFSLogicalDocumentListResponse:
         raw = self._interactive(
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_id=control_space_id,
             operation_id="listLogicalDocuments",
-            query=(("cursor", cursor),) if cursor else (),
+            query=tuple(
+                (key, str(value))
+                for key, value in (("cursor", cursor), ("limit", limit), ("query", query), ("status", status))
+                if value is not None
+            ),
         )
         return KnowledgeFSLogicalDocumentListResponse.model_validate(raw)
 

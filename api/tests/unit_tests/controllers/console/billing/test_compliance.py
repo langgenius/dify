@@ -8,8 +8,13 @@ from flask import Flask
 
 from controllers.console.billing.compliance import ComplianceApi, ComplianceDownloadQuery
 from controllers.console.billing.error import ComplianceRateLimitError
+from libs.exception import BaseHTTPException
 from machinery.context import RequestContext
-from services.errors.billing import ComplianceRateLimitExceededError
+from services.billing_client import billing
+from services.errors.billing import (
+    ComplianceRateLimitExceededError,
+    UnknownErrorReason,
+)
 
 
 @pytest.fixture
@@ -51,7 +56,9 @@ def test_get_compliance_download_link(
     resource = ComplianceApi()
     method = unwrap(resource.get)
     query = ComplianceDownloadQuery(doc_name="SOC2_Type_II")
-    compliance_downloads.get_link.return_value = {"url": "https://example.com/report", "ignored": True}
+    compliance_downloads.get_link.return_value = billing.DownloadComplianceDocumentReply(
+        url="https://example.com/report"
+    )
 
     with (
         app.test_request_context("/compliance/download", headers={"User-Agent": "test-agent"}),
@@ -90,3 +97,70 @@ def test_get_compliance_download_translates_rate_limit(
         "message": "Rate limit exceeded for downloading compliance report.",
         "status": 429,
     }
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_code", "expected_status"),
+    [
+        (
+            billing.UpstreamInvalidResponseError(status_code=404, reason="COMPLIANCE_DOCUMENT_NOT_FOUND"),
+            "compliance_document_not_found",
+            404,
+        ),
+        (
+            billing.UpstreamInvalidResponseError(status_code=403, reason="COMPLIANCE_DOWNLOAD_FORBIDDEN"),
+            "compliance_download_forbidden",
+            403,
+        ),
+        (
+            billing.UpstreamUnavailableError(status_code=429, reason="REQUEST_IN_PROGRESS"),
+            "billing_request_in_progress",
+            429,
+        ),
+        (
+            billing.UpstreamUnavailableError(status_code=500, reason="COMPLIANCE_DOWNLOAD_FAILED"),
+            "billing_unavailable",
+            503,
+        ),
+        (
+            billing.UpstreamInvalidResponseError(status_code=400, reason="MISSING_DOC_NAME"),
+            "billing_operation_failed",
+            502,
+        ),
+        (
+            billing.UpstreamInvalidResponseError(
+                status_code=403, reason=UnknownErrorReason("COMPLIANCE_SHIPPED_LATER")
+            ),
+            "billing_operation_failed",
+            502,
+        ),
+        (
+            billing.UpstreamUnavailableError(status_code=503, reason=UnknownErrorReason("COMPLIANCE_SHIPPED_LATER")),
+            "billing_unavailable",
+            503,
+        ),
+        (billing.UpstreamInvalidResponseError(status_code=404), "billing_operation_failed", 502),
+        (billing.UpstreamUnavailableError(), "billing_unavailable", 503),
+    ],
+)
+def test_get_compliance_download_maps_billing_reason(
+    app: Flask,
+    request_context: RequestContext,
+    compliance_downloads: MagicMock,
+    error: billing.UpstreamError,
+    expected_code: str,
+    expected_status: int,
+) -> None:
+    resource = ComplianceApi()
+    compliance_downloads.get_link.side_effect = error
+
+    with (
+        app.test_request_context("/compliance/download"),
+        patch("controllers.console.billing.compliance.extract_remote_ip", return_value="127.0.0.1"),
+        pytest.raises(BaseHTTPException) as exc_info,
+    ):
+        unwrap(resource.get)(resource, ComplianceDownloadQuery(doc_name="SOC2_Type_II"), request_context)
+
+    assert exc_info.value.error_code == expected_code
+    assert exc_info.value.code == expected_status
+    assert exc_info.value.__cause__ is error

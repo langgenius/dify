@@ -1,0 +1,35 @@
+{
+  "type": "invoke",
+  "id": "test-only-event",
+  "timestamp": "2026-08-06T07:59:58Z",
+  "serviceUrl": "https://smba.trafficmanager.net/teams/",
+  "channelId": "msteams",
+  "from": {
+    "id": "test-only-user",
+    "name": "Test User"
+  },
+  "conversation": {
+    "id": "test-only-conversation",
+    "tenantId": "test-only-tenant"
+  },
+  "recipient": {
+    "id": "test-only-bot"
+  },
+  "channelData": {
+    "tenant": {
+      "id": "test-only-tenant"
+    },
+    "source": {
+      "name": "compose"
+    },
+    "preservedNull": null
+  },
+  "value": {
+    "action_id": "approve",
+    "correlation_token": "test-only-correlation",
+    "comment": "Looks good",
+    "choice": "One"
+  },
+  "locale": "en-US",
+  "text": null
+}

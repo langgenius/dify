@@ -9,6 +9,7 @@ import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { AgentConfigurePublishResult } from '../../../use-agent-configure-sync'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel } from '@langgenius/dify-ui/collapsible'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -388,6 +389,7 @@ function PublishBarActions({
 }) {
   const { t } = useTranslation(['agentV2'])
   const publishButtonLabelId = useId()
+  const versionHistoryLabel = t(($) => $['agentDetail.configure.publishBar.versionHistory'])
 
   return (
     <div className="flex w-full min-w-0 items-center justify-between gap-2 p-2 group-data-open/publish-bar:justify-end group-data-open/publish-bar:px-4 group-data-open/publish-bar:pt-2 group-data-open/publish-bar:pb-4 max-sm:flex-wrap max-sm:justify-end">
@@ -416,14 +418,21 @@ function PublishBarActions({
           </TooltipContent>
         </Tooltip>
       </div>
-      <button
-        type="button"
-        aria-label={t(($) => $['agentDetail.configure.publishBar.versionHistory'])}
-        className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary group-data-open/publish-bar:hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        onClick={onOpenVersions}
-      >
-        <span aria-hidden className="i-ri-history-line size-4" />
-      </button>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <IconButton
+              aria-label={versionHistoryLabel}
+              size="lg"
+              className="shrink-0 group-data-open/publish-bar:hidden"
+              onClick={onOpenVersions}
+            >
+              <span aria-hidden className="i-ri-history-line size-4" />
+            </IconButton>
+          }
+        />
+        <TooltipContent>{versionHistoryLabel}</TooltipContent>
+      </Tooltip>
       <Button
         type="button"
         variant="secondary"

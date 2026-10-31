@@ -1021,7 +1021,7 @@ def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snaps
             tenant_id="tenant-1",
             agent_id="agent-1",
             draft_type=AgentConfigDraftType.DRAFT,
-            config_snapshot=AgentSoulConfig(),
+            config_snapshot=agent_soul,
             id="draft-1",
             home_snapshot_id="home-initial",
         ),
@@ -2511,7 +2511,7 @@ def test_serialize_workflow_state_changes_lock_and_save_options(
     monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
 
     state = AgentComposerService._serialize_workflow_state(
-        session=session, binding=binding, agent=agent, version=version
+        session=session, binding=binding, agent=agent, version=version, include_draft_files=True
     )
 
     assert state["soul_lock"]["locked"] is True
@@ -2562,7 +2562,7 @@ def test_serialize_workflow_state_passes_user_declared_outputs_through_effective
     monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
 
     state = AgentComposerService._serialize_workflow_state(
-        session=session, binding=binding, agent=agent, version=version
+        session=session, binding=binding, agent=agent, version=version, include_draft_files=True
     )
 
     effective = state["effective_declared_outputs"]
@@ -2624,6 +2624,7 @@ def test_serialize_workflow_state_includes_inline_debug_conversation_message_sta
         agent=agent,
         version=version,
         account_id="account-1",
+        include_draft_files=True,
     )
 
     assert state["debug_conversation_id"] == "debug-conversation-1"
@@ -2666,7 +2667,11 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
         "_create_roster_agent_for_composer",
         fake_create_roster_agent_for_composer,
     )
-    monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: roster_agent)
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_require_agent",
+        lambda **kwargs: workflow_agent if kwargs["agent_id"] == workflow_agent.id else roster_agent,
+    )
     monkeypatch.setattr(
         AgentComposerService,
         "_require_version",
@@ -2711,6 +2716,8 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
         agent_id="inline-agent-1",
         current_snapshot_id="inline-version-1",
     )
+    session.add_all([workflow_agent, roster_agent, existing_binding])
+    session.commit()
 
     updated_binding = AgentComposerService._save_node_job_only(
         session=session,
@@ -2868,6 +2875,8 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
         ),
     )
     original_node_job = binding.node_job_config_dict
+    session.add_all([inline_agent, current_snapshot, normal_draft, binding])
+    session.commit()
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.WORKFLOW.value,
