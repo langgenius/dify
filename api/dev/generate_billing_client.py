@@ -1,9 +1,14 @@
 """Snapshot the billing and saas OpenAPI specs and generate the typed client in `services/billing_client`.
 
 The snapshot is the generation input, so CI can regenerate and diff without the private dify-saas
-checkout. Only operations on `ALLOWED_OPERATIONS`, the schemas they reach, and each service's
-`ERROR_SCHEMAS` are snapshotted: dify is public, and every other dify-saas endpoint stays out of
-this repository.
+checkout. Only operations on `ALLOWED_OPERATIONS`, the schemas they reach, the `Error` body, and the
+`<Service>ErrorReason` of each proto service they belong to are snapshotted: dify is public, and every
+other dify-saas endpoint stays out of this repository.
+
+The proto service is the operationId prefix before the underscore (`BillingEducation` for
+`BillingEducation_VerifyEducationIdentity`). Each one gets its own reason Literal, error classes, and
+`ServiceErrors`, so a caller catching `BillingEducationUpstreamError` only matches the reasons that
+service can return.
 
     uv run --project api --dev python api/dev/generate_billing_client.py                  # snapshot + generate
     uv run --project api --dev python api/dev/generate_billing_client.py --from-snapshot  # generate only
@@ -57,7 +62,9 @@ SNAPSHOT_COMMIT_KEY = "x-dify-saas-commit"
 HTTP_METHODS = ("get", "post", "put", "delete", "patch")
 LINE_LENGTH = 120
 BASE_MODEL_ATTRIBUTES = frozenset(dir(BaseModel))
-ERROR_SCHEMAS = ("Error", "ErrorReason")
+ERROR_SCHEMA = "Error"
+ERROR_REASON_SUFFIX = "ErrorReason"
+ERROR_CLASS_SUFFIXES = ("UpstreamError", "UpstreamUnavailableError", "UpstreamInvalidResponseError")
 
 
 @dataclass(frozen=True)
@@ -201,6 +208,17 @@ def _annotate_presence(schema: JsonObject) -> JsonObject:
     return result
 
 
+def proto_service(operation_id: str) -> str:
+    prefix, separator, method = operation_id.partition("_")
+    if not separator or not prefix or not method:
+        raise GenerationError(f"operationId {operation_id!r} has no `<Service>_` prefix")
+    return prefix
+
+
+def error_reason_schema(proto: str) -> str:
+    return f"{proto}{ERROR_REASON_SUFFIX}"
+
+
 def build_snapshot(service: Service, source: JsonObject, commit: str) -> JsonObject:
     prefix = SCHEMA_PREFIXES[service]
     source_paths: dict[str, JsonObject] = source.get("paths", {})
@@ -215,11 +233,20 @@ def build_snapshot(service: Service, source: JsonObject, commit: str) -> JsonObj
         name.removeprefix(prefix): _rewrite_refs(schema, prefix)
         for name, schema in source.get("components", {}).get("schemas", {}).items()
     }
-    for name in ERROR_SCHEMAS:
-        if name not in source_schemas:
-            raise GenerationError(f"{service}: error schema {prefix}{name} is not in the dify-saas spec")
+    error_schemas = {ERROR_SCHEMA}
+    for allowed in ALLOWED_OPERATIONS[service]:
+        operation_id = paths[allowed.path][allowed.method.lower()].get("operationId", "")
+        reason_schema = error_reason_schema(proto_service(operation_id))
+        if reason_schema not in source_schemas:
+            raise GenerationError(
+                f"{service}: {allowed.method} {allowed.path} ({operation_id}) has no "
+                f"{prefix}{reason_schema} schema in the dify-saas spec"
+            )
+        error_schemas.add(reason_schema)
+    if ERROR_SCHEMA not in source_schemas:
+        raise GenerationError(f"{service}: error schema {prefix}{ERROR_SCHEMA} is not in the dify-saas spec")
     reachable: set[str] = set()
-    pending = _ref_names(paths) | set(ERROR_SCHEMAS)
+    pending = _ref_names(paths) | error_schemas
     while pending:
         name = pending.pop()
         if name in reachable:
@@ -351,7 +378,7 @@ def check_error_body(schema: JsonObject) -> None:
     properties: dict[str, JsonObject] = schema.get("properties", {})
     expected = {
         "code": {"type": "integer", "format": "int32"},
-        "reason": {"$ref": "#/components/schemas/ErrorReason"},
+        "reason": {"type": "string"},
         "message": {"type": "string"},
         "metadata": {"type": "object", "additionalProperties": {"type": "string"}},
     }
@@ -363,7 +390,7 @@ def check_error_body(schema: JsonObject) -> None:
 
 
 def render_schema(name: str, schema: JsonObject) -> list[str]:
-    if name == "Error":
+    if name == ERROR_SCHEMA:
         check_error_body(schema)
         return []
     if "enum" in schema:
@@ -438,7 +465,7 @@ def render_operation(service: Service, allowed: AllowedOperation, operation: Jso
         f"        {json.dumps(allowed.method)},",
         f"        {json.dumps(template)},",
         f"        response_model={response},",
-        "        errors=ERRORS,",
+        f"        errors={service_errors_name(proto_service(operation['operationId']))},",
         f"        path_params={{{', '.join(path_params)}}},",
         f"        params={{{', '.join(query_params)}}},",
         f"        body={body},",
@@ -446,42 +473,74 @@ def render_operation(service: Service, allowed: AllowedOperation, operation: Jso
     ]
 
 
-def render_errors(service: Service) -> list[str]:
-    return f'''def _is_error_reason(value: str) -> TypeIs[ErrorReason]:
-    return value in get_args(ErrorReason.__value__)
+def service_errors_name(proto: str) -> str:
+    return f"{snake_case(proto).upper()}_ERRORS"
 
 
-class UpstreamError(BillingUpstreamError):
-    """A failed {service} call, with its reason typed by this module's `ErrorReason`."""
+def proto_services(service: Service, snapshot: JsonObject) -> list[str]:
+    protos: list[str] = []
+    for allowed in ALLOWED_OPERATIONS[service]:
+        proto = proto_service(snapshot["paths"][allowed.path][allowed.method.lower()]["operationId"])
+        if proto not in protos:
+            protos.append(proto)
+    return protos
+
+
+def check_error_schemas(service: Service, protos: list[str], schemas: dict[str, JsonObject]) -> None:
+    expected = {error_reason_schema(proto) for proto in protos}
+    actual = {name for name in schemas if name.endswith(ERROR_REASON_SUFFIX)}
+    if actual != expected:
+        raise GenerationError(
+            f"{service} snapshot reason schemas differ from its operations' services: "
+            f"missing {sorted(expected - actual)}, unused {sorted(actual - expected)}; rerun the snapshot"
+        )
+    generated = {f"{proto}{suffix}" for proto in protos for suffix in ERROR_CLASS_SUFFIXES}
+    if collisions := sorted(generated & set(schemas)):
+        raise GenerationError(f"{service}: generated error classes collide with schemas {collisions}")
+
+
+def render_errors(proto: str) -> list[str]:
+    reason = error_reason_schema(proto)
+    guard = f"_is_{snake_case(proto)}_error_reason"
+    return f'''def {guard}(value: str) -> TypeIs[{reason}]:
+    return value in get_args({reason}.__value__)
+
+
+class {proto}UpstreamError(BillingUpstreamError):
+    """A failed {proto} call, with its reason typed by `{reason}`."""
 
     def __init__(
         self,
         *args: object,
         status_code: int | None = None,
         body: UpstreamErrorBody | None = None,
-        reason: ErrorReason | UnknownErrorReason | None = None,
+        reason: {reason} | UnknownErrorReason | None = None,
     ) -> None:
         super().__init__(*args, status_code=status_code, body=body)
         self.reason = reason
 
 
-class UpstreamUnavailableError(UpstreamError, BillingUpstreamUnavailableError):
+class {proto}UpstreamUnavailableError({proto}UpstreamError, BillingUpstreamUnavailableError):
     pass
 
 
-class UpstreamInvalidResponseError(UpstreamError, BillingUpstreamInvalidResponseError):
+class {proto}UpstreamInvalidResponseError({proto}UpstreamError, BillingUpstreamInvalidResponseError):
     pass
 
 
-ERRORS = ServiceErrors(
-    is_reason=_is_error_reason, unavailable=UpstreamUnavailableError, invalid_response=UpstreamInvalidResponseError
+{service_errors_name(proto)} = ServiceErrors(
+    is_reason={guard},
+    unavailable={proto}UpstreamUnavailableError,
+    invalid_response={proto}UpstreamInvalidResponseError,
 )'''.splitlines()
 
 
 def render_module(service: Service, snapshot: JsonObject) -> str:
     schemas: dict[str, JsonObject] = snapshot["components"]["schemas"]
+    protos = proto_services(service, snapshot)
+    check_error_schemas(service, protos, schemas)
     blocks = [block for name in model_order(schemas) if (block := render_schema(name, schemas[name]))]
-    blocks.append(render_errors(service))
+    blocks.extend(render_errors(proto) for proto in protos)
     for allowed in ALLOWED_OPERATIONS[service]:
         operation = snapshot["paths"][allowed.path][allowed.method.lower()]
         blocks.append(render_operation(service, allowed, operation))
