@@ -9,7 +9,6 @@ from typing import cast, get_type_hints, is_protocol
 
 import pytest
 
-from enums.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import adapters as adapters_package
 from core.human_input_v2.im_integration.adapters import (
@@ -34,6 +33,7 @@ from core.human_input_v2.resolved_form import (
     SelectInput,
     UserAction,
 )
+from enums.human_input import ButtonStyle
 
 
 def test_stream_factory_returns_private_concrete_type_without_stream_contract_stub() -> None:
