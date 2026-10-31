@@ -1,46 +1,58 @@
 'use client'
 
-import type {
-  EducationStatusResponse,
-  EducationVerifyResponse,
-} from '@dify/contracts/api/console/account/types.gen'
+import type { contract } from '@dify/contracts/api/console/account/orpc.gen'
+import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
+import type { ErrorFromErrorMap, InferContractRouterErrorMap } from '@orpc/contract'
+import type { TFunction } from 'i18next'
 import type { ReactNode } from 'react'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { isDefinedError } from '@orpc/client'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { billingErrorMessageKey } from '@/app/components/billing/billing-error'
 import { useDocLink } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { redirect, useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { EducationStatusCard } from '../status-card'
 import UserInfo from '../user-info'
-
-type EducationVerificationRequest = () => Promise<EducationVerifyResponse>
 
 const selectEducationStatus = ({ allow_refresh, is_student }: EducationStatusResponse) => ({
   allowRefresh: allow_refresh,
   isEducationAccount: is_student,
 })
 
-const selectEducationPlanEnabled = ({ education }: GetFeaturesResponse) => education.enabled
+type EducationVerificationError = ErrorFromErrorMap<
+  InferContractRouterErrorMap<typeof contract.account.education.verify.get>
+>
 
-const requestEducationVerification: EducationVerificationRequest = () =>
-  consoleClient.account.education.verify.get({}, { context: { silent: true } })
+function educationVerifyErrorMessage(
+  error: EducationVerificationError,
+  t: TFunction<['billing', 'education']>,
+) {
+  const code = isDefinedError(error) ? error.code : undefined
+  switch (code) {
+    case 'education_verify_failed':
+      return t(($) => $.verifyFailed, { ns: 'education' })
+    case 'education_verify_limit':
+      return t(($) => $.tooManyAttempts, { ns: 'education' })
+    default:
+      return t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' })
+  }
+}
+
+const selectEducationPlanEnabled = ({ education }: GetFeaturesResponse) => education.enabled
 
 export default function EducationVerifyPage() {
   return <EducationVerifyFlow />
 }
 
-export function EducationVerifyFlow({
-  requestVerification = requestEducationVerification,
-}: {
-  requestVerification?: EducationVerificationRequest
-}) {
-  const { t } = useTranslation(['education'])
+export function EducationVerifyFlow() {
+  const { t } = useTranslation(['billing', 'education'])
   const router = useRouter()
   const { data: userEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -60,13 +72,13 @@ export function EducationVerifyFlow({
   )
   const {
     data: verification,
+    error: verificationError,
     isError: isVerificationError,
     mutate: verifyEducation,
     reset: resetVerification,
-  } = useMutation({
-    mutationKey: ['education', 'verification'],
-    mutationFn: () => requestVerification(),
-  })
+  } = useMutation(
+    consoleQuery.account.education.verify.get.mutationOptions({ context: { silent: true } }),
+  )
 
   const startVerification = useCallback(() => {
     if (verificationStartedRef.current) return
@@ -101,6 +113,9 @@ export function EducationVerifyFlow({
   if (educationStatusQuery.isError)
     return (
       <EducationVerifyError
+        message={t(($) => $[billingErrorMessageKey(educationStatusQuery.error)], {
+          ns: 'billing',
+        })}
         onRetry={() => {
           void educationStatusQuery.refetch()
         }}
@@ -155,6 +170,7 @@ export function EducationVerifyFlow({
   if (isVerificationError)
     return (
       <EducationVerifyError
+        message={educationVerifyErrorMessage(verificationError, t)}
         onRetry={() => {
           verificationStartedRef.current = false
           resetVerification()
@@ -214,7 +230,7 @@ function EducationVerifiedContent() {
   )
 }
 
-function EducationVerifyError({ onRetry }: { onRetry: () => void }) {
+function EducationVerifyError({ message, onRetry }: { message: string; onRetry: () => void }) {
   const { t } = useTranslation(['common', 'education'])
 
   return (
@@ -239,7 +255,7 @@ function EducationVerifyError({ onRetry }: { onRetry: () => void }) {
           </>
         }
       >
-        {t(($) => $['errorBoundary.message'], { ns: 'common' })}
+        {message}
       </EducationStatusCard>
     </EducationVerifyContent>
   )

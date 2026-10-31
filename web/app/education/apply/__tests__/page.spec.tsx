@@ -1,4 +1,5 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import { ORPCError } from '@orpc/client'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import EducationApplyPage from '@/app/education/apply/application-form'
@@ -114,10 +115,26 @@ describe('EducationApplyPage billing boundary', () => {
     await user.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
 
     await waitFor(() => {
-      expect(mockGetSubscription).toHaveBeenCalledWith({
-        query: { plan: 'professional', interval: 'year' },
-      })
+      expect(mockGetSubscription).toHaveBeenCalledWith(
+        { query: { plan: 'professional', interval: 'year' } },
+        { context: { silent: true } },
+      )
     })
+  })
+
+  it('explains a checkout failure by its error code', async () => {
+    setupContext(true)
+    mockGetSubscription.mockRejectedValue(
+      new ORPCError('billing_unavailable', { defined: true, status: 503, message: 'Backend text' }),
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
+
+    await waitFor(() =>
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith('billing.errors.unavailable'),
+    )
   })
 
   it('shows non-manager members that they cannot apply the coupon to payment', () => {
@@ -221,4 +238,41 @@ describe('EducationApplyPage billing boundary', () => {
       await screen.findByRole('button', { name: 'education.useEducationDiscount' }),
     ).toBeInTheDocument()
   })
+
+  it.each([
+    ['education_activate_failed', 400, 'education.activateFailed'],
+    ['education_activate_limit', 429, 'education.tooManyAttempts'],
+    ['billing_request_in_progress', 429, 'billing.errors.requestInProgress'],
+    ['billing_unavailable', 503, 'billing.errors.unavailable'],
+    ['billing_operation_failed', 502, 'billing.errors.operationFailed'],
+  ])(
+    'explains a %s application failure next to the submit button',
+    async (code, status, message) => {
+      setupContext(true)
+      mockEducationAdd.mockRejectedValue(
+        new ORPCError(code, { defined: true, status, message: 'Backend text' }),
+      )
+      const user = userEvent.setup()
+      renderPage(false)
+
+      await user.type(
+        screen.getByRole('combobox', { name: 'education.form.schoolName.title' }),
+        'DifyUniversity',
+      )
+      await user.keyboard('{Escape}')
+      await user.click(screen.getByRole('checkbox', { name: 'education.form.terms.option.age' }))
+      await user.click(
+        screen.getByRole('checkbox', { name: 'education.form.terms.option.inSchool' }),
+      )
+      await user.click(
+        screen.getByRole('checkbox', { name: 'education.form.terms.option.personalUse' }),
+      )
+      await user.click(screen.getByRole('button', { name: 'education.submit' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(message)
+      expect(screen.queryByText('Backend text')).not.toBeInTheDocument()
+      expect(vi.mocked(toast.error)).not.toHaveBeenCalled()
+      expect(screen.getByRole('button', { name: 'education.submit' })).toBeInTheDocument()
+    },
+  )
 })
