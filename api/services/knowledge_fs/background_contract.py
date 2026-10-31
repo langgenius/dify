@@ -40,23 +40,23 @@ OPERATION_QUEUES = {
 
 
 class CompilationLocator(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    attemptId: UUID
+    model_config = ConfigDict(extra="forbid", serialize_by_alias=True)
+    attempt_id: UUID = Field(alias="attemptId")
 
 
 class FindabilityLocator(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    compilationAttemptId: UUID
-    publicationFingerprint: str = Field(min_length=1, max_length=128)
+    model_config = ConfigDict(extra="forbid", serialize_by_alias=True)
+    compilation_attempt_id: UUID = Field(alias="compilationAttemptId")
+    publication_fingerprint: str = Field(alias="publicationFingerprint", min_length=1, max_length=128)
 
 
 class BackgroundJobPayload(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", serialize_by_alias=True)
     id: UUID
     type: Literal["document.compile", "quality.page-index-findability"]
     payload: CompilationLocator | FindabilityLocator
     attempts: int = Field(default=1, ge=1, le=100_000, strict=True)
-    runAfter: int | None = Field(default=None, ge=0, le=2**53 - 1, strict=True)
+    run_after: int | None = Field(alias="runAfter", default=None, ge=0, le=2**53 - 1, strict=True)
     # Publisher routing metadata must never become trusted worker execution scope.
     priority: Literal["normal", "high"] = Field(default="normal", exclude=True)
 

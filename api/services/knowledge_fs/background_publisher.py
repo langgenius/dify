@@ -28,7 +28,7 @@ def check_background_publisher_ready() -> None:
 def publish_background_job(job: BackgroundJobPayload) -> None:
     if not dify_config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED:
         raise RuntimeError("KnowledgeFS Celery delivery is not enabled")
-    if job.runAfter is not None and job.runAfter > int(time.time() * 1000) + 86_400_000:
+    if job.run_after is not None and job.run_after > int(time.time() * 1000) + 86_400_000:
         raise ValueError("Background job delay exceeds the transport envelope")
     queue = MAINTENANCE_QUEUE
     if job.type == "document.compile":
@@ -39,9 +39,9 @@ def publish_background_job(job: BackgroundJobPayload) -> None:
         )
     current_app.send_task(
         DELIVERY_TASK,
-        kwargs={"delivery": job.model_dump(mode="json", exclude={"runAfter"})},
+        kwargs={"delivery": job.model_dump(mode="json", exclude={"run_after"})},
         task_id=str(job.id),
         queue=queue,
-        eta=datetime.fromtimestamp(job.runAfter / 1000, tz=UTC) if job.runAfter is not None else None,
+        eta=datetime.fromtimestamp(job.run_after / 1000, tz=UTC) if job.run_after is not None else None,
         retry=False,
     )
