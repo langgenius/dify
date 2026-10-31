@@ -1,5 +1,6 @@
 import type { GetBillingSubscriptionData } from '@dify/contracts/api/console/billing/types.gen'
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ALL_PLANS } from '@/app/components/billing/config'
@@ -95,7 +96,10 @@ describe('Cloud plan payment flow', () => {
       if (interval === 'year') expect(screen.getByText(`$${price * 12}`)).toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: `billing.plansCommon.${label}` }))
       await waitFor(() => expect(window.location.href).toBe('https://pay.example.com/checkout'))
-      expect(mockGetSubscription).toHaveBeenCalledExactlyOnceWith({ query: { plan, interval } })
+      expect(mockGetSubscription).toHaveBeenCalledExactlyOnceWith(
+        { query: { plan, interval } },
+        { context: { silent: true } },
+      )
       expect(mockGetInvoices).not.toHaveBeenCalled()
     },
   )
@@ -136,10 +140,13 @@ describe('Cloud plan payment flow', () => {
 
   it('closes the pending portal and reports its URL request failure', async () => {
     const user = userEvent.setup()
-    mockGetInvoices.mockRejectedValueOnce(new Error('Billing unavailable'))
+    mockGetInvoices.mockRejectedValueOnce(
+      new ORPCError('billing_unavailable', { defined: true, status: 503, message: 'Backend text' }),
+    )
     renderPlan({ currentPlan: 'professional', plan: 'professional' })
     await user.click(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))
-    expect(await screen.findByText('Billing unavailable')).toBeInTheDocument()
+    expect(await screen.findByText('billing.errors.unavailable')).toBeInTheDocument()
+    expect(screen.queryByText('Backend text')).not.toBeInTheDocument()
     expect(popup.close).toHaveBeenCalledOnce()
     expect(popup.location.href).toBe('')
   })
