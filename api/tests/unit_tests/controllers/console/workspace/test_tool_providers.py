@@ -461,6 +461,54 @@ class TestToolProviderApisCases:
                 assert method(api, "t", make_account(), "provider")["credentials"][0]["id"] == "credential-1"
             assert get_info.call_args.kwargs["credential_query"] is credential_query
 
+
+        def test_get_credential_info_mcp_provider(self, app: Flask, credential_query: MagicMock) -> None:
+            api = ToolBuiltinProviderGetCredentialInfoApi()
+            method = unwrap(api.get)
+
+            with (
+                app.test_request_context("/"),
+                patch(
+                    "controllers.console.workspace.tool_providers.BuiltinToolManageService.get_builtin_tool_provider_credential_info",
+                    return_value={
+                        "supported_credential_types": [],
+                        "is_oauth_custom_client_enabled": False,
+                        "credentials": [
+                            {
+                                "id": "mcp-uuid-1",
+                                "name": "TAPD-TEST",
+                                "provider": "tapd-server-test",
+                                "credential_type": "api-key",
+                                "is_default": True,
+                                "credentials": {},
+                            }
+                        ],
+                    },
+                ),
+            ):
+                res = method(api, "t", make_account(), "tapd-server-test")
+                assert len(res["credentials"]) == 1
+                assert res["credentials"][0]["id"] == "mcp-uuid-1"
+                assert res["credentials"][0]["name"] == "TAPD-TEST"
+                assert res["credentials"][0]["is_default"] is True
+                assert res["supported_credential_types"] == []
+                assert res["is_oauth_custom_client_enabled"] is False
+
+        def test_get_credential_info_unknown_provider_raises_not_found(self, app: Flask, credential_query: MagicMock) -> None:
+            from core.tools.errors import ToolProviderNotFoundError
+
+            api = ToolBuiltinProviderGetCredentialInfoApi()
+            method = unwrap(api.get)
+
+            with (
+                app.test_request_context("/"),
+                patch(
+                    "controllers.console.workspace.tool_providers.BuiltinToolManageService.get_builtin_tool_provider_credential_info",
+                    side_effect=ToolProviderNotFoundError("Tool provider missing-provider not found"),
+                ),
+            ):
+                with pytest.raises(ToolProviderNotFoundError, match="missing-provider"):
+                    method(api, "t", make_account(), "missing-provider")
         def test_get_oauth_client_schema(self, app: Flask) -> None:
             api = ToolBuiltinProviderGetOauthClientSchemaApi()
             method = unwrap(api.get)

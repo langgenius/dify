@@ -676,6 +676,112 @@ class TestGetBuiltinToolProviderCredentialInfo:
         assert result.is_oauth_custom_client_enabled is False
 
 
+    def test_returns_authorized_credential_info_for_authed_mcp_provider(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+    ) -> None:
+        from core.tools.errors import ToolProviderNotFoundError
+        from models.tools import MCPToolProvider
+
+        monkeypatch.setattr(
+            service_module.ToolManager,
+            "get_builtin_provider",
+            MagicMock(side_effect=ToolProviderNotFoundError("plugin provider tapd-server-test not found")),
+        )
+
+        mock_mcp = MagicMock(spec=MCPToolProvider)
+        mock_mcp.id = "mcp-uuid-1"
+        mock_mcp.name = "TAPD-TEST"
+        mock_mcp.authed = True
+
+        mock_mcp_service = MagicMock()
+        mock_mcp_service.get_provider_by_persisted_reference.return_value = mock_mcp
+        monkeypatch.setattr(
+            "services.tools.mcp_tools_manage_service.MCPToolManageService.get_provider_by_persisted_reference",
+            mock_mcp_service.get_provider_by_persisted_reference,
+        )
+
+        result = BuiltinToolManageService.get_builtin_tool_provider_credential_info(
+            "tenant-1",
+            "tapd-server-test",
+            credential_query=CredentialQueryRepository(
+                session_factory=sessionmaker(bind=repository_session.get_bind(), expire_on_commit=False)
+            ),
+        )
+
+        assert len(result.credentials) == 1
+        assert result.credentials[0].id == "mcp-uuid-1"
+        assert result.credentials[0].name == "TAPD-TEST"
+        assert result.credentials[0].is_default is True
+        assert result.supported_credential_types == []
+        assert result.is_oauth_custom_client_enabled is False
+
+    def test_returns_empty_credential_info_for_unauthed_mcp_provider(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+    ) -> None:
+        from core.tools.errors import ToolProviderNotFoundError
+        from models.tools import MCPToolProvider
+
+        monkeypatch.setattr(
+            service_module.ToolManager,
+            "get_builtin_provider",
+            MagicMock(side_effect=ToolProviderNotFoundError("plugin provider tapd-server-test not found")),
+        )
+
+        mock_mcp = MagicMock(spec=MCPToolProvider)
+        mock_mcp.id = "mcp-uuid-1"
+        mock_mcp.name = "TAPD-TEST"
+        mock_mcp.authed = False
+
+        mock_mcp_service = MagicMock()
+        mock_mcp_service.get_provider_by_persisted_reference.return_value = mock_mcp
+        monkeypatch.setattr(
+            "services.tools.mcp_tools_manage_service.MCPToolManageService.get_provider_by_persisted_reference",
+            mock_mcp_service.get_provider_by_persisted_reference,
+        )
+
+        result = BuiltinToolManageService.get_builtin_tool_provider_credential_info(
+            "tenant-1",
+            "tapd-server-test",
+            credential_query=CredentialQueryRepository(
+                session_factory=sessionmaker(bind=repository_session.get_bind(), expire_on_commit=False)
+            ),
+        )
+
+        assert result.credentials == []
+        assert result.supported_credential_types == []
+        assert result.is_oauth_custom_client_enabled is False
+
+    def test_raises_tool_provider_not_found_for_completely_unknown_provider(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        repository_session: Session,
+    ) -> None:
+        from core.tools.errors import ToolProviderNotFoundError
+
+        monkeypatch.setattr(
+            service_module.ToolManager,
+            "get_builtin_provider",
+            MagicMock(side_effect=ToolProviderNotFoundError("plugin provider unknown-provider not found")),
+        )
+
+        monkeypatch.setattr(
+            "services.tools.mcp_tools_manage_service.MCPToolManageService.get_provider_by_persisted_reference",
+            MagicMock(side_effect=ValueError("MCP tool not found")),
+        )
+
+        with pytest.raises(ToolProviderNotFoundError, match="Tool provider unknown-provider not found"):
+            BuiltinToolManageService.get_builtin_tool_provider_credential_info(
+                "tenant-1",
+                "unknown-provider",
+                credential_query=CredentialQueryRepository(
+                    session_factory=sessionmaker(bind=repository_session.get_bind(), expire_on_commit=False)
+                ),
+            )
+
 class TestGetBuiltinToolProviderCredentials:
     def test_returns_empty_when_no_providers(self, repository_session: Session) -> None:
         _persist_provider(repository_session, credential_id="other", tenant_id="other-tenant")
