@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-from enums.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -24,6 +23,7 @@ from core.human_input_v2.im_integration.adapters import (
     ms_teams,
 )
 from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, SelectInput, UserAction
+from enums.human_input import ButtonStyle
 
 _CALLBACK_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "ms_teams_card_submit.json"
 _RECEIVED_AT = datetime(2026, 8, 12, 2, 26, 40)

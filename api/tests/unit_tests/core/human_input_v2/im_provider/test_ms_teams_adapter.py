@@ -24,7 +24,6 @@ from jwt.algorithms import RSAAlgorithm
 from msrest.exceptions import HttpOperationError
 from pytest_mock import MockerFixture
 
-from enums.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -61,6 +60,7 @@ from core.human_input_v2.resolved_form import (
     SelectInput,
     UserAction,
 )
+from enums.human_input import ButtonStyle
 
 _RECEIVED_AT = datetime(2026, 8, 6, 8, 0, 0)
 _WEBHOOK_FIXTURE_PATH = Path(__file__).parents[4] / "fixtures" / "im_provider" / "ms_teams_webhook_activity.json"
