@@ -10,7 +10,7 @@ import zlib
 from collections import Counter
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, BinaryIO, Literal, Self, cast
+from typing import IO, Any, BinaryIO, Literal, Self, cast
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
@@ -193,7 +193,7 @@ class AppPackageService(RosterAgentPackageReader):
     """Reuse the bounded ZIP reader; Apps retain DSL import semantics."""
 
     def read_package(
-        self, source: BinaryIO, *, accept_roster_references: bool = False, refuse_roster_references: bool = False
+        self, source: IO[bytes], *, accept_roster_references: bool = False, refuse_roster_references: bool = False
     ) -> PreparedAppPackage | None:
         """Validate an App archive, or rewind a Roster package for its importer.
 
@@ -240,7 +240,7 @@ class AppPackageService(RosterAgentPackageReader):
             package.archive.seek(0)
 
     def _read_package(
-        self, source: BinaryIO, *, bundled: bool, accept_roster_references: bool, refuse_roster_references: bool
+        self, source: IO[bytes], *, bundled: bool, accept_roster_references: bool, refuse_roster_references: bool
     ) -> PreparedAppPackage | None:
         """Read an App archive; a ``bundled`` one is the workflow behind a packaged Workflow Tool."""
         spool = cast(BinaryIO, tempfile.SpooledTemporaryFile(max_size=16 * 1024 * 1024, mode="w+b"))  # noqa: SIM115

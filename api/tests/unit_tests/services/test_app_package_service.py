@@ -926,7 +926,9 @@ def _skill_section(content: bytes) -> tuple[list[tuple[str, str]], list[tuple[st
     """The first Agent's linked workspace Skill zips (name, digest) and notes (name, priority), and config Skills."""
     data, manifest = _read_export(content)
     resources = AppPackageManifest.model_validate(manifest).agent_resources["agent_1"]
-    package = AgentPackage.model_validate(cast(dict[str, object], data["agent_packages"])["agent_1"])
+    packages = data["agent_packages"]
+    assert isinstance(packages, dict)
+    package = AgentPackage.model_validate(packages["agent_1"])
     return (
         [(item.name, item.sha256) for item in resources.skills if item.scope == "workspace"],
         [(item.name, item.priority) for item in package.workspace_skills],
@@ -1086,7 +1088,8 @@ class TestWorkspaceSkillLinkCases:
         content = _export(app, preserve_agent_bindings=True)
 
         def mutate(_manifest: AppPackageManifest, data: dict[str, object], _members: dict[str, bytes]) -> None:
-            packages = cast(dict[str, dict[str, list[dict[str, object]]]], data["agent_packages"])
+            packages = data["agent_packages"]
+            assert isinstance(packages, dict)
             packages["agent_1"]["workspace_skills"][1]["priority"] = priority
 
         prepared = AppPackageService().read_package(io.BytesIO(_rewrite(content, mutate)))
