@@ -1,0 +1,147 @@
+import type { ContactRecipientOption, ContactRecipientOptionProvider } from './contact-provider'
+import type { HumanInputV2NodeType } from './types'
+import type { NodeProps } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import HumanInputNodeBranches from '@/app/components/workflow/nodes/human-input/shared/node-branches'
+import { ENABLE_HITL_IM } from '@/config'
+import { useContactRecipientOptionProvider } from './contact-provider'
+import { HumanInputV2Disabled } from './disabled'
+import { deriveRecipientSummary } from './recipient-utils'
+
+const HumanInputV2NodeContent = ({
+  provider,
+  ...props
+}: NodeProps<HumanInputV2NodeType> & {
+  provider: ContactRecipientOptionProvider
+}) => {
+  const { t } = useTranslation(['workflow'])
+  const { data } = props
+  const [contacts, setContacts] = useState<ContactRecipientOption[]>([])
+  const contactIds = useMemo(
+    () => [
+      ...new Set(
+        data.recipients_spec
+          .filter((recipient) => recipient.type === 'contact')
+          .map((recipient) => recipient.contact_id),
+      ),
+    ],
+    [data.recipients_spec],
+  )
+
+  useEffect(() => {
+    if (!contactIds.length) return
+
+    let active = true
+    void provider
+      .resolve({ contact_ids: contactIds })
+      .then((options) => {
+        if (active) setContacts(options)
+      })
+      .catch(() => {
+        if (active) setContacts([])
+      })
+    return () => {
+      active = false
+    }
+  }, [contactIds, provider])
+
+  const summary = deriveRecipientSummary(
+    data.recipients_spec,
+    new Map(contacts.map((contact) => [contact.id, contact.name])),
+  )
+
+  const summaryLabel = (() => {
+    if (summary.state === 'empty')
+      return t(($) => $['nodes.humanInputV2.card.empty'], { ns: 'workflow' })
+    if (summary.state === 'invalid')
+      return t(($) => $['nodes.humanInputV2.card.invalid'], { ns: 'workflow' })
+    if (summary.hasAllWorkspaceContacts && data.recipients_spec.length === 1)
+      return t(($) => $['nodes.humanInputV2.recipients.allWorkspaceContacts'], { ns: 'workflow' })
+    if (
+      !summary.hasAllWorkspaceContacts &&
+      summary.hasInitiator &&
+      !summary.contactCount &&
+      !summary.dynamicEmailCount &&
+      !summary.onetimeEmailCount
+    )
+      return t(($) => $['nodes.humanInputV2.card.initiatorOnly'], { ns: 'workflow' })
+    if (
+      !summary.hasAllWorkspaceContacts &&
+      summary.contactCount &&
+      !summary.hasInitiator &&
+      !summary.dynamicEmailCount &&
+      !summary.onetimeEmailCount
+    )
+      return t(($) => $['nodes.humanInputV2.card.contactsOnly'], {
+        ns: 'workflow',
+        count: summary.contactCount,
+      })
+    if (
+      !summary.hasAllWorkspaceContacts &&
+      summary.contactCount &&
+      summary.hasInitiator &&
+      !summary.dynamicEmailCount &&
+      !summary.onetimeEmailCount
+    )
+      return t(($) => $['nodes.humanInputV2.card.initiatorAndContacts'], {
+        ns: 'workflow',
+        count: summary.contactCount,
+      })
+    return t(($) => $['nodes.humanInputV2.card.configured'], {
+      ns: 'workflow',
+      count: data.recipients_spec.length,
+      overflow: summary.overflowCount,
+    })
+  })()
+
+  return (
+    <>
+      <div className="space-y-0.5 py-1">
+        {summary.state !== 'empty' && (
+          <div className="px-2.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['nodes.humanInputV2.recipients.title'], { ns: 'workflow' })}
+          </div>
+        )}
+        <div className="px-2.5">
+          <div
+            className={cn(
+              'flex min-h-6 items-center gap-1 rounded-md px-1.5 py-1 system-xs-regular',
+              summary.state === 'empty' &&
+                'bg-state-warning-hover px-2 text-text-warning ring-[0.5px] ring-state-warning-active',
+              summary.state === 'invalid' &&
+                'bg-state-destructive-hover text-text-destructive-secondary',
+              (summary.state === 'configured' || summary.state === 'overflow') &&
+                'bg-workflow-block-parma-bg text-text-secondary',
+            )}
+          >
+            {summary.state === 'invalid' && (
+              <span className="i-ri-alert-line size-4 shrink-0" aria-hidden />
+            )}
+            <span className="truncate">{summaryLabel}</span>
+          </div>
+        </div>
+      </div>
+      <HumanInputNodeBranches {...props} />
+    </>
+  )
+}
+
+const EnabledHumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
+  const { provider, workspaceId } = useContactRecipientOptionProvider()
+  return <HumanInputV2NodeContent key={workspaceId} {...props} provider={provider} />
+}
+
+export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
+  if (!ENABLE_HITL_IM) {
+    return (
+      <>
+        <HumanInputV2Disabled className="mx-2.5 my-1" />
+        <HumanInputNodeBranches {...props} />
+      </>
+    )
+  }
+
+  return <EnabledHumanInputV2Node {...props} />
+}

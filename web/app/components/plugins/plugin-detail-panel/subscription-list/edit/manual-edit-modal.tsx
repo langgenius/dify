@@ -56,7 +56,9 @@ export const ManualEditModal = ({ onClose, subscription, pluginDetail }: Props) 
   const detail = usePluginStore((state) => state.detail)
   const { refetch } = useSubscriptionList()
 
-  const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription()
+  const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription({
+    silent: true,
+  })
 
   const propertiesSchema = useMemo<ParametersSchema[]>(
     () => detail?.declaration?.trigger?.subscription_schema || [],

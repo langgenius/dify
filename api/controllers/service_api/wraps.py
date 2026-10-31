@@ -16,6 +16,7 @@ from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unautho
 
 from configs import dify_config
 from controllers.common.access_response import MISSING_BEARER_MESSAGE
+from controllers.common.errors import UnauthorizedError
 from controllers.common.resource_access_token_errors import resource_access_token_errors
 from controllers.service_api.schema import (
     USER_FETCH_FROM_ATTR,
@@ -31,7 +32,13 @@ from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset
 from models.model import ApiToken, EndUser
 from repositories.knowledge import dataset_api_key_bindings
-from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
+from services.api_token_service import (
+    ApiTokenCache,
+    ApiTokenInvalidError,
+    CachedApiToken,
+    fetch_token_with_single_flight,
+    record_token_usage,
+)
 from services.app_service import AppService
 from services.auth.resource_access_token_contracts import is_resource_access_token
 from services.feature_service import FeatureService
@@ -287,7 +294,7 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
     return interceptor
 
 
-def check_knowledge_rate_limit(api_token: ApiToken) -> None:
+def check_knowledge_rate_limit(api_token: ApiToken | CachedApiToken) -> None:
     """Enforce the cloud knowledge base request rate limit for a dataset API key's workspace.
 
     Shared by the ``cloud_edition_billing_rate_limit_check`` decorator and the KnowledgeFS
@@ -421,7 +428,7 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
     return decorated
 
 
-def validate_and_get_api_token(scope: str | None = None):
+def validate_and_get_api_token(scope: str | None = None) -> ApiToken | CachedApiToken:
     """
     Validate and get API token with Redis caching.
 
@@ -441,17 +448,20 @@ def validate_and_get_api_token(scope: str | None = None):
         logger.debug("Token validation served from cache for scope: %s", scope)
         # Record usage in Redis for later batch update (no Celery task per request)
         record_token_usage(auth_token, scope)
-        return cast(ApiToken, cached_token)
+        return cached_token
 
     # Cache miss - use Redis lock for single-flight mode
     # This ensures only one request queries DB for the same token concurrently
-    return fetch_token_with_single_flight(auth_token, scope)
+    try:
+        return fetch_token_with_single_flight(auth_token, scope)
+    except ApiTokenInvalidError as error:
+        raise UnauthorizedError(str(error)) from error
 
 
 def extract_service_api_bearer_token() -> str:
     auth_token = peek_service_api_bearer_token()
     if auth_token is None:
-        raise Unauthorized(MISSING_BEARER_MESSAGE)
+        raise UnauthorizedError(MISSING_BEARER_MESSAGE)
     return auth_token
 
 

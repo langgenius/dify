@@ -1,0 +1,166 @@
+import type {
+  ChannelSummary,
+  ExternalContactCreateRequest,
+  GetContactResponse,
+  HumanInputContact,
+  HumanInputContactType,
+  ImBinding,
+  ImIdentity,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+
+export type ContactsDeployment = 'ce' | 'saas' | 'ee'
+
+export type ContactsPermissions = {
+  canManageContacts: boolean
+  canManageMembers: boolean
+  canViewContacts: boolean
+}
+
+export type ContactsFeatureContextValue = {
+  deployment: ContactsDeployment
+  imCentrallyManaged: boolean | undefined
+  imCapabilityError?: Error | null
+  retryIMCapability?: () => void
+  permissions: ContactsPermissions
+  workspaceId: string
+}
+
+type ContactType = HumanInputContactType
+export type ContactTypeFilter = 'all' | ContactType
+
+export type ContactIMBinding = ImBinding
+export type ContactIMIdentity = ImIdentity
+export type ContactIMChannel = Pick<ChannelSummary, 'id' | 'provider'>
+
+export type SetContactIMBindingCommand = {
+  contactId: string
+  identityId: string
+  override: boolean
+}
+
+export type RemoveContactIMBindingCommand = {
+  contactId: string
+  binding: ContactIMBinding
+}
+
+export type UnbindContactIMBindingCommand = {
+  contactId: string
+}
+
+export type ContactView = HumanInputContact & {
+  avatar_url: string
+  email: string | null
+  im_bindings: ContactIMBinding[]
+  im_binding_details?: GetContactResponse['im_binding_details']
+}
+
+export type AvailablePlatformContact = {
+  avatar_url: string | null
+  departmentPath?: string[]
+  email: string
+  id: string
+  name: string
+}
+
+export type ContactsListQuery = {
+  deployment: ContactsDeployment
+  kind: ContactTypeFilter
+  limit: number
+  page: number
+  search: string
+}
+
+export type ContactPage<T> = {
+  data: T[]
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type AvailablePlatformContactsQuery = {
+  limit: number
+  page: number
+  search: string
+}
+
+export type CreateExternalContactCommand = {
+  avatar?: ExternalContactCreateRequest['avatar']
+  displayName: string
+  email: string
+}
+
+export type CreateExternalContactResult =
+  | { contactId: string; kind: 'created' }
+  | { contactId?: string; kind: 'duplicate_external_contact' }
+  | { contactId: string; kind: 'matches_workspace_contact' }
+  | { contactId: string; kind: 'matches_platform_contact' }
+  | { kind: 'failed' }
+
+export type UpdateExternalContactCommand = CreateExternalContactCommand & {
+  contactId: string
+}
+
+export type UpdateExternalContactResult =
+  | { contactId: string; kind: 'updated' }
+  | { contactId?: string; kind: 'duplicate_external_contact' }
+  | { contactId: string; kind: 'matches_workspace_contact' }
+  | { contactId: string; kind: 'matches_platform_contact' }
+  | { kind: 'failed' }
+
+export type FindExternalContactsByEmailsCommand = {
+  emails: string[]
+}
+
+export type ExternalContactInviteConflict = {
+  email: string
+  id: string
+  name: string
+}
+
+export type UpgradeExternalContactsToWorkspaceCommand = {
+  contactIds: string[]
+}
+
+export type UpgradeExternalContactsToWorkspaceResult = {
+  contactIds: string[]
+  kind: 'upgraded'
+}
+
+export type AddPlatformContactsCommand = {
+  contactIds: string[]
+  upgradeExternalContacts: boolean
+}
+
+type PlatformContactUpgradeConflict = {
+  contactId: string
+  email: string
+  platformContactId: string
+}
+
+export type AddPlatformContactsResult =
+  | { contactIds: string[]; kind: 'added' }
+  | { conflicts: PlatformContactUpgradeConflict[]; kind: 'requires_external_contact_upgrade' }
+  | { kind: 'conflict' | 'external_upgrade_unsupported' | 'forbidden' }
+  | { kind: 'failed' }
+
+export type RemoveContactsCommand = {
+  contactIds: string[]
+}
+
+export type RemoveContactsResult =
+  | { kind: 'removed'; removedContactIds: string[] }
+  | { kind: 'failed' }
+
+export type RemoveMemberCommand = {
+  keepAsPlatformContact: boolean
+  memberId: string
+}
+
+export type RemoveMemberResult =
+  | {
+      contactId: string | null
+      contactOutcome: 'removed' | 'converted_to_platform' | 'not_found'
+      kind: 'removed'
+    }
+  | { kind: 'failed' }

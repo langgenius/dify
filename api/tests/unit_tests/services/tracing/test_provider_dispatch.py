@@ -22,6 +22,7 @@ import requests
 import wandb
 import weave
 from aliyun.log.logclient import LogClient
+from aliyun.log.util import Util
 from dify_trace_aliyun.aliyun_trace import AliyunDataTrace
 from dify_trace_aliyun.config import AliyunConfig
 from dify_trace_aliyun.data_exporter.traceclient import TraceClient, convert_to_span_id
@@ -215,6 +216,8 @@ class TestApplicationTraceNodeAliasCases:
             monkeypatch.setattr(
                 AliyunLogStore, "_check_endpoint_connectivity", staticmethod(lambda _endpoint, _timeout: None)
             )
+            # The SDK constructor probes the endpoint through a socket before any HTTP request.
+            monkeypatch.setattr(Util, "get_host_ip", staticmethod(lambda _host: "127.0.0.1"))
 
             def reject_http_transport(*_args: object, **_kwargs: object) -> None:
                 pytest.fail("Configured LogStore test escaped its isolated transport boundary")

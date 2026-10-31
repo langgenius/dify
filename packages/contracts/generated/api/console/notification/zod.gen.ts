@@ -37,9 +37,9 @@ export const zSimpleResultResponse = z.object({
  */
 export const zNotificationItemResponse = z.object({
   body: z.string(),
-  frequency: z.string().nullish(),
+  frequency: z.enum(['every_page_load', 'once']),
   lang: z.string(),
-  notification_id: z.string().nullish(),
+  notification_id: z.string(),
   subtitle: z.string(),
   title: z.string(),
   title_pic_url: z.string(),

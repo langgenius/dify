@@ -3,6 +3,7 @@
 import type { EnvScope, EnvVariable } from '@/features/agent-v2/agent-composer/form-state'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -202,9 +203,19 @@ function EnvEditorRow({
   showScope?: boolean
 }) {
   const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const [isValueRevealed, setIsValueRevealed] = useState(false)
   const shouldMaskValue = variable.masked && !isValueRevealed
   const displayedValue = shouldMaskValue ? maskedEnvValue : variable.value
+  const revealLabel = t(
+    ($) =>
+      $[
+        isValueRevealed
+          ? 'agentDetail.configure.advancedSettings.envEditor.hideValue'
+          : 'agentDetail.configure.advancedSettings.envEditor.revealValue'
+      ],
+    { key: variable.key },
+  )
   return (
     <tr
       className={cn(
@@ -251,25 +262,27 @@ function EnvEditorRow({
           </span>
         )}
         {variable.masked && (
-          <button
-            type="button"
-            aria-label={t(
-              ($) =>
-                $[
-                  isValueRevealed
-                    ? 'agentDetail.configure.advancedSettings.envEditor.hideValue'
-                    : 'agentDetail.configure.advancedSettings.envEditor.revealValue'
-                ],
-              { key: variable.key },
-            )}
-            onClick={() => setIsValueRevealed((revealed) => !revealed)}
-            className="mr-2 ml-auto flex size-5 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span
-              aria-hidden
-              className={cn(isValueRevealed ? 'i-ri-eye-off-line' : 'i-ri-eye-line', 'size-4')}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <IconButton
+                  aria-label={revealLabel}
+                  size="sm"
+                  className="mr-2 ml-auto shrink-0"
+                  onClick={() => setIsValueRevealed((revealed) => !revealed)}
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      isValueRevealed ? 'i-ri-eye-off-line' : 'i-ri-eye-line',
+                      'size-4',
+                    )}
+                  />
+                </IconButton>
+              }
             />
-          </button>
+            <TooltipContent>{revealLabel}</TooltipContent>
+          </Tooltip>
         )}
       </EnvEditorCell>
       {showScope && (
@@ -279,21 +292,30 @@ function EnvEditorRow({
       )}
       <EnvEditorCell className="justify-center">
         {editable && (
-          <button
-            type="button"
-            aria-label={t(
-              ($) => $['agentDetail.configure.advancedSettings.envEditor.deleteVariable'],
-              {
-                key:
-                  variable.key ||
-                  t(($) => $['agentDetail.configure.advancedSettings.envEditor.keyPlaceholder']),
-              },
-            )}
-            onClick={onDelete}
-            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span aria-hidden className="i-ri-delete-bin-line size-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <IconButton
+                  aria-label={t(
+                    ($) => $['agentDetail.configure.advancedSettings.envEditor.deleteVariable'],
+                    {
+                      key:
+                        variable.key ||
+                        t(
+                          ($) =>
+                            $['agentDetail.configure.advancedSettings.envEditor.keyPlaceholder'],
+                        ),
+                    },
+                  )}
+                  tone="destructive"
+                  onClick={onDelete}
+                >
+                  <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                </IconButton>
+              }
+            />
+            <TooltipContent>{tCommon(($) => $['operation.delete'])}</TooltipContent>
+          </Tooltip>
         )}
       </EnvEditorCell>
     </tr>
@@ -434,14 +456,23 @@ export function EnvVariablesTable({
             )}
             <EnvEditorCell header className="justify-center">
               {onAdd && (
-                <button
-                  type="button"
-                  aria-label={t(($) => $['agentDetail.configure.advancedSettings.envEditor.add'])}
-                  onClick={() => onAdd()}
-                  className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                >
-                  <span aria-hidden className="i-ri-add-line size-4" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <IconButton
+                        aria-label={t(
+                          ($) => $['agentDetail.configure.advancedSettings.envEditor.add'],
+                        )}
+                        onClick={() => onAdd()}
+                      >
+                        <span aria-hidden className="i-ri-add-line size-4" />
+                      </IconButton>
+                    }
+                  />
+                  <TooltipContent>
+                    {t(($) => $['agentDetail.configure.advancedSettings.envEditor.add'])}
+                  </TooltipContent>
+                </Tooltip>
               )}
             </EnvEditorCell>
           </tr>

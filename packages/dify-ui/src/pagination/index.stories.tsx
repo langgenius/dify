@@ -76,14 +76,10 @@ type Story = StoryObj<typeof meta>
 export const Playground: Story = {
   render: () => <PaginationDemo />,
   play: async ({ canvas, userEvent }) => {
-    await expect(
-      canvas.getByRole('button', { name: 'Edit page number, current page 2 of 200' }),
-    ).toBeVisible()
+    await expect(canvas.getByRole('button', { name: '2/200: Edit page number' })).toBeVisible()
 
     await userEvent.click(canvas.getByRole('button', { name: 'Next page' }))
-    await expect(
-      canvas.getByRole('button', { name: 'Edit page number, current page 3 of 200' }),
-    ).toBeVisible()
+    await expect(canvas.getByRole('button', { name: '3/200: Edit page number' })).toBeVisible()
 
     await userEvent.click(canvas.getByRole('radio', { name: '50' }))
     await expect(canvas.getByRole('radio', { name: '50' })).toHaveAttribute('aria-checked', 'true')
