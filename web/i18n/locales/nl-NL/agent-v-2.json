@@ -161,7 +161,7 @@
   "agentDetail.configure.preview.chatFeatures": "Chatfuncties",
   "agentDetail.configure.preview.empty.defaultAgentName": "Agent",
   "agentDetail.configure.preview.empty.description": "Voer de agent uit als een afgeronde chat, precies zoals mensen die na publicatie ervaren.",
-  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Deze Agent-run is gestopt nadat het maximale aantal modelverzoeken was bereikt. Probeer het opnieuw of splits de taak op in kleinere stappen.",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Deze agentrun is gestopt bij de limiet voor modelverzoeken. Probeer het opnieuw of verdeel de taak in kleinere stappen.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Deze Agent-run is gestopt omdat de tijdslimiet is bereikt. Probeer het opnieuw of splits de taak op in kleinere stappen.",
   "agentDetail.configure.preview.inputPlaceholder": "Bericht sturen naar {{name}}",
   "agentDetail.configure.preview.restart": "Opnieuw beginnen",

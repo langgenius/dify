@@ -92,7 +92,7 @@
   "gotoAnything.groups.apps": "Applications",
   "gotoAnything.groups.commands": "Commandes",
   "gotoAnything.groups.knowledgeBases": "Bases de connaissances",
-  "gotoAnything.groups.plugins": "Plug-ins",
+  "gotoAnything.groups.plugins": "Intégrations",
   "gotoAnything.groups.workflowNodes": "Nœuds de flux de travail",
   "gotoAnything.noMatchingCommands": "Aucune commande correspondante n’a été trouvée",
   "gotoAnything.noResults": "Aucun résultat trouvé",

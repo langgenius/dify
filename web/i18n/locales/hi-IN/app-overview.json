@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "छुपे हुए फ़ील्ड पूर्व-भरें",
   "overview.status.disable": "अक्षम करें",
   "overview.triggerInfo.learnAboutTriggers": "ट्रिगर्स के बारे में और जानें",
-  "overview.triggerInfo.triggerStatusDescription": "जिस संस्करण में ट्रिगर शामिल हैं, उसे प्रकाशित करने के बाद वे यहाँ दिखाई देंगे।"
+  "overview.triggerInfo.triggerStatusDescription": "प्रकाशित करने के बाद ट्रिगर यहाँ दिखाई देंगे।"
 }

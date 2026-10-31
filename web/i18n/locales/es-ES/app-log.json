@@ -105,7 +105,7 @@
   "title": "Registros",
   "triggerBy.appRun": "Aplicación web",
   "triggerBy.debugging": "Depuración",
-  "triggerBy.plugin": "Complemento",
+  "triggerBy.plugin": "Integración",
   "triggerBy.ragPipelineDebugging": "Depuración RAG",
   "triggerBy.ragPipelineRun": "Pipeline RAG",
   "triggerBy.schedule": "Horario",

@@ -85,7 +85,7 @@
   "plansCommon.memberAfter": "Thành viên",
   "plansCommon.messageRequest.title": "{{count,number}} tín dụng tin nhắn",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}} tin nhắn/tháng",
-  "plansCommon.messageRequest.tooltip": "Hạn mức triệu hồi tin nhắn cho các kế hoạch sử dụng mô hình OpenAI (ngoại trừ gpt4). Các tin nhắn vượt quá giới hạn sẽ sử dụng Khóa API OpenAI của bạn.",
+  "plansCommon.messageRequest.tooltip": "Tín dụng tin nhắn giúp bạn dễ dàng dùng thử các mô hình khác nhau của OpenAI, Anthropic, Gemini, xAI, DeepSeek và Tongyi trong Dify. Tín dụng được tiêu thụ tùy theo loại mô hình. Khi dùng hết, bạn có thể chuyển sang khóa API của riêng mình.",
   "plansCommon.modelProviders": "Nhà cung cấp Mô hình",
   "plansCommon.month": "tháng",
   "plansCommon.mostPopular": "Phổ biến nhất",

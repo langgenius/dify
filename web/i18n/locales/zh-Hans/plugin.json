@@ -61,7 +61,7 @@
   "autoUpdate.scopeMode.exclude": "排除选定",
   "autoUpdate.strategy.disabled.description": "集成将不会自动更新",
   "autoUpdate.strategy.disabled.name": "禁用",
-  "autoUpdate.strategy.fixOnly.description": "仅自动更新补丁版本（例如，1.0.1 → 1.0.2）。次要版本更改不会触发更新。",
+  "autoUpdate.strategy.fixOnly.description": "仅自动更新补丁版本（例如，1.0.1 → 1.0.2）",
   "autoUpdate.strategy.fixOnly.name": "仅修复",
   "autoUpdate.strategy.latest.description": "始终更新到最新版本",
   "autoUpdate.strategy.latest.name": "最新",

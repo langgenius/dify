@@ -85,7 +85,7 @@
   "plansCommon.memberAfter": "個成員",
   "plansCommon.messageRequest.title": "{{count,number}} 訊息額度",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}} 消息/月",
-  "plansCommon.messageRequest.tooltip": "為不同方案提供基於 OpenAI 模型的訊息響應額度。",
+  "plansCommon.messageRequest.tooltip": "訊息額度可協助您在 Dify 中輕鬆試用 OpenAI、Anthropic、Gemini、xAI、DeepSeek 和通義的不同模型。額度會依模型類型消耗。用完後，您可以改用自己的 API 金鑰。",
   "plansCommon.modelProviders": "支援的模型提供商",
   "plansCommon.month": "月",
   "plansCommon.mostPopular": "最受歡迎",

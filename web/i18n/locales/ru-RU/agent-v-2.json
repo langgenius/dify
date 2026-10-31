@@ -161,7 +161,7 @@
   "agentDetail.configure.preview.chatFeatures": "Функции чата",
   "agentDetail.configure.preview.empty.defaultAgentName": "Агент",
   "agentDetail.configure.preview.empty.description": "Запустите агента как готовый чат, именно так, как его увидят пользователи после публикации.",
-  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Этот запуск агента был остановлен после достижения максимального количества запросов к модели. Повторите попытку или разбейте задачу на более мелкие шаги.",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Этот запуск агента был остановлен по достижении лимита запросов к модели. Повторите попытку или разбейте задачу на более мелкие шаги.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Этот запуск агента был остановлен из-за достижения лимита времени. Повторите попытку или разбейте задачу на более мелкие шаги.",
   "agentDetail.configure.preview.inputPlaceholder": "Написать {{name}}",
   "agentDetail.configure.preview.restart": "Начать заново",

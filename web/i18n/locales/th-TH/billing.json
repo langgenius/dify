@@ -85,7 +85,7 @@
   "plansCommon.memberAfter": "สมาชิก",
   "plansCommon.messageRequest.title": "{{count,number}} เครดิตข้อความ",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}} ข้อความ/เดือน",
-  "plansCommon.messageRequest.tooltip": "โควต้าการเรียกใช้ข้อความสําหรับแผนต่างๆ โดยใช้โมเดล OpenAI (ยกเว้น gpt4) ข้อความที่เกินขีดจํากัดจะใช้คีย์ OpenAI API ของคุณ",
+  "plansCommon.messageRequest.tooltip": "เครดิตข้อความช่วยให้คุณทดลองใช้โมเดลต่างๆ จาก OpenAI, Anthropic, Gemini, xAI, DeepSeek และ Tongyi ใน Dify ได้อย่างง่ายดาย เครดิตจะถูกใช้ตามประเภทของโมเดล เมื่อใช้หมดแล้ว คุณสามารถเปลี่ยนไปใช้คีย์ API ของคุณเองได้",
   "plansCommon.modelProviders": "ผู้ให้บริการโมเดล",
   "plansCommon.month": "เดือน",
   "plansCommon.mostPopular": "แห่ง",

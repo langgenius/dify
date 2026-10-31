@@ -4,7 +4,7 @@
   "common.goToAddDocuments": "ドキュメントを追加するために行く",
   "common.preparingDataSource": "データソースを準備中",
   "common.processing": "処理中",
-  "common.publishAs": "知識パイプラインとして公開する",
+  "common.publishAs": "ナレッジパイプラインとして公開",
   "common.publishAsPipeline.description": "知識の説明",
   "common.publishAsPipeline.descriptionPlaceholder": "このナレッジパイプラインの説明を入力してください。（任意）",
   "common.publishAsPipeline.name": "パイプライン名とアイコン",

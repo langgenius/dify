@@ -159,7 +159,7 @@
   "serviceApi.card.endpoint": "Điểm cuối API dịch vụ",
   "serviceApi.card.title": "API dịch vụ backend",
   "serviceApi.disabled": "Vô hiệu hóa",
-  "serviceApi.enabled": "Đang phục vụ",
+  "serviceApi.enabled": "Đã bật",
   "serviceApi.title": "Giao diện lập trình dịch vụ",
   "unavailable": "Không khả dụng",
   "unknownError": "Lỗi không xác định",

@@ -85,7 +85,7 @@
   "plansCommon.memberAfter": "Član",
   "plansCommon.messageRequest.title": "{{count,number}} kreditov za sporočila",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}} sporočil/mesec",
-  "plansCommon.messageRequest.tooltip": "Kvota za klice sporočil pri različnih načrtih z uporabo modelov OpenAI (razen GPT-4). Sporočila preko omejitve bodo uporabljala vaš OpenAI API ključ.",
+  "plansCommon.messageRequest.tooltip": "Krediti za sporočila vam pomagajo preprosto preizkusiti različne modele OpenAI, Anthropic, Gemini, xAI, DeepSeek in Tongyi v Dify. Krediti se porabljajo glede na vrsto modela. Ko jih porabite, lahko preklopite na lasten ključ API.",
   "plansCommon.modelProviders": "Ponudniki modelov",
   "plansCommon.month": "mesec",
   "plansCommon.mostPopular": "Najbolj priljubljeno",
