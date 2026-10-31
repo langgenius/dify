@@ -1,4 +1,5 @@
 {
+  "activateFailed": "Non è stato possibile attivare lo sconto educativo. La tua verifica educativa attuale potrebbe essere ancora attiva, oppure questa email non è più idonea.",
   "applied.activeSubscription.description": "Hai un abbonamento attivo. Puoi utilizzare lo sconto educativo dopo la scadenza dell'abbonamento. Conferma il tuo abbonamento su <stripeLink>Stripe</stripeLink>.",
   "applied.noPaymentPermission.description": "Non hai il permesso di pagamento in questo workspace. Passa a un workspace in cui puoi gestire la fatturazione per utilizzare lo sconto educativo.",
   "applied.noPaymentPermission.returnHome": "Torna a Dify",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "coupon esclusivo al 100%",
   "toVerifiedTip.end": "per il Piano Professionale Dify.",
   "toVerifiedTip.front": "Ora sei idoneo per lo stato di Educazione Verificata. Per favore, inserisci le tue informazioni educative qui sotto per completare il processo e ricevere un",
-  "useEducationDiscount": "Utilizza lo sconto educativo"
+  "tooManyAttempts": "Troppi tentativi. Riprova più tardi.",
+  "useEducationDiscount": "Utilizza lo sconto educativo",
+  "verifyFailed": "Non è stato possibile verificare il tuo stato educativo. Se ti sei verificato di recente, la tua verifica educativa attuale potrebbe essere ancora attiva. Altrimenti, riprova più tardi."
 }
