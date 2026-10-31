@@ -1,3 +1,4 @@
+from collections import defaultdict
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
@@ -1200,6 +1201,28 @@ def test_get_all_providers_attaches_active_credentials(provider_db: Session) -> 
     assert result[str(ModelProviderID("openai"))][0].credential_name == "primary"
     assert result[str(ModelProviderID("openai"))][0].encrypted_config == '{"api_key": "secret"}'
     assert str(ModelProviderID("anthropic")) not in result
+
+
+def test_init_trial_provider_records_attaches_credential_of_concurrently_created_record(provider_db: Session) -> None:
+    existing_provider = _build_trial_provider_record()
+    existing_provider.credential_id = "credential-id"
+    credential = ProviderCredential(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        credential_name="primary",
+        encrypted_config='{"api_key": "secret"}',
+    )
+    credential.id = "credential-id"
+    provider_db.add_all([existing_provider, credential])
+    provider_db.commit()
+
+    with patch(
+        "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+        {"openai": _build_hosting_provider()},
+    ):
+        result = ProviderManager._init_trial_provider_records("tenant-id", defaultdict(list))
+
+    assert result["openai"][0].encrypted_config == '{"api_key": "secret"}'
 
 
 def test_invalidate_configurations_cache_bumps_selected_source_version() -> None:
