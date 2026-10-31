@@ -163,39 +163,34 @@ def test_convert_tool_response_to_str_and_extract_binary_messages():
         )
 
 
-def test_extract_binary_messages_treat_an_empty_mimetype_as_missing():
-    """A ``mime_type`` of ``None`` must be handled like an absent one.
-
-    ``ToolFileMessageTransformer`` keeps the ``None`` value in the message meta (see
-    ``test_transform_tool_invoke_messages_mimetype_key_present_but_none``), so a plugin that reports a
-    missing content type used to fail here with a pydantic ``ValidationError`` on
-    ``ToolInvokeMessageBinary.mimetype`` and the agent tool call was reported as an "unknown error".
-    """
+@pytest.mark.parametrize("mime_type", [None, ""], ids=["none", "empty"])
+def test_extract_binary_messages_treat_an_empty_mimetype_as_missing(mime_type: str | None) -> None:
+    """Empty MIME metadata must preserve URLs and use the inferred or default type."""
     messages = [
         ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.IMAGE,
             message=ToolInvokeMessage.TextMessage(text="https://example.com/a.png"),
-            meta={"mime_type": None},
+            meta={"mime_type": mime_type},
         ),
         ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.IMAGE_LINK,
             message=ToolInvokeMessage.TextMessage(text="https://example.com/b.png"),
-            meta={"mime_type": None},
+            meta={"mime_type": mime_type},
         ),
         ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.BINARY_LINK,
             message=ToolInvokeMessage.TextMessage(text="https://example.com/c.unknown-ext"),
-            meta={"mime_type": None},
+            meta={"mime_type": mime_type},
         ),
         ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.BLOB,
             message=ToolInvokeMessage.TextMessage(text="https://example.com/d.unknown-ext"),
-            meta={"mime_type": None, "filename": "d"},
+            meta={"mime_type": mime_type, "filename": "d"},
         ),
         ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.LINK,
             message=ToolInvokeMessage.TextMessage(text="https://example.com/e.unknown-ext"),
-            meta={"mime_type": None},
+            meta={"mime_type": mime_type},
         ),
     ]
 
