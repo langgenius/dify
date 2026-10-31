@@ -276,7 +276,7 @@ class RBACWorkspaceMemberAccessSync(WorkspaceMemberAccessSync):
         )
 
 
-def _education_error(error: billing.UpstreamError) -> AccountApplicationError | None:
+def _education_error(error: billing.BillingEducationUpstreamError) -> AccountApplicationError | None:
     """The account error for a billing failure, or None to leave it to the generic billing errors."""
     match error.reason:
         case "EDUCATION_VERIFY_FAILED":
@@ -296,65 +296,7 @@ def _education_error(error: billing.UpstreamError) -> AccountApplicationError | 
             | "MISSING_ACCOUNT_ID"
             | "INVALID_ACCOUNT_ID"
             | "MISSING_PREFILLED_EMAIL"
-            | "INVALID_PAYMENT_LINK_REQUEST"
-            | "MISSING_PLAN"
-            | "MISSING_INTERVAL"
-            | "INVALID_PLAN_INTERVAL"
-            | "CREATE_SUBSCRIPTION_PAYMENT_LINK_FAILED"
-            | "INVALID_KNOWLEDGE_RATE_LIMIT_REQUEST"
-            | "TENANT_IDS_COUNT_TOO_LARGE"
-            | "DOCUMENT_USAGE_UNAVAILABLE"
             | "EDUCATION_STATUS_FAILED"
-            | "INVALID_INVOICE_REQUEST"
-            | "CREATE_INVOICE_PORTAL_FAILED"
-            | "INVALID_COMPLIANCE_DOWNLOAD_REQUEST"
-            | "MISSING_DOC_NAME"
-            | "MISSING_IP_ADDRESS"
-            | "MISSING_DEVICE_INFO"
-            | "COMPLIANCE_DOCUMENT_NOT_FOUND"
-            | "COMPLIANCE_DOWNLOAD_FORBIDDEN"
-            | "COMPLIANCE_DOWNLOAD_FAILED"
-            | "INVALID_MODEL_PROVIDER_PAYMENT_LINK_REQUEST"
-            | "MISSING_PROVIDER_NAME"
-            | "INVALID_MODEL_PROVIDER"
-            | "CREATE_MODEL_PROVIDER_PAYMENT_LINK_FAILED"
-            | "BILLING_COUPON_AMOUNT_OFF_INVALID"
-            | "BILLING_COUPON_CURRENCY_INVALID"
-            | "BILLING_COUPON_DISCOUNT_TYPE_INVALID"
-            | "BILLING_COUPON_DURATION_MISMATCH"
-            | "BILLING_COUPON_DURATION_MONTHS_INVALID"
-            | "BILLING_COUPON_DURATION_MONTHS_MISMATCH"
-            | "BILLING_COUPON_DURATION_UNSUPPORTED"
-            | "BILLING_COUPON_EXPIRES_AFTER_COUPON"
-            | "BILLING_COUPON_EXPIRES_AT_INVALID"
-            | "BILLING_COUPON_ID_EMPTY"
-            | "BILLING_COUPON_NOT_FOUND"
-            | "BILLING_COUPON_PERCENT_OFF_INVALID"
-            | "BILLING_COUPON_PRODUCT_NOT_FOUND"
-            | "BILLING_COUPON_PRODUCT_PRICE_NOT_CONFIGURED"
-            | "BILLING_COUPON_PRODUCT_SCOPE_INVALID"
-            | "BILLING_COUPON_PRODUCT_SCOPE_MISMATCH"
-            | "BILLING_COUPON_PRODUCT_SERVICE_NOT_CONFIGURED"
-            | "BILLING_COUPON_PROMOTION_CODE_INVALID"
-            | "BILLING_COUPON_QUANTITY_INVALID"
-            | "BILLING_COUPON_QUANTITY_TOO_LARGE"
-            | "BILLING_COUPON_STRIPE_NOT_CONFIGURED"
-            | "BILLING_COUPON_TASK_ID_REQUIRED"
-            | "BILLING_COUPON_TASK_NOT_CONFIGURED"
-            | "BILLING_COUPON_TASK_NOT_FOUND"
-            | "BILLING_COUPON_TASK_PUBLISHER_NOT_CONFIGURED"
-            | "BILLING_COUPON_TASK_REPO_NOT_CONFIGURED"
-            | "BILLING_COUPON_TICKET_ID_REQUIRED"
-            | "BILLING_COUPON_USAGE_REPO_NOT_CONFIGURED"
-            | "BILLING_REFUND_AMOUNT_INVALID"
-            | "BILLING_REFUND_INVOICE_MISMATCH"
-            | "BILLING_REFUND_INVOICE_NOT_FOUND"
-            | "BILLING_REFUND_MODE_INVALID"
-            | "BILLING_REFUND_NOT_REFUNDABLE"
-            | "BILLING_REFUND_PAYMENT_NOT_FOUND"
-            | "BILLING_REFUND_STRIPE_STATUS_NOT_FOUND"
-            | "BILLING_REFUND_SUBSCRIPTION_NOT_FOUND"
-            | "BILLING_REFUND_TICKET_ID_REQUIRED"
         ):
             return None
         case UnknownErrorReason() | None:
@@ -367,7 +309,7 @@ def _education_error(error: billing.UpstreamError) -> AccountApplicationError | 
 def _education_errors() -> Generator[None]:
     try:
         yield
-    except billing.UpstreamError as error:
+    except billing.BillingEducationUpstreamError as error:
         mapped = _education_error(error)
         if mapped is None:
             raise
