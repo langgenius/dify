@@ -9,6 +9,51 @@ from models.model import App, AppMode
 from models.workflow import WorkflowRun
 
 
+def task_execution_settlement(sql, session_id, context, *, include_controls=True):
+    """Classify current execution evidence without reading Workflow or payloads.
+
+    An immutable unknown Run is still unknown. A new task cannot discard that
+    fact merely because there is no live request left to cancel.
+    """
+    result = "settled"
+    if include_controls:
+        controls = context.task_control
+        if controls.get("settlement") == "unknown" or controls.get("receipt", {}).get("enqueue") == "unknown":
+            return "unknown"
+        if controls.get("settlement") == "pending" or controls.get("receipt", {}).get("enqueue") in {
+            "pending",
+            "dispatching",
+            "claimed",
+        }:
+            result = "pending"
+    if context.verify_run_id:
+        run = sql.scalar(
+            select(DifyBuilderRun).where(
+                DifyBuilderRun.id == context.verify_run_id,
+                DifyBuilderRun.session_id == session_id,
+            )
+        )
+        if run is None or run.status not in {"succeeded", "failed", "stopped", "running"}:
+            return "unknown"
+        evidence = (run.verification or {}).get("execution_evidence")
+        if evidence and evidence.get("safety_outcome") == "execution_evidence_unknown":
+            return "unknown"
+        if run.status == "running" or (evidence and not evidence.get("sealed")):
+            result = "pending"
+    if context.test_input_ref:
+        for request in sql.scalars(
+            select(DifyBuilderExecutionRequest).where(
+                DifyBuilderExecutionRequest.session_id == session_id,
+                DifyBuilderExecutionRequest.test_input_id == context.test_input_ref,
+            )
+        ):
+            if (request.completion_summary or {}).get("outcome") == "unknown":
+                return "unknown"
+            if request.state != "sealed":
+                result = "pending"
+    return result
+
+
 def settle_ordinary(repo, *, session_id, actor, run_ids, request_ids, deliver=True):
     from services.app_task_service import AppTaskService
 

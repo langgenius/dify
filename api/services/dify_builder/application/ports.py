@@ -338,6 +338,28 @@ class Repository(Protocol):
         self, session: Session, initial_fc: DifyBuilderContext, items: list[ConversationItem]
     ) -> None: ...
 
+    def create_fix_session_or_select(
+        self,
+        session: Session,
+        initial_fc: DifyBuilderContext,
+        items: list[ConversationItem],
+        *,
+        source_run: Run | None = None,
+    ) -> tuple[Session, bool]: ...
+
+    def activate_abandoned_continuation(
+        self,
+        session_id: str,
+        actor: Actor,
+        *,
+        base_version: int,
+        client_turn_id: str,
+        text: str,
+        app_revision: str,
+        dsl: dict,
+        expected_task_id: str = "",
+    ) -> tuple[Session, DifyBuilderContext, bool]: ...
+
     def get_session(self, id: str) -> tuple[Session, DifyBuilderContext]: ...
 
     def get_session_at_version(self, session_id: str, version: int) -> tuple[Session, DifyBuilderContext]: ...

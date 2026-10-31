@@ -1544,6 +1544,23 @@ class WorkflowServiceDifyPort:
                 from services.dify_builder.task_controls import lock_execution
 
                 lock_execution(session)
+                owner = session.get(DifyBuilderSession, session_id, with_for_update=True)
+                if owner is None:
+                    raise BuilderExecutionPolicyError("execution_owner_not_found")
+                commit = session.scalar(
+                    select(DifyBuilderSessionCommit).where(
+                        DifyBuilderSessionCommit.session_id == owner.id,
+                        DifyBuilderSessionCommit.version == owner.version,
+                    )
+                )
+                if commit is None:
+                    raise BuilderExecutionPolicyError("execution_owner_not_found")
+                from services.dify_builder.serde import context_from_dict
+                from services.dify_builder.task_lifecycle import task_identity
+
+                row.origin_task_id = task_identity(
+                    SqlDifyBuilderRepository._to_domain_session(owner), context_from_dict(commit.context)
+                )
                 session.add(row)
                 session.flush()
             return SqlDifyBuilderRepository._to_domain_run(row), True

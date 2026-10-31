@@ -263,6 +263,12 @@ def test_native_stop_settlement_is_truthful_and_unknown_never_resumes(
         assert isinstance(command, NativeCommand)
         assert command.method == "cancel"
         assert kwargs["idempotency_key"] == "task-stop:stop"
+        if receipt.status == "terminal":
+            with repo._session_factory() as sql, sql.begin():
+                row = sql.get(DifyBuilderExecutionRequest, request_id)
+                assert row is not None
+                row.state = "sealed"
+                row.completion_summary = {"outcome": receipt.outcome}
         return receipt
 
     actions = BuilderTestActions(repo._session_factory, lambda *_: pytest.fail("unexpected command factory"))
@@ -362,6 +368,12 @@ def test_pending_stop_get_reconciles_terminal_evidence_without_cancelling_again(
     calls: list[str] = []
 
     def read_current(**_kwargs: object) -> NativeTestPublicReceipt:
+        if current.status == "terminal":
+            with repo._session_factory() as sql, sql.begin():
+                row = sql.get(DifyBuilderExecutionRequest, request_id)
+                assert row is not None
+                row.state = "sealed"
+                row.completion_summary = {"outcome": current.outcome}
         return current
 
     def execute(**_kwargs: object) -> NativeTestPublicReceipt:

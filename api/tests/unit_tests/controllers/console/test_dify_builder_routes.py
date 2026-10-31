@@ -739,6 +739,18 @@ def test_reconnect_heartbeat_recovers_without_retaining_the_request_context(
     settled = _session_view(run_status=RunStatus.WAITING_INPUT)
     settled.last_command_id = "command-1"
     service = _route_service()
+    service._repo.create_session(
+        DomainSession(
+            id="s1",
+            app_id="app-1",
+            tenant_id="ten-1",
+            owner_account_id="acc-1",
+            entry_mode=EntryMode.BUILD,
+            current_state=PcState.BUILD_GOAL_ANALYSIS,
+        ),
+        DifyBuilderContext(),
+        [],
+    )
     mocker.patch.object(service, "authorize_session", return_value=None)
     mocker.patch.object(service, "get_session_view")
     subscription = _ProgressSubscription()

@@ -31,7 +31,7 @@ from typing import cast
 from sqlalchemy import func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, aliased, sessionmaker
 
 from core.dify_builder.contract import ConversationPage
 from core.dify_builder.errors import ConflictError, NotFoundError
@@ -55,6 +55,7 @@ from models.account import Tenant, TenantAccountJoin
 from models.dify_builder import (
     DifyBuilderCheckpoint,
     DifyBuilderConversationItem,
+    DifyBuilderExecutionRequest,
     DifyBuilderRun,
     DifyBuilderSession,
     DifyBuilderSessionCommit,
@@ -250,35 +251,89 @@ class SqlDifyBuilderRepository:
         self, session: DomainSession, initial_fc: DifyBuilderContext, items: list[ConversationItem]
     ) -> None:
         with self._session_factory() as db_session, db_session.begin():
-            row = DifyBuilderSession(
-                app_id=session.app_id,
-                tenant_id=session.tenant_id,
-                owner_account_id=session.owner_account_id,
-                entry_mode=str(session.entry_mode),
-                current_state=str(session.current_state),
+            self._create_session_in_transaction(db_session, session, initial_fc, items)
+
+    def _create_session_in_transaction(self, db_session, session, initial_fc, items):
+        row = DifyBuilderSession(
+            app_id=session.app_id,
+            tenant_id=session.tenant_id,
+            owner_account_id=session.owner_account_id,
+            entry_mode=str(session.entry_mode),
+            current_state=str(session.current_state),
+        )
+        session.id = self._add(db_session, row, session.id)
+        session.version = 1
+
+        for item in items:
+            item.at_version = 1
+        db_session.add_all(self._to_conversation_row(row.id, item) for item in items)
+
+        # Mutate next_seq before serializing the commit's context so the
+        # persisted state and the caller's in-process `initial_fc` never
+        # diverge -- a `get_session` immediately after `create_session`
+        # must see the same next_seq the caller now holds.
+        initial_fc.next_seq = len(items)
+
+        db_session.add(
+            DifyBuilderSessionCommit(
+                session_id=row.id,
+                version=1,
+                state=str(session.current_state),
+                context=context_to_dict(initial_fc),
+                actor="",
             )
-            session.id = self._add(db_session, row, session.id)
-            session.version = 1
+        )
 
-            for item in items:
-                item.at_version = 1
-            db_session.add_all(self._to_conversation_row(row.id, item) for item in items)
+    def create_fix_session_or_select(
+        self,
+        session: DomainSession,
+        initial_fc: DifyBuilderContext,
+        items: list[ConversationItem],
+        source_run: Run | None = None,
+    ) -> tuple[DomainSession, bool]:
+        """Serialize owned conversation selection/creation using the existing App row.
 
-            # Mutate next_seq before serializing the commit's context so the
-            # persisted state and the caller's in-process `initial_fc` never
-            # diverge -- a `get_session` immediately after `create_session`
-            # must see the same next_seq the caller now holds.
-            initial_fc.next_seq = len(items)
+        Authority and expensive Fix preparation precede this short transaction.
+        Every contender takes App first and never locks an existing Session.
+        """
+        from models.model import App
 
-            db_session.add(
-                DifyBuilderSessionCommit(
-                    session_id=row.id,
-                    version=1,
-                    state=str(session.current_state),
-                    context=context_to_dict(initial_fc),
-                    actor="",
+        with self._session_factory() as sql, sql.begin():
+            app = sql.scalar(
+                select(App.id)
+                .where(App.id == session.app_id, App.tenant_id == session.tenant_id, App.status == "normal")
+                .with_for_update()
+            )
+            if app is None:
+                raise NotFoundError("app not found")
+            owned = select(DifyBuilderSession).where(
+                DifyBuilderSession.tenant_id == session.tenant_id,
+                DifyBuilderSession.app_id == session.app_id,
+                DifyBuilderSession.owner_account_id == session.owner_account_id,
+                self._public_history_visible(DifyBuilderSession.id),
+            )
+            writer = sql.scalar(
+                owned.join(DifyBuilderWorkflowWriter, DifyBuilderWorkflowWriter.session_id == DifyBuilderSession.id)
+                .where(
+                    DifyBuilderWorkflowWriter.tenant_id == session.tenant_id,
+                    DifyBuilderWorkflowWriter.app_id == session.app_id,
+                    DifyBuilderWorkflowWriter.expires_at > func.current_timestamp(),
                 )
+                .limit(1)
             )
+            selected = writer or sql.scalar(
+                owned.order_by(
+                    DifyBuilderSession.updated_at.desc(),
+                    DifyBuilderSession.created_at.desc(),
+                    DifyBuilderSession.id.desc(),
+                ).limit(1)
+            )
+            if selected is not None:
+                return self._to_domain_session(selected), False
+            self._create_session_in_transaction(sql, session, initial_fc, items)
+            if source_run is not None:
+                self._save_run_in_transaction(sql, session.id, source_run)
+            return session, True
 
     def get_session(self, id: str) -> tuple[DomainSession, DifyBuilderContext]:
         with self._session_factory() as db_session, db_session.begin():
@@ -310,10 +365,365 @@ class SqlDifyBuilderRepository:
             )
             if row is None or commit is None:
                 raise ConflictError("unknown task control base version")
+            head = sql.scalar(
+                select(DifyBuilderSessionCommit.context).where(
+                    DifyBuilderSessionCommit.session_id == row.id, DifyBuilderSessionCommit.version == row.version
+                )
+            )
+            if head and (head.get("task_control") or {}).get("conversation_clear"):
+                raise ConflictError("conversation has been cleared")
             domain = self._to_domain_session(row)
             domain.version = version
             domain.current_state = PcState(commit.state)
             return domain, context_from_dict(commit.context)
+
+    @staticmethod
+    def _public_history_visible(session_id):
+        """A permanent SQL tombstone also fences old cursors and stale readers."""
+        owner = aliased(DifyBuilderSession)
+        return (
+            ~select(DifyBuilderSessionCommit.id)
+            .join(
+                owner,
+                (owner.id == DifyBuilderSessionCommit.session_id) & (owner.version == DifyBuilderSessionCommit.version),
+            )
+            .where(
+                owner.id == session_id,
+                DifyBuilderSessionCommit.context["task_control"]["conversation_clear"]["version"]
+                .as_integer()
+                .is_not(None),
+            )
+            .exists()
+        )
+
+    @staticmethod
+    def _locked_context(sql, session_id: str):
+        row = sql.scalar(select(DifyBuilderSession).where(DifyBuilderSession.id == session_id).with_for_update())
+        if row is None:
+            raise NotFoundError("session not found")
+        commit = sql.scalar(
+            select(DifyBuilderSessionCommit).where(
+                DifyBuilderSessionCommit.session_id == row.id, DifyBuilderSessionCommit.version == row.version
+            )
+        )
+        if commit is None:
+            raise NotFoundError("session commit not found")
+        return row, context_from_dict(commit.context)
+
+    @staticmethod
+    def _require_live_context(context):
+        if context.task_control.get("conversation_clear"):
+            raise ConflictError("conversation has been cleared")
+
+    def _lock_live_insert(self, sql, session_id: str):
+        from services.dify_builder.task_controls import lock_execution
+
+        row, context = self._locked_context(sql, session_id)
+        self._require_live_context(context)
+        lock_execution(sql, session_id=session_id)
+        return row, context
+
+    @staticmethod
+    def _stop_context(sql, row, context, key: str):
+        """Capture cancellation identities under the same Session lock as Stop."""
+        from services.dify_builder.task_controls import generation
+        from services.dify_builder.task_native_cancel import task_execution_settlement
+
+        prior_settlement = task_execution_settlement(sql, row.id, context)
+        controls = dict(context.task_control)
+        requests = (
+            list(
+                sql.scalars(
+                    select(DifyBuilderExecutionRequest)
+                    .where(
+                        DifyBuilderExecutionRequest.session_id == row.id,
+                        DifyBuilderExecutionRequest.tenant_id == row.tenant_id,
+                        DifyBuilderExecutionRequest.actor_id == row.owner_account_id,
+                        DifyBuilderExecutionRequest.test_input_id == context.test_input_ref,
+                    )
+                    .order_by(DifyBuilderExecutionRequest.created_at.desc(), DifyBuilderExecutionRequest.id.desc())
+                )
+            )
+            if context.test_input_ref
+            else []
+        )
+        native = [request for request in requests if request.context.get("policy_version") == "builder-native-test-v1"]
+        run_ids = (
+            list(
+                sql.scalars(
+                    select(DifyBuilderRun.id).where(
+                        DifyBuilderRun.session_id == row.id,
+                        DifyBuilderRun.inputs_ref == context.test_input_ref,
+                        DifyBuilderRun.immutable.is_(False),
+                    )
+                )
+            )
+            if context.test_input_ref
+            else []
+        )
+        ordinary = [request.id for request in requests if request not in native]
+        controls.update(
+            stopped_state=str(row.current_state),
+            native_request_id=native[0].id if native else "",
+            ordinary_run_ids=run_ids,
+            ordinary_request_ids=ordinary,
+            settlement="unknown"
+            if prior_settlement == "unknown"
+            else "pending"
+            if native or run_ids or ordinary or prior_settlement == "pending"
+            else "settled",
+        )
+        controls["receipt"] = {
+            "id": key,
+            "version": row.version + 1,
+            "generation": generation(context),
+            "settlement": controls["settlement"],
+            "intent": {"kind": "lifecycle_stop"},
+        }
+        context.task_control = controls
+        context.paused = True
+        context.last_command_id = key
+
+    def stop_task_for_switch(self, session_id, actor, *, expected_task_id, client_action_id):
+        from services.dify_builder.task_controls import generation
+        from services.dify_builder.task_lifecycle import task_identity
+
+        with self._session_factory() as sql, sql.begin():
+            row, context = self._locked_context(sql, session_id)
+            if (row.tenant_id, row.owner_account_id) != (actor.tenant_id, actor.account_id):
+                raise NotFoundError("session not found")
+            self._require_live_context(context)
+            session = self._to_domain_session(row)
+            if task_identity(session, context) != expected_task_id:
+                raise ConflictError("task stop targets a superseded task")
+            old_generation = generation(context)
+            from core.dify_builder.state import is_terminal
+
+            if is_terminal(session.current_state) or context.task_status in {"completed", "abandoned"}:
+                return session, context, old_generation
+            if context.task_control.get("receipt", {}).get("id") == client_action_id:
+                return session, context, old_generation
+            self._stop_context(sql, row, context, client_action_id)
+            session.version = self._compare_and_advance_in_session(
+                sql, session_id, row.version, session.current_state, context, []
+            )
+            return session, context, old_generation
+
+    def activate_abandoned_continuation(
+        self, session_id, actor, *, base_version, client_turn_id, text, app_revision, dsl, expected_task_id=""
+    ):
+        """Reserve one fresh goal after a proved task stop, never replay its enqueue.
+
+        The caller supplies its authorized, synchronized DSL before entering SQL.
+        This transaction only binds the task/CAS, resets context and appends the
+        accepted UserItem. A matching retry observes the reservation and cannot
+        dispatch it again, including after an unknown broker acknowledgement.
+        """
+        from runtime_contracts.builder.execution import canonical_digest
+        from services.dify_builder.conversation_tasks import prepare_abandoned_continuation
+        from services.dify_builder.task_lifecycle import task_identity
+
+        intent = {
+            "base_version": base_version,
+            "client_turn_id": client_turn_id,
+            "text_digest": canonical_digest(text),
+            "expected_task_id": expected_task_id,
+        }
+        with self._session_factory() as sql, sql.begin():
+            row, context = self._locked_context(sql, session_id)
+            if (row.tenant_id, row.owner_account_id) != (actor.tenant_id, actor.account_id):
+                raise NotFoundError("session not found")
+            self._require_live_context(context)
+            saved = sql.scalar(
+                select(DifyBuilderSessionCommit.context)
+                .where(
+                    DifyBuilderSessionCommit.session_id == session_id,
+                    DifyBuilderSessionCommit.context["task_control"]["fresh_goal_receipt"]["id"].as_string()
+                    == client_turn_id,
+                )
+                .order_by(DifyBuilderSessionCommit.version.desc())
+                .limit(1)
+            )
+            session = self._to_domain_session(row)
+            if saved:
+                prior = saved["task_control"]["fresh_goal_receipt"]
+                if prior["intent"] != intent:
+                    raise ConflictError("goal identity reused with different intent")
+                return session, context, False
+            if row.version != base_version or (
+                expected_task_id and expected_task_id != task_identity(session, context)
+            ):
+                raise ConflictError("fresh goal targets a superseded task")
+            if not client_turn_id or not text.strip():
+                raise ConflictError("fresh goal and turn identity are required")
+            from services.dify_builder.task_controls import lock_execution, validate_dsl_binding
+            from services.dify_builder.task_native_cancel import task_execution_settlement
+
+            if task_execution_settlement(sql, session_id, context) != "settled":
+                raise ConflictError("previous task execution is unsettled")
+            lock_execution(sql, session_id=session_id)
+            validate_dsl_binding(sql, dsl)
+            old_task_id = task_identity(session, context)
+            next_state, fresh = prepare_abandoned_continuation(session, context, text, dsl, app_revision)
+            item = ConversationItem(
+                seq=fresh.next_seq,
+                kind="user",
+                payload={"text": text, "turn_id": client_turn_id},
+                at_version=row.version + 1,
+            )
+            fresh.next_seq += 1
+            fresh.last_command_id = client_turn_id
+            fresh.task_control["fresh_goal_receipt"] = {
+                "id": client_turn_id,
+                "intent": intent,
+                "old_task_id": old_task_id,
+                "new_task_id": task_identity(session, fresh),
+                "activated_version": row.version + 1,
+                "generation": fresh.task_control["generation"],
+            }
+            session.version = self._compare_and_advance_in_session(
+                sql, session_id, row.version, next_state, fresh, [item]
+            )
+            session.current_state = next_state
+            return session, fresh, True
+
+    def conversation_lifecycle(self, session_id, actor, *, operation, base_version, client_action_id, expected_task_id):
+        """Revoke task authority and persist an immutable minimal control receipt.
+
+        Older commits, snapshots, inputs and native rows are private execution
+        audit after clear. The permanent head tombstone excludes them from every
+        conversation projection and forbids replaying their context.
+        """
+        from services.dify_builder.task_controls import generation
+        from services.dify_builder.task_lifecycle import mark_task_abandoned, task_identity
+
+        intent = {"operation": operation, "base_version": base_version, "expected_task_id": expected_task_id}
+        with self._session_factory() as sql, sql.begin():
+            row, context = self._locked_context(sql, session_id)
+            if (row.tenant_id, row.owner_account_id) != (actor.tenant_id, actor.account_id):
+                raise NotFoundError("session not found")
+            if context.task_control.get("conversation_clear") and operation != "clear":
+                raise ConflictError("conversation has been cleared")
+            saved = sql.scalar(
+                select(DifyBuilderSessionCommit.context)
+                .where(
+                    DifyBuilderSessionCommit.session_id == session_id,
+                    DifyBuilderSessionCommit.context["task_control"]["lifecycle_receipt"]["id"].as_string()
+                    == client_action_id,
+                )
+                .order_by(DifyBuilderSessionCommit.version.desc())
+                .limit(1)
+            )
+            if saved:
+                prior = saved["task_control"]["lifecycle_receipt"]
+                if prior["intent"] != intent:
+                    raise ConflictError("lifecycle identity reused with different intent")
+                return self._to_domain_session(row), context, prior["receipt"], prior["generation"]
+            self._require_live_context(context)
+            base = sql.scalar(
+                select(DifyBuilderSessionCommit).where(
+                    DifyBuilderSessionCommit.session_id == session_id, DifyBuilderSessionCommit.version == base_version
+                )
+            )
+            if base is None:
+                raise ConflictError("unknown lifecycle base version")
+            session = self._to_domain_session(row)
+            target = expected_task_id or task_identity(session, context_from_dict(base.context))
+            if target != task_identity(session, context) or generation(context_from_dict(base.context)) != generation(
+                context
+            ):
+                raise ConflictError("lifecycle control targets a superseded task")
+            old_generation = generation(context)
+            self._stop_context(sql, row, context, client_action_id)
+            mark_task_abandoned(context, operation)
+            context.logical_task_id = target
+            context.task_control["generation"] = old_generation + 1
+            context.staged_repair = []
+            context.change_set = None
+            context.effect_confirmation = {}
+            context.effect_confirmation_form = {}
+            context.code_risk_assessments = {}
+            context.confirmed_command_id = context.confirmed_consent_id = ""
+            context.checkpoint_id = context.recovery_class = ""
+            cards = sql.scalars(
+                select(DifyBuilderConversationItem).where(
+                    DifyBuilderConversationItem.session_id == session_id,
+                    DifyBuilderConversationItem.kind == "assistant_turn",
+                )
+            )
+            for card in cards:
+                card.payload = {**card.payload, "card_state": "invalidated"}
+            receipt = {
+                "session_id": session_id,
+                "version": row.version + 1,
+                "last_command_id": client_action_id,
+                "task_id": target,
+                "task_status": "abandoned",
+                "conversation_cleared": operation == "clear",
+                "conversation_last_seq": -1 if operation == "clear" else context.next_seq - 1,
+                "settlement": context.task_control["settlement"],
+            }
+            saved_receipt = {"id": client_action_id, "intent": intent, "receipt": receipt, "generation": old_generation}
+            if operation == "clear":
+                native_settlement = self._revoke_cleared_native_authority(sql, row, client_action_id)
+                if native_settlement != "settled":
+                    context.task_control["settlement"] = native_settlement
+                    receipt["settlement"] = native_settlement
+                floor = {"version": row.version + 1, "seq_floor": context.next_seq}
+                context = DifyBuilderContext(
+                    paused=True,
+                    last_command_id=client_action_id,
+                    task_control={
+                        "generation": old_generation + 1,
+                        "conversation_clear": floor,
+                        "settlement": context.task_control["settlement"],
+                    },
+                )
+                context.task_status = "abandoned"
+            context.task_control["lifecycle_receipt"] = saved_receipt
+            session.version = self._compare_and_advance_in_session(
+                sql, session_id, row.version, session.current_state, context, []
+            )
+            return session, context, receipt, old_generation
+
+    @staticmethod
+    def _revoke_cleared_native_authority(sql, row, key):
+        from services.dify_builder.native_testing.lifecycle import revoke_request_authority
+
+        request_ids = list(
+            sql.scalars(
+                select(DifyBuilderExecutionRequest.id)
+                .where(
+                    DifyBuilderExecutionRequest.session_id == row.id,
+                    DifyBuilderExecutionRequest.tenant_id == row.tenant_id,
+                    DifyBuilderExecutionRequest.actor_id == row.owner_account_id,
+                    DifyBuilderExecutionRequest.context["policy_version"].as_string() == "builder-native-test-v1",
+                    DifyBuilderExecutionRequest.state.in_(("running", "waiting")),
+                )
+                .with_for_update()
+            )
+        )
+        from models.dify_builder_native_tests import NativeEffectOperation
+        from runtime_contracts.builder.execution import canonical_digest
+
+        uncertain = (
+            sql.scalar(
+                select(NativeEffectOperation.id)
+                .where(
+                    NativeEffectOperation.request_id.in_(request_ids),
+                    NativeEffectOperation.tenant_id == row.tenant_id,
+                    NativeEffectOperation.state.in_(("claimed", "unknown")),
+                )
+                .limit(1)
+            )
+            if request_ids
+            else None
+        )
+        for request_id in request_ids:
+            revoke_request_authority(
+                sql, request_id=request_id, tenant_id=row.tenant_id, cancellation_key=canonical_digest(key)
+            )
+        return "unknown" if uncertain else "pending" if request_ids else "settled"
 
     def reserve_workflow_writer(self, session_id: str, token: str, generation: int, lease_seconds: int) -> bool:
         """Reserve the shared workflow owner without external I/O under SQL locks.
@@ -427,6 +837,7 @@ class SqlDifyBuilderRepository:
                 select(DifyBuilderSessionCommit)
                 .where(
                     DifyBuilderSessionCommit.session_id == session_id,
+                    self._public_history_visible(session_id),
                     DifyBuilderSessionCommit.context["task_control"]["receipt"]["id"].as_string() == client_action_id,
                 )
                 .order_by(DifyBuilderSessionCommit.version.desc())
@@ -492,11 +903,10 @@ class SqlDifyBuilderRepository:
         atomically with the new session version (the consent launch
         reservation) owns the transaction, and its rollback undoes this too.
         """
-        from services.dify_builder.task_controls import lock_execution
 
         # Advisory checks before cognition do not make a later CAS safe: a
         # replacement can take ownership without changing this session's head.
-        lock_execution(db_session, session_id=session_id)
+        self._lock_live_insert(db_session, session_id)
         new_version = base_version + 1
         result = cast(
             CursorResult,
@@ -556,6 +966,7 @@ class SqlDifyBuilderRepository:
 
     def create_checkpoint(self, cp: Checkpoint, snap: Snapshot) -> None:
         with self._session_factory() as db_session, db_session.begin():
+            self._lock_live_insert(db_session, cp.session_id)
             snap_row = DifyBuilderSnapshot(
                 session_id=snap.session_id,
                 hash=snap.hash,
@@ -587,32 +998,41 @@ class SqlDifyBuilderRepository:
 
     def save_run(self, session_id: str, run: Run) -> None:
         with self._session_factory() as db_session, db_session.begin():
-            row = DifyBuilderRun(
-                session_id=session_id,
-                kind=run.kind,
-                dify_run_id=run.dify_run_id,
-                status=run.status,
-                per_node=[dataclasses.asdict(n) for n in run.per_node],
-                verification=(
-                    {
-                        **dataclasses.asdict(run.verification),
-                        "execution_evidence": run.verification.execution_evidence.model_dump(mode="json")
-                        if run.verification.execution_evidence
-                        else None,
-                    }
-                    if run.verification is not None
-                    else None
-                ),
-                culprit_node_id=run.culprit_node_id,
-                error=run.error,
-                inputs_ref=run.inputs_ref,
-                tokens=run.tokens,
-                elapsed_ms=run.elapsed_ms,
-                immutable=run.immutable,
-            )
-            # Id-preservation contract (see `ports.Repository.save_run`):
-            # a caller-supplied non-empty `run.id` must survive unchanged.
-            run.id = self._add(db_session, row, run.id)
+            self._save_run_in_transaction(db_session, session_id, run)
+
+    def _save_run_in_transaction(self, db_session, session_id: str, run: Run) -> None:
+        owner, context = self._lock_live_insert(db_session, session_id)
+        from services.dify_builder.task_lifecycle import task_identity
+
+        origin_task_id = task_identity(self._to_domain_session(owner), context)
+        row = DifyBuilderRun(
+            session_id=session_id,
+            origin_task_id=origin_task_id,
+            kind=run.kind,
+            dify_run_id=run.dify_run_id,
+            status=run.status,
+            per_node=[dataclasses.asdict(n) for n in run.per_node],
+            verification=(
+                {
+                    **dataclasses.asdict(run.verification),
+                    "execution_evidence": run.verification.execution_evidence.model_dump(mode="json")
+                    if run.verification.execution_evidence
+                    else None,
+                }
+                if run.verification is not None
+                else None
+            ),
+            culprit_node_id=run.culprit_node_id,
+            error=run.error,
+            inputs_ref=run.inputs_ref,
+            tokens=run.tokens,
+            elapsed_ms=run.elapsed_ms,
+            immutable=run.immutable,
+        )
+        # Id-preservation contract (see `ports.Repository.save_run`):
+        # a caller-supplied non-empty `run.id` must survive unchanged.
+        run.id = self._add(db_session, row, run.id)
+        run.origin_task_id = origin_task_id
 
     def get_run(self, id: str) -> Run:
         with self._session_factory() as db_session, db_session.begin():
@@ -626,6 +1046,7 @@ class SqlDifyBuilderRepository:
 
     def save_test_input(self, ti: TestInput) -> None:
         with self._session_factory() as db_session, db_session.begin():
+            self._lock_live_insert(db_session, ti.session_id)
             row = DifyBuilderTestInput(
                 session_id=ti.session_id,
                 source=ti.source,
@@ -649,7 +1070,7 @@ class SqlDifyBuilderRepository:
         with self._session_factory() as db_session, db_session.begin():
             stmt = (
                 select(DifyBuilderConversationItem)
-                .where(DifyBuilderConversationItem.session_id == session_id)
+                .where(DifyBuilderConversationItem.session_id == session_id, self._public_history_visible(session_id))
                 .order_by(DifyBuilderConversationItem.seq)
             )
             rows = db_session.execute(stmt).scalars().all()
@@ -664,6 +1085,7 @@ class SqlDifyBuilderRepository:
                 select(DifyBuilderConversationItem)
                 .where(
                     DifyBuilderConversationItem.session_id == session_id,
+                    self._public_history_visible(session_id),
                     DifyBuilderConversationItem.kind != "notice",
                 )
                 .order_by(DifyBuilderConversationItem.seq.desc())
@@ -682,6 +1104,7 @@ class SqlDifyBuilderRepository:
                 select(DifyBuilderConversationItem.kind)
                 .where(
                     DifyBuilderConversationItem.session_id == session_id,
+                    self._public_history_visible(session_id),
                     DifyBuilderConversationItem.kind.in_(("user", "assistant_turn")),
                     DifyBuilderConversationItem.payload["turn_id"].as_string() == turn_id,
                 )
@@ -712,7 +1135,9 @@ class SqlDifyBuilderRepository:
 
         descending = after_seq is None
         with self._session_factory() as db_session, db_session.begin():
-            stmt = select(DifyBuilderConversationItem).where(DifyBuilderConversationItem.session_id == session_id)
+            stmt = select(DifyBuilderConversationItem).where(
+                DifyBuilderConversationItem.session_id == session_id, self._public_history_visible(session_id)
+            )
             if before_seq is not None:
                 stmt = stmt.where(DifyBuilderConversationItem.seq < before_seq)
             if after_seq is not None:
@@ -746,6 +1171,7 @@ class SqlDifyBuilderRepository:
                 select(DifyBuilderConversationItem)
                 .where(
                     DifyBuilderConversationItem.session_id == session_id,
+                    self._public_history_visible(session_id),
                     DifyBuilderConversationItem.kind.in_(kinds),
                 )
                 .order_by(DifyBuilderConversationItem.seq.desc())
@@ -762,6 +1188,7 @@ class SqlDifyBuilderRepository:
         with self._session_factory() as db_session, db_session.begin():
             stmt = select(DifyBuilderConversationItem).where(
                 DifyBuilderConversationItem.session_id == session_id,
+                self._public_history_visible(session_id),
                 DifyBuilderConversationItem.seq >= from_seq,
                 DifyBuilderConversationItem.kind == "assistant_turn",
             )
@@ -831,6 +1258,7 @@ class SqlDifyBuilderRepository:
             )
         return Run(
             session_id=row.session_id,
+            origin_task_id=row.origin_task_id or "",
             verification=verification,
             id=row.id,
             kind=row.kind,
@@ -872,7 +1300,9 @@ class SqlDifyBuilderRepository:
     # -- Conversation-local supplemental intake (ENG-1188) --
 
     @staticmethod
-    def _material_scope(sql, session_id, actor, *, expected_generation=None, task_id=None, allow_paused=False):
+    def _material_scope(
+        sql, session_id, actor, *, expected_generation=None, task_id=None, allow_paused=False, allow_cleared=False
+    ):
         from services.dify_builder.attachment_intake import material_task_id
         from services.dify_builder.task_controls import generation
 
@@ -895,6 +1325,8 @@ class SqlDifyBuilderRepository:
         if commit is None:
             raise NotFoundError("session not found")
         context = context_from_dict(commit.context)
+        if context.task_control.get("conversation_clear") and not allow_cleared:
+            raise NotFoundError("conversation has been cleared")
         if expected_generation is not None and (
             (context.paused and not allow_paused)
             or generation(context) != expected_generation
@@ -909,6 +1341,7 @@ class SqlDifyBuilderRepository:
 
         return select(DifyBuilderMaterial).where(
             DifyBuilderMaterial.session_id == row.id,
+            SqlDifyBuilderRepository._public_history_visible(row.id),
             DifyBuilderMaterial.app_id == row.app_id,
             DifyBuilderMaterial.tenant_id == actor.tenant_id,
             DifyBuilderMaterial.owner_account_id == actor.account_id,
@@ -994,6 +1427,7 @@ class SqlDifyBuilderRepository:
                 select(DifyBuilderConversationItem)
                 .where(
                     DifyBuilderConversationItem.session_id == session_id,
+                    self._public_history_visible(session_id),
                     DifyBuilderConversationItem.kind == "user",
                     DifyBuilderConversationItem.payload["turn_id"].as_string() == client_turn_id,
                 )
@@ -1008,6 +1442,7 @@ class SqlDifyBuilderRepository:
                     select(DifyBuilderConversationItem)
                     .where(
                         DifyBuilderConversationItem.session_id == session_id,
+                        self._public_history_visible(session_id),
                         DifyBuilderConversationItem.kind == "assistant_turn",
                         DifyBuilderConversationItem.payload["turn_id"].as_string() == client_turn_id,
                     )
@@ -1087,7 +1522,9 @@ class SqlDifyBuilderRepository:
         from services.dify_builder.task_controls import generation
 
         with self._session_factory() as sql, sql.begin():
-            owner, context = self._material_scope(sql, session_id, actor)
+            owner, context = self._material_scope(sql, session_id, actor, allow_cleared=True)
+            if context.task_control.get("conversation_clear"):
+                return []
             rows = list(
                 sql.scalars(
                     self._material_query(owner, actor)
@@ -1106,7 +1543,9 @@ class SqlDifyBuilderRepository:
         from models.dify_builder_material import DifyBuilderMaterial
 
         with self._session_factory() as sql, sql.begin():
-            owner, _ = self._material_scope(sql, session_id, actor)
+            owner, context = self._material_scope(sql, session_id, actor, allow_cleared=True)
+            if context.task_control.get("conversation_clear"):
+                return None
             row = sql.scalar(
                 self._material_query(owner, actor).where(DifyBuilderMaterial.client_turn_id == client_turn_id)
             )
