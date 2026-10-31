@@ -1471,6 +1471,8 @@ source_modules =
     services.trigger.trigger_subscription_builder_service
     services.trigger.endpoint_service
     services.trigger.event_service
+    services.trigger.debug_service
+    services.trigger.trigger_request_service
 forbidden_modules =
     controllers
     extensions

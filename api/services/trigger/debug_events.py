@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from enum import StrEnum
 from typing import Any
 
@@ -8,7 +7,6 @@ from pydantic import BaseModel, Field
 class TriggerDebugPoolKey(StrEnum):
     """Trigger debug pool key."""
 
-    SCHEDULE = "schedule_trigger_debug_waiting_pool"
     WEBHOOK = "webhook_trigger_debug_waiting_pool"
     PLUGIN = "plugin_trigger_debug_waiting_pool"
 
@@ -17,13 +15,6 @@ class BaseDebugEvent(BaseModel):
     """Base class for all debug events."""
 
     timestamp: int
-
-
-class ScheduleDebugEvent(BaseDebugEvent):
-    """Debug event for schedule triggers."""
-
-    node_id: str
-    inputs: Mapping[str, Any]
 
 
 class WebhookDebugEvent(BaseDebugEvent):

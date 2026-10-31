@@ -9,18 +9,18 @@ from flask import request
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.utils.http_parser import deserialize_request
-from core.trigger.debug.event_bus import TriggerDebugEventBus
-from core.trigger.debug.event_selectors import TriggerDebugEvent, create_event_poller, select_trigger_debug_events
-from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
 from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
+from extensions.ext_storage import storage
 from graphon.entities.graph_config import NodeConfigDict
 from models.model import App, AppMode
 from models.workflow import Workflow
 from repositories.trigger.subscription_repository import TriggerSubscriptionRepository
 from services.plugin.dispatch_identity import PLUGIN_IDENTIFIER_HEADER
+from services.trigger.debug_events import PluginTriggerDebugEvent, build_plugin_pool_key
+from services.trigger.debug_service import TriggerDebugEvent
 from services.trigger.subscription_query_service import TriggerSubscriptionRuntime
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from tests.e2e_tests.containers.services import test_trigger_subscription_builder
@@ -125,8 +125,8 @@ def test_debug_poller_invokes_injected_subscription_query_after_receiving_event(
     with harness.app.test_request_context(
         "/incoming?source=github", method="POST", data=b"webhook-body", headers={"X-Webhook-Signature": "signature"}
     ):
-        TriggerHttpRequestCachingService.persist_request(request_id, request)
-        TriggerHttpRequestCachingService.persist_payload(request_id, {"repository": "dify"})
+        TriggerHttpRequestCachingService(storage=storage).persist_request(request_id, request)
+        TriggerHttpRequestCachingService(storage=storage).persist_payload(request_id, {"repository": "dify"})
     daemon.response_data = {"variables": {"repository": "dify", "event": "push"}, "cancelled": cancelled}
     node_config: NodeConfigDict = {
         "id": "plugin-trigger",
@@ -171,18 +171,14 @@ def test_debug_poller_invokes_injected_subscription_query_after_receiving_event(
 
     def poll() -> TriggerDebugEvent | None:
         with harness.app.app_context():
-            invoke = application_services().workspaces.trigger_events.invoke_debug
-            poller = create_event_poller(
-                draft_workflow=workflow,
-                tenant_id=harness.tenant_id,
-                user_id=harness.account_id,
-                app_id=app.id,
-                node_id=node_config["id"],
-                invoke_plugin_event=invoke,
+            debug = application_services().workspaces.trigger_debug
+            node = workflow.get_node_config_by_id(node_config["id"])
+            assert (
+                debug.poll(node_config=node, tenant_id=harness.tenant_id, user_id=harness.account_id, app_id=app.id)
+                is None
             )
-            assert poller.poll() is None
             assert daemon.requests == []
-            dispatched = TriggerDebugEventBus.dispatch(
+            dispatched = application_services().workspaces.trigger_debug_events.dispatch(
                 tenant_id=harness.tenant_id,
                 event=debug_event,
                 pool_key=build_plugin_pool_key(
@@ -193,21 +189,19 @@ def test_debug_poller_invokes_injected_subscription_query_after_receiving_event(
                 ),
             )
             assert dispatched == 1
-            result = select_trigger_debug_events(
-                draft_workflow=workflow,
-                app_model=app,
+            result = debug.select_events(
+                node_configs=[node],
+                tenant_id=harness.tenant_id,
+                app_id=app.id,
                 user_id=harness.account_id,
-                node_ids=[node_config["id"]],
-                invoke_plugin_event=invoke,
             )
             # Both success and cancellation consume the event exactly once.
             assert (
-                select_trigger_debug_events(
-                    draft_workflow=workflow,
-                    app_model=app,
+                debug.select_events(
+                    node_configs=[node],
+                    tenant_id=harness.tenant_id,
+                    app_id=app.id,
                     user_id=harness.account_id,
-                    node_ids=[node_config["id"]],
-                    invoke_plugin_event=invoke,
                 )
                 is None
             )

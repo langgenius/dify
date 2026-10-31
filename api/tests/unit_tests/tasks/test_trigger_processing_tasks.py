@@ -195,8 +195,8 @@ def dispatch(harness: _Harness) -> _Dispatch:
             ]
         )
     with closing(EnvironBuilder(path="/triggers/plugin/endpoint", method="POST", json={"ref": "main"})) as builder:
-        TriggerHttpRequestCachingService.persist_request(request_id, Request(builder.get_environ()))
-    TriggerHttpRequestCachingService.persist_payload(request_id, {"repository": "dify"})
+        TriggerHttpRequestCachingService(storage=storage).persist_request(request_id, Request(builder.get_environ()))
+    TriggerHttpRequestCachingService(storage=storage).persist_payload(request_id, {"repository": "dify"})
     return _Dispatch(
         subscription=TriggerSubscriptionRuntime(
             id=subscription_id,
