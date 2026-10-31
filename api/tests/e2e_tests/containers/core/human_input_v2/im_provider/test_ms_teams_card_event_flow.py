@@ -6,7 +6,6 @@ from datetime import datetime
 
 import pytest
 
-from enums.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -20,6 +19,7 @@ from core.human_input_v2.im_integration.adapters import (
 )
 from core.human_input_v2.im_integration.adapters.ms_teams import MSTeamsIMProviderAdapter, _MSTeamsCardCodec
 from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, SelectInput, UserAction
+from enums.human_input import ButtonStyle
 
 _RECEIVED_AT = datetime(2026, 8, 12, 2, 26, 40)
 
