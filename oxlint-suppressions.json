@@ -1912,11 +1912,6 @@
       "count": 1
     }
   },
-  "web/app/components/billing/billing-page/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/billing/plan/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
@@ -1930,11 +1925,6 @@
   "web/app/components/billing/pricing/header.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
-    }
-  },
-  "web/app/components/billing/pricing/plans/cloud-plan-item/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
     }
   },
   "web/app/components/billing/pricing/plans/self-hosted-plan-item/index.tsx": {
@@ -2938,11 +2928,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/header/account-menu/compliance.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
     }
   },
   "web/app/components/header/account-menu/workplace-selector/index.tsx": {
@@ -5844,9 +5829,6 @@
     }
   },
   "web/app/components/workflow/panel/env-panel/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    },
     "dify/require-disable-directive-description": {
       "count": 1
     }
@@ -6313,11 +6295,6 @@
     },
     "jsx-a11y/no-autofocus": {
       "count": 1
-    }
-  },
-  "web/app/education/apply/application-form.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
     }
   },
   "web/app/education/apply/applied-education-content.tsx": {
@@ -6839,9 +6816,6 @@
     "@tanstack/query/prefer-query-options": {
       "count": 2
     },
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    },
     "eslint-react/set-state-in-effect": {
       "count": 14
     }
@@ -7111,9 +7085,6 @@
     }
   },
   "web/service/log.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-deprecated": {
       "count": 2
     }

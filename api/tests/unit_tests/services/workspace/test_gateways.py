@@ -23,6 +23,7 @@ from services.workspace.gateways import (
     DeploymentWorkspacePlanGateway,
     WorkspaceFileGateway,
 )
+from tests.helpers import billing_builders as builders
 from tests.helpers.unit.account_domain import AccountDomain
 from tests.helpers.unit.rbac_fakes import RBACTransport
 
@@ -262,7 +263,7 @@ class TestWorkspaceCreditPoolCases:
     def test_effective_credit_pool(
         monkeypatch: pytest.MonkeyPatch,
         config_overrides: Callable[..., None],
-        plan: CloudPlan | None,
+        plan: CloudPlan,
         paid_quota: int | None,
         paid_used: int,
         trial_quota: int | None,
@@ -273,7 +274,7 @@ class TestWorkspaceCreditPoolCases:
         monkeypatch.setattr(
             gateways.BillingService,
             "get_info",
-            lambda *_a, **_k: {"subscription": {"plan": plan}, "next_credit_reset_date": 1775001600},
+            lambda *_a, **_k: builders.subscription_info(plan, next_credit_reset_date=1775001600),
         )
         paid = CreditPoolBalance("tenant", "paid", paid_quota, paid_used) if paid_quota is not None else None
         trial = CreditPoolBalance("tenant", "trial", trial_quota, 40) if trial_quota is not None else None
@@ -337,7 +338,7 @@ class TestWorkspaceCreditPoolCases:
     @pytest.mark.parametrize(
         ("edition", "bulk", "expected", "fallback_ids"),
         [
-            (DeploymentEdition.CLOUD, {"w1": {"plan": "team"}}, {"w1": "team", "w2": "professional"}, ["w2"]),
+            (DeploymentEdition.CLOUD, {"w1": builders.plan_item("team")}, {"w1": "team", "w2": "professional"}, ["w2"]),
             (DeploymentEdition.CLOUD, {}, {"w1": "professional", "w2": "professional"}, ["w1", "w2"]),
             (DeploymentEdition.COMMUNITY, {}, {"w1": "professional", "w2": "professional"}, ["w1", "w2"]),
             (DeploymentEdition.ENTERPRISE, {}, {"w1": "sandbox", "w2": "sandbox"}, []),

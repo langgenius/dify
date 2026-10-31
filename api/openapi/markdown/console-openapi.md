@@ -135,6 +135,9 @@ Get account avatar url
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EducationStatusResponse](#educationstatusresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [BillingRequestInProgressError](#billingrequestinprogresserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/education
@@ -149,8 +152,10 @@ Get account avatar url
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EducationActivateResponse](#educationactivateresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 429 | Too Many Requests | **application/json**: [EducationActivateLimitError](#educationactivatelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[EducationActivateFailedError](#educationactivatefailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [BillingRequestInProgressError](#billingrequestinprogresserror)<br>[EducationActivateLimitError](#educationactivatelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/education/autocomplete
@@ -167,6 +172,8 @@ Get account avatar url
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EducationAutocompleteResponse](#educationautocompleteresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/education/verify
@@ -175,8 +182,10 @@ Get account avatar url
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EducationVerifyResponse](#educationverifyresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 429 | Too Many Requests | **application/json**: [EducationVerifyLimitError](#educationverifylimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[EducationVerifyFailedError](#educationverifyfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [BillingRequestInProgressError](#billingrequestinprogresserror)<br>[EducationVerifyLimitError](#educationverifylimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/init
@@ -3320,7 +3329,11 @@ Check if app name is available
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | App network access group binding retrieved successfully | **application/json**: [AppNetworkAccessGroupResponse](#appnetworkaccessgroupresponse)<br> |
+| 400 | Bad Request | **application/json**: [NetworkAccessUnsupportedAppModeError](#networkaccessunsupportedappmodeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/network-access-group
@@ -3341,7 +3354,12 @@ Check if app name is available
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | App network access group binding updated successfully | **application/json**: [AppNetworkAccessGroupMutationResponse](#appnetworkaccessgroupmutationresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [NetworkAccessInvalidInputError](#networkaccessinvalidinputerror)<br>[NetworkAccessUnsupportedAccessPointsError](#networkaccessunsupportedaccesspointserror)<br>[NetworkAccessUnsupportedAppModeError](#networkaccessunsupportedappmodeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NetworkAccessGroupNotFoundError](#networkaccessgroupnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [NetworkAccessVersionConflictError](#networkaccessversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/network-access-group/status
@@ -3356,7 +3374,11 @@ Check if app name is available
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | App network access control entry status retrieved successfully | **application/json**: [AppNetworkAccessGroupStatusResponse](#appnetworkaccessgroupstatusresponse)<br> |
+| 400 | Bad Request | **application/json**: [NetworkAccessUnsupportedAppModeError](#networkaccessunsupportedappmodeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/publish-to-creators-platform
@@ -5879,8 +5901,10 @@ Get compliance document download link
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ComplianceDownloadResponse](#compliancedownloadresponse)<br> |
+| 403 | Forbidden | **application/json**: [ComplianceDownloadForbiddenError](#compliancedownloadforbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ComplianceDocumentNotFoundError](#compliancedocumentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 422 | Invalid compliance download query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
-| 429 | Compliance download rate limit exceeded | **application/json**: [ComplianceRateLimitErrorResponse](#complianceratelimiterrorresponse)<br>[ComplianceRateLimitError](#complianceratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Compliance download rate limit exceeded | **application/json**: [ComplianceRateLimitErrorResponse](#complianceratelimiterrorresponse)<br>[BillingRequestInProgressError](#billingrequestinprogresserror)<br>[ComplianceRateLimitError](#complianceratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 502 | Compliance download failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br>[BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br>[BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -14100,6 +14124,7 @@ List monthly workflow-run archive metadata for the current workspace
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkflowRunArchiveListResponse](#workflowrunarchivelistresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflow-run-archives/downloads
@@ -14116,6 +14141,7 @@ Create or return a temporary workflow-run archive download task
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Download task accepted | **application/json**: [WorkflowRunArchiveDownloadTaskResponse](#workflowrunarchivedownloadtaskresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow-run-archives/downloads/{download_id}
@@ -14132,6 +14158,7 @@ Get a temporary workflow-run archive download task
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkflowRunArchiveDownloadTaskResponse](#workflowrunarchivedownloadtaskresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow-run-archives/downloads/{download_id}/file
@@ -14148,6 +14175,7 @@ Redirect to a prepared workflow-run archive ZIP file
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to pre-signed archive storage URL | **application/json**: [RedirectResponse](#redirectresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Download task is not ready | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -14166,6 +14194,7 @@ Permanently delete this workspace's monthly archive files and archive index
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Archive deletion accepted | **application/json**: [WorkflowRunArchiveDeletionTaskResponse](#workflowrunarchivedeletiontaskresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow/{workflow_run_id}/events
@@ -15839,6 +15868,9 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace network access groups retrieved successfully | **application/json**: [NetworkAccessGroupListResponse](#networkaccessgrouplistresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/network-access-groups
@@ -15853,6 +15885,11 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Workspace network access group created successfully | **application/json**: [NetworkAccessGroupMutationResponse](#networkaccessgroupmutationresponse)<br> |
+| 400 | Bad Request | **application/json**: [NetworkAccessInvalidInputError](#networkaccessinvalidinputerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [NetworkAccessGroupNameConflictError](#networkaccessgroupnameconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/network-access-groups/current-ip
@@ -15861,7 +15898,7 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trusted current client IP retrieved without requiring an existing network access group | **application/json**: [NetworkAccessGroupCurrentIPResponse](#networkaccessgroupcurrentipresponse)<br> |
-| 403 | The workspace role does not allow network access policy reads | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | The workspace role does not allow network access policy reads | **application/json**: [NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | A trusted current client IP is unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -15878,6 +15915,11 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace network access group deleted successfully | **application/json**: [NetworkAccessGroupDeleteResponse](#networkaccessgroupdeleteresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NetworkAccessGroupNotFoundError](#networkaccessgroupnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [NetworkAccessGroupBoundError](#networkaccessgroupbounderror)<br>[NetworkAccessVersionConflictError](#networkaccessversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/network-access-groups/{group_id}
@@ -15892,6 +15934,10 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace network access group retrieved successfully | **application/json**: [NetworkAccessGroupMutationResponse](#networkaccessgroupmutationresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NetworkAccessGroupNotFoundError](#networkaccessgroupnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/network-access-groups/{group_id}
@@ -15912,6 +15958,12 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace network access group updated successfully | **application/json**: [NetworkAccessGroupMutationResponse](#networkaccessgroupmutationresponse)<br> |
+| 400 | Bad Request | **application/json**: [NetworkAccessInvalidInputError](#networkaccessinvalidinputerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NetworkAccessGroupNotFoundError](#networkaccessgroupnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [NetworkAccessGroupNameConflictError](#networkaccessgroupnameconflicterror)<br>[NetworkAccessVersionConflictError](#networkaccessversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/network-access-groups/{group_id}/check-current-ip
@@ -15926,6 +15978,10 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Current client IP checked against the workspace network access group | **application/json**: [NetworkAccessGroupCurrentIPCheckResponse](#networkaccessgroupcurrentipcheckresponse)<br> |
+| 403 | Forbidden | **application/json**: [NetworkAccessForbiddenError](#networkaccessforbiddenerror)<br>[NetworkAccessNotEntitledError](#networkaccessnotentitlederror)<br>[NetworkAccessRoleDeniedError](#networkaccessroledeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NetworkAccessGroupNotFoundError](#networkaccessgroupnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/permission
@@ -22932,6 +22988,14 @@ We couldn't complete this request. Please try again. If the problem persists, co
 | message | string |  | Yes |
 | status | integer |  | Yes |
 
+#### BillingRequestInProgressError
+
+A previous request is still being processed. Please try again shortly.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BillingRequestInProgressError |  | A previous request is still being processed. Please try again shortly. |  |
+
 #### BillingSubscriptionResponse
 
 | Name | Type | Description | Required |
@@ -23409,6 +23473,22 @@ Completion request failed.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | CompletionRequestError |  | Completion request failed. |  |
+
+#### ComplianceDocumentNotFoundError
+
+The compliance document was not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ComplianceDocumentNotFoundError |  | The compliance document was not found. |  |
+
+#### ComplianceDownloadForbiddenError
+
+Your current plan does not allow downloading this compliance document.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ComplianceDownloadForbiddenError |  | Your current plan does not allow downloading this compliance document. |  |
 
 #### ComplianceDownloadQuery
 
@@ -25359,6 +25439,14 @@ Portable DSL reference that could not be restored in the target workspace.
 | selector | [ string ] |  | Yes |
 | type | string, <br>**Default:** dynamic_email |  | No |
 
+#### EducationActivateFailedError
+
+We couldn't activate your education discount.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EducationActivateFailedError |  | We couldn't activate your education discount. |  |
+
 #### EducationActivateLimitError
 
 Rate limit exceeded
@@ -25393,9 +25481,9 @@ Rate limit exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| curr_page | integer |  | No |
-| data | [ string ] |  | No |
-| has_next | boolean |  | No |
+| curr_page | integer |  | Yes |
+| data | [ string ] |  | Yes |
+| has_next | boolean |  | Yes |
 
 #### EducationModel
 
@@ -25408,10 +25496,25 @@ Rate limit exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| allow_refresh | boolean |  | No |
-| expire_at | integer |  | No |
-| is_student | boolean |  | No |
-| result | boolean |  | No |
+| allow_refresh | boolean |  | Yes |
+| expire_at | integer |  | Yes |
+| is_student | boolean |  | Yes |
+| result | boolean |  | Yes |
+
+#### EducationVerifyEligibleResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | string |  | Yes |
+| token | string |  | Yes |
+
+#### EducationVerifyFailedError
+
+We couldn't verify your education status.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EducationVerifyFailedError |  | We couldn't verify your education status. |  |
 
 #### EducationVerifyLimitError
 
@@ -25421,11 +25524,19 @@ Rate limit exceeded
 | ---- | ---- | ----------- | -------- |
 | EducationVerifyLimitError |  | Rate limit exceeded |  |
 
-#### EducationVerifyResponse
+#### EducationVerifyNotEligibleResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| token | string |  | No |
+| status | string |  | Yes |
+
+#### EducationVerifyResponse
+
+Education verification result: a token for an eligible account, none for an ineligible one.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EducationVerifyResponse | [EducationVerifyEligibleResponse](#educationverifyeligibleresponse)<br>[EducationVerifyNotEligibleResponse](#educationverifynoteligibleresponse) | Education verification result: a token for an eligible account, none for an ineligible one. |  |
 
 #### EmailAlreadyInUseError
 
@@ -31232,6 +31343,14 @@ Need to add ids.
 | ---- | ---- | ----------- | -------- |
 | NeedAddIdsError |  | Need to add ids. |  |
 
+#### NetworkAccessForbiddenError
+
+Network access groups are not available for this workspace.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessForbiddenError |  | Network access groups are not available for this workspace. |  |
+
 #### NetworkAccessGroupAppResponse
 
 | Name | Type | Description | Required |
@@ -31243,6 +31362,14 @@ Need to add ids.
 | id | string |  | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
+
+#### NetworkAccessGroupBoundError
+
+This IP policy is still used by one or more apps.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessGroupBoundError |  | This IP policy is still used by one or more apps. |  |
 
 #### NetworkAccessGroupCreatePayload
 
@@ -31286,6 +31413,22 @@ Need to add ids.
 | ---- | ---- | ----------- | -------- |
 | group | [NetworkAccessGroupResponse](#networkaccessgroupresponse) |  | Yes |
 
+#### NetworkAccessGroupNameConflictError
+
+An IP policy with this name already exists.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessGroupNameConflictError |  | An IP policy with this name already exists. |  |
+
+#### NetworkAccessGroupNotFoundError
+
+Network access group was not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessGroupNotFoundError |  | Network access group was not found. |  |
+
 #### NetworkAccessGroupResponse
 
 | Name | Type | Description | Required |
@@ -31312,6 +31455,54 @@ Need to add ids.
 | description | string |  | No |
 | expected_version | integer |  | Yes |
 | name | string |  | Yes |
+
+#### NetworkAccessInvalidInputError
+
+Invalid network access group request.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessInvalidInputError |  | Invalid network access group request. |  |
+
+#### NetworkAccessNotEntitledError
+
+Network access groups are not available for this workspace.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessNotEntitledError |  | Network access groups are not available for this workspace. |  |
+
+#### NetworkAccessRoleDeniedError
+
+Your workspace role does not allow this network access operation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessRoleDeniedError |  | Your workspace role does not allow this network access operation. |  |
+
+#### NetworkAccessUnsupportedAccessPointsError
+
+Some access points are not supported for this app.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessUnsupportedAccessPointsError |  | Some access points are not supported for this app. |  |
+
+#### NetworkAccessUnsupportedAppModeError
+
+Network access control is not supported for this app mode.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessUnsupportedAppModeError |  | Network access control is not supported for this app mode. |  |
+
+#### NetworkAccessVersionConflictError
+
+The network access resource changed. Refresh it and try again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NetworkAccessVersionConflictError |  | The network access resource changed. Refresh it and try again. |  |
 
 #### NewAppResponse
 
@@ -31540,9 +31731,9 @@ Only support workflow app.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | body | string |  | Yes |
-| frequency | string |  | No |
+| frequency | string, <br>**Available values:** "every_page_load", "once" | *Enum:* `"every_page_load"`, `"once"` | Yes |
 | lang | string |  | Yes |
-| notification_id | string |  | No |
+| notification_id | string |  | Yes |
 | subtitle | string |  | Yes |
 | title | string |  | Yes |
 | title_pic_url | string |  | Yes |
@@ -31880,6 +32071,14 @@ Too many owner transfer emails have been sent. Please try again in {minutes} min
 | ---- | ---- | ----------- | -------- |
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
+
+#### PaidPlanRequiredError
+
+This feature requires a paid plan.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PaidPlanRequiredError |  | This feature requires a paid plan. |  |
 
 #### ParagraphInput
 
@@ -35173,7 +35372,7 @@ The subscription constructor of the trigger provider
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| interval | string |  | Yes |
+| interval | string, <br>**Available values:** "", "month", "year" | *Enum:* `""`, `"month"`, `"year"` | Yes |
 | plan | [CloudPlan](#cloudplan) |  | Yes |
 
 #### SubscriptionQuery
