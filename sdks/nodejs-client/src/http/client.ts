@@ -329,6 +329,39 @@ const createTimeoutContext = (timeoutMs: number): TimeoutContext => {
   }
 }
 
+/**
+ * A streaming response is consumed after `requestRaw` returns, so its timeout
+ * must outlive that call: keep the timer armed until the stream closes
+ * (completion, failure, or explicit destruction) and release it then. A
+ * timeout that fires mid-stream surfaces as `TimeoutError`, matching the
+ * error mapping for non-streaming responses; any other stream error passes
+ * through unchanged. Closing the wrapper also destroys the body stream:
+ * a wrapper destroyed before it is consumed never starts the generator,
+ * so nothing else would cancel the response body.
+ */
+const transferTimeoutToStream = (stream: Readable, timeoutContext: TimeoutContext): Readable => {
+  const wrapped = Readable.from(
+    (async function* () {
+      try {
+        yield* stream
+      } catch (error) {
+        if (timeoutContext.signal.aborted && timeoutContext.signal.reason === timeoutContext.reason) {
+          throw new TimeoutError('Request timed out', { cause: error })
+        }
+        throw error
+      }
+    })(),
+    { objectMode: false },
+  )
+  wrapped.once('close', () => {
+    timeoutContext.cleanup()
+    if (!stream.destroyed) {
+      stream.destroy()
+    }
+  })
+  return wrapped
+}
+
 const parseResponseBody = async <TResponseType extends HttpResponseType>(
   response: Response,
   responseType: TResponseType,
@@ -522,6 +555,7 @@ export class HttpClient {
       }
 
       const timeoutContext = createTimeoutContext(timeout * 1000)
+      let streamOwnsTimeout = false
       const requestInit: FetchRequestInit = {
         method,
         headers: requestHeaders,
@@ -556,6 +590,16 @@ export class HttpClient {
           console.info(`dify-client-node response ${response.status} ${method} ${url}`)
         }
 
+        if (responseType === 'stream') {
+          // The caller consumes the body after this returns, so the timeout
+          // transfers to the stream; the `finally` below must not clear it.
+          response.data = transferTimeoutToStream(
+            response.data as unknown as Readable,
+            timeoutContext,
+          ) as ResponseDataFor<TResponseType>
+          streamOwnsTimeout = true
+        }
+
         return response
       } catch (error) {
         const mapped = mapTransportError(error, timeoutContext)
@@ -577,7 +621,9 @@ export class HttpClient {
         attempt += 1
         await sleep(delay)
       } finally {
-        timeoutContext.cleanup()
+        if (!streamOwnsTimeout) {
+          timeoutContext.cleanup()
+        }
       }
     }
   }
