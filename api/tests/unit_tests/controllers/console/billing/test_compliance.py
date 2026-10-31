@@ -103,51 +103,57 @@ def test_get_compliance_download_translates_rate_limit(
     ("error", "expected_code", "expected_status"),
     [
         (
-            billing.UpstreamInvalidResponseError(status_code=404, reason="COMPLIANCE_DOCUMENT_NOT_FOUND"),
+            billing.BillingComplianceUpstreamInvalidResponseError(
+                status_code=404, reason="COMPLIANCE_DOCUMENT_NOT_FOUND"
+            ),
             "compliance_document_not_found",
             404,
         ),
         (
-            billing.UpstreamInvalidResponseError(status_code=403, reason="COMPLIANCE_DOWNLOAD_FORBIDDEN"),
+            billing.BillingComplianceUpstreamInvalidResponseError(
+                status_code=403, reason="COMPLIANCE_DOWNLOAD_FORBIDDEN"
+            ),
             "compliance_download_forbidden",
             403,
         ),
         (
-            billing.UpstreamUnavailableError(status_code=429, reason="REQUEST_IN_PROGRESS"),
+            billing.BillingComplianceUpstreamUnavailableError(status_code=429, reason="REQUEST_IN_PROGRESS"),
             "billing_request_in_progress",
             429,
         ),
         (
-            billing.UpstreamUnavailableError(status_code=500, reason="COMPLIANCE_DOWNLOAD_FAILED"),
+            billing.BillingComplianceUpstreamUnavailableError(status_code=500, reason="COMPLIANCE_DOWNLOAD_FAILED"),
             "billing_unavailable",
             503,
         ),
         (
-            billing.UpstreamInvalidResponseError(status_code=400, reason="MISSING_DOC_NAME"),
+            billing.BillingComplianceUpstreamInvalidResponseError(status_code=400, reason="MISSING_DOC_NAME"),
             "billing_operation_failed",
             502,
         ),
         (
-            billing.UpstreamInvalidResponseError(
+            billing.BillingComplianceUpstreamInvalidResponseError(
                 status_code=403, reason=UnknownErrorReason("COMPLIANCE_SHIPPED_LATER")
             ),
             "billing_operation_failed",
             502,
         ),
         (
-            billing.UpstreamUnavailableError(status_code=503, reason=UnknownErrorReason("COMPLIANCE_SHIPPED_LATER")),
+            billing.BillingComplianceUpstreamUnavailableError(
+                status_code=503, reason=UnknownErrorReason("COMPLIANCE_SHIPPED_LATER")
+            ),
             "billing_unavailable",
             503,
         ),
-        (billing.UpstreamInvalidResponseError(status_code=404), "billing_operation_failed", 502),
-        (billing.UpstreamUnavailableError(), "billing_unavailable", 503),
+        (billing.BillingComplianceUpstreamInvalidResponseError(status_code=404), "billing_operation_failed", 502),
+        (billing.BillingComplianceUpstreamUnavailableError(), "billing_unavailable", 503),
     ],
 )
 def test_get_compliance_download_maps_billing_reason(
     app: Flask,
     request_context: RequestContext,
     compliance_downloads: MagicMock,
-    error: billing.UpstreamError,
+    error: billing.BillingComplianceUpstreamError,
     expected_code: str,
     expected_status: int,
 ) -> None:
