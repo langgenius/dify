@@ -397,7 +397,7 @@ def test_task_requires_existing_reservation_and_releases_it_after_processing(
     subscription_id = "missing-subscription" if job_state == "missing-subscription" else subscription.id
     key = build_trigger_refresh_lock_key(harness.tenant_id, subscription_id)
     if job_state != "no-lock":
-        redis_client.setex(key, 60, "reserved")
+        redis_client.setex(key, 60, "1")
 
     def run() -> None:
         with harness.app.app_context():

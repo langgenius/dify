@@ -26,7 +26,11 @@ from libs.external_api import register_external_error_handlers
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.trigger.oauth_client_repository import TriggerOAuthClientRepository
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
-from repositories.trigger.subscription_repository import RedisTriggerSubscriptionLocks, TriggerSubscriptionRepository
+from repositories.trigger.subscription_repository import (
+    RedisTriggerSubscriptionLocks,
+    RedisTriggerSubscriptionRefreshReservations,
+    TriggerSubscriptionRepository,
+)
 from services.account_errors import AccountNotFoundError
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
@@ -49,8 +53,13 @@ from services.trigger.oauth_gateway import (
 from services.trigger.oauth_service import TriggerOAuthService
 from services.trigger.provider_gateway import PluginTriggerProviderQuery
 from services.trigger.subscription_binding_service import TriggerSubscriptionBindingService
-from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway, invalidate_subscription_properties
+from services.trigger.subscription_gateway import (
+    PluginTriggerSubscriptionGateway,
+    enqueue_subscription_refresh,
+    invalidate_subscription_properties,
+)
 from services.trigger.subscription_query_service import TriggerSubscriptionQueryService
+from services.trigger.subscription_refresh_service import TriggerSubscriptionRefreshService
 from services.trigger.subscription_renewal_service import TriggerSubscriptionRenewalService
 from services.trigger.subscription_service import TriggerSubscriptionService
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
@@ -92,6 +101,14 @@ def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessio
         schemas=PluginTriggerProviderQuery(),
         subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
     )
+    renewal = TriggerSubscriptionRenewalService(
+        subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
+        providers=PluginTriggerSubscriptionGateway(),
+        oauth=oauth_provider,
+        clients=oauth_clients,
+        invalidate_cache=delete_cache_for_subscription,
+        invalidate_properties=invalidate_subscription_properties,
+    )
     services = WorkspaceServices(
         queries=create_autospec(WorkspaceQueryService, instance=True),
         management=create_autospec(WorkspaceService, instance=True),
@@ -130,13 +147,12 @@ def provisioning(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessio
             publish=enqueue_triggered_workflows,
         ),
         trigger_subscription_management=subscription_management,
-        trigger_subscription_renewal=TriggerSubscriptionRenewalService(
+        trigger_subscription_renewal=renewal,
+        trigger_subscription_refresh=TriggerSubscriptionRefreshService(
             subscriptions=TriggerSubscriptionRepository(session_factory=sqlite_session_factory),
-            providers=PluginTriggerSubscriptionGateway(),
-            oauth=oauth_provider,
-            clients=oauth_clients,
-            invalidate_cache=delete_cache_for_subscription,
-            invalidate_properties=invalidate_subscription_properties,
+            reservations=RedisTriggerSubscriptionRefreshReservations(redis=redis),
+            publish=enqueue_subscription_refresh,
+            renewal=renewal,
         ),
         trigger_oauth_clients=oauth_clients,
         trigger_oauth=TriggerOAuthService(
