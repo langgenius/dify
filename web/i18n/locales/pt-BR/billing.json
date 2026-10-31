@@ -8,6 +8,9 @@
   "apps.fullTip2": "Limite do plano alcançado",
   "apps.fullTip2des": "É recomendado limpar aplicações inativas para liberar uso ou entrar em contato conosco.",
   "buyPermissionDeniedTip": "Por favor, entre em contato com o administrador da sua empresa para assinar",
+  "errors.operationFailed": "Não foi possível concluir esta solicitação. Tente novamente mais tarde. Se o problema persistir, entre em contato com o suporte.",
+  "errors.requestInProgress": "Sua solicitação anterior ainda está sendo processada. Tente novamente em instantes.",
+  "errors.unavailable": "Este serviço está temporariamente indisponível. Tente novamente mais tarde.",
   "plans.community.btnText": "Comece com a Comunidade",
   "plans.community.description": "Para Usuários Individuais, Pequenas Equipes ou Projetos Não Comerciais",
   "plans.community.features": [
