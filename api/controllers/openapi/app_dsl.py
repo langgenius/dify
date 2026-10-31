@@ -1,34 +1,67 @@
 from __future__ import annotations
 
+from collections.abc import Generator
+from contextlib import contextmanager
 from http import HTTPStatus
-from typing import Final
+from typing import IO, Final
 from uuid import UUID, uuid4
 
+from flask import send_file
 from flask_restx import Resource
+from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest, NotFound
 
+from configs import dify_config
 from constants.oauth_bearer import Scope
 from controllers.common.errors import ForbiddenError, NotFoundError
+from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
+from controllers.openapi._archive import FolderRejections, FolderUpload
 from controllers.openapi._contract import Effect, Example, Kind, endpoint, op_of
-from controllers.openapi._errors import DraftChanged, DraftNotFound, DslInvalid, ErrorDetail, VersionNotFound
+from controllers.openapi._errors import (
+    AppPackageInvalid,
+    AppPackageTooLarge,
+    DraftChanged,
+    DraftNotFound,
+    DslInvalid,
+    ErrorDetail,
+    VersionNotFound,
+)
 from controllers.openapi._models import (
     AppDslExportQuery,
     AppDslExportResponse,
     AppDslImportPayload,
     AppDslImportResponse,
+    AppPackageExportQuery,
+    AppPackageImportPayload,
     CheckDependenciesResponse,
     DslCheckPayload,
     DslCheckResponse,
     DslIssueRow,
     Hint,
 )
-from controllers.openapi.auth.requirements import EDITOR_ROLES, account_app_guards, workspace_write_guards
+from controllers.openapi._upload import UploadPart, UploadParts
+from controllers.openapi.auth.requirements import (
+    EDITOR_ROLES,
+    CheckScope,
+    CheckSubject,
+    CheckWorkspaceMember,
+    CheckWorkspaceRole,
+    account_app_guards,
+    workspace_write_guards,
+)
+from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.plugins import PluginInstallApi
 from core.plugin.entities.plugin import PluginDependencyType
 from extensions.ext_application_services import application_services
 from machinery.context import AppRequestContext, RequestContext
+from services.agent.errors import (
+    InvalidRosterAgentPackageError,
+    RosterAgentPackageTooLargeError,
+    RosterReferenceNotAcceptedError,
+    WorkspaceSkillUnavailableError,
+)
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.app_entities import AppExportOptions
 from services.entities.dsl_entities import DraftGuardedImportParams, Import, ImportMode, ImportStatus
@@ -50,7 +83,26 @@ from services.workflow.graph_diff import current_draft_token
 _DSL_READ_GUARDS: Final = account_app_guards(
     RBACPermission.APP_IMPORT_EXPORT_DSL, scope=Scope.APPS_READ, roles=EDITOR_ROLES
 )
+_PACKAGE_READ_GUARDS: Final = account_app_guards(
+    RBACPermission.APP_IMPORT_EXPORT_DSL,
+    scope=Scope.APPS_READ,
+    roles=EDITOR_ROLES,
+    agent_permission=RBACPermission.AGENT_IMPORT_EXPORT_DSL,
+)
 _DSL_WRITE_GUARDS: Final = workspace_write_guards(RBACPermission.APP_IMPORT_EXPORT_DSL, roles=EDITOR_ROLES)
+# No route RBAC: the service checks import rights by package content, as the console import does.
+_PACKAGE_IMPORT_GUARDS: Final = (
+    CheckSubject(allowed=(AccountSubject,)),
+    CheckScope(Scope.WORKSPACE_WRITE),
+    CheckWorkspaceMember(),
+    CheckWorkspaceRole(EDITOR_ROLES),
+)
+_PACKAGE_UPLOAD: Final = FolderUpload(
+    payload=AppPackageImportPayload,
+    max_entries=lambda: dify_config.AGENT_PACKAGE_MAX_ENTRIES,
+    max_bytes=lambda: dify_config.AGENT_PACKAGE_MAX_BYTES,
+    rejections=FolderRejections("package folder", AppPackageInvalid, AppPackageTooLarge),
+)
 
 
 def _check_hint(context: RequestContext, app_id: str | None) -> Hint:
@@ -61,15 +113,11 @@ def _check_hint(context: RequestContext, app_id: str | None) -> Hint:
     )
 
 
-def _prepared_yaml(context: RequestContext, body: AppDslImportPayload) -> str:
+@contextmanager
+def _yaml_check_refusals(context: RequestContext, app_id: str | None) -> Generator[None]:
+    """Answer the refusals of the YAML check, and of the save's draft guard, for the YAML and package imports."""
     try:
-        return application_services().apps.dsl_imports.prepare(
-            context,
-            mode=ImportMode(body.mode),
-            source=body.source,
-            app_id=body.app_id,
-            draft_hash=body.draft_hash,
-        )
+        yield
     except ConsoleAppNotFoundError as error:
         raise NotFound(str(error)) from error
     except DraftChangedError as error:
@@ -77,8 +125,43 @@ def _prepared_yaml(context: RequestContext, body: AppDslImportPayload) -> str:
     except DslRefusedError as error:
         raise DslInvalid(
             details=[ErrorDetail(type=i.code, loc=list(i.loc), msg=i.message) for i in error.issues],
-            hints=[_check_hint(context, body.app_id)],
+            hints=[_check_hint(context, app_id)],
         ) from error
+
+
+def _prepared_yaml(context: RequestContext, body: AppDslImportPayload) -> str:
+    with _yaml_check_refusals(context, body.app_id):
+        return application_services().apps.dsl_imports.prepare(
+            context,
+            mode=ImportMode(body.mode),
+            source=body.source,
+            app_id=body.app_id,
+            draft_hash=body.draft_hash,
+        )
+
+
+@contextmanager
+def _export_refusals(workflow_id: str | None) -> Generator[None]:
+    """Answer an export of a draft or workflow version that does not exist."""
+    try:
+        yield
+    except WorkflowNotFoundError as exc:
+        raise (VersionNotFound() if workflow_id else DraftNotFound()) from exc
+    except IsDraftWorkflowError as exc:
+        raise VersionNotFound() from exc
+
+
+@contextmanager
+def _package_source(package: UploadPart | UploadParts) -> Generator[IO[bytes]]:
+    """A file part is the package as sent; a folder is zipped into a temporary archive, closed on exit."""
+    if isinstance(package, FileStorage):
+        yield package.stream
+        return
+    archive = _PACKAGE_UPLOAD.archive(package)
+    try:
+        yield archive.file
+    finally:
+        archive.file.close()
 
 
 def _import_response(result: Import, *, workspace_id: str) -> AppDslImportResponse:
@@ -92,6 +175,16 @@ def _import_response(result: Import, *, workspace_id: str) -> AppDslImportRespon
             )
         )
     return AppDslImportResponse(**result.model_dump(), hints=hints)
+
+
+def _import_status(result: Import) -> HTTPStatus:
+    match result.status:
+        case ImportStatus.FAILED:
+            return HTTPStatus.BAD_REQUEST
+        case ImportStatus.PENDING:
+            return HTTPStatus.ACCEPTED
+        case _:
+            return HTTPStatus.OK
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports")
@@ -154,14 +247,91 @@ class AppDslImportApi(Resource):
         except DraftChangedError as exc:
             raise DraftChanged() from exc
 
-        response = _import_response(result, workspace_id=workspace_id)
-        match result.status:
-            case ImportStatus.FAILED:
-                return response, HTTPStatus.BAD_REQUEST
-            case ImportStatus.PENDING:
-                return response, HTTPStatus.ACCEPTED
-            case _:
-                return response, HTTPStatus.OK
+        return _import_response(result, workspace_id=workspace_id), _import_status(result)
+
+
+@openapi_ns.route("/workspaces/<string:workspace_id>/apps/packages")
+class AppPackageImportApi(Resource):
+    """Import an app from a ``.ifpkg`` package: one file, or the unpacked folder with one part per file.
+
+    Provide ``app_id`` to overwrite an existing workflow or advanced-chat app; omit it to create a new app.
+    With ``preserve_agent_bindings=true``, roster Agent nodes keep their links to the workspace's Agents and
+    inline Agents keep their links to the workspace's skills; without it every packaged Agent and skill is
+    imported as a copy. The root app's YAML goes through the same checks as ``import.console_app.dsl``:
+    409 ``draft_changed`` when ``draft_hash`` no longer matches the draft, 422 ``dsl_invalid`` when the
+    graph has errors.
+
+    Returns 202 when the DSL version requires an explicit confirmation step; confirm it with the imports
+    :confirm method. Returns 400 ``app_package_invalid`` for a package that cannot be read, that links
+    roster Agents without ``preserve_agent_bindings=true``, or that keeps links to skills this workspace does
+    not have or never published (each one is in details), and 413 for one over this server's limits.
+    """
+
+    @endpoint(
+        context="workspace",
+        op="import.console_app.package",
+        kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
+        summary="Import an app from a .ifpkg package or an unpacked package folder",
+        examples=(
+            Example(title="Import an app from a .ifpkg file", input={"package": "./app.ifpkg"}),
+            Example(
+                title="Overwrite an existing workflow app from an unpacked package folder",
+                input={"package": "./app/", "app_id": "<app_id>", "draft_hash": "<draft_hash>"},
+            ),
+        ),
+        requirements=(*_PACKAGE_IMPORT_GUARDS, _PACKAGE_UPLOAD.cap()),
+        body=AppPackageImportPayload,
+        returns=(
+            (HTTPStatus.OK, AppDslImportResponse, "Import completed"),
+            (HTTPStatus.ACCEPTED, AppDslImportResponse, "Import pending confirmation"),
+            (HTTPStatus.BAD_REQUEST, AppDslImportResponse, "Import failed"),
+        ),
+    )
+    def post(self, ctx: RequestContext, workspace_id: str, *, body: AppPackageImportPayload):
+        params = DraftGuardedImportParams.model_validate(
+            body.model_dump(exclude={"package", "preserve_agent_bindings"}) | {"mode": ImportMode.YAML_CONTENT}
+        )
+        services = application_services().apps
+        with _package_source(body.package) as source, _yaml_check_refusals(ctx, body.app_id):
+            try:
+                result = services.console.import_app(
+                    ctx,
+                    params,
+                    source=source,
+                    preserve_agent_bindings=body.preserve_agent_bindings,
+                    refuse_roster_references=not body.preserve_agent_bindings,
+                    prepare_dsl=lambda dsl: services.dsl_imports.prepare(
+                        ctx, mode=ImportMode.YAML_CONTENT, source=dsl, app_id=body.app_id, draft_hash=body.draft_hash
+                    ),
+                )
+            except WorkspaceSkillUnavailableError as exc:
+                raise AppPackageInvalid(
+                    exc.description,
+                    hint=(
+                        "Fix each skill in details, "
+                        "or import with preserve_agent_bindings=false to use the package's copy of each skill."
+                    ),
+                    details=[
+                        ErrorDetail(type=problem, loc=["workspace_skills", name], msg=problem.describe(name))
+                        for name, problem in exc.problems.items()
+                    ],
+                ) from exc
+            except RosterReferenceNotAcceptedError as exc:
+                raise AppPackageInvalid(
+                    exc.description,
+                    hint=(
+                        "If the package was exported for editing, import it with preserve_agent_bindings=true. "
+                        "To import a copy, export the app with preserve_agent_bindings=false to bundle every Agent."
+                    ),
+                ) from exc
+            except InvalidRosterAgentPackageError as exc:
+                raise AppPackageInvalid(exc.description) from exc
+            except RosterAgentPackageTooLargeError as exc:
+                raise AppPackageTooLarge(exc.description) from exc
+            except NoPermissionError as exc:
+                raise ForbiddenError(str(exc)) from exc
+        return _import_response(result, workspace_id=workspace_id), _import_status(result)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/apps/imports:check")
@@ -266,16 +436,64 @@ class AppDslExportApi(Resource):
         # Read the hash first: a draft edited in between then refuses the import instead of losing the edit.
         draft_hash = current_draft_token(ctx.tenant_id, ctx.app_id)
         try:
-            data = application_services().apps.exports.export_app(
-                ctx, AppExportOptions(include_secret=query.include_secret, workflow_id=query.workflow_id)
-            )
+            with _export_refusals(query.workflow_id):
+                data = application_services().apps.exports.export_app(
+                    ctx, AppExportOptions(include_secret=query.include_secret, workflow_id=query.workflow_id)
+                )
         except AppDiscoveryNotFoundError as exc:
             raise NotFoundError(str(exc)) from exc
-        except WorkflowNotFoundError as exc:
-            raise (VersionNotFound() if query.workflow_id else DraftNotFound()) from exc
-        except IsDraftWorkflowError as exc:
-            raise VersionNotFound() from exc
         return AppDslExportResponse(data=data, draft_hash=draft_hash), 200
+
+
+@openapi_ns.route("/apps/<string:app_id>/package")
+class AppPackageExportApi(Resource):
+    """Download an app as a ``.ifpkg`` package (a zip), from its draft or one published version.
+
+    By default roster Agent nodes export as references and only inline Agents are packaged. Pass
+    ``preserve_agent_bindings=false`` to package every Agent, to move the app to another workspace. Each
+    workspace skill is written as a link plus a copy; the import's ``preserve_agent_bindings`` chooses which
+    it uses.
+    """
+
+    @endpoint(
+        context="workspace",
+        op="export.console_app.package",
+        kind=Kind.FILE,
+        summary="Download an app as a .ifpkg package: its draft, or one published version",
+        examples=(
+            Example(title="Export the draft as a package", input={"app_id": "<app_id>"}),
+            Example(
+                title="Export a published version to move to another workspace",
+                input={"app_id": "<app_id>", "workflow_id": "<workflow_id>", "preserve_agent_bindings": False},
+            ),
+        ),
+        requirements=_PACKAGE_READ_GUARDS,
+        query=AppPackageExportQuery,
+        returns=(HTTPStatus.OK, BinaryFileResponse, "App package"),
+    )
+    def get(self, ctx: RequestContext, app_id: str, *, query: AppPackageExportQuery):
+        options = AppExportOptions(
+            format="ifpkg",
+            include_secret=query.include_secret,
+            workflow_id=query.workflow_id,
+            preserve_agent_bindings=query.preserve_agent_bindings,
+        )
+        try:
+            with _export_refusals(query.workflow_id):
+                exported = application_services().apps.console.export(ctx, app_id, options)
+        except ConsoleAppNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
+        if isinstance(exported, str):
+            raise TypeError("a package export returned YAML text")
+        try:
+            response = send_file(
+                exported.archive, mimetype="application/zip", as_attachment=True, download_name=exported.filename
+            )
+        except Exception:
+            exported.close()
+            raise
+        response.call_on_close(exported.close)
+        return response
 
 
 @openapi_ns.route("/apps/<string:app_id>/dependencies:check")

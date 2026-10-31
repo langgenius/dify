@@ -115,6 +115,7 @@ class OpenApiErrorCode(StrEnum):
     SKILL_NAME_MISMATCH = "skill_name_mismatch"
     SKILL_PACKAGE_INVALID = "skill_package_invalid"
     SKILL_REQUEST_REJECTED = "skill_request_rejected"
+    APP_PACKAGE_INVALID = "app_package_invalid"
 
 
 class ErrorDetail(BaseModel):
@@ -594,6 +595,18 @@ class SkillPackageTooLarge(OpenApiError):  # noqa: N818
     code = 413
     error_code = OpenApiErrorCode.REQUEST_TOO_LARGE
     description = "The skill folder is over a limit of this server."
+
+
+class AppPackageInvalid(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.APP_PACKAGE_INVALID
+    description = "The app package is not valid."
+
+
+class AppPackageTooLarge(OpenApiError):  # noqa: N818
+    code = 413
+    error_code = OpenApiErrorCode.REQUEST_TOO_LARGE
+    description = "The app package is over a limit of this server."
 
 
 class SkillRequestRejected(OpenApiError):  # noqa: N818

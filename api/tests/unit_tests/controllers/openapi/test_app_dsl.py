@@ -1,39 +1,80 @@
+import json
+import zipfile
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
-from typing import Protocol, cast
+from dataclasses import asdict, dataclass
+from io import BytesIO
+from typing import BinaryIO, Protocol, cast, runtime_checkable
 from uuid import uuid4
 
 import pytest
 import yaml
-from flask import Flask, request
+from flask import Flask, Response, request
 from flask_restx import Resource
+from pydantic import ValidationError
+from sqlalchemy import Engine, delete, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest, NotFound
 
+from configs import dify_config
 from controllers.common.errors import ForbiddenError, NotFoundError
 from controllers.openapi import app_dsl
-from controllers.openapi._contract import op_of
-from controllers.openapi._errors import DraftChanged, DraftNotFound, DslInvalid, OpenApiErrorFormatter, VersionNotFound
+from controllers.openapi._contract import accepts, op_of
+from controllers.openapi._errors import (
+    AppPackageInvalid,
+    AppPackageTooLarge,
+    DraftChanged,
+    DraftNotFound,
+    DslInvalid,
+    InvalidFilePart,
+    OpenApiError,
+    OpenApiErrorCode,
+    OpenApiErrorFormatter,
+    VersionNotFound,
+)
 from controllers.openapi._models import (
     AppDslExportQuery,
     AppDslExportResponse,
     AppDslImportPayload,
     AppDslImportResponse,
+    AppPackageExportQuery,
+    AppPackageImportPayload,
     DslCheckPayload,
     DslCheckResponse,
     Hint,
 )
-from controllers.openapi.app_dsl import AppDslCheckApi, AppDslExportApi, AppDslImportApi, AppDslImportConfirmApi
-from controllers.openapi.auth.spec import EndpointSpec
+from controllers.openapi._upload import UploadPart, UploadParts
+from controllers.openapi.app_dsl import (
+    _PACKAGE_UPLOAD,
+    AppDslCheckApi,
+    AppDslExportApi,
+    AppDslImportApi,
+    AppDslImportConfirmApi,
+    AppPackageExportApi,
+    AppPackageImportApi,
+)
+from controllers.openapi.auth.spec import EndpointSpec, spec_of
 from libs.external_api import ExternalApi
 from machinery.context import AppRequestContext, RequestContext
+from models.account import TenantAccountJoin, TenantAccountRole
+from models.agent import WorkflowAgentBindingType
 from models.model import App, AppMode
+from models.skill import AgentSkillBinding, Skill
+from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
 from repositories.app.export_repository import AppExportRepository
+from services.agent.errors import (
+    InvalidRosterAgentPackageError,
+    RosterAgentPackageTooLargeError,
+    RosterReferenceNotAcceptedError,
+)
+from services.agent.roster_package_entities import RosterAgentPackageExport
+from services.app.console_service import ConsoleAppNotFoundError
 from services.app.export_service import AppExportService
 from services.app_dsl_service import AppDslService
+from services.app_package_service import AppPackageManifest, AppPackageService
 from services.entities.app_entities import AppExportOptions
-from services.entities.dsl_entities import DraftGuardedImportParams, Import, ImportStatus
+from services.entities.dsl_entities import DraftGuardedImportParams, Import, ImportMode, ImportStatus
 from services.errors.app import (
     AppDiscoveryNotFoundError,
     DraftChangedError,
@@ -42,11 +83,24 @@ from services.errors.app import (
 )
 from services.errors.base import NoPermissionError
 from services.workflow import graph_check
+from services.workflow.dsl_import import DslRefusedError
 from services.workflow.graph_check import IssueCode, IssueSeverity
 from services.workflow.graph_diff import current_draft_token, draft_token
+from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
 from tests.unit_tests.controllers.conftest import ControllerTestServices
+from tests.unit_tests.services.test_app_package_service import (
+    _add_roster_node,
+    _bind_second_workspace_skill,
+    _bindings_by_node,
+    _bundle_any_app,
+    _package_storage,
+    _rewrite,
+    _skill_section,
+    _source,
+)
 
 
+@runtime_checkable
 class _EndpointView(Protocol):
     """Structural stand-in for a `view` carrying the attributes `@endpoint` attaches."""
 
@@ -567,3 +621,744 @@ def test_export_errors_have_canonical_http_responses(
 
     assert response.status_code == status
     assert (response.get_json()["code"], response.get_json()["status"]) == (error_code, status)
+
+
+@runtime_checkable
+class _PackageView(Protocol):
+    __handler__: Callable[..., Response]
+
+
+_WORKFLOW_ID = "6f1c2a52-0d43-4f7e-9a3b-1c2d3e4f5a6b"
+
+
+def _export_package(app: Flask, query: AppPackageExportQuery) -> Response:
+    api = AppPackageExportApi()
+    view = AppPackageExportApi.get
+    assert isinstance(view, _PackageView)
+    with app.test_request_context("/openapi/v1/apps/app-1/package"):
+        return view.__handler__(api, _CONTEXT, "app-1", query=query)
+
+
+def _stub_package_export(
+    monkeypatch: pytest.MonkeyPatch, app_query_services: ControllerTestServices
+) -> tuple[list[AppExportOptions], RosterAgentPackageExport]:
+    seen: list[AppExportOptions] = []
+    package = RosterAgentPackageExport(archive=BytesIO(b"zip-bytes"), filename="release-summary.ifpkg", size=9)
+
+    def export(context: RequestContext, _app_id: str, options: AppExportOptions) -> RosterAgentPackageExport:
+        assert context == _CONTEXT
+        seen.append(options)
+        return package
+
+    monkeypatch.setattr(app_query_services.apps.console, "export", export)
+    return seen, package
+
+
+@pytest.mark.parametrize("view", [AppPackageExportApi.get, AppPackageImportApi.post])
+def test_package_routes_run_in_the_workspace_context(view: Callable[..., object]) -> None:
+    spec = spec_of(view)
+    assert spec is not None
+    assert spec.context == "workspace"
+
+
+def test_package_export_sends_the_ifpkg_as_an_attachment(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen, _package = _stub_package_export(monkeypatch, app_query_services)
+
+    response = _export_package(app, AppPackageExportQuery())
+
+    assert response.mimetype == "application/zip"
+    assert "release-summary.ifpkg" in response.headers["Content-Disposition"]
+    assert (seen[0].format, seen[0].preserve_agent_bindings) == ("ifpkg", True)
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        (AppPackageExportQuery(preserve_agent_bindings=False), {"preserve_agent_bindings": False}),
+        (AppPackageExportQuery(workflow_id=_WORKFLOW_ID), {"workflow_id": _WORKFLOW_ID}),
+        (AppPackageExportQuery(include_secret=True), {"include_secret": True}),
+    ],
+)
+def test_package_export_passes_the_query_through(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    query: AppPackageExportQuery,
+    expected: dict[str, object],
+) -> None:
+    seen, _package = _stub_package_export(monkeypatch, app_query_services)
+
+    _export_package(app, query)
+
+    assert expected.items() <= asdict(seen[0]).items()
+
+
+def test_package_export_closes_the_package_when_sending_fails(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _seen, package = _stub_package_export(monkeypatch, app_query_services)
+
+    def fail(*_args: object, **_kwargs: object) -> Response:
+        raise OSError("disk gone")
+
+    monkeypatch.setattr(app_dsl, "send_file", fail)
+
+    with pytest.raises(OSError, match="disk gone"):
+        _export_package(app, AppPackageExportQuery())
+
+    assert package.archive.closed
+
+
+@pytest.mark.parametrize(
+    ("workflow_id", "raised", "expected"),
+    [
+        (_WORKFLOW_ID, WorkflowNotFoundError("no version"), VersionNotFound),
+        (_WORKFLOW_ID, IsDraftWorkflowError("draft"), VersionNotFound),
+        (None, WorkflowNotFoundError("no draft"), DraftNotFound),
+        (None, ConsoleAppNotFoundError("app not found"), NotFound),
+    ],
+)
+def test_package_export_answers_a_missing_version_with_the_openapi_error(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    workflow_id: str | None,
+    raised: Exception,
+    expected: type[Exception],
+) -> None:
+    def export(*_args: object) -> RosterAgentPackageExport:
+        raise raised
+
+    monkeypatch.setattr(app_query_services.apps.console, "export", export)
+
+    with pytest.raises(expected):
+        _export_package(app, AppPackageExportQuery(workflow_id=workflow_id))
+
+
+_OVERWRITTEN_APP_ID = "7a1c2a52-0d43-4f7e-9a3b-1c2d3e4f5a6b"
+_COMPLETED = Import(id="import-1", status=ImportStatus.COMPLETED, app_id="app-1")
+
+
+def _part(data: bytes, filename: str = "app.ifpkg") -> FileStorage:
+    return FileStorage(stream=BytesIO(data), filename=filename)
+
+
+def _folder(files: Mapping[str, bytes]) -> UploadParts:
+    return {path: _part(data, path.rsplit("/", 1)[-1]) for path, data in files.items()}
+
+
+def _import_package(
+    app: Flask, body: AppPackageImportPayload, *, context: RequestContext = _CONTEXT
+) -> tuple[AppDslImportResponse, int]:
+    api = AppPackageImportApi()
+    workspace_id = context.active_workspace_id
+    view = AppPackageImportApi.post
+    assert isinstance(view, _EndpointView)
+    with app.test_request_context(f"/openapi/v1/workspaces/{workspace_id}/apps/packages", method="POST"):
+        return view.__handler__(api, context, workspace_id=workspace_id, body=body)
+
+
+@dataclass(frozen=True)
+class _PackageImportCall:
+    params: DraftGuardedImportParams
+    source: BinaryIO
+    content: bytes
+    preserve_agent_bindings: bool
+    refuse_roster_references: bool
+    prepare_dsl: Callable[[str], str]
+
+
+def _recorded_package_import(
+    monkeypatch: pytest.MonkeyPatch,
+    services: ControllerTestServices,
+    outcome: Import | Exception = _COMPLETED,
+) -> list[_PackageImportCall]:
+    calls: list[_PackageImportCall] = []
+
+    def import_app(
+        context: RequestContext,
+        params: DraftGuardedImportParams,
+        *,
+        source: BinaryIO,
+        preserve_agent_bindings: bool,
+        refuse_roster_references: bool,
+        prepare_dsl: Callable[[str], str],
+    ) -> Import:
+        assert context == _CONTEXT
+        calls.append(
+            _PackageImportCall(
+                params, source, source.read(), preserve_agent_bindings, refuse_roster_references, prepare_dsl
+            )
+        )
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    monkeypatch.setattr(services.apps.console, "import_app", import_app)
+    return calls
+
+
+@pytest.mark.parametrize("filename", ["app.ifpkg", "app.zip"])
+def test_package_import_reads_a_file_part_as_the_package(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch, filename: str
+) -> None:
+    calls = _recorded_package_import(monkeypatch, app_query_services)
+
+    _response, status = _import_package(
+        app, AppPackageImportPayload(package=_part(b"ifpkg-bytes", filename), name="Renamed")
+    )
+
+    [call] = calls
+    assert (status, call.content) == (200, b"ifpkg-bytes")
+    assert (call.params.mode, call.params.name, call.params.app_id) == (ImportMode.YAML_CONTENT, "Renamed", None)
+
+
+@pytest.mark.parametrize(
+    ("fields", "preserve_agent_bindings"),
+    [
+        pytest.param({}, False, id="default"),
+        pytest.param({"preserve_agent_bindings": False}, False, id="false"),
+        pytest.param({"preserve_agent_bindings": True}, True, id="true"),
+    ],
+)
+def test_package_import_passes_whether_to_keep_links(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    fields: dict[str, object],
+    preserve_agent_bindings: bool,
+) -> None:
+    calls = _recorded_package_import(monkeypatch, app_query_services)
+
+    _import_package(app, AppPackageImportPayload.model_validate({"package": _part(b"x"), **fields}))
+
+    [call] = calls
+    assert (call.preserve_agent_bindings, call.refuse_roster_references) == (
+        preserve_agent_bindings,
+        not preserve_agent_bindings,
+    )
+
+
+def test_package_import_builds_a_folder_into_the_package(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = _recorded_package_import(monkeypatch, app_query_services)
+    files = {"manifest.yaml": b"m", "app.yaml": b"a", "agents/a_000001/soul.yaml": b"s", ".DS_Store": b"junk"}
+
+    _import_package(
+        app,
+        AppPackageImportPayload(package=_folder(files), app_id=_OVERWRITTEN_APP_ID, draft_hash="exported"),
+    )
+
+    [call] = calls
+    with zipfile.ZipFile(BytesIO(call.content)) as archive:
+        assert archive.namelist() == ["agents/a_000001/soul.yaml", "app.yaml", "manifest.yaml"]
+    assert (call.params.app_id, call.params.draft_hash) == (_OVERWRITTEN_APP_ID, "exported")
+    assert call.source.closed
+
+
+@pytest.mark.parametrize(
+    ("package", "max_entries", "outcome", "expected", "code", "error_code", "mentions"),
+    [
+        pytest.param(
+            {"app.yaml": b"a", "agents/../../escape.yaml": b"x"},
+            2,
+            _COMPLETED,
+            AppPackageInvalid,
+            400,
+            OpenApiErrorCode.APP_PACKAGE_INVALID,
+            "agents/../../escape.yaml",
+            id="unsafe-path",
+        ),
+        pytest.param(
+            {"app.yaml": b"a", "manifest.yaml": b"m"},
+            1,
+            _COMPLETED,
+            AppPackageTooLarge,
+            413,
+            OpenApiErrorCode.REQUEST_TOO_LARGE,
+            "The package folder has more than 1 files",
+            id="too-many-entries",
+        ),
+        pytest.param(
+            {"app.yaml": b"a"},
+            1,
+            InvalidRosterAgentPackageError("member hash mismatch"),
+            AppPackageInvalid,
+            400,
+            OpenApiErrorCode.APP_PACKAGE_INVALID,
+            "member hash mismatch",
+            id="reader-refuses",
+        ),
+        pytest.param(
+            {"app.yaml": b"a"},
+            1,
+            RosterReferenceNotAcceptedError(["node-3"]),
+            AppPackageInvalid,
+            400,
+            OpenApiErrorCode.APP_PACKAGE_INVALID,
+            "import it with preserve_agent_bindings=true",
+            id="roster-references-without-the-flag",
+        ),
+        pytest.param(
+            {"app.yaml": b"a"},
+            1,
+            RosterAgentPackageTooLargeError("App package exceeds the size limit"),
+            AppPackageTooLarge,
+            413,
+            OpenApiErrorCode.REQUEST_TOO_LARGE,
+            "App package exceeds the size limit",
+            id="reader-too-large",
+        ),
+    ],
+)
+def test_package_import_rejections(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    package: Mapping[str, bytes],
+    max_entries: int,
+    outcome: Import | Exception,
+    expected: type[OpenApiError],
+    code: int,
+    error_code: OpenApiErrorCode,
+    mentions: str,
+) -> None:
+    config_overrides(AGENT_PACKAGE_MAX_ENTRIES=max_entries)
+    _recorded_package_import(monkeypatch, app_query_services, outcome)
+
+    with pytest.raises(expected) as exc_info:
+        _import_package(app, AppPackageImportPayload(package=_folder(package)))
+
+    body = OpenApiErrorFormatter().finalize(exc_info.value, {"message": exc_info.value.description}, code)
+    assert (body["status"], body["code"]) == (code, error_code)
+    assert mentions in str(body)
+
+
+def test_package_import_permission_denial_maps_to_forbidden(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _recorded_package_import(monkeypatch, app_query_services, NoPermissionError("denied"))
+
+    with pytest.raises(ForbiddenError, match="denied") as exc_info:
+        _import_package(app, AppPackageImportPayload(package=_part(b"ifpkg-bytes")))
+
+    assert isinstance(exc_info.value.__cause__, NoPermissionError)
+    assert exc_info.value.code == 403
+
+
+def test_package_import_refuses_a_path_sent_twice(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = _recorded_package_import(monkeypatch, app_query_services)
+    twice: UploadParts = {"app.yaml": [_part(b"a"), _part(b"b")]}
+
+    with pytest.raises(InvalidFilePart, match="app.yaml") as exc_info:
+        _import_package(app, AppPackageImportPayload(package=twice))
+
+    assert (exc_info.value.code, calls) == (422, [])
+
+
+@pytest.mark.parametrize(
+    ("fields", "loc"),
+    [
+        pytest.param({}, ("package",), id="no-package"),
+        pytest.param({"package": _part(b"x"), "draft_hash": "exported"}, (), id="draft-hash-without-app-id"),
+        pytest.param({"package": _part(b"x"), "app_id": "not-a-uuid"}, ("app_id",), id="non-uuid-app-id"),
+        pytest.param({"package": _part(b"x"), "mode": "yaml-url"}, ("mode",), id="unknown-field"),
+    ],
+)
+def test_package_import_payload_rejects_bad_input(fields: dict[str, object], loc: tuple[str, ...]) -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        AppPackageImportPayload.model_validate(fields)
+
+    assert [error["loc"] for error in exc_info.value.errors()] == [loc]
+
+
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        pytest.param({"package": (BytesIO(b"zip"), "app.ifpkg")}, FileStorage, id="file"),
+        pytest.param(
+            {"package[app.yaml]": (BytesIO(b"a"), "app.yaml"), "package[agents/x.md]": (BytesIO(b"x"), "x.md")},
+            dict,
+            id="folder",
+        ),
+    ],
+)
+def test_package_import_parses_a_file_or_a_folder_from_multipart(
+    app: Flask, data: dict[str, object], expected: type
+) -> None:
+    @accepts(body=AppPackageImportPayload)
+    def handler(*, body: AppPackageImportPayload) -> UploadPart | UploadParts:
+        return body.package
+
+    with app.test_request_context("/x", method="POST", data=data, content_type="multipart/form-data"):
+        assert isinstance(handler(), expected)
+
+
+def _preparing_import(monkeypatch: pytest.MonkeyPatch, services: ControllerTestServices, dsl: str) -> None:
+    """Stand in for the console import: hand ``dsl`` to the handler's ``prepare_dsl``, as the service does."""
+
+    def import_app(
+        _context: RequestContext,
+        _params: DraftGuardedImportParams,
+        *,
+        prepare_dsl: Callable[[str], str],
+        **_options: object,
+    ) -> Import:
+        prepare_dsl(dsl)
+        return _COMPLETED
+
+    monkeypatch.setattr(services.apps.console, "import_app", import_app)
+
+
+@pytest.mark.usefixtures("credentials")
+@pytest.mark.parametrize(
+    ("draft_hash", "dsl", "refusal", "expected", "hint_inputs"),
+    [
+        pytest.param(
+            None,
+            _dsl("workflow", _START, _ANSWER),
+            DslRefusedError,
+            DslInvalid,
+            [(op_of(AppDslCheckApi.post), _OVERWRITTEN_APP_ID)],
+            id="graph-error",
+        ),
+        pytest.param("stale", _dsl("workflow", _START, _END), DraftChangedError, DraftChanged, [], id="stale-draft"),
+    ],
+)
+def test_package_import_answers_the_yaml_checks_refusals(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    draft_hash: str | None,
+    dsl: str,
+    refusal: type[Exception],
+    expected: type[OpenApiError],
+    hint_inputs: list[tuple[str, object]],
+) -> None:
+    """The service sees only the YAML check's own errors; the handler answers each as the YAML import does."""
+    sqlite_session.add(
+        App(
+            id=_OVERWRITTEN_APP_ID,
+            tenant_id="workspace-1",
+            name="a",
+            mode=AppMode.WORKFLOW,
+            enable_site=True,
+            enable_api=True,
+        )
+    )
+    sqlite_session.commit()
+    body = AppPackageImportPayload(package=_part(b"x"), app_id=_OVERWRITTEN_APP_ID, draft_hash=draft_hash)
+    calls = _recorded_package_import(monkeypatch, app_query_services)
+    _import_package(app, body)
+    [call] = calls
+    with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/packages", method="POST"):
+        with pytest.raises(refusal):
+            call.prepare_dsl(dsl)
+    _preparing_import(monkeypatch, app_query_services, dsl)
+
+    with pytest.raises(expected) as exc_info:
+        _import_package(app, body)
+
+    assert [(h.op, h.input["app_id"]) for h in exc_info.value.hints or []] == hint_inputs
+
+
+@pytest.mark.usefixtures("credentials")
+def test_package_import_answers_404_for_an_app_outside_the_workspace(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _preparing_import(monkeypatch, app_query_services, _dsl("workflow", _START, _END))
+
+    with pytest.raises(NotFound):
+        _import_package(app, AppPackageImportPayload(package=_part(b"x"), app_id=_OVERWRITTEN_APP_ID))
+
+
+@pytest.mark.parametrize(
+    ("result", "status", "hint_ops"),
+    [
+        pytest.param(
+            Import(id="import-1", status=ImportStatus.PENDING), 202, [op_of(AppDslImportConfirmApi.post)], id="pending"
+        ),
+        pytest.param(Import(id="import-2", status=ImportStatus.COMPLETED, app_id="app-2"), 200, [], id="completed"),
+        pytest.param(Import(id="import-3", status=ImportStatus.FAILED, error="bad"), 400, [], id="failed"),
+    ],
+)
+def test_package_import_hints_a_confirm_only_while_pending(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    result: Import,
+    status: int,
+    hint_ops: list[str],
+) -> None:
+    _recorded_package_import(monkeypatch, app_query_services, result)
+
+    response, code = _import_package(app, AppPackageImportPayload(package=_part(b"x")))
+
+    assert (code, [h.op for h in response.hints]) == (status, hint_ops)
+
+
+@pytest.mark.parametrize(
+    ("raised", "expected"),
+    [(NoPermissionError("denied"), ForbiddenError), (DraftChangedError(), DraftChanged)],
+)
+def test_package_import_maps_service_refusals(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    raised: Exception,
+    expected: type[Exception],
+) -> None:
+    _recorded_package_import(monkeypatch, app_query_services, raised)
+
+    with pytest.raises(expected):
+        _import_package(app, AppPackageImportPayload(package=_part(b"x")))
+
+
+def test_package_upload_cap_counts_entries_and_fields(config_overrides: Callable[..., None]) -> None:
+    assert _PACKAGE_UPLOAD.parts() == dify_config.AGENT_PACKAGE_MAX_ENTRIES + 8
+    config_overrides(AGENT_PACKAGE_MAX_ENTRIES=3)
+    assert _PACKAGE_UPLOAD.parts() == 11
+
+
+_TOOL_PROVIDER_ID = "8b1c2a52-0d43-4f7e-9a3b-1c2d3e4f5a6b"
+
+
+def _add_workflow_tool(session: Session, app: App) -> None:
+    """A published workflow App exposed as a Workflow Tool, called by a tool node in ``app``'s draft."""
+    tool_app = make_app(app_id=str(uuid4()), tenant_id=app.tenant_id, mode=AppMode.WORKFLOW, name="Summarize")
+    published = make_workflow(
+        app_id=tool_app.id,
+        tenant_id=app.tenant_id,
+        version="2026-01-01 00:00:00",
+        graph={"nodes": [_START, _END], "edges": []},
+    )
+    provider = WorkflowToolProvider(
+        name="summarize",
+        label="Summarize",
+        icon='{"background": "#FFEAD5", "content": "S"}',
+        app_id=tool_app.id,
+        version=published.version,
+        user_id="account-1",
+        tenant_id=app.tenant_id,
+        description="Summarize a document",
+    )
+    provider.id = _TOOL_PROVIDER_ID
+    draft = _draft(session, app.id)
+    graph = draft.graph_dict
+    graph["nodes"].append(
+        {
+            "id": "node-4",
+            "data": {
+                "type": "tool",
+                "title": "Summarize",
+                "provider_id": _TOOL_PROVIDER_ID,
+                "provider_type": "workflow",
+                "provider_name": _TOOL_PROVIDER_ID,
+                "tool_name": "summarize",
+                "tool_label": "Summarize",
+                "tool_configurations": {},
+                "tool_parameters": {},
+            },
+        }
+    )
+    draft.graph = json.dumps(graph)
+    session.add_all([tool_app, published, provider])
+    session.commit()
+
+
+def _draft(session: Session, app_id: str) -> Workflow:
+    return session.scalars(
+        select(Workflow).where(Workflow.app_id == app_id, Workflow.version == Workflow.VERSION_DRAFT)
+    ).one()
+
+
+def _owner_context(session: Session, tenant_id: str) -> RequestContext:
+    """A request from the owner of the workspace that ``tenant_id`` names."""
+    tenant = make_tenant(tenant_id=tenant_id)
+    account = make_account(tenant=tenant)
+    session.add_all(
+        [
+            tenant,
+            account,
+            TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, current=True, role=TenantAccountRole.OWNER),
+        ]
+    )
+    session.commit()
+    return RequestContext("request-1", None, account.id, tenant.id)
+
+
+def _export_folder(source: App) -> tuple[bytes, UploadParts]:
+    """Export ``source`` keeping its links, as the archive and as the unpacked folder's parts."""
+    with AppPackageService().export_app(
+        may_bundle=_bundle_any_app, app_model=source, preserve_agent_bindings=True
+    ) as exported:
+        content = exported.archive.read()
+    with zipfile.ZipFile(BytesIO(content)) as archive:
+        return content, {name: _part(archive.read(name), name) for name in archive.namelist()}
+
+
+@pytest.mark.usefixtures("app_query_services", "credentials")
+def test_package_import_round_trips_an_unpacked_export_onto_its_app(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_engine: Engine,
+) -> None:
+    """Export an App with inline Agents, a skill, a workspace skill, a roster node and a Workflow Tool through
+    the real package service, unzip it into folder parts, and import them over the same App through the real
+    console import. Only the storage backend, dependency analysis and the credential check are stubbed.
+    """
+    storage = _package_storage(monkeypatch, sqlite_engine)
+    monkeypatch.setattr(
+        "services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned", lambda **_kwargs: None
+    )
+    source = _source(sqlite_session, storage, app_id=_OVERWRITTEN_APP_ID)
+    _add_roster_node(sqlite_session, source)
+    _add_workflow_tool(sqlite_session, source)
+    context = _owner_context(sqlite_session, source.tenant_id)
+    source_graph = _draft(sqlite_session, source.id).graph_dict
+    draft_hash = current_draft_token(source.tenant_id, source.id)
+    exported, folder = _export_folder(source)
+
+    response, status = _import_package(
+        app,
+        AppPackageImportPayload(package=folder, app_id=source.id, draft_hash=draft_hash, preserve_agent_bindings=True),
+        context=context,
+    )
+
+    assert {"w_000001.ifpkg", "s_000003.zip"} <= folder.keys()
+    assert (status, response.status, response.app_id) == (200, ImportStatus.COMPLETED, source.id), response.error
+    sqlite_session.expire_all()
+    imported_graph = _draft(sqlite_session, source.id).graph_dict
+    imported_nodes = {node["id"]: node["data"] for node in imported_graph["nodes"]}
+    assert imported_graph["edges"] == source_graph["edges"]
+    assert imported_nodes.keys() == {node["id"] for node in source_graph["nodes"]}
+    # The import adds each Agent node's binding and the node defaults; it keeps every value the source had.
+    for node in source_graph["nodes"]:
+        assert node["data"].items() <= imported_nodes[node["id"]].items()
+    rows = _bindings_by_node(sqlite_session, source.id)
+    assert (rows["node-3"].binding_type, rows["node-3"].agent_id) == (
+        WorkflowAgentBindingType.ROSTER_AGENT,
+        "roster-agent-1",
+    )
+    assert {rows["node-1"].binding_type, rows["node-2"].binding_type} == {WorkflowAgentBindingType.INLINE_AGENT}
+    assert sqlite_session.scalar(select(func.count()).select_from(WorkflowToolProvider)) == 1
+    # The inline Agent stays linked to the same workspace skill rather than holding a copy of it.
+    skill_links = sqlite_session.scalars(
+        select(AgentSkillBinding.skill_id).where(AgentSkillBinding.agent_id == rows["node-1"].agent_id)
+    ).all()
+    assert skill_links == ["source-workspace-skill"]
+    reexported, _folder = _export_folder(source)
+    assert _skill_section(reexported) == _skill_section(exported)
+    assert _skill_section(reexported)[2] == ["research"]
+
+
+@pytest.mark.usefixtures("app_query_services", "credentials")
+def test_confirming_a_pending_package_import_keeps_its_links(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_engine: Engine,
+) -> None:
+    """A package whose DSL version needs confirmation answers 202; the confirm keeps roster and skill links."""
+    storage = _package_storage(monkeypatch, sqlite_engine)
+    source = _source(sqlite_session, storage)
+    _add_roster_node(sqlite_session, source)
+    context = _owner_context(sqlite_session, source.tenant_id)
+    exported, _folder = _export_folder(source)
+
+    def needs_confirmation(_manifest: AppPackageManifest, data: dict[str, object], _members: dict[str, bytes]) -> None:
+        data["version"] = "99.0.0"
+
+    pending: dict[str, str] = {}
+    monkeypatch.setattr(
+        "services.app_dsl_service.redis_client.setex", lambda key, _ttl, value: pending.__setitem__(key, value)
+    )
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", pending.get)
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", pending.pop)
+
+    response, status = _import_package(
+        app,
+        AppPackageImportPayload(package=_part(_rewrite(exported, needs_confirmation)), preserve_agent_bindings=True),
+        context=context,
+    )
+    assert (status, response.status) == (202, ImportStatus.PENDING), response.error
+    [hint] = response.hints
+    assert hint.op == op_of(AppDslImportConfirmApi.post)
+
+    api = AppDslImportConfirmApi()
+    view = AppDslImportConfirmApi.post
+    assert isinstance(view, _EndpointView)
+    with app.test_request_context(f"/openapi/v1/workspaces/{context.active_workspace_id}/apps/imports", method="POST"):
+        confirmed, code = view.__handler__(
+            api, context, workspace_id=context.active_workspace_id, import_id=hint.input["import_id"]
+        )
+
+    assert (code, confirmed.status) == (200, ImportStatus.COMPLETED), confirmed.error
+    rows = _bindings_by_node(sqlite_session, confirmed.app_id)
+    assert (rows["node-3"].binding_type, rows["node-3"].agent_id) == (
+        WorkflowAgentBindingType.ROSTER_AGENT,
+        "roster-agent-1",
+    )
+    skill_links = sqlite_session.scalars(
+        select(AgentSkillBinding.skill_id).where(AgentSkillBinding.agent_id == rows["node-1"].agent_id)
+    ).all()
+    assert skill_links == ["source-workspace-skill"]
+    assert not pending
+
+
+@pytest.mark.usefixtures("app_query_services", "credentials")
+def test_package_import_refuses_links_to_missing_skills_before_any_write(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_engine: Engine,
+) -> None:
+    storage = _package_storage(monkeypatch, sqlite_engine)
+    source = _source(sqlite_session, storage, app_id=_OVERWRITTEN_APP_ID)
+    _bind_second_workspace_skill(sqlite_session, storage, agent=2)
+    _add_workflow_tool(sqlite_session, source)
+    context = _owner_context(sqlite_session, source.tenant_id)
+    source_graph = _draft(sqlite_session, source.id).graph_dict
+    _exported, folder = _export_folder(source)
+    sqlite_session.execute(delete(Skill).where(Skill.name == "second"))
+    sqlite_session.execute(update(Skill).values(latest_published_version_id=None))
+    sqlite_session.commit()
+    apps = sqlite_session.scalar(select(func.count()).select_from(App))
+
+    with pytest.raises(AppPackageInvalid) as exc_info:
+        _import_package(
+            app,
+            AppPackageImportPayload(package=folder, app_id=source.id, preserve_agent_bindings=True),
+            context=context,
+        )
+
+    assert storage.saved == []
+    assert sqlite_session.scalar(select(func.count()).select_from(App)) == apps
+    sqlite_session.expire_all()
+    assert _draft(sqlite_session, source.id).graph_dict == source_graph
+    body = OpenApiErrorFormatter().finalize(exc_info.value, {"message": exc_info.value.description}, 400)
+    assert (body["status"], body["code"]) == (400, OpenApiErrorCode.APP_PACKAGE_INVALID)
+    assert body["hint"] == (
+        "Fix each skill in details, "
+        "or import with preserve_agent_bindings=false to use the package's copy of each skill."
+    )
+    assert body["details"] == [
+        {
+            "type": "workspace_skill_not_found",
+            "loc": ["workspace_skills", "second"],
+            "msg": 'Workspace Skill "second" is not in this workspace. Import it into the Skill Hub first.',
+        },
+        {
+            "type": "workspace_skill_not_published",
+            "loc": ["workspace_skills", "workspace"],
+            "msg": 'Workspace Skill "workspace" has no published version. Publish it in the Skill Hub first.',
+        },
+    ]

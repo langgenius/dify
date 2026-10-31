@@ -15,18 +15,11 @@ from flask import send_file
 from flask_restx import Resource
 
 from configs import dify_config
-from constants import BYTES_PER_MIB
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import (
-    CapRequestBody,
-    Example,
-    Kind,
-    endpoint,
-    multipart_header_allowance,
-    op_of,
-)
+from controllers.openapi._archive import FolderRejections, FolderUpload
+from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._errors import (
     DraftChanged,
     ErrorDetail,
@@ -55,8 +48,7 @@ from controllers.openapi._models import (
     SkillVersionListResponse,
     SkillVersionRow,
 )
-from controllers.openapi._multipart import folder_streams
-from controllers.openapi._upload import UploadParts, file_fields
+from controllers.openapi._upload import UploadParts
 from controllers.openapi.auth.requirements import (
     EDITOR_ROLES,
     WORKSPACE_READ_GUARDS,
@@ -64,18 +56,6 @@ from controllers.openapi.auth.requirements import (
     CheckSkillEnabled,
     Requirement,
     workspace_write_guards,
-)
-from libs.archive_writer import (
-    ArchiveEmptyError,
-    ArchiveError,
-    ArchiveLimitKind,
-    ArchiveLimits,
-    ArchiveOptions,
-    ArchivePathError,
-    ArchiveTooLargeError,
-    StrictPathPolicy,
-    entries_from_folder,
-    write_archive,
 )
 from machinery.context import RequestContext
 from services.skill_management_service import (
@@ -127,10 +107,12 @@ _NO_HINTS: Final[Mapping[type[OpenApiError], HintsFor]] = MappingProxyType({})
 
 _IMPORT_FILENAME: Final = "skill.zip"
 
-_LIMIT_MESSAGES: Final[Mapping[ArchiveLimitKind, Callable[[int], str]]] = {
-    ArchiveLimitKind.ENTRIES: lambda limit: f"The skill folder has more than {limit} files",
-    ArchiveLimitKind.BYTES: lambda limit: f"The skill folder is over {limit // BYTES_PER_MIB} MiB",
-}
+_SKILL_UPLOAD: Final = FolderUpload(
+    payload=SkillImportPayload,
+    max_entries=lambda: dify_config.SKILL_PACKAGE_MAX_ENTRIES,
+    max_bytes=max_skill_archive_bytes,
+    rejections=FolderRejections("skill folder", SkillPackageInvalid, SkillPackageTooLarge),
+)
 
 _READ_GUARDS: Final = (
     CheckSkillEnabled(),
@@ -192,37 +174,8 @@ def _name_conflict_hints(error: SkillManagementServiceError, *, workspace_id: st
     return []
 
 
-def _skill_upload_parts() -> int:
-    plain_fields = len(SkillImportPayload.model_fields) - len(file_fields(SkillImportPayload))
-    return dify_config.SKILL_PACKAGE_MAX_ENTRIES + plain_fields
-
-
-_UPLOAD_CAP: Final = CapRequestBody(
-    max_bytes=lambda: max_skill_archive_bytes() + multipart_header_allowance(_skill_upload_parts()),
-    max_parts=_skill_upload_parts,
-)
-
-
-def _archive_rejection(error: ArchiveError) -> OpenApiError:
-    if isinstance(error, ArchiveTooLargeError):
-        return SkillPackageTooLarge(_LIMIT_MESSAGES[error.kind](error.limit))
-    if isinstance(error, ArchivePathError):
-        detail = ErrorDetail(type=error.reason.value, loc=[error.path], msg=error.reason.message)
-        return SkillPackageInvalid(str(error), details=[detail])
-    if isinstance(error, ArchiveEmptyError):
-        return SkillPackageInvalid("The skill folder has no files")
-    raise error
-
-
 def _archive_of(folder: UploadParts) -> bytes:
-    options = ArchiveOptions(
-        StrictPathPolicy(),
-        ArchiveLimits(max_entries=dify_config.SKILL_PACKAGE_MAX_ENTRIES, max_bytes=max_skill_archive_bytes()),
-    )
-    try:
-        result = write_archive(entries_from_folder(folder_streams(folder)), options)
-    except ArchiveError as error:
-        raise _archive_rejection(error) from error
+    result = _SKILL_UPLOAD.archive(folder)
     try:
         return result.file.read()
     finally:
@@ -396,7 +349,7 @@ class SkillImportApi(Resource):
                 },
             ),
         ),
-        requirements=(*_edit_guards(RBACPermission.SKILL_EDIT), _UPLOAD_CAP),
+        requirements=(*_edit_guards(RBACPermission.SKILL_EDIT), _SKILL_UPLOAD.cap()),
         body=SkillImportPayload,
         returns=(
             (HTTPStatus.CREATED, SkillImportResponse, "Created"),

@@ -8,6 +8,7 @@ import { expect, it } from 'vite-plus/test'
 import { LOCAL_FILES } from '@/call/files'
 import { parseCatalog } from '@/plugins/catalog'
 import { buildRequest } from './request'
+import { validateInput } from './validate'
 
 const doc = parseCatalog(readFileSync(join(__dirname, '../../test/fixtures/catalog.json')))
 const run = doc.ops['run.console_app.workflow']!
@@ -20,6 +21,7 @@ const FOLDERS: Readonly<Record<string, readonly string[]>> = {
   './pkg': ['a.yaml', 's/SKILL.md'],
   './junk': [],
   './brackets': ['x[1].txt'],
+  './app-dir': ['SKILL.md', 'a/b.txt'],
 }
 const isFolder = async (p: string) => p in FOLDERS
 const listFolder = async (p: string) => {
@@ -83,6 +85,31 @@ it('expands a folder into one part per file', async () => {
   expect([...form.keys()]).toEqual(['inputs', 'attachments[a.yaml]', 'attachments[s/SKILL.md]'])
   expect((form.get('attachments[a.yaml]') as File).name).toBe('a.yaml')
   expect((form.get('attachments[s/SKILL.md]') as File).name).toBe('SKILL.md')
+})
+
+it('binds a field that takes a file or a folder', async () => {
+  const binary = { type: 'string', format: 'binary' }
+  const schema = {
+    type: 'object',
+    properties: {
+      package: {
+        anyOf: [
+          binary,
+          {
+            type: 'object',
+            additionalProperties: { anyOf: [binary, { type: 'array', items: binary }] },
+          },
+        ],
+      },
+    },
+    required: ['package'],
+  }
+  const op: CatalogOp = { ...run, input: schema, bind: { package: 'file' } }
+  expect(validateInput(schema, { package: './app.ifpkg' })).toEqual([])
+  const file = await buildRequest(op, { package: './app.ifpkg' }, deps)
+  expect([...file.form!.keys()]).toEqual(['package'])
+  const folder = await buildRequest(op, { package: './app-dir' }, deps)
+  expect([...folder.form!.keys()]).toEqual(['package[SKILL.md]', 'package[a/b.txt]'])
 })
 
 it('refuses a folder inside a list or a map', async () => {

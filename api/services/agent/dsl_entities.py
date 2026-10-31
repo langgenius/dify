@@ -17,6 +17,8 @@ from services.entities.site_dsl import SiteDsl
 AGENT_PACKAGE_SCHEMA_VERSION = 1
 AGENT_PACKAGE_REF_KEY = "package_ref"
 AGENT_NODE_JOB_DSL_KEY = "agent_job"
+AGENT_BINDING_DSL_KEY = "agent_binding"
+AGENT_BINDING_TYPE_KEY = "binding_type"
 
 
 class AgentPackageMetadata(BaseModel):

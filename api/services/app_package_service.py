@@ -7,9 +7,10 @@ import re
 import tempfile
 import zipfile
 import zlib
+from collections import Counter
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, BinaryIO, Literal, Self, cast
+from typing import IO, Any, BinaryIO, Literal, Self, cast
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
@@ -25,8 +26,20 @@ from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import App, AppMode
 from models.tools import ToolLabelBinding, WorkflowToolProvider
 from models.workflow import Workflow
-from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AGENT_PACKAGE_REF_KEY, AgentPackage
-from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
+from services.agent.dsl_entities import (
+    AGENT_BINDING_DSL_KEY,
+    AGENT_BINDING_TYPE_KEY,
+    AGENT_NODE_JOB_DSL_KEY,
+    AGENT_PACKAGE_REF_KEY,
+    AgentPackage,
+)
+from services.agent.errors import (
+    InvalidRosterAgentPackageError,
+    RosterAgentPackageTooLargeError,
+    RosterReferenceNotAcceptedError,
+    WorkspaceSkillProblem,
+    WorkspaceSkillUnavailableError,
+)
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.package_resource_importer import AgentPackageResourceImporter
 from services.agent.roster_package_entities import (
@@ -46,6 +59,7 @@ from services.dsl_content import DSL_MAX_SIZE
 from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import AppDslExportData, DslImportWarning, ImportStatus, PackagedWorkflowTool
 from services.entities.site_dsl import SiteDsl
+from services.skill_management_service import SkillManagementService
 from services.workflow_tool_references import iter_workflow_tool_references
 
 _COPY_CHUNK_SIZE = 1024 * 1024
@@ -115,7 +129,35 @@ class PreparedAppPackage(PreparedPackageArchive):
             elif item.icon_type == "image" and item.icon in mapping:
                 item.icon = mapping[item.icon]
 
-    def materialize_agents(self, *, tenant_id: str, account_id: str) -> tuple[dict[str, Any], list[DslImportWarning]]:
+    def require_workspace_skills(self, *, tenant_id: str) -> None:
+        """Refuse, before any write, an import that links Agents to workspace Skills the workspace cannot bind.
+
+        Two links of one Agent at one priority would break the binding table's unique key. A Skill without a
+        published version is refused too: the runtime resolves only published versions.
+        """
+        for ref, agent in self.agents.items():
+            priorities = Counter(skill.priority for skill in agent.workspace_skills)
+            shared = [priority for priority, count in priorities.items() if count > 1]
+            if shared:
+                raise InvalidRosterAgentPackageError(
+                    f"App package Agent {ref} links workspace Skills that share priority {shared[0]}"
+                )
+        names = {skill.name for agent in self.agents.values() for skill in agent.workspace_skills}
+        if not names:
+            return
+        versions = SkillManagementService().published_version_ids(tenant_id=tenant_id, names=names)
+        problems = dict.fromkeys(names - versions.keys(), WorkspaceSkillProblem.NOT_FOUND)
+        problems.update(
+            dict.fromkeys(
+                (name for name, version in versions.items() if version is None), WorkspaceSkillProblem.NOT_PUBLISHED
+            )
+        )
+        if problems:
+            raise WorkspaceSkillUnavailableError(problems)
+
+    def materialize_agents(
+        self, *, tenant_id: str, account_id: str, link_workspace_skills: bool
+    ) -> tuple[dict[str, Any], list[DslImportWarning]]:
         importer = AgentPackageResourceImporter()
         # Validate every Agent before uploading any resource.
         for ref, resources in self.agent_resources.items():
@@ -124,7 +166,12 @@ class PreparedAppPackage(PreparedPackageArchive):
         warnings: list[DslImportWarning] = []
         for ref, resources in self.agent_resources.items():
             agents[ref], resource_warnings = importer.materialize(
-                archive=self, resources=resources, agent_package=agents[ref], tenant_id=tenant_id, account_id=account_id
+                archive=self,
+                resources=resources,
+                agent_package=agents[ref],
+                tenant_id=tenant_id,
+                account_id=account_id,
+                link_workspace_skills=link_workspace_skills,
             )
             warnings.extend(
                 warning.model_copy(update={"path": f"agent_packages.{ref}.{warning.path}"})
@@ -145,9 +192,20 @@ class _WorkflowToolExport:
 class AppPackageService(RosterAgentPackageReader):
     """Reuse the bounded ZIP reader; Apps retain DSL import semantics."""
 
-    def read_package(self, source: BinaryIO, *, accept_roster_references: bool = False) -> PreparedAppPackage | None:
-        """Validate an App archive, or rewind a Roster package for its importer."""
-        return self._read_package(source, bundled=False, accept_roster_references=accept_roster_references)
+    def read_package(
+        self, source: IO[bytes], *, accept_roster_references: bool = False, refuse_roster_references: bool = False
+    ) -> PreparedAppPackage | None:
+        """Validate an App archive, or rewind a Roster package for its importer.
+
+        ``refuse_roster_references`` refuses a package whose Agent nodes link roster Agents, naming them; it is
+        for an import asked to copy every Agent. Without either flag such links read as they always have.
+        """
+        return self._read_package(
+            source,
+            bundled=False,
+            accept_roster_references=accept_roster_references,
+            refuse_roster_references=refuse_roster_references,
+        )
 
     def read_workflow_tool(self, package: PreparedPackageArchive, tool: PackagedWorkflowTool) -> PreparedAppPackage:
         """Validate the nested archive of a workflow called through a packaged Workflow Tool."""
@@ -169,7 +227,9 @@ class AppPackageService(RosterAgentPackageReader):
                 raise InvalidRosterAgentPackageError("App package workflow tool failed integrity checks")
             member.seek(0)
             # Called workflows are always packaged with their own Agents, never roster links.
-            nested = self._read_package(member, bundled=True, accept_roster_references=False)
+            nested = self._read_package(
+                member, bundled=True, accept_roster_references=False, refuse_roster_references=False
+            )
             if nested is None:
                 raise InvalidRosterAgentPackageError("App package workflow tool must be an App package")
             return nested
@@ -180,7 +240,7 @@ class AppPackageService(RosterAgentPackageReader):
             package.archive.seek(0)
 
     def _read_package(
-        self, source: BinaryIO, *, bundled: bool, accept_roster_references: bool
+        self, source: IO[bytes], *, bundled: bool, accept_roster_references: bool, refuse_roster_references: bool
     ) -> PreparedAppPackage | None:
         """Read an App archive; a ``bundled`` one is the workflow behind a packaged Workflow Tool."""
         spool = cast(BinaryIO, tempfile.SpooledTemporaryFile(max_size=16 * 1024 * 1024, mode="w+b"))  # noqa: SIM115
@@ -225,7 +285,12 @@ class AppPackageService(RosterAgentPackageReader):
                     raise InvalidRosterAgentPackageError("App package DSL is invalid")
                 if bundled or manifest.workflow_tools:
                     self._require_confirmed_version(app_data)
-                agents = self._validate_agents(app_data, manifest, accept_roster_references=accept_roster_references)
+                agents = self._validate_agents(
+                    app_data,
+                    manifest,
+                    accept_roster_references=accept_roster_references,
+                    refuse_roster_references=refuse_roster_references,
+                )
                 site_data = app_data.get("site")
                 if site_data is not None:
                     try:
@@ -310,9 +375,16 @@ class AppPackageService(RosterAgentPackageReader):
 
     @classmethod
     def _validate_agents(
-        cls, data: dict[str, Any], manifest: AppPackageManifest, *, accept_roster_references: bool
+        cls,
+        data: dict[str, Any],
+        manifest: AppPackageManifest,
+        *,
+        accept_roster_references: bool,
+        refuse_roster_references: bool,
     ) -> dict[str, AgentPackage]:
         agent_modes = {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}
+        if refuse_roster_references:
+            cls._refuse_roster_references(data)
         if not manifest.agent_resources:
             if not accept_roster_references:
                 return {}
@@ -325,10 +397,10 @@ class AppPackageService(RosterAgentPackageReader):
             agents = {ref: AgentPackage.model_validate(value) for ref, value in packages.items()}
             references: set[str] = set()
             for _, node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(data["workflow"]["graph"]):
-                binding = node_data["agent_binding"]
-                binding_type = WorkflowAgentBindingType(binding["binding_type"])
+                binding = node_data[AGENT_BINDING_DSL_KEY]
+                binding_type = WorkflowAgentBindingType(binding[AGENT_BINDING_TYPE_KEY])
                 if accept_roster_references:
-                    if cls._is_roster_reference(binding_type, binding):
+                    if cls._is_roster_reference(binding):
                         cls._validate_roster_reference(binding, node_data)
                         continue
                     if binding_type == WorkflowAgentBindingType.ROSTER_AGENT:
@@ -347,11 +419,30 @@ class AppPackageService(RosterAgentPackageReader):
         except (KeyError, TypeError, AttributeError, ValueError) as exc:
             raise InvalidRosterAgentPackageError("App package Agent references are invalid") from exc
 
+    @classmethod
+    def _refuse_roster_references(cls, data: Mapping[str, Any]) -> None:
+        """Refuse roster Agent links, for an import asked to copy every Agent."""
+        workflow = data.get("workflow")
+        if not isinstance(workflow, Mapping):
+            return
+        graph = workflow.get("graph")
+        if not isinstance(graph, Mapping):
+            return
+        node_ids = [
+            node_id
+            for node_id, node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph)
+            if cls._is_roster_reference(node_data.get(AGENT_BINDING_DSL_KEY))
+        ]
+        if node_ids:
+            raise RosterReferenceNotAcceptedError(node_ids)
+
     @staticmethod
-    def _is_roster_reference(binding_type: WorkflowAgentBindingType, binding: Mapping[str, Any]) -> bool:
-        if binding_type != WorkflowAgentBindingType.ROSTER_AGENT:
+    def _is_roster_reference(binding: object) -> bool:
+        if not isinstance(binding, Mapping):
             return False
-        return AGENT_PACKAGE_REF_KEY not in binding
+        if binding.get(AGENT_BINDING_TYPE_KEY) != WorkflowAgentBindingType.ROSTER_AGENT:
+            return False
+        return binding.get(AGENT_PACKAGE_REF_KEY) is None
 
     @staticmethod
     def _validate_roster_reference(binding: Mapping[str, Any], node_data: Mapping[str, Any]) -> None:

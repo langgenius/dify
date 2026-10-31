@@ -46,6 +46,7 @@ def test_full_description_projects_materialized_data_without_request_or_session(
         "updated_at": "2026-01-01T00:00:00",
         "service_api_enabled": True,
         "is_agent": False,
+        "draft_hash": None,
     }
     assert response.parameters is not None
     assert response.parameters["user_input_form"] == form

@@ -119,6 +119,11 @@ class AppDescribeInfo(AppInfo):
     updated_at: str | None = None
     service_api_enabled: bool
     is_agent: bool = Field(False, description="True for agent-chat and advanced-chat apps")
+    draft_hash: str | None = Field(
+        None,
+        description="Hash of the draft; pass it to an import as draft_hash to refuse overwriting newer edits. "
+        "Workflow and advanced-chat apps only",
+    )
 
 
 class AppDescribeResponse(Hinted):
@@ -595,6 +600,21 @@ class TaskStopResponse(BaseModel):
     result: Literal["success"]
 
 
+_OVERWRITTEN_APP_DESCRIPTION: Final = "Existing app ID to overwrite (workflow/advanced-chat apps only)"
+_IMPORT_DRAFT_HASH_DESCRIPTION: Final = (
+    "draft_hash from the export or restore this import is based on. The import fails if the "
+    "draft's graph, features, environment variables or conversation variables changed since. Requires app_id"
+)
+_DRAFT_HASH_NEEDS_APP_ID: Final = "draft_hash is only valid when app_id names the app to overwrite"
+
+
+def _require_app_id_for_draft_hash(*, draft_hash: str | None, app_id: str | None) -> None:
+    if draft_hash is None:
+        return
+    if not app_id:
+        raise ValueError(_DRAFT_HASH_NEEDS_APP_ID)
+
+
 class AppDslImportPayload(BaseModel):
     """Request body for POST /workspaces/<workspace_id>/apps/imports."""
 
@@ -608,18 +628,13 @@ class AppDslImportPayload(BaseModel):
     icon_type: str | None = Field(None)
     icon: str | None = Field(None)
     icon_background: str | None = Field(None)
-    app_id: str | None = Field(None, description="Existing app ID to overwrite (workflow/advanced-chat apps only)")
-    draft_hash: str | None = Field(
-        None,
-        description="draft_hash from the export or restore this import is based on. The import fails if the "
-        "draft's graph, features, environment variables or conversation variables changed since. Requires app_id",
-    )
+    app_id: str | None = Field(None, description=_OVERWRITTEN_APP_DESCRIPTION)
+    draft_hash: str | None = Field(None, description=_IMPORT_DRAFT_HASH_DESCRIPTION)
     _source: str = PrivateAttr()
 
     @model_validator(mode="after")
     def _validate_source_by_mode(self) -> AppDslImportPayload:
-        if self.draft_hash is not None and not self.app_id:
-            raise ValueError("draft_hash is only valid when app_id names the app to overwrite")
+        _require_app_id_for_draft_hash(draft_hash=self.draft_hash, app_id=self.app_id)
         source = self.yaml_url if self.mode == ImportMode.YAML_URL else self.yaml_content
         if not source:
             raise ValueError(f"{self.mode.replace('-', '_')} is required when mode is '{self.mode}'")
@@ -632,12 +647,68 @@ class AppDslImportPayload(BaseModel):
         return self._source
 
 
+class AppPackageImportPayload(BaseModel):
+    """Request body for POST /workspaces/<workspace_id>/apps/packages."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    package: UploadPart | UploadParts = Field(
+        description="A .ifpkg file, or an unpacked package folder (one part per file)"
+    )
+    app_id: UUIDStr | None = Field(None, description=_OVERWRITTEN_APP_DESCRIPTION)
+    draft_hash: str | None = Field(None, description=_IMPORT_DRAFT_HASH_DESCRIPTION)
+    preserve_agent_bindings: bool = Field(
+        False,
+        description=(
+            "true: keep the package's links to roster Agents and workspace skills, for a package exported "
+            "for editing and uploaded back to the same workspace. false: import every packaged Agent and "
+            "skill as a copy, for a full export; a package that links roster Agents is refused. "
+            "Agent App packages always import their skills as copies; true is ignored for them."
+        ),
+    )
+    name: str | None = Field(None, description="Override the app name from the DSL")
+    description: str | None = Field(None, description="Override the app description from the DSL")
+    icon_type: str | None = Field(None)
+    icon: str | None = Field(None)
+    icon_background: str | None = Field(None)
+
+    @model_validator(mode="after")
+    def _draft_hash_needs_app_id(self) -> Self:
+        _require_app_id_for_draft_hash(draft_hash=self.draft_hash, app_id=self.app_id)
+        return self
+
+
 class AppDslExportQuery(BaseModel):
     """Query parameters for GET /apps/<app_id>/dsl."""
 
     include_secret: bool = Field(False, description="Include secret values in plaintext in the exported DSL")
     workflow_id: UUIDStr | None = Field(
         None, description="Export a specific workflow version instead of the current draft"
+    )
+
+
+_IGNORED_FOR_AGENT_APPS: Final = "Ignored for Agent Apps, which export the Agent's current state"
+
+
+class AppPackageExportQuery(BaseModel):
+    """Query parameters for GET /apps/<app_id>/package."""
+
+    include_secret: bool = Field(
+        False, description=f"Include secret values in plaintext in the exported DSL. {_IGNORED_FOR_AGENT_APPS}"
+    )
+    workflow_id: UUIDStr | None = Field(
+        None,
+        description=f"Export a specific workflow version instead of the current draft. {_IGNORED_FOR_AGENT_APPS}",
+    )
+    preserve_agent_bindings: bool = Field(
+        True,
+        description=(
+            "true: roster Agent nodes export as references (binding_type roster_agent, agent_id, agent_job) "
+            "and only inline Agents are packaged. false: every Agent is packaged, as the console does, for "
+            "moving the App to another workspace. Either way each workspace skill is written as a link plus a "
+            "copy; an import with preserve_agent_bindings=true links it, so the importing workspace must have "
+            f"it, and an import with false uses the copy. {_IGNORED_FOR_AGENT_APPS}"
+        ),
     )
 
 
