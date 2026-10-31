@@ -69,7 +69,6 @@ export { get15Errors as 'GET /rag/pipelines/{pipeline_id}/workflows/draft/pre-pr
 export { get15Errors as 'GET /snippets/{snippet_id}/workflows/draft' } from './snippets/errors.gen.ts'
 export { get15Errors as 'GET /trial-apps/{app_id}/site' } from './trial-apps/errors.gen.ts'
 export { get16Errors as 'GET /agent/{agent_id}/config/skills/{name}/files/preview' } from './agent/errors.gen.ts'
-export { get16Errors as 'GET /apps/{app_id}/agent/logs' } from './apps/errors.gen.ts'
 export { get16Errors as 'GET /datasets/{dataset_id}/documents/{document_id}/indexing-estimate' } from './datasets/errors.gen.ts'
 export { get16Errors as 'GET /knowledge-fs/spaces/{control_space_id}/documents' } from './knowledge-fs/errors.gen.ts'
 export { get16Errors as 'GET /rag/pipelines/{pipeline_id}/workflows/draft/processing/parameters' } from './rag/errors.gen.ts'

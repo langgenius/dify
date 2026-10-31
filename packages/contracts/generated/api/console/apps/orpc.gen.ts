@@ -1387,7 +1387,6 @@ export const get16 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdAgentLogsPath, query: zGetAppsByAppIdAgentLogsQuery }))
   .output(zGetAppsByAppIdAgentLogsResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const logs = {
   get: get16,

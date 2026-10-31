@@ -709,8 +709,6 @@ export const get15Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
 }
 
-export const get16Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
-
 export const post15Errors = {
   no_file_uploaded: { status: 400, data: zNoFileUploadedError },
   too_many_files: { status: 400, data: zTooManyFilesError },
