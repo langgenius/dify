@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Protocol, cast
+from typing import Protocol, cast, runtime_checkable
 
 import pytest
 from flask import Flask
@@ -75,8 +75,15 @@ def test_extra_param_forbidden() -> None:
 """Transport mappings over stable admitted contexts."""
 
 
+@runtime_checkable
 class Endpoint[T](Protocol):
     __handler__: Callable[..., T]
+
+
+def _describe_handler() -> Callable[..., AppDescribeResponse]:
+    view: object = AppDescribeApi.get
+    assert isinstance(view, Endpoint)
+    return view.__handler__
 
 
 @pytest.mark.parametrize("api", [AppDescribeApi(), PermittedExternalAppDescribeApi()])
@@ -130,7 +137,7 @@ def test_describe_returns_the_draft_hash_of_a_graph_app(
     monkeypatch.setattr("controllers.openapi.apps.current_draft_token", lambda *_: "token")
     context = AppRequestContext(tenant_id="workspace-id", app_id="app-id")
     with app.test_request_context():
-        result = cast(Endpoint[AppDescribeResponse], AppDescribeApi().get).__handler__(
+        result = _describe_handler()(
             AppDescribeApi(),
             context,
             "app-id",
@@ -152,7 +159,7 @@ def test_describe_skips_the_draft_read_without_info(
     monkeypatch.setattr("controllers.openapi.apps.current_draft_token", forbidden)
     context = AppRequestContext(tenant_id="workspace-id", app_id="app-id")
     with app.test_request_context():
-        result = cast(Endpoint[AppDescribeResponse], AppDescribeApi().get).__handler__(
+        result = _describe_handler()(
             AppDescribeApi(),
             context,
             "app-id",

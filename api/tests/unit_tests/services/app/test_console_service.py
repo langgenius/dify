@@ -9,7 +9,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime
 from functools import partial
 from io import BytesIO
-from typing import BinaryIO, Literal, cast, override
+from typing import IO, BinaryIO, Literal, cast, override
 from uuid import UUID, uuid4
 from zipfile import ZipFile
 
@@ -206,7 +206,7 @@ class Transfers:
         pytest.fail("Unexpected import content detection")
 
     def read_app_package(
-        self, source: BinaryIO, *, accept_roster_references: bool, refuse_roster_references: bool
+        self, source: IO[bytes], *, accept_roster_references: bool, refuse_roster_references: bool
     ) -> AppImportPackage | None:
         del source, accept_roster_references, refuse_roster_references
         pytest.fail("Unexpected package read")
@@ -215,7 +215,7 @@ class Transfers:
         del context, import_id
         pytest.fail("Unexpected import confirmation")
 
-    def import_agent_package(self, context: RequestContext, source: BinaryIO) -> ImportedAppPackage:
+    def import_agent_package(self, context: RequestContext, source: IO[bytes]) -> ImportedAppPackage:
         del context, source
         pytest.fail("Unexpected Agent package import")
 
@@ -512,7 +512,7 @@ class PackageTransfers(Transfers):
 
     @override
     def read_app_package(
-        self, source: BinaryIO, *, accept_roster_references: bool, refuse_roster_references: bool
+        self, source: IO[bytes], *, accept_roster_references: bool, refuse_roster_references: bool
     ) -> AppImportPackage | None:
         del source
         self.calls.append(("read", accept_roster_references, refuse_roster_references))
@@ -559,7 +559,7 @@ def _package_import(
     """A console service importing ``package`` (None: a Roster Agent package), and the log of its steps."""
     calls: list[tuple[object, ...]] = package.calls if package is not None else []
     service = ConsoleAppService(
-        apps=cast(ConsoleApps, Apps()),
+        apps=ConsoleAppRepository(session_factory=sessionmaker()),
         access=access(calls=calls),
         transfers=PackageTransfers(package=package, calls=calls, app_created=app_created),
         creators=Creators(),

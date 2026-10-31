@@ -3,7 +3,7 @@ import zipfile
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass
 from io import BytesIO
-from typing import BinaryIO, Protocol, cast
+from typing import BinaryIO, Protocol, cast, runtime_checkable
 from uuid import uuid4
 
 import pytest
@@ -53,7 +53,7 @@ from controllers.openapi.app_dsl import (
     AppPackageExportApi,
     AppPackageImportApi,
 )
-from controllers.openapi.auth.spec import EndpointSpec
+from controllers.openapi.auth.spec import EndpointSpec, spec_of
 from libs.external_api import ExternalApi
 from machinery.context import AppRequestContext, RequestContext
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -100,6 +100,7 @@ from tests.unit_tests.services.test_app_package_service import (
 )
 
 
+@runtime_checkable
 class _EndpointView(Protocol):
     """Structural stand-in for a `view` carrying the attributes `@endpoint` attaches."""
 
@@ -622,6 +623,7 @@ def test_export_errors_have_canonical_http_responses(
     assert (response.get_json()["code"], response.get_json()["status"]) == (error_code, status)
 
 
+@runtime_checkable
 class _PackageView(Protocol):
     __handler__: Callable[..., Response]
 
@@ -631,8 +633,10 @@ _WORKFLOW_ID = "6f1c2a52-0d43-4f7e-9a3b-1c2d3e4f5a6b"
 
 def _export_package(app: Flask, query: AppPackageExportQuery) -> Response:
     api = AppPackageExportApi()
+    view = AppPackageExportApi.get
+    assert isinstance(view, _PackageView)
     with app.test_request_context("/openapi/v1/apps/app-1/package"):
-        return cast(_PackageView, api.get).__handler__(api, _CONTEXT, "app-1", query=query)
+        return view.__handler__(api, _CONTEXT, "app-1", query=query)
 
 
 def _stub_package_export(
@@ -652,7 +656,9 @@ def _stub_package_export(
 
 @pytest.mark.parametrize("view", [AppPackageExportApi.get, AppPackageImportApi.post])
 def test_package_routes_run_in_the_workspace_context(view: Callable[..., object]) -> None:
-    assert cast(_EndpointView, view).__spec__.context == "workspace"
+    spec = spec_of(view)
+    assert spec is not None
+    assert spec.context == "workspace"
 
 
 def test_package_export_sends_the_ifpkg_as_an_attachment(
@@ -748,8 +754,10 @@ def _import_package(
 ) -> tuple[AppDslImportResponse, int]:
     api = AppPackageImportApi()
     workspace_id = context.active_workspace_id
+    view = AppPackageImportApi.post
+    assert isinstance(view, _EndpointView)
     with app.test_request_context(f"/openapi/v1/workspaces/{workspace_id}/apps/packages", method="POST"):
-        return cast(_EndpointView, api.post).__handler__(api, context, workspace_id=workspace_id, body=body)
+        return view.__handler__(api, context, workspace_id=workspace_id, body=body)
 
 
 @dataclass(frozen=True)
@@ -1286,8 +1294,10 @@ def test_confirming_a_pending_package_import_keeps_its_links(
     assert hint.op == op_of(AppDslImportConfirmApi.post)
 
     api = AppDslImportConfirmApi()
+    view = AppDslImportConfirmApi.post
+    assert isinstance(view, _EndpointView)
     with app.test_request_context(f"/openapi/v1/workspaces/{context.active_workspace_id}/apps/imports", method="POST"):
-        confirmed, code = cast(_EndpointView, api.post).__handler__(
+        confirmed, code = view.__handler__(
             api, context, workspace_id=context.active_workspace_id, import_id=hint.input["import_id"]
         )
 

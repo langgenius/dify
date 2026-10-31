@@ -6,7 +6,7 @@ import logging
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager, closing
 from dataclasses import replace
-from typing import BinaryIO, Literal, Protocol
+from typing import IO, BinaryIO, Literal, Protocol
 from uuid import UUID, uuid4
 
 from machinery.context import RequestContext
@@ -135,7 +135,7 @@ class AppTransfers(Protocol):
     def read_import_yaml(self, source: BinaryIO) -> str | None: ...
 
     def read_app_package(
-        self, source: BinaryIO, *, accept_roster_references: bool, refuse_roster_references: bool
+        self, source: IO[bytes], *, accept_roster_references: bool, refuse_roster_references: bool
     ) -> AppImportPackage | None: ...
 
     def import_dsl(
@@ -151,7 +151,7 @@ class AppTransfers(Protocol):
 
     def confirm_import(self, context: RequestContext, import_id: str) -> tuple[Import, bool]: ...
 
-    def import_agent_package(self, context: RequestContext, source: BinaryIO) -> ImportedAppPackage: ...
+    def import_agent_package(self, context: RequestContext, source: IO[bytes]) -> ImportedAppPackage: ...
 
     def import_agent_template(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage: ...
 
@@ -241,7 +241,7 @@ class ConsoleAppService:
         context: RequestContext,
         params: AppImportParams,
         *,
-        source: BinaryIO | None = None,
+        source: IO[bytes] | None = None,
         preserve_agent_bindings: bool = False,
         refuse_roster_references: bool = False,
         prepare_dsl: Callable[[str], str] | None = None,
@@ -299,7 +299,7 @@ class ConsoleAppService:
         self,
         context: RequestContext,
         params: AppImportParams,
-        source: BinaryIO,
+        source: IO[bytes],
         *,
         preserve_agent_bindings: bool = False,
         refuse_roster_references: bool = False,

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Generator
 from contextlib import contextmanager
 from http import HTTPStatus
-from typing import BinaryIO, Final, cast
+from typing import IO, Final
 from uuid import UUID, uuid4
 
 from flask import send_file
@@ -152,10 +152,10 @@ def _export_refusals(workflow_id: str | None) -> Generator[None]:
 
 
 @contextmanager
-def _package_source(package: UploadPart | UploadParts) -> Generator[BinaryIO]:
+def _package_source(package: UploadPart | UploadParts) -> Generator[IO[bytes]]:
     """A file part is the package as sent; a folder is zipped into a temporary archive, closed on exit."""
     if isinstance(package, FileStorage):
-        yield cast(BinaryIO, package.stream)
+        yield package.stream
         return
     archive = _PACKAGE_UPLOAD.archive(package)
     try:
