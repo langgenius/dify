@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pytest_mock import MockerFixture
@@ -42,18 +42,24 @@ class DummyUnit:
         return self._final
 
 
+class DummyRunner(CotChatAgentRunner):
+    """Test double that avoids BaseAgentRunner's heavy DB/model constructor."""
+
+    def __init__(self) -> None:
+        # Use a plain __init__ (init fn) rather than bypassing via __new__,
+        # so the instance is fully initialised by the constructor.
+        self._instruction = "test_instruction"
+        self._prompt_messages_tools = [DummyTool("tool1"), DummyTool("tool2")]
+        self._query = "user query"
+        self._agent_scratchpad = []
+        self.files = []
+        self.application_generate_entity = DummyGenerateEntity()
+        self._organize_historic_prompt_messages = MagicMock(return_value=["historic"])
+
+
 @pytest.fixture
-def runner():
-    # Bypass __init__ to avoid constructing heavy dependencies in unit tests.
-    runner = object.__new__(CotChatAgentRunner)
-    runner._instruction = "test_instruction"
-    runner._prompt_messages_tools = [DummyTool("tool1"), DummyTool("tool2")]
-    runner._query = "user query"
-    runner._agent_scratchpad = []
-    runner.files = []
-    runner.application_generate_entity = DummyGenerateEntity()
-    runner._organize_historic_prompt_messages = MagicMock(return_value=["historic"])
-    return runner
+def runner() -> DummyRunner:
+    return DummyRunner()
 
 
 class TestOrganizeSystemPrompt:
