@@ -1,0 +1,2110 @@
+import type { ReactNode } from 'react'
+import type { ContactImPlatformRepository } from '../repository'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import copy from 'copy-to-clipboard'
+import { ContactsImPlatformProvider } from '../composition'
+import { ContactsImPlatformManagementSurface } from '../management-surface'
+import { createContactImApiRepository } from '../repository'
+import {
+  ContactImConnectionStatus,
+  ContactImProvider,
+  ContactImProviderField,
+  ContactImRepositoryError,
+  ContactImRepositoryErrorCode,
+} from '../types'
+import { channelSummary, createChannelClient, imDetail } from './fixtures/channel-client'
+import { createContactImMockRepository } from './fixtures/repository'
+import { ContactImMockScenario } from './fixtures/scenarios'
+
+const mockNavigation = vi.hoisted(() => ({
+  replace: vi.fn(),
+  searchParams: new URLSearchParams(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/contacts/settings',
+  useRouter: () => ({ replace: mockNavigation.replace }),
+  useSearchParams: () => mockNavigation.searchParams,
+}))
+
+vi.mock('copy-to-clipboard', () => ({
+  default: vi.fn(() => true),
+}))
+
+vi.mock('@/context/i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/context/i18n')>()),
+  useDocLink: () => (path: string) => `https://docs.dify.ai/en/cloud${path}`,
+}))
+
+const organization = {
+  canManage: true,
+  organizationId: 'org-surface',
+  workspaceId: 'workspace-surface',
+}
+
+const renderSurface = ({
+  canManage = true,
+  workspaceId = organization.workspaceId,
+  repository,
+  scenario = ContactImMockScenario.NotConfigured,
+}: {
+  canManage?: boolean
+  workspaceId?: string
+  repository?: ContactImPlatformRepository
+  scenario?: ContactImMockScenario
+} = {}) => {
+  const scopedOrganization = { ...organization, canManage, workspaceId }
+  const scopedRepository =
+    repository ??
+    createContactImMockRepository({
+      organization: scopedOrganization,
+      scenario,
+    })
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      mutations: { retry: false },
+      queries: { retry: false },
+    },
+  })
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <ContactsImPlatformProvider organization={scopedOrganization} repository={scopedRepository}>
+        {children}
+      </ContactsImPlatformProvider>
+    </QueryClientProvider>
+  )
+
+  return {
+    queryClient,
+    repository: scopedRepository,
+    ...render(<ContactsImPlatformManagementSurface />, { wrapper }),
+  }
+}
+
+beforeEach(() => {
+  mockNavigation.replace.mockReset()
+  mockNavigation.searchParams = new URLSearchParams()
+})
+
+describe('Contacts IM platform management surface', () => {
+  it('shows a dedicated loading state without treating it as not configured', () => {
+    renderSurface({ scenario: ContactImMockScenario.Loading })
+
+    expect(screen.getByRole('status', { name: 'contacts.imPlatform.loading' })).toBeInTheDocument()
+    expect(screen.queryByText('contacts.imPlatform.status.not_configured')).not.toBeInTheDocument()
+  })
+
+  it('shows a load failure with a retry action', async () => {
+    const user = userEvent.setup()
+    const { repository } = renderSurface({ scenario: ContactImMockScenario.LoadFailure })
+    const getIntegrations = vi.spyOn(repository, 'getIntegrations')
+
+    expect(await screen.findByText('contacts.imPlatform.loadError.title')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.loadError.retry' }))
+
+    expect(getIntegrations).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not downgrade a permission-load failure to not configured', async () => {
+    renderSurface({ scenario: ContactImMockScenario.PermissionLoadFailure })
+
+    expect(await screen.findByText('contacts.imPlatform.loadError.title')).toBeInTheDocument()
+    expect(screen.queryByText('contacts.imPlatform.status.not_configured')).not.toBeInTheDocument()
+  })
+
+  it('shows all providers for the empty state', async () => {
+    renderSurface()
+
+    expect(
+      await screen.findByRole('heading', { name: 'contacts.imPlatform.title' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'contacts.imPlatform.chooseProvider', level: 3 }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'contacts.imPlatform.chooseProvider' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('Email')).toBeInTheDocument()
+    expect(screen.getByText('Slack')).toBeInTheDocument()
+    expect(screen.getByText('Feishu')).toBeInTheDocument()
+    expect(screen.getByText('DingTalk')).toBeInTheDocument()
+  })
+
+  it('shows the existing permission notice without querying restricted channel data', async () => {
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.Connected,
+    })
+    const getIntegrations = vi.spyOn(repository, 'getIntegrations')
+    const getProviderDefinitions = vi.spyOn(repository, 'getProviderDefinitions')
+    const getActiveSync = vi.spyOn(repository, 'getActiveSync')
+    renderSurface({ canManage: false, repository })
+
+    expect(await screen.findByText('contacts.imPlatform.permission.title')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.queryByText('contacts.imPlatform.loadError.title')).not.toBeInTheDocument()
+    expect(getIntegrations).not.toHaveBeenCalled()
+    expect(getProviderDefinitions).not.toHaveBeenCalled()
+    expect(getActiveSync).not.toHaveBeenCalled()
+  })
+
+  it('waits for a workspace before requesting channel configuration', async () => {
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.Connected,
+    })
+    const getIntegrations = vi.spyOn(repository, 'getIntegrations')
+    const getProviderDefinitions = vi.spyOn(repository, 'getProviderDefinitions')
+    renderSurface({ workspaceId: '', repository })
+
+    expect(
+      await screen.findByRole('status', { name: 'contacts.imPlatform.loading' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('contacts.imPlatform.permission.title')).not.toBeInTheDocument()
+    expect(getIntegrations).not.toHaveBeenCalled()
+    expect(getProviderDefinitions).not.toHaveBeenCalled()
+  })
+
+  it('disables an unavailable provider and presents its safe reason', async () => {
+    renderSurface({ scenario: ContactImMockScenario.ProviderUnavailable })
+
+    expect(
+      await screen.findByText(
+        'contacts.imPlatform.provider.unavailableReason.deployment_unsupported',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /DingTalk.*unavailable/i })).toBeDisabled()
+  })
+
+  it.each([
+    [ContactImMockScenario.Configured, ContactImConnectionStatus.Configured],
+    [ContactImMockScenario.Connected, ContactImConnectionStatus.Connected],
+    [ContactImMockScenario.PermissionIssue, ContactImConnectionStatus.PermissionIssue],
+    [ContactImMockScenario.CallbackError, ContactImConnectionStatus.CallbackError],
+    [ContactImMockScenario.ConnectionError, ContactImConnectionStatus.ConnectionError],
+  ])('presents the %s connection state', async (scenario, status) => {
+    renderSurface({ scenario })
+
+    expect(await screen.findAllByText(`contacts.imPlatform.status.${status}`)).not.toHaveLength(0)
+  })
+
+  it('shows configured channels before the remaining connect options', async () => {
+    renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+
+    expect(await screen.findByText(/contacts\.imPlatform\.email\.summary/)).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Email' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Slack' })).toBeInTheDocument()
+    expect(screen.getByText('contacts.imPlatform.connectMore')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('group', { name: 'Feishu' })).getByRole('button', {
+        name: /Feishu.*replace/i,
+      }),
+    ).toBeEnabled()
+  })
+
+  it('shows the sender email without including the sender name in the channel summary', async () => {
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.ChannelsConfigured,
+    })
+    const integrations = await repository.getIntegrations(organization.organizationId)
+    vi.spyOn(repository, 'getIntegrations').mockResolvedValue(
+      integrations.map((integration) =>
+        integration.provider === ContactImProvider.Email
+          ? { ...integration, displayIdentifier: 'Acme approvals@acme.com' }
+          : integration,
+      ),
+    )
+    renderSurface({ repository })
+
+    const channel = await screen.findByRole('group', { name: 'Email' })
+    expect(
+      within(channel).getByText('contacts.imPlatform.email.summary:{"email":"approvals@acme.com"}'),
+    ).toBeInTheDocument()
+    expect(channel).not.toHaveTextContent('Acme')
+  })
+
+  it('shows Slack connection status instead of presenting a client ID as a token', async () => {
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.Connected,
+    })
+    const integrations = await repository.getIntegrations(organization.organizationId)
+    vi.spyOn(repository, 'getIntegrations').mockResolvedValue(
+      integrations.map((integration) => ({
+        ...integration,
+        displayIdentifier: '11264416750647.11695819675697',
+      })),
+    )
+    renderSurface({ repository })
+
+    const channel = await screen.findByRole('group', { name: 'Slack' })
+    expect(within(channel).getByText('contacts.imPlatform.status.connected')).toBeInTheDocument()
+    expect(channel).not.toHaveTextContent('11264416750647.11695819675697')
+  })
+
+  it('collapses only the remaining connect options and restores them when expanded', async () => {
+    const user = userEvent.setup()
+    renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+
+    const trigger = await screen.findByRole('button', {
+      name: 'contacts.imPlatform.connectMore',
+    })
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('group', { name: 'Feishu' })).toBeVisible()
+    expect(screen.getByRole('group', { name: 'DingTalk' })).toBeVisible()
+
+    await user.click(trigger)
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    await waitFor(() => {
+      expect(screen.queryByRole('group', { name: 'Feishu' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('group', { name: 'DingTalk' })).not.toBeInTheDocument()
+    })
+    expect(screen.getByRole('group', { name: 'Email' })).toBeVisible()
+    expect(screen.getByRole('group', { name: 'Slack' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'contacts.imPlatform.action.syncNow' })).toBeVisible()
+
+    await user.click(trigger)
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(await screen.findByRole('group', { name: 'Feishu' })).toBeVisible()
+    expect(screen.getByRole('group', { name: 'DingTalk' })).toBeVisible()
+  })
+})
+
+describe('Contacts IM platform binding flows', () => {
+  it('does not offer a provider placeholder callback before the channel is saved', async () => {
+    const user = userEvent.setup()
+    renderSurface()
+    await user.click(await screen.findByRole('button', { name: /Slack.*connect/i }))
+
+    expect(
+      screen.queryByRole('button', { name: 'contacts.imPlatform.action.copyCallback' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'contacts.imPlatform.bindingDialog.openSetupGuide' }),
+    ).toHaveAttribute('href', 'https://docs.slack.dev/interactivity/handling-user-interaction/')
+    expect(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    ).toBeInTheDocument()
+  })
+
+  it('associates required credential errors with their fields', async () => {
+    const user = userEvent.setup()
+    renderSurface()
+    await user.click(await screen.findByRole('button', { name: /Slack.*connect/i }))
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    expect(screen.getAllByText('contacts.imPlatform.bindingDialog.required')).toHaveLength(2)
+    const appId = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')
+    const secret = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret')
+    expect(appId).toHaveAttribute('aria-invalid', 'true')
+    expect(secret).toHaveAttribute('aria-invalid', 'true')
+    expect(appId).toHaveAccessibleDescription('contacts.imPlatform.bindingDialog.required')
+    expect(secret).toHaveAccessibleDescription('contacts.imPlatform.bindingDialog.required')
+  })
+
+  it('opens the dialog and restores focus to the provider trigger', async () => {
+    const user = userEvent.setup()
+    renderSurface()
+    const trigger = await screen.findByRole('button', { name: /Slack.*connect/i })
+    await user.click(trigger)
+
+    expect(screen.getByRole('dialog')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('submits a complete credential form from the keyboard', async () => {
+    const user = userEvent.setup()
+    renderSurface()
+    await user.click(await screen.findByRole('button', { name: /Slack.*connect/i }))
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId'),
+      'keyboard-app',
+    )
+    const secret = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret')
+    await user.type(secret, 'keyboard-secret')
+    secret.focus()
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(screen.getByRole('group', { name: 'Slack' })).toHaveTextContent(
+        'contacts.imPlatform.status.configured',
+      )
+    })
+  })
+
+  it('saves credentials, clears the secret, and advances to configured', async () => {
+    const user = userEvent.setup()
+    const { container } = renderSurface()
+    const submittedSecret = 'surface-secret-must-disappear'
+    await user.click(await screen.findByRole('button', { name: /Slack.*connect/i }))
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId'),
+      'app-surface',
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret'),
+      submittedSecret,
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('group', { name: 'Slack' })).toHaveTextContent(
+        'contacts.imPlatform.status.configured',
+      )
+    })
+    expect(screen.queryByDisplayValue(submittedSecret)).not.toBeInTheDocument()
+    expect(container.innerHTML).not.toContain(submittedSecret)
+  })
+
+  it('connects Feishu with application credentials without invoking OAuth', async () => {
+    const user = userEvent.setup()
+    const { repository } = renderSurface()
+    const authorize = vi.spyOn(repository, 'authorizeProvider')
+    const save = vi.spyOn(repository, 'saveCredentials')
+    await user.click(await screen.findByRole('button', { name: /Feishu.*connect/i }))
+    expect(
+      screen.queryByRole('button', { name: 'contacts.imPlatform.action.authorize' }),
+    ).not.toBeInTheDocument()
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId'),
+      'feishu-app',
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret'),
+      'feishu-test-secret',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    expect(await screen.findByText('contacts.imPlatform.status.configured')).toBeInTheDocument()
+    expect(authorize).not.toHaveBeenCalled()
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: ContactImProvider.Feishu,
+        secret: 'feishu-test-secret',
+        values: { appId: 'feishu-app' },
+      }),
+    )
+  })
+
+  it('retains credential inputs after a save failure until the dialog is closed', async () => {
+    const user = userEvent.setup()
+    renderSurface({ scenario: ContactImMockScenario.SaveFailure })
+    await user.click(await screen.findByRole('button', { name: /Slack.*connect/i }))
+    const appId = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')
+    const secret = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret')
+    await user.type(appId, 'safe-app-id')
+    await user.type(secret, 'retain-on-failure')
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    expect(
+      await screen.findByText('contacts.imPlatform.bindingDialog.saveFailed'),
+    ).toBeInTheDocument()
+    expect(appId).toHaveValue('safe-app-id')
+    expect(secret).toHaveValue('retain-on-failure')
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: /Slack.*connect/i }))
+    expect(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret'),
+    ).toHaveValue('')
+  })
+
+  it('requires confirmation before replacing the active IM binding', async () => {
+    const user = userEvent.setup()
+    const { repository } = renderSurface({ scenario: ContactImMockScenario.Connected })
+    await user.click(await screen.findByRole('button', { name: /Feishu.*replace/i }))
+
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.replacement.confirm' }),
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId'),
+      'replacement-app',
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret'),
+      'replacement-test-secret',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    await waitFor(async () => {
+      const integrations = await repository.getIntegrations(organization.organizationId)
+      expect(integrations.map(({ provider }) => provider)).toEqual([ContactImProvider.Feishu])
+    })
+  })
+
+  it('prevents duplicate credential submissions while the mutation is pending', async () => {
+    const user = userEvent.setup()
+    const { repository } = renderSurface()
+    let resolveSave:
+      | ((value: Awaited<ReturnType<typeof repository.saveCredentials>>) => void)
+      | null = null
+    const saveCredentials = vi.spyOn(repository, 'saveCredentials').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSave = resolve
+        }),
+    )
+    await user.click(await screen.findByRole('button', { name: /Slack.*connect/i }))
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId'),
+      'pending-app',
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret'),
+      'pending-secret',
+    )
+    const saveButton = screen.getByRole('button', {
+      name: 'contacts.imPlatform.bindingDialog.saveAndContinue',
+    })
+    await user.click(saveButton)
+
+    expect(saveButton).toHaveAttribute('aria-disabled', 'true')
+    await user.click(saveButton)
+    expect(saveCredentials).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      const resolvedRepository = createContactImMockRepository({
+        organization,
+        scenario: ContactImMockScenario.Configured,
+      })
+      const integration = (await resolvedRepository.getIntegrations(organization.organizationId))[0]
+      if (!integration) throw new Error('Pending save test requires a configured integration')
+      resolveSave?.(integration)
+    })
+  })
+
+  it('never pre-fills an already configured secret', async () => {
+    const user = userEvent.setup()
+    renderSurface({ scenario: ContactImMockScenario.Configured })
+    await user.click(
+      within(await screen.findByRole('group', { name: 'Slack' })).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.configureChannel/,
+      }),
+    )
+
+    expect(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret'),
+    ).toHaveValue('')
+    expect(
+      screen.getByText('contacts.imPlatform.bindingDialog.secretConfigured'),
+    ).toBeInTheDocument()
+  })
+
+  it('uses the dedicated Resend form for the Email channel', async () => {
+    const user = userEvent.setup()
+    renderSurface()
+    const emailCard = await screen.findByRole('group', { name: 'Email' })
+
+    await user.click(within(emailCard).getByRole('button'))
+
+    expect(
+      screen.getByRole('heading', { name: 'contacts.imPlatform.email.title' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('contacts.imPlatform.email.provider')).toHaveValue('Resend')
+    expect(screen.getByLabelText('contacts.imPlatform.email.provider')).toBeDisabled()
+    expect(screen.getByLabelText('contacts.imPlatform.email.senderEmail')).toBeRequired()
+    expect(screen.getByLabelText('contacts.imPlatform.email.senderName')).toBeRequired()
+    expect(screen.getByLabelText('contacts.imPlatform.email.apiKey')).toBeRequired()
+    expect(screen.getByRole('link', { name: 'contacts.imPlatform.learnMore' })).toHaveAttribute(
+      'href',
+      'https://docs.dify.ai/en/cloud/use-dify/nodes/human-input',
+    )
+  })
+
+  it('tests a valid Email configuration without closing the dialog or retaining the API key', async () => {
+    const user = userEvent.setup()
+    const { queryClient, repository } = renderSurface()
+    const testConnection = vi.spyOn(repository, 'testConnection')
+    const submittedApiKey = 'resend-test-key'
+    await user.click(
+      within(await screen.findByRole('group', { name: 'Email' })).getByRole('button'),
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.email.senderEmail'),
+      'approvals@example.com',
+    )
+    await user.type(screen.getByLabelText('contacts.imPlatform.email.senderName'), 'Approvals')
+    await user.type(screen.getByLabelText('contacts.imPlatform.email.apiKey'), submittedApiKey)
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
+    )
+
+    expect(await screen.findByText('contacts.imPlatform.email.testSucceeded')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(testConnection).toHaveBeenCalledTimes(1)
+    expect(JSON.stringify(queryClient.getMutationCache().getAll())).not.toContain(submittedApiKey)
+  })
+
+  it.each(['testConnection', 'saveCredentials'] as const)(
+    'displays the provider error code when Email %s fails',
+    async (operation) => {
+      const user = userEvent.setup()
+      const { repository } = renderSurface()
+      const message =
+        'The submitted credentials are invalid. Provider error code: restricted_api_key.'
+      vi.spyOn(repository, operation).mockRejectedValue(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed, message),
+      )
+      await user.click(
+        within(await screen.findByRole('group', { name: 'Email' })).getByRole('button'),
+      )
+      await user.type(
+        screen.getByLabelText('contacts.imPlatform.email.senderEmail'),
+        'approvals@example.com',
+      )
+      await user.type(screen.getByLabelText('contacts.imPlatform.email.senderName'), 'Approvals')
+      await user.type(screen.getByLabelText('contacts.imPlatform.email.apiKey'), 'resend-test-key')
+      await user.click(
+        screen.getByRole('button', {
+          name:
+            operation === 'testConnection'
+              ? 'contacts.imPlatform.action.testConnection'
+              : 'contacts.imPlatform.action.save',
+        }),
+      )
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(message)
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    },
+  )
+
+  it('saves Email as a configured channel and never exposes the submitted API key', async () => {
+    const user = userEvent.setup()
+    const { container, repository } = renderSurface()
+    const submittedApiKey = 'resend-save-key'
+    await user.click(
+      within(await screen.findByRole('group', { name: 'Email' })).getByRole('button'),
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.email.senderEmail'),
+      'approvals@example.com',
+    )
+    await user.type(screen.getByLabelText('contacts.imPlatform.email.senderName'), 'Approvals')
+    await user.type(screen.getByLabelText('contacts.imPlatform.email.apiKey'), submittedApiKey)
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.save' }))
+
+    expect(await screen.findByText(/contacts\.imPlatform\.email\.summary/)).toBeInTheDocument()
+    expect(screen.queryByDisplayValue(submittedApiKey)).not.toBeInTheDocument()
+    expect(container.innerHTML).not.toContain(submittedApiKey)
+    expect(
+      JSON.stringify(await repository.getIntegrations(organization.organizationId)),
+    ).not.toContain(submittedApiKey)
+  })
+
+  it('shows separate accessible Configure and Delete actions for every configured channel', async () => {
+    renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+
+    for (const provider of ['Email', 'Slack']) {
+      const providerCard = await screen.findByRole('group', { name: provider })
+
+      expect(
+        within(providerCard).getByRole('button', {
+          name: /contacts\.imPlatform\.action\.configureChannel/,
+        }),
+      ).toBeEnabled()
+      expect(
+        within(providerCard).getByRole('button', {
+          name: /contacts\.imPlatform\.action\.deleteChannel/,
+        }),
+      ).toBeEnabled()
+      expect(within(providerCard).getAllByRole('button')).toHaveLength(2)
+    }
+  })
+
+  it('opens the matching configuration form from a configured channel action', async () => {
+    const user = userEvent.setup()
+    renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+    const emailCard = await screen.findByRole('group', { name: 'Email' })
+
+    await user.click(
+      within(emailCard).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.configureChannel/,
+      }),
+    )
+
+    expect(
+      screen.getByRole('heading', { name: 'contacts.imPlatform.email.title' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('contacts.imPlatform.email.senderEmail')).toHaveValue(
+      'approvals@acme.com',
+    )
+    expect(screen.getByLabelText('contacts.imPlatform.email.apiKey')).toHaveValue('')
+  })
+
+  it('cancels channel deletion without mutating and restores focus to Delete', async () => {
+    const user = userEvent.setup()
+    const { repository } = renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+    const disconnect = vi.spyOn(repository, 'disconnect')
+    const emailCard = await screen.findByRole('group', { name: 'Email' })
+    const deleteButton = within(emailCard).getByRole('button', {
+      name: /contacts\.imPlatform\.action\.deleteChannel/,
+    })
+
+    await user.click(deleteButton)
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(disconnect).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    expect(disconnect).not.toHaveBeenCalled()
+    expect(screen.getByRole('group', { name: 'Email' })).toBeInTheDocument()
+    await waitFor(() => expect(deleteButton).toHaveFocus())
+  })
+
+  it('deletes only the confirmed channel and returns it to the connect list', async () => {
+    const user = userEvent.setup()
+    const { repository } = renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+    const slackCard = await screen.findByRole('group', { name: 'Slack' })
+
+    await user.click(
+      within(slackCard).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.deleteChannel/,
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.delete.confirm' }))
+
+    await waitFor(async () => {
+      const integrations = await repository.getIntegrations(organization.organizationId)
+      expect(integrations.some(({ provider }) => provider === ContactImProvider.Slack)).toBe(false)
+    })
+    expect(
+      within(screen.getByRole('group', { name: 'Slack' })).getByRole('button', {
+        name: /Slack.*contacts\.imPlatform\.action\.connect/,
+      }),
+    ).toBeEnabled()
+    expect(screen.getByRole('group', { name: 'Email' })).toBeInTheDocument()
+  })
+
+  it('keeps the channel and confirmation open when deletion fails', async () => {
+    const user = userEvent.setup()
+    const { repository } = renderSurface({ scenario: ContactImMockScenario.DisconnectFailure })
+    const slackCard = await screen.findByRole('group', { name: 'Slack' })
+
+    await user.click(
+      within(slackCard).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.deleteChannel/,
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.delete.confirm' }))
+
+    expect(await screen.findByText('contacts.imPlatform.delete.failed')).toBeInTheDocument()
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(
+      (await repository.getIntegrations(organization.organizationId)).some(
+        ({ provider }) => provider === ContactImProvider.Slack,
+      ),
+    ).toBe(true)
+  })
+})
+
+describe('Replacing a tenant in the configured IM provider', () => {
+  const setupChannel = (provider: 'feishu' | 'slack' = 'feishu') => {
+    const client = createChannelClient()
+    const current = channelSummary({ provider, id: 'current-channel' })
+    const replacement = channelSummary({
+      provider,
+      id: 'replacement-channel',
+      config_version: 'replacement-version',
+      webhook_url: 'https://example.test/replacement-callback',
+    })
+    client.channelProviders.get.mockResolvedValue({
+      email_providers: [],
+      im_providers: [{ provider, connection_mode: 'custom_app' }],
+    })
+    client.channels.get.mockResolvedValue({ channels: [current] })
+    client.channels.im.byChannelId.get.mockImplementation(async ({ params }) =>
+      imDetail(params.channel_id === replacement.id ? replacement : current),
+    )
+    client.channels.im.byChannelId.put.mockRejectedValue(
+      Response.json(
+        { code: 'replacement_required', message: 'Explicit replacement required' },
+        { status: 409 },
+      ),
+    )
+    client.channels.im.byChannelId.replacement.post.mockImplementation(async () => {
+      client.channels.get.mockResolvedValue({ channels: [replacement] })
+      return { summary: replacement }
+    })
+    const repository = createContactImApiRepository(organization, client)
+    vi.spyOn(repository, 'getActiveSync').mockResolvedValue(null)
+    renderSurface({ repository })
+    return { client, current, replacement }
+  }
+
+  const editFeishuTenant = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(
+      within(await screen.findByRole('group', { name: 'Feishu' })).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.configureChannel/,
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    await user.clear(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId'))
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId'),
+      'new-tenant-app',
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret'),
+      'new-tenant-secret',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+  }
+
+  it('offers explicit same-provider tenant replacement and saves the new channel callback', async () => {
+    const user = userEvent.setup()
+    const { client, replacement } = setupChannel()
+    await editFeishuTenant(user)
+
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    expect(client.channels.im.byChannelId.replacement.post).not.toHaveBeenCalled()
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.replacement.confirm' }),
+    )
+
+    expect(await screen.findByLabelText('contacts.imPlatform.bindingDialog.callback')).toHaveValue(
+      replacement.webhook_url,
+    )
+    expect(client.channels.im.byChannelId.replacement.post).toHaveBeenCalledExactlyOnceWith(
+      {
+        params: { channel_id: 'current-channel' },
+        body: {
+          expected_config_version: 'snapshot-version',
+          credentials: {
+            provider: 'feishu',
+            app_id: 'new-tenant-app',
+            app_secret: 'new-tenant-secret',
+            encrypt_key: null,
+            verification_token: null,
+          },
+        },
+      },
+      { context: { silent: true } },
+    )
+    expect(screen.queryByDisplayValue('new-tenant-secret')).not.toBeInTheDocument()
+    expect(client.channels.im.byChannelId.put).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancels tenant replacement without mutating and saves a corrected same-tenant draft normally', async () => {
+    const user = userEvent.setup()
+    const { client, current } = setupChannel()
+    await editFeishuTenant(user)
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.cancel',
+      }),
+    )
+
+    expect(client.channels.im.byChannelId.replacement.post).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret')).toHaveValue(
+      'new-tenant-secret',
+    )
+    const appId = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')
+    await user.clear(appId)
+    await user.type(appId, 'corrected-same-tenant-app')
+    client.channels.im.byChannelId.put.mockResolvedValue({ summary: current })
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    expect(await screen.findByLabelText('contacts.imPlatform.bindingDialog.callback')).toHaveValue(
+      current.webhook_url,
+    )
+    expect(client.channels.im.byChannelId.put).toHaveBeenCalledTimes(2)
+    expect(client.channels.im.byChannelId.replacement.post).not.toHaveBeenCalled()
+  })
+
+  it('requires complete fresh Slack credentials after confirming replacement and keeps them after a version conflict', async () => {
+    const user = userEvent.setup()
+    const { client } = setupChannel('slack')
+    await user.click(
+      within(await screen.findByRole('group', { name: 'Slack' })).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.configureChannel/,
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.botToken'),
+      'new-tenant-bot-token',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'contacts.imPlatform.replacement.confirm',
+      }),
+    )
+
+    const secret = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret')
+    const signingSecret = screen.getByLabelText(
+      'contacts.imPlatform.bindingDialog.field.signingSecret',
+    )
+    expect(secret).toBeRequired()
+    expect(signingSecret).toBeRequired()
+    expect(client.channels.im.byChannelId.replacement.post).not.toHaveBeenCalled()
+    await user.type(secret, 'new-client-secret')
+    await user.type(signingSecret, 'new-signing-secret')
+    client.channels.im.byChannelId.replacement.post.mockRejectedValue(
+      Response.json(
+        { code: 'provider_configuration_updated', message: 'Configuration updated' },
+        { status: 409 },
+      ),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'contacts.imPlatform.replacement.confirm',
+      }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'contacts.imPlatform.configurationUpdated',
+    )
+    expect(secret).toHaveValue('new-client-secret')
+    expect(signingSecret).toHaveValue('new-signing-secret')
+    expect(client.channels.im.byChannelId.replacement.post).toHaveBeenCalledExactlyOnceWith(
+      {
+        params: { channel_id: 'current-channel' },
+        body: {
+          expected_config_version: 'snapshot-version',
+          credentials: {
+            provider: 'slack',
+            client_id: 'client-1',
+            client_secret: 'new-client-secret',
+            signing_secret: 'new-signing-secret',
+            bot_token: 'new-tenant-bot-token',
+            app_token: null,
+          },
+        },
+      },
+      { context: { silent: true } },
+    )
+    expect(client.channels.im.byChannelId.put).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('Contacts IM platform manual sync', () => {
+  it('enables manual sync only for a manageable connected provider with directory capability', async () => {
+    renderSurface({ scenario: ContactImMockScenario.Connected })
+
+    const syncButton = await screen.findByRole('button', {
+      name: 'contacts.imPlatform.action.syncNow',
+    })
+    await waitFor(() => expect(syncButton).toBeEnabled())
+  })
+
+  it.each([[ContactImMockScenario.Configured, 'contacts.imPlatform.sync.notConnected', true]])(
+    'blocks sync for %s and explains why',
+    async (scenario, reason, canManage) => {
+      renderSurface({ canManage, scenario })
+
+      expect(await screen.findByText(reason)).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'contacts.imPlatform.action.syncNow' }),
+      ).toBeDisabled()
+    },
+  )
+
+  it('blocks sync when the connected provider lacks directory capability', async () => {
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.Connected,
+    })
+    const integrations = await repository.getIntegrations(organization.organizationId)
+    vi.spyOn(repository, 'getIntegrations').mockResolvedValue(
+      integrations.map((integration) => ({
+        ...integration,
+        capabilities: { directorySync: false },
+      })),
+    )
+    renderSurface({ repository })
+
+    expect(await screen.findByText('contacts.imPlatform.sync.unsupported')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.syncNow' }),
+    ).toBeDisabled()
+  })
+
+  it('restores an existing active run without starting another one', async () => {
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.ActiveSync,
+    })
+    const startSync = vi.spyOn(repository, 'startSync')
+    renderSurface({ repository })
+
+    expect(await screen.findByText('contacts.imPlatform.sync.status.queued')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.syncing' }),
+    ).toBeDisabled()
+    expect(startSync).not.toHaveBeenCalled()
+  })
+
+  it('prevents duplicate sync starts while the mutation is pending', async () => {
+    const user = userEvent.setup()
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.Connected,
+    })
+    let resolveStart: ((value: Awaited<ReturnType<typeof repository.startSync>>) => void) | null =
+      null
+    const startSyncImplementation = repository.startSync.bind(repository)
+    const startSync = vi.spyOn(repository, 'startSync').mockImplementation(async (command) => {
+      const run = await startSyncImplementation(command)
+      return new Promise((resolve) => {
+        resolveStart = resolve
+        void run
+      })
+    })
+    renderSurface({ repository })
+    const syncButton = await screen.findByRole('button', {
+      name: 'contacts.imPlatform.action.syncNow',
+    })
+
+    await user.click(syncButton)
+    expect(syncButton).toHaveAttribute('aria-disabled', 'true')
+    await user.click(syncButton)
+    expect(startSync).toHaveBeenCalledTimes(1)
+
+    await act(async () => resolveStart?.(await repository.getSyncRun('mock-sync-1')))
+  })
+
+  it('keeps sync retryable after a start failure', async () => {
+    const user = userEvent.setup()
+    renderSurface({ scenario: ContactImMockScenario.SyncStartFailure })
+    const syncButton = await screen.findByRole('button', {
+      name: 'contacts.imPlatform.action.syncNow',
+    })
+    await waitFor(() => expect(syncButton).toBeEnabled())
+    await user.click(syncButton)
+
+    expect(await screen.findByText('contacts.imPlatform.sync.startFailed')).toBeInTheDocument()
+    await waitFor(() => expect(syncButton).toBeEnabled())
+  })
+
+  it.each([
+    [ContactImMockScenario.SyncSuccess, 'contacts.imPlatform.sync.status.success'],
+    [ContactImMockScenario.SyncPartialSuccess, 'contacts.imPlatform.sync.status.partial_success'],
+    [ContactImMockScenario.SyncFailure, 'contacts.imPlatform.sync.status.failure'],
+  ])('presents the latest %s summary', async (scenario, statusLabel) => {
+    renderSurface({ scenario })
+
+    expect(await screen.findByText(statusLabel)).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.viewDetails' }),
+    ).toBeEnabled()
+  })
+
+  it('restores sync details from sync_run_id and removes it when closed', async () => {
+    const user = userEvent.setup()
+    mockNavigation.searchParams = new URLSearchParams({
+      sync_run_id: 'mock-sync-success',
+    })
+    renderSurface({ scenario: ContactImMockScenario.SyncSuccess })
+
+    expect(
+      await screen.findByRole('heading', { name: 'contacts.imPlatform.details.title' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(mockNavigation.replace).toHaveBeenCalledWith('/contacts/settings', { scroll: false })
+  })
+
+  it('restores focus to the details trigger after closing the overlay', async () => {
+    const user = userEvent.setup()
+    renderSurface({ scenario: ContactImMockScenario.SyncSuccess })
+    const trigger = await screen.findByRole('button', {
+      name: 'contacts.imPlatform.action.viewDetails',
+    })
+    await user.click(trigger)
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+})
+
+describe('Contacts channel credential API contracts', () => {
+  const createApiShapeRepository = async () => {
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.ChannelsConfigured,
+    })
+    const definitions = await repository.getProviderDefinitions(organization.organizationId)
+    vi.spyOn(repository, 'getProviderDefinitions').mockResolvedValue(
+      definitions.map((definition) => ({
+        ...definition,
+        requiresFreshCredentials: false,
+        callbackUrl: null,
+        requiredFields:
+          definition.provider === ContactImProvider.Slack
+            ? [
+                { field: ContactImProviderField.ClientId, required: true },
+                { field: ContactImProviderField.Secret, required: true, secret: true },
+                { field: ContactImProviderField.SigningSecret, required: true, secret: true },
+                { field: ContactImProviderField.BotToken, required: true, secret: true },
+                { field: ContactImProviderField.AppToken, required: false, secret: true },
+              ]
+            : definition.provider === ContactImProvider.Feishu
+              ? [
+                  { field: ContactImProviderField.AppId, required: true },
+                  { field: ContactImProviderField.Secret, required: true, secret: true },
+                  {
+                    field: ContactImProviderField.VerificationToken,
+                    required: false,
+                    secret: true,
+                  },
+                  { field: ContactImProviderField.EncryptKey, required: false, secret: true },
+                ]
+              : definition.requiredFields,
+      })),
+    )
+    const integrations = (await repository.getIntegrations(organization.organizationId)).map(
+      (integration) => ({
+        ...integration,
+        channelId: `${integration.provider}-channel`,
+        configVersion: 'version-at-open',
+        configuredFields:
+          integration.provider === ContactImProvider.Slack
+            ? [
+                ContactImProviderField.ClientId,
+                ContactImProviderField.Secret,
+                ContactImProviderField.SigningSecret,
+                ContactImProviderField.BotToken,
+                ContactImProviderField.AppToken,
+              ]
+            : [
+                ContactImProviderField.SenderEmail,
+                ContactImProviderField.SenderName,
+                ContactImProviderField.Secret,
+              ],
+        callbackUrl:
+          integration.provider === ContactImProvider.Slack
+            ? 'https://example.dify.test/actual-webhook'
+            : null,
+        configuredValues:
+          integration.provider === ContactImProvider.Email ? integration.configuredValues : {},
+      }),
+    )
+    vi.spyOn(repository, 'getIntegrations').mockResolvedValue(integrations)
+    const slack = integrations.find(
+      (integration) => integration.provider === ContactImProvider.Slack,
+    )
+    if (!slack) throw new Error('Configured Slack fixture is required')
+    return { repository, slack }
+  }
+
+  const fillSlackCredentials = async (user: ReturnType<typeof userEvent.setup>) => {
+    for (const [field, value] of [
+      ['clientId', 'slack-client'],
+      ['clientSecret', 'test-client-secret'],
+      ['signingSecret', 'test-signing-secret'],
+      ['botToken', 'xoxb-test-only'],
+    ]) {
+      const input = screen.getByLabelText(`contacts.imPlatform.bindingDialog.field.${field}`)
+      await user.clear(input)
+      await user.type(input, value!)
+    }
+  }
+
+  const openConfigured = async (user: ReturnType<typeof userEvent.setup>, provider: string) => {
+    await user.click(
+      within(await screen.findByRole('group', { name: provider })).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.configureChannel/,
+      }),
+    )
+  }
+
+  const createSavedFeishuRepository = async () => {
+    const { repository, slack } = await createApiShapeRepository()
+    const feishu = {
+      ...slack,
+      provider: ContactImProvider.Feishu,
+      channelId: 'feishu-channel',
+      callbackUrl: 'https://example.dify.test/feishu-webhook',
+      configuredValues: { appId: 'saved-feishu-app' },
+      configuredFields: [
+        ContactImProviderField.AppId,
+        ContactImProviderField.Secret,
+        ContactImProviderField.VerificationToken,
+        ContactImProviderField.EncryptKey,
+      ],
+    }
+    vi.mocked(repository.getIntegrations).mockResolvedValue([feishu])
+    return { repository, feishu }
+  }
+
+  it('clears and locks Feishu credential drafts when saving succeeded but loading the saved details failed', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createSavedFeishuRepository()
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockRejectedValue(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.SavedDetailsUnavailable),
+      )
+    const testConnection = vi.spyOn(repository, 'testConnection')
+    renderSurface({ repository })
+    await openConfigured(user, 'Feishu')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    for (const field of ['secret', 'verificationToken', 'encryptKey'])
+      await user.type(
+        screen.getByLabelText(`contacts.imPlatform.bindingDialog.field.${field}`),
+        `saved-${field}`,
+      )
+    const saveButton = screen.getByRole('button', {
+      name: 'contacts.imPlatform.bindingDialog.saveAndContinue',
+    })
+    const testButton = screen.getByRole('button', {
+      name: 'contacts.imPlatform.action.testConnection',
+    })
+    await user.click(saveButton)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'contacts.imPlatform.bindingDialog.savedDetailsUnavailable',
+    )
+    expect(
+      screen.queryByText('contacts.imPlatform.bindingDialog.saveFailed'),
+    ).not.toBeInTheDocument()
+    for (const field of ['secret', 'verificationToken', 'encryptKey']) {
+      const input = screen.getByLabelText(`contacts.imPlatform.bindingDialog.field.${field}`)
+      expect(input).toHaveValue('')
+      expect(input).toBeDisabled()
+    }
+    expect(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')).toBeDisabled()
+    expect(saveButton).toBeDisabled()
+    expect(testButton).toBeDisabled()
+    await user.click(saveButton)
+    await user.click(testButton)
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(testConnection).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('clears and locks the Email API key after saving when the saved channel details are unavailable', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createApiShapeRepository()
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockRejectedValue(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.SavedDetailsUnavailable),
+      )
+    const testConnection = vi.spyOn(repository, 'testConnection')
+    renderSurface({ repository })
+    await openConfigured(user, 'Email')
+    const apiKey = screen.getByLabelText('contacts.imPlatform.email.apiKey')
+    await user.type(apiKey, 'already-persisted-resend-key')
+    const saveButton = screen.getByRole('button', { name: 'contacts.imPlatform.action.save' })
+    const testButton = screen.getByRole('button', {
+      name: 'contacts.imPlatform.action.testConnection',
+    })
+    await user.click(saveButton)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'contacts.imPlatform.bindingDialog.savedDetailsUnavailable',
+    )
+    expect(apiKey).toHaveValue('')
+    for (const field of ['apiKey', 'senderEmail', 'senderName'])
+      expect(screen.getByLabelText(`contacts.imPlatform.email.${field}`)).toBeDisabled()
+    expect(saveButton).toBeDisabled()
+    expect(testButton).toBeDisabled()
+    await user.click(saveButton)
+    await user.click(testButton)
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(testConnection).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('explains a different-organization credential conflict and preserves the editable draft', async () => {
+    const user = userEvent.setup()
+    const { repository, feishu } = await createSavedFeishuRepository()
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockRejectedValueOnce(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.ReplacementRequired),
+      )
+      .mockResolvedValue(feishu)
+    renderSurface({ repository })
+    await openConfigured(user, 'Feishu')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    const appId = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')
+    const secret = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret')
+    await user.clear(appId)
+    await user.type(appId, 'different-organization-app')
+    await user.type(secret, 'correctable-app-secret')
+    const saveButton = screen.getByRole('button', {
+      name: 'contacts.imPlatform.bindingDialog.saveAndContinue',
+    })
+    await user.click(saveButton)
+
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.cancel',
+      }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'contacts.imPlatform.bindingDialog.replacementRequired',
+    )
+    expect(screen.queryByText('contacts.imPlatform.configurationUpdated')).not.toBeInTheDocument()
+    expect(appId).toHaveValue('different-organization-app')
+    expect(appId).toBeEnabled()
+    expect(secret).toHaveValue('correctable-app-secret')
+    expect(secret).toBeEnabled()
+    expect(saveButton).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
+    ).toBeEnabled()
+    await user.clear(appId)
+    await user.type(appId, 'corrected-organization-app')
+    await user.click(saveButton)
+
+    expect(
+      await screen.findByLabelText('contacts.imPlatform.bindingDialog.callback'),
+    ).toBeInTheDocument()
+    expect(save).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        secret: 'correctable-app-secret',
+        values: { appId: 'corrected-organization-app' },
+      }),
+    )
+  })
+
+  it('tests and retries a saved Feishu token update without requesting its unchanged App Secret', async () => {
+    const user = userEvent.setup()
+    const { repository, feishu } = await createSavedFeishuRepository()
+    const testConnection = vi.spyOn(repository, 'testConnection').mockResolvedValue(feishu)
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockRejectedValueOnce(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed),
+      )
+      .mockResolvedValue(feishu)
+    renderSurface({ repository })
+    await openConfigured(user, 'Feishu')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    const secret = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret')
+    const token = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.verificationToken')
+    expect(secret).toHaveValue('')
+    expect(secret).not.toBeRequired()
+    expect(screen.getAllByText('contacts.imPlatform.bindingDialog.secretConfigured')).toHaveLength(
+      3,
+    )
+    await user.type(token, 'rotated-verification-token')
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
+    )
+
+    expect(await screen.findByText('contacts.imPlatform.email.testSucceeded')).toBeInTheDocument()
+    const expectedUpdate = expect.objectContaining({
+      provider: ContactImProvider.Feishu,
+      channelId: 'feishu-channel',
+      expectedConfigVersion: 'version-at-open',
+      values: { appId: 'saved-feishu-app', verificationToken: 'rotated-verification-token' },
+    })
+    expect(testConnection).toHaveBeenCalledExactlyOnceWith(expectedUpdate)
+    expect(testConnection.mock.calls[0]?.[0]?.secret).toBeUndefined()
+    expect(testConnection.mock.calls[0]?.[0]).not.toHaveProperty('retainSecret')
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'contacts.imPlatform.bindingDialog.saveFailed',
+    )
+    expect(token).toHaveValue('rotated-verification-token')
+    expect(secret).toHaveValue('')
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    expect(await screen.findByLabelText('contacts.imPlatform.bindingDialog.callback')).toHaveValue(
+      feishu.callbackUrl,
+    )
+    expect(save).toHaveBeenNthCalledWith(2, expectedUpdate)
+    expect(save.mock.calls[1]?.[0]?.secret).toBeUndefined()
+    expect(save.mock.calls[1]?.[0]).not.toHaveProperty('retainSecret')
+  })
+
+  it('marks an optional saved credential for clearing and sends an explicit clear only on save', async () => {
+    const user = userEvent.setup()
+    const { repository, feishu } = await createSavedFeishuRepository()
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockRejectedValueOnce(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed),
+      )
+      .mockResolvedValue(feishu)
+    renderSurface({ repository })
+    await openConfigured(user, 'Feishu')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    const token = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.verificationToken')
+    await user.click(
+      screen.getByRole('button', { name: /field\.verificationToken.*clearSavedCredential/ }),
+    )
+
+    expect(token).toBeDisabled()
+    expect(
+      screen.getByText('contacts.imPlatform.bindingDialog.credentialWillBeCleared'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /field\.verificationToken.*undoClearCredential/ }),
+    ).toBeEnabled()
+    expect(
+      screen.queryByRole('button', { name: /field\.secret.*clearSavedCredential/ }),
+    ).not.toBeInTheDocument()
+    expect(save).not.toHaveBeenCalled()
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'contacts.imPlatform.bindingDialog.saveFailed',
+    )
+    expect(token).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /field\.verificationToken.*undoClearCredential/ }),
+    ).toBeEnabled()
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    expect(
+      await screen.findByLabelText('contacts.imPlatform.bindingDialog.callback'),
+    ).toBeInTheDocument()
+    expect(save).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        channelId: 'feishu-channel',
+        expectedConfigVersion: 'version-at-open',
+        clearedFields: [ContactImProviderField.VerificationToken],
+        values: expect.objectContaining({ appId: 'saved-feishu-app' }),
+      }),
+    )
+    expect(save.mock.calls[0]?.[0]?.secret).toBeUndefined()
+  })
+
+  it('undoes a pending clear and allows replacing that optional saved credential', async () => {
+    const user = userEvent.setup()
+    const { repository, feishu } = await createSavedFeishuRepository()
+    const save = vi.spyOn(repository, 'saveCredentials').mockResolvedValue(feishu)
+    renderSurface({ repository })
+    await openConfigured(user, 'Feishu')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    const token = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.verificationToken')
+    await user.click(
+      screen.getByRole('button', { name: /field\.verificationToken.*clearSavedCredential/ }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: /field\.verificationToken.*undoClearCredential/ }),
+    )
+
+    expect(token).toBeEnabled()
+    expect(token).toHaveValue('')
+    expect(
+      screen.queryByText('contacts.imPlatform.bindingDialog.credentialWillBeCleared'),
+    ).not.toBeInTheDocument()
+    expect(save).not.toHaveBeenCalled()
+    await user.type(token, 'replacement-after-undo')
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    expect(
+      await screen.findByLabelText('contacts.imPlatform.bindingDialog.callback'),
+    ).toBeInTheDocument()
+    expect(save).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        clearedFields: [],
+        values: { appId: 'saved-feishu-app', verificationToken: 'replacement-after-undo' },
+      }),
+    )
+  })
+
+  it('still requires every mandatory credential when creating a Slack channel', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createApiShapeRepository()
+    vi.mocked(repository.getIntegrations).mockResolvedValue([])
+    const save = vi.spyOn(repository, 'saveCredentials')
+    renderSurface({ repository })
+    await user.click(await screen.findByRole('button', { name: /Slack.*connect/i }))
+    for (const field of ['clientId', 'clientSecret', 'signingSecret', 'botToken'])
+      expect(
+        screen.getByLabelText(`contacts.imPlatform.bindingDialog.field.${field}`),
+      ).toBeRequired()
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    expect(save).not.toHaveBeenCalled()
+    expect(screen.getAllByText('contacts.imPlatform.bindingDialog.required')).toHaveLength(4)
+  })
+
+  it('uses legacy secretConfigured only for the primary secret when field metadata is absent', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createApiShapeRepository()
+    const integrations = await repository.getIntegrations(organization.organizationId)
+    vi.mocked(repository.getIntegrations).mockResolvedValue(
+      integrations.map((integration) => ({ ...integration, configuredFields: undefined })),
+    )
+    renderSurface({ repository })
+    await openConfigured(user, 'Slack')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+
+    expect(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret'),
+    ).not.toBeRequired()
+    expect(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.signingSecret'),
+    ).toBeRequired()
+    expect(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.botToken')).toBeRequired()
+    expect(
+      screen.getByText('contacts.imPlatform.bindingDialog.secretConfigured'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /clearSavedCredential/ })).not.toBeInTheDocument()
+  })
+
+  it('still requires a new App Secret when replacing Slack with Feishu', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createApiShapeRepository()
+    const save = vi.spyOn(repository, 'saveCredentials')
+    renderSurface({ repository })
+    await user.click(await screen.findByRole('button', { name: /Feishu.*replace/i }))
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.replacement.confirm' }),
+    )
+    expect(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret')).toBeRequired()
+    expect(
+      screen.queryByText('contacts.imPlatform.bindingDialog.secretConfigured'),
+    ).not.toBeInTheDocument()
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId'),
+      'replacement-feishu-app',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    expect(save).not.toHaveBeenCalled()
+    expect(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret'),
+    ).toHaveAccessibleDescription('contacts.imPlatform.bindingDialog.required')
+  })
+
+  it('updates Email sender details with a blank API key and captures its saved channel version', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createApiShapeRepository()
+    const email = (await repository.getIntegrations(organization.organizationId)).find(
+      (integration) => integration.provider === ContactImProvider.Email,
+    )
+    if (!email) throw new Error('Configured Email fixture is required')
+    const save = vi.spyOn(repository, 'saveCredentials').mockResolvedValue(email)
+    renderSurface({ repository })
+    await openConfigured(user, 'Email')
+    const senderEmail = screen.getByLabelText('contacts.imPlatform.email.senderEmail')
+    const senderName = screen.getByLabelText('contacts.imPlatform.email.senderName')
+    expect(senderEmail).not.toBeRequired()
+    expect(screen.getByLabelText('contacts.imPlatform.email.apiKey')).not.toBeRequired()
+    await user.clear(senderEmail)
+    await user.clear(senderName)
+    await user.type(senderName, 'Renamed sender')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.save' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(save).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        provider: ContactImProvider.Email,
+        channelId: 'email-channel',
+        expectedConfigVersion: 'version-at-open',
+        clearedFields: [],
+        values: { senderEmail: '', senderName: 'Renamed sender' },
+      }),
+    )
+    expect(save.mock.calls[0]?.[0]?.secret).toBeUndefined()
+    expect(save.mock.calls[0]?.[0]).not.toHaveProperty('retainSecret')
+  })
+
+  it('uses the saved channel callback and reopens it without re-entering credentials', async () => {
+    const user = userEvent.setup()
+    const { repository, slack } = await createApiShapeRepository()
+    const saved = {
+      ...slack,
+      channelId: 'new-slack-channel',
+      configVersion: 'new-slack-version',
+      callbackUrl: 'https://backend.example/callbacks/human-input/v2/im/new-slack-hook',
+    }
+    const getIntegrations = vi.mocked(repository.getIntegrations).mockResolvedValue([])
+    const save = vi.spyOn(repository, 'saveCredentials').mockImplementation(async () => {
+      getIntegrations.mockResolvedValue([saved])
+      return saved
+    })
+    const testConnection = vi.spyOn(repository, 'testConnection').mockResolvedValue(saved)
+    renderSurface({ repository })
+    await user.click(await screen.findByRole('button', { name: /Slack.*connect/i }))
+    expect(
+      screen.queryByRole('button', { name: 'contacts.imPlatform.action.copyCallback' }),
+    ).not.toBeInTheDocument()
+    await fillSlackCredentials(user)
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    await user.click(
+      await screen.findByRole('button', { name: 'contacts.imPlatform.action.copyCallback' }),
+    )
+    expect(copy).toHaveBeenLastCalledWith(saved.callbackUrl)
+    const callback = screen.getByLabelText('contacts.imPlatform.bindingDialog.callback')
+    expect(callback).toHaveValue(saved.callbackUrl)
+    expect(callback).toHaveAttribute('readonly')
+    expect(
+      screen.queryByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret'),
+    ).not.toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.finish' }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    await openConfigured(user, 'Slack')
+    expect(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.finish' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret'),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    expect(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret'),
+    ).toHaveValue('')
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
+    )
+    expect(testConnection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channelId: saved.channelId,
+        expectedConfigVersion: saved.configVersion,
+        provider: ContactImProvider.Slack,
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.finish' }),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.copyCallback' }),
+    )
+    expect(copy).toHaveBeenLastCalledWith(saved.callbackUrl)
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(testConnection).toHaveBeenCalledTimes(1)
+  })
+
+  it('updates the newly replaced channel when returning from callbacks to edit credentials', async () => {
+    const user = userEvent.setup()
+    const { repository, slack } = await createApiShapeRepository()
+    const saved = {
+      ...slack,
+      provider: ContactImProvider.Feishu,
+      channelId: 'replacement-feishu-channel',
+      configVersion: 'feishu-version-1',
+      displayIdentifier: 'cli_replacement',
+      configuredValues: { appId: 'cli_replacement' },
+      configuredFields: [ContactImProviderField.AppId, ContactImProviderField.Secret],
+      callbackUrl: 'https://backend.example/callbacks/human-input/v2/im/feishu-only-hook',
+    }
+    const getIntegrations = vi.mocked(repository.getIntegrations)
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockImplementationOnce(async () => {
+        getIntegrations.mockResolvedValue([saved])
+        return saved
+      })
+      .mockResolvedValue({ ...saved, configVersion: 'feishu-version-2' })
+    renderSurface({ repository })
+    await user.click(await screen.findByRole('button', { name: /Feishu.*replace/i }))
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.replacement.confirm' }),
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId'),
+      'cli_replacement',
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret'),
+      'first-app-secret',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    await user.click(
+      await screen.findByRole('button', { name: 'contacts.imPlatform.action.copyCallback' }),
+    )
+    expect(copy).toHaveBeenLastCalledWith(saved.callbackUrl)
+    expect(save).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        channelId: 'slack-channel',
+        expectedConfigVersion: 'version-at-open',
+        provider: ContactImProvider.Feishu,
+        replaceActiveProvider: true,
+      }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    expect(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')).toHaveValue(
+      'cli_replacement',
+    )
+    const secret = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret')
+    expect(secret).toHaveValue('')
+    expect(secret).not.toBeRequired()
+    const appId = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')
+    await user.clear(appId)
+    await user.type(appId, 'cli_replacement_updated')
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    expect(
+      await screen.findByRole('button', { name: 'contacts.imPlatform.bindingDialog.finish' }),
+    ).toBeInTheDocument()
+    expect(save).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        channelId: saved.channelId,
+        expectedConfigVersion: saved.configVersion,
+        provider: ContactImProvider.Feishu,
+        replaceActiveProvider: false,
+        values: { appId: 'cli_replacement_updated' },
+      }),
+    )
+    expect(save.mock.calls[1]?.[0]?.secret).toBeUndefined()
+    expect(save.mock.calls[1]?.[0]).not.toHaveProperty('retainSecret')
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.copyCallback' }),
+    )
+    expect(copy).toHaveBeenLastCalledWith(saved.callbackUrl)
+  })
+
+  it('keeps a channel with no returned callback on the single-step save flow', async () => {
+    const user = userEvent.setup()
+    const { repository, slack } = await createApiShapeRepository()
+    const saved = {
+      ...slack,
+      provider: ContactImProvider.DingTalk,
+      channelId: 'dingtalk-channel',
+      callbackUrl: null,
+    }
+    const save = vi.spyOn(repository, 'saveCredentials').mockResolvedValue(saved)
+    renderSurface({ repository })
+    await user.click(await screen.findByRole('button', { name: /DingTalk.*replace/i }))
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.replacement.confirm' }),
+    )
+    expect(
+      screen.queryByRole('button', { name: 'contacts.imPlatform.action.copyCallback' }),
+    ).not.toBeInTheDocument()
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientId'),
+      'dingtalk-client',
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientSecret'),
+      'dingtalk-secret',
+    )
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.connect' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(
+      screen.queryByRole('button', { name: 'contacts.imPlatform.bindingDialog.finish' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('edits a saved Slack channel without a webhook using the single-step credential form', async () => {
+    const user = userEvent.setup()
+    const { repository, slack } = await createApiShapeRepository()
+    const savedWithoutWebhook = { ...slack, callbackUrl: null }
+    const integrations = await repository.getIntegrations(organization.organizationId)
+    vi.mocked(repository.getIntegrations).mockResolvedValue(
+      integrations.map((integration) =>
+        integration.provider === ContactImProvider.Slack ? savedWithoutWebhook : integration,
+      ),
+    )
+    const save = vi.spyOn(repository, 'saveCredentials').mockResolvedValue(savedWithoutWebhook)
+    renderSurface({ repository })
+    await openConfigured(user, 'Slack')
+
+    expect(
+      screen.queryByRole('button', { name: 'contacts.imPlatform.action.copyCallback' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('contacts.imPlatform.bindingDialog.callbackStep'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('contacts.imPlatform.bindingDialog.credentialsStep'),
+    ).not.toBeInTheDocument()
+    await fillSlackCredentials(user)
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.save' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channelId: slack.channelId,
+        expectedConfigVersion: slack.configVersion,
+        replaceActiveProvider: false,
+      }),
+    )
+  })
+
+  it('updates one saved Slack secret while retaining the other masked credentials', async () => {
+    const user = userEvent.setup()
+    const { repository, slack } = await createApiShapeRepository()
+    const save = vi.spyOn(repository, 'saveCredentials').mockResolvedValue(slack)
+    renderSurface({ repository })
+    await openConfigured(user, 'Slack')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    expect(
+      screen.queryByText('contacts.imPlatform.bindingDialog.freshCredentials'),
+    ).not.toBeInTheDocument()
+    expect(screen.getAllByText('contacts.imPlatform.bindingDialog.secretConfigured')).toHaveLength(
+      4,
+    )
+    for (const field of ['clientSecret', 'signingSecret', 'botToken', 'appToken']) {
+      const input = screen.getByLabelText(`contacts.imPlatform.bindingDialog.field.${field}`)
+      expect(input).toHaveAttribute('type', 'password')
+      expect(input).toHaveValue('')
+      expect(input).not.toBeRequired()
+    }
+    expect(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appToken'),
+    ).not.toBeRequired()
+    expect(
+      screen.getByRole('button', { name: /field\.appToken.*clearSavedCredential/ }),
+    ).toBeEnabled()
+    expect(screen.getAllByRole('button', { name: /clearSavedCredential/ })).toHaveLength(1)
+    const clientId = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.clientId')
+    expect(clientId).not.toBeRequired()
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.signingSecret'),
+      'rotated-signing-secret',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    expect(
+      await screen.findByRole('button', { name: 'contacts.imPlatform.bindingDialog.finish' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('rotated-signing-secret')).not.toBeInTheDocument()
+    expect(save).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        organizationId: organization.organizationId,
+        provider: ContactImProvider.Slack,
+        channelId: 'slack-channel',
+        expectedConfigVersion: 'version-at-open',
+        replaceActiveProvider: false,
+        values: { signingSecret: 'rotated-signing-secret' },
+      }),
+    )
+    expect(save.mock.calls[0]?.[0]?.secret).toBeUndefined()
+    expect(save.mock.calls[0]?.[0]).not.toHaveProperty('retainSecret')
+  })
+
+  it('uses the server webhook and never reports a failed connection test as success', async () => {
+    const user = userEvent.setup()
+    const { repository, slack } = await createApiShapeRepository()
+    const testConnection = vi
+      .spyOn(repository, 'testConnection')
+      .mockRejectedValueOnce(
+        new ContactImRepositoryError(
+          ContactImRepositoryErrorCode.MutationFailed,
+          'Provider error code: missing_scope. Missing permissions: users:read.email.',
+        ),
+      )
+      .mockResolvedValue(slack)
+    const save = vi.spyOn(repository, 'saveCredentials')
+    renderSurface({ repository })
+    await openConfigured(user, 'Slack')
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.copyCallback' }),
+    )
+    expect(copy).toHaveBeenCalledWith('https://example.dify.test/actual-webhook')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    await fillSlackCredentials(user)
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Provider error code: missing_scope. Missing permissions: users:read.email.',
+    )
+    expect(screen.queryByText('contacts.imPlatform.email.testSucceeded')).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(save).not.toHaveBeenCalled()
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
+    )
+    expect(await screen.findByText('contacts.imPlatform.email.testSucceeded')).toBeInTheDocument()
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appToken'),
+      'xapp-test-only',
+    )
+    expect(screen.queryByText('contacts.imPlatform.email.testSucceeded')).not.toBeInTheDocument()
+    expect(testConnection).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps replacement inputs when the captured configuration conflicts', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createApiShapeRepository()
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockRejectedValue(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.ConfigurationUpdated),
+      )
+    renderSurface({ repository })
+    await user.click(await screen.findByRole('button', { name: /Feishu.*replace/i }))
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.replacement.confirm' }),
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId'),
+      'replacement-app',
+    )
+    await user.type(
+      screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret'),
+      'replacement-secret',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+    expect(await screen.findByText('contacts.imPlatform.configurationUpdated')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: ContactImProvider.Feishu,
+        replaceActiveProvider: true,
+        channelId: 'slack-channel',
+        expectedConfigVersion: 'version-at-open',
+      }),
+    )
+    expect(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')).toHaveValue(
+      'replacement-app',
+    )
+    expect(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret')).toHaveValue(
+      'replacement-secret',
+    )
+  })
+
+  it('retries Feishu credentials after a failed save without re-entering secret fields', async () => {
+    const user = userEvent.setup()
+    const { repository, slack } = await createApiShapeRepository()
+    const callbackUrl = 'https://backend.example/callbacks/human-input/v2/im/retried-feishu'
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockRejectedValueOnce(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed),
+      )
+      .mockResolvedValue({
+        ...slack,
+        provider: ContactImProvider.Feishu,
+        channelId: 'retried-feishu-channel',
+        configVersion: 'retried-feishu-version',
+        callbackUrl,
+      })
+    renderSurface({ repository })
+    await user.click(await screen.findByRole('button', { name: /Feishu.*replace/i }))
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.replacement.confirm' }),
+    )
+    const appId = screen.getByLabelText('contacts.imPlatform.bindingDialog.field.appId')
+    await user.type(appId, 'incorrect-app')
+    const secretInputs = [
+      ['secret', 'retained-app-secret'],
+      ['verificationToken', 'retained-verification-token'],
+      ['encryptKey', 'retained-encrypt-key'],
+    ] as const
+    for (const [field, value] of secretInputs) {
+      const input = screen.getByLabelText(`contacts.imPlatform.bindingDialog.field.${field}`)
+      await user.type(input, value)
+      expect(input).toHaveAttribute('type', 'password')
+    }
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'contacts.imPlatform.bindingDialog.saveFailed',
+    )
+    for (const [field, value] of secretInputs)
+      expect(screen.getByLabelText(`contacts.imPlatform.bindingDialog.field.${field}`)).toHaveValue(
+        value,
+      )
+
+    await user.clear(appId)
+    await user.type(appId, 'corrected-app')
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.saveAndContinue' }),
+    )
+
+    expect(await screen.findByLabelText('contacts.imPlatform.bindingDialog.callback')).toHaveValue(
+      callbackUrl,
+    )
+    expect(save).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        provider: ContactImProvider.Feishu,
+        secret: 'retained-app-secret',
+        values: {
+          appId: 'corrected-app',
+          verificationToken: 'retained-verification-token',
+          encryptKey: 'retained-encrypt-key',
+        },
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }))
+    for (const [field] of secretInputs)
+      expect(screen.getByLabelText(`contacts.imPlatform.bindingDialog.field.${field}`)).toHaveValue(
+        '',
+      )
+  })
+
+  it('retries a failed Email save with the entered API key and clears it after saving', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createApiShapeRepository()
+    const save = vi
+      .spyOn(repository, 'saveCredentials')
+      .mockRejectedValueOnce(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed),
+      )
+    renderSurface({ repository })
+    await openConfigured(user, 'Email')
+    const apiKey = screen.getByLabelText('contacts.imPlatform.email.apiKey')
+    const senderName = screen.getByLabelText('contacts.imPlatform.email.senderName')
+    await user.type(apiKey, 'retained-resend-key')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.save' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'contacts.imPlatform.bindingDialog.saveFailed',
+    )
+    expect(apiKey).toHaveValue('retained-resend-key')
+    expect(apiKey).toHaveAttribute('type', 'password')
+    await user.clear(senderName)
+    await user.type(senderName, 'Corrected sender')
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.save' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(save).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        provider: ContactImProvider.Email,
+        secret: 'retained-resend-key',
+        values: { senderEmail: 'approvals@acme.com', senderName: 'Corrected sender' },
+      }),
+    )
+    await openConfigured(user, 'Email')
+    expect(screen.getByLabelText('contacts.imPlatform.email.apiKey')).toHaveValue('')
+  })
+
+  it('passes the delete version and keeps confirmation open when the channel changed', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createApiShapeRepository()
+    const disconnect = vi
+      .spyOn(repository, 'disconnect')
+      .mockRejectedValue(
+        new ContactImRepositoryError(ContactImRepositoryErrorCode.ConfigurationUpdated),
+      )
+    renderSurface({ repository })
+    await user.click(
+      within(await screen.findByRole('group', { name: 'Slack' })).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.deleteChannel/,
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.delete.confirm' }))
+    expect(await screen.findByText('contacts.imPlatform.configurationUpdated')).toBeInTheDocument()
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(disconnect).toHaveBeenCalledWith({
+      organizationId: organization.organizationId,
+      provider: ContactImProvider.Slack,
+      channelId: 'slack-channel',
+      expectedConfigVersion: 'version-at-open',
+    })
+  })
+
+  it('tests saved Email credentials in channel context and keeps drafts after a failed test', async () => {
+    const user = userEvent.setup()
+    const { repository } = await createApiShapeRepository()
+    const testConnection = vi
+      .spyOn(repository, 'testConnection')
+      .mockRejectedValue(new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed))
+    renderSurface({ repository })
+    await openConfigured(user, 'Email')
+    const apiKey = screen.getByLabelText('contacts.imPlatform.email.apiKey')
+    expect(apiKey).not.toBeRequired()
+    expect(apiKey).toHaveValue('')
+    expect(screen.getByLabelText('contacts.imPlatform.email.senderName')).not.toBeRequired()
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
+    )
+    expect(
+      await screen.findByText('contacts.imPlatform.bindingDialog.testFailed'),
+    ).toBeInTheDocument()
+    expect(testConnection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: ContactImProvider.Email,
+        channelId: 'email-channel',
+        expectedConfigVersion: 'version-at-open',
+        values: { senderEmail: 'approvals@acme.com', senderName: 'Acme' },
+      }),
+    )
+    expect(testConnection.mock.calls[0]?.[0]?.secret).toBeUndefined()
+    expect(testConnection.mock.calls[0]?.[0]).not.toHaveProperty('retainSecret')
+    await user.type(apiKey, 'resend-test-only')
+    await user.click(
+      screen.getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
+    )
+    expect(
+      await screen.findByText('contacts.imPlatform.bindingDialog.testFailed'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('contacts.imPlatform.email.testSucceeded')).not.toBeInTheDocument()
+    expect(apiKey).toHaveValue('resend-test-only')
+    expect(screen.getByLabelText('contacts.imPlatform.email.senderEmail')).toHaveValue(
+      'approvals@acme.com',
+    )
+    expect(testConnection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channelId: 'email-channel',
+        expectedConfigVersion: 'version-at-open',
+        secret: 'resend-test-only',
+        values: { senderEmail: 'approvals@acme.com', senderName: 'Acme' },
+      }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await openConfigured(user, 'Email')
+    expect(screen.getByLabelText('contacts.imPlatform.email.apiKey')).toHaveValue('')
+  })
+})

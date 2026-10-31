@@ -16,6 +16,8 @@
   "settings.membersRequired": "Виберіть принаймні одного учасника команди.",
   "settings.nameRequired": "Потрібно вказати назву бази знань Agent.",
   "settings.pageDescription": "Керуйте основною інформацією, доступом до API та пошуком.",
+  "settings.reasoningChangeConfirm": "Підтвердити зміну",
+  "settings.reasoningChangeWarning": "Зміна системної моделі міркування призведе до повторної обробки проіндексованих документів та оновлення їхніх пошукових індексів. Це потребує часу та спричинить додаткові витрати на використання моделі.",
   "settings.reloadLatest": "Завантажити актуальні налаштування",
   "settings.rerankModelRequired": "Виберіть модель переранжування.",
   "settings.retrievalDepth": "Глибина пошуку",

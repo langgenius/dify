@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "Вибрані контакти буде назавжди видалено з цього робочого простору. Цю дію неможливо скасувати.",
+  "directory.removalTitle": "Видалити контакти?",
+  "imPlatform.bindingDialog.clearSavedCredential": "Очистити збережене значення",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Це збережене значення буде очищено під час збереження.",
+  "imPlatform.bindingDialog.replacementRequired": "Ці облікові дані належать іншому орендарю IM і не можуть бути збережені безпосередньо. Щоб змінити орендаря, потрібно замінити поточний канал IM. Це видалить усі автоматичні та ручні прив’язки IM. Після заміни повторно синхронізуйте контакти.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Конфігурацію збережено, але не вдалося завантажити її дані. Закрийте це діалогове вікно та відкрийте його знову.",
+  "imPlatform.bindingDialog.undoClearCredential": "Скасувати очищення"
+}

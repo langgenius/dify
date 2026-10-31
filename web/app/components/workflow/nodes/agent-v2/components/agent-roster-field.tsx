@@ -202,13 +202,17 @@ function AgentRosterDrawer({
                       <>
                         <Menu modal={false}>
                           <MenuTrigger
-                            aria-label={t(($) => $[`${i18nPrefix}.roster.more`], {
-                              ns: 'workflowAgent',
-                            })}
-                            className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
-                          >
-                            <span aria-hidden className="i-ri-more-fill size-4" />
-                          </MenuTrigger>
+                            render={
+                              <IconButton
+                                aria-label={t(($) => $[`${i18nPrefix}.roster.more`], {
+                                  ns: 'workflowAgent',
+                                })}
+                                className="data-popup-open:bg-state-base-hover"
+                              >
+                                <span aria-hidden className="i-ri-more-fill size-4" />
+                              </IconButton>
+                            }
+                          />
                           <MenuContent align="end" className="w-max min-w-44">
                             <MenuItem
                               className="gap-2 whitespace-nowrap"

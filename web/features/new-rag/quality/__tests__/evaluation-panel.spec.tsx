@@ -2,6 +2,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { toast } from '@/app/notifications'
 import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
@@ -547,6 +548,38 @@ describe('QualityEvaluationPanel', () => {
         name: 'knowledgeQuality.qualityPage.evaluation.evidenceDetailsTitle',
       }),
     ).not.toBeInTheDocument()
+  })
+
+  it.each([
+    {
+      error: createHttpError(
+        { headers: new Headers(), status: 403, statusText: '' },
+        { message: 'You have reached the knowledge base request rate limit of your subscription.' },
+      ),
+      message: 'You have reached the knowledge base request rate limit of your subscription.',
+    },
+    {
+      // oxlint-disable-next-line unicorn/error-message -- Verify the fallback for errors without a message.
+      error: new Error(''),
+      message: 'knowledgeQuality.qualityPage.evaluation.startError',
+    },
+  ])('reports an evaluation start failure once with $message', async ({ error, message }) => {
+    serviceMock.createReplay.mockRejectedValueOnce(error)
+    const user = userEvent.setup()
+    renderPanel()
+
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.evaluation.run' }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.evaluation.start' }),
+    )
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledExactlyOnceWith(message))
+    expect(
+      screen.getByRole('dialog', { name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle' }),
+    ).toBeVisible()
   })
 
   it('reuses the idempotency key when retrying a start whose outcome is unknown', async () => {

@@ -139,6 +139,48 @@ class TestNotionExtractorCases:
             with pytest.raises(ValueError, match="notion page type not supported"):
                 extractor._load_data_as_documents("obj", "unsupported")
 
+        @pytest.mark.parametrize(
+            ("page_type", "expected_path"),
+            [("page", "/v1/pages/obj"), ("database", "/v1/databases/obj")],
+        )
+        def test_last_edited_time_get_has_no_json_body(
+            self, monkeypatch: pytest.MonkeyPatch, page_type: str, expected_path: str
+        ) -> None:
+            requests: list[httpx.Request] = []
+
+            def respond(request: httpx.Request) -> httpx.Response:
+                requests.append(request)
+                return httpx.Response(200, json={"last_edited_time": "2024-01-01T00:00:00Z"})
+
+            transport = httpx.MockTransport(respond)
+
+            def send(
+                method: str,
+                url: str,
+                *,
+                headers: dict[str, str],
+                timeout: httpx.Timeout,
+                json: object | None = None,
+            ) -> httpx.Response:
+                with httpx.Client(transport=transport) as client:
+                    return client.request(method, url, headers=headers, timeout=timeout, json=json)
+
+            monkeypatch.setattr(notion_extractor.httpx, "request", send)
+            extractor = notion_extractor.NotionExtractor(
+                notion_workspace_id="ws",
+                notion_obj_id="obj",
+                notion_page_type=page_type,
+                tenant_id="tenant",
+                notion_access_token="token",
+                notion_token_loader=lambda: "token",
+            )
+
+            assert extractor.get_notion_last_edited_time() == "2024-01-01T00:00:00Z"
+            assert len(requests) == 1
+            assert requests[0].method == "GET"
+            assert requests[0].url.path == expected_path
+            assert requests[0].content == b""
+
     class TestNotionDatabase:
         def test_get_notion_database_data_parses_property_types_and_pagination(self, mocker: MockerFixture) -> None:
             extractor = notion_extractor.NotionExtractor(
@@ -797,3 +839,99 @@ class TestNotionPageRichTextCases:
             content = extractor._read_block("child-block-id", num_tabs=1)
 
         assert content == "\tSee \n\tProject Alpha\n\tE = mc^2\n\n"
+
+
+def _database_extractor() -> notion_extractor.NotionExtractor:
+    return notion_extractor.NotionExtractor(
+        notion_workspace_id="workspace",
+        notion_obj_id="database",
+        notion_page_type="database",
+        tenant_id="tenant",
+        notion_token_loader=lambda: "synthetic-token",
+    )
+
+
+def _database_page(title: str, next_cursor: str | None = None) -> dict[str, object]:
+    return {
+        "results": [{"properties": {"Title": {"type": "title", "title": [{"plain_text": title}]}}}],
+        "has_more": next_cursor is not None,
+        "next_cursor": next_cursor,
+    }
+
+
+@pytest.mark.parametrize("status", [401, 403, 404, 429, 500, 503])
+@pytest.mark.parametrize("after_first_page", [False, True], ids=["first-page", "later-page"])
+def test_database_http_errors_do_not_return_empty_or_partial_documents(
+    monkeypatch: pytest.MonkeyPatch, status: int, after_first_page: bool
+) -> None:
+    cursors: list[str | None] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/v1/databases/database/query"
+        assert request.headers["Authorization"] == "Bearer synthetic-token"
+        assert request.headers["Notion-Version"] == "2022-06-28"
+        cursors.append(json.loads(request.content).get("start_cursor"))
+        if after_first_page and len(cursors) == 1:
+            return httpx.Response(200, json=_database_page("first page", "next-page"))
+        return httpx.Response(
+            status,
+            json={"object": "error", "status": status, "code": "synthetic_error", "message": "Synthetic failure"},
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr(notion_extractor.httpx, "post", client.post)
+        with pytest.raises(httpx.HTTPStatusError) as caught:
+            _database_extractor().extract()
+
+    assert caught.value.response.status_code == status
+    assert cursors == ([None, "next-page"] if after_first_page else [None])
+
+
+@pytest.mark.parametrize("after_first_page", [False, True], ids=["first-page", "later-page"])
+def test_database_http_errors_are_checked_before_decoding_json(
+    monkeypatch: pytest.MonkeyPatch, after_first_page: bool
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if after_first_page and len(requests) == 1:
+            return httpx.Response(200, json=_database_page("first page", "next-page"))
+        return httpx.Response(503, text="<html>Service unavailable</html>")
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr(notion_extractor.httpx, "post", client.post)
+        with pytest.raises(httpx.HTTPStatusError) as caught:
+            _database_extractor().extract()
+
+    assert caught.value.response.status_code == 503
+    assert len(requests) == (2 if after_first_page else 1)
+
+
+@pytest.mark.parametrize(
+    "pages", [[], ["first page"], ["first page", "second page"]], ids=["empty", "single", "multiple"]
+)
+def test_database_success_preserves_empty_results_and_complete_pagination(
+    monkeypatch: pytest.MonkeyPatch, pages: list[str]
+) -> None:
+    cursors: list[str | None] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        cursor = json.loads(request.content).get("start_cursor")
+        cursors.append(cursor)
+        if not pages:
+            return httpx.Response(200, json={"results": [], "has_more": False, "next_cursor": None})
+        index = 0 if cursor is None else 1
+        assert index < len(pages)
+        next_cursor = "next-page" if index == 0 and len(pages) > 1 else None
+        return httpx.Response(200, json=_database_page(pages[index], next_cursor))
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr(notion_extractor.httpx, "post", client.post)
+        documents = _database_extractor().extract()
+
+    assert [document.page_content for document in documents] == (
+        ["\n".join(f"Title:{title}\n" for title in pages)] if pages else []
+    )
+    assert cursors == ([None, "next-page"] if len(pages) > 1 else [None])

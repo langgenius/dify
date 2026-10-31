@@ -12,6 +12,7 @@ import services.installed_app_generation_service as completion_service_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import App, AppMode, Conversation, InstalledApp, Tenant
+from models.enums import ConversationFromSource
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.account_errors import AccountNotFoundError
 from services.app_generate_service import AppGenerateService
@@ -815,7 +816,9 @@ class TestCompletionCases:
                         id=conversation_id,
                         app_id=str(uuid4()) if rejection == "other_app" else harness.target_app.id,
                         from_account_id=str(uuid4()) if rejection == "other_account" else harness.account.id,
-                        from_source="api" if rejection == "api" else "console",
+                        from_source=ConversationFromSource.API
+                        if rejection == "api"
+                        else ConversationFromSource.CONSOLE,
                         mode=AppMode.CHAT,
                         name="Existing conversation",
                         _inputs={},
