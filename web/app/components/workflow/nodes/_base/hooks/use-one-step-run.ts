@@ -1089,7 +1089,8 @@ const useOneStepRun = <T>({
       if (res && res.error) throw new Error(res.error)
     } catch (e: any) {
       if (!isCurrentRun()) return
-      if (!isTriggerNode) handleRunError(e, errorGeneration)
+      // Execution failures carry tracing data that the last-run panel must keep visible.
+      if (!isTriggerNode && !res) handleRunError(e, errorGeneration)
       console.error(e)
       hasError = true
       invalidLastRun()

@@ -314,6 +314,30 @@ it('shows a failed node request inline and clears it when retrying', async () =>
   log.mockRestore()
 })
 
+it.each([NodeRunningStatus.Failed, NodeRunningStatus.Exception])(
+  'preserves execution details for a %s node result',
+  async (status) => {
+    const user = userEvent.setup()
+    const failedResult = createNodeTracing({
+      status,
+      error: 'Transformation failed',
+      inputs: { source: 'Original document' },
+      outputs: { result: 'Fallback transformation' },
+    })
+    api.run.mockResolvedValueOnce(failedResult)
+    api.lastRun.mockResolvedValue(failedResult)
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    renderPanel()
+
+    await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+
+    expect(await panel().findByText(/Fallback transformation/)).toBeInTheDocument()
+    expect(panel().getByText(/Original document/)).toBeInTheDocument()
+    expect(panel().getByText('Transformation failed')).toBeInTheDocument()
+    log.mockRestore()
+  },
+)
+
 it.each(['running', 'succeeded'])(
   'ignores a stopped request failure while its retry is %s',
   async (retryStatus) => {
