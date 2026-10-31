@@ -119,7 +119,9 @@ def test_unknown_reason_is_kept_apart_and_reported(
     [record] = caplog.records
     assert record.levelno == logging.ERROR
     assert (
-        record.getMessage() == "Unknown saas error reason SHIPPED_LATER from GET /probe; regenerate the billing client"
+        record.getMessage()
+        == "Unknown saas error reason SHIPPED_LATER from GET /probe: regenerate the billing client, "
+        "or the billing service returned a reason outside this service's declared set"
     )
 
 
