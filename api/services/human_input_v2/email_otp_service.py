@@ -14,7 +14,7 @@ from redis.exceptions import RedisError
 from sqlalchemy.orm import Session
 
 from core.human_input_v2.shared.values import TenantId
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from enums.human_input import HumanInputFormStatus
 from extensions.ext_redis import RedisClientWrapper
 from extensions.redis_names import serialize_redis_name
 from graphon.enums import WorkflowExecutionStatus

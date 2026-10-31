@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.human_input import HumanInputFormStatus
+from enums.human_input import HumanInputFormStatus
 from repositories.message_repository import MessageRepository
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.entities.message_entities import MessageAccount

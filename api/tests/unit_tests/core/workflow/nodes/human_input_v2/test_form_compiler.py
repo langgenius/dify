@@ -12,7 +12,13 @@ from core.human_input_v2.resolved_form import (
     SelectInput,
     UserAction,
 )
-from core.workflow.nodes.human_input.entities import (
+from core.workflow.nodes.human_input_v2.entities import DebugModeConfig, HumanInputNodeData, MessageTemplateConfig
+from core.workflow.nodes.human_input_v2.form_compiler import MissingResolvedInputError, compile_resolved_form
+from enums.human_input import ButtonStyle, ValueSourceType
+from graphon.file.enums import FileTransferMethod, FileType
+from graphon.runtime import VariablePool
+from graphon.variables import ArrayStringSegment, StringSegment
+from models.human_input_entities import (
     FileInputConfig,
     FileListInputConfig,
     FormInputConfig,
@@ -22,12 +28,6 @@ from core.workflow.nodes.human_input.entities import (
     StringSource,
     UserActionConfig,
 )
-from core.workflow.nodes.human_input.enums import ButtonStyle, ValueSourceType
-from core.workflow.nodes.human_input_v2.entities import DebugModeConfig, HumanInputNodeData, MessageTemplateConfig
-from core.workflow.nodes.human_input_v2.form_compiler import MissingResolvedInputError, compile_resolved_form
-from graphon.file.enums import FileTransferMethod, FileType
-from graphon.runtime import VariablePool
-from graphon.variables import ArrayStringSegment, StringSegment
 
 
 def _node_data(

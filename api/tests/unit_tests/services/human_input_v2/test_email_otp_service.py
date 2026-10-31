@@ -18,8 +18,8 @@ from sqlalchemy.pool import ConnectionPoolEntry
 
 from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import ContactId, NormalizedEmail, TenantId
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import DynamicEmail, OnetimeEmail
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus
 from extensions.ext_redis import RedisClientWrapper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter

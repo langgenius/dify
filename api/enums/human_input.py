@@ -1,6 +1,7 @@
-import enum
+"""Human Input states and recipients, independent of persistence and services."""
 
-from core.human_input import ButtonStyle
+import enum
+from enum import StrEnum
 
 
 class HumanInputFormStatus(enum.StrEnum):
@@ -25,6 +26,15 @@ class HumanInputFormKind(enum.StrEnum):
 
     RUNTIME = enum.auto()  # Form created during workflow execution.
     DELIVERY_TEST = enum.auto()  # Form created for delivery tests.
+
+
+class ButtonStyle(enum.StrEnum):
+    """Button styles for user actions."""
+
+    PRIMARY = enum.auto()
+    DEFAULT = enum.auto()
+    ACCENT = enum.auto()
+    GHOST = enum.auto()
 
 
 class TimeoutUnit(enum.StrEnum):
@@ -69,11 +79,78 @@ class ValueSourceType(enum.StrEnum):
     CONSTANT = enum.auto()
 
 
+class ApprovalChannel(StrEnum):
+    """Where a paused human input form can be approved, surfaced to API callers."""
+
+    EMAIL = "email"
+    IM = "im"
+    WEB_APP = "web_app"
+    CONSOLE = "console"
+
+
+class RecipientType(StrEnum):
+    # Second value = the approval channel this recipient maps to (surfaced in `approval_channels`).
+    EMAIL_MEMBER = "email_member", ApprovalChannel.EMAIL
+    EMAIL_EXTERNAL = "email_external", ApprovalChannel.EMAIL
+    INSTANT_MESSAGE = "instant_message", ApprovalChannel.IM
+    # STANDALONE_WEB_APP is used by the standalone web app.
+    #
+    # It's not used while running workflows / chatflows containing HumanInput
+    # node inside console.
+    STANDALONE_WEB_APP = "standalone_web_app", ApprovalChannel.WEB_APP
+    # CONSOLE is used while running workflows / chatflows containing HumanInput
+    # node inside console. (E.G. running installed apps or debugging workflows / chatflows)
+    CONSOLE = "console", ApprovalChannel.CONSOLE
+    # BACKSTAGE is used for backstage input inside console.
+    BACKSTAGE = "backstage", ApprovalChannel.CONSOLE
+
+    _approval_channel: ApprovalChannel
+
+    def __new__(cls, value: str, approval_channel: ApprovalChannel) -> "RecipientType":
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member._approval_channel = approval_channel
+        return member
+
+    @property
+    def approval_channel(self) -> ApprovalChannel:
+        return self._approval_channel
+
+
+class DeliveryMethodType(enum.StrEnum):
+    WEBAPP = enum.auto()
+    EMAIL = enum.auto()
+    IM = enum.auto()
+
+
+class EmailRecipientType(enum.StrEnum):
+    BOUND = "member"
+    MEMBER = BOUND
+    EXTERNAL = "external"
+
+
+class InstantMessageProvider(enum.StrEnum):
+    SLACK = "slack"
+    TEAMS = "teams"
+    DISCORD = "discord"
+
+
+class InstantMessageRecipientType(enum.StrEnum):
+    CHANNEL = "channel"
+    USER = "user"
+
+
 __all__ = [
+    "ApprovalChannel",
     "ButtonStyle",
+    "DeliveryMethodType",
+    "EmailRecipientType",
     "FormInputType",
     "HumanInputFormKind",
     "HumanInputFormStatus",
+    "InstantMessageProvider",
+    "InstantMessageRecipientType",
+    "RecipientType",
     "TimeoutUnit",
     "ValueSourceType",
 ]

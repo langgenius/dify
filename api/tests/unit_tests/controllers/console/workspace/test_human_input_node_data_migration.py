@@ -16,8 +16,6 @@ from werkzeug.local import LocalProxy
 from controllers.console.human_input_v2.contact import NodeDataMigrationAPI
 from core.human_input_v2.resolved_form import FileInput, FileListInput, ParagraphInput, SelectInput
 from core.human_input_v2.shared.values import NormalizedEmail, TenantId
-from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
-from core.workflow.nodes.human_input.enums import FormInputType
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.form_compiler import compile_resolved_form
 from core.workflow.nodes.human_input_v2.migration import (
@@ -26,10 +24,12 @@ from core.workflow.nodes.human_input_v2.migration import (
     ResolvedMemberEmail,
     convert_legacy_human_input_node_data,
 )
+from enums.human_input import FormInputType
 from graphon.file.enums import FileTransferMethod, FileType
 from graphon.runtime import VariablePool
 from graphon.variables import ArrayStringSegment
 from models.account import Account, TenantAccountRole
+from models.human_input_entities import HumanInputNodeDataFull
 from services.human_input_v2.node_data_migration import (
     HumanInputNodeDataMigrationService,
     MigratedNode,

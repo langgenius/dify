@@ -4,11 +4,9 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from core.workflow.human_input_adapter import (
-    EmailDeliveryMethod,
     adapt_node_config_for_graph,
     parse_human_input_delivery_methods,
 )
-from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.nodes.knowledge_index.entities import KnowledgeIndexNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
@@ -19,6 +17,8 @@ from graphon.nodes.list_operator.entities import FilterOperator, ListOperatorNod
 from graphon.nodes.variable_aggregator.entities import VariableAggregatorNodeData
 from graphon.runtime import VariablePool
 from graphon.variable_loader import VariableLoader, load_into_variable_pool
+from models.human_input_delivery import EmailDeliveryMethod
+from models.human_input_entities import HumanInputNodeData
 
 
 def get_human_input_form_variable_mapping(node_id: str, node_data: HumanInputNodeData) -> Mapping[str, Sequence[str]]:

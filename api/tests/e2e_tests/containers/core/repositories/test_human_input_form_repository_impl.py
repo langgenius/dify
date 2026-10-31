@@ -8,16 +8,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.workflow.human_input_adapter import (
-    DeliveryChannelConfig,
-    EmailDeliveryConfig,
-    EmailDeliveryMethod,
-    EmailRecipients,
-    ExternalRecipient,
-    MemberRecipient,
-    WebAppDeliveryMethod,
-)
-from core.workflow.nodes.human_input.entities import FormDefinition, HumanInputNodeData, UserActionConfig
+from enums.human_input import RecipientType
 from models.account import (
     Account,
     AccountStatus,
@@ -31,8 +22,17 @@ from models.human_input import (
     EmailMemberRecipientPayload,
     HumanInputForm,
     HumanInputFormRecipient,
-    RecipientType,
 )
+from models.human_input_delivery import (
+    DeliveryChannelConfig,
+    EmailDeliveryConfig,
+    EmailDeliveryMethod,
+    EmailRecipients,
+    ExternalRecipient,
+    MemberRecipient,
+)
+from models.human_input_delivery import InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod
+from models.human_input_entities import FormDefinition, HumanInputNodeData, UserActionConfig
 
 
 def _create_tenant_with_members(session: Session, member_emails: list[str]) -> tuple[Tenant, list[Account]]:

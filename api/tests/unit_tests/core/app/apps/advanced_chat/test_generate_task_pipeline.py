@@ -57,7 +57,6 @@ from core.app.entities.task_entities import (
     StreamEvent,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
-from core.workflow.nodes.human_input.entities import UserActionConfig
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus, WorkflowType
@@ -67,6 +66,7 @@ from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.execution_extra_content import HumanInputContent
+from models.human_input_entities import UserActionConfig
 from models.model import AppMode, EndUser, Message, MessageFile
 from models.workflow import WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType

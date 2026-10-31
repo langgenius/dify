@@ -1,6 +1,6 @@
 """Persistence conflicts for human input form submission."""
 
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from enums.human_input import HumanInputFormStatus
 
 
 class FormAlreadyHandledError(Exception):

@@ -20,20 +20,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.human_input_adapter import (
-    EmailDeliveryConfig,
-    EmailDeliveryMethod,
-    EmailRecipients,
-    ExternalRecipient,
-    MemberRecipient,
-)
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
-from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from enums import DeploymentEdition
+from enums.human_input import RecipientType
 from extensions.ext_database import db
 from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
     LogstoreWorkflowNodeExecutionRepository,
@@ -66,7 +59,15 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.human_input import HumanInputFormRecipient, RecipientType
+from models.human_input import HumanInputFormRecipient
+from models.human_input_delivery import (
+    EmailDeliveryConfig,
+    EmailDeliveryMethod,
+    EmailRecipients,
+    ExternalRecipient,
+    MemberRecipient,
+)
+from models.human_input_entities import HumanInputNodeData
 from models.model import App, AppMode
 from models.tools import BuiltinToolProvider, WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType

@@ -26,7 +26,6 @@ from werkzeug.test import TestResponse
 
 from controllers.service_api import wraps
 from controllers.service_api.app import human_input_form as controller
-from core.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import (
     FileInput,
     FileListInput,
@@ -36,9 +35,8 @@ from core.human_input_v2.resolved_form import (
     UserAction,
 )
 from core.human_input_v2.shared.values import TenantId
-from core.workflow.nodes.human_input.entities import FormDefinition
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import Initiator
+from enums.human_input import ButtonStyle, HumanInputFormStatus, RecipientType
 from extensions.ext_application_services import ApplicationServices
 from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowExecutionStatus
@@ -50,7 +48,7 @@ from models.account import TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm as LegacyForm
 from models.human_input import HumanInputFormRecipient as LegacyRecipient
-from models.human_input import RecipientType
+from models.human_input_entities import FormDefinition
 from models.human_input_v2 import FormViewEvent, HumanInputAuditEvent, HumanInputDelivery, RecipientSubjectType
 from models.human_input_v2 import HumanInputForm as V2Form
 from models.human_input_v2 import HumanInputRecipient as V2Recipient
@@ -400,13 +398,13 @@ def test_v1_json_paragraph_submission_resumes_the_node(approval: Approval, note:
     from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
     from core.workflow.nodes.human_input.callback import DifyHITLCallback
     from core.workflow.nodes.human_input.constants import OUTPUT_FIELD_RENDERED_CONTENT
-    from core.workflow.nodes.human_input.entities import HumanInputNodeData
     from graphon.engine_events import NodeRunSucceededEvent
     from graphon.enums import WorkflowNodeExecutionStatus
     from graphon.nodes.human_input.entities import HumanInputNodeData as GraphHumanInputNodeData
     from graphon.nodes.human_input.human_input_node import HumanInputNode
     from graphon.runtime import RuntimeState, VariablePool
     from graphon.runtime.init_params import InitParams
+    from models.human_input_entities import HumanInputNodeData
 
     response = approval.submit(inputs={"note": note, "choice": "Yes"})
     assert response.status_code == 200, response.json

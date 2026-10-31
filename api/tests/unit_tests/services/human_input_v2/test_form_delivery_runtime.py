@@ -25,8 +25,6 @@ from core.human_input_v2.entities import EmailProviderType, IMProvider
 from core.human_input_v2.im_integration.adapters.entities import MessageAccepted, StaticCardIntent
 from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
 from core.human_input_v2.shared.values import AccountId, ContactId, NormalizedEmail, RecipientId, TenantId
-from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import (
     Contact,
     DynamicEmail,
@@ -37,12 +35,14 @@ from core.workflow.nodes.human_input_v2.entities import (
 from core.workflow.nodes.human_input_v2.migration import MemberEmailSnapshot, convert_legacy_human_input_node_data
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, PreparedForm
 from enums import DeploymentEdition
+from enums.human_input import HumanInputFormStatus
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import VariablePool
 from libs.datetime_utils import naive_utc_now
 from models import CreatorUserRole
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import EndUserType, WorkflowRunTriggeredFrom
+from models.human_input_entities import HumanInputNodeDataFull
 from models.human_input_v2 import (
     ContactSubjectType,
     FormViewEvent,
@@ -1526,11 +1526,11 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
         WorkflowPauseStreamResponse,
     )
     from core.db.session_factory import session_factory
-    from core.workflow.nodes.human_input.entities import FormDefinition
     from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
     from graphon.entities import WorkflowStartReason
     from graphon.runtime import RuntimeState
     from models.human_input import HumanInputForm as LegacyForm
+    from models.human_input_entities import FormDefinition
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
     from services import workflow_event_snapshot_service
     from services.human_input_v2.composition import build_human_input_delivery_service
@@ -1661,12 +1661,12 @@ def test_pause_snapshot_resolves_mixed_versions_in_checkpoint_order(
     context: Context, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-    from core.workflow.nodes.human_input.entities import FormDefinition
     from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
     from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
     from graphon.entities.pause_reason import HitlRequired, SchedulingPause
     from graphon.runtime import RuntimeState
     from models.human_input import HumanInputForm as LegacyForm
+    from models.human_input_entities import FormDefinition
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
     from services.workflow_pause_service import load_workflow_pause_snapshot
 
@@ -1743,13 +1743,14 @@ def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(
     context: Context, monkeypatch: pytest.MonkeyPatch, initiator: bool
 ) -> None:
     from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-    from core.workflow.nodes.human_input.entities import FormDefinition
     from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+    from enums.human_input import RecipientType
     from graphon.entities.pause_reason import HitlRequired
     from graphon.runtime import RuntimeState
     from machinery.context import RequestContext
     from models.human_input import HumanInputForm as LegacyForm
-    from models.human_input import HumanInputFormRecipient, RecipientType
+    from models.human_input import HumanInputFormRecipient
+    from models.human_input_entities import FormDefinition
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
     from services.human_input_v2.composition import build_human_input_delivery_service
     from services.workflow_run_service import WorkflowRunPausedNode, WorkflowRunService
