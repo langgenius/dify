@@ -194,7 +194,9 @@ class DifyApiLLMProvider(Provider[DifyLLMClient]):
         )
 
     @override
-    def _set_http_client(self, http_client: httpx.AsyncClient) -> None:
+    def _set_http_client(  # type: ignore[override]  # pyrefly: ignore[bad-override]
+        self, http_client: httpx.AsyncClient
+    ) -> None:
         self._client.http_client = http_client
 
     @property

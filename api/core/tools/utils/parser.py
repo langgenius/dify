@@ -319,22 +319,26 @@ class ApiBasedToolSchemaParser:
             raise ToolApiSchemaError("No paths found in the swagger yaml.")
 
         # convert paths
+        http_methods = ("get", "post", "put", "delete", "patch", "head", "options", "trace")
         for path, path_item in swagger["paths"].items():
             converted_openapi["paths"][path] = {}
             for method, operation in path_item.items():
+                # A Path Item Object may carry non-operation keys such as
+                # path-level parameters; only HTTP methods define operations.
+                method = str(method).lower()
+                if method not in http_methods:
+                    continue
                 if "operationId" not in operation:
                     raise ToolApiSchemaError(f"No operationId found in operation {method} {path}.")
 
-                if ("summary" not in operation or len(operation["summary"]) == 0) and (
-                    "description" not in operation or len(operation["description"]) == 0
-                ):
+                if not operation.get("summary") and not operation.get("description"):
                     if warning is not None:
                         warning["missing_summary"] = f"No summary or description found in operation {method} {path}."
 
                 converted_openapi["paths"][path][method] = {
                     "operationId": operation["operationId"],
-                    "summary": operation.get("summary", ""),
-                    "description": operation.get("description", ""),
+                    "summary": operation.get("summary") or "",
+                    "description": operation.get("description") or "",
                     "parameters": operation.get("parameters", []),
                     "responses": operation.get("responses", {}),
                 }

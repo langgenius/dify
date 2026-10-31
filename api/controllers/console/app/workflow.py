@@ -5,7 +5,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, RootModel, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
 
 import services.errors.conversation
@@ -382,7 +382,7 @@ class DraftWorkflowApi(Resource):
         elif "text/plain" in content_type:
             try:
                 args_model = SyncDraftWorkflowPayload.model_validate_json(request.data)
-            except (ValueError, ValidationError) as caught_error:
+            except ValueError as caught_error:
                 raise InvalidArgumentError("Invalid JSON data") from caught_error
         else:
             raise UnsupportedMediaTypeError()

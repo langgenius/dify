@@ -7,7 +7,9 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.application_services.workflow import WorkflowExecutionDependencies
 from models import Account
 from models.dataset import Dataset, DatasetQuery
@@ -113,3 +115,60 @@ class TestHitTestingServiceRetrieveTransaction:
         assert query_log is not None
         assert query_log.dataset_id == dataset.id
         assert query_log.created_by == account.id
+
+
+class TestHitTestingServiceRetrievalMethod:
+    @pytest.mark.parametrize(
+        ("indexing_technique", "retrieval_model", "expected_method"),
+        [
+            (IndexTechniqueType.ECONOMY, None, RetrievalMethod.KEYWORD_SEARCH),
+            (
+                IndexTechniqueType.ECONOMY,
+                {
+                    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
+                    "reranking_enable": False,
+                    "score_threshold_enabled": False,
+                    "top_k": 4,
+                },
+                RetrievalMethod.KEYWORD_SEARCH,
+            ),
+            (IndexTechniqueType.HIGH_QUALITY, None, RetrievalMethod.SEMANTIC_SEARCH),
+        ],
+        ids=["economy-default", "economy-requested-semantic", "high-quality-default"],
+    )
+    def test_retrieve_should_use_keyword_search_only_for_economy_datasets(
+        self,
+        sqlite_session: Session,
+        indexing_technique: IndexTechniqueType,
+        retrieval_model: dict[str, object] | None,
+        expected_method: RetrievalMethod,
+        *,
+        workflow_runtime: WorkflowExecutionDependencies,
+    ) -> None:
+        dataset = Dataset(
+            id="dataset-123",
+            tenant_id="tenant-123",
+            provider="vendor",
+            retrieval_model=None,
+            indexing_technique=indexing_technique,
+        )
+        account = Account(name="Test User", email="test@example.com")
+        account.id = "user-789"
+        query = "test query"
+
+        with (
+            patch("services.hit_testing_service.RetrievalService.retrieve", autospec=True) as mock_retrieve,
+        ):
+            no_documents: list[Document] = []
+            mock_retrieve.return_value = no_documents
+            HitTestingService.retrieve(
+                dataset,
+                query,
+                account,
+                retrieval_model,
+                {},
+                session=sqlite_session,
+                retrieval=workflow_runtime.retrieval,
+            )
+
+        assert mock_retrieve.call_args.kwargs["retrieval_method"] == expected_method

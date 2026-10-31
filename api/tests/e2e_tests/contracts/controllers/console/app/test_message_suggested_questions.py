@@ -18,6 +18,8 @@ from controllers.console.app import message as controller
 from enums import DeploymentEdition
 from extensions.application_services.app import AppServices, build_app_services
 from extensions.application_services.rbac import RBACServices
+from extensions.application_services.workflow import build_console_workflow_service
+from extensions.application_services.workflow_variables import build_workflow_variable_service
 from extensions.ext_application_services import _build_oauth_server_service
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
@@ -183,6 +185,8 @@ def harness(
         monkeypatch, LOGIN_DISABLED=True, RBAC_ENABLED=False, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY
     )
     redis = RedisClientWrapper()
+    workflow_tools = WorkflowToolRepository(sqlite_session_factory)
+    workflow_variables = build_workflow_variable_service(database_client=sqlite_session_factory)
     app_services = build_app_services(
         database_client=sqlite_session_factory,
         repository=ConsoleAppRepository(session_factory=sqlite_session_factory),
@@ -197,7 +201,13 @@ def harness(
             exporter=RosterAgentPackageExporter(),
         ),
         tool_providers=ToolProviderRepository(sqlite_session_factory),
-        workflow_queries=WorkflowToolRepository(sqlite_session_factory),
+        workflow_tools=workflow_tools,
+        workflow_publisher=build_console_workflow_service(
+            database_client=sqlite_session_factory,
+            redis=redis,
+            variables=workflow_variables,
+            rbac_members=rbac_domain.rbac.members,
+        ),
     )
     flask_app = Flask(__name__)
     flask_app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))

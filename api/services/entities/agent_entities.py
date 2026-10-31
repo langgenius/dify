@@ -39,7 +39,13 @@ class ComposerSavePayload(BaseModel):
     variant: ComposerVariant
     binding: ComposerBindingPayload | None = None
     soul_lock: ComposerSoulLockPayload = Field(default_factory=ComposerSoulLockPayload)
-    agent_soul: AgentSoulConfig | None = None
+    agent_soul: AgentSoulConfig | None = Field(
+        default=None,
+        description=(
+            "For Agent draft saves and workflow node_job_only updates, omit config_files to preserve the latest "
+            "server-managed files. An explicit list replaces the files, including an empty list to clear them."
+        ),
+    )
     node_job: WorkflowNodeJobConfig | None = None
     save_strategy: ComposerSaveStrategy
     version_note: str | None = None

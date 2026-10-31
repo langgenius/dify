@@ -314,6 +314,35 @@ def test_parse_swagger_to_openapi_branches():
     assert warning["missing_summary"].startswith("No summary or description found")
 
 
+def test_parse_swagger_to_openapi_skips_path_level_parameters():
+    """Swagger path items may carry non-operation keys like path-level parameters."""
+    converted = ApiBasedToolSchemaParser.parse_swagger_to_openapi(
+        {
+            "servers": [{"url": "https://x"}],
+            "paths": {
+                "/items": {
+                    "parameters": [{"name": "limit", "in": "query", "type": "integer"}],
+                    "get": {"operationId": "listItems", "summary": "List items", "responses": {}},
+                }
+            },
+        }
+    )
+
+    assert converted["paths"]["/items"]["get"]["operationId"] == "listItems"
+    assert "parameters" not in converted["paths"]["/items"]
+
+
+def test_parse_swagger_to_openapi_null_summary_does_not_crash():
+    converted = ApiBasedToolSchemaParser.parse_swagger_to_openapi(
+        {
+            "servers": [{"url": "https://x"}],
+            "paths": {"/a": {"get": {"operationId": "getA", "summary": None, "responses": {}}}},
+        }
+    )
+
+    assert converted["paths"]["/a"]["get"]["summary"] == ""
+
+
 def test_parse_openai_plugin_json_branches(app):
     with app.test_request_context():
         with pytest.raises(ToolProviderNotFoundError, match="Invalid openai plugin json"):

@@ -368,10 +368,12 @@ def app_services(
     rbac_domain: RBACDomain,
     tool_providers: ToolProviderRepository,
     workflow_queries: WorkflowToolRepository,
+    workflow_variables: WorkflowExecutionVariables,
 ) -> AppServices:
     from unittest.mock import Mock
 
     from extensions.application_services.app import build_app_services
+    from extensions.application_services.workflow import build_console_workflow_service
     from extensions.ext_application_services import _build_oauth_server_service
     from extensions.ext_redis import redis_client
     from repositories.app.console_repository import ConsoleAppRepository
@@ -391,7 +393,13 @@ def app_services(
         oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis_client),
         recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
         tool_providers=tool_providers,
-        workflow_queries=workflow_queries,
+        workflow_tools=workflow_queries,
+        workflow_publisher=build_console_workflow_service(
+            database_client=sqlite_session_factory,
+            redis=redis_client,
+            variables=workflow_variables,
+            rbac_members=rbac_domain.rbac.members,
+        ),
     )
 
 

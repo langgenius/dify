@@ -24,6 +24,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentCompilationJobResponse,
     KnowledgeFSDocumentReindexPayload,
     KnowledgeFSIdempotencyHeader,
+    KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSServiceSourceConnectionCreatePayload,
     KnowledgeFSServiceSourceCreatePayload,
@@ -222,6 +223,36 @@ def test_logical_read_exposes_current_cas_and_pagination(runtime: FakeRuntime) -
     assert result["data"][0]["row_version"] == 7
     assert result["data"][0]["id"] == "doc-1"
     assert runtime.facade.execute_service.last_call.kwargs["query"] == (("limit", "17"), ("cursor", "prev"))
+
+
+def test_logical_delete_uses_row_version_and_public_deletion_status(
+    runtime: FakeRuntime, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    apply_config_overrides(monkeypatch, SERVICE_API_URL="https://api.example/v1")
+    runtime.facade.execute_service.return_value = {
+        "job": _job(),
+        "statusUrl": "http://internal/deletion-jobs/job-1",
+    }
+
+    with Flask(__name__).test_request_context(
+        "/",
+        method="DELETE",
+        json={"expectedRevision": 0},
+        headers={"Idempotency-Key": "logical-delete-1"},
+    ):
+        result, status, headers = resources.KnowledgeFSServiceLogicalDocumentApi().delete("control-1", "document-1")
+
+    assert status == 202
+    assert result["job"]["target_type"] == "logical_document"
+    assert headers["Location"] == "https://api.example/v1/knowledge-fs/spaces/control-1/deletion-jobs/job-1"
+    assert result["status_url"] == headers["Location"]
+    kwargs = runtime.facade.execute_service.last_call.kwargs
+    assert kwargs["operation_id"] == "deleteLogicalDocument"
+    assert kwargs["resource_id"] == "document-1"
+    assert kwargs["path_parameters"] == (("documentId", "document-1"),)
+    assert kwargs["headers"] == (("Idempotency-Key", "logical-delete-1"),)
+    assert isinstance(kwargs["payload"], KnowledgeFSLogicalDocumentDeletePayload)
+    assert kwargs["payload"].expected_revision == 0
 
 
 def test_deletion_links_and_partial_batch_results_stay_on_public_origin(

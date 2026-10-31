@@ -26,12 +26,13 @@
     }
   },
   "scripts": {
-    "gen-api-contract": "uv run --project ../../api ../../api/dev/generate_swagger_specs.py --output-dir openapi && uv run --project ../../api ../../api/dev/generate_fastopenapi_specs.py --output-dir openapi && node -e \"if (process.env.CI) fs.rmSync('generated/api', { recursive: true, force: true })\" && openapi-ts -f openapi-ts.api.config.ts && node scripts/add-orpc-error-maps.ts && vp fmt generated/api",
-    "gen-enterprise-contract": "openapi-ts -f openapi-ts.enterprise.config.ts && node scripts/snapshot-enterprise-openapi.ts enterprise",
-    "gen-enterprise-app-deploy-contract": "openapi-ts -f openapi-ts.enterprise-app-deploy.config.ts && node scripts/snapshot-enterprise-openapi.ts enterprise-app-deploy",
+    "gen-api-contract": "uv run --frozen --project ../../api ../../api/dev/generate_swagger_specs.py --output-dir openapi && uv run --frozen --project ../../api ../../api/dev/generate_fastopenapi_specs.py --output-dir openapi && node -e \"if (process.env.CI) fs.rmSync('generated/api', { recursive: true, force: true })\" && openapi-ts -f openapi-ts.api.config.ts && node scripts/add-orpc-error-maps.ts && vp fmt generated/api && node scripts/generate-compatibility-sources.ts",
+    "gen-enterprise-contract": "openapi-ts -f openapi-ts.enterprise.config.ts && node scripts/snapshot-enterprise-openapi.ts enterprise && node scripts/generate-compatibility-sources.ts",
+    "gen-enterprise-app-deploy-contract": "openapi-ts -f openapi-ts.enterprise-app-deploy.config.ts && node scripts/snapshot-enterprise-openapi.ts enterprise-app-deploy && node scripts/generate-compatibility-sources.ts",
     "test": "vp test",
     "type-check": "tsrs --noEmit",
-    "compose:console": "node scripts/compose-console-openapi.mjs"
+    "compose:console": "node scripts/compose-console-openapi.mjs",
+    "gen-compatibility-sources": "node scripts/generate-compatibility-sources.ts"
   },
   "dependencies": {
     "@orpc/contract": "catalog:",

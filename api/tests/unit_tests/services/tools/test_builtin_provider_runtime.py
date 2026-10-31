@@ -16,17 +16,21 @@ from core.plugin.entities.plugin_daemon import CredentialType, PluginOAuthCreden
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin, ToolProviderType
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
+from extensions.application_services import tools as tool_services_module
 from extensions.application_services.workflow import build_workflow_execution_dependencies
 from extensions.ext_database import db
 from models.account import Account
 from models.base import TypeBase
 from models.tools import BuiltinToolProvider, MCPToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
+from services.credentials import tool_runtime_adapters as credential_runtime_module
+from services.credentials.tool_runtime_adapters import ProviderToolCredentialRuntime
 from services.entities.agent_tool_inner import AgentToolInvokeRequest
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
 from services.tools.agent_invocation_gateway import AgentToolInvocationGateway
 from services.tools.builtin import credentials as credentials_module
 from services.tools.tool_manager import ToolManager
 from services.workflow.variable_contracts import WorkflowExecutionVariables
+from tests.helpers.unit.credential_refresh import ThreadCredentialRefreshLock
 
 TENANT = "tenant"
 PROVIDER = "vendor/search/search"
@@ -136,6 +140,7 @@ def test_selected_oauth_credential_releases_connections_across_full_invocation(
     sessions, global_session = databases
     credential_id = seed(sessions, oauth_client=client)
     runtime = build_workflow_execution_dependencies(sessions)
+    refresh_lock = ThreadCredentialRefreshLock()
     calls: list[str] = []
 
     def released() -> None:
@@ -202,9 +207,14 @@ def test_selected_oauth_credential_releases_connections_across_full_invocation(
         return {"client": "client"}
 
     monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: controller())
+    monkeypatch.setattr(ToolManager, "_credential_resolver", tool_services_module.resolve_tool_credentials)
+    monkeypatch.setattr(tool_services_module, "get_session_maker", lambda: sessions)
+    monkeypatch.setattr(tool_services_module, "RedisCredentialRefreshLock", lambda **_kwargs: refresh_lock)
     monkeypatch.setattr(credentials_module, "create_provider_encrypter", encrypter)
-    monkeypatch.setattr(credentials_module, "runtime_check_credential_policy_compliance", policy)
-    monkeypatch.setattr(credentials_module.OAuthHandler, "refresh_credentials", refresh)
+    monkeypatch.setattr(credential_runtime_module, "create_provider_encrypter", encrypter)
+    monkeypatch.setattr(credential_runtime_module, "runtime_check_credential_policy_compliance", policy)
+    monkeypatch.setattr(credential_runtime_module.OAuthHandler, "refresh_credentials", refresh)
+    monkeypatch.setattr(ProviderToolCredentialRuntime, "_cache", lambda _self, _record: Cache())
     monkeypatch.setattr(credentials_module.PluginService, "is_plugin_verified", verified)
     monkeypatch.setattr(credentials_module, "decrypt_system_params", decrypt_system)
     monkeypatch.setattr("core.plugin.impl.tool.PluginToolManager.invoke", invoke)
@@ -238,6 +248,7 @@ def test_selected_oauth_credential_releases_connections_across_full_invocation(
             gateway.invoke(request)
         assert exc.value.error_code == "agent_tool_credential_invalid"
         assert "invoke" not in calls
+    assert refresh_lock.keys == [("tool", TENANT, credential_id)]
     released()
     with sessions() as session:
         persisted = session.get(BuiltinToolProvider, credential_id)
@@ -268,6 +279,8 @@ def test_selected_credential_cannot_cross_owner_scope(
         else:
             record.provider = "other/provider"
     monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: controller())
+    monkeypatch.setattr(ToolManager, "_credential_resolver", tool_services_module.resolve_tool_credentials)
+    monkeypatch.setattr(tool_services_module, "get_session_maker", lambda: sessions)
     runtime = build_workflow_execution_dependencies(sessions)
     with pytest.raises(ToolProviderCredentialValidationError, match="has been deleted"):
         ToolManager.get_tool_runtime(

@@ -111,7 +111,7 @@ from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.account_errors import AccountNotFoundError
 from services.agent.errors import AgentVersionNotFoundError
-from services.app.generation.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from services.app.generation.errors import AgentAppGeneratorError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_preview_query_service import (
     AppPreviewOwnerUnavailableError,
@@ -677,7 +677,7 @@ class TrialChatApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
             raise AppUnavailableError() from caught_error
-        except (AgentAppGeneratorError, AgentAppNotPublishedError):
+        except AgentAppGeneratorError:
             raise AppUnavailableError() from None
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description) from ex

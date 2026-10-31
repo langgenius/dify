@@ -51,6 +51,7 @@ from services.workflow.execution.adapters.response_converter import WorkflowResp
 from services.workflow.execution.adapters.response_stream import WorkflowEventStream
 from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 from services.workflow.variable_contracts import WorkflowExecutionVariables
+from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
@@ -377,6 +378,7 @@ class _AppRunner:
                 app_model=app,
                 workflow=workflow,
                 user=user,
+                execution_identity=build_workflow_execution_identity(user),
                 args=exec_params.args,
                 invoke_from=exec_params.invoke_from,
                 streaming=exec_params.streaming,
