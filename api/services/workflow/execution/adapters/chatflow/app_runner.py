@@ -21,6 +21,7 @@ from core.app.entities.queue_entities import (
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.workflow.nodes.human_input.pause_reason import PauseReason
+from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     build_system_variables,
@@ -325,13 +326,20 @@ class AdvancedChatAppRunner:
         node_run_index: int = 1,
         node_execution_snapshots: tuple[NodeExecutionSnapshot, ...] = (),
         pause_reasons: Sequence[PauseReason] = (),
+        human_input_v2_forms: Mapping[str, PreparedForm] | None = None,
     ) -> None:
+        """Publish an engine event with prepared forms for every V2 pause reason.
+
+        The caller supplies forms belonging to this run. Successful publication
+        preserves their presentation data in the queued pause event.
+        """
         self._events.publish(
             workflow_entry,
             event,
             node_run_index=node_run_index,
             node_execution_snapshots=node_execution_snapshots,
             pause_reasons=pause_reasons,
+            human_input_v2_forms=human_input_v2_forms,
         )
 
     def handle_input_moderation(

@@ -181,7 +181,8 @@ function setup({
   )
   const rendered = renderWithConsoleQuery(ui(), {
     accountProfile: { id: 'account-1' },
-    knowledgeFsFeatures: { enabled: true, upload_enabled: true },
+    features: { enable_knowledge_fs: true },
+    knowledgeFsFeatures: { upload_enabled: true },
     workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
     ...options,
   })
@@ -551,7 +552,7 @@ describe('NewKnowledgeList', () => {
     })
 
     it('keeps upload unavailable when KnowledgeFS upload is disabled', async () => {
-      setup({ knowledgeFsFeatures: { enabled: true, upload_enabled: false } })
+      setup({ knowledgeFsFeatures: { upload_enabled: false } })
 
       const uploadFiles = await screen.findByRole('button', { name: 'knowledgeSpace.uploadFiles' })
       expect(uploadFiles).toBeDisabled()

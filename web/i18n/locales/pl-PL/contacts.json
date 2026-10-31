@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "Wybrane kontakty zostaną trwale usunięte z tego obszaru roboczego. Tej czynności nie można cofnąć.",
+  "directory.removalTitle": "Usunąć kontakty?",
+  "imPlatform.bindingDialog.clearSavedCredential": "Wyczyść zapisaną wartość",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Ta zapisana wartość zostanie wyczyszczona podczas zapisywania.",
+  "imPlatform.bindingDialog.replacementRequired": "Te dane uwierzytelniające należą do innego dzierżawcy IM i nie można ich zapisać bezpośrednio. Zmiana dzierżawcy wymaga zastąpienia bieżącego kanału IM, co usuwa wszystkie automatyczne i ręczne powiązania IM. Po zastąpieniu ponownie zsynchronizuj kontakty.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Konfiguracja została zapisana, ale nie udało się wczytać jej szczegółów. Zamknij to okno i otwórz je ponownie.",
+  "imPlatform.bindingDialog.undoClearCredential": "Cofnij wyczyszczenie"
+}

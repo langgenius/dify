@@ -226,7 +226,7 @@ class WorkflowToolContainerHandler:
             frame.state.graph_execution.exceptions_count -= 1
         if isinstance(event, NodeRunPauseRequestedEvent) and isinstance(event.reason, HitlRequired):
             # Keep source identity in Graphon; persist form ownership for Dify's response boundary.
-            form_id = default_session_binding.resolve_form_id_from_session_id(session_id=event.reason.session_id)
+            _, form_id = default_session_binding.resolve_form_id_from_session_id(session_id=event.reason.session_id)
             self._root_runtime_state().variable_pool.add(human_input_container_selector(form_id), frame.container_id)
         # Preserve source ownership before outer containers add their own metadata.
         event.node_run_result.process_data = {

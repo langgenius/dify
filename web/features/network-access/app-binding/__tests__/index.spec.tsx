@@ -1410,17 +1410,17 @@ const lockoutWarning = "Your IP (203.0.113.42) isn't in this policy. You may los
 
 describe('trusted IP checks before saving', () => {
   it.each([
-    [403, 'This feature requires a paid plan.', 'plan'],
-    [403, 'Forbidden', 'permission'],
-    [503, 'Unavailable', 'network'],
-    [409, 'The network access resource changed. Refresh it and try again.', 'other'],
+    [403, 'paid_plan_required', 'plan'],
+    [403, 'forbidden', 'permission'],
+    [503, 'billing_unavailable', 'network'],
+    [409, 'network_access_version_conflict', 'other'],
   ] as const)(
-    'reports one failed save for the submitted draft after HTTP %s',
-    async (status, message, failReason) => {
+    'reports one failed save for the submitted draft after HTTP %s %s',
+    async (status, code, failReason) => {
       const user = userEvent.setup()
       const server = setupBindingServer()
       server.check.allowed = true
-      server.put = async () => Response.json({ message }, { status })
+      server.put = async () => Response.json({ code, message: 'Backend text', status }, { status })
       renderEntry({ plan: 'professional', groups: server.groups })
       await openSelectedConfig(user)
       await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
@@ -1751,7 +1751,11 @@ describe('immediate pause and resume', () => {
       ).toEqual(['turn_off_attempted', 'turn_off_confirmed'])
       if (status === 409)
         server.binding = createBinding({ version: 3, access_points: ['webapp', 'mcp'] })
-      await act(async () => finish(Response.json({ message: 'Unable to pause' }, { status })))
+      const body =
+        status === 409
+          ? { code: 'network_access_version_conflict', message: 'Unable to pause', status }
+          : { message: 'Unable to pause' }
+      await act(async () => finish(Response.json(body, { status })))
       await waitFor(() => expect(toggle).not.toHaveAttribute('aria-disabled', 'true'))
       expect(toggle).toBeChecked()
       expect(within(getChip()).getByText('2 of 3')).toBeInTheDocument()

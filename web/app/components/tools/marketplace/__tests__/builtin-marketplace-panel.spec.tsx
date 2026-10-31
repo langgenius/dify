@@ -2,6 +2,7 @@ import type { MarketplaceCollection } from '@dify/contracts/marketplace'
 import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
+import { marketplaceLinks } from '@/features/marketplace/links'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
@@ -95,6 +96,7 @@ function renderPanel(keywords = '', tagFilterValue: string[] = []) {
   render(
     <div ref={containerRef}>
       <BuiltinMarketplacePanel
+        marketplace={marketplaceLinks}
         containerRef={containerRef}
         contentInset="default"
         keywords={keywords}

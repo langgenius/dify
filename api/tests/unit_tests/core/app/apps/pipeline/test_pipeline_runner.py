@@ -19,7 +19,7 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, UserFrom
 from core.app.entities.queue_entities import AppQueueEvent, QueueWorkflowFailedEvent
 from graphon.engine_events import EngineEvent, GraphRunFailedEvent
 from graphon.graph import Graph
@@ -107,6 +107,7 @@ def _persist_scope(
 def _build_app_generate_entity() -> RagPipelineGenerateEntity:
     app_config = PipelineConfig(app_id="pipe", workflow_id="wf", tenant_id="tenant", app_mode=AppMode.RAG_PIPELINE)
     return RagPipelineGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task",
         stream=True,
         app_config=app_config,

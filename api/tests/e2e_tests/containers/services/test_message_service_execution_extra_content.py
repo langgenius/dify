@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.human_input import HumanInputFormStatus
+from enums.human_input import HumanInputFormStatus
 from repositories.message_repository import MessageRepository
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.entities.message_entities import MessageAccount
@@ -23,7 +23,8 @@ def test_pagination_returns_extra_contents(db_session_with_containers: Session) 
         messages=MessageRepository(session_factory=sessions),
         files=MessageFileResolver(),
         extra_contents=ExecutionExtraContentReader(
-            repository=SQLAlchemyExecutionExtraContentRepository(session_maker=sessions)
+            repository=SQLAlchemyExecutionExtraContentRepository(session_maker=sessions),
+            session_factory=sessions,
         ),
     )
     pagination = service.get_page(
@@ -71,7 +72,8 @@ def test_pagination_returns_waiting_human_input_extra_contents(db_session_with_c
         messages=MessageRepository(session_factory=sessions),
         files=MessageFileResolver(),
         extra_contents=ExecutionExtraContentReader(
-            repository=SQLAlchemyExecutionExtraContentRepository(session_maker=sessions)
+            repository=SQLAlchemyExecutionExtraContentRepository(session_maker=sessions),
+            session_factory=sessions,
         ),
     )
     pagination = service.get_page(
