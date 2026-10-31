@@ -19,7 +19,10 @@ from repositories.tools.workflow_repository import WorkflowToolRepository
 from services.credentials.redis_refresh_lock import RedisCredentialRefreshLock
 from services.credentials.tool_runtime import ToolCredentialService
 from services.credentials.tool_runtime_adapters import ProviderToolCredentialRuntime
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
+from services.tools.builtin.credentials import resolve_oauth_client
 from services.tools.provider_queries import ToolProviders
+from services.tools.tool_manager import ToolManager
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
 
@@ -47,13 +50,43 @@ def resolve_tool_credentials(
         providers = (str(provider), provider.provider_name)
     else:
         providers = (provider_id,)
+    session_maker = get_session_maker()
+    tool_providers = ToolProviderRepository(session_maker)
     runtime = ProviderToolCredentialRuntime(
-        controller=controller, provider_id=provider_id, console_api_url=dify_config.CONSOLE_API_URL
+        controller=controller,
+        provider_id=provider_id,
+        console_api_url=dify_config.CONSOLE_API_URL,
+        oauth_client_resolver=lambda tenant_id: resolve_tool_oauth_client(
+            providers=tool_providers,
+            controller=controller,
+            provider_id=provider_id,
+            workspace_id=tenant_id,
+        ),
     )
     service = ToolCredentialService(
-        credentials=CredentialQueryRepository(session_factory=get_session_maker()),
+        credentials=CredentialQueryRepository(session_factory=session_maker),
         runtime=runtime,
         refresh_lock=RedisCredentialRefreshLock(client=redis_client),
         providers=providers,
     )
     return runtime.resolve(service=service, workspace_id=workspace_id, credential_id=credential_id)
+
+
+def resolve_tool_oauth_client(
+    *,
+    providers: ToolProviders,
+    controller: BuiltinToolProviderController,
+    provider_id: str,
+    workspace_id: str,
+) -> PluginOAuthClientConfig | None:
+    plugin_controller = (
+        controller
+        if isinstance(controller, PluginToolProviderController)
+        else ToolManager.get_plugin_provider(provider_id, workspace_id)
+    )
+    return resolve_oauth_client(
+        providers=providers,
+        controller=plugin_controller,
+        tenant_id=workspace_id,
+        provider_id=provider_id,
+    )
