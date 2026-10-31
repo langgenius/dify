@@ -28,7 +28,12 @@ from services.account.adapters import (
     TokenManagerAccountDeletionVerificationGateway,
     TokenManagerChangeEmailTokenGateway,
 )
-from services.account_errors import AccountDeletionRateLimitError
+from services.account_errors import (
+    AccountDeletionRateLimitError,
+    EducationActivationFailedError,
+    EducationRequestInProgressError,
+    EducationVerificationFailedError,
+)
 from services.billing_client import billing, transport
 from services.entities.account_activation_entities import InvitationLookup, InvitationToken
 from services.entities.account_entities import (
@@ -40,7 +45,11 @@ from services.entities.account_entities import (
     AccountEducationStatus,
     AccountEducationVerification,
 )
-from services.errors.billing import BillingUpstreamInvalidResponseError
+from services.errors.billing import (
+    BillingUpstreamError,
+    BillingUpstreamInvalidResponseError,
+    UnknownErrorReason,
+)
 from tests.helpers.unit.account_domain import AccountDomain
 
 
@@ -539,3 +548,45 @@ def test_identity_rejects_banned_and_missing_accounts(account_domain: AccountDom
     with pytest.raises(Unauthorized, match="banned"):
         gateway.load_user(account.id)
     assert gateway.load_user("missing") is None
+
+
+@pytest.mark.parametrize(
+    ("reason", "expected"),
+    [
+        ("EDUCATION_VERIFY_FAILED", EducationVerificationFailedError),
+        ("EDUCATION_CREATE_FAILED", EducationActivationFailedError),
+        ("REQUEST_IN_PROGRESS", EducationRequestInProgressError),
+    ],
+)
+def test_education_gateway_maps_billing_reason(reason: billing.ErrorReason, expected: type[Exception]) -> None:
+    error = billing.UpstreamInvalidResponseError(status_code=400, reason=reason)
+
+    with (
+        patch("services.account.adapters.BillingService.EducationIdentity.verify", side_effect=error),
+        pytest.raises(expected) as exc_info,
+    ):
+        BillingAccountEducationGateway().verify(account_id="account-1")
+
+    assert exc_info.value.__cause__ is error
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        billing.UpstreamInvalidResponseError(status_code=400, reason="EDUCATION_STATUS_FAILED"),
+        billing.UpstreamUnavailableError(status_code=500, reason=""),
+        billing.UpstreamInvalidResponseError(status_code=400, reason=UnknownErrorReason("EDUCATION_SHIPPED_LATER")),
+        billing.UpstreamUnavailableError(status_code=502),
+        billing.UpstreamUnavailableError(),
+    ],
+)
+def test_education_gateway_leaves_generic_reasons_to_billing_errors(
+    error: billing.UpstreamError,
+) -> None:
+    with (
+        patch("services.account.adapters.BillingService.EducationIdentity.status", side_effect=error),
+        pytest.raises(BillingUpstreamError) as exc_info,
+    ):
+        BillingAccountEducationGateway().status("account-1")
+
+    assert exc_info.value is error

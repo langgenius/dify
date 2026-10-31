@@ -545,6 +545,66 @@ export const zParserPreferredProviderType = z.object({
 })
 
 /**
+ * NetworkAccessForbiddenError
+ *
+ * Network access groups are not available for this workspace.
+ */
+export const zNetworkAccessForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_forbidden'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * NetworkAccessNotEntitledError
+ *
+ * Network access groups are not available for this workspace.
+ */
+export const zNetworkAccessNotEntitledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_not_entitled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * NetworkAccessRoleDeniedError
+ *
+ * Your workspace role does not allow this network access operation.
+ */
+export const zNetworkAccessRoleDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_role_denied'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * BillingOperationFailedError
+ *
+ * We couldn't complete this request. Please try again. If the problem persists, contact support.
+ */
+export const zBillingOperationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_operation_failed'),
+    status: z.literal(502),
+  }),
+)
+
+/**
+ * BillingUnavailableError
+ *
+ * This operation is temporarily unavailable. Please try again later.
+ */
+export const zBillingUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
  * NetworkAccessGroupCreatePayload
  */
 export const zNetworkAccessGroupCreatePayload = z.object({
@@ -552,6 +612,42 @@ export const zNetworkAccessGroupCreatePayload = z.object({
   description: z.string().max(500).optional().default(''),
   name: z.string().min(1).max(100),
 })
+
+/**
+ * NetworkAccessInvalidInputError
+ *
+ * Invalid network access group request.
+ */
+export const zNetworkAccessInvalidInputError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_invalid_input'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * NetworkAccessGroupNameConflictError
+ *
+ * An IP policy with this name already exists.
+ */
+export const zNetworkAccessGroupNameConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_group_name_conflict'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * NetworkAccessGroupCurrentIPResponse
@@ -566,6 +662,42 @@ export const zNetworkAccessGroupCurrentIpResponse = z.object({
 export const zNetworkAccessGroupDeleteResponse = z.object({
   deleted: z.boolean(),
 })
+
+/**
+ * NetworkAccessGroupNotFoundError
+ *
+ * Network access group was not found.
+ */
+export const zNetworkAccessGroupNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_group_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * NetworkAccessGroupBoundError
+ *
+ * This IP policy is still used by one or more apps.
+ */
+export const zNetworkAccessGroupBoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_group_bound'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * NetworkAccessVersionConflictError
+ *
+ * The network access resource changed. Refresh it and try again.
+ */
+export const zNetworkAccessVersionConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_version_conflict'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * NetworkAccessGroupUpdatePayload

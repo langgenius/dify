@@ -9,15 +9,28 @@ import pytest
 from enums import CloudPlan
 from services.billing_client import saas, transport
 from services.billing_client.transport import BillingModel
-from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
+from services.errors.billing import (
+    BillingUpstreamInvalidResponseError,
+    BillingUpstreamUnavailableError,
+    UnknownErrorReason,
+)
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
     NetworkAccessGroupGateway,
 )
 from services.network_access_group_service import (
+    NetworkAccessGroupAppNotFoundError,
+    NetworkAccessGroupBoundError,
     NetworkAccessGroupEntitlementUnavailableError,
+    NetworkAccessGroupError,
+    NetworkAccessGroupForbiddenError,
+    NetworkAccessGroupInvalidInputError,
     NetworkAccessGroupInvalidResponseError,
+    NetworkAccessGroupNameConflictError,
+    NetworkAccessGroupNotEntitledError,
+    NetworkAccessGroupNotFoundError,
     NetworkAccessGroupUpstreamError,
+    NetworkAccessGroupVersionConflictError,
 )
 from tests.helpers import billing_builders as builders
 
@@ -230,52 +243,114 @@ def test_snake_case_proto_names_are_accepted(respond: Respond) -> None:
     assert NetworkAccessGroupGateway().get_group(TENANT_ID, GROUP_ID, ACCOUNT_ID).app_ids == (APP_ID,)
 
 
-@pytest.mark.parametrize("status_code", [400, 403, 404, 409, 500, 503])
-def test_error_status_is_preserved(respond: Respond, status_code: int) -> None:
-    respond(httpx.Response(status_code))
+@pytest.mark.parametrize(
+    ("status_code", "reason", "expected"),
+    [
+        (400, "VALIDATOR", NetworkAccessGroupInvalidInputError),
+        (400, "INVALID_ARGUMENT", NetworkAccessGroupInvalidInputError),
+        (400, "INVALID_NETWORK_ACCESS_INPUT", NetworkAccessGroupInvalidInputError),
+        (403, "NETWORK_ACCESS_FORBIDDEN", NetworkAccessGroupForbiddenError),
+        (403, "TENANT_ARCHIVED", NetworkAccessGroupForbiddenError),
+        (403, "NETWORK_ACCESS_NOT_ENTITLED", NetworkAccessGroupNotEntitledError),
+        (404, "NETWORK_ACCESS_GROUP_NOT_FOUND", NetworkAccessGroupNotFoundError),
+        (404, "APP_NOT_FOUND", NetworkAccessGroupAppNotFoundError),
+        (409, "NETWORK_ACCESS_VERSION_CONFLICT", NetworkAccessGroupVersionConflictError),
+        (409, "NETWORK_ACCESS_GROUP_NAME_CONFLICT", NetworkAccessGroupNameConflictError),
+        (409, "NETWORK_ACCESS_GROUP_BOUND", NetworkAccessGroupBoundError),
+    ],
+)
+def test_known_reason_maps_to_service_error(
+    respond: Respond, status_code: int, reason: str, expected: type[NetworkAccessGroupError]
+) -> None:
+    respond(httpx.Response(status_code, json={"code": status_code, "reason": reason, "message": "internal"}))
+
+    with pytest.raises(NetworkAccessGroupError) as exc_info:
+        NetworkAccessGroupGateway().get_group(TENANT_ID, GROUP_ID, ACCOUNT_ID)
+
+    assert type(exc_info.value) is expected
+    assert isinstance(exc_info.value.__cause__, saas.UpstreamError)
+
+
+@pytest.mark.parametrize(
+    ("status_code", "reason", "unavailable"),
+    [
+        (400, "INVALID_SECRET_KEY", True),
+        (400, "CODEC", False),
+        (404, "TENANT_NOT_FOUND", False),
+        (409, "NETWORK_ACCESS_APP_STILL_EXISTS", False),
+        (500, "", True),
+        (500, "UNKNOWN", True),
+        (500, "INTERNAL_ERROR", True),
+        (503, "NETWORK_ACCESS_CACHE_UNAVAILABLE", True),
+    ],
+)
+def test_generic_reason_maps_to_upstream_error(
+    respond: Respond, status_code: int, reason: str, unavailable: bool
+) -> None:
+    respond(httpx.Response(status_code, json={"code": status_code, "reason": reason, "message": "internal"}))
 
     with pytest.raises(NetworkAccessGroupUpstreamError) as exc_info:
         NetworkAccessGroupGateway().get_group(TENANT_ID, GROUP_ID, ACCOUNT_ID)
 
-    assert exc_info.value.status_code == status_code
-    assert exc_info.value.reason is None
+    assert exc_info.value.unavailable is unavailable
+
+
+@pytest.mark.parametrize(("status_code", "unavailable"), [(400, False), (409, False), (429, True), (503, True)])
+def test_unknown_reason_falls_back_to_status_and_is_reported(
+    respond: Respond, caplog: pytest.LogCaptureFixture, status_code: int, unavailable: bool
+) -> None:
+    respond(httpx.Response(status_code, json={"code": status_code, "reason": "NETWORK_ACCESS_SHIPPED_LATER"}))
+
+    with pytest.raises(NetworkAccessGroupUpstreamError) as exc_info:
+        NetworkAccessGroupGateway().get_group(TENANT_ID, GROUP_ID, ACCOUNT_ID)
+
+    assert exc_info.value.unavailable is unavailable
+    cause = exc_info.value.__cause__
+    assert isinstance(cause, saas.UpstreamError)
+    assert cause.reason == UnknownErrorReason("NETWORK_ACCESS_SHIPPED_LATER")
+    [record] = [record for record in caplog.records if record.name == transport.__name__]
+    assert record.levelname == "ERROR"
+    assert "network_access" in record.getMessage()
+    assert "NETWORK_ACCESS_SHIPPED_LATER" in record.getMessage()
+    assert "/tenants/{tenant_id}/network-access-groups/{group_id}" in record.getMessage()
 
 
 @pytest.mark.parametrize(
-    ("body", "reason"),
+    ("response", "unavailable"),
     [
-        (
-            {"code": 409, "reason": "NETWORK_ACCESS_VERSION_CONFLICT", "message": "internal"},
-            "NETWORK_ACCESS_VERSION_CONFLICT",
-        ),
-        ({"code": "not-a-code", "reason": "NETWORK_ACCESS_GROUP_NAME_CONFLICT"}, "NETWORK_ACCESS_GROUP_NAME_CONFLICT"),
-        ({"reason": 409}, None),
-        (["NETWORK_ACCESS_VERSION_CONFLICT"], None),
+        (httpx.Response(404), False),
+        (httpx.Response(409, json={"code": 409, "reason": 409}), False),
+        (httpx.Response(409, json=["NETWORK_ACCESS_VERSION_CONFLICT"]), False),
+        (httpx.Response(409, content=b"{"), False),
+        (httpx.Response(502, content=b"<html>bad gateway</html>"), True),
     ],
 )
-def test_error_reason_is_preserved_when_it_is_a_string(respond: Respond, body: object, reason: str | None) -> None:
-    respond(httpx.Response(httpx.codes.CONFLICT, json=body))
+def test_reply_without_reason_falls_back_to_status(
+    respond: Respond, response: httpx.Response, unavailable: bool
+) -> None:
+    respond(response)
 
     with pytest.raises(NetworkAccessGroupUpstreamError) as exc_info:
         NetworkAccessGroupGateway().delete_group(TENANT_ID, GROUP_ID, expected_version=1, actor_account_id=ACCOUNT_ID)
 
-    assert exc_info.value.status_code == httpx.codes.CONFLICT
-    assert exc_info.value.reason == reason
+    assert exc_info.value.unavailable is unavailable
+    cause = exc_info.value.__cause__
+    assert isinstance(cause, saas.UpstreamError)
+    assert cause.reason is None
 
 
-def test_unreachable_upstream_maps_to_service_unavailable() -> None:
+def test_unreachable_upstream_maps_to_unavailable() -> None:
     with (
         patch.object(
             saas,
             "network_access_policy_list_network_access_groups",
-            side_effect=BillingUpstreamUnavailableError("GET failed"),
+            side_effect=saas.UpstreamUnavailableError("GET failed"),
         ),
         pytest.raises(NetworkAccessGroupUpstreamError) as exc_info,
     ):
         NetworkAccessGroupGateway().list_groups(TENANT_ID, ACCOUNT_ID)
 
-    assert exc_info.value.status_code == httpx.codes.SERVICE_UNAVAILABLE
-    assert exc_info.value.reason is None
+    assert exc_info.value.unavailable is True
 
 
 @pytest.mark.parametrize("body", [b"{", b"\xff", b"", b"[]"])

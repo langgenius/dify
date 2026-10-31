@@ -44,6 +44,20 @@ def _source_spec() -> generator.JsonObject:
                     "type": "object",
                     "properties": {"coupon_id": {"type": "string"}},
                 },
+                "dify.saas.api.billing.Error": {
+                    "required": ["code", "reason", "message", "metadata"],
+                    "type": "object",
+                    "properties": {
+                        "code": {"type": "integer", "description": "HTTP status code.", "format": "int32"},
+                        "reason": {"$ref": f"{PREFIX}ErrorReason"},
+                        "message": {"type": "string"},
+                        "metadata": {"type": "object", "additionalProperties": {"type": "string"}},
+                    },
+                },
+                "dify.saas.api.billing.ErrorReason": {
+                    "enum": ["", "CODEC", "REQUEST_IN_PROGRESS"],
+                    "type": "string",
+                },
             }
         },
     }
@@ -64,7 +78,7 @@ def test_snapshot_keeps_only_allowlisted_operations_and_reachable_schemas() -> N
 
     assert snapshot[generator.SNAPSHOT_COMMIT_KEY] == "abc123"
     assert list(snapshot["paths"]) == ["/v1/subscription/info"]
-    assert sorted(snapshot["components"]["schemas"]) == ["GetSubscriptionInfoReply", "Quota"]
+    assert sorted(snapshot["components"]["schemas"]) == ["Error", "ErrorReason", "GetSubscriptionInfoReply", "Quota"]
     assert "coupon" not in generator.render_snapshot(snapshot).lower()
 
 
@@ -93,6 +107,11 @@ def test_rendered_module_types_fields_and_operations() -> None:
     assert "renewed_at: datetime\n" in source
     assert "def subscription_get_subscription_info() -> GetSubscriptionInfoReply:" in source
     assert '"/subscription/info",' in source
+    assert 'type ErrorReason = Literal["", "CODEC", "REQUEST_IN_PROGRESS"]' in source
+    assert "errors=ERRORS," in source
+    assert "class UpstreamError(BillingUpstreamError):" in source
+    assert "reason: ErrorReason | UnknownErrorReason | None = None," in source
+    assert "class Error(" not in source
 
 
 def test_long_operation_docstring_is_wrapped() -> None:
@@ -128,6 +147,38 @@ def test_snapshot_rejects_allowlisted_operation_missing_from_spec() -> None:
 
     with pytest.raises(generator.GenerationError, match="not in the dify-saas spec"):
         generator.build_snapshot("billing", source, "abc123")
+
+
+@pytest.mark.usefixtures("subscription_info_only")
+@pytest.mark.parametrize("name", ["Error", "ErrorReason"])
+def test_snapshot_rejects_spec_without_error_schema(name: str) -> None:
+    source = _source_spec()
+    del source["components"]["schemas"][f"dify.saas.api.billing.{name}"]
+
+    with pytest.raises(generator.GenerationError, match=f"error schema dify.saas.api.billing.{name}"):
+        generator.build_snapshot("billing", source, "abc123")
+
+
+@pytest.mark.usefixtures("subscription_info_only")
+def test_rendering_rejects_error_body_that_drifts_from_the_transport() -> None:
+    source = _source_spec()
+    source["components"]["schemas"]["dify.saas.api.billing.Error"]["properties"]["details"] = {"type": "string"}
+    snapshot = generator.build_snapshot("billing", source, "abc123")
+
+    with pytest.raises(generator.GenerationError, match="update UpstreamErrorBody"):
+        generator.render_module("billing", snapshot)
+
+
+def test_committed_snapshots_keep_each_service_reasons_apart() -> None:
+    billing_reasons, saas_reasons = (
+        generator.load_snapshot(service)["components"]["schemas"]["ErrorReason"]["enum"]
+        for service in generator.SERVICES
+    )
+
+    assert "REQUEST_IN_PROGRESS" in billing_reasons
+    assert "REQUEST_IN_PROGRESS" not in saas_reasons
+    assert "NETWORK_ACCESS_VERSION_CONFLICT" in saas_reasons
+    assert "NETWORK_ACCESS_VERSION_CONFLICT" not in billing_reasons
 
 
 def test_committed_client_matches_snapshots() -> None:

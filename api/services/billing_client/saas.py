@@ -2,11 +2,18 @@
 # dify-saas commit: 04f8d88cc15c5f62f14f8843a54f3e2e7e09ee5a
 
 from datetime import datetime
-from typing import Literal
+from typing import Literal, TypeIs, get_args
 
 from pydantic import Field
 
-from services.billing_client.transport import BillingModel, Upstream, request
+from services.billing_client.transport import BillingModel, ServiceErrors, Upstream, request
+from services.errors.billing import (
+    BillingUpstreamError,
+    BillingUpstreamInvalidResponseError,
+    BillingUpstreamUnavailableError,
+    UnknownErrorReason,
+    UpstreamErrorBody,
+)
 
 
 class AddDeleteFeedbackReply(BillingModel):
@@ -64,6 +71,29 @@ class DismissNotificationReply(BillingModel):
 class DismissNotificationReq(BillingModel):
     notification_id: str = Field(alias="notificationId")
     account_id: str = Field(alias="accountId")
+
+
+type ErrorReason = Literal[
+    "",
+    "CODEC",
+    "VALIDATOR",
+    "UNKNOWN",
+    "INVALID_SECRET_KEY",
+    "INVALID_ARGUMENT",
+    "INTERNAL_ERROR",
+    "INVALID_NETWORK_ACCESS_INPUT",
+    "TENANT_NOT_FOUND",
+    "NETWORK_ACCESS_GROUP_NOT_FOUND",
+    "APP_NOT_FOUND",
+    "NETWORK_ACCESS_APP_STILL_EXISTS",
+    "TENANT_ARCHIVED",
+    "NETWORK_ACCESS_FORBIDDEN",
+    "NETWORK_ACCESS_NOT_ENTITLED",
+    "NETWORK_ACCESS_VERSION_CONFLICT",
+    "NETWORK_ACCESS_GROUP_NAME_CONFLICT",
+    "NETWORK_ACCESS_GROUP_BOUND",
+    "NETWORK_ACCESS_CACHE_UNAVAILABLE",
+]
 
 
 class LangContent(BillingModel):
@@ -166,6 +196,37 @@ class UpdateNetworkAccessGroupRequest(BillingModel):
     actor_account_id: str = Field(alias="actorAccountId")
 
 
+def _is_error_reason(value: str) -> TypeIs[ErrorReason]:
+    return value in get_args(ErrorReason.__value__)
+
+
+class UpstreamError(BillingUpstreamError):
+    """A failed saas call, with its reason typed by this module's `ErrorReason`."""
+
+    def __init__(
+        self,
+        *args: object,
+        status_code: int | None = None,
+        body: UpstreamErrorBody | None = None,
+        reason: ErrorReason | UnknownErrorReason | None = None,
+    ) -> None:
+        super().__init__(*args, status_code=status_code, body=body)
+        self.reason = reason
+
+
+class UpstreamUnavailableError(UpstreamError, BillingUpstreamUnavailableError):
+    pass
+
+
+class UpstreamInvalidResponseError(UpstreamError, BillingUpstreamInvalidResponseError):
+    pass
+
+
+ERRORS = ServiceErrors(
+    is_reason=_is_error_reason, unavailable=UpstreamUnavailableError, invalid_response=UpstreamInvalidResponseError
+)
+
+
 def account_delete_account(*, account_id: str) -> DeleteAccountReply:
     """DELETE /v1/account (Account_DeleteAccount)."""
     return request(
@@ -173,6 +234,7 @@ def account_delete_account(*, account_id: str) -> DeleteAccountReply:
         "DELETE",
         "/account",
         response_model=DeleteAccountReply,
+        errors=ERRORS,
         path_params={},
         params={"accountId": account_id},
         body=None,
@@ -186,6 +248,7 @@ def account_check_account_in_freeze(*, email: str) -> CheckAccountInFreezeReply:
         "GET",
         "/account/in-freeze",
         response_model=CheckAccountInFreezeReply,
+        errors=ERRORS,
         path_params={},
         params={"email": email},
         body=None,
@@ -199,6 +262,7 @@ def account_add_delete_feedback(*, body: AddDeleteFeedbackRequest) -> AddDeleteF
         "POST",
         "/account/delete-feedback",
         response_model=AddDeleteFeedbackReply,
+        errors=ERRORS,
         path_params={},
         params={},
         body=body,
@@ -212,6 +276,7 @@ def notification_get_account_notification(*, account_id: str) -> GetAccountNotif
         "GET",
         "/notifications/active",
         response_model=GetAccountNotificationReply,
+        errors=ERRORS,
         path_params={},
         params={"accountId": account_id},
         body=None,
@@ -227,6 +292,7 @@ def notification_dismiss_notification(
         "POST",
         "/notifications/{notification_id}/dismiss",
         response_model=DismissNotificationReply,
+        errors=ERRORS,
         path_params={"notification_id": notification_id},
         params={},
         body=body,
@@ -240,6 +306,7 @@ def utm_record_tenant_utm(*, body: TenantUtmRequest) -> TenantUtmReply:
         "POST",
         "/tenant_utms",
         response_model=TenantUtmReply,
+        errors=ERRORS,
         path_params={},
         params={},
         body=body,
@@ -255,6 +322,7 @@ def network_access_policy_list_network_access_groups(
         "GET",
         "/tenants/{tenant_id}/network-access-groups",
         response_model=ListNetworkAccessGroupsReply,
+        errors=ERRORS,
         path_params={"tenant_id": tenant_id},
         params={"actorAccountId": actor_account_id},
         body=None,
@@ -270,6 +338,7 @@ def network_access_policy_create_network_access_group(
         "POST",
         "/tenants/{tenant_id}/network-access-groups",
         response_model=NetworkAccessGroupReply,
+        errors=ERRORS,
         path_params={"tenant_id": tenant_id},
         params={},
         body=body,
@@ -285,6 +354,7 @@ def network_access_policy_get_network_access_group(
         "GET",
         "/tenants/{tenant_id}/network-access-groups/{group_id}",
         response_model=NetworkAccessGroupReply,
+        errors=ERRORS,
         path_params={"tenant_id": tenant_id, "group_id": group_id},
         params={"actorAccountId": actor_account_id},
         body=None,
@@ -300,6 +370,7 @@ def network_access_policy_update_network_access_group(
         "PUT",
         "/tenants/{tenant_id}/network-access-groups/{group_id}",
         response_model=NetworkAccessGroupReply,
+        errors=ERRORS,
         path_params={"tenant_id": tenant_id, "group_id": group_id},
         params={},
         body=body,
@@ -318,6 +389,7 @@ def network_access_policy_delete_network_access_group(
         "DELETE",
         "/tenants/{tenant_id}/network-access-groups/{group_id}",
         response_model=DeleteNetworkAccessGroupReply,
+        errors=ERRORS,
         path_params={"tenant_id": tenant_id, "group_id": group_id},
         params={"expectedVersion": expected_version, "actorAccountId": actor_account_id},
         body=None,
@@ -336,6 +408,7 @@ def network_access_policy_get_app_network_access_group(
         "GET",
         "/tenants/{tenant_id}/apps/{app_id}/network-access-group",
         response_model=GetAppNetworkAccessGroupReply,
+        errors=ERRORS,
         path_params={"tenant_id": tenant_id, "app_id": app_id},
         params={"actorAccountId": actor_account_id},
         body=None,
@@ -354,6 +427,7 @@ def network_access_policy_put_app_network_access_group(
         "PUT",
         "/tenants/{tenant_id}/apps/{app_id}/network-access-group",
         response_model=PutAppNetworkAccessGroupReply,
+        errors=ERRORS,
         path_params={"tenant_id": tenant_id, "app_id": app_id},
         params={},
         body=body,
@@ -372,6 +446,7 @@ def network_access_policy_get_app_network_access_group_status(
         "GET",
         "/tenants/{tenant_id}/apps/{app_id}/network-access-group/status",
         response_model=GetAppNetworkAccessGroupStatusReply,
+        errors=ERRORS,
         path_params={"tenant_id": tenant_id, "app_id": app_id},
         params={"actorAccountId": actor_account_id},
         body=None,
@@ -390,6 +465,7 @@ def network_access_policy_cleanup_app_network_access_group_binding(
         "DELETE",
         "/tenants/{tenant_id}/apps/{app_id}/network-access-group-binding",
         response_model=CleanupAppNetworkAccessGroupBindingReply,
+        errors=ERRORS,
         path_params={"tenant_id": tenant_id, "app_id": app_id},
         params={},
         body=None,

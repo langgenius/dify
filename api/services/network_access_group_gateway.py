@@ -2,9 +2,7 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import override
-
-import httpx
+from typing import assert_never, override
 
 from enums import CloudPlan
 from services.billing_client import saas
@@ -17,28 +15,74 @@ from services.entities.network_access_group_entities import (
     NetworkAccessGroup,
     NetworkAccessGroupList,
 )
-from services.errors.billing import BillingError, BillingUpstreamError, BillingUpstreamUnavailableError
+from services.errors.billing import (
+    BillingError,
+    BillingUpstreamUnavailableError,
+    UnknownErrorReason,
+)
 from services.network_access_group_service import (
+    NetworkAccessGroupAppNotFoundError,
+    NetworkAccessGroupBoundError,
     NetworkAccessGroupControlPlane,
     NetworkAccessGroupEntitlement,
     NetworkAccessGroupEntitlementUnavailableError,
+    NetworkAccessGroupError,
+    NetworkAccessGroupForbiddenError,
+    NetworkAccessGroupInvalidInputError,
     NetworkAccessGroupInvalidResponseError,
+    NetworkAccessGroupNameConflictError,
+    NetworkAccessGroupNotEntitledError,
+    NetworkAccessGroupNotFoundError,
     NetworkAccessGroupUpstreamError,
+    NetworkAccessGroupVersionConflictError,
 )
+
+
+def _control_plane_error(exc: saas.UpstreamError) -> NetworkAccessGroupError:
+    match exc.reason:
+        case "VALIDATOR" | "INVALID_ARGUMENT" | "INVALID_NETWORK_ACCESS_INPUT":
+            return NetworkAccessGroupInvalidInputError()
+        case "NETWORK_ACCESS_FORBIDDEN" | "TENANT_ARCHIVED":
+            return NetworkAccessGroupForbiddenError()
+        case "NETWORK_ACCESS_NOT_ENTITLED":
+            return NetworkAccessGroupNotEntitledError()
+        case "NETWORK_ACCESS_GROUP_NOT_FOUND":
+            return NetworkAccessGroupNotFoundError()
+        case "APP_NOT_FOUND":
+            return NetworkAccessGroupAppNotFoundError()
+        case "NETWORK_ACCESS_VERSION_CONFLICT":
+            return NetworkAccessGroupVersionConflictError()
+        case "NETWORK_ACCESS_GROUP_NAME_CONFLICT":
+            return NetworkAccessGroupNameConflictError()
+        case "NETWORK_ACCESS_GROUP_BOUND":
+            return NetworkAccessGroupBoundError()
+        case "INVALID_SECRET_KEY":
+            return NetworkAccessGroupUpstreamError(unavailable=True)
+        case (
+            ""
+            | "CODEC"
+            | "UNKNOWN"
+            | "INTERNAL_ERROR"
+            | "TENANT_NOT_FOUND"
+            | "NETWORK_ACCESS_APP_STILL_EXISTS"
+            | "NETWORK_ACCESS_CACHE_UNAVAILABLE"
+        ):
+            return NetworkAccessGroupUpstreamError(unavailable=isinstance(exc, BillingUpstreamUnavailableError))
+        case UnknownErrorReason() | None:
+            return NetworkAccessGroupUpstreamError(unavailable=isinstance(exc, BillingUpstreamUnavailableError))
+        case unreachable:
+            assert_never(unreachable)
 
 
 @contextmanager
 def _upstream_errors() -> Generator[None]:
-    """Map saas failures to the service's errors, keeping the upstream status and Kratos reason."""
+    """Map saas failures to the service's errors by their Kratos reason."""
     try:
         yield
-    except BillingUpstreamError as exc:
-        if exc.status_code is not None:
-            reason = exc.body.reason if exc.body is not None else None
-            raise NetworkAccessGroupUpstreamError(exc.status_code, reason) from exc
-        if isinstance(exc, BillingUpstreamUnavailableError):
-            raise NetworkAccessGroupUpstreamError(httpx.codes.SERVICE_UNAVAILABLE) from exc
-        raise NetworkAccessGroupInvalidResponseError from exc
+    except saas.UpstreamError as exc:
+        if exc.status_code is None and not isinstance(exc, BillingUpstreamUnavailableError):
+            raise NetworkAccessGroupInvalidResponseError from exc
+        raise _control_plane_error(exc) from exc
 
 
 _MAX_INT64 = 2**63 - 1
