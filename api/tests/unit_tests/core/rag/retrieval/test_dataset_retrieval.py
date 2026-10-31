@@ -5118,9 +5118,7 @@ class TestDatasetRetrievalCases:
             event.listen(sqlite_engine, "before_execute", capture_statement)
             try:
                 with (
-                    patch(
-                        "services.knowledge.retrieval.dataset_retrieval.ReactMultiDatasetRouter"
-                    ) as mock_router_cls,
+                    patch("services.knowledge.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls,
                     patch.object(
                         retrieval,
                         "_external_retrieve",
