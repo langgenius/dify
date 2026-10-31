@@ -49,6 +49,7 @@
   "generation.tabs.saved": "सहेजा गया",
   "generation.title": "एआई पूर्णता",
   "humanInput.completed": "ऐसा लगता है कि इस अनुरोध को कहीं और संभाला गया था।",
+  "humanInput.currentAccount": "वर्तमान खाता: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "यह कार्रवाई {{relativeTime}} समाप्त हो जाएगी।",
   "humanInput.expired": "ऐसा लगता है कि इस अनुरोध की समय सीमा समाप्त हो गई है।",
   "humanInput.expiredTip": "यह कार्रवाई समाप्त हो गई है।",
@@ -57,6 +58,9 @@
   "humanInput.recorded": "आपका इनपुट रिकॉर्ड कर लिया गया है।",
   "humanInput.sorry": "क्षमा करें!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "खाता बदलें",
   "humanInput.thanks": "धन्यवाद!",
+  "humanInput.unavailableDescription": "हो सकता है कि लिंक उपलब्ध न हो या उस खाते से मेल न खाता हो जिससे आपने साइन इन किया है। मिले हुए नोटिफ़िकेशन से फ़ॉर्म खोलें या खाता बदलकर देखें।",
+  "humanInput.unavailableTitle": "यह फ़ॉर्म नहीं खोला जा सकता",
   "login.backToHome": "होम पर वापस"
 }

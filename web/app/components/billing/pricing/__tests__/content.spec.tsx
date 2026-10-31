@@ -144,6 +144,7 @@ it('preserves a billing interval selected before education eligibility arrives',
       is_student: true,
       allow_refresh: true,
       expire_at: null,
+      result: true,
     }),
   )
   expect(screen.getByRole('switch')).not.toBeChecked()
@@ -155,6 +156,7 @@ it('shows yearly pricing immediately for a cached eligible education account', (
   queryClient.setQueryData(consoleQuery.account.education.get.queryOptions().queryKey, {
     is_student: true,
     allow_refresh: false,
+    result: true,
     expire_at: null,
   })
   show()

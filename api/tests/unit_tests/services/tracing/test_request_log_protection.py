@@ -279,14 +279,14 @@ def test_public_make_record_signature_preserves_public_fields_and_redacts_privat
 def test_exit_does_not_overwrite_a_foreign_make_record_method() -> None:
     original_method: Callable[..., logging.LogRecord] = logging.Logger.makeRecord
     original_factory = logging.getLogRecordFactory()
-    try:
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        # Save the unprotected method before the request installs its wrapper.
+        monkeypatch.setattr(logging.Logger, "makeRecord", original_method)
         with protect_http_request_logs(True):
 
             def externally_installed(*args: object, **kwargs: object) -> logging.LogRecord:
                 return original_method(*args, **kwargs)
 
-            logging.Logger.makeRecord = externally_installed
+            monkeypatch.setattr(logging.Logger, "makeRecord", externally_installed)
         assert logging.Logger.makeRecord is externally_installed
         assert logging.getLogRecordFactory() is original_factory
-    finally:
-        logging.Logger.makeRecord = original_method

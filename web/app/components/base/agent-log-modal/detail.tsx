@@ -95,10 +95,13 @@ function AgentLogContent({
   useEffect(() => {
     let active = true
     consoleClient.apps.byAppId.agent.logs
-      .get({
-        params: { app_id: appId },
-        query: { conversation_id: conversationID, message_id: messageID },
-      })
+      .get(
+        {
+          params: { app_id: appId },
+          query: { conversation_id: conversationID, message_id: messageID },
+        },
+        { context: { silent: true } },
+      )
       .then(
         (data) => {
           if (!active) return

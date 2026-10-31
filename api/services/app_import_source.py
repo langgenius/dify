@@ -4,7 +4,7 @@ import tempfile
 from collections.abc import Generator
 from contextlib import contextmanager
 from typing import BinaryIO, cast
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlsplit
 
 import httpx
 import yaml
@@ -12,6 +12,7 @@ import yaml
 from configs import dify_config
 from core.file import remote_fetcher
 from core.tools.errors import ToolSSRFError
+from libs.url_utils import github_blob_to_raw_url
 from services.agent.errors import InvalidRosterAgentPackageError, RosterAgentPackageTooLargeError
 from services.dsl_content import DSL_MAX_SIZE
 
@@ -29,10 +30,7 @@ def download_app_import_source(url: str, *, max_bytes: int | None = None) -> Gen
             raise ValueError("An absolute HTTP(S) URL is required")
     except ValueError as exc:
         raise InvalidRosterAgentPackageError("App import URL is invalid") from exc
-    if parsed.scheme == "https" and parsed.netloc == "github.com" and "/blob/" in parsed.path:
-        url = urlunsplit(
-            parsed._replace(netloc="raw.githubusercontent.com", path=parsed.path.replace("/blob/", "/", 1))
-        )
+    url = github_blob_to_raw_url(url)
 
     with tempfile.SpooledTemporaryFile(max_size=16 * 1024 * 1024, mode="w+b") as source:
         try:

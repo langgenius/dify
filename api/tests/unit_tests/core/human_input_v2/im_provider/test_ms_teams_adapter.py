@@ -1,0 +1,1727 @@
+from __future__ import annotations
+
+import base64
+import importlib.util
+import json
+import re
+import threading
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from pathlib import Path
+from unittest.mock import MagicMock
+
+import httpx
+import jwt
+import pytest
+import requests
+from azure.core.credentials import AccessToken
+from azure.core.exceptions import ClientAuthenticationError
+from botbuilder.schema import ConversationResourceResponse, ResourceResponse
+from botframework.connector.auth import ChannelValidation, ClaimsIdentity, JwtTokenExtractor
+from cryptography.hazmat.primitives.asymmetric import rsa
+from jwt.algorithms import RSAAlgorithm
+from msrest.exceptions import HttpOperationError
+from pytest_mock import MockerFixture
+
+from core.human_input import ButtonStyle
+from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters import (
+    AuthenticatedIMEvent,
+    CardAssessment,
+    CorrelationToken,
+    CredentialTestFailure,
+    CredentialTestFailureKind,
+    CredentialTestSuccess,
+    Directory,
+    DirectoryReadFailure,
+    DynamicCardMessagingError,
+    EventAcceptance,
+    IMEventConsumer,
+    IMEventIngressKind,
+    IMWebhookHandler,
+    MessageAccepted,
+    MessageLocator,
+    MessageSendingError,
+    MSTeamsCredentials,
+    ProviderUserId,
+    ReplacementError,
+    ReplacementErrorKind,
+    StaticCardIntent,
+    WebhookRequest,
+    ms_teams,
+)
+from core.human_input_v2.resolved_form import (
+    FileInput,
+    FileListInput,
+    FormPart,
+    MarkdownFragment,
+    ParagraphInput,
+    ResolvedForm,
+    SelectInput,
+    UserAction,
+)
+
+_RECEIVED_AT = datetime(2026, 8, 6, 8, 0, 0)
+_WEBHOOK_FIXTURE_PATH = Path(__file__).parents[4] / "fixtures" / "im_provider" / "ms_teams_webhook_activity.json"
+_UUID_PATTERN = re.compile(r"\b[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\b")
+
+
+def _credentials() -> MSTeamsCredentials:
+    return MSTeamsCredentials(
+        provider=IMProvider.MS_TEAMS,
+        tenant_id="11111111-1111-1111-1111-111111111111",
+        client_id="22222222-2222-2222-2222-222222222222",
+        client_secret="test-only-client-secret",
+    )
+
+
+class _Consumer:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
+        del event
+        return EventAcceptance.ACCEPTED
+
+
+class _RecordingConsumer:
+    def __init__(self, acceptance: EventAcceptance = EventAcceptance.ACCEPTED) -> None:
+        self.acceptance = acceptance
+        self.events = []
+
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
+        self.events.append(event)
+        return self.acceptance
+
+
+class _ThreadSafeRecordingConsumer:
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self.events = []
+
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
+        with self._lock:
+            self.events.append(event)
+        return EventAcceptance.ACCEPTED
+
+
+class _FailingConsumer:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
+        del event
+        raise RuntimeError("sensitive consumer details")
+
+
+class _ProviderMetadataResponse:
+    def __init__(self, response_body: dict[str, object]) -> None:
+        self._response_body = response_body
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict[str, object]:
+        return self._response_body
+
+
+def _unsigned_token(claims: dict[str, object]) -> str:
+    header = base64.urlsafe_b64encode(b'{"alg":"none"}').rstrip(b"=").decode()
+    payload = base64.urlsafe_b64encode(json.dumps(claims).encode()).rstrip(b"=").decode()
+    return f"{header}.{payload}."
+
+
+def _adapter_with_tokens(
+    mocker: MockerFixture, *, graph_claims: dict[str, object], bot_claims: dict[str, object]
+) -> tuple[ms_teams.MSTeamsIMProviderAdapter, MagicMock, MagicMock, MagicMock]:
+    mocker.patch("core.file.remote_fetcher.make_request", return_value=httpx.Response(404))
+    graph_credential = mocker.patch.object(ms_teams, "ClientSecretCredential", autospec=True).return_value
+    graph_credential.get_token.return_value = AccessToken(expires_on=2000000000, token=_unsigned_token(graph_claims))
+    graph_client = mocker.patch.object(ms_teams.httpx, "Client", autospec=True).return_value
+    graph_client.get.return_value = httpx.Response(200, json={"value": []})
+    bot_credentials = mocker.patch.object(ms_teams, "_MSTeamsBotCredentials", autospec=True).return_value
+    bot_credentials.get_access_token.return_value = _unsigned_token(bot_claims)
+    adapter = ms_teams.MSTeamsIMProviderAdapter(_credentials())
+    return adapter, graph_credential, graph_client, bot_credentials
+
+
+def _locator(
+    *,
+    service_url: str = "https://smba.trafficmanager.net/teams/",
+    conversation_id: str = "sanitized-conversation",
+    activity_id: str = "sanitized-card-activity",
+) -> MessageLocator:
+    return MessageLocator(
+        ms_teams._MSTeamsLocatorPayload(
+            v=1,
+            p=IMProvider.MS_TEAMS,
+            service_url=service_url,
+            conversation_id=conversation_id,
+            activity_id=activity_id,
+        ).encode()
+    )
+
+
+def _card_intent(
+    *,
+    input_type: str = "paragraph",
+    markdown_text: str = "Rendered **content**",
+    action_style: ButtonStyle = ButtonStyle.PRIMARY,
+) -> ResolvedForm:
+    if input_type == "select":
+        input_block: FormPart = SelectInput(output_variable_name="comment", options=("One", "Two"), default_value="One")
+    elif input_type == "file":
+        input_block = FileInput(
+            output_variable_name="comment",
+            allowed_file_types=(),
+            allowed_file_extensions=(),
+            allowed_file_upload_methods=(),
+        )
+    elif input_type == "file-list":
+        input_block = FileListInput(
+            output_variable_name="comment",
+            allowed_file_types=(),
+            allowed_file_extensions=(),
+            allowed_file_upload_methods=(),
+            number_limits=1,
+        )
+    else:
+        input_block = ParagraphInput(output_variable_name="comment", default_value="Initial")
+    return ResolvedForm(
+        title="Approval",
+        parts=(MarkdownFragment(text=markdown_text), input_block, MarkdownFragment(text="After input")),
+        actions=(
+            UserAction(id="approve", title="Approve", button_style=action_style),
+            UserAction(id="reject", title="Reject", button_style=ButtonStyle.ACCENT),
+        ),
+        legacy_form_content="This value must not be rendered",
+    )
+
+
+def _custom_card_intent(
+    *,
+    blocks: tuple[FormPart, ...],
+    title: str = "Approval",
+    action_style: ButtonStyle = ButtonStyle.DEFAULT,
+) -> ResolvedForm:
+    return ResolvedForm(
+        title=title,
+        parts=blocks,
+        actions=(UserAction(id="approve", title="Approve", button_style=action_style),),
+        legacy_form_content="This value must not be rendered",
+    )
+
+
+def _teams_activity_body(*, include_event_id: bool = True) -> dict[str, object]:
+    activity = json.loads(_WEBHOOK_FIXTURE_PATH.read_text())
+    assert isinstance(activity, dict)
+    conversation = activity["conversation"]
+    channel_data = activity["channelData"]
+    assert isinstance(conversation, dict)
+    assert isinstance(channel_data, dict)
+    tenant = channel_data["tenant"]
+    assert isinstance(tenant, dict)
+    conversation["tenantId"] = _credentials().tenant_id
+    tenant["id"] = _credentials().tenant_id
+    if include_event_id:
+        activity["id"] = "sanitized-provider-event"
+    else:
+        activity.pop("id", None)
+    return activity
+
+
+def _webhook_request(activity: dict[str, object], *, authorization: str = "Bearer sanitized-token") -> WebhookRequest:
+    return WebhookRequest(
+        method="POST",
+        headers=(
+            ("Authorization", authorization),
+            ("Content-Type", "application/json; charset=utf-8"),
+        ),
+        body=json.dumps(activity, separators=(",", ":")).encode(),
+        received_at=_RECEIVED_AT,
+    )
+
+
+def _authenticated_webhook_handler(
+    mocker: MockerFixture, consumer: IMEventConsumer
+) -> tuple[ms_teams.MSTeamsIMProviderAdapter, IMWebhookHandler, MagicMock]:
+    adapter, _, _, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    authenticate_request = mocker.patch.object(
+        ms_teams.JwtTokenValidation,
+        "authenticate_request",
+        autospec=True,
+    )
+    authenticate_request.return_value = ClaimsIdentity(
+        {"aud": _credentials().client_id, "iss": "https://api.botframework.com"},
+        True,
+    )
+    return adapter, adapter.create_webhook_handler(consumer), authenticate_request
+
+
+def test_ms_teams_adapter_module_is_available() -> None:
+    assert importlib.util.find_spec("core.human_input_v2.im_integration.adapters.ms_teams") is not None
+
+
+def test_ms_teams_adapter_class_is_available() -> None:
+    assert hasattr(ms_teams, "MSTeamsIMProviderAdapter")
+
+
+def test_ms_teams_adapter_rejects_any_other_credential_type() -> None:
+    # Model an untyped caller to retain the runtime rejection beyond static guarantees.
+    adapter_constructor: Callable[..., ms_teams.MSTeamsIMProviderAdapter] = ms_teams.MSTeamsIMProviderAdapter
+    with pytest.raises(TypeError):
+        adapter_constructor(None)
+
+
+def test_construction_exposes_webhook_only_capabilities_without_provider_io(mocker: MockerFixture) -> None:
+    assert all(hasattr(ms_teams, name) for name in ("ClientSecretCredential", "_MSTeamsBotCredentials", "httpx"))
+    graph_credential = mocker.patch.object(ms_teams, "ClientSecretCredential", autospec=True).return_value
+    graph_client = mocker.patch.object(ms_teams.httpx, "Client", autospec=True).return_value
+    bot_credentials = mocker.patch.object(ms_teams, "_MSTeamsBotCredentials", autospec=True).return_value
+    adapter = ms_teams.MSTeamsIMProviderAdapter(_credentials())
+
+    assert adapter.provider.value == "ms_teams"
+    assert adapter.directory is adapter.directory
+    assert adapter.messaging is adapter.messaging
+    assert adapter.dynamic_card_messaging is adapter.dynamic_card_messaging
+    assert adapter.create_webhook_handler(_Consumer()) is not None
+    assert adapter.create_stream_handler(_Consumer()) is None
+    graph_credential.get_token.assert_not_called()
+    graph_client.request.assert_not_called()
+    bot_credentials.get_access_token.assert_not_called()
+
+    adapter.close()
+    adapter.close()
+    assert graph_credential.close.call_count == 2
+    assert graph_client.close.call_count == 2
+
+
+def test_credential_test_confirms_graph_permission_bot_auth_and_tenant(mocker: MockerFixture) -> None:
+    adapter, graph_credential, graph_client, bot_credentials = _adapter_with_tokens(
+        mocker,
+        graph_claims={},
+        bot_claims={},
+    )
+    graph_credential.get_token.return_value = AccessToken(expires_on=2000000000, token="opaque-graph-access-token")
+    bot_credentials.get_access_token.return_value = "opaque-bot-access-token"
+    graph_client.get.return_value = httpx.Response(200, json={"value": []})
+
+    result = adapter.test_credentials()
+
+    assert result == CredentialTestSuccess(adapter.provider, _credentials().tenant_id)
+    graph_client.get.assert_called_once_with(
+        "https://graph.microsoft.com/v1.0/users",
+        headers={"Authorization": "Bearer opaque-graph-access-token"},
+        params={"$select": "id,displayName,mail", "$top": 1},
+    )
+    bot_credentials.get_access_token.assert_called_once_with()
+
+
+@pytest.mark.parametrize("rejected_scope", ["graph", "bot"])
+def test_credential_test_rejects_revoked_credentials_after_a_cached_success(
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    rejected_scope: str,
+) -> None:
+    credentials_valid = True
+
+    class GraphCredential:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            self.cached = False
+
+        def get_token(self, _scope: str) -> AccessToken:
+            if not self.cached and not credentials_valid and rejected_scope == "graph":
+                raise ClientAuthenticationError("AADSTS7000215: invalid client secret")
+            self.cached = True
+            return AccessToken(expires_on=2000000000, token="opaque-graph-token")
+
+        def close(self) -> None:
+            pass
+
+    class BotCredentials:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            self.cached = False
+
+        def get_access_token(self) -> str:
+            if not self.cached and not credentials_valid and rejected_scope == "bot":
+                raise PermissionError("Failed to get access token with error: invalid_client")
+            self.cached = True
+            return "opaque-bot-token"
+
+    monkeypatch.setattr(ms_teams, "ClientSecretCredential", GraphCredential)
+    monkeypatch.setattr(ms_teams, "_MSTeamsBotCredentials", BotCredentials)
+    graph_client = mocker.patch.object(ms_teams.httpx, "Client", autospec=True).return_value
+    graph_client.get.return_value = httpx.Response(200, json={"value": []})
+    adapter = ms_teams.MSTeamsIMProviderAdapter(_credentials())
+
+    assert adapter.test_credentials() == CredentialTestSuccess(IMProvider.MS_TEAMS, _credentials().tenant_id)
+    credentials_valid = False
+    rejected = adapter.test_credentials()
+
+    assert isinstance(rejected, CredentialTestFailure)
+    assert rejected.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+
+
+def test_credential_test_returns_safe_typed_failures(mocker: MockerFixture) -> None:
+    adapter, _, graph_client, bot_credentials = _adapter_with_tokens(mocker, graph_claims={}, bot_claims={})
+    graph_client.get.return_value = httpx.Response(
+        403,
+        json={
+            "error": {"code": "Authorization_RequestDenied", "message": "Insufficient privileges"},
+        },
+    )
+
+    denied = adapter.test_credentials()
+
+    assert isinstance(denied, CredentialTestFailure)
+    assert denied.kind is CredentialTestFailureKind.PERMISSION_DENIED
+    assert denied.http_status == 403
+    assert denied.provider_error_code == "Authorization_RequestDenied"
+    assert denied.missing_permissions == ()
+
+    graph_client.get.return_value = httpx.Response(200, json={"value": []})
+    bot_credentials.get_access_token.side_effect = PermissionError(
+        "Failed to get access token with error: invalid_client, error_description: sensitive provider details"
+    )
+    rejected = adapter.test_credentials()
+    assert isinstance(rejected, CredentialTestFailure)
+    assert rejected.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+    assert rejected.provider_error_code == "invalid_client"
+    assert "sensitive provider details" not in rejected.reason
+
+
+def test_credential_test_treats_transient_bot_auth_failure_as_unknown(mocker: MockerFixture) -> None:
+    adapter, _, _, bot_credentials = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    bot_credentials.get_access_token.side_effect = PermissionError(
+        "Failed to get access token with error: temporarily_unavailable, error_description: test-only upstream outage"
+    )
+
+    result = adapter.test_credentials()
+
+    assert isinstance(result, CredentialTestFailure)
+    assert result.kind is CredentialTestFailureKind.UNKNOWN
+
+
+def test_credential_test_preserves_the_configured_tenant_identity(mocker: MockerFixture) -> None:
+    credentials = MSTeamsCredentials(
+        provider=IMProvider.MS_TEAMS,
+        tenant_id="AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+        client_id="BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+        client_secret="test-only-client-secret",
+    )
+    graph_credential = mocker.patch.object(ms_teams, "ClientSecretCredential", autospec=True).return_value
+    graph_credential.get_token.return_value = AccessToken(expires_on=2000000000, token="opaque-graph-access-token")
+    graph_client = mocker.patch.object(ms_teams.httpx, "Client", autospec=True).return_value
+    graph_client.get.return_value = httpx.Response(200, json={"value": []})
+    bot_credentials = mocker.patch.object(ms_teams, "_MSTeamsBotCredentials", autospec=True).return_value
+    bot_credentials.get_access_token.return_value = "opaque-bot-access-token"
+    adapter = ms_teams.MSTeamsIMProviderAdapter(credentials)
+
+    result = adapter.test_credentials()
+
+    assert result == CredentialTestSuccess(adapter.provider, credentials.tenant_id.lower())
+
+
+def test_credential_test_propagates_graph_and_bot_execution_failures(
+    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+) -> None:
+    adapter, graph_credential, graph_client, bot_credentials = _adapter_with_tokens(
+        mocker,
+        graph_claims={},
+        bot_claims={},
+    )
+    graph_credential.get_token.side_effect = ClientAuthenticationError("AADSTS7000215: sensitive graph rejection")
+    graph_rejected = adapter.test_credentials()
+    assert isinstance(graph_rejected, CredentialTestFailure)
+    assert graph_rejected.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+    assert graph_rejected.provider_error_code == "AADSTS7000215"
+
+    graph_credential.get_token.side_effect = RuntimeError("sensitive graph failure")
+    with pytest.raises(RuntimeError) as captured:
+        adapter.test_credentials()
+    assert captured.value is graph_credential.get_token.side_effect
+
+    graph_credential.get_token.side_effect = None
+    graph_client.get.side_effect = httpx.ReadTimeout("sensitive Graph request timeout")
+    with pytest.raises(ms_teams.CredentialTestTimeoutError) as captured_timeout:
+        adapter.test_credentials()
+    assert captured_timeout.value.__cause__ is graph_client.get.side_effect
+
+    graph_client.get.side_effect = None
+    bot_credentials.get_access_token.side_effect = RuntimeError("sensitive bot failure")
+    with pytest.raises(RuntimeError) as captured:
+        adapter.test_credentials()
+    assert captured.value is bot_credentials.get_access_token.side_effect
+    assert "sensitive graph rejection" not in caplog.text
+    assert "sensitive graph failure" not in caplog.text
+    assert "sensitive bot failure" not in caplog.text
+
+
+def test_directory_returns_one_ordered_complete_graph_snapshot(mocker: MockerFixture) -> None:
+    adapter, _, graph_client, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    graph_client.get.side_effect = [
+        httpx.Response(
+            200,
+            request=httpx.Request("GET", "https://graph.microsoft.com/v1.0/users"),
+            json={
+                "value": [
+                    {"id": "sanitized-user-a", "displayName": "Ada", "mail": "ada@example.test"},
+                    {"id": "sanitized-user-b", "displayName": None, "mail": None},
+                ],
+                "@odata.nextLink": "https://graph.microsoft.com/v1.0/users?$skiptoken=test-only-page",
+            },
+        ),
+        httpx.Response(
+            200,
+            request=httpx.Request("GET", "https://graph.microsoft.com/v1.0/users"),
+            json={"value": [{"id": "sanitized-user-c", "displayName": "Lin", "mail": None}]},
+        ),
+    ]
+
+    assert hasattr(adapter.directory, "read_directory")
+    snapshot = adapter.directory.read_directory()
+
+    assert isinstance(snapshot, Directory)
+    assert [(str(entry.provider_user_id), entry.display_name, entry.email) for entry in snapshot.entries] == [
+        ("sanitized-user-a", "Ada", "ada@example.test"),
+        ("sanitized-user-b", None, None),
+        ("sanitized-user-c", "Lin", None),
+    ]
+    assert graph_client.get.call_count == 2
+
+
+@pytest.mark.parametrize("status", [200, 404, 403, 500])
+def test_directory_reads_avatar_with_provider_authentication(mocker: MockerFixture, status: int) -> None:
+    adapter, credential, graph_client, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={"aud": "https://api.botframework.com", "appid": _credentials().client_id},
+    )
+    graph_client.get.return_value = httpx.Response(
+        200,
+        json={"value": [{"id": "user/with space", "displayName": "Ada"}]},
+        request=httpx.Request("GET", "https://graph.microsoft.com/v1.0/users"),
+    )
+    download = mocker.patch(
+        "core.file.remote_fetcher.make_request",
+        return_value=httpx.Response(
+            status,
+            headers={"Content-Type": "image/jpeg"},
+            content=b"avatar-image",
+            request=httpx.Request("GET", "https://graph.microsoft.com/v1.0/users/user/photo/$value"),
+        ),
+    )
+
+    result = adapter.directory.read_directory()
+
+    assert download.call_args.args == (
+        "GET",
+        "https://graph.microsoft.com/v1.0/users/user%2Fwith%20space/photo/$value",
+    )
+    assert download.call_args.kwargs["headers"] == {
+        "Authorization": f"Bearer {credential.get_token.return_value.token}"
+    }
+    if status in (403, 500):
+        assert isinstance(result, DirectoryReadFailure)
+        return
+    assert isinstance(result, Directory)
+    if status == 404:
+        assert result.entries[0].avatar is None
+    else:
+        assert result.entries[0].avatar is not None
+        assert result.entries[0].avatar.mime_type == "image/jpeg"
+        assert result.entries[0].avatar.data == b"avatar-image"
+
+
+def test_directory_reads_avatar_from_captured_graph_response(mocker: MockerFixture) -> None:
+    adapter, _, graph_client, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={"aud": "https://api.botframework.com", "appid": _credentials().client_id},
+    )
+    graph_client.get.return_value = httpx.Response(
+        200,
+        json={"value": [{"id": "sanitized-user", "displayName": "Ada"}]},
+        request=httpx.Request("GET", "https://graph.microsoft.com/v1.0/users"),
+    )
+    fixture = Path(__file__).parents[4] / "fixtures/im_provider/ms_teams/sanitized_avatar_success.json"
+    captured = json.loads(fixture.read_text())
+    image_bytes = base64.b64decode(captured["body"], validate=True)
+    mocker.patch(
+        "core.file.remote_fetcher.make_request",
+        return_value=httpx.Response(
+            captured["status"],
+            headers=captured["headers"],
+            content=image_bytes,
+            request=httpx.Request("GET", "https://graph.microsoft.com/v1.0/users/sanitized-user/photo/$value"),
+        ),
+    )
+
+    result = adapter.directory.read_directory()
+
+    assert isinstance(result, Directory)
+    assert len(result.entries) == 1
+    assert result.entries[0].provider_user_id == "sanitized-user"
+    assert result.entries[0].avatar is not None
+    assert result.entries[0].avatar.mime_type == "image/jpeg"
+    assert result.entries[0].avatar.data == image_bytes
+
+
+def test_directory_batch_keeps_other_avatars_when_graph_returns_captured_image_not_found(mocker: MockerFixture) -> None:
+    adapter, _, graph_client, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={"aud": "https://api.botframework.com", "appid": _credentials().client_id},
+    )
+    graph_client.get.return_value = httpx.Response(
+        200,
+        json={"value": [{"id": "first"}, {"id": "missing"}, {"id": "last"}]},
+        request=httpx.Request("GET", "https://graph.microsoft.com/v1.0/users"),
+    )
+    fixture = Path(__file__).parents[4] / "fixtures/im_provider/ms_teams/sanitized_avatar_not_found.json"
+    not_found = json.loads(fixture.read_text())
+
+    def download(_method: str, url: str, **_kwargs: object) -> httpx.Response:
+        if "/missing/" in url:
+            return httpx.Response(404, json=not_found, request=httpx.Request("GET", url))
+        return httpx.Response(
+            200,
+            headers={"Content-Type": "image/jpeg"},
+            content=b"first" if "/first/" in url else b"last",
+            request=httpx.Request("GET", url),
+        )
+
+    mocker.patch("core.file.remote_fetcher.make_request", side_effect=download)
+
+    result = adapter.directory.read_directory()
+
+    assert isinstance(result, Directory)
+    assert [entry.provider_user_id for entry in result.entries] == ["first", "missing", "last"]
+    assert result.entries[0].avatar is not None
+    assert result.entries[0].avatar.data == b"first"
+    assert result.entries[1].avatar is None
+    assert result.entries[2].avatar is not None
+    assert result.entries[2].avatar.data == b"last"
+
+
+def test_directory_discards_partial_entries_and_rejects_untrusted_pagination(mocker: MockerFixture) -> None:
+    adapter, _, graph_client, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    graph_client.get.return_value = httpx.Response(
+        200,
+        request=httpx.Request("GET", "https://graph.microsoft.com/v1.0/users"),
+        json={
+            "value": [{"id": "sanitized-user-a", "displayName": "Ada", "mail": None}],
+            "@odata.nextLink": "https://example.invalid/v1.0/users?$skiptoken=not-followed",
+        },
+    )
+
+    result = adapter.directory.read_directory()
+
+    assert isinstance(result, DirectoryReadFailure)
+    assert "sanitized-user-a" not in result.reason
+    graph_client.get.assert_called_once()
+
+
+def test_directory_normalizes_blank_optional_fields_and_rejects_pagination_loops(mocker: MockerFixture) -> None:
+    adapter, _, graph_client, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    next_link = "https://graph.microsoft.com/v1.0/users?$skiptoken=test-only-page"
+    graph_client.get.side_effect = [
+        httpx.Response(
+            200,
+            request=httpx.Request("GET", "https://graph.microsoft.com/v1.0/users"),
+            json={
+                "value": [{"id": "sanitized-user-a", "displayName": " ", "mail": ""}],
+                "@odata.nextLink": next_link,
+            },
+        ),
+        httpx.Response(
+            200,
+            request=httpx.Request("GET", next_link),
+            json={"value": [], "@odata.nextLink": next_link},
+        ),
+    ]
+
+    result = adapter.directory.read_directory()
+
+    assert isinstance(result, DirectoryReadFailure)
+    assert graph_client.get.call_count == 2
+
+
+def test_directory_normalizes_unexpected_failure_without_provider_details(
+    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+) -> None:
+    adapter, _, graph_client, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    graph_client.get.side_effect = RuntimeError("sensitive graph response")
+
+    result = adapter.directory.read_directory()
+
+    assert isinstance(result, DirectoryReadFailure)
+    assert "sensitive graph response" not in result.reason
+    assert "sensitive graph response" not in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("subject", "expected"),
+    [(None, "**Review requested**"), ("### Review", "# \\#\\#\\# Review\n\n**Review requested**")],
+)
+def test_text_send_resolves_personal_conversation_and_returns_exact_reference(
+    mocker: MockerFixture, subject: str | None, expected: str
+) -> None:
+    adapter, _, _, bot_credentials = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    assert hasattr(ms_teams, "ConnectorClient")
+    connector = ms_teams.ConnectorClient(bot_credentials, base_url="https://smba.trafficmanager.net/teams/")
+    mocker.patch.object(ms_teams, "ConnectorClient", autospec=True, return_value=connector)
+    create_conversation = mocker.patch.object(connector.conversations, "create_conversation", autospec=True)
+    send_to_conversation = mocker.patch.object(connector.conversations, "send_to_conversation", autospec=True)
+    create_conversation.return_value = ConversationResourceResponse(
+        id="sanitized-conversation",
+        service_url="https://smba.trafficmanager.net/teams/",
+    )
+    send_to_conversation.return_value = ResourceResponse(id="sanitized-activity")
+
+    accepted = adapter.messaging.send_text(ProviderUserId("sanitized-user-a"), "**Review requested**", subject)
+
+    assert isinstance(accepted, MessageAccepted)
+    assert "sanitized-conversation" not in repr(accepted.locator)
+    conversation_parameters = create_conversation.call_args.args[0]
+    assert conversation_parameters.tenant_id == _credentials().tenant_id
+    assert conversation_parameters.bot.id == f"28:{_credentials().client_id}"
+    assert [member.id for member in conversation_parameters.members] == ["sanitized-user-a"]
+    create_conversation.assert_called_once()
+    send_to_conversation.assert_called_once()
+    conversation_id, activity = send_to_conversation.call_args.args
+    assert conversation_id == "sanitized-conversation"
+    assert activity.type == "message"
+    assert activity.text == expected
+    assert activity.text_format == "extendedmarkdown"
+    assert connector.config.retry_policy.retries == 0
+
+
+def test_text_send_failure_is_safe_and_does_not_replay_message_creation(mocker: MockerFixture) -> None:
+    adapter, _, _, bot_credentials = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    connector = ms_teams.ConnectorClient(bot_credentials, base_url="https://smba.trafficmanager.net/teams/")
+    mocker.patch.object(ms_teams, "ConnectorClient", autospec=True, return_value=connector)
+    create_conversation = mocker.patch.object(connector.conversations, "create_conversation", autospec=True)
+    send_to_conversation = mocker.patch.object(connector.conversations, "send_to_conversation", autospec=True)
+    create_conversation.return_value = ConversationResourceResponse(
+        id="sanitized-conversation",
+        service_url="https://smba.trafficmanager.net/teams/",
+    )
+    send_to_conversation.side_effect = RuntimeError("sensitive provider response")
+
+    result = adapter.messaging.send_text(ProviderUserId("sanitized-user-a"), "Review requested")
+
+    assert isinstance(result, MessageSendingError)
+    assert "sensitive provider response" not in result.reason
+    create_conversation.assert_called_once()
+    send_to_conversation.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("conversation_response", "message_response", "expected_send_count"),
+    [
+        (None, ResourceResponse(id="unused"), 0),
+        (ConversationResourceResponse.deserialize({"id": None}), ResourceResponse(id="unused"), 0),
+        (
+            ConversationResourceResponse(id="sanitized-conversation", service_url="https://example.invalid/"),
+            ResourceResponse(id="unused"),
+            0,
+        ),
+        (ConversationResourceResponse(id="sanitized-conversation"), None, 1),
+        (ConversationResourceResponse(id="sanitized-conversation"), ResourceResponse.deserialize({"id": None}), 1),
+    ],
+)
+def test_text_send_requires_typed_exact_provider_acceptance(
+    mocker: MockerFixture,
+    conversation_response: object,
+    message_response: object,
+    expected_send_count: int,
+) -> None:
+    adapter, _, _, bot_credentials = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    connector = ms_teams.ConnectorClient(bot_credentials, base_url="https://smba.trafficmanager.net/teams/")
+    mocker.patch.object(ms_teams, "ConnectorClient", autospec=True, return_value=connector)
+    create_conversation = mocker.patch.object(connector.conversations, "create_conversation", autospec=True)
+    send_to_conversation = mocker.patch.object(connector.conversations, "send_to_conversation", autospec=True)
+    create_conversation.return_value = conversation_response
+    send_to_conversation.return_value = message_response
+
+    result = adapter.messaging.send_text(ProviderUserId("sanitized-user-a"), "Review requested")
+
+    assert isinstance(result, MessageSendingError)
+    create_conversation.assert_called_once()
+    assert send_to_conversation.call_count == expected_send_count
+
+
+def test_card_assessment_accepts_complete_adaptive_card_intent_without_provider_io(mocker: MockerFixture) -> None:
+    adapter, _, _, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    connector_client = mocker.patch.object(ms_teams, "ConnectorClient", autospec=True)
+
+    assessment = adapter.dynamic_card_messaging.assess(_card_intent(input_type="select"))
+
+    assert assessment == CardAssessment(representable=True)
+    connector_client.assert_not_called()
+
+
+@pytest.mark.parametrize("input_type", ["file", "file-list"])
+def test_card_assessment_rejects_any_unsupported_input_as_one_complete_intent(
+    mocker: MockerFixture, input_type: str
+) -> None:
+    adapter, _, _, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    connector_client = mocker.patch.object(ms_teams, "ConnectorClient", autospec=True)
+
+    assessment = adapter.dynamic_card_messaging.assess(_card_intent(input_type=input_type))
+
+    assert assessment.representable is False
+    assert assessment.reason
+    connector_client.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "intent",
+    [
+        _card_intent(action_style=ButtonStyle.GHOST),
+        _card_intent(markdown_text="x" * 30_000),
+    ],
+    ids=("unsupported-action-style", "provider-payload-limit"),
+)
+def test_card_assessment_rejects_unpreservable_presentation_facts(mocker: MockerFixture, intent: ResolvedForm) -> None:
+    adapter, _, _, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+
+    assessment = adapter.dynamic_card_messaging.assess(intent)
+
+    assert assessment.representable is False
+    assert assessment.reason
+
+
+def test_unrepresentable_card_send_fails_before_provider_state_creation(mocker: MockerFixture) -> None:
+    adapter, _, _, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    connector_client = mocker.patch.object(ms_teams, "ConnectorClient", autospec=True)
+
+    with pytest.raises(DynamicCardMessagingError):
+        adapter.dynamic_card_messaging.send_card(
+            ProviderUserId("sanitized-user-a"),
+            _card_intent(input_type="file"),
+            CorrelationToken("sanitized-correlation"),
+        )
+
+    connector_client.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "intent",
+    [
+        _custom_card_intent(
+            blocks=(SelectInput(output_variable_name="choice", options=(), default_value=None),),
+        ),
+        _custom_card_intent(
+            blocks=(SelectInput(output_variable_name="choice", options=("",), default_value=None),),
+        ),
+        _custom_card_intent(
+            blocks=(SelectInput(output_variable_name="choice", options=("One", "One"), default_value="One"),),
+        ),
+        _custom_card_intent(
+            blocks=(
+                ParagraphInput(output_variable_name="comment", default_value=None),
+                ParagraphInput(output_variable_name="comment", default_value=None),
+            ),
+        ),
+        _custom_card_intent(blocks=(MarkdownFragment(text=""),)),
+    ],
+    ids=("empty-options", "empty-option", "duplicate-options", "duplicate-input", "empty-markdown"),
+)
+def test_card_assessment_rejects_unpreservable_resolved_controls_and_presentation(
+    mocker: MockerFixture,
+    intent: ResolvedForm,
+) -> None:
+    adapter, _, _, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+
+    assessment = adapter.dynamic_card_messaging.assess(intent)
+
+    assert assessment.representable is False
+
+
+def test_card_send_rejects_correlation_that_exceeds_provider_payload_limit_before_io(mocker: MockerFixture) -> None:
+    adapter, _, _, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    connector_client = mocker.patch.object(ms_teams, "ConnectorClient", autospec=True)
+
+    with pytest.raises(DynamicCardMessagingError):
+        adapter.dynamic_card_messaging.send_card(
+            ProviderUserId("sanitized-user-a"),
+            _card_intent(),
+            CorrelationToken("x" * 30_000),
+        )
+
+    connector_client.assert_not_called()
+
+
+@pytest.mark.parametrize("button_style", [ButtonStyle.PRIMARY, ButtonStyle.ACCENT, ButtonStyle.DEFAULT])
+def test_card_renderer_omits_unsupported_teams_action_style(button_style: ButtonStyle) -> None:
+    card = ms_teams._MSTeamsCardCodec().encode(
+        _custom_card_intent(blocks=(), action_style=button_style),
+        CorrelationToken("sanitized-correlation"),
+    )
+
+    assert card["actions"] == [
+        {
+            "type": "Action.Submit",
+            "title": "Approve",
+            "data": {
+                "__dify.human_input": {
+                    "version": 1,
+                    "action_id": "approve",
+                    "correlation_token": "sanitized-correlation",
+                }
+            },
+        }
+    ]
+
+
+def test_card_send_preserves_controls_actions_and_correlation_in_one_message(mocker: MockerFixture) -> None:
+    adapter, _, _, bot_credentials = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    connector = ms_teams.ConnectorClient(bot_credentials, base_url="https://smba.trafficmanager.net/teams/")
+    mocker.patch.object(ms_teams, "ConnectorClient", autospec=True, return_value=connector)
+    create_conversation = mocker.patch.object(connector.conversations, "create_conversation", autospec=True)
+    send_to_conversation = mocker.patch.object(connector.conversations, "send_to_conversation", autospec=True)
+    create_conversation.return_value = ConversationResourceResponse(
+        id="sanitized-conversation",
+        service_url="https://smba.trafficmanager.net/teams/",
+    )
+    send_to_conversation.return_value = ResourceResponse(id="sanitized-card-activity")
+
+    accepted = adapter.dynamic_card_messaging.send_card(
+        ProviderUserId("sanitized-user-a"),
+        _card_intent(input_type="select"),
+        CorrelationToken("sanitized-correlation"),
+    )
+
+    assert isinstance(accepted, MessageAccepted)
+    assert "sanitized-card-activity" not in repr(accepted.locator)
+    create_conversation.assert_called_once()
+    send_to_conversation.assert_called_once()
+    _, activity = send_to_conversation.call_args.args
+    assert activity.type == "message"
+    assert activity.summary == "Approval"
+    assert len(activity.attachments) == 1
+    attachment = activity.attachments[0]
+    assert attachment.content_type == "application/vnd.microsoft.card.adaptive"
+    content = attachment.content
+    assert content["$schema"] == "http://adaptivecards.io/schemas/adaptive-card.json"
+    assert content["version"] == "1.5"
+    assert [element["type"] for element in content["body"]] == [
+        "TextBlock",
+        "TextBlock",
+        "Input.ChoiceSet",
+        "TextBlock",
+    ]
+    choice_input = content["body"][2]
+    assert choice_input["id"] == "comment"
+    assert choice_input["value"] == "One"
+    assert [choice["value"] for choice in choice_input["choices"]] == ["One", "Two"]
+    assert content["actions"] == [
+        {
+            "type": "Action.Submit",
+            "title": "Approve",
+            "data": {
+                "__dify.human_input": {
+                    "version": 1,
+                    "action_id": "approve",
+                    "correlation_token": "sanitized-correlation",
+                }
+            },
+        },
+        {
+            "type": "Action.Submit",
+            "title": "Reject",
+            "data": {
+                "__dify.human_input": {
+                    "version": 1,
+                    "action_id": "reject",
+                    "correlation_token": "sanitized-correlation",
+                }
+            },
+        },
+    ]
+
+
+def test_card_locator_updates_the_exact_activity_after_adapter_recreation(mocker: MockerFixture) -> None:
+    adapter, _, _, bot_credentials = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    connector = ms_teams.ConnectorClient(bot_credentials, base_url="https://smba.trafficmanager.net/teams/")
+    mocker.patch.object(ms_teams, "ConnectorClient", autospec=True, return_value=connector)
+    create_conversation = mocker.patch.object(connector.conversations, "create_conversation", autospec=True)
+    send_to_conversation = mocker.patch.object(connector.conversations, "send_to_conversation", autospec=True)
+    create_conversation.return_value = ConversationResourceResponse(
+        id="sanitized-conversation",
+        service_url="https://smba.trafficmanager.net/teams/",
+    )
+    send_to_conversation.return_value = ResourceResponse(id="sanitized-card-activity")
+    accepted = adapter.dynamic_card_messaging.send_card(
+        ProviderUserId("sanitized-user-a"),
+        _card_intent(),
+        CorrelationToken("sanitized-correlation"),
+    )
+    assert isinstance(accepted, MessageAccepted)
+    persisted_reference = MessageLocator(
+        json.loads(json.dumps({"locator": str(accepted.locator)}, separators=(",", ":")))["locator"]
+    )
+    update_activity = mocker.patch.object(connector.conversations, "update_activity", autospec=True)
+    recreated_adapter = ms_teams.MSTeamsIMProviderAdapter(_credentials())
+
+    result = recreated_adapter.dynamic_card_messaging.replace_with_static(
+        persisted_reference,
+        StaticCardIntent("Decision **recorded**"),
+    )
+
+    assert result is None
+    update_activity.assert_called_once()
+    conversation_id, activity_id, activity = update_activity.call_args.args
+    assert conversation_id == "sanitized-conversation"
+    assert activity_id == "sanitized-card-activity"
+    assert activity.type == "message"
+    assert activity.text == "Decision **recorded**"
+    assert not activity.attachments
+    assert connector.config.retry_policy.retries == 0
+
+
+def test_message_locator_does_not_expose_provider_locator_fields() -> None:
+    reference = _locator()
+
+    exposed_locator_fields = {
+        name
+        for name in ("tenant_id", "client_id", "service_url", "conversation_id", "activity_id")
+        if hasattr(reference, name)
+    }
+
+    assert exposed_locator_fields == set()
+
+
+def test_message_locator_serializes_only_the_locator_payload() -> None:
+    reference = _locator()
+    padding = "=" * (-len(str(reference)) % 4)
+    serialized_locator = base64.urlsafe_b64decode(str(reference) + padding)
+
+    assert json.loads(serialized_locator) == {
+        "v": 1,
+        "p": "ms_teams",
+        "activity_id": "sanitized-card-activity",
+        "conversation_id": "sanitized-conversation",
+        "service_url": "https://smba.trafficmanager.net/teams/",
+    }
+
+
+def test_message_locator_rejects_a_malformed_serialized_value_without_provider_io(mocker: MockerFixture) -> None:
+    reference = _locator()
+    serialized_value = str(reference)
+    replacement_character = "A" if serialized_value[-1] != "A" else "B"
+    malformed_reference = MessageLocator(serialized_value[:-1] + replacement_character)
+    adapter, _, _, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    connector_client = mocker.patch.object(ms_teams, "ConnectorClient", autospec=True)
+
+    result = adapter.dynamic_card_messaging.replace_with_static(
+        malformed_reference,
+        StaticCardIntent("Recorded"),
+    )
+
+    assert result == ReplacementError(
+        ReplacementErrorKind.INVALID_REFERENCE,
+        "The Microsoft Teams message reference is invalid.",
+    )
+    connector_client.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        MessageLocator("invalid."),
+        MessageLocator(base64.urlsafe_b64encode(b'{"v":1,"p":"slack"}').rstrip(b"=").decode()),
+    ],
+)
+def test_card_update_rejects_incompatible_reference_without_provider_io(
+    mocker: MockerFixture,
+    reference: MessageLocator,
+) -> None:
+    adapter, _, _, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    connector_client = mocker.patch.object(ms_teams, "ConnectorClient", autospec=True)
+
+    result = adapter.dynamic_card_messaging.replace_with_static(reference, StaticCardIntent("Recorded"))
+
+    assert result == ReplacementError(
+        ReplacementErrorKind.INVALID_REFERENCE,
+        "The Microsoft Teams message reference is invalid.",
+    )
+    connector_client.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("provider_error", "expected_kind"),
+    [
+        ("stale", ReplacementErrorKind.STALE_REFERENCE),
+        ("http_unknown", ReplacementErrorKind.UNKNOWN),
+        ("unknown", ReplacementErrorKind.UNKNOWN),
+    ],
+)
+def test_card_update_classifies_provider_failure_without_replaying_or_leaking_details(
+    mocker: MockerFixture,
+    caplog: pytest.LogCaptureFixture,
+    provider_error: str,
+    expected_kind: ReplacementErrorKind,
+) -> None:
+    adapter, _, _, bot_credentials = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    connector = ms_teams.ConnectorClient(bot_credentials, base_url="https://smba.trafficmanager.net/teams/")
+    mocker.patch.object(ms_teams, "ConnectorClient", autospec=True, return_value=connector)
+    update_activity = mocker.patch.object(connector.conversations, "update_activity", autospec=True)
+    if provider_error == "stale":
+        response = requests.Response()
+        response.status_code = 404
+        response.reason = "sanitized-not-found"
+        response._content = b"{}"
+        update_activity.side_effect = HttpOperationError(None, response)
+    elif provider_error == "http_unknown":
+        response = requests.Response()
+        response.status_code = 400
+        response.reason = "sanitized-bad-request"
+        response._content = b"{}"
+        update_activity.side_effect = HttpOperationError(None, response)
+    else:
+        update_activity.side_effect = RuntimeError("sensitive provider response")
+    reference = _locator()
+
+    result = adapter.dynamic_card_messaging.replace_with_static(reference, StaticCardIntent("Recorded"))
+
+    assert isinstance(result, ReplacementError)
+    assert result.kind is expected_kind
+    assert "sensitive provider response" not in result.reason
+    assert "sensitive provider response" not in caplog.text
+    update_activity.assert_called_once()
+
+
+@pytest.mark.parametrize("include_event_id", [True, False])
+def test_webhook_authenticates_tenant_and_preserves_the_complete_activity_payload(
+    mocker: MockerFixture,
+    include_event_id: bool,
+) -> None:
+    adapter, _, _, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    authenticate_request = mocker.patch.object(
+        ms_teams.JwtTokenValidation,
+        "authenticate_request",
+        autospec=True,
+    )
+    authenticate_request.return_value = ClaimsIdentity(
+        {"aud": _credentials().client_id, "iss": "https://api.botframework.com"},
+        True,
+    )
+    consumer = _RecordingConsumer()
+    handler = adapter.create_webhook_handler(consumer)
+    activity_body = _teams_activity_body(include_event_id=include_event_id)
+
+    response = handler.handle(_webhook_request(activity_body))
+
+    assert response.status_code == 200
+    assert response.body == b""
+    assert len(consumer.events) == 1
+    event = consumer.events[0]
+    assert event.provider.value == "ms_teams"
+    assert event.provider_tenant_id == _credentials().tenant_id
+    assert event.event_id == ("sanitized-provider-event" if include_event_id else None)
+    assert event.event_type == "invoke"
+    assert event.occurred_at == datetime(2026, 8, 6, 7, 59, 58)
+    assert event.received_at == _RECEIVED_AT
+    assert event.ingress_kind is IMEventIngressKind.WEBHOOK
+    assert json.loads(event.payload) == activity_body
+    authenticate_request.assert_awaited_once()
+    authenticated_activity, authorization, _, _ = authenticate_request.call_args.args
+    assert authenticated_activity.channel_id == "msteams"
+    assert authenticated_activity.service_url == "https://smba.trafficmanager.net/teams/"
+    assert authorization == "Bearer sanitized-token"
+
+
+@pytest.mark.parametrize(
+    ("acceptance", "expected_status"),
+    [
+        (EventAcceptance.ACCEPTED, 200),
+        (EventAcceptance.NOT_ACCEPTED, 503),
+    ],
+)
+def test_webhook_maps_consumer_acceptance_to_bot_framework_ack(
+    mocker: MockerFixture,
+    acceptance: EventAcceptance,
+    expected_status: int,
+) -> None:
+    consumer = _RecordingConsumer(acceptance)
+    _, handler, authenticate_request = _authenticated_webhook_handler(mocker, consumer)
+
+    response = handler.handle(_webhook_request(_teams_activity_body()))
+
+    assert response.status_code == expected_status
+    assert len(consumer.events) == 1
+    authenticate_request.assert_awaited_once()
+
+
+def test_webhook_rejects_authentication_and_tenant_mismatch_before_consumer(mocker: MockerFixture) -> None:
+    consumer = _RecordingConsumer()
+    _, handler, authenticate_request = _authenticated_webhook_handler(mocker, consumer)
+    authenticate_request.side_effect = PermissionError("sensitive token details")
+
+    unauthenticated = handler.handle(_webhook_request(_teams_activity_body()))
+
+    assert unauthenticated.status_code == 401
+    assert consumer.events == []
+
+    authenticate_request.side_effect = None
+    authenticate_request.return_value = ClaimsIdentity(
+        {"aud": _credentials().client_id, "iss": "https://api.botframework.com"},
+        True,
+    )
+    mismatched_body = _teams_activity_body()
+    mismatched_body["conversation"] = {
+        "id": "sanitized-conversation",
+        "tenantId": "33333333-3333-3333-3333-333333333333",
+    }
+    mismatched = handler.handle(_webhook_request(mismatched_body))
+
+    assert mismatched.status_code == 403
+    assert consumer.events == []
+    assert authenticate_request.await_count == 2
+
+
+@pytest.mark.parametrize(
+    "webhook_request",
+    [
+        WebhookRequest(
+            method="GET",
+            headers=(("Authorization", "Bearer sanitized-token"), ("Content-Type", "application/json")),
+            body=b"{}",
+            received_at=_RECEIVED_AT,
+        ),
+        WebhookRequest(
+            method="POST",
+            headers=(("Content-Type", "application/json"),),
+            body=b"{}",
+            received_at=_RECEIVED_AT,
+        ),
+        WebhookRequest(
+            method="POST",
+            headers=(
+                ("Authorization", "Bearer first"),
+                ("authorization", "Bearer second"),
+                ("Content-Type", "application/json"),
+            ),
+            body=b"{}",
+            received_at=_RECEIVED_AT,
+        ),
+        WebhookRequest(
+            method="POST",
+            headers=(("Authorization", "Bearer sanitized-token"), ("Content-Type", "text/plain")),
+            body=b"{}",
+            received_at=_RECEIVED_AT,
+        ),
+        WebhookRequest(
+            method="POST",
+            headers=(("Authorization", "Bearer sanitized-token"), ("Content-Type", "application/json")),
+            body=b"not-json",
+            received_at=_RECEIVED_AT,
+        ),
+        WebhookRequest(
+            method="POST",
+            headers=(("Authorization", "Bearer sanitized-token"), ("Content-Type", "application/json")),
+            body=b"[]",
+            received_at=_RECEIVED_AT,
+        ),
+        WebhookRequest(
+            method="POST",
+            headers=(
+                ("Authorization", "Bearer sanitized-token"),
+                ("Content-Type", "application/json"),
+                ("content-type", "application/json"),
+            ),
+            body=b"{}",
+            received_at=_RECEIVED_AT,
+        ),
+    ],
+    ids=("method", "missing-auth", "duplicate-auth", "content-type", "body", "non-object", "duplicate-content-type"),
+)
+def test_webhook_rejects_invalid_http_boundary_without_authentication_or_consumption(
+    mocker: MockerFixture,
+    webhook_request: WebhookRequest,
+) -> None:
+    consumer = _RecordingConsumer()
+    _, handler, authenticate_request = _authenticated_webhook_handler(mocker, consumer)
+
+    response = handler.handle(webhook_request)
+
+    assert response.status_code >= 400
+    assert consumer.events == []
+    authenticate_request.assert_not_awaited()
+
+
+def test_webhook_rejects_invalid_activity_shape_and_service_url_before_authentication(mocker: MockerFixture) -> None:
+    consumer = _RecordingConsumer()
+    _, handler, authenticate_request = _authenticated_webhook_handler(mocker, consumer)
+
+    invalid_shape = handler.handle(_webhook_request({"type": "invoke"}))
+    untrusted_activity = _teams_activity_body()
+    untrusted_activity["serviceUrl"] = "https://example.invalid/teams/"
+    untrusted_service_url = handler.handle(_webhook_request(untrusted_activity))
+
+    assert invalid_shape.status_code == 400
+    assert untrusted_service_url.status_code == 400
+    assert consumer.events == []
+    authenticate_request.assert_not_awaited()
+
+
+@pytest.mark.parametrize("non_standard_value", [float("nan"), float("inf"), float("-inf")])
+def test_webhook_rejects_non_standard_json_constants_before_authentication(
+    mocker: MockerFixture, non_standard_value: float
+) -> None:
+    consumer = _RecordingConsumer()
+    _, handler, authenticate_request = _authenticated_webhook_handler(mocker, consumer)
+    activity = _teams_activity_body()
+    activity["nonStandard"] = non_standard_value
+
+    response = handler.handle(_webhook_request(activity))
+
+    assert response.status_code == 400
+    assert consumer.events == []
+    authenticate_request.assert_not_awaited()
+
+
+def test_webhook_accepts_authoritative_tenant_with_blank_event_id_and_no_provider_time(mocker: MockerFixture) -> None:
+    consumer = _RecordingConsumer()
+    _, handler, _ = _authenticated_webhook_handler(mocker, consumer)
+    activity = _teams_activity_body()
+    activity["id"] = " "
+    activity.pop("timestamp")
+    conversation = activity["conversation"]
+    assert isinstance(conversation, dict)
+    conversation.pop("tenantId")
+
+    response = handler.handle(_webhook_request(activity))
+
+    assert response.status_code == 200
+    assert len(consumer.events) == 1
+    assert consumer.events[0].event_id is None
+    assert consumer.events[0].occurred_at is None
+
+
+def test_webhook_rejects_an_identity_not_marked_authenticated(mocker: MockerFixture) -> None:
+    consumer = _RecordingConsumer()
+    _, handler, authenticate_request = _authenticated_webhook_handler(mocker, consumer)
+    authenticate_request.return_value = ClaimsIdentity({}, False)
+
+    response = handler.handle(_webhook_request(_teams_activity_body()))
+
+    assert response.status_code == 401
+    assert consumer.events == []
+
+
+def test_webhook_consumer_failure_is_safe_and_not_acknowledged(
+    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+) -> None:
+    _, handler, _ = _authenticated_webhook_handler(mocker, _FailingConsumer())
+
+    response = handler.handle(_webhook_request(_teams_activity_body()))
+
+    assert response.status_code == 503
+    assert "sensitive consumer details" not in response.body.decode()
+    assert "sensitive consumer details" not in caplog.text
+
+
+def test_webhook_handler_remains_usable_after_root_close(mocker: MockerFixture) -> None:
+    consumer = _RecordingConsumer()
+    adapter, handler, _ = _authenticated_webhook_handler(mocker, consumer)
+    adapter.close()
+    adapter.close()
+
+    response = handler.handle(_webhook_request(_teams_activity_body()))
+
+    assert response.status_code == 200
+    assert len(consumer.events) == 1
+
+
+def test_webhook_handler_supports_overlapping_calls_without_shared_request_state(mocker: MockerFixture) -> None:
+    consumer = _ThreadSafeRecordingConsumer()
+    adapter, _, _, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+
+    async def authenticate_request(*args: object, **kwargs: object) -> ClaimsIdentity:
+        del args, kwargs
+        return ClaimsIdentity({"aud": _credentials().client_id}, True)
+
+    mocker.patch.object(ms_teams.JwtTokenValidation, "authenticate_request", new=authenticate_request)
+    handler = adapter.create_webhook_handler(consumer)
+    requests_to_handle = [
+        _webhook_request({**_teams_activity_body(), "id": f"sanitized-event-{index}"}) for index in range(8)
+    ]
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        responses = tuple(executor.map(handler.handle, requests_to_handle))
+
+    assert [response.status_code for response in responses] == [200] * 8
+    assert {event.event_id for event in consumer.events} == {f"sanitized-event-{index}" for index in range(8)}
+
+
+def test_committed_ms_teams_fixture_contains_only_sanitized_protocol_evidence() -> None:
+    fixture_text = _WEBHOOK_FIXTURE_PATH.read_text()
+    normalized_fixture = fixture_text.casefold()
+
+    assert _UUID_PATTERN.search(fixture_text) is None
+    assert "authorization" not in normalized_fixture
+    assert "bearer " not in normalized_fixture
+    assert "client_secret" not in normalized_fixture
+    assert "access_token" not in normalized_fixture
+    assert "refresh_token" not in normalized_fixture
+    assert "private_key" not in normalized_fixture
+    assert "password" not in normalized_fixture
+
+    fixture = json.loads(fixture_text)
+    assert isinstance(fixture, dict)
+    assert fixture["id"] == "test-only-event"
+    assert fixture["conversation"] == {
+        "id": "test-only-conversation",
+        "tenantId": "test-only-tenant",
+    }
+    assert fixture["channelData"]["tenant"] == {"id": "test-only-tenant"}
+    assert fixture["value"]["correlation_token"] == "test-only-correlation"
+
+
+def test_webhook_official_jwt_validation_rejects_tampering_wrong_audience_and_expiry(mocker: MockerFixture) -> None:
+    signing_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    wrong_signing_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_jwk = RSAAlgorithm.to_jwk(signing_key.public_key(), as_dict=True)
+    public_jwk.update({"kid": "test-only-key", "endorsements": []})
+    metadata_url = "https://test-only.invalid/openid-configuration"
+    jwks_url = "https://test-only.invalid/keys"
+    mocker.patch.object(ChannelValidation, "open_id_metadata_endpoint", metadata_url)
+    JwtTokenExtractor.metadataCache.pop(metadata_url, None)
+    metadata_get = mocker.patch(
+        "botframework.connector.auth.jwt_token_extractor.requests.get",
+        side_effect=[
+            _ProviderMetadataResponse({"jwks_uri": jwks_url}),
+            _ProviderMetadataResponse({"keys": [public_jwk]}),
+        ],
+    )
+    adapter, _, _, _ = _adapter_with_tokens(
+        mocker,
+        graph_claims={
+            "aud": "https://graph.microsoft.com",
+            "tid": _credentials().tenant_id,
+            "roles": ["User.Read.All"],
+        },
+        bot_claims={
+            "aud": "https://api.botframework.com",
+            "appid": _credentials().client_id,
+            "tid": _credentials().tenant_id,
+        },
+    )
+    consumer = _RecordingConsumer()
+    handler = adapter.create_webhook_handler(consumer)
+    current_timestamp = int(datetime.now().timestamp())
+    base_claims = {
+        "iss": "https://api.botframework.com",
+        "aud": _credentials().client_id,
+        "serviceurl": "https://smba.trafficmanager.net/teams/",
+        "nbf": current_timestamp - 60,
+        "exp": current_timestamp + 600,
+    }
+
+    valid_token = jwt.encode(base_claims, signing_key, algorithm="RS256", headers={"kid": "test-only-key"})
+    valid_response = handler.handle(_webhook_request(_teams_activity_body(), authorization=f"Bearer {valid_token}"))
+
+    assert valid_response.status_code == 200
+    assert len(consumer.events) == 1
+    invalid_tokens = (
+        jwt.encode(base_claims, wrong_signing_key, algorithm="RS256", headers={"kid": "test-only-key"}),
+        jwt.encode(
+            {**base_claims, "aud": "test-only-wrong-audience"},
+            signing_key,
+            algorithm="RS256",
+            headers={"kid": "test-only-key"},
+        ),
+        jwt.encode(
+            {**base_claims, "exp": current_timestamp - 600},
+            signing_key,
+            algorithm="RS256",
+            headers={"kid": "test-only-key"},
+        ),
+    )
+    for invalid_token in invalid_tokens:
+        invalid_response = handler.handle(
+            _webhook_request(_teams_activity_body(), authorization=f"Bearer {invalid_token}")
+        )
+        assert invalid_response.status_code == 401
+    assert len(consumer.events) == 1
+    assert metadata_get.call_count == 2
+    JwtTokenExtractor.metadataCache.pop(metadata_url, None)

@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { getErrorMessage } from '@/utils/error-message'
 import { GoldenQuestionDialog } from '../quality/golden-question-dialog'
 import { goldenQuestionQueriesKey } from '../quality/quality-model'
 import { newKnowledgeQualityBadCasesPath, newKnowledgeQualityPath } from '../routes'
@@ -89,14 +90,17 @@ export function RetrievalQualityWorkflow() {
     setQualityPendingKey(resultKey)
     try {
       try {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post({
-          body: {
-            reason,
-            tags: ['retrieval-test'],
-            trace_id: selectedTraceId,
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post(
+          {
+            body: {
+              reason,
+              tags: ['retrieval-test'],
+              trace_id: selectedTraceId,
+            },
+            params: { control_space_id: knowledgeSpaceId },
           },
-          params: { control_space_id: knowledgeSpaceId },
-        })
+          { context: { silent: true } },
+        )
       } catch (error) {
         // 409: the trace already has an unresolved bad case, so the record is in the wanted state.
         if (getHttpErrorStatus(error) !== 409) throw error
@@ -109,8 +113,8 @@ export function RetrievalQualityWorkflow() {
       })
       setQualityDecisions((current) => ({ ...current, [resultKey]: 'bad-case' }))
       void refetchTraces()
-    } catch {
-      toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
     } finally {
       setQualityPendingKey(undefined)
     }
