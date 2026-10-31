@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from controllers.web import human_input_form_access_request as token_controller
 from controllers.web import human_input_v2_file_upload as controller
-from core.human_input import ButtonStyle
+from enums.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import FileInput, ResolvedForm, UserAction
 from core.human_input_v2.shared.values import AccountId, NormalizedEmail, RecipientId, TenantId
 from core.workflow.nodes.human_input_v2.entities import OnetimeEmail

@@ -36,7 +36,7 @@ from pydantic import AliasPath, BaseModel, ConfigDict, Field, JsonValue, TypeAda
 from requests.exceptions import Timeout as RequestsTimeout
 from websockets.asyncio.client import ClientConnection
 
-from core.human_input import ButtonStyle
+from enums.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.avatar import read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import (

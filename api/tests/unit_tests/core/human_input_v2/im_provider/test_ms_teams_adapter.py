@@ -24,7 +24,7 @@ from jwt.algorithms import RSAAlgorithm
 from msrest.exceptions import HttpOperationError
 from pytest_mock import MockerFixture
 
-from core.human_input import ButtonStyle
+from enums.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
