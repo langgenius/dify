@@ -26,7 +26,7 @@ from werkzeug.test import TestResponse
 
 from controllers.service_api import wraps
 from controllers.service_api.app import human_input_form as controller
-from core.human_input import ButtonStyle
+from enums.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import (
     FileInput,
     FileListInput,
