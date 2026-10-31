@@ -25,6 +25,7 @@ from core.app.entities.task_entities import WorkflowFinishStreamResponse, Workfl
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
@@ -475,6 +476,16 @@ def _publish_streaming_response(
         )
 
 
+# The publish side retries when the broker connection drops mid-publish
+# (Celery's default task_publish_retry), so the same payload - carrying the
+# same workflow_run_id - can land in the queue twice. Each copy would create
+# its own conversation, message, and external calls (#44911). Claim the run
+# id atomically and skip redeliveries; the window far outlasts any publish
+# retry, and a duplicate arriving after it expires still has to race the
+# original's own database writes.
+_DUPLICATE_RUN_CLAIM_TTL_SECONDS = 60 * 60 * 24
+
+
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE)
 def workflow_based_app_execution_task(
     payload: str,
@@ -482,6 +493,24 @@ def workflow_based_app_execution_task(
     exec_params = AppExecutionParams.model_validate_json(payload)
 
     logger.info("workflow_based_app_execution_task run with params: %s", exec_params)
+
+    claim_key = f"workflow_based_app_execution:claimed:{exec_params.workflow_run_id}"
+    # A token unique to this consumption attempt. redis-py retries a command
+    # whose success reply was lost (default Retry: 3 attempts on
+    # ConnectionError/TimeoutError); the retried SET then finds its own key
+    # and returns None, which a plain None-check would misread as someone
+    # else's claim and skip the original delivery before it ever ran.
+    claim_token = uuid.uuid4().hex
+    if not redis_client.set(claim_key, claim_token, nx=True, ex=_DUPLICATE_RUN_CLAIM_TTL_SECONDS):
+        stored = redis_client.get(claim_key)
+        if isinstance(stored, bytes):
+            stored = stored.decode()
+        if stored != claim_token:
+            logger.warning(
+                "Skipping redelivered workflow_based_app_execution_task for workflow run %s",
+                exec_params.workflow_run_id,
+            )
+            return None
 
     runner = _AppRunner(db.engine, exec_params=exec_params)
     return runner.run()
