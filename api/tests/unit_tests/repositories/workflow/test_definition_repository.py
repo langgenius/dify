@@ -72,6 +72,7 @@ from services.workflow.definition_gateway import WorkflowDefinitionGateway
 from services.workflow.draft_service import DraftAgentRetirement, WorkflowDraftService
 from services.workflow.environment_variable_service import prepare_environment_variables
 from services.workflow_service import WorkflowService
+from tests.helpers import billing_builders as builders
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
 
 CONTEXT = RequestContext("request", None, "account-1", "tenant-1")
@@ -1095,7 +1096,7 @@ def test_publication_retains_blocking_domain_validations(
         else:
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
             monkeypatch.setattr(
-                workflow_module.BillingService, "get_info", lambda *_args: {"subscription": {"plan": "sandbox"}}
+                workflow_module.BillingService, "get_info", lambda *_args: builders.subscription_info("sandbox")
             )
             draft.graph = json.dumps(
                 {"nodes": [{"id": str(index), "data": {"type": "trigger-webhook"}} for index in range(3)], "edges": []}
