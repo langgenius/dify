@@ -15,6 +15,7 @@ import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { toast } from '@/app/notifications'
+import { getErrorMessage } from '@/utils/error-message'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import {
   useDeletePluginOAuthCustomClientHook,
@@ -47,6 +48,7 @@ const OAuthClientSettings = ({
   onUpdate,
 }: OAuthClientSettingsProps) => {
   const { t } = useTranslation(['common', 'plugin'])
+  const [requestError, setRequestError] = useState<unknown>()
   const [doingAction, setDoingAction] = useState(false)
   const doingActionRef = useRef(doingAction)
   const handleSetDoingAction = useCallback((value: boolean) => {
@@ -74,12 +76,13 @@ const OAuthClientSettings = ({
   const handleConfirm = useCallback(async () => {
     if (doingActionRef.current) return false
 
+    setRequestError(undefined)
     try {
       const { isCheckValidated, values } = formRef.current?.getFormValues({
         needCheckValidatedValues: true,
         needTransformWhenSecretFieldIsPristine: true,
       }) || { isCheckValidated: false, values: {} }
-      if (!isCheckValidated) throw new Error('error')
+      if (!isCheckValidated) return false
       const { __oauth_client__, ...restValues } = values
 
       handleSetDoingAction(true)
@@ -94,6 +97,9 @@ const OAuthClientSettings = ({
       onUpdate?.()
       invalidPluginOAuthClientSchema()
       return true
+    } catch (error) {
+      if (!(error instanceof Error && error.name === 'AbortError')) setRequestError(error)
+      return false
     } finally {
       handleSetDoingAction(false)
     }
@@ -111,9 +117,8 @@ const OAuthClientSettings = ({
     try {
       const isSaved = await handleConfirm()
       if (isSaved) await onRequestAuthorization?.()
-    } catch {
-      // The request layer reports the save error. Keep settings open and stop
-      // before opening the permission dialog.
+    } catch (error) {
+      if (!(error instanceof Error && error.name === 'AbortError')) setRequestError(error)
     }
   }, [handleConfirm, onRequestAuthorization])
   const { mutateAsync: deletePluginOAuthCustomClient } =
@@ -121,6 +126,7 @@ const OAuthClientSettings = ({
   const handleRemove = useCallback(async () => {
     if (doingActionRef.current) return
 
+    setRequestError(undefined)
     try {
       handleSetDoingAction(true)
       await deletePluginOAuthCustomClient()
@@ -129,6 +135,8 @@ const OAuthClientSettings = ({
       onClose?.()
       onUpdate?.()
       invalidPluginOAuthClientSchema()
+    } catch (error) {
+      if (!(error instanceof Error && error.name === 'AbortError')) setRequestError(error)
     } finally {
       handleSetDoingAction(false)
     }
@@ -148,7 +156,14 @@ const OAuthClientSettings = ({
   const isDisabled = disabled || doingAction
 
   return (
-    <Dialog open={open} disablePointerDismissal onOpenChange={handleOpenChange}>
+    <Dialog
+      open={open}
+      disablePointerDismissal
+      onOpenChange={handleOpenChange}
+      onOpenChangeComplete={(nextOpen) => {
+        if (!nextOpen) setRequestError(undefined)
+      }}
+    >
       <DialogContent backdropProps={{ forceRender: true }}>
         <DialogHeader>
           <DialogTitle>{t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}</DialogTitle>
@@ -165,6 +180,11 @@ const OAuthClientSettings = ({
             defaultValues={editValues || defaultValues}
             disabled={disabled}
           />
+          {!!requestError && (
+            <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
+              {getErrorMessage(requestError) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </p>
+          )}
         </DialogBody>
         <DialogFooter>
           {__oauth_client__ === 'custom' && hasOriginalClientParams && (

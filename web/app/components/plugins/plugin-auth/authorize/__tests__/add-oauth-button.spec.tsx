@@ -395,4 +395,40 @@ describe('AddOAuthButton', () => {
       },
     )
   })
+
+  it.each([
+    new Error('OAuth provider unavailable'),
+    new TypeError('Failed to fetch'),
+    new DOMException('The operation timed out.', 'TimeoutError'),
+  ])('shows authorization failures and preserves visibility for retry: %s', async (error) => {
+    const user = userEvent.setup()
+    mockGetPluginOAuthUrl.mockRejectedValueOnce(error)
+    renderWithAccountProfile(
+      <AddOAuthButton
+        pluginPayload={basePayload}
+        buttonText="Use OAuth"
+        oAuthData={configuredOAuthData}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Use OAuth' }))
+    await user.click(
+      screen.getByRole('button', { name: /datasetSettings\.form\.permissionsOnlyMe/ }),
+    )
+    await user.click(
+      screen.getByRole('menuitemradio', { name: 'datasetSettings.form.permissionsAllMember' }),
+    )
+    const authorize = screen.getByRole('button', { name: 'plugin.auth.authorize' })
+    await user.click(authorize)
+    expect(await screen.findByRole('alert')).toHaveTextContent(error.message)
+    expect(mockOpenOAuthPopup).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: /datasetSettings\.form\.permissionsAllMember/ }),
+    ).toBeInTheDocument()
+    await user.click(authorize)
+    await waitFor(() => expect(mockOpenOAuthPopup).toHaveBeenCalledOnce())
+    expect(mockGetPluginOAuthUrl).toHaveBeenLastCalledWith(toolAuthUrl, {
+      params: { visibility: 'all_team_members' },
+    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
 })

@@ -1051,11 +1051,6 @@
       "count": 6
     }
   },
-  "web/app/components/base/chat/chat/citation/popup.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 9
-    }
-  },
   "web/app/components/base/chat/chat/citation/progress-tooltip.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -3171,11 +3166,6 @@
   "web/app/components/plugins/marketplace/templates/template-card.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/app/components/plugins/plugin-auth/authorize/add-oauth-button.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
     }
   },
   "web/app/components/plugins/plugin-auth/authorize/permission-selector.tsx": {

@@ -21,6 +21,7 @@ type OAuthVisibilityDialogProps = {
   onPermissionChange: (permission: CredentialPermission) => void
   onConfirm: () => Promise<void> | void
   loading?: boolean
+  errorMessage?: string
 }
 
 const OAuthVisibilityDialog = ({
@@ -30,6 +31,7 @@ const OAuthVisibilityDialog = ({
   onPermissionChange,
   onConfirm,
   loading = false,
+  errorMessage,
 }: OAuthVisibilityDialogProps) => {
   const { t } = useTranslation(['common', 'plugin'])
   const handleOpenChange = (nextOpen: boolean) => {
@@ -51,6 +53,11 @@ const OAuthVisibilityDialog = ({
           />
         </DialogHeader>
         <DialogBody>
+          {errorMessage && (
+            <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+              {errorMessage}
+            </p>
+          )}
           <PermissionSelector
             disabled={loading}
             permission={permission}

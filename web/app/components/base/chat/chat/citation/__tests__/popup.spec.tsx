@@ -107,6 +107,7 @@ it.each([
 )
 
 it('blocks duplicate downloads while pending and allows retry after a failed request', async () => {
+  const errorToast = vi.spyOn(toast, 'error')
   const response = createDeferred<{ url: string }>()
   mockDownloadDocument.mockReturnValueOnce(response.promise)
   const user = userEvent.setup()
@@ -119,6 +120,7 @@ it('blocks duplicate downloads while pending and allows retry after a failed req
   expect(mockDownloadDocument).toHaveBeenCalledTimes(1)
   await act(async () => response.reject(new Error('Download unavailable')))
   await waitFor(() => expect(download).toBeEnabled())
+  expect(errorToast).toHaveBeenCalledExactlyOnceWith('Download unavailable')
   expect(mockDownloadUrl).not.toHaveBeenCalled()
   await user.click(download)
   await waitFor(() =>
