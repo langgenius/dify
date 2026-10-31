@@ -94,7 +94,7 @@ class TestBillingPortal:
     ) -> None:
         resource = Invoices()
         method = unwrap(resource.get)
-        billing_portal.get_invoices.side_effect = billing.UpstreamUnavailableError
+        billing_portal.get_invoices.side_effect = billing.BillingInvoiceUpstreamUnavailableError
 
         with app.test_request_context("/billing/invoices"):
             with pytest.raises(BillingUnavailableError) as exc_info:
@@ -115,7 +115,7 @@ class TestBillingPortal:
         resource = Subscription()
         method = unwrap(resource.get)
         query = SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month")
-        billing_portal.get_subscription.side_effect = billing.UpstreamInvalidResponseError
+        billing_portal.get_subscription.side_effect = billing.BillingSubscriptionUpstreamInvalidResponseError
 
         with app.test_request_context("/billing/subscription"):
             with pytest.raises(BillingOperationFailedError) as exc_info:
@@ -130,20 +130,34 @@ class TestBillingPortal:
     @pytest.mark.parametrize(
         ("error", "expected"),
         [
-            (billing.UpstreamInvalidResponseError(status_code=400, reason="MISSING_PLAN"), BillingOperationFailedError),
             (
-                billing.UpstreamUnavailableError(status_code=500, reason="CREATE_SUBSCRIPTION_PAYMENT_LINK_FAILED"),
-                BillingUnavailableError,
-            ),
-            (billing.UpstreamUnavailableError(status_code=429, reason="REQUEST_IN_PROGRESS"), BillingUnavailableError),
-            (
-                billing.UpstreamInvalidResponseError(status_code=409, reason=UnknownErrorReason("PLAN_SHIPPED_LATER")),
+                billing.BillingSubscriptionUpstreamInvalidResponseError(status_code=400, reason="MISSING_PLAN"),
                 BillingOperationFailedError,
             ),
             (
-                billing.UpstreamUnavailableError(status_code=503, reason=UnknownErrorReason("PLAN_SHIPPED_LATER")),
+                billing.BillingSubscriptionUpstreamUnavailableError(
+                    status_code=500, reason="CREATE_SUBSCRIPTION_PAYMENT_LINK_FAILED"
+                ),
                 BillingUnavailableError,
             ),
+            (
+                billing.BillingSubscriptionUpstreamUnavailableError(status_code=429, reason="REQUEST_IN_PROGRESS"),
+                BillingUnavailableError,
+            ),
+            (
+                billing.BillingSubscriptionUpstreamInvalidResponseError(
+                    status_code=409, reason=UnknownErrorReason("PLAN_SHIPPED_LATER")
+                ),
+                BillingOperationFailedError,
+            ),
+            (
+                billing.BillingSubscriptionUpstreamUnavailableError(
+                    status_code=503, reason=UnknownErrorReason("PLAN_SHIPPED_LATER")
+                ),
+                BillingUnavailableError,
+            ),
+            (billing.BillingSubscriptionUpstreamInvalidResponseError(status_code=400), BillingOperationFailedError),
+            (billing.BillingSubscriptionUpstreamUnavailableError(), BillingUnavailableError),
         ],
     )
     def test_get_subscription_maps_every_reason_to_a_generic_billing_error(
@@ -151,7 +165,7 @@ class TestBillingPortal:
         app: Flask,
         request_context: RequestContext,
         billing_portal: MagicMock,
-        error: billing.UpstreamError,
+        error: billing.BillingSubscriptionUpstreamError,
         expected: type[Exception],
     ) -> None:
         resource = Subscription()
@@ -161,5 +175,41 @@ class TestBillingPortal:
             unwrap(resource.get)(
                 resource, SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month"), request_context
             )
+
+        assert exc_info.value.__cause__ is error
+
+    @pytest.mark.parametrize(
+        ("error", "expected"),
+        [
+            (
+                billing.BillingInvoiceUpstreamInvalidResponseError(status_code=400, reason="INVALID_INVOICE_REQUEST"),
+                BillingOperationFailedError,
+            ),
+            (
+                billing.BillingInvoiceUpstreamUnavailableError(status_code=500, reason="CREATE_INVOICE_PORTAL_FAILED"),
+                BillingUnavailableError,
+            ),
+            (
+                billing.BillingInvoiceUpstreamInvalidResponseError(
+                    status_code=409, reason=UnknownErrorReason("INVOICE_SHIPPED_LATER")
+                ),
+                BillingOperationFailedError,
+            ),
+            (billing.BillingInvoiceUpstreamUnavailableError(status_code=502), BillingUnavailableError),
+        ],
+    )
+    def test_get_invoices_maps_every_reason_to_a_generic_billing_error(
+        self,
+        app: Flask,
+        request_context: RequestContext,
+        billing_portal: MagicMock,
+        error: billing.BillingInvoiceUpstreamError,
+        expected: type[Exception],
+    ) -> None:
+        resource = Invoices()
+        billing_portal.get_invoices.side_effect = error
+
+        with app.test_request_context("/billing/invoices"), pytest.raises(expected) as exc_info:
+            unwrap(resource.get)(resource, request_context)
 
         assert exc_info.value.__cause__ is error

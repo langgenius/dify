@@ -325,9 +325,15 @@ class TestWorkspaceAccountCases:
             [
                 (account_errors.EducationVerificationFailedError(), "education_verify_failed", 400),
                 (account_errors.EducationRequestInProgressError(), "billing_request_in_progress", 429),
-                (billing.UpstreamUnavailableError(status_code=500, reason=""), "billing_unavailable", 503),
                 (
-                    billing.UpstreamInvalidResponseError(status_code=400, reason=UnknownErrorReason("SHIPPED_LATER")),
+                    billing.BillingEducationUpstreamUnavailableError(status_code=500, reason=""),
+                    "billing_unavailable",
+                    503,
+                ),
+                (
+                    billing.BillingEducationUpstreamInvalidResponseError(
+                        status_code=400, reason=UnknownErrorReason("SHIPPED_LATER")
+                    ),
                     "billing_operation_failed",
                     502,
                 ),
