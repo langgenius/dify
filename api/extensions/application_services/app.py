@@ -1,6 +1,8 @@
 """Composition of App use cases."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -13,6 +15,7 @@ from repositories.app.dsl_import_repository import DslImportRepository
 from repositories.app.enterprise_app_repository import EnterpriseAppRepository
 from repositories.app.export_repository import AppExportRepository
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
@@ -32,6 +35,8 @@ from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.oauth_server_service import OAuthServerService
 from services.rbac.members import MemberService
 from services.recommended_app_package_service import RecommendedAppPackageService
+from services.trigger.app_trigger_service import AppTriggerPublicationService, AppTriggerService
+from services.trigger.app_trigger_store import AppTriggerStore
 from services.workflow.dsl_import import DslImportService
 
 
@@ -43,6 +48,9 @@ class AppServices:
     discovery: AppDiscoveryService
     console: ConsoleAppService
     enterprise: EnterpriseAppService
+    triggers: AppTriggerStore
+    trigger_status: AppTriggerService
+    create_trigger_publication_service: Callable[[Session], AppTriggerPublicationService]
 
 
 def build_app_services(
@@ -61,6 +69,7 @@ def build_app_services(
         agent_importer=RosterAgentPackageImporter(),
         recommended_packages=recommended_packages,
     )
+    triggers = SQLAlchemyAppTriggerRepository(session_factory=database_client)
     return AppServices(
         imports=AppImportService(accounts=SQLAlchemyAccountRepository(database_client), definitions=transfers),
         exports=AppExportService(
@@ -88,6 +97,12 @@ def build_app_services(
             ),
             workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker=database_client),
             now=naive_utc_now,
+        ),
+        triggers=triggers,
+        trigger_status=AppTriggerService(triggers=triggers),
+        # Retain the session only within the caller's publication transaction.
+        create_trigger_publication_service=lambda session: AppTriggerPublicationService(
+            sync_triggers=partial(triggers.sync_publication, session=session)
         ),
     )
 

@@ -2,12 +2,15 @@ from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 
 import controllers.trigger.webhook as module
 from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow
+from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
 from services.errors.app import QuotaExceededError
+from services.trigger.app_trigger_service import AppTriggerService
 from tests.unit_tests.model_factories import make_workflow
 
 
@@ -22,9 +25,15 @@ class _AppScopedEndUserServicesStub:
     commands: object
 
 
+@dataclass(frozen=True)
+class _AppServicesStub:
+    trigger_status: AppTriggerService
+
+
 class _ApplicationServicesStub:
-    def __init__(self, commands: object) -> None:
+    def __init__(self, commands: object, trigger_status: AppTriggerService) -> None:
         self.app_scoped_end_users = _AppScopedEndUserServicesStub(commands)
+        self.apps = _AppServicesStub(trigger_status)
 
 
 @pytest.fixture(autouse=True)
@@ -38,9 +47,10 @@ def mock_jsonify():
 
 
 @pytest.fixture(autouse=True)
-def end_user_commands(monkeypatch: pytest.MonkeyPatch) -> object:
+def end_user_commands(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]) -> object:
     commands = object()
-    monkeypatch.setattr(module, "application_services", lambda: _ApplicationServicesStub(commands))
+    triggers = AppTriggerService(triggers=SQLAlchemyAppTriggerRepository(session_factory=sqlite_session_factory))
+    monkeypatch.setattr(module, "application_services", lambda: _ApplicationServicesStub(commands, triggers))
     return commands
 
 

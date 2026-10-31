@@ -42,7 +42,6 @@ project-excludes = [
   "controllers/console/app/test_workflow_node_output_inspector.py",
   "controllers/console/app/test_workflow_pause_details_api.py",
   "controllers/console/app/test_workflow_run_api.py",
-  "controllers/console/app/test_workflow_trigger_api.py",
   "controllers/console/app/test_wraps.py",
   "controllers/console/app/workflow_draft_variables_test.py",
   "controllers/console/auth/test_account_activation.py",
