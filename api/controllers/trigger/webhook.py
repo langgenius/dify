@@ -4,7 +4,7 @@ import time
 from flask import jsonify, request
 
 from controllers.common.access_response import webhook_not_found_response
-from controllers.common.errors import RequestBodyTooLargeError
+from controllers.common.errors import RequestBodyTooLargeError, reraise_http_error
 from controllers.trigger import bp
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import WebhookDebugEvent, build_webhook_pool_key
@@ -163,6 +163,7 @@ def handle_webhook_debug(webhook_id: str):
         return webhook_not_found_response()
     except WebhookBodyTooLargeError as error:
         raise RequestBodyTooLargeError(str(error)) from error
-    except Exception:
+    except Exception as error:
+        reraise_http_error(error)
         logger.exception("Webhook debug processing failed for %s", webhook_id)
         return jsonify({"error": "Internal server error", "message": "An internal error has occurred."}), 500
