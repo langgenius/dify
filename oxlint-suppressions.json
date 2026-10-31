@@ -3725,11 +3725,6 @@
       "count": 1
     }
   },
-  "web/app/components/snippet-list/components/snippet-create-button.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/snippets/components/__tests__/snippet-main.spec.tsx": {
     "typescript/no-deprecated": {
       "count": 1

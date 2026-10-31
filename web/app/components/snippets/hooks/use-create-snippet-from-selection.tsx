@@ -288,6 +288,7 @@ export const useCreateSnippetFromSelection = ({
   const [selectedSnippetInputFields, setSelectedSnippetInputFields] = useState<InputVar[]>([])
   const {
     createSnippetMutation,
+    createError,
     handleCloseCreateSnippetDialog,
     handleCreateSnippet,
     handleOpenCreateSnippetDialog,
@@ -326,6 +327,7 @@ export const useCreateSnippetFromSelection = ({
   const createSnippetDialog = (
     <CreateSnippetDialog
       isOpen={isCreateSnippetDialogOpen}
+      error={createError}
       selectedGraph={selectedSnippetGraph}
       inputFields={selectedSnippetInputFields}
       isSubmitting={isCreatingSnippet || createSnippetMutation.isPending}
