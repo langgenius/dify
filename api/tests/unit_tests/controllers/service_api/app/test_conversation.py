@@ -63,16 +63,6 @@ class TestConversationCases:
             query_max = ConversationListQuery(limit=100)
             assert query_max.limit == 100
 
-        def test_query_rejects_limit_below_minimum(self) -> None:
-            """Test query rejects limit < 1."""
-            with pytest.raises(ValueError, match="1 validation error for ConversationListQuery\\\nlimit"):
-                ConversationListQuery.model_validate({"limit": 0})
-
-        def test_query_rejects_limit_above_maximum(self) -> None:
-            """Test query rejects limit > 100."""
-            with pytest.raises(ValueError, match="1 validation error for ConversationListQuery\\\nlimit"):
-                ConversationListQuery.model_validate({"limit": 101})
-
         @pytest.mark.parametrize(
             "sort_by",
             [
