@@ -88,10 +88,9 @@ describe('PlanComp education actions', () => {
     const discountButton = screen.getByRole('button', { name: 'education.useEducationDiscount' })
     await user.click(discountButton)
 
-    expect(getSubscription).toHaveBeenCalledWith(
-      { query: { plan: 'professional', interval: 'year' } },
-      { context: { silent: true } },
-    )
+    expect(getSubscription).toHaveBeenCalledWith({
+      query: { plan: 'professional', interval: 'year' },
+    })
     expect(discountButton).toBeDisabled()
     await user.click(discountButton)
     expect(getSubscription).toHaveBeenCalledTimes(1)

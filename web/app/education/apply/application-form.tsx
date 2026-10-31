@@ -76,9 +76,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
     error: submitError,
     isPending,
     mutate: educationAdd,
-  } = useMutation(
-    consoleQuery.account.education.post.mutationOptions({ context: { silent: true } }),
-  )
+  } = useMutation(consoleQuery.account.education.post.mutationOptions())
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
       select: ({ is_student }) => is_student,

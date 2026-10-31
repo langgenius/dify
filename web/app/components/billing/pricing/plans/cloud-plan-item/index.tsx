@@ -130,10 +130,9 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
         return
       }
 
-      const { url } = await consoleClient.billing.subscription.get(
-        { query: { plan, interval: billingInterval } },
-        { context: { silent: true } },
-      )
+      const { url } = await consoleClient.billing.subscription.get({
+        query: { plan, interval: billingInterval },
+      })
       // Adb Block additional tracking block the gtag, so we need to redirect directly
       window.location.href = url
     } catch (error) {
