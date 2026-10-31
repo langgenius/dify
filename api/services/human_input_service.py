@@ -518,10 +518,9 @@ class HumanInputService:
 class ServiceAPIHumanInputService(HumanInputService):
     """Preserve legacy JSON paragraph values for app-token form submissions."""
 
-    @classmethod
     @override
     def _normalize_input_value(
-        cls,
+        self,
         *,
         tenant_id: str,
         form_input: FormInputConfig,
