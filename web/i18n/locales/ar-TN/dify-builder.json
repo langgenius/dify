@@ -333,6 +333,7 @@
   "preflight.pluginMissing": "{{count}} إضافات غير مثبتة",
   "reset": "بدء محادثة جديدة",
   "resourceNeedsAuthorization": "التفويض مطلوب",
+  "resourceNeedsSetup": "يلزم الإعداد",
   "resourceReady": "تم الإعداد · التشغيل غير متحقق منه",
   "runTest": "شغّل الاختبار",
   "running": "جارٍ التشغيل",

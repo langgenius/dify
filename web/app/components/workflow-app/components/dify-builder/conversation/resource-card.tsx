@@ -44,9 +44,11 @@ export const ResourceCard = memo(
                 >
                   {resource.meta}
                   {resource.meta && ' · '}
-                  {resource.readiness === 'missing_config'
-                    ? t(($) => $.resourceNeedsAuthorization, { ns: 'difyBuilder' })
-                    : t(($) => $.resourceReady, { ns: 'difyBuilder' })}
+                  {resource.readiness === 'ready'
+                    ? t(($) => $.resourceReady, { ns: 'difyBuilder' })
+                    : resource.readiness === 'missing_config'
+                      ? t(($) => $.resourceNeedsAuthorization, { ns: 'difyBuilder' })
+                      : t(($) => $.resourceNeedsSetup, { ns: 'difyBuilder' })}
                 </span>
               </span>
               <Checkbox
