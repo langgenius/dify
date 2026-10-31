@@ -4,28 +4,27 @@ import type {
   ListContactOptionsResponse,
   ListContactsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ReactElement, ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { ContactRecipientOption, ContactRecipientOptionProvider } from '../contact-provider'
 import type { HumanInputV2Recipient } from '../types'
 import type { Node } from '@/app/components/workflow/types'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import {
-  act,
-  fireEvent,
-  render as renderComponent,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createStore, Provider as JotaiProvider } from 'jotai'
-import { queryClientAtom } from 'jotai-tanstack-query'
 import { useState } from 'react'
-import { BlockEnum } from '@/app/components/workflow/types'
+import {
+  createEdge,
+  createNode,
+  createStartNode,
+} from '@/app/components/workflow/__tests__/fixtures'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { createTestQueryClient } from '@/test/query-client'
+import { renderWorkflowEditor } from '@/test/workflow-editor'
 import Recipients from '../components/recipients'
 
 const runtimeApi = vi.hoisted(() => ({
@@ -40,65 +39,24 @@ const runtimeApi = vi.hoisted(() => ({
   options: vi.fn<() => Promise<ListContactOptionsResponse>>(),
 }))
 
-vi.mock('@/service/console', async () => {
-  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
-    consoleQuery: createTanstackQueryUtils({
-      features: { get: runtimeApi.features },
-      workspaces: {
-        current: {
-          humanInput: {
-            v2: {
-              contacts: { get: runtimeApi.contacts },
-              contactOptions: { get: runtimeApi.options },
-            },
-          },
-          summary: { get: runtimeApi.summary },
-        },
-      },
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': runtimeApi.features,
+      'workspaces.current.humanInput.v2.contacts.get': runtimeApi.contacts,
+      'workspaces.current.humanInput.v2.contactOptions.get': runtimeApi.options,
+      'workspaces.current.summary.get': runtimeApi.summary,
     }),
   }
 })
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  __esModule: true,
-  default: function MockVarReferencePicker(props: {
-    onChange: (value: string[]) => void
-    trigger?: ReactElement
-  }) {
-    const [open, setOpen] = useState(false)
-    const variable = (
-      <button
-        type="button"
-        aria-label="insert-dynamic-recipient"
-        onClick={() => {
-          props.onChange(['start', 'owner_email'])
-          setOpen(false)
-        }}
-      />
-    )
-    return props.trigger ? (
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger render={props.trigger} />
-        <PopoverContent>{variable}</PopoverContent>
-      </Popover>
-    ) : (
-      variable
-    )
-  },
-}))
 
 const createFeaturesFixture = (centrallyManaged?: boolean): GetFeaturesResponse => ({
   ...zGetFeaturesResponse.parse({}),
   ...(centrallyManaged === undefined ? {} : { im_centrally_managed: centrallyManaged }),
 })
-
-const render = (ui: ReactElement, queryClient = createTestQueryClient()) =>
-  renderComponent(ui, {
-    wrapper: ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    ),
-  })
 
 const contact: ContactRecipientOption = {
   id: 'contact-evan',
@@ -151,9 +109,48 @@ const Harness = ({
   )
 }
 
+const startNode = createStartNode({
+  id: 'start',
+  data: {
+    title: 'Start',
+    variables: [
+      {
+        variable: 'owner_email',
+        label: 'Owner email',
+        type: InputVarType.textInput,
+        required: false,
+      },
+    ],
+  },
+})
+const recipientNode = createNode({
+  id: 'human-input-v2',
+  data: { title: 'Approval recipients', type: BlockEnum.HumanInput },
+})
+const prepareEditorQueryClient = (queryClient: QueryClient = createTestQueryClient()) => {
+  createConsoleQueryWrapper({ queryClient })
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  // Start the real feature request before workflow-provider defaults are seeded to preserve pending and error scenarios.
+  void queryClient.query(consoleQuery.features.get.queryOptions()).catch(() => undefined)
+  return queryClient
+}
+const render = (ui: ReactElement, queryClient?: QueryClient) =>
+  renderWorkflowEditor(ui, {
+    queryClient: prepareEditorQueryClient(queryClient),
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    nodes: [startNode, recipientNode],
+    edges: [createEdge({ source: startNode.id, target: recipientNode.id })],
+  })
+
 describe('Human Input v2 Recipients', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     runtimeApi.features.mockReset().mockResolvedValue(createFeaturesFixture(true))
     runtimeApi.contacts.mockResolvedValue({ data: [], total: 7, page: 1, limit: 1 })
     runtimeApi.options.mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 })
@@ -167,8 +164,8 @@ describe('Human Input v2 Recipients', () => {
       screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
     )
 
+    await waitFor(() => expect(runtimeApi.features).toHaveBeenCalledOnce())
     expect(await screen.findByRole('tab', { name: 'contacts.type.platform' })).toBeInTheDocument()
-    expect(runtimeApi.features).toHaveBeenCalledOnce()
   })
 
   it.each([false, undefined])(
@@ -433,25 +430,23 @@ describe('Human Input v2 Recipients', () => {
   it('opens variable insertion with slash only from an empty non-composing recipient input', async () => {
     const user = userEvent.setup()
     const observe = vi.fn()
-    render(<Harness observe={observe} />)
+    render(<Harness observe={observe} availableNodes={[startNode]} />)
     const input = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
 
     await user.type(input, 'draft/')
-    expect(
-      screen.queryByRole('button', { name: 'insert-dynamic-recipient' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText('owner_email')).not.toBeInTheDocument()
     await user.clear(input)
     fireEvent.keyDown(input, { key: '/', isComposing: true })
-    expect(
-      screen.queryByRole('button', { name: 'insert-dynamic-recipient' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText('owner_email')).not.toBeInTheDocument()
 
     await user.keyboard('/')
     expect(input).toHaveValue('')
-    await user.click(screen.getByRole('button', { name: 'insert-dynamic-recipient' }))
+    await user.click(await screen.findByText('owner_email'))
     expect(observe).toHaveBeenCalledExactlyOnceWith([
       { type: 'dynamic_email', selector: ['start', 'owner_email'] },
     ])
+    expect(screen.getByText('Start')).toBeInTheDocument()
+    expect(screen.getByText('owner_email')).toBeInTheDocument()
   })
 
   it('does not add a previous search result when Enter is pressed after clearing the input', async () => {
@@ -612,14 +607,9 @@ describe('Human Input v2 Recipients', () => {
         plan: null,
         credits: null,
       } satisfies CurrentWorkspaceSummaryResponse)
-      const store = createStore()
-      store.set(queryClientAtom, queryClient)
       render(
-        <JotaiProvider store={store}>
-          <QueryClientProvider client={queryClient}>
-            <Recipients nodeId="runtime-node" value={[]} onChange={vi.fn()} readonly={false} />
-          </QueryClientProvider>
-        </JotaiProvider>,
+        <Recipients nodeId="runtime-node" value={[]} onChange={vi.fn()} readonly={false} />,
+        queryClient,
       )
 
       await user.click(
@@ -919,7 +909,7 @@ describe('Human Input v2 Recipients', () => {
   it('adds Contact, one-time email, Dynamic Email and Initiator in order', async () => {
     const user = userEvent.setup()
     const observe = vi.fn()
-    render(<Harness observe={observe} />)
+    render(<Harness observe={observe} availableNodes={[startNode]} />)
 
     const emailInput = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
     await user.type(emailInput, 'owner@example.com{Enter}')
@@ -930,7 +920,7 @@ describe('Human Input v2 Recipients', () => {
     await user.click(
       screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.insertVariable' }),
     )
-    await user.click(screen.getByRole('button', { name: 'insert-dynamic-recipient' }))
+    await user.click(within(await screen.findByRole('dialog')).getByText('owner_email'))
     await user.click(
       screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
     )
@@ -946,6 +936,8 @@ describe('Human Input v2 Recipients', () => {
       { type: 'dynamic_email', selector: ['start', 'owner_email'] },
       { type: 'initiator' },
     ])
+    expect(screen.getByText('Start')).toBeInTheDocument()
+    expect(screen.getByText('owner_email')).toBeInTheDocument()
   })
 
   describe('Recipient remove buttons', () => {
