@@ -5,7 +5,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
-from typing import cast
 
 import pytest
 from sqlalchemy import select, update
@@ -25,6 +24,7 @@ from controllers.openapi.auth.requirements import (
     CheckSubject,
     CheckWorkspaceMember,
 )
+from controllers.openapi.auth.spec import spec_of
 from controllers.openapi.auth.subjects import AccountSubject
 from core.app.app_config.common.parameters_mapping import AppParametersDict
 from extensions.ext_application_services import ApplicationServices
@@ -42,7 +42,7 @@ from models.agent_config_entities import AgentSoulConfig
 from models.model import AppMode
 from services.agent.roster_service import AgentRosterService
 from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
-from tests.helpers.unit.controllers.openapi.auth._world import EndpointOwner, canonical
+from tests.helpers.unit.controllers.openapi.auth._world import canonical
 from tests.helpers.unit.model_factories import make_app
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
@@ -394,7 +394,8 @@ def test_describe_agent_with_its_service_api_off_is_refused(
 
 
 def test_describe_agent_declares_its_guards() -> None:
-    spec = cast(EndpointOwner, AgentDescribeApi.get).__spec__
+    spec = spec_of(AgentDescribeApi.get)
+    assert spec is not None
     expected = (
         CheckSubject(allowed=(AccountSubject,)),
         CheckWorkspaceMember(),
