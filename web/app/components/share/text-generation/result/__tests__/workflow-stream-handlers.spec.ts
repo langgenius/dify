@@ -300,6 +300,41 @@ describe('createWorkflowStreamHandlers', () => {
     }
   }
 
+  it.each([
+    WorkflowRunningStatus.Succeeded,
+    WorkflowRunningStatus.Failed,
+    WorkflowRunningStatus.Stopped,
+  ])('preserves a %s result after a late stream failure', (status) => {
+    const setup = setupHandlers()
+    setup.handlers.onWorkflowFinished?.({
+      event: 'workflow_finished',
+      task_id: 'task-1',
+      workflow_run_id: 'run-1',
+      data: {
+        id: 'run-1',
+        workflow_id: 'wf-1',
+        status,
+        outputs: { answer: 'done' },
+        error: status === WorkflowRunningStatus.Failed ? 'Execution failed' : '',
+        elapsed_time: 0,
+        total_tokens: 0,
+        total_steps: 0,
+        created_at: 0,
+        created_by: { id: 'user-1', name: 'User', email: 'user@example.com' },
+        finished_at: 0,
+      },
+    })
+    const notifications = setup.notify.mock.calls.length
+    expect(setup.workflowProcessData()?.status).toBe(status)
+
+    setup.handlers.onError?.('TypeError: terminated')
+    setup.handlers.onCompleted?.(true, 'TypeError: terminated')
+
+    expect(setup.workflowProcessData()?.status).toBe(status)
+    expect(setup.notify).toHaveBeenCalledTimes(notifications)
+    expect(setup.onCompleted).toHaveBeenCalledOnce()
+  })
+
   it('settles a failed stream once and preserves its error in the workflow result', () => {
     const setup = setupHandlers()
     setup.handlers.onError?.('Service unavailable')

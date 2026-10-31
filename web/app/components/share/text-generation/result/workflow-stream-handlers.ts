@@ -266,7 +266,7 @@ export const createWorkflowStreamHandlers = ({
 }: CreateWorkflowStreamHandlersParams): IOtherOptions => {
   let tempMessageId = ''
   let hasStartedResumeStream = false
-  let hasFailed = false
+  let hasFinished = false
 
   const finishWithFailure = () => {
     setRespondingFalse()
@@ -286,8 +286,8 @@ export const createWorkflowStreamHandlers = ({
   const otherOptions: IOtherOptions = {
     isPublicAPI,
     onError: (message) => {
-      if (hasFailed || message === 'AbortError' || message.startsWith('AbortError:')) return
-      hasFailed = true
+      if (hasFinished || message === 'AbortError' || message.startsWith('AbortError:')) return
+      hasFinished = true
       const error = message || t(($) => $['api.actionFailed'], { ns: 'common' })
       notify({ type: 'error', message: error })
       setWorkflowProcessData(
@@ -341,6 +341,8 @@ export const createWorkflowStreamHandlers = ({
       setWorkflowProcessData(finishWorkflowNode(getWorkflowProcessData(), data))
     },
     onWorkflowFinished: ({ data }) => {
+      if (hasFinished) return
+      hasFinished = true
       const workflowStatus = data.status as WorkflowRunningStatus | undefined
       const localizedError = localizeKnowledgeRetrievalV2Error(data.error, (key) =>
         t(($) => $[key], { ns: 'workflow' }),
