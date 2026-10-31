@@ -21,12 +21,12 @@ from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.node_queries import ConversationHistory, DatasourceCredentials, RetrieverAttachments
 
 if TYPE_CHECKING:
-    from core.app.apps.workflow_app_runner import WorkflowRunDriver
     from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
     from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
     from core.tools.__base.tool import Tool
     from core.tools.entities.tool_entities import ToolInvokeMessage
     from core.workflow.nodes.human_input.pause_reason import PauseReason
+    from services.workflow.execution.contracts import WorkflowRunDriver
 
 
 class PauseReasonResolver(Protocol):

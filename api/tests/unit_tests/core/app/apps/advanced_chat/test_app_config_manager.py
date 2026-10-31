@@ -1,8 +1,10 @@
 from unittest.mock import patch
 
-from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from models.model import App, AppMode
-from models.workflow import Workflow, WorkflowType
+from models.workflow import WorkflowType
+from repositories.workflow.definition_repository import workflow_snapshot
+from services.workflow.contracts import WorkflowSnapshot
+from services.workflow.execution.adapters.chatflow.app_config_manager import AdvancedChatAppConfigManager
 from tests.helpers.unit.model_factories import make_app, make_workflow
 
 
@@ -10,8 +12,8 @@ def _app() -> App:
     return make_app(name="Advanced Chat App", mode=AppMode.ADVANCED_CHAT, icon_type=None)
 
 
-def _workflow() -> Workflow:
-    return make_workflow(workflow_id="wf-1", workflow_type=WorkflowType.CHAT, graph="{}")
+def _workflow() -> WorkflowSnapshot:
+    return workflow_snapshot(make_workflow(workflow_id="wf-1", workflow_type=WorkflowType.CHAT, graph="{}"))
 
 
 class TestAdvancedChatAppConfigManager:
@@ -21,11 +23,11 @@ class TestAdvancedChatAppConfigManager:
 
         with (
             patch(
-                "core.app.apps.advanced_chat.app_config_manager.SensitiveWordAvoidanceConfigManager.convert",
+                "services.workflow.execution.adapters.chatflow.app_config_manager.SensitiveWordAvoidanceConfigManager.convert",
                 return_value=None,
             ),
             patch(
-                "core.app.apps.advanced_chat.app_config_manager.WorkflowVariablesConfigManager.convert",
+                "services.workflow.execution.adapters.chatflow.app_config_manager.WorkflowVariablesConfigManager.convert",
                 return_value=[],
             ),
         ):
@@ -45,31 +47,31 @@ class TestAdvancedChatAppConfigManager:
 
         with (
             patch(
-                "core.app.apps.advanced_chat.app_config_manager.FileUploadConfigManager.validate_and_set_defaults",
+                "services.workflow.execution.adapters.chatflow.app_config_manager.FileUploadConfigManager.validate_and_set_defaults",
                 side_effect=_add_key("file_upload", 1),
             ),
             patch(
-                "core.app.apps.advanced_chat.app_config_manager.OpeningStatementConfigManager.validate_and_set_defaults",
+                "services.workflow.execution.adapters.chatflow.app_config_manager.OpeningStatementConfigManager.validate_and_set_defaults",
                 side_effect=_add_key("opening_statement", 2),
             ),
             patch(
-                "core.app.apps.advanced_chat.app_config_manager.SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults",
+                "services.workflow.execution.adapters.chatflow.app_config_manager.SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults",
                 side_effect=_add_key("suggested_questions_after_answer", 3),
             ),
             patch(
-                "core.app.apps.advanced_chat.app_config_manager.SpeechToTextConfigManager.validate_and_set_defaults",
+                "services.workflow.execution.adapters.chatflow.app_config_manager.SpeechToTextConfigManager.validate_and_set_defaults",
                 side_effect=_add_key("speech_to_text", 4),
             ),
             patch(
-                "core.app.apps.advanced_chat.app_config_manager.TextToSpeechConfigManager.validate_and_set_defaults",
+                "services.workflow.execution.adapters.chatflow.app_config_manager.TextToSpeechConfigManager.validate_and_set_defaults",
                 side_effect=_add_key("text_to_speech", 5),
             ),
             patch(
-                "core.app.apps.advanced_chat.app_config_manager.RetrievalResourceConfigManager.validate_and_set_defaults",
+                "services.workflow.execution.adapters.chatflow.app_config_manager.RetrievalResourceConfigManager.validate_and_set_defaults",
                 side_effect=_add_key("retriever_resource", 6),
             ),
             patch(
-                "core.app.apps.advanced_chat.app_config_manager.SensitiveWordAvoidanceConfigManager.validate_and_set_defaults",
+                "services.workflow.execution.adapters.chatflow.app_config_manager.SensitiveWordAvoidanceConfigManager.validate_and_set_defaults",
                 side_effect=_add_key("sensitive_word_avoidance", 7),
             ),
         ):

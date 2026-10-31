@@ -33,10 +33,10 @@ from models import Account
 from models.model import App, EndUser
 from models.tool_runtime_contracts import WorkflowToolQueries
 from models.utils.file_input_compat import build_file_from_stored_mapping
-from models.workflow import Workflow
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.ports import WorkflowRuntime
+from services.workflow_execution_identity import build_workflow_execution_identity
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
@@ -111,9 +111,13 @@ class WorkflowTool(Tool):
         # transform the tool parameters
         tool_parameters, files = self._transform_args(tool_parameters=tool_parameters)
 
-        from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+        from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 
-        generator = WorkflowAppGenerator(execution_driver=self._workflow_runtime.execution_driver)
+        generator = WorkflowAppGenerator(
+            execution_driver=self._workflow_runtime.execution_driver,
+            runtime=self._workflow_runtime,
+            draft_variable_saver=self._draft_variable_saver,
+        )
         assert self.runtime is not None
         assert self.runtime.invoke_from is not None
 
@@ -132,8 +136,9 @@ class WorkflowTool(Tool):
             generator_args.update(extract_trace_session_id_from_args({"trace_session_id": self._trace_session_id}))
 
         result = generator.generate(
+            execution_identity=build_workflow_execution_identity(user),
             app_model=app,
-            workflow=cast(Workflow, workflow),
+            workflow=workflow,
             user=user,
             args=generator_args,
             invoke_from=self.runtime.invoke_from,
@@ -156,7 +161,7 @@ class WorkflowTool(Tool):
 
         outputs = data.get("outputs")
         if outputs is None:
-            outputs = {}
+            outputs = dict[str, Any]()
         else:
             outputs, files = self._extract_files(outputs)  # type: ignore
             for file in files:
@@ -319,7 +324,7 @@ class WorkflowTool(Tool):
                         file_var_list = [
                             build_file_from_stored_mapping(
                                 file_mapping=cast(Mapping[str, Any], f),
-                                tenant_id=str(self.runtime.tenant_id),
+                                tenant_id=self.runtime.tenant_id,
                             )
                             for f in file
                             if isinstance(f, Mapping)
@@ -345,7 +350,7 @@ class WorkflowTool(Tool):
             elif parameter.type == ToolParameter.ToolParameterType.FILES:
                 value = tool_parameters.get(parameter.name)
                 if not parameter.required and self._is_empty_files_parameter_value(value):
-                    value = []
+                    value = list[Any]()
                 parameters_result[parameter.name] = value
             else:
                 parameters_result[parameter.name] = tool_parameters.get(parameter.name)
@@ -376,7 +381,7 @@ class WorkflowTool(Tool):
                             item = self._update_file_mapping(item)
                             file = build_from_mapping(
                                 mapping=item,
-                                tenant_id=str(self.runtime.tenant_id),
+                                tenant_id=self.runtime.tenant_id,
                                 access_controller=_file_access_controller,
                             )
                             files.append(file)
@@ -384,7 +389,7 @@ class WorkflowTool(Tool):
                     value = self._update_file_mapping(value)
                     file = build_from_mapping(
                         mapping=value,
-                        tenant_id=str(self.runtime.tenant_id),
+                        tenant_id=self.runtime.tenant_id,
                         access_controller=_file_access_controller,
                     )
                     files.append(file)
