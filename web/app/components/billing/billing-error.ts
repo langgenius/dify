@@ -17,12 +17,12 @@ const billingErrorMessageKeyByCode = {
   billing_unavailable: 'errors.unavailable',
 } as const satisfies Record<BillingErrorCode, string>
 
+function isBillingErrorCode(code: string): code is BillingErrorCode {
+  return Object.hasOwn(billingErrorMessageKeyByCode, code)
+}
+
 export function billingErrorMessageKey(error: unknown) {
-  if (
-    error instanceof ORPCError &&
-    isDefinedError(error) &&
-    Object.hasOwn(billingErrorMessageKeyByCode, error.code)
-  )
-    return billingErrorMessageKeyByCode[error.code as BillingErrorCode]
+  if (error instanceof ORPCError && isDefinedError(error) && isBillingErrorCode(error.code))
+    return billingErrorMessageKeyByCode[error.code]
   return billingErrorMessageKeyByCode.billing_operation_failed
 }
