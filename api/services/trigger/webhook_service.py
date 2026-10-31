@@ -285,6 +285,9 @@ class WebhookService:
         # Process body parameters based on content type
         result["body"] = cls._process_body_parameters(raw_data["body"], node_data.body, node_data.content_type)
 
+        # Validate required file uploads for multipart data
+        cls._validate_required_files(raw_data["files"], node_data.body, node_data.content_type)
+
         return result
 
     @classmethod
@@ -552,7 +555,7 @@ class WebhookService:
 
             # Handle file parameters for multipart data
             if param_type == SegmentType.FILE and content_type == ContentType.FORM_DATA:
-                # File validation is handled separately in extract phase
+                # Required files are checked in _validate_required_files
                 continue
 
             # Check required parameters
@@ -722,6 +725,29 @@ class WebhookService:
                 sanitized_name = cls._sanitize_key(header_name).lower()
                 if header_name.lower() not in headers_lower and sanitized_name not in headers_sanitized:
                     raise ValueError(f"Required header missing: {header_name}")
+
+    @classmethod
+    def _validate_required_files(
+        cls,
+        files: dict[str, Any],
+        body_configs: Sequence[WebhookBodyParameter],
+        content_type: ContentType,
+    ) -> None:
+        """Validate required file parameters are present in multipart/form-data requests.
+
+        Args:
+            files: Processed file objects indexed by field name
+            body_configs: List of body parameter configurations
+            content_type: The configured request content type
+
+        Raises:
+            ValueError: If a required file is missing
+        """
+        if content_type != ContentType.FORM_DATA:
+            return
+        for body_config in body_configs:
+            if body_config.type == SegmentType.FILE and body_config.required and body_config.name not in files:
+                raise ValueError(f"Required file missing: {body_config.name}")
 
     @classmethod
     def _validate_http_metadata(cls, webhook_data: RawWebhookDataDict, node_data: WebhookData) -> ValidationResultDict:
