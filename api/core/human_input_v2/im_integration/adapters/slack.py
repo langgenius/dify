@@ -44,7 +44,7 @@ from slack_sdk.socket_mode.response import SocketModeResponse
 from slack_sdk.web import WebClient
 from slack_sdk.web.slack_response import SlackResponse
 
-from core.human_input import ButtonStyle
+from enums.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.avatar import AvatarReadError, read_avatars
 from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials

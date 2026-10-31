@@ -19,7 +19,7 @@ from lark_oapi.ws import client as sdk_ws_module
 from lark_oapi.ws.pb.pbbp2_pb2 import Frame
 from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter
 
-from core.human_input import ButtonStyle
+from enums.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
 from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials, LarkCredentials
