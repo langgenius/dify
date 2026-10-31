@@ -430,6 +430,12 @@ def test_workflow_events_snapshot_can_continue_across_pauses(
             return workflow_run
 
     snapshot_calls: list[dict[str, object]] = []
+    tool_providers = Mock()
+    monkeypatch.setattr(
+        human_input_form_module,
+        "application_services",
+        lambda: SimpleNamespace(tools=SimpleNamespace(tool_providers=tool_providers)),
+    )
 
     def snapshot_events() -> Iterator[dict[str, str]]:
         assert has_request_context()
@@ -470,6 +476,7 @@ def test_workflow_events_snapshot_can_continue_across_pauses(
             "tenant_id": "t1",
             "app_id": "app-1",
             "session_maker": ANY,
+            "tool_providers": tool_providers,
             "human_input_surface": HumanInputSurface.CONSOLE,
             "include_node_details": include_node_details,
             "close_on_pause": False,

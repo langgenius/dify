@@ -273,18 +273,40 @@ def test_initialization_worker_read_and_completion_use_injected_database(
         assert len(session.scalars(select(Message)).all()) == 1
 
 
-def test_error_event_updates_the_same_injected_message(
+def test_error_event_updates_only_the_same_injected_message(
     message_store: MessageStore, annotation_replies: AnnotationReplies
 ) -> None:
     sessions, records = message_store
     identity, pipeline = initialize(records, AppMode.CHAT, ChatAppGenerateEntity, annotation_replies)
+    with sessions.begin() as session:
+        session.add(
+            make_message(
+                message_id="other-message",
+                app_id=identity.app_id,
+                conversation_id=identity.conversation_id,
+                inputs={},
+                query="other question",
+                message={},
+                answer="",
+                status=MessageStatus.NORMAL,
+                message_unit_price=Decimal(0),
+                answer_unit_price=Decimal(0),
+                currency="USD",
+                from_source=ConversationFromSource.API,
+            )
+        )
+
     responses = list(pipeline._process_stream_response(publisher=None))
     assert len(responses) == 1
     with sessions() as session:
         message = session.get(Message, identity.message_id)
+        other_message = session.get(Message, "other-message")
         assert message is not None
+        assert other_message is not None
         assert message.status == MessageStatus.ERROR
         assert message.error == "generation failed"
+        assert other_message.status == MessageStatus.NORMAL
+        assert other_message.error is None
     engine: Engine = sessions.kw["bind"]
     assert checked_out_connections(engine) == 0
 

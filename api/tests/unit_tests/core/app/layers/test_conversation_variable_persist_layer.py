@@ -1,6 +1,5 @@
 from unittest.mock import Mock
 
-from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
 from core.workflow.system_variables import build_system_variables
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
 from graphon.engine.command import InMemoryChannel
@@ -10,6 +9,7 @@ from graphon.node_events import NodeRunResult
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from graphon.variables import StringVariable
 from libs.datetime_utils import naive_utc_now
+from services.workflow.execution.adapters.chatflow.conversation_variables import ConversationVariablePersistenceLayer
 
 
 def _build_graph_runtime_state(conversation_id: str) -> ReadOnlyRuntimeStateWrapper:
