@@ -17,7 +17,11 @@ from configs import dify_config
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import Actor
 from libs.datetime_utils import ensure_naive_utc
-from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession
+from models.dify_builder import (
+    DifyBuilderExecutionRequest,
+    DifyBuilderSession,
+    DifyBuilderSessionCommit,
+)
 from models.dify_builder_native_tests import (
     NativeEffectGrant,
     NativeInvocationState,
@@ -123,6 +127,7 @@ class NativeTestApiService:
             )
             if row is None or row.context.get("policy_version") != "builder-native-test-v1":
                 raise BuilderExecutionPolicyError("native_owner_mismatch")
+            self._require_uncleared(session, session_id)
             load_execution_owners(
                 session,
                 actor=actor,
@@ -136,6 +141,25 @@ class NativeTestApiService:
             app_id = row.app_id
         check_execution_permission(actor, app_id, self.sessions)
         return row
+
+    def _require_uncleared(self, session, session_id: str) -> None:
+        owner = session.scalar(
+            select(DifyBuilderSession).where(
+                DifyBuilderSession.id == session_id,
+                DifyBuilderSession.tenant_id == self.actor.tenant_id,
+                DifyBuilderSession.owner_account_id == self.actor.account_id,
+            )
+        )
+        if owner is None:
+            raise BuilderExecutionPolicyError("native_owner_mismatch")
+        commit = session.scalar(
+            select(DifyBuilderSessionCommit).where(
+                DifyBuilderSessionCommit.session_id == owner.id,
+                DifyBuilderSessionCommit.version == owner.version,
+            )
+        )
+        if commit is not None and (commit.context.get("task_control") or {}).get("conversation_clear"):
+            raise BuilderExecutionPolicyError("native_owner_mismatch")
 
     @staticmethod
     def _command(kind: str, body: dict, key: str) -> tuple[str, str]:
@@ -171,6 +195,7 @@ class NativeTestApiService:
         # The session lock serializes same-key admission without adding a second
         # idempotency table. SQL observations are bounded and never contain intent.
         with self.sessions() as session:
+            self._require_uncleared(session, session_id)
             builder = session.get(DifyBuilderSession, session_id)
             if builder is None:
                 raise BuilderExecutionPolicyError("native_owner_mismatch")
@@ -593,6 +618,10 @@ class NativeTestApiService:
         """Current durable snapshots for the session's versioned reconnect stream."""
         self._actor(actor)
         with self.sessions() as session:
+            try:
+                self._require_uncleared(session, session_id)
+            except BuilderExecutionPolicyError:
+                return ()
             request_ids = tuple(
                 session.scalars(
                     select(DifyBuilderExecutionRequest.id)

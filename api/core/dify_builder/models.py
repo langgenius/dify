@@ -140,6 +140,8 @@ class Run:
     execution_refusal: BuilderExecutionRefusal | None = None
     id: str = ""
     session_id: str = ""
+    # Stable logical task provenance; empty for historical rows without lineage.
+    origin_task_id: str = ""
     verification: RunVerification | None = None
     kind: str = ""  # original-failed | verify
     dify_run_id: str = ""
@@ -300,6 +302,45 @@ class BuildNodesResult:
     diagnostics: list[dict[str, Any]] = field(default_factory=list)
 
 
+TaskEvidenceStatus = Literal["not_run", "running", "succeeded", "failed", "unknown", "stopped"]
+
+
+@dataclass(kw_only=True)
+class TaskTestEvidence:
+    """Content-free references, not the native result or execution authority."""
+
+    run_id: str = ""
+    native_run_id: str = ""
+    status: TaskEvidenceStatus = "not_run"
+    execution_revision: str = ""
+    graph_revision: str = ""
+    sealed: bool = False
+    mode: str = ""
+    safety_outcome: str = ""
+    business_acceptance_state: Literal["passed", "failed", "unverified"] = "unverified"
+    business_acceptance_case_id: str = ""
+
+
+@dataclass(kw_only=True)
+class TaskSummary:
+    """Bounded historical facts; a declared contract is never an observed output."""
+
+    schema_version: Literal[1] = 1
+    task_id: str = ""
+    entry_mode: EntryMode = EntryMode.BUILD
+    outcome: Literal["kept_draft", "published"] = "kept_draft"
+    goal: str = ""
+    # Recorded requirements, without claiming every value was user-confirmed.
+    constraints: dict[str, str] = field(default_factory=dict)
+    resource_ids: list[str] = field(default_factory=list)
+    output_contract: str = ""
+    changed_node_ids: list[str] = field(default_factory=list)
+    change_summary: str = ""
+    test_evidence: TaskTestEvidence = field(default_factory=TaskTestEvidence)
+    unresolved_risks: list[str] = field(default_factory=list)
+    completion_version: int = 0
+
+
 @dataclass(kw_only=True)
 class DifyBuilderContext:
     """Per-session working state persisted as the commit context.
@@ -403,6 +444,11 @@ class DifyBuilderContext:
     paused: bool = False
     # Durable task controls; old contexts belong to generation zero.
     task_control: dict[str, Any] = field(default_factory=dict)
+    # Logical business identity survives Stop/Resume execution generations.
+    logical_task_id: str = ""
+    logical_task_ordinal: int = 0
+    task_status: Literal["", "active", "completed", "abandoned"] = ""
+    task_summaries: list[TaskSummary] = field(default_factory=list)
     checkpoint_seq: int = 0
 
     # -- Recovery fields (C-1, additive) --

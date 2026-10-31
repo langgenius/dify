@@ -30,7 +30,7 @@ from sqlalchemy.orm import sessionmaker
 
 import tasks.dify_builder_advance_task as task_mod
 from core.dify_builder.errors import BadRequestError, BusyError
-from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Graph, Run, Session
+from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Graph, Session
 from core.dify_builder.state import PcState
 from extensions.application_services import dify_builder_cognition_policy as policy_wiring
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
@@ -171,12 +171,8 @@ def _wire(
 def test_full_fix_flow_create_to_publish_success_eager_async(
     monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, draft_change: str | None
 ) -> None:
-    # Seed the failed run BEFORE creating the session -- get_run is by id
-    # with no FK, so any placeholder session_id works here.
-    repo.save_run(
-        "00000000-0000-0000-0000-000000000000",
-        Run(id="TR-1", kind="original-failed", dify_run_id="", status="failed", immutable=True),
-    )
+    # create_fix_session persists the original-failed Builder Run; the port
+    # supplies the native failed-run facts, so no orphan Builder row is needed.
 
     svc, port, events = _wire(monkeypatch, repo)
 
@@ -299,10 +295,6 @@ def test_submit_action_while_lock_held_raises_busy_eager_async(
 def test_terminal_state_frame_excludes_conversation_history(
     monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository
 ) -> None:
-    repo.save_run(
-        "00000000-0000-0000-0000-000000000000",
-        Run(id="TR-1", kind="original-failed", dify_run_id="", status="failed", immutable=True),
-    )
 
     svc, _port, events = _wire(monkeypatch, repo)
 
@@ -364,10 +356,6 @@ def test_native_verify_remains_available_when_builder_cognition_disabled(
 ) -> None:
     from services.dify_builder.application.cognition_policy import CognitionPolicy
 
-    repo.save_run(
-        "00000000-0000-0000-0000-000000000000",
-        Run(id="TR-1", kind="original-failed", dify_run_id="", status="failed", immutable=True),
-    )
     service, _, _ = _wire(monkeypatch, repo)
     view = service.create_fix_session(APP_ID, _actor(), failed_run_id="TR-1")
     repo.put_policy(_actor(), CognitionPolicy(False, (), None, (), 0, "explicit"), 0)

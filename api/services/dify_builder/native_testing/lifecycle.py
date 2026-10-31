@@ -70,6 +70,52 @@ if TYPE_CHECKING:
     from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
 
 
+def revoke_request_authority(session, *, request_id: str, tenant_id: str, cancellation_key: str) -> tuple[str, ...]:
+    """SQL-only revocation shared by Cancel and conversation Clear.
+
+    The caller owns the Session/request lock and authenticates the complete owner
+    chain. This never reads Workflow or payload storage and never claims cleanup.
+    """
+    scope = session.scalar(
+        select(NativeTestScope)
+        .where(NativeTestScope.request_id == request_id, NativeTestScope.tenant_id == tenant_id)
+        .with_for_update()
+    )
+    if scope is not None:
+        scope.cancelled = True
+    states = list(
+        session.scalars(
+            select(NativeInvocationState).where(
+                NativeInvocationState.request_id == request_id, NativeInvocationState.tenant_id == tenant_id
+            )
+        )
+    )
+    for state in states:
+        state.state, state.cancellation_key = "cancelled", state.cancellation_key or cancellation_key
+    for invocation in session.scalars(
+        select(NativeTestInvocation).where(
+            NativeTestInvocation.request_id == request_id, NativeTestInvocation.tenant_id == tenant_id
+        )
+    ):
+        invocation.active = False
+    for dispatch in session.scalars(
+        select(NativeDispatch).where(
+            NativeDispatch.request_id == request_id,
+            NativeDispatch.tenant_id == tenant_id,
+            NativeDispatch.state.in_(("queued", "published")),
+        )
+    ):
+        dispatch.state = "cancelled"
+    for operation in session.scalars(
+        select(NativeEffectOperation).where(
+            NativeEffectOperation.request_id == request_id, NativeEffectOperation.tenant_id == tenant_id
+        )
+    ):
+        if operation.state in {"pending", "denied", "cancelled"}:
+            operation.state = "not_dispatched"
+    return tuple(state.invocation_id for state in states if not state.cleanup_complete)
+
+
 class NativePendingResolution(FrozenDTO):
     """Facts from the actual configuration/form owner, never client completion flags."""
 
@@ -1575,40 +1621,12 @@ class NativeTestLifecycleService:
         ref = self._root_ref(actor, request_id)
         digest = self._idempotency("cancel", idempotency_key)
         with self.loader.locked(ref=ref, settlement=True) as (session, owned, scope):
-            scope.cancelled = True
-            states = session.scalars(
-                select(NativeInvocationState).where(
-                    NativeInvocationState.request_id == request_id, NativeInvocationState.tenant_id == owned.tenant_id
-                )
-            ).all()
             refs = tuple(
-                ref.model_copy(update={"invocation_id": state.invocation_id})
-                for state in states
-                if not state.cleanup_complete
+                ref.model_copy(update={"invocation_id": invocation_id})
+                for invocation_id in revoke_request_authority(
+                    session, request_id=request_id, tenant_id=owned.tenant_id, cancellation_key=digest
+                )
             )
-            for state in states:
-                state.state, state.cancellation_key = "cancelled", state.cancellation_key or digest
-            for invocation in session.scalars(
-                select(NativeTestInvocation).where(
-                    NativeTestInvocation.request_id == request_id, NativeTestInvocation.tenant_id == owned.tenant_id
-                )
-            ):
-                invocation.active = False
-            for dispatch in session.scalars(
-                select(NativeDispatch).where(
-                    NativeDispatch.request_id == request_id,
-                    NativeDispatch.tenant_id == owned.tenant_id,
-                    NativeDispatch.state.in_(("queued", "published")),
-                )
-            ):
-                dispatch.state = "cancelled"
-            for operation in session.scalars(
-                select(NativeEffectOperation).where(
-                    NativeEffectOperation.request_id == request_id, NativeEffectOperation.tenant_id == owned.tenant_id
-                )
-            ):
-                if operation.state in {"pending", "denied", "cancelled"}:
-                    operation.state = "not_dispatched"
         stopped = set()
         if self.runtime is not None:
             try:

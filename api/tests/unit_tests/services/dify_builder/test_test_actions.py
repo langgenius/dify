@@ -354,6 +354,22 @@ def test_native_metadata_read_selects_only_current_owned_input(
     actor = Actor(account_id="33333333-3333-3333-3333-333333333333", tenant_id="11111111-1111-1111-1111-111111111111")
     sid, input_id = "44444444-4444-4444-4444-444444444444", "55555555-5555-5555-5555-555555555555"
     at = datetime(2026, 10, 28)
+    from core.dify_builder.models import DifyBuilderContext, EntryMode, Session
+    from core.dify_builder.state import PcState
+
+    repo = SqlDifyBuilderRepository(sqlite_session_factory)
+    repo.create_session(
+        Session(
+            id=sid,
+            app_id="22222222-2222-2222-2222-222222222222",
+            tenant_id=actor.tenant_id,
+            owner_account_id=actor.account_id,
+            entry_mode=EntryMode.BUILD,
+            current_state=PcState.BUILD_AWAIT_TESTDATA,
+        ),
+        DifyBuilderContext(test_input_ref=input_id),
+        [],
+    )
     ids = [f"00000000-0000-0000-0000-{i:012d}" for i in range(1, 6)]
     with sqlite_session_factory.begin() as sql:
         for index, request_id in enumerate(ids):

@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictInt, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictBool, StrictInt, StringConstraints, model_validator
 
 from core.dify_builder.contract import (
     ActionKind,
@@ -28,6 +28,7 @@ from core.dify_builder.contract import (
     TestResultCard,
     UserItem,
 )
+from core.dify_builder.models import TaskSummary
 from core.dify_builder.real_call_consent import ConsentState
 from fields.base import ResponseModel
 from fields.workflow_stream_fields import WorkflowStreamPayload
@@ -87,6 +88,8 @@ class DifyBuilderCreateFixSessionPayload(DifyBuilderMaterialPayload):
     app_id: NonEmptyString
     scenario: Literal["fix"]
     failed_run_id: NonEmptyString
+    session_id: NonEmptyString | None = None
+    client_action_id: ClientTurnId | None = None
     model_config_data: SessionModel | None = Field(default=None, alias="model_config")
 
 
@@ -104,6 +107,8 @@ class DifyBuilderCreateChecklistFixSessionPayload(DifyBuilderMaterialPayload):
     scenario: Literal["fix"]
     checklist_errors: Annotated[list[DifyBuilderChecklistErrorPayload], Field(min_length=1)]
     failed_run_id: NonEmptyString | None = None
+    session_id: NonEmptyString | None = None
+    client_action_id: ClientTurnId | None = None
     model_config_data: SessionModel | None = Field(default=None, alias="model_config")
 
 
@@ -141,6 +146,49 @@ class DifyBuilderTaskControlPayload(DifyBuilderPayload):
     base_version: StrictInt
     client_action_id: ClientTurnId
     base_app_revision: str = ""
+
+
+class DifyBuilderConversationLifecyclePayload(DifyBuilderPayload):
+    """Lifecycle control uses Session CAS, never a graph revision."""
+
+    base_version: StrictInt = Field(ge=1)
+    client_action_id: ClientTurnId
+    expected_task_id: str = Field(default="", max_length=255)
+
+
+class DifyBuilderClearConversationPayload(DifyBuilderConversationLifecyclePayload):
+    confirmed: StrictBool
+
+    @model_validator(mode="after")
+    def require_confirmation(self) -> "DifyBuilderClearConversationPayload":
+        if self.confirmed is not True:
+            raise ValueError("Explicit clear confirmation is required")
+        return self
+
+
+class DifyBuilderFixIntentPayload(DifyBuilderPayload):
+    base_version: StrictInt = Field(ge=1)
+    client_action_id: ClientTurnId
+    failed_run_id: NonEmptyString | None = None
+    checklist_errors: list[DifyBuilderChecklistErrorPayload] = Field(default_factory=list, max_length=100)
+    model_config_data: SessionModel | None = Field(default=None, alias="model_config")
+
+    @model_validator(mode="after")
+    def require_one_source(self) -> "DifyBuilderFixIntentPayload":
+        if bool(self.failed_run_id) == bool(self.checklist_errors):
+            raise ValueError("Exactly one failed run or checklist source is required")
+        return self
+
+
+class DifyBuilderConversationLifecycleResponse(ResponseModel):
+    session_id: str
+    version: int
+    last_command_id: str
+    task_id: str
+    task_status: Literal["abandoned"]
+    conversation_cleared: bool
+    conversation_last_seq: int
+    settlement: Literal["settled", "pending", "unknown"]
 
 
 class DifyBuilderSubmitActionPayload(DifyBuilderPayload):
@@ -365,10 +413,21 @@ class DifyBuilderSessionStateResponse(ResponseModel):
     recovery: RecoveryRef | None = None
     model: SessionModel | None = None
     app_revision: DifyBuilderAppRevisionResponse | None = None
+    task_id: str = ""
+    task_status: Literal["active", "paused", "completed", "abandoned"] = "active"
+    task_summaries: list[TaskSummary] = Field(default_factory=list, max_length=8)
+    conversation_cleared: bool = False
+    pending_fix_context: RunContextCard | PreflightContextCard | None = None
 
 
 class DifyBuilderSessionViewResponse(DifyBuilderSessionStateResponse):
     last_command_id: str = ""
+
+
+class DifyBuilderFixIntentResponse(ResponseModel):
+    fix_intent_id: str
+    status: str
+    session: DifyBuilderSessionViewResponse
 
 
 class DifyBuilderConversationPageResponse(ResponseModel):

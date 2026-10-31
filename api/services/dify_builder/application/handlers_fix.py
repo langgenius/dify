@@ -1667,6 +1667,9 @@ def handle_await_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_REQUESTED_A_REVERT)))
         return StepResult(next=PcState.SUCCESS, context=fc, items=items)
     # default: keep_draft
+    from services.dify_builder.task_lifecycle import record_task_completion
+
+    record_task_completion(env, s, fc, "kept_draft")
     items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_KEPT_THE_DRAFT)))
     return StepResult(next=PcState.SUCCESS, context=fc, items=items)
 
@@ -1708,6 +1711,9 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
         copy_text(BuilderCopyId.PUBLISH_COMPLETE, version=published.version_name, status=published.status),
         execution=execution,
     )
+    from services.dify_builder.task_lifecycle import record_task_completion
+
+    record_task_completion(env, s, fc, "published")
     return StepResult(next=PcState.SUCCESS, context=fc, items=items)
 
 

@@ -329,6 +329,7 @@ def test_execution_evidence_round_trips_without_historical_backfill(repo: SqlDif
         dify_run_id="native",
         verification=evidence,
     )
+    repo.create_session(_fix_session(id="session"), DifyBuilderContext(), [])
     repo.save_run("session", run)
     restored = repo.get_run("receipt-run")
     assert restored.verification is not None

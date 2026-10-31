@@ -2527,7 +2527,19 @@ def test_publish_verification_projection_and_submit(
             no_output_dead_branch=False,
         )
     if status != "missing":
-        repo.save_run("66666666-6666-6666-6666-666666666666" if status == "foreign" else s.id, run)
+        run_session_id = s.id
+        if status == "foreign":
+            foreign = Session(
+                id="66666666-6666-6666-6666-666666666666",
+                app_id=APP_ID,
+                tenant_id=TENANT_ID,
+                owner_account_id=OTHER_ACCOUNT_ID,
+                entry_mode=mode,
+                current_state=state,
+            )
+            repo.create_session(foreign, DifyBuilderContext(), [])
+            run_session_id = foreign.id
+        repo.save_run(run_session_id, run)
     identity = ["rev", "graph"]
     svc = DifyBuilderService(
         repo,

@@ -30,9 +30,14 @@ from extensions.ext_redis import RedisClientWrapper
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import Base
 from models.dify_builder import (
+    DifyBuilderCheckpoint,
     DifyBuilderConversationItem,
+    DifyBuilderExecutionRequest,
+    DifyBuilderRun,
     DifyBuilderSession,
     DifyBuilderSessionCommit,
+    DifyBuilderSnapshot,
+    DifyBuilderTestInput,
     DifyBuilderWorkflowWriter,
 )
 from models.model import App, AppMode
@@ -101,6 +106,11 @@ def infrastructure() -> Iterator[Infrastructure]:
                 DifyBuilderWorkflowWriter,
                 DifyBuilderSessionCommit,
                 DifyBuilderConversationItem,
+                DifyBuilderCheckpoint,
+                DifyBuilderExecutionRequest,
+                DifyBuilderRun,
+                DifyBuilderSnapshot,
+                DifyBuilderTestInput,
             )
         ]
         Base.metadata.create_all(engine, tables=tables)
@@ -473,3 +483,100 @@ def test_replacement_token_fences_sql_session_cas_at_unchanged_version(harness: 
             session.id, session.version, PcState.BUILD_PLAN_APPROVAL, context, []
         )
     assert version == session.version + 1
+
+
+def test_clear_fences_sql_inserts_after_a_worker_last_checked(harness: Harness) -> None:
+    """A real SQL fence closes the check→insert gap while Redis is released."""
+    from threading import Event
+
+    from core.dify_builder.models import Checkpoint, DifyBuilderContext, EntryMode, Run, Session, Snapshot, TestInput
+    from services.dify_builder.conversation_lifecycle import clear
+
+    tenant = harness.create_tenant()
+    actor = harness.create_actor(tenant)
+    app = harness.create_app(actor)
+    session = Session(
+        app_id=app,
+        tenant_id=tenant,
+        owner_account_id=actor.account_id,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_PLAN_APPROVAL,
+    )
+    harness.repo.create_session(session, DifyBuilderContext(goal_text="Synthetic clear race"), [])
+    token = harness.service._acquire_workflow_writer(session.id)
+    assert token is not None
+    checked, cleared = Event(), Event()
+
+    def worker() -> list[str]:
+        fence = ExecutionFence(
+            session.id,
+            0,
+            lambda: require_active(harness.repo, session.id, 0, writer_token=token),
+            {},
+            writer_token=token,
+        )
+        outcomes = []
+        with execution_scope(fence):
+            fence.check()
+            checked.set()
+            assert cleared.wait(15)
+            writes = (
+                lambda: harness.repo.create_checkpoint(
+                    Checkpoint(session_id=session.id, state=session.current_state), Snapshot(session_id=session.id)
+                ),
+                lambda: harness.repo.save_run(session.id, Run(kind="verify", status="failed")),
+                lambda: harness.repo.save_test_input(TestInput(session_id=session.id, inputs={"synthetic": "value"})),
+            )
+            for write in writes:
+                try:
+                    write()
+                except ConflictError:
+                    outcomes.append("fenced")
+        return outcomes
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pending = pool.submit(worker)
+        assert checked.wait(15)
+        receipt = clear(
+            harness.service, session.id, actor, base_version=1, client_action_id="clear-race", confirmed=True
+        )
+        cleared.set()
+        assert pending.result(timeout=15) == ["fenced", "fenced", "fenced"]
+    assert receipt["conversation_cleared"]
+    assert not session_lock.exists(session.id)
+    assert harness.repo.list_conversation(session.id) == []
+
+
+def test_first_fix_selection_and_creation_is_serialized_under_app_lock(harness: Harness) -> None:
+    from core.dify_builder.models import DifyBuilderContext, EntryMode, Run, Session
+
+    tenant = harness.create_tenant()
+    actor = harness.create_actor(tenant)
+    app = harness.create_app(actor)
+    barrier = Barrier(2, timeout=15)
+
+    def select_or_create(_index: int) -> tuple[str, bool]:
+        candidate = Session(
+            app_id=app,
+            tenant_id=tenant,
+            owner_account_id=actor.account_id,
+            entry_mode=EntryMode.FIX,
+            current_state=PcState.FIX_DIAGNOSE,
+        )
+        barrier.wait()
+        source = Run(
+            id=str(uuid4()), kind="original-failed", status="failed", immutable=True, dify_run_id="synthetic-failed"
+        )
+        session, created = harness.repo.create_fix_session_or_select(
+            candidate, DifyBuilderContext(failed_run_id=source.id), [], source_run=source
+        )
+        _, context = harness.repo.get_session(session.id)
+        saved = harness.repo.get_run(context.failed_run_id)
+        assert saved.dify_run_id == "synthetic-failed"
+        assert saved.origin_task_id == session.id + ":0"
+        return session.id, created
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        outcomes = list(pool.map(select_or_create, (0, 1)))
+    assert outcomes[0][0] == outcomes[1][0]
+    assert sorted(created for _, created in outcomes) == [False, True]

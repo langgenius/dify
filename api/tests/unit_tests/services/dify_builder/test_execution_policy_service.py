@@ -274,7 +274,7 @@ def owned() -> Iterator[Owned]:
                     session_id=session_id,
                     version=1,
                     state="build.await_testdata",
-                    context=context_to_dict(DifyBuilderContext()),
+                    context=context_to_dict(DifyBuilderContext(test_input_ref=ti_id)),
                     actor="",
                 ),
                 DifyBuilderTestInput(

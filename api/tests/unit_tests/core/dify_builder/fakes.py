@@ -121,7 +121,7 @@ class InMemoryRepository(Repository):
     """
 
     def __init__(self) -> None:
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._sessions: dict[str, Session] = {}
         self._contexts: dict[str, DifyBuilderContext] = {}
         self._history: dict[tuple[str, int], tuple[Session, DifyBuilderContext]] = {}
@@ -170,6 +170,112 @@ class InMemoryRepository(Repository):
             if session is None:
                 raise NotFoundError(f"session {id} not found")
             return copy.deepcopy(session), copy.deepcopy(self._contexts[id])
+
+    @override
+    def create_fix_session_or_select(
+        self,
+        session: Session,
+        initial_fc: DifyBuilderContext,
+        items: list[ConversationItem],
+        source_run: Run | None = None,
+    ) -> tuple[Session, bool]:
+        with self._lock:
+            owned = [
+                candidate
+                for candidate in self._sessions.values()
+                if (candidate.tenant_id, candidate.app_id, candidate.owner_account_id)
+                == (session.tenant_id, session.app_id, session.owner_account_id)
+                and not self._contexts[candidate.id].task_control.get("conversation_clear")
+            ]
+            writer = self._workflow_writers.get((session.tenant_id, session.app_id))
+            selected = next(
+                (
+                    candidate
+                    for candidate in owned
+                    if writer and writer.expires_at > monotonic() and writer.session_id == candidate.id
+                ),
+                None,
+            )
+            if selected is None and owned:
+                selected = max(owned, key=lambda candidate: (candidate.updated_at, candidate.created_at, candidate.id))
+            if selected is not None:
+                return copy.deepcopy(selected), False
+            self.create_session(session, initial_fc, items)
+            if source_run is not None:
+                from services.dify_builder.task_lifecycle import task_identity
+
+                source_run.origin_task_id = task_identity(session, initial_fc)
+                self.save_run(session.id, source_run)
+            return copy.deepcopy(session), True
+
+    @override
+    def activate_abandoned_continuation(
+        self,
+        session_id: str,
+        actor: Actor,
+        *,
+        base_version: int,
+        client_turn_id: str,
+        text: str,
+        app_revision: str,
+        dsl: Graph,
+        expected_task_id: str = "",
+    ) -> tuple[Session, DifyBuilderContext, bool]:
+        from runtime_contracts.builder.execution import canonical_digest
+        from services.dify_builder.conversation_tasks import prepare_abandoned_continuation
+        from services.dify_builder.task_lifecycle import task_identity
+
+        intent = {
+            "base_version": base_version,
+            "client_turn_id": client_turn_id,
+            "text_digest": canonical_digest(text),
+            "expected_task_id": expected_task_id,
+        }
+        with self._lock:
+            session, context = self.get_session(session_id)
+            if (session.tenant_id, session.owner_account_id) != (actor.tenant_id, actor.account_id):
+                raise NotFoundError("session not found")
+            if context.task_control.get("conversation_clear"):
+                raise ConflictError("conversation has been cleared")
+            prior = next(
+                (
+                    snapshot[1].task_control["fresh_goal_receipt"]
+                    for (owner, _version), snapshot in reversed(list(self._history.items()))
+                    if owner == session_id
+                    and snapshot[1].task_control.get("fresh_goal_receipt", {}).get("id") == client_turn_id
+                ),
+                None,
+            )
+            if prior is not None:
+                if prior["intent"] != intent:
+                    raise ConflictError("goal identity reused with different intent")
+                return session, context, False
+            if session.version != base_version or (
+                expected_task_id and expected_task_id != task_identity(session, context)
+            ):
+                raise ConflictError("fresh goal targets a superseded task")
+            if not client_turn_id or not text.strip():
+                raise ConflictError("fresh goal and turn identity are required")
+            next_state, fresh = prepare_abandoned_continuation(session, context, text, dsl, app_revision)
+            item = ConversationItem(
+                seq=fresh.next_seq,
+                kind="user",
+                payload={"text": text, "turn_id": client_turn_id},
+                at_version=session.version + 1,
+            )
+            fresh.next_seq += 1
+            fresh.last_command_id = client_turn_id
+            fresh.task_control["fresh_goal_receipt"] = {
+                "id": client_turn_id,
+                "intent": intent,
+                "old_task_id": task_identity(session, context),
+                "new_task_id": task_identity(session, fresh),
+                "activated_version": session.version + 1,
+                "generation": fresh.task_control["generation"],
+            }
+            session.version = self.compare_and_advance(session.id, session.version, next_state, fresh, [item])
+            session.current_state = next_state
+            return session, fresh, True
 
     @override
     def reserve_workflow_writer(self, session_id: str, token: str, generation: int, lease_seconds: int) -> bool:

@@ -74,6 +74,7 @@ from services.dify_builder.test_actions import TEST_ACTIONS, TestActionPort, par
 if TYPE_CHECKING:
     from core.dify_builder.real_call_consent import ConsentReceipt
     from services.dify_builder.attachment_intake import BuilderAttachmentIntake
+    from services.dify_builder.fix_intents import FixIntentRepository
     from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 
 logger = logging.getLogger(__name__)
@@ -991,8 +992,10 @@ class DifyBuilderService:
         stream_read_scope_fn: Callable[[], AbstractContextManager] | None = None,
         attachment_intake: "BuilderAttachmentIntake | None" = None,
         cognition_policy_fn: Callable[[Actor, dict | None], dict] | None = None,
+        fix_intent_repo: "FixIntentRepository | None" = None,
     ) -> None:
         # None: this instance cannot execute confirmed Tool tests (all existing callers).
+        self._fix_intent_repo = fix_intent_repo
         self._cognition_policy_fn = cognition_policy_fn
         self._real_call_consent = real_call_consent
         self._attachment_intake = attachment_intake
@@ -1026,11 +1029,24 @@ class DifyBuilderService:
             self._attachment_intake.authorize_uploads(actor, ids)
         return ids
 
-    def _seed_material(self, session: Session, context: DifyBuilderContext, actor: Actor, ids: list[str]) -> None:
+    def _seed_material(
+        self,
+        session: Session,
+        context: DifyBuilderContext,
+        actor: Actor,
+        ids: list[str],
+        *,
+        client_turn_id: str | None = None,
+    ) -> None:
         if ids:
             assert self._attachment_intake is not None
             self._attachment_intake.submit(
-                session, context, actor, text="", upload_file_ids=ids, client_turn_id="create:" + session.id
+                session,
+                context,
+                actor,
+                text="",
+                upload_file_ids=ids,
+                client_turn_id=client_turn_id or "create:" + session.id,
             )
 
     def _get_app_revision(self, app_id: str, actor: Actor) -> str:
@@ -1131,7 +1147,9 @@ class DifyBuilderService:
         checklist_errors: list[ChecklistError] | list[dict] | None = None,
         model_config: dict | None = None,
         attachments: list[str] | None = None,
-    ) -> tuple[str, Action]:
+        session_id: str | None = None,
+        client_action_id: str | None = None,
+    ) -> tuple[str, Action | None]:
         """Shared setup for ``create_fix_session``/``create_fix_session_stream``:
         everything through persisting the session (and the failed-run record)
         up to -- but not including -- the ``request_fix`` dispatch.
@@ -1144,6 +1162,7 @@ class DifyBuilderService:
         ``dify.node_outputs``). Checklist takes precedence when errors are
         present (no failed run on that path).
         """
+        requested_model_config = model_config
         if failed_run_id is not None and not isinstance(failed_run_id, str):
             raise BadRequestError("failed_run_id must be a string")
         failed_run_id = (failed_run_id or "").strip() or None
@@ -1151,6 +1170,40 @@ class DifyBuilderService:
         if not failed_run_id and not checklist_errors:
             raise BadRequestError("failed_run_id or checklist_errors is required")
         app_id = self._authorize_app(app_id, actor)
+        if self._fix_intent_repo is not None:
+            selected = self._fix_intent_repo.select_conversation(actor, app_id, session_id)
+            if selected is not None:
+                from services.dify_builder.fix_intents import prepare_fix_intent
+                from services.dify_builder.task_lifecycle import task_identity
+
+                selected_head, selected_context = self._repo.get_session(selected)
+                receipt = prepare_fix_intent(
+                    self,
+                    selected,
+                    actor,
+                    failed_run_id=failed_run_id,
+                    checklist_errors=checklist_errors,
+                    model_config=model_config,
+                    client_action_id=client_action_id
+                    or "fix:"
+                    + canonical_digest(
+                        {
+                            "task": task_identity(selected_head, selected_context),
+                            "run": failed_run_id,
+                            "checklist": [asdict(item) for item in (checklist_errors or [])],
+                            "model": requested_model_config,
+                            "attachments": attachments,
+                        }
+                    ),
+                    attachments=attachments,
+                )
+                return receipt.session.session_id, None
+        if self._fix_intent_repo is not None:
+            self._fix_intent_repo.validate_source(
+                actor,
+                app_id,
+                {"kind": "checklist"} if checklist_errors else {"kind": "run", "failed_run_id": failed_run_id},
+            )
         attachment_ids = self._validate_create_material(actor, attachments)
         model_config = self._validate_model_config(actor, model_config)
         app_revision = self._get_app_revision(app_id, actor)
@@ -1212,9 +1265,38 @@ class DifyBuilderService:
                 trace_ref="",
             )
         items = [context_card.to_item(seq=0, at_version=0)]
-        self._repo.create_session(s, fc, items)  # assigns s.id, s.version = 1
+        if self._fix_intent_repo is not None:
+            selected, created = self._repo.create_fix_session_or_select(s, fc, items, source_run=failed_run)
+            if not created:
+                from services.dify_builder.fix_intents import prepare_fix_intent
+                from services.dify_builder.task_lifecycle import task_identity
+
+                selected_head, selected_context = self._repo.get_session(selected.id)
+                receipt = prepare_fix_intent(
+                    self,
+                    selected.id,
+                    actor,
+                    failed_run_id=failed_run_id,
+                    checklist_errors=checklist_errors,
+                    model_config=requested_model_config,
+                    client_action_id=client_action_id
+                    or "fix:"
+                    + canonical_digest(
+                        {
+                            "task": task_identity(selected_head, selected_context),
+                            "run": failed_run_id,
+                            "checklist": [asdict(item) for item in (checklist_errors or [])],
+                            "model": requested_model_config,
+                            "attachments": attachments,
+                        }
+                    ),
+                    attachments=attachments,
+                )
+                return receipt.session.session_id, None
+        else:
+            self._repo.create_session(s, fc, items)  # assigns s.id, s.version = 1
         self._seed_material(s, fc, actor, attachment_ids)
-        if failed_run is not None:
+        if failed_run is not None and self._fix_intent_repo is None:
             # Persist the failed-run record BEFORE dispatch so the enqueued
             # advance's diagnose can resolve fc.failed_run_id.
             self._repo.save_run(s.id, failed_run)
@@ -1229,10 +1311,12 @@ class DifyBuilderService:
         checklist_errors: list[ChecklistError] | list[dict] | None = None,
         model_config: dict | None = None,
         attachments: list[str] | None = None,
+        session_id: str | None = None,
+        client_action_id: str | None = None,
     ) -> SessionView:
         """Port of Go ``CreateFixSession``, extended to record the failed run."""
         session_id, action = self._prepare_fix_session(
-            app_id, actor, failed_run_id, checklist_errors, model_config, attachments
+            app_id, actor, failed_run_id, checklist_errors, model_config, attachments, session_id, client_action_id
         )
         if action is not None:
             self.dispatch(session_id, action, actor)
@@ -1246,6 +1330,8 @@ class DifyBuilderService:
         checklist_errors: list[ChecklistError] | list[dict] | None = None,
         model_config: dict | None = None,
         attachments: list[str] | None = None,
+        session_id: str | None = None,
+        client_action_id: str | None = None,
     ) -> Iterator[str]:
         """Streaming counterpart of ``create_fix_session``: subscribes to the
         session's progress channel BEFORE dispatching the initial
@@ -1253,12 +1339,12 @@ class DifyBuilderService:
         from services.dify_builder.wiring import stream_advance_frames
 
         session_id, action = self._prepare_fix_session(
-            app_id, actor, failed_run_id, checklist_errors, model_config, attachments
+            app_id, actor, failed_run_id, checklist_errors, model_config, attachments, session_id, client_action_id
         )
-        initial_items = self._repo.list_conversation(session_id)
+        initial_items = self._repo.list_conversation(session_id) if action is not None else []
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
-            command_id = self.dispatch(session_id, action, actor)
+            command_id = self.dispatch(session_id, action, actor) if action is not None else ""
             view_dict = asdict(self.get_session_view(session_id, actor))
         except Exception:
             if subscription is not None:
@@ -1267,10 +1353,12 @@ class DifyBuilderService:
         return stream_advance_frames(
             view_dict,
             subscription,
-            expect_advance=True,
+            expect_advance=action is not None,
+            emit_command_finished_when_settled=True,
             command_id=command_id,
             initial_items=initial_items,
             read_session_view=lambda: self._read_stream_session_view(session_id, actor),
+            conversation_cleared=lambda: self.is_conversation_cleared(session_id, actor),
         )
 
     def _prepare_build_session(
@@ -1367,6 +1455,7 @@ class DifyBuilderService:
             command_id=command_id,
             initial_items=initial_items,
             read_session_view=lambda: self._read_stream_session_view(session_id, actor),
+            conversation_cleared=lambda: self.is_conversation_cleared(session_id, actor),
         )
 
     def _prepare_edit_session(
@@ -1459,13 +1548,20 @@ class DifyBuilderService:
             command_id=command_id,
             initial_items=initial_items,
             read_session_view=lambda: self._read_stream_session_view(session_id, actor),
+            conversation_cleared=lambda: self.is_conversation_cleared(session_id, actor),
         )
 
     def _read_stream_session_view(self, session_id: str, actor: Actor) -> dict[str, object] | None:
         with self._stream_read_scope_fn():
             _, context = self._get_authorized_session(session_id, actor)
-            if self._test_actions is not None and self._test_actions.observation_initializing(
-                actor=actor, session_id=session_id, test_input_id=context.test_input_ref
+            from services.dify_builder.conversation_lifecycle import is_conversation_cleared
+
+            if (
+                not is_conversation_cleared(context)
+                and self._test_actions is not None
+                and self._test_actions.observation_initializing(
+                    actor=actor, session_id=session_id, test_input_id=context.test_input_ref
+                )
             ):
                 return None
             view = asdict(self.get_session_view(session_id, actor))
@@ -1502,9 +1598,57 @@ class DifyBuilderService:
             base_app_revision=base_app_revision,
         )
 
+    def clear_conversation(self, session_id: str, actor: Actor, **payload) -> dict:
+        from services.dify_builder.conversation_lifecycle import clear
+
+        return clear(self, session_id, actor, **payload)
+
+    def abandon_task(self, session_id: str, actor: Actor, **payload) -> dict:
+        from services.dify_builder.conversation_lifecycle import abandon
+
+        return abandon(self, session_id, actor, **payload)
+
+    def prepare_fix_intent(self, session_id: str, actor: Actor, *, base_version: int, **payload):
+        from services.dify_builder.fix_intents import prepare_fix_intent
+        from services.dify_builder.task_lifecycle import task_identity
+
+        current, context = self._get_authorized_session(session_id, actor)
+        if type(base_version) is not int or base_version < 1:
+            raise BadRequestError("base_version must be a positive integer")
+        observed, previous = self._repo.get_session_at_version(session_id, base_version)
+        if self._fix_intent_repo is None:
+            raise BadRequestError("Fix intake is unavailable")
+        client_action_id = payload.get("client_action_id")
+        saved = (
+            self._fix_intent_repo.find(actor, session_id, client_action_id)
+            if isinstance(client_action_id, str)
+            else None
+        )
+        target = task_identity(observed, previous)
+        if saved is not None:
+            if saved.target_task_id != target:
+                raise ConflictError("Fix replay base targets a different task")
+            # The use case still validates source/model/material and the saved
+            # body digest. A known key permits replay after its own activation,
+            # never arbitrary reuse of an old task's base for a new request.
+        elif task_identity(current, context) != target:
+            raise ConflictError("Fix intent targets a superseded task")
+        return prepare_fix_intent(self, session_id, actor, **payload)
+
+    def is_conversation_cleared(self, session_id: str, actor: Actor) -> bool:
+        from services.dify_builder.conversation_lifecycle import is_conversation_cleared
+
+        with self._stream_read_scope_fn():
+            _, context = self._get_authorized_session(session_id, actor)
+            return is_conversation_cleared(context)
+
     def get_session_view(self, session_id: str, actor: Actor) -> SessionView:
         """Return the bounded session projection; history has its own API."""
         s, fc = self._get_authorized_session(session_id, actor)
+        from services.dify_builder.conversation_lifecycle import cleared_session_view, is_conversation_cleared
+
+        if is_conversation_cleared(fc):
+            return cleared_session_view(s, fc)
         if fc.paused and fc.task_control.get("settlement") in {"pending", "unknown"}:
             from services.dify_builder.task_control_service import observe_stop
 
@@ -1529,7 +1673,11 @@ class DifyBuilderService:
             raise BadRequestError("after_seq must be an integer greater than or equal to -1")
         if before_seq is not None and after_seq is not None:
             raise BadRequestError("before_seq and after_seq are mutually exclusive")
-        self._get_authorized_session(session_id, actor)
+        _, context = self._get_authorized_session(session_id, actor)
+        from services.dify_builder.conversation_lifecycle import is_conversation_cleared
+
+        if is_conversation_cleared(context):
+            return ConversationPage(data=[], has_more=False, first_seq=None, last_seq=None)
         return self._repo.list_conversation_page(
             session_id,
             limit=limit,
@@ -1564,8 +1712,12 @@ class DifyBuilderService:
         )
 
     def _build_session_view(self, s: Session, fc: DifyBuilderContext) -> SessionView:
+        from services.dify_builder.conversation_lifecycle import cleared_session_view, is_conversation_cleared
         from services.dify_builder.conversation_tasks import active_entry_mode
+        from services.dify_builder.task_lifecycle import task_identity
 
+        if is_conversation_cleared(fc):
+            return cleared_session_view(s, fc)
         s = replace(s, entry_mode=active_entry_mode(s, fc))
         st = s.current_state
         continuation_pending = not fc.paused and fc.task_control.get("receipt", {}).get("enqueue") in {
@@ -1643,7 +1795,27 @@ class DifyBuilderService:
                         receipt=receipt,
                     ),
                 )
+        if fc.task_status == "abandoned":
+            actions = []
+            decision = None
+        pending_context = None
+        if self._fix_intent_repo is not None:
+            from services.dify_builder.fix_intents import pending_fix_projection
+
+            projection = pending_fix_projection(
+                self, s, fc, Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id)
+            )
+            if projection is not None:
+                actions, decision, pending_context = projection
         return SessionView(
+            task_id=task_identity(s, fc),
+            task_status="completed"
+            if is_terminal(st)
+            else "paused"
+            if fc.paused and fc.task_status != "abandoned"
+            else fc.task_status or "active",
+            task_summaries=fc.task_summaries,
+            pending_fix_context=pending_context,
             test_execution=test_execution,
             diagnostics=diagnostics,
             attachments=self._attachment_intake.receipts(s, Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id))
@@ -1753,6 +1925,14 @@ class DifyBuilderService:
             action.payload = {**action.payload, "text": text, "client_turn_id": client_turn_id}
 
         s, fc = self._get_authorized_session(session_id, actor)
+        from services.dify_builder.conversation_lifecycle import is_conversation_cleared
+
+        if is_conversation_cleared(fc):
+            raise ConflictError("conversation was cleared")
+        if action.kind in {"dismiss_fix", "stop_and_switch_fix"}:
+            from services.dify_builder.fix_intents import submit_fix_intent
+
+            return submit_fix_intent(self, session_id, actor, action), False, []
         if action.kind in {"stop", "resume"}:
             control = self.stop_task if action.kind == "stop" else self.resume_task
             return (
@@ -1766,6 +1946,32 @@ class DifyBuilderService:
                 False,
                 [],
             )
+        if action.kind == "message" and (
+            fc.task_status == "abandoned"
+            or fc.task_control.get("fresh_goal_receipt", {}).get("id") == action.payload["client_turn_id"]
+        ):
+            from services.dify_builder.task_controls import generation
+            from services.dify_builder.task_lifecycle import task_identity
+
+            self._validate_model_config(actor, fc.model_config)
+            dsl, revision = self._read_task_dsl_fn(s.app_id, actor)
+            observed, previous = self._repo.get_session_at_version(session_id, action.base_version)
+            fresh, context, activated = self._repo.activate_abandoned_continuation(
+                session_id,
+                actor,
+                base_version=action.base_version,
+                client_turn_id=action.payload["client_turn_id"],
+                text=action.payload["text"],
+                app_revision=revision,
+                dsl=dsl,
+                expected_task_id=task_identity(observed, previous),
+            )
+            action.kind = "send_edit_goal"
+            action.base_version = fresh.version
+            action.base_app_revision = revision
+            action.execution_generation = generation(context)
+            action.command_id = action.payload["client_turn_id"]
+            return self._build_session_view(fresh, context), activated, []
         if fc.task_control.get("receipt", {}).get("enqueue") in {"pending", "dispatching", "claimed"}:
             raise BusyError("task continuation is pending")
         if action.kind in TEST_ACTIONS:
@@ -2032,9 +2238,11 @@ class DifyBuilderService:
                 None,
                 expect_advance=False,
                 emit_command_finished_when_settled=action.kind
-                in {"message", "update_model", "stop", "resume"} | TEST_ACTIONS,
+                in {"message", "send_edit_goal", "update_model", "stop", "resume", "dismiss_fix", "stop_and_switch_fix"}
+                | TEST_ACTIONS,
                 command_id=action.command_id,
                 initial_items=settled_items,
+                conversation_cleared=lambda: self.is_conversation_cleared(session_id, actor),
             )
         subscription = self._subscribe_fn(session_id)  # BEFORE dispatch
         try:
@@ -2050,6 +2258,7 @@ class DifyBuilderService:
             expect_advance=True,
             command_id=command_id,
             read_session_view=lambda: self._read_stream_session_view(session_id, actor),
+            conversation_cleared=lambda: self.is_conversation_cleared(session_id, actor),
         )
 
     def submit_message_stream(
@@ -2084,6 +2293,7 @@ class DifyBuilderService:
                 emit_command_finished_when_settled=not bool(command_id),
                 command_id=command_id,
                 read_session_view=lambda: self._read_stream_session_view(session_id, actor),
+                conversation_cleared=lambda: self.is_conversation_cleared(session_id, actor),
             )
         if not isinstance(text, str) or not (text := text.strip()):
             raise BadRequestError("message text is required")
@@ -2102,6 +2312,10 @@ class DifyBuilderService:
         if not attachments and self._attachment_intake is None:
             return None
         session, context = self._get_authorized_session(session_id, actor)
+        from services.dify_builder.conversation_lifecycle import is_conversation_cleared
+
+        if is_conversation_cleared(context):
+            raise ConflictError("conversation was cleared")
         working = self._session_lock.exists(session.id) or is_working(session.current_state)
         if self._attachment_intake is None:
             raise BadRequestError("Attachment intake is unavailable")
