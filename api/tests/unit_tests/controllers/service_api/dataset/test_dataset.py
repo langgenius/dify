@@ -7,10 +7,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask, request
+from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
 import services.errors.base
+from configs import dify_config
 from controllers.service_api.dataset.dataset import (
     DatasetCreatePayload,
     DatasetListQuery,
@@ -944,6 +946,24 @@ class TestDatasetApisCases:
 """Unit tests for Service API dataset request payloads."""
 
 
+@pytest.mark.parametrize("payload_model", [DatasetCreatePayload, DatasetUpdatePayload])
+def test_dataset_description_respects_configured_limit(payload_model: type[BaseModel]) -> None:
+    limit = dify_config.DATASET_DESCRIPTION_MAX_LENGTH
+    description = "知" * limit
+    assert payload_model(name="Dataset", description=description).model_dump()["description"] == description
+
+    with pytest.raises(ValidationError) as exc_info:
+        payload_model(name="Dataset", description=description + "识")
+
+    error = exc_info.value.errors()[0]
+    assert error["loc"] == ("description",)
+    assert error["type"] == "string_too_long"
+    assert error["ctx"]["max_length"] == limit
+    schema = payload_model.model_json_schema()["properties"]["description"]
+    alternatives = schema.get("anyOf", [schema])
+    assert next(item for item in alternatives if item.get("type") == "string")["maxLength"] == limit
+
+
 class TestDatasetPayloadsCases:
     class TestDatasetCreatePayload:
         """Test suite for DatasetCreatePayload Pydantic model."""
@@ -982,7 +1002,7 @@ class TestDatasetPayloadsCases:
 
         def test_payload_description_max_length(self) -> None:
             with pytest.raises(ValueError, match="1 validation error for DatasetCreatePayload\\\ndescription"):
-                DatasetCreatePayload(name="Dataset", description="A" * 401)
+                DatasetCreatePayload(name="Dataset", description="A" * (dify_config.DATASET_DESCRIPTION_MAX_LENGTH + 1))
 
         @pytest.mark.parametrize("technique", ["high_quality", "economy"])
         def test_payload_valid_indexing_techniques(self, technique: Literal["high_quality", "economy"]) -> None:
