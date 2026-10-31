@@ -851,20 +851,24 @@ class MCPToolManageService:
             Tuple of (final_client_id, final_client_secret)
         """
         mcp_provider_entity = mcp_provider.to_entity()
-        existing_decrypted = mcp_provider_entity.decrypt_credentials()
+        existing_client_info = mcp_provider_entity.retrieve_client_information()
         existing_masked = mcp_provider_entity.masked_credentials()
 
         # Check if client_id is masked and unchanged
         final_client_id = client_id
-        if existing_masked.get("client_id") and client_id == existing_masked["client_id"]:
+        if existing_client_info and existing_masked.get("client_id") and client_id == existing_masked["client_id"]:
             # Use existing decrypted value
-            final_client_id = existing_decrypted.get("client_id", client_id)
+            final_client_id = existing_client_info.client_id
 
         # Check if client_secret is masked and unchanged
         final_client_secret = client_secret
-        if existing_masked.get("client_secret") and client_secret == existing_masked["client_secret"]:
+        if (
+            existing_client_info
+            and existing_masked.get("client_secret")
+            and client_secret == existing_masked["client_secret"]
+        ):
             # Use existing decrypted value
-            final_client_secret = existing_decrypted.get("client_secret", client_secret)
+            final_client_secret = existing_client_info.client_secret
 
         return final_client_id, final_client_secret
 

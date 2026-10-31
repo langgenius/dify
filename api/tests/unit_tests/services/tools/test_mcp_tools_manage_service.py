@@ -1,9 +1,11 @@
 """Exercise tenant-scoped MCP provider lookups against persisted rows.
 
 Primary keys and server identifiers are distinct, even when an identifier looks
-like a UUID or collides with another provider's primary key.
+like a UUID or collides with another provider's primary key. Unchanged masked
+OAuth client credentials resolve to the stored client information on update.
 """
 
+import json
 from typing import Literal
 
 import pytest
@@ -157,4 +159,26 @@ def test_server_identifier_can_be_reused_across_tenants(service: MCPToolManageSe
     assert (
         service.get_provider_by_server_identifier(server_identifier=SERVER_IDENTIFIER, tenant_id=TENANT_ID).id
         == provider.id
+    )
+
+
+def test_merge_credentials_with_masked_restores_nested_client_information(
+    service: MCPToolManageService, sqlite_session: Session
+) -> None:
+    provider = _provider()
+    provider.encrypted_credentials = json.dumps(
+        {
+            "client_information": {
+                "client_id": "ba0f3e1c-registered-client-c2",
+                "client_secret": "dynamic-client-secret",
+                "redirect_uris": ["https://example.com/callback"],
+            }
+        }
+    )
+    _persist(sqlite_session, provider)
+    masked = provider.to_entity().masked_credentials()
+
+    assert service._merge_credentials_with_masked(masked["client_id"], masked["client_secret"], provider) == (
+        "ba0f3e1c-registered-client-c2",
+        "dynamic-client-secret",
     )
