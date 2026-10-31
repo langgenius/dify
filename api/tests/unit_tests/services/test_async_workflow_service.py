@@ -1,631 +1,203 @@
-import json
-import logging
-from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+"""Real producer persistence, Billing HTTP and Celery transport contracts."""
+
+from contextvars import Context
+from uuid import uuid4
 
 import pytest
+from celery import Celery
+from kombu.exceptions import SerializerNotInstalled
+from kombu.simple import SimpleQueue
 from sqlalchemy import select
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
 
-import services.async_workflow_service as async_workflow_service_module
-from models.account import Account
-from models.enums import AppTriggerType, CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
-from models.model import App, AppMode, EndUser
+from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
+from models.enums import CreatorUserRole, WorkflowTriggerStatus
+from models.model import App
 from models.trigger import WorkflowTriggerLog
-from models.workflow import Workflow, WorkflowType
-from services.async_workflow_service import AsyncWorkflowService
-from services.errors.app import QuotaExceededError, WorkflowNotFoundError
-from services.workflow.entities import AsyncTriggerResponse, TriggerData
-from services.workflow.queue_dispatcher import QueuePriority
+from models.workflow import Workflow
+from services.errors.app import IsDraftWorkflowError, QuotaExceededError, WorkflowNotFoundError
+from services.workflow.entities import AsyncTriggerResponse, ScheduleTriggerData, TriggerActor
+from tasks.async_workflow_tasks import execute_workflow_professional, execute_workflow_sandbox, execute_workflow_team
+from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
+from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.controllers.console.workspace.test_trigger_oauth_client import _Harness
+from tests.unit_tests.tasks import test_trigger_processing_tasks as worker_tests
+from tests.unit_tests.tasks.test_trigger_processing_tasks import _Billing, _Dispatch
+
+application_redis = worker_tests.application_redis
+harness = worker_tests.harness
+billing = worker_tests.billing
+dispatch = worker_tests.dispatch
 
 
-class AsyncWorkflowServiceTestDataFactory:
-    """Factory helpers for async workflow service unit tests."""
+def _run(
+    harness: _Harness,
+    dispatch: _Dispatch,
+    *,
+    app_id: str | None = None,
+    tenant_id: str | None = None,
+    workflow_id: str | None = None,
+    actor: TriggerActor | None = None,
+) -> AsyncTriggerResponse:
+    def invoke() -> AsyncTriggerResponse:
+        with harness.app.app_context(), config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
+            return application_services().workspaces.workflow_dispatch.trigger_workflow_async(
+                actor=actor or TriggerActor(id=harness.account_id, role=CreatorUserRole.ACCOUNT),
+                trigger_data=ScheduleTriggerData(
+                    tenant_id=tenant_id or harness.tenant_id,
+                    app_id=app_id or dispatch.app_id,
+                    workflow_id=workflow_id,
+                    root_node_id="push-node",
+                    inputs={"text": "hello"},
+                ),
+            )
 
-    @staticmethod
-    def create_trigger_data(
-        app_id: str = "app-123",
-        tenant_id: str = "tenant-123",
-        workflow_id: str | None = "workflow-123",
-        root_node_id: str = "root-node-123",
-    ) -> TriggerData:
-        """Create valid trigger data for async workflow execution tests."""
-        return TriggerData(
-            app_id=app_id,
-            tenant_id=tenant_id,
-            workflow_id=workflow_id,
-            root_node_id=root_node_id,
-            inputs={"name": "dify"},
-            files=[],
-            trigger_type=AppTriggerType.UNKNOWN,
-            trigger_from=WorkflowRunTriggeredFrom.APP_RUN,
-            trigger_metadata=None,
-        )
-
-    @staticmethod
-    def create_app(app_id: str = "app-123", tenant_id: str = "tenant-123") -> App:
-        """Create an app that can be persisted for trigger lookup tests."""
-        return App(
-            id=app_id,
-            tenant_id=tenant_id,
-            name="Async workflow app",
-            description="",
-            mode=AppMode.WORKFLOW,
-            enable_site=True,
-            enable_api=True,
-            max_active_requests=0,
-        )
-
-    @staticmethod
-    def create_trigger_log_with_data(
-        trigger_data: TriggerData,
-        *,
-        trigger_log_id: str = "trigger-log-123",
-        retry_count: int = 0,
-        status: WorkflowTriggerStatus = WorkflowTriggerStatus.FAILED,
-        created_at: datetime | None = None,
-    ) -> WorkflowTriggerLog:
-        """Create a persistent trigger log with serialized trigger data."""
-        trigger_log = WorkflowTriggerLog(
-            tenant_id=trigger_data.tenant_id,
-            app_id=trigger_data.app_id,
-            workflow_id=trigger_data.workflow_id or "workflow-123",
-            workflow_run_id=None,
-            root_node_id=trigger_data.root_node_id,
-            trigger_metadata="{}",
-            trigger_type=trigger_data.trigger_type,
-            trigger_data=trigger_data.model_dump_json(),
-            inputs=json.dumps(dict(trigger_data.inputs)),
-            outputs=None,
-            status=status,
-            error="previous-error",
-            queue_name=QueuePriority.SANDBOX,
-            celery_task_id=None,
-            created_by_role=CreatorUserRole.END_USER,
-            created_by="end-user-123",
-            retry_count=retry_count,
-            elapsed_time=None,
-            total_tokens=None,
-            triggered_at=None,
-            finished_at=None,
-        )
-        trigger_log.id = trigger_log_id
-        if created_at is not None:
-            trigger_log.created_at = created_at
-        return trigger_log
-
-    @staticmethod
-    def create_workflow(
-        *, workflow_id: str = "workflow-123", app_id: str = "app-123", tenant_id: str = "tenant-123"
-    ) -> Workflow:
-        """Create a mapped workflow for service-return and trigger-log tests."""
-        return Workflow(
-            id=workflow_id,
-            tenant_id=tenant_id,
-            app_id=app_id,
-            type=WorkflowType.WORKFLOW,
-            version="1",
-            graph="{}",
-            _features="{}",
-            created_by="account-123",
-        )
-
-    @staticmethod
-    def create_account(account_id: str = "account-123") -> Account:
-        """Create a mapped account for role-discrimination tests."""
-        account = Account(name="Account", email=f"{account_id}@example.com")
-        account.id = account_id
-        return account
-
-    @staticmethod
-    def create_end_user(end_user_id: str = "end-user-123") -> EndUser:
-        """Create a mapped end user for role-discrimination and retry tests."""
-        return EndUser(
-            id=end_user_id,
-            tenant_id="tenant-123",
-            app_id="app-123",
-            type=EndUserType.BROWSER,
-            name="End User",
-            session_id=f"session-{end_user_id}",
-        )
+    return Context().run(invoke)
 
 
-@pytest.mark.usefixtures("sqlite_session")
-@pytest.mark.parametrize("sqlite_session", [(App, WorkflowTriggerLog)], indirect=True)
-class TestAsyncWorkflowService:
-    @pytest.fixture
-    def async_workflow_trigger_mocks(self):
-        """Shared fixture for async workflow trigger tests.
-
-        Yields mocks for:
-            - dispatcher_manager_class: QueueDispatcherManager class
-            - dispatcher: dispatcher instance
-            - quota_service: QuotaService mock
-            - get_workflow: AsyncWorkflowService._get_workflow method
-            - professional_task: execute_workflow_professional
-            - team_task: execute_workflow_team
-            - sandbox_task: execute_workflow_sandbox
-        """
-        mock_dispatcher = MagicMock()
-        mock_quota_service = MagicMock()
-
-        with (
-            patch.object(async_workflow_service_module, "QueueDispatcherManager") as mock_dispatcher_manager_class,
-            patch.object(async_workflow_service_module, "WorkflowService"),
-            patch.object(
-                async_workflow_service_module.AsyncWorkflowService,
-                "_get_workflow",
-            ) as mock_get_workflow,
-            patch.object(
-                async_workflow_service_module,
-                "QuotaService",
-                new=mock_quota_service,
-            ),
-            patch.object(async_workflow_service_module, "execute_workflow_professional") as mock_professional_task,
-            patch.object(async_workflow_service_module, "execute_workflow_team") as mock_team_task,
-            patch.object(async_workflow_service_module, "execute_workflow_sandbox") as mock_sandbox_task,
-        ):
-            # Configure dispatcher_manager to return our mock_dispatcher
-            mock_dispatcher_manager_class.return_value.get_dispatcher.return_value = mock_dispatcher
-
-            yield {
-                "dispatcher_manager_class": mock_dispatcher_manager_class,
-                "dispatcher": mock_dispatcher,
-                "quota_service": mock_quota_service,
-                "get_workflow": mock_get_workflow,
-                "professional_task": mock_professional_task,
-                "team_task": mock_team_task,
-                "sandbox_task": mock_sandbox_task,
-            }
-
-    @pytest.mark.parametrize(
-        ("queue_name", "selected_task_attr"),
-        [
-            (QueuePriority.PROFESSIONAL, "execute_workflow_professional"),
-            (QueuePriority.TEAM, "execute_workflow_team"),
-            (QueuePriority.SANDBOX, "execute_workflow_sandbox"),
-        ],
+@pytest.mark.parametrize("role", [CreatorUserRole.ACCOUNT, CreatorUserRole.END_USER])
+@pytest.mark.parametrize("plan", ["sandbox", "professional", "team", "unknown-plan"])
+def test_records_actor_and_publishes_lightweight_task(
+    harness: _Harness,
+    dispatch: _Dispatch,
+    billing: _Billing,
+    role: CreatorUserRole,
+    plan: str,
+) -> None:
+    billing.plan = plan
+    expected_task = {"professional": execute_workflow_professional, "team": execute_workflow_team}.get(
+        plan, execute_workflow_sandbox
     )
-    def test_should_dispatch_to_matching_celery_task_when_triggering_workflow(
-        self,
-        queue_name,
-        selected_task_attr,
-        async_workflow_trigger_mocks,
-        sqlite_session: Session,
-    ):
-        """Test queue-based task routing and successful async trigger response."""
-        # Arrange
-        sqlite_session.add(AsyncWorkflowServiceTestDataFactory.create_app())
-        sqlite_session.commit()
-        trigger_data = AsyncWorkflowServiceTestDataFactory.create_trigger_data()
-        workflow = AsyncWorkflowServiceTestDataFactory.create_workflow()
+    previous = execute_workflow_sandbox.app
+    celery = Celery("workflow-producer-test", broker="memory://", set_as_current=False)
+    celery.conf.update(task_always_eager=False, task_serializer="json")
+    celery.set_current()
+    actor = TriggerActor(id=str(uuid4()), role=role)
+    try:
+        with (
+            celery.connection_for_write() as connection,
+            SimpleQueue(connection.channel(), AsyncWorkflowQueue.SANDBOX_QUEUE) as queue,
+        ):
+            queue.clear()
+            try:
+                result = _run(harness, dispatch, actor=actor)
+                message = queue.get(block=False)
+                with harness.session_factory() as session:
+                    log = session.get(WorkflowTriggerLog, result.workflow_trigger_log_id)
+                    assert log is not None
+                    assert log.created_by == actor.id
+                    assert log.created_by_role == role
+                    assert log.status == WorkflowTriggerStatus.QUEUED
+                    assert log.celery_task_id == result.task_id
+                    assert log.triggered_at is not None
+                    assert message.payload[0] == [{"workflow_trigger_log_id": log.id}]
+                    assert message.headers["id"] == log.celery_task_id
+                    assert message.headers["task"] == expected_task.name
+                    assert result.queue == f"workflow_{plan if plan != 'unknown-plan' else 'sandbox'}"
+                message.ack()
+                assert queue.qsize() == 0
+            finally:
+                queue.clear()
+    finally:
+        previous.set_current()
+        celery.close()
+    assert [(path, payload["feature_key"]) for path, payload in billing.requests] == [
+        ("/quota/reserve", "api_rate_limit"),
+        ("/quota/commit", "api_rate_limit"),
+    ]
+    assert all(not session.in_transaction() for session in harness.metadata.sessions)
+    assert billing.open_transactions
+    assert not any(billing.open_transactions)
 
-        mocks = async_workflow_trigger_mocks
-        mocks["dispatcher"].get_queue_name.return_value = queue_name
-        mocks["get_workflow"].return_value = workflow
 
-        task_result = MagicMock()
-        task_result.id = "task-123"
-        mocks["professional_task"].delay.return_value = task_result
-        mocks["team_task"].delay.return_value = task_result
-        mocks["sandbox_task"].delay.return_value = task_result
+def test_quota_failure_persists_rate_limited_log_without_dispatch(
+    harness: _Harness,
+    dispatch: _Dispatch,
+    billing: _Billing,
+) -> None:
+    billing.exhausted = True
+    with pytest.raises(QuotaExceededError):
+        _run(harness, dispatch)
+    with harness.session_factory() as session:
+        log = session.scalar(select(WorkflowTriggerLog))
+        assert log is not None
+        assert log.status == WorkflowTriggerStatus.RATE_LIMITED
+        assert log.error is not None
+        assert log.error.startswith("Quota limit reached:")
+        assert log.celery_task_id is None
+    assert [path for path, _ in billing.requests] == ["/quota/reserve"]
 
-        quota_charge_mock = MagicMock()
-        mocks["quota_service"].reserve.return_value = quota_charge_mock
 
-        user = AsyncWorkflowServiceTestDataFactory.create_account()
+def test_serialization_failure_records_failed_log_and_refunds_quota(
+    harness: _Harness,
+    dispatch: _Dispatch,
+    billing: _Billing,
+) -> None:
+    previous = execute_workflow_sandbox.app
+    celery = Celery("workflow-producer-failure", broker="memory://", set_as_current=False)
+    celery.conf.update(task_always_eager=False, task_serializer="unregistered-trigger-test-serializer")
+    celery.set_current()
+    try:
+        with pytest.raises(SerializerNotInstalled):
+            _run(harness, dispatch)
+    finally:
+        previous.set_current()
+        celery.close()
+    with harness.session_factory() as session:
+        log = session.scalar(select(WorkflowTriggerLog))
+        assert log is not None
+        assert log.status == WorkflowTriggerStatus.FAILED
+        assert log.error is not None
+        assert log.error.startswith("Failed to dispatch workflow task:")
+        assert log.celery_task_id is None
+    assert [path for path, _ in billing.requests] == ["/quota/reserve", "/quota/release"]
+    assert all(not session.in_transaction() for session in harness.metadata.sessions)
+    assert billing.open_transactions
+    assert not any(billing.open_transactions)
 
-        # Act
-        result = AsyncWorkflowService.trigger_workflow_async(
-            session=sqlite_session, user=user, trigger_data=trigger_data
-        )
 
-        # Assert
-        assert isinstance(result, AsyncTriggerResponse)
-        assert result.workflow_trigger_log_id
-        assert result.task_id == "task-123"
-        assert result.status == "queued"
-        assert result.queue == queue_name
-
-        mocks["quota_service"].reserve.assert_called_once()
-        quota_charge_mock.commit.assert_called_once()
-        assert not sqlite_session.in_transaction()
-
-        created_log = sqlite_session.scalar(
-            select(WorkflowTriggerLog).where(WorkflowTriggerLog.id == result.workflow_trigger_log_id)
-        )
-        assert created_log is not None
-        assert created_log.status == WorkflowTriggerStatus.QUEUED
-        assert created_log.queue_name == queue_name
-        assert created_log.created_by_role == CreatorUserRole.ACCOUNT
-        assert created_log.created_by == "account-123"
-        assert created_log.trigger_data == trigger_data.model_dump_json()
-        assert created_log.inputs == json.dumps(dict(trigger_data.inputs))
-        assert created_log.celery_task_id == "task-123"
-
-        task_mocks = {
-            "execute_workflow_professional": mocks["professional_task"],
-            "execute_workflow_team": mocks["team_task"],
-            "execute_workflow_sandbox": mocks["sandbox_task"],
-        }
-        for task_attr, task_mock in task_mocks.items():
-            if task_attr == selected_task_attr:
-                task_mock.delay.assert_called_once_with({"workflow_trigger_log_id": result.workflow_trigger_log_id})
+@pytest.mark.parametrize("missing", ["app", "tenant", "workflow", "selected-workflow", "default-workflow"])
+def test_missing_or_foreign_ownership_is_rejected_before_billing(
+    harness: _Harness,
+    dispatch: _Dispatch,
+    billing: _Billing,
+    missing: str,
+) -> None:
+    app_id, tenant_id, workflow_id = dispatch.app_id, harness.tenant_id, None
+    if missing == "app":
+        app_id = str(uuid4())
+    elif missing == "tenant":
+        tenant_id = str(uuid4())
+    elif missing == "workflow":
+        workflow_id = str(uuid4())
+    else:
+        with harness.session_factory.begin() as session:
+            app = session.get(App, dispatch.app_id)
+            assert app is not None
+            if missing == "default-workflow":
+                app.workflow_id = None
             else:
-                task_mock.delay.assert_not_called()
-
-    def test_should_set_end_user_role_when_triggered_by_end_user(
-        self, async_workflow_trigger_mocks, sqlite_session: Session
-    ):
-        """Test that non-account users are tracked as END_USER in trigger logs."""
-        # Arrange
-        sqlite_session.add(AsyncWorkflowServiceTestDataFactory.create_app())
-        sqlite_session.commit()
-        trigger_data = AsyncWorkflowServiceTestDataFactory.create_trigger_data()
-        workflow = AsyncWorkflowServiceTestDataFactory.create_workflow()
-
-        mocks = async_workflow_trigger_mocks
-        mocks["dispatcher"].get_queue_name.return_value = QueuePriority.SANDBOX
-        mocks["get_workflow"].return_value = workflow
-
-        task_result = MagicMock(id="task-123")
-        mocks["sandbox_task"].delay.return_value = task_result
-
-        user = AsyncWorkflowServiceTestDataFactory.create_end_user()
-
-        # Act
-        response = AsyncWorkflowService.trigger_workflow_async(
-            session=sqlite_session, user=user, trigger_data=trigger_data
-        )
-
-        # Assert
-        created_log = sqlite_session.get(WorkflowTriggerLog, response.workflow_trigger_log_id)
-        assert created_log is not None
-        assert created_log.created_by_role == CreatorUserRole.END_USER
-        assert created_log.created_by == "end-user-123"
-
-    def test_should_raise_workflow_not_found_when_app_does_not_exist(self, sqlite_session: Session):
-        """Test trigger failure when app lookup returns no result."""
-        # Arrange
-        trigger_data = AsyncWorkflowServiceTestDataFactory.create_trigger_data(app_id="missing-app")
-
-        with (
-            patch.object(async_workflow_service_module, "QueueDispatcherManager"),
-            patch.object(async_workflow_service_module, "WorkflowService"),
-        ):
-            # Act / Assert
-            with pytest.raises(WorkflowNotFoundError, match="App not found: missing-app"):
-                AsyncWorkflowService.trigger_workflow_async(
-                    session=sqlite_session,
-                    user=AsyncWorkflowServiceTestDataFactory.create_end_user("user-123"),
-                    trigger_data=trigger_data,
-                )
-
-    def test_should_mark_log_rate_limited_and_reraise_when_quota_exceeded(
-        self,
-        async_workflow_trigger_mocks,
-        caplog: pytest.LogCaptureFixture,
-        sqlite_session: Session,
-    ):
-        """Test quota-exceeded path updates trigger log and preserves the quota exception."""
-        # Arrange
-        sqlite_session.add(AsyncWorkflowServiceTestDataFactory.create_app())
-        sqlite_session.commit()
-        trigger_data = AsyncWorkflowServiceTestDataFactory.create_trigger_data()
-        workflow = AsyncWorkflowServiceTestDataFactory.create_workflow()
-
-        mocks = async_workflow_trigger_mocks
-        mocks["dispatcher"].get_queue_name.return_value = QueuePriority.TEAM
-        mocks["get_workflow"].return_value = workflow
-        mocks["quota_service"].reserve.side_effect = QuotaExceededError(
-            feature="workflow",
-            tenant_id="tenant-123",
-            required=1,
-        )
-        caplog.set_level(logging.INFO, logger=async_workflow_service_module.__name__)
-
-        # Act / Assert
-        with pytest.raises(QuotaExceededError) as exc_info:
-            AsyncWorkflowService.trigger_workflow_async(
-                session=sqlite_session,
-                user=AsyncWorkflowServiceTestDataFactory.create_end_user("user-123"),
-                trigger_data=trigger_data,
-            )
-
-        assert exc_info.value.feature == "workflow"
-        assert exc_info.value.tenant_id == "tenant-123"
-        assert exc_info.value.required == 1
-        assert not sqlite_session.in_transaction()
-        updated_log = sqlite_session.scalar(select(WorkflowTriggerLog))
-        assert updated_log is not None
-        assert updated_log.status == WorkflowTriggerStatus.RATE_LIMITED
-        assert "Quota limit reached" in updated_log.error
-        assert (
-            "Workflow quota exceeded for tenant tenant-123, app app-123, workflow workflow-123, "
-            f"trigger log {updated_log.id}"
-        ) in caplog.messages
-        mocks["professional_task"].delay.assert_not_called()
-        mocks["team_task"].delay.assert_not_called()
-        mocks["sandbox_task"].delay.assert_not_called()
-
-    def test_should_mark_log_failed_and_reraise_when_celery_dispatch_raises(
-        self,
-        async_workflow_trigger_mocks,
-        caplog: pytest.LogCaptureFixture,
-        sqlite_session: Session,
-    ):
-        """Test dispatch failure path marks trigger log FAILED, refunds quota, and re-raises."""
-        # Arrange
-        sqlite_session.add(AsyncWorkflowServiceTestDataFactory.create_app())
-        sqlite_session.commit()
-        trigger_data = AsyncWorkflowServiceTestDataFactory.create_trigger_data()
-        workflow = AsyncWorkflowServiceTestDataFactory.create_workflow()
-
-        mocks = async_workflow_trigger_mocks
-        mocks["dispatcher"].get_queue_name.return_value = QueuePriority.SANDBOX
-        mocks["get_workflow"].return_value = workflow
-
-        quota_charge_mock = MagicMock()
-        mocks["quota_service"].reserve.return_value = quota_charge_mock
-
-        dispatch_error = RuntimeError("broker unavailable")
-        mocks["sandbox_task"].delay.side_effect = dispatch_error
-        caplog.set_level(logging.ERROR, logger=async_workflow_service_module.__name__)
-
-        # Act / Assert
-        with pytest.raises(RuntimeError) as exc_info:
-            AsyncWorkflowService.trigger_workflow_async(
-                session=sqlite_session,
-                user=AsyncWorkflowServiceTestDataFactory.create_end_user("user-123"),
-                trigger_data=trigger_data,
-            )
-
-        assert exc_info.value is dispatch_error
-        quota_charge_mock.commit.assert_not_called()
-        quota_charge_mock.refund.assert_called_once()
-        assert not sqlite_session.in_transaction()
-
-        updated_log = sqlite_session.scalar(select(WorkflowTriggerLog))
-        assert updated_log is not None
-        assert updated_log.status == WorkflowTriggerStatus.FAILED
-        assert updated_log.error is not None
-        assert "Failed to dispatch workflow task" in updated_log.error
-        assert "broker unavailable" in updated_log.error
-        assert (
-            "Failed to dispatch workflow task for tenant tenant-123, app app-123, workflow workflow-123, "
-            f"trigger log {updated_log.id}"
-        ) in caplog.text
-
-    def test_should_raise_when_reinvoke_target_log_does_not_exist(self, sqlite_session: Session):
-        """Test reinvoke_trigger error path when original trigger log is missing."""
-        # Arrange
-        # Act / Assert
-        with pytest.raises(ValueError, match="Trigger log not found: missing-log"):
-            AsyncWorkflowService.reinvoke_trigger(
-                session=sqlite_session,
-                user=AsyncWorkflowServiceTestDataFactory.create_end_user("user-123"),
-                workflow_trigger_log_id="missing-log",
-            )
-
-    def test_should_update_original_log_and_requeue_when_reinvoking(self, sqlite_session: Session):
-        """Test reinvoke flow updates original log state and triggers a new async run."""
-        # Arrange
-        trigger_data = AsyncWorkflowServiceTestDataFactory.create_trigger_data()
-        trigger_log = AsyncWorkflowServiceTestDataFactory.create_trigger_log_with_data(trigger_data, retry_count=1)
-        sqlite_session.add(trigger_log)
-        sqlite_session.commit()
-
-        expected_response = AsyncTriggerResponse(
-            workflow_trigger_log_id="new-trigger-log-456",
-            task_id="task-456",
-            status="queued",
-            queue=QueuePriority.TEAM,
-        )
-
-        with (
-            patch.object(
-                async_workflow_service_module.AsyncWorkflowService,
-                "trigger_workflow_async",
-                return_value=expected_response,
-            ) as mock_trigger_workflow_async,
-        ):
-            user = AsyncWorkflowServiceTestDataFactory.create_end_user("user-123")
-
-            # Act
-            response = AsyncWorkflowService.reinvoke_trigger(
-                session=sqlite_session,
-                user=user,
-                workflow_trigger_log_id="trigger-log-123",
-            )
-
-        # Assert
-        assert response == expected_response
-        assert not sqlite_session.in_transaction()
-        sqlite_session.refresh(trigger_log)
-        assert trigger_log.status == WorkflowTriggerStatus.RETRYING
-        assert trigger_log.retry_count == 2
-        assert trigger_log.error is None
-        assert trigger_log.triggered_at is not None
-        called_trigger_data = mock_trigger_workflow_async.call_args.args[1]
-        assert isinstance(called_trigger_data, TriggerData)
-        assert called_trigger_data.app_id == "app-123"
-
-    @pytest.mark.parametrize(
-        ("lookup_id", "tenant_id", "expected_id"),
-        [
-            ("missing-log", "tenant-123", None),
-            ("trigger-log-123", "tenant-123", "trigger-log-123"),
-            ("trigger-log-123", "other-tenant", None),
-        ],
-    )
-    def test_should_return_trigger_log_dict_or_none(
-        self,
-        lookup_id: str,
-        tenant_id: str,
-        expected_id: str | None,
-        sqlite_session: Session,
-        sqlite_engine: Engine,
-    ):
-        """Test get_trigger_log returns persisted data with tenant isolation."""
-        # Arrange
-        trigger_data = AsyncWorkflowServiceTestDataFactory.create_trigger_data()
-        sqlite_session.add(AsyncWorkflowServiceTestDataFactory.create_trigger_log_with_data(trigger_data))
-        sqlite_session.commit()
-
-        with patch.object(async_workflow_service_module, "db", SimpleNamespace(engine=sqlite_engine)):
-            # Act
-            result = AsyncWorkflowService.get_trigger_log(lookup_id, tenant_id=tenant_id)
-
-        # Assert
-        assert (result["id"] if result else None) == expected_id
-
-    def test_should_return_recent_logs_as_dict_list(self, sqlite_session: Session, sqlite_engine: Engine):
-        """Test recent logs are ordered, paginated, and tenant/app scoped."""
-        # Arrange
-        now = datetime.now(UTC)
-        logs = [
-            AsyncWorkflowServiceTestDataFactory.create_trigger_log_with_data(
-                AsyncWorkflowServiceTestDataFactory.create_trigger_data(),
-                trigger_log_id=f"log-{index}",
-                created_at=now - timedelta(minutes=index),
-            )
-            for index in range(1, 4)
-        ]
-        logs.extend(
-            [
-                AsyncWorkflowServiceTestDataFactory.create_trigger_log_with_data(
-                    AsyncWorkflowServiceTestDataFactory.create_trigger_data(tenant_id="other-tenant"),
-                    trigger_log_id="other-tenant-log",
-                    created_at=now,
-                ),
-                AsyncWorkflowServiceTestDataFactory.create_trigger_log_with_data(
-                    AsyncWorkflowServiceTestDataFactory.create_trigger_data(app_id="other-app"),
-                    trigger_log_id="other-app-log",
-                    created_at=now,
-                ),
-            ]
-        )
-        sqlite_session.add_all(logs)
-        sqlite_session.commit()
-
-        with patch.object(async_workflow_service_module, "db", SimpleNamespace(engine=sqlite_engine)):
-            # Act
-            result = AsyncWorkflowService.get_recent_logs(
-                tenant_id="tenant-123",
-                app_id="app-123",
-                hours=12,
-                limit=2,
-                offset=1,
-            )
-
-        # Assert
-        assert [log["id"] for log in result] == ["log-2", "log-3"]
-
-    def test_should_return_failed_logs_for_retry_as_dict_list(self, sqlite_session: Session, sqlite_engine: Engine):
-        """Test retry candidates are status, retry-count, and tenant scoped."""
-        # Arrange
-        now = datetime.now(UTC)
-        candidates = [
-            AsyncWorkflowServiceTestDataFactory.create_trigger_log_with_data(
-                AsyncWorkflowServiceTestDataFactory.create_trigger_data(),
-                trigger_log_id="failed-log-1",
-                retry_count=1,
-                created_at=now - timedelta(minutes=2),
-            ),
-            AsyncWorkflowServiceTestDataFactory.create_trigger_log_with_data(
-                AsyncWorkflowServiceTestDataFactory.create_trigger_data(),
-                trigger_log_id="rate-limited-log",
-                retry_count=2,
-                status=WorkflowTriggerStatus.RATE_LIMITED,
-                created_at=now - timedelta(minutes=1),
-            ),
-            AsyncWorkflowServiceTestDataFactory.create_trigger_log_with_data(
-                AsyncWorkflowServiceTestDataFactory.create_trigger_data(),
-                trigger_log_id="retry-limit-log",
-                retry_count=4,
-            ),
-            AsyncWorkflowServiceTestDataFactory.create_trigger_log_with_data(
-                AsyncWorkflowServiceTestDataFactory.create_trigger_data(tenant_id="other-tenant"),
-                trigger_log_id="other-tenant-log",
-            ),
-            AsyncWorkflowServiceTestDataFactory.create_trigger_log_with_data(
-                AsyncWorkflowServiceTestDataFactory.create_trigger_data(),
-                trigger_log_id="queued-log",
-                status=WorkflowTriggerStatus.QUEUED,
-            ),
-        ]
-        sqlite_session.add_all(candidates)
-        sqlite_session.commit()
-
-        with patch.object(async_workflow_service_module, "db", SimpleNamespace(engine=sqlite_engine)):
-            # Act
-            result = AsyncWorkflowService.get_failed_logs_for_retry(tenant_id="tenant-123", max_retry_count=4, limit=20)
-
-        # Assert
-        assert [log["id"] for log in result] == ["failed-log-1", "rate-limited-log"]
+                workflow_id = app.workflow_id
+                workflow = session.get(Workflow, workflow_id)
+                assert workflow is not None
+                workflow.app_id = str(uuid4())
+    with pytest.raises(WorkflowNotFoundError):
+        _run(harness, dispatch, app_id=app_id, tenant_id=tenant_id, workflow_id=workflow_id)
+    assert billing.requests == []
+    with harness.session_factory() as session:
+        assert session.scalar(select(WorkflowTriggerLog)) is None
 
 
-@pytest.mark.usefixtures("sqlite_session")
-@pytest.mark.parametrize("sqlite_session", [(App, WorkflowTriggerLog)], indirect=True)
-class TestAsyncWorkflowServiceGetWorkflow:
-    def test_should_return_specific_workflow_when_workflow_id_exists(self, sqlite_session: Session):
-        """Test _get_workflow returns published workflow by id when provided."""
-        # Arrange
-        workflow_service = MagicMock()
-        app_model = AsyncWorkflowServiceTestDataFactory.create_app()
-        workflow = AsyncWorkflowServiceTestDataFactory.create_workflow()
-        workflow_service.get_published_workflow_by_id.return_value = workflow
-
-        # Act
-        result = AsyncWorkflowService._get_workflow(
-            workflow_service, app_model, workflow_id="workflow-123", session=sqlite_session
-        )
-
-        # Assert
-        assert result == workflow
-        workflow_service.get_published_workflow_by_id.assert_called_once_with(
-            app_model, "workflow-123", session=sqlite_session
-        )
-        workflow_service.get_published_workflow.assert_not_called()
-
-    def test_should_raise_when_specific_workflow_id_not_found(self, sqlite_session: Session):
-        """Test _get_workflow raises WorkflowNotFoundError for unknown workflow id."""
-        # Arrange
-        workflow_service = MagicMock()
-        app_model = AsyncWorkflowServiceTestDataFactory.create_app()
-        workflow_service.get_published_workflow_by_id.return_value = None
-
-        # Act / Assert
-        with pytest.raises(WorkflowNotFoundError, match="Published workflow not found: workflow-404"):
-            AsyncWorkflowService._get_workflow(
-                workflow_service, app_model, workflow_id="workflow-404", session=sqlite_session
-            )
-
-    def test_should_return_default_published_workflow_when_workflow_id_not_provided(self, sqlite_session: Session):
-        """Test _get_workflow returns default published workflow when no id is provided."""
-        # Arrange
-        workflow_service = MagicMock()
-        app_model = AsyncWorkflowServiceTestDataFactory.create_app()
-        workflow = AsyncWorkflowServiceTestDataFactory.create_workflow()
-        workflow_service.get_published_workflow.return_value = workflow
-
-        # Act
-        result = AsyncWorkflowService._get_workflow(workflow_service, app_model, session=sqlite_session)
-
-        # Assert
-        assert result == workflow
-        workflow_service.get_published_workflow.assert_called_once_with(app_model, session=sqlite_session)
-        workflow_service.get_published_workflow_by_id.assert_not_called()
-
-    def test_should_raise_when_default_published_workflow_not_found(self, sqlite_session: Session):
-        """Test _get_workflow raises WorkflowNotFoundError when app has no published workflow."""
-        # Arrange
-        workflow_service = MagicMock()
-        app_model = AsyncWorkflowServiceTestDataFactory.create_app()
-        workflow_service.get_published_workflow.return_value = None
-
-        # Act / Assert
-        with pytest.raises(WorkflowNotFoundError, match="No published workflow found for app: app-123"):
-            AsyncWorkflowService._get_workflow(workflow_service, app_model, session=sqlite_session)
+def test_explicit_draft_workflow_preserves_domain_error(
+    harness: _Harness,
+    dispatch: _Dispatch,
+    billing: _Billing,
+) -> None:
+    with harness.session_factory.begin() as session:
+        workflow = session.scalar(select(Workflow).where(Workflow.app_id == dispatch.app_id))
+        assert workflow is not None
+        workflow.version = Workflow.VERSION_DRAFT
+        workflow_id = workflow.id
+    with pytest.raises(IsDraftWorkflowError, match="Cannot use draft workflow version"):
+        _run(harness, dispatch, workflow_id=workflow_id)
+    assert billing.requests == []
