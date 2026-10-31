@@ -20,7 +20,6 @@ from slack_sdk.socket_mode.response import SocketModeResponse
 from slack_sdk.web import WebClient
 from slack_sdk.web.slack_response import SlackResponse
 
-from enums.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
@@ -57,6 +56,7 @@ from core.human_input_v2.resolved_form import (
     SelectInput,
     UserAction,
 )
+from enums.human_input import ButtonStyle
 
 _RECEIVED_AT = datetime(2026, 8, 6, 8, 0, 0)
 _REQUEST_TIMESTAMP = str(int(_RECEIVED_AT.replace(tzinfo=UTC).timestamp()))
