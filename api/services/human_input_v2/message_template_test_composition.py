@@ -15,7 +15,7 @@ from services.human_input_v2.im_credential_codec import IMCredentialCodec
 from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 from services.human_input_v2.message_template_test_service import MessageTemplateTestService
 from services.human_input_v2.resend_channel import ResendProviderGateway
-from services.workflow_draft_variable_service import DraftVarLoader
+from services.workflow.draft_variable_service import DraftVarLoader
 
 
 def build_message_template_test_service(
