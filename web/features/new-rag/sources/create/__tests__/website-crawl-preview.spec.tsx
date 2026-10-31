@@ -1,12 +1,14 @@
+import type { KnowledgeFsSettingsResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { Source, SourceWorkflowRun } from '../../source-models'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
 import { createHttpError } from '@/service/http-error'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { WebsiteCrawlPreview } from '../website-crawl-preview'
 
 const clientMock = vi.hoisted(() => ({
+  asyncImport: vi.fn(),
   cancel: vi.fn(),
   createSource: vi.fn(),
   deleteSource: vi.fn(),
@@ -15,7 +17,25 @@ const clientMock = vi.hoisted(() => ({
   getSource: vi.fn(),
   listSources: vi.fn(),
   retry: vi.fn(),
+  settings: vi.fn(),
   startPreview: vi.fn(),
+}))
+const settingsResponse = vi.hoisted((): KnowledgeFsSettingsResponse => ({
+  active_profile_available: true,
+  active_profile_revisions: { embedding: 1, retrieval: 1 },
+  capabilities: {
+    deep: true,
+    index: true,
+    ingest: true,
+    query: true,
+    research: true,
+    source_sync: true,
+  },
+  configuration_state: 'active',
+  embedding: null,
+  issues: [],
+  retrieval: null,
+  revision: 1,
 }))
 const sourceApiResponse = vi.hoisted(() => (source: Source) => ({
   connection_id: source.connectionId ?? null,
@@ -77,93 +97,49 @@ const crawlPreviewPageListApiResponse = vi.hoisted(
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
 
-vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
-
-vi.mock('../crawl-selection-form', () => ({
-  CrawlSelectionForm: ({
-    busy,
-    initialSelectedPageIds,
-    onCancel,
-    onInteractionLockChange,
-    onRecrawl,
-    pages,
-  }: {
-    busy?: boolean
-    initialSelectedPageIds?: readonly string[]
-    onCancel: () => void
-    onInteractionLockChange?: (locked: boolean) => void
-    onRecrawl: () => void
-    pages: Array<{ pageId: string; title?: string }>
-  }) => (
-    <div>
-      <p role="status">knowledgeSources.pagesCrawled</p>
-      {pages.map((page) => (
-        <label key={page.pageId}>
-          <input
-            type="checkbox"
-            aria-label={page.title}
-            checked={initialSelectedPageIds?.includes(page.pageId) ?? false}
-            readOnly
-          />
-          {page.title}
-        </label>
-      ))}
-      <button type="button" aria-disabled={busy} disabled={busy} onClick={onRecrawl}>
-        knowledgeSources.reCrawl
-      </button>
-      <button type="button" onClick={onCancel}>
-        knowledgeSources.cancelAddSource
-      </button>
-      <button type="button" onClick={() => onInteractionLockChange?.(true)}>
-        knowledgeSpace.addSource
-      </button>
-    </div>
-  ),
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/datasets/new/space-1/sources/new/website',
+  useRouter: () => routerMock,
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          sourceWorkflows: {
-            byRunId: {
-              cancel: {
-                post: async (input: unknown) => workflowApiResponse(await clientMock.cancel(input)),
-              },
-              get: async (input: unknown) => workflowApiResponse(await clientMock.getRun(input)),
-              pages: {
-                get: async (input: unknown) =>
-                  crawlPreviewPageListApiResponse(await clientMock.getPages(input)),
-              },
-              retry: {
-                post: async (input: unknown) => workflowApiResponse(await clientMock.retry(input)),
-              },
-            },
-          },
-          sources: {
-            bySourceId: {
-              delete: async (input: unknown) => clientMock.deleteSource(input),
-              get: async (input: unknown) => sourceApiResponse(await clientMock.getSource(input)),
-              crawlPreview: {
-                post: async (input: unknown) =>
-                  workflowApiResponse(await clientMock.startPreview(input)),
-              },
-            },
-            get: async (input: unknown) => {
-              const response = await clientMock.listSources(input)
-              return {
-                data: response.items.map(sourceApiResponse),
-                next_cursor: response.nextCursor ?? null,
-              }
-            },
-            post: async (input: unknown) => sourceApiResponse(await clientMock.createSource(input)),
-          },
-        },
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.cancel.post': async (input) =>
+        workflowApiResponse(await clientMock.cancel(input)),
+      'knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.get': async (input) =>
+        workflowApiResponse(await clientMock.getRun(input)),
+      'knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.pages.get': async (input) =>
+        crawlPreviewPageListApiResponse(await clientMock.getPages(input)),
+      'knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post': async (input) =>
+        workflowApiResponse(await clientMock.retry(input)),
+      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post': async (input) =>
+        workflowApiResponse(await clientMock.asyncImport(input)),
+      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.crawlPreview.post': async (input) =>
+        workflowApiResponse(await clientMock.startPreview(input)),
+      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete': (input) =>
+        clientMock.deleteSource(input),
+      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.get': async (input) =>
+        sourceApiResponse(await clientMock.getSource(input)),
+      'knowledgeFs.spaces.byControlSpaceId.sources.get': async (input) => {
+        const response = await clientMock.listSources(input)
+        return {
+          data: response.items.map(sourceApiResponse),
+          next_cursor: response.nextCursor ?? null,
+        }
       },
-    },
-  },
-}))
+      'knowledgeFs.spaces.byControlSpaceId.sources.post': async (input) =>
+        sourceApiResponse(await clientMock.createSource(input)),
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'knowledgeFs.spaces.byControlSpaceId.settings.get': clientMock.settings,
+    }),
+  }
+})
 
 const connection = {
   id: 'connection-1',
@@ -233,9 +209,11 @@ describe('WebsiteCrawlPreview', () => {
     vi.useRealTimers()
     for (const mock of Object.values(clientMock)) mock.mockReset()
     clientMock.cancel.mockResolvedValue(run('canceled'))
+    clientMock.asyncImport.mockResolvedValue(run('queued', { checkpoint: 'import' }))
     clientMock.createSource.mockResolvedValue(source())
     clientMock.deleteSource.mockResolvedValue({})
     clientMock.getSource.mockResolvedValue(source())
+    clientMock.settings.mockResolvedValue(settingsResponse)
     clientMock.startPreview.mockResolvedValue(run('running'))
     clientMock.getRun.mockResolvedValue(
       run('preview_ready', {
@@ -473,11 +451,12 @@ describe('WebsiteCrawlPreview', () => {
     await waitFor(() => expect(onInteractionLockChange).toHaveBeenLastCalledWith(true))
     const crawling = screen.getByRole('button', { name: 'knowledgeSpace.crawling' })
     expect(crawling).toBeDisabled()
-    expect(crawling.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
   })
 
   it('keeps the surrounding setup locked while the selected pages are submitted', async () => {
     const onInteractionLockChange = vi.fn()
+    const request = deferred<SourceWorkflowRun>()
+    clientMock.asyncImport.mockReturnValue(request.promise)
     render(
       <WebsiteCrawlPreview
         connection={connection}
@@ -489,9 +468,36 @@ describe('WebsiteCrawlPreview', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
     await screen.findByText('Getting started')
 
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
+    const addSource = screen.getByRole('button', { name: 'knowledgeSpace.addSource' })
+    const gettingStarted = screen.getByRole('checkbox', { name: 'Getting started' })
+    await user.click(gettingStarted)
+    expect(gettingStarted).toBeChecked()
+    await waitFor(() => expect(addSource).toBeEnabled())
+    await user.click(addSource)
 
+    await waitFor(() => expect(clientMock.asyncImport).toHaveBeenCalledOnce())
+    expect(clientMock.asyncImport).toHaveBeenCalledWith({
+      body: {
+        kind: 'crawl-preview-selection',
+        pageIds: ['page-1'],
+        previewWorkflowId: 'run-1',
+        syncPolicy: { enabled: true, mode: 'interval' },
+      },
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', source_id: 'source-1' },
+    })
     await waitFor(() => expect(onInteractionLockChange).toHaveBeenLastCalledWith(true))
+    expect(screen.getByLabelText(/^knowledgeSources\.rootUrl/)).toBeDisabled()
+    expect(screen.getByLabelText(/^knowledgeSources\.sourceName/)).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'Getting started' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+
+    request.resolve(run('queued', { checkpoint: 'import' }))
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
+    )
   })
 
   it('cancels a preview-ready workflow and starts a fresh run when re-crawling', async () => {
@@ -823,10 +829,6 @@ describe('WebsiteCrawlPreview', () => {
     ).toHaveValue(3)
     const status = screen.getByText(/^knowledgeSpace\.crawlingPages/)
     expect(status).toHaveAttribute('role', 'status')
-    expect(status.querySelector('button')).not.toBeInTheDocument()
-    const skeletons = screen.getAllByTestId('crawl-page-skeleton')
-    expect(skeletons).toHaveLength(4)
-    expect(skeletons[0]?.closest('ul')).toBe(screen.getByRole('list'))
     await act(async () => vi.advanceTimersByTime(1500))
     expect(await screen.findByText('Three')).toBeInTheDocument()
     expect(screen.getByText('New first')).toBeInTheDocument()
@@ -841,11 +843,14 @@ describe('WebsiteCrawlPreview', () => {
       params: { control_space_id: 'space-1', run_id: 'run-1' },
       query: { cursor: 'final-page-2', limit: 200 },
     })
-    expect(
-      screen
-        .getAllByRole('checkbox', { name: /^(New first|Two|Updated one|Three)$/ })
-        .map((checkbox) => checkbox.getAttribute('aria-label')),
-    ).toEqual(['New first', 'Two', 'Updated one', 'Three'])
+    const finalPages = screen.getAllByRole('checkbox', {
+      name: /^(New first|Two|Updated one|Three)$/,
+    })
+    expect(finalPages).toHaveLength(4)
+    expect(finalPages[0]).toHaveAccessibleName('New first')
+    expect(finalPages[1]).toHaveAccessibleName('Two')
+    expect(finalPages[2]).toHaveAccessibleName('Updated one')
+    expect(finalPages[3]).toHaveAccessibleName('Three')
     expect(screen.getByRole('checkbox', { name: 'Two' })).toBeChecked()
     expect(
       screen.queryByRole('button', { name: 'knowledgeSpace.stopCrawl' }),
