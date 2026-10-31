@@ -20,7 +20,7 @@ from core.db.session_factory import get_session_maker
 from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
-from core.tools.tool_manager import ToolManager
+from core.tools.tool_manager import ToolManager as LegacyToolManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.account import AccountServices, build_account_services
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
@@ -218,6 +218,7 @@ from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
+from services.tools.tool_manager import ToolManager
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
@@ -874,7 +875,8 @@ def init_app(app: Flask) -> None:
     from extensions.ext_login import bind_account_loader
 
     app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
-    ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
+    LegacyToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
+    LegacyToolManager.configure_credential_resolver(resolve_tool_credentials)
     ToolManager.configure_credential_resolver(resolve_tool_credentials)
     services = build_application_services(
         database_client=get_session_maker(),
