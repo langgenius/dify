@@ -4,7 +4,7 @@ import json
 import uuid
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Protocol, cast
+from typing import Protocol, runtime_checkable
 
 import pytest
 from flask import Flask, Response
@@ -30,6 +30,7 @@ from controllers.openapi.auth.requirements import (
     CheckWorkspaceRole,
     Requirement,
 )
+from controllers.openapi.auth.spec import spec_of
 from controllers.openapi.auth.subjects import AccountSubject
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -40,7 +41,6 @@ from tests.helpers.unit.controllers.openapi.auth._world import (
     AGENT_ID,
     OTHER_TENANT_ID,
     TENANT_ID,
-    EndpointOwner,
     account_subject,
     canonical,
     make_account,
@@ -116,14 +116,17 @@ def agent_ctx(sqlite_session: Session) -> Context:
     return ctx
 
 
+@runtime_checkable
 class _AgentView(Protocol):
     __handler__: Callable[..., Response]
 
 
 def _run(app: Flask, view: type[AgentRunApi | AgentTestApi], ctx: Context, body: AgentRunPayload) -> list[str]:
     api = view()
+    endpoint = view.post
+    assert isinstance(endpoint, _AgentView)
     with app.test_request_context(method="POST"):
-        response = cast(_AgentView, view.post).__handler__(api, ctx, TENANT_ID, AGENT_ID, body=body)
+        response = endpoint.__handler__(api, ctx, TENANT_ID, AGENT_ID, body=body)
         return [str(chunk) for chunk in response.response]
 
 
@@ -205,7 +208,8 @@ _SHARED_GUARDS = (
     ids=["run", "test"],
 )
 def test_agent_routes_declare_their_guards(view: type[AgentRunApi | AgentTestApi], last_guard: Requirement) -> None:
-    spec = cast(EndpointOwner, view.post).__spec__
+    spec = spec_of(view.post)
+    assert spec is not None
 
     assert [*map(canonical, spec.requirements)] == [*map(canonical, (_ACCOUNT_ONLY, *_SHARED_GUARDS, last_guard))]
     assert spec.context == "orm"
