@@ -170,6 +170,80 @@ describe('HttpClient', () => {
     expect(stream.data).toBeInstanceOf(Readable)
   })
 
+  // A response whose headers arrive but whose body then stalls: the body
+  // errors with the abort reason once the SDK's signal fires, like a real
+  // fetch body would.
+  const stalledStreamResponse = (contentType: string) =>
+    async (_url: string, init?: RequestInit): Promise<Response> => {
+      const signal = init?.signal
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            signal?.addEventListener('abort', () => controller.error(signal.reason), {
+              once: true,
+            })
+          },
+        }),
+        { status: 200, headers: { 'content-type': contentType } },
+      )
+    }
+
+  it('keeps the timeout armed while an SSE stream is being consumed', async () => {
+    const fetchMock = stubFetch()
+    fetchMock.mockImplementationOnce(stalledStreamResponse('text/event-stream'))
+
+    const client = new HttpClient({ apiKey: 'test', timeout: 0.05, maxRetries: 0 })
+    const stream = await client.requestStream({
+      method: 'POST',
+      path: '/chat-messages',
+      data: { user: 'u' },
+    })
+
+    await expect(stream.toText()).rejects.toBeInstanceOf(TimeoutError)
+  })
+
+  it('keeps the timeout armed while a binary stream is being consumed', async () => {
+    const fetchMock = stubFetch()
+    fetchMock.mockImplementationOnce(stalledStreamResponse('audio/mpeg'))
+
+    const client = new HttpClient({ apiKey: 'test', timeout: 0.05, maxRetries: 0 })
+    const stream = await client.requestBinaryStream({
+      method: 'POST',
+      path: '/text-to-audio',
+      data: { user: 'u', text: 'hi' },
+    })
+
+    const consume = (async () => {
+      for await (const chunk of stream.data) {
+        void chunk
+      }
+    })()
+    await expect(consume).rejects.toBeInstanceOf(TimeoutError)
+  })
+
+  it('releases the timeout once a stream completes', async () => {
+    const fetchMock = stubFetch()
+    let requestSignal: AbortSignal | null | undefined
+    fetchMock.mockImplementationOnce(async (_url: string, init?: RequestInit) => {
+      requestSignal = init?.signal
+      return new Response('data: {"text":"hi"}\n\n', {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      })
+    })
+
+    const client = new HttpClient({ apiKey: 'test', timeout: 0.05, maxRetries: 0 })
+    const stream = await client.requestStream({
+      method: 'POST',
+      path: '/chat-messages',
+      data: { user: 'u' },
+    })
+
+    await expect(stream.toText()).resolves.toBe('hi')
+    await new Promise((resolve) => setTimeout(resolve, 120))
+    expect(requestSignal?.aborted).toBe(false)
+  })
+
   it('respects form-data headers', async () => {
     const fetchMock = stubFetch()
     fetchMock.mockResolvedValueOnce(jsonResponse('ok', { status: 200 }))
