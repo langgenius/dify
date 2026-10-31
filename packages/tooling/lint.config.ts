@@ -116,6 +116,16 @@ const webRestrictedImports = [
   },
 ] satisfies NonNullable<OxlintConfig['rules']>[string]
 
+const marketplaceBoundaryFiles = [
+  'web/env.ts',
+  'web/proxy.ts',
+  'web/service/**',
+  'web/features/marketplace/**',
+  'web/app/components/plugins/marketplace/**',
+  'web/app/components/plugins/plugin-page/nav-operations.tsx',
+  'web/app/components/workflow/block-selector/marketplace-plugin/**',
+]
+
 const serviceRestrictedImports = [
   'error',
   {
@@ -1769,6 +1779,13 @@ export const lintConfig = {
             patterns: [...serviceRestrictedImports[1].patterns, rawHttpImports],
           },
         ],
+      },
+    },
+    {
+      ...handwrittenApiScope,
+      excludeFiles: [...handwrittenApiScope.excludeFiles, ...marketplaceBoundaryFiles],
+      rules: {
+        'dify/marketplace-boundary': 'error',
       },
     },
   ],

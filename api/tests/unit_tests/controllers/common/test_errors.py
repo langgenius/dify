@@ -20,9 +20,11 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.console import api as console_api
+from controllers.inner_api import api as inner_api
 from controllers.service_api import api as service_api
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.errors.base import NoPermissionError
 from services.errors.workspace import WorkspaceApplicationError
 from services.workflow.variable_contracts import DraftVariableChangedError
@@ -89,6 +91,25 @@ def test_console_maps_draft_variable_concurrency_error() -> None:
         "message": "Variable changed; refresh and retry with the current value.",
         "status": 409,
     }
+
+
+@pytest.mark.parametrize("source_api", [console_api, inner_api], ids=["console", "inner_api"])
+def test_refresh_unavailability_has_one_documented_response(source_api: ExternalApi) -> None:
+    error = CredentialRefreshUnavailableError()
+    app = Flask(__name__)
+    api = Api(app, doc=False)
+    api.error_handlers = source_api.error_handlers.copy()
+
+    class Endpoint(Resource):
+        def get(self) -> ResponseReturnValue:
+            raise error
+
+    api.add_resource(Endpoint, "/error")
+    response = app.test_client().get("/error")
+
+    assert response.status_code == 503
+    assert response.json == {"code": "service_unavailable", "message": str(error), "status": 503}
+    assert source_api.resolve_error(CredentialRefreshUnavailableError) == (503, "service_unavailable")
 
 
 class TestFilenameNotExistsError:

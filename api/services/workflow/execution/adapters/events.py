@@ -36,6 +36,11 @@ from core.app.entities.queue_entities import (
 from core.rag.entities import RetrievalSourceMetadata
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired, PauseReason
+from core.workflow.nodes.human_input_v2.events import (
+    NodeRunHumanInputV2FormFilledEvent,
+    NodeRunHumanInputV2FormTimeoutEvent,
+)
+from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from enums.human_input import HumanInputFormStatus
 from graphon.engine_events import (
@@ -73,7 +78,7 @@ from models.human_input_contracts import HumanInputFormRecord
 from services.workflow.execution.adapters.human_input import DifyHITLCallback
 from services.workflow.execution.adapters.human_input_events import resolve_human_input_node_id
 from services.workflow.execution.contracts import WorkflowRunEntry
-from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
+from tasks.mail_human_input_delivery_task import dispatch_human_input_form_delivery_task
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +173,7 @@ class WorkflowEventPublisher:
         node_run_index: int = 1,
         node_execution_snapshots: tuple[NodeExecutionSnapshot, ...] = (),
         pause_reasons: Sequence[PauseReason] = (),
+        human_input_v2_forms: Mapping[str, PreparedForm] | None = None,
     ) -> None:
         """Publish one engine event with run-owned indexes and resolved pause data."""
         node_metadata: dict[str, Any] = (
@@ -179,12 +185,13 @@ class WorkflowEventPublisher:
         loop_id = node_metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID.value)
         match event:
             case NodeRunHumanInputFormFilledEvent():
+                form_id = event.form_id if isinstance(event, NodeRunHumanInputV2FormFilledEvent) else event.id
                 self._publish_event(
                     QueueHumanInputFormFilledEvent(
-                        form_id=event.id,
+                        form_id=form_id,
                         node_id=resolve_human_input_node_id(
                             node_id=event.node_id,
-                            form_id=event.id,
+                            form_id=form_id,
                             variable_pool=workflow_entry.graph_engine.runtime_state.variable_pool,
                         ),
                         node_type=event.node_type,
@@ -196,12 +203,13 @@ class WorkflowEventPublisher:
                     )
                 )
             case NodeRunHumanInputFormTimeoutEvent():
+                form_id = event.form_id if isinstance(event, NodeRunHumanInputV2FormTimeoutEvent) else event.id
                 self._publish_event(
                     QueueHumanInputFormTimeoutEvent(
-                        form_id=event.id,
+                        form_id=form_id,
                         node_id=resolve_human_input_node_id(
                             node_id=event.node_id,
-                            form_id=event.id,
+                            form_id=form_id,
                             variable_pool=workflow_entry.graph_engine.runtime_state.variable_pool,
                         ),
                         node_type=event.node_type,
@@ -234,12 +242,24 @@ class WorkflowEventPublisher:
                 paused_nodes = list(
                     dict.fromkeys(reason.node_id for reason in pause_reasons if isinstance(reason, HumanInputRequired))
                 )
-                self._notify_pause(pause_reasons)
+                forms = {
+                    reason.form_id: (human_input_v2_forms or {})[reason.form_id]
+                    for reason in pause_reasons
+                    if isinstance(reason, HumanInputRequired) and reason.form_version == "2"
+                }
+                self._notify_pause(
+                    [
+                        reason
+                        for reason in pause_reasons
+                        if isinstance(reason, HumanInputRequired) and reason.form_version == "1"
+                    ]
+                )
                 self._publish_event(
                     QueueWorkflowPausedEvent(
                         reasons=list(pause_reasons),
                         outputs=event.outputs,
                         paused_nodes=paused_nodes,
+                        human_input_v2_forms=forms,
                     )
                 )
             case NodeRunRetryEvent():
@@ -489,12 +509,12 @@ def enqueue_human_input_notifications(reasons: Sequence[object]) -> None:
     for reason in reasons:
         if not isinstance(reason, HumanInputRequired):
             continue
-        if not reason.form_id:
+        if reason.form_version != "1" or not reason.form_id:
             continue
         try:
-            dispatch_human_input_email_task.apply_async(
+            dispatch_human_input_form_delivery_task.apply_async(
                 kwargs={"form_id": reason.form_id, "node_title": reason.node_title},
                 queue="mail",
             )
         except Exception:  # pragma: no cover - defensive logging
-            logger.exception("Failed to enqueue human input email task for form %s", reason.form_id)
+            logger.exception("Failed to enqueue human input form delivery task for form %s", reason.form_id)

@@ -33,6 +33,7 @@ from core.workflow.nodes.agent.plugin_strategy_adapter import (
 )
 from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
+from core.workflow.nodes.human_input_v2.node import HumanInputNode as HumanInputV2Node
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from core.workflow.workflow_tool_node import DifyWorkflowToolNode
@@ -57,6 +58,7 @@ from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models import Account
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
 from models.human_input_entities import HumanInputNodeData as DifyHumanInputNodeData
+from services.human_input_v2.composition import WorkflowHumanInputRuntime
 from services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter import (
     KnowledgeFSAutomaticMetadataFilterExtractor,
 )
@@ -538,12 +540,18 @@ class DifyNodeFactory(NodeFactory):
                 "file_manager": self._http_request_file_manager,
                 "file_reference_factory": self._file_reference_factory,
             },
-            BuiltinNodeTypes.HUMAN_INPUT: lambda: {
-                "hitl_callback": self._build_human_input_callback(
-                    node_data=DifyHumanInputNodeData.model_validate(adapted_node_config["data"]),
-                    execution_id_getter=lambda: node.execution_id if node is not None else None,
-                ),
-            },
+            BuiltinNodeTypes.HUMAN_INPUT: lambda: (
+                {
+                    "human_input_runtime": WorkflowHumanInputRuntime(self._dify_context),
+                }
+                if node_class is HumanInputV2Node
+                else {
+                    "hitl_callback": self._build_human_input_callback(
+                        node_data=DifyHumanInputNodeData.model_validate(adapted_node_config["data"]),
+                        execution_id_getter=lambda: node.execution_id if node is not None else None,
+                    ),
+                }
+            ),
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
                 node_data=resolved_node_data,

@@ -261,6 +261,40 @@ def test_invalid_authorization_is_rejected(harness: _Harness, authorization: str
     assert harness.sessions == []
 
 
+def test_app_only_list_rejects_a_key_from_another_workspace(harness: _Harness) -> None:
+    with harness.factory.begin() as session:
+        foreign_tenant = Tenant(name="Other API key workspace")
+        session.add(foreign_tenant)
+        token = session.scalar(select(ApiToken).where(ApiToken.token == "feedback-test-token"))
+        assert token is not None
+        token.tenant_id = foreign_tenant.id
+
+    response = harness.get("?user=must-not-be-provisioned")
+
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.get_json() == {
+        "code": "app_not_found",
+        "message": "The app no longer exists.",
+        "status": HTTPStatus.FORBIDDEN,
+    }
+    assert harness.end_user_queries == []
+    harness.assert_closed()
+
+
+def test_app_only_list_accepts_a_historical_key_without_workspace(harness: _Harness) -> None:
+    with harness.factory.begin() as session:
+        token = session.scalar(select(ApiToken).where(ApiToken.token == "feedback-test-token"))
+        assert token is not None
+        token.tenant_id = None
+
+    response = harness.get("?user=must-not-be-provisioned")
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.get_json() == {"data": []}
+    assert harness.end_user_queries == []
+    harness.assert_closed()
+
+
 def test_invalid_rating_is_rejected(harness: _Harness) -> None:
     response = harness.post({"rating": "neutral"})
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
@@ -444,7 +478,7 @@ def test_multiple_app_resource_token_list_requires_app_header(harness: _Harness)
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.get_json() == {
-        "code": "bad_request",
+        "code": "invalid_param",
         "message": "App ID is required when a resource access token is bound to multiple apps.",
         "status": 400,
     }

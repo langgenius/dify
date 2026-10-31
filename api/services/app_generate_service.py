@@ -18,7 +18,6 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
-from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from enums import DeploymentEdition, QuotaType
@@ -33,6 +32,7 @@ from services.errors.app import (
 )
 from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
+from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
@@ -250,18 +250,17 @@ class AppGenerateService:
 
                 if streaming:
                     # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
-                    with rate_limit_context(rate_limit, request_id):
-                        payload = AppExecutionParams.new(
-                            app_model=app_model,
-                            workflow=workflow,
-                            user=user,
-                            args=args,
-                            invoke_from=invoke_from,
-                            streaming=True,
-                            call_depth=0,
-                            workflow_run_id=str(uuid.uuid4()),
-                        )
-                        payload_json = payload.model_dump_json()
+                    payload = AppExecutionParams.new(
+                        app_model=app_model,
+                        workflow=workflow,
+                        user=user,
+                        args=args,
+                        invoke_from=invoke_from,
+                        streaming=True,
+                        call_depth=0,
+                        workflow_run_id=str(uuid.uuid4()),
+                    )
+                    payload_json = payload.model_dump_json()
 
                     def on_subscribe():
                         workflow_based_app_execution_task.delay(payload_json)
@@ -306,19 +305,18 @@ class AppGenerateService:
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
                 cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
                 if streaming:
-                    with rate_limit_context(rate_limit, request_id):
-                        payload = AppExecutionParams.new(
-                            app_model=app_model,
-                            workflow=workflow,
-                            user=user,
-                            args=args,
-                            invoke_from=invoke_from,
-                            streaming=True,
-                            call_depth=0,
-                            root_node_id=root_node_id,
-                            workflow_run_id=str(uuid.uuid4()),
-                        )
-                        payload_json = payload.model_dump_json()
+                    payload = AppExecutionParams.new(
+                        app_model=app_model,
+                        workflow=workflow,
+                        user=user,
+                        args=args,
+                        invoke_from=invoke_from,
+                        streaming=True,
+                        call_depth=0,
+                        root_node_id=root_node_id,
+                        workflow_run_id=str(uuid.uuid4()),
+                    )
+                    payload_json = payload.model_dump_json()
 
                     def on_subscribe():
                         workflow_based_app_execution_task.delay(payload_json)
@@ -345,6 +343,7 @@ class AppGenerateService:
                             app_model=app_model,
                             workflow=workflow,
                             user=user,
+                            execution_identity=build_workflow_execution_identity(user),
                             args=args,
                             invoke_from=invoke_from,
                             streaming=False,
@@ -419,6 +418,7 @@ class AppGenerateService:
                         workflow=workflow,
                         node_id=node_id,
                         user=user,
+                        execution_identity=build_workflow_execution_identity(user),
                         args=args,
                         streaming=streaming,
                         session=session,
@@ -464,6 +464,7 @@ class AppGenerateService:
                         workflow=workflow,
                         node_id=node_id,
                         user=user,
+                        execution_identity=build_workflow_execution_identity(user),
                         args=args,
                         streaming=streaming,
                         session=session,

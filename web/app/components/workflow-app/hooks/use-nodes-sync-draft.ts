@@ -57,6 +57,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     select: (s) => s.enable_collaboration_mode,
   })
   const isMountedRef = useRef(false)
+  const emptySyncPendingRef = useRef(false)
   const cancelConfirmationRef = useRef<(() => void) | undefined>(undefined)
 
   useEffect(() => {
@@ -173,7 +174,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       notRefreshWhenSyncError?: boolean,
       callback?: SyncDraftCallback,
       options?: SyncDraftOptions,
-      force?: boolean,
     ): Promise<SyncDraftResult | null> => {
       if (getNodesReadOnly()) return null
       const { isWorkflowDataLoaded } = workflowStore.getState()
@@ -187,13 +187,77 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         return null
       }
 
-      if (force) {
+      const emptyGraph = isEmptyGraph(baseParams.params.graph)
+      const canSaveEmptyGraph = () => {
         const currentParams = getPostParams()
-        if (
-          !currentParams ||
-          currentParams.url !== baseParams.url ||
-          !isEmptyGraph(currentParams.params.graph)
-        ) {
+        return (
+          isMountedRef.current &&
+          !getNodesReadOnly() &&
+          (!isCollaborationEnabled || collaborationManager.canPersistLocalGraph()) &&
+          currentParams?.url === baseParams.url &&
+          isEmptyGraph(currentParams.params.graph)
+        )
+      }
+      if (emptyGraph && !canSaveEmptyGraph()) {
+        callback?.onSettled?.()
+        return null
+      }
+
+      if (emptyGraph && isCollaborationEnabled) {
+        // CRDT updates do not carry the persisted revision from another collaborator's save.
+        const hashBeforeRefresh = workflowStore.getState().syncWorkflowDraftHash
+        const [error, draft] = await safe(
+          consoleClient.apps.byAppId.workflows.draft.get(
+            { params: { app_id: baseParams.appId } },
+            { context: { silent: true } },
+          ),
+        )
+        if (!canSaveEmptyGraph()) {
+          callback?.onSettled?.()
+          return null
+        }
+        if (error || !Array.isArray(draft.graph.nodes) || !Array.isArray(draft.graph.edges)) {
+          callback?.onError?.()
+          callback?.onSettled?.()
+          return null
+        }
+
+        const { syncWorkflowDraftHash, setSyncWorkflowDraftHash } = workflowStore.getState()
+        // Another hook may have saved a newer revision while this request was in flight.
+        if (syncWorkflowDraftHash === hashBeforeRefresh)
+          setSyncWorkflowDraftHash(draft.hash, {
+            nodes: draft.graph.nodes,
+            edges: draft.graph.edges,
+          })
+      }
+
+      // Check after queued saves finish so a newly persisted nonempty draft is protected too.
+      if (emptyGraph && workflowStore.getState().syncWorkflowDraftIsEmpty !== true) {
+        const { showConfirm, setShowConfirm } = workflowStore.getState()
+        if (!isMountedRef.current || showConfirm) {
+          callback?.onSettled?.()
+          return null
+        }
+
+        const confirmed = await new Promise<boolean>((resolve) => {
+          let settled = false
+          const finish = (confirmed: boolean) => {
+            if (settled) return
+            settled = true
+            cancelConfirmationRef.current = undefined
+            setShowConfirm(undefined)
+            resolve(confirmed)
+          }
+          cancelConfirmationRef.current = () => finish(false)
+          setShowConfirm({
+            title: t(($) => $['common.clearCanvasConfirmTitle'], { ns: 'workflow' }),
+            desc: t(($) => $['common.clearCanvasConfirmDescription'], { ns: 'workflow' }),
+            onConfirm: () => finish(true),
+            onCancel: () => finish(false),
+          })
+        })
+
+        if (!confirmed || !canSaveEmptyGraph()) {
           callback?.onSettled?.()
           return null
         }
@@ -207,7 +271,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         const body = {
           ...baseParams.params,
           hash: latestHash || null,
-          ...(force ? { force: true } : {}),
+          ...(emptyGraph ? { force: true } : {}),
           ...(options?.environmentVariablePatch
             ? {
                 environment_variable_patch: {
@@ -235,7 +299,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           return null
         }
 
-        setSyncWorkflowDraftHash(res.hash)
+        setSyncWorkflowDraftHash(res.hash, baseParams.params.graph)
         setDraftUpdatedAt(res.updated_at)
         callback?.onSuccess?.()
         return { hash: res.hash, updatedAt: res.updated_at }
@@ -249,6 +313,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       getPostParams,
       handleRefreshWorkflowDraft,
       isCollaborationEnabled,
+      t,
       appId,
     ],
   )
@@ -275,39 +340,14 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       }
 
       const emptyGraph = isEmptyGraph(baseParams.params.graph)
-      if (emptyGraph) {
-        const { showConfirm, setShowConfirm } = workflowStore.getState()
-        if (
-          !isMountedRef.current ||
-          showConfirm ||
-          (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph())
-        ) {
-          callback?.onSettled?.()
-          return null
-        }
-
-        const confirmed = await new Promise<boolean>((resolve) => {
-          let settled = false
-          const finish = (confirmed: boolean) => {
-            if (settled) return
-            settled = true
-            cancelConfirmationRef.current = undefined
-            setShowConfirm(undefined)
-            resolve(confirmed)
-          }
-          cancelConfirmationRef.current = () => finish(false)
-          setShowConfirm({
-            title: t(($) => $['common.clearCanvasConfirmTitle'], { ns: 'workflow' }),
-            desc: t(($) => $['common.clearCanvasConfirmDescription'], { ns: 'workflow' }),
-            onConfirm: () => finish(true),
-            onCancel: () => finish(false),
-          })
-        })
-
-        if (!confirmed) {
-          callback?.onSettled?.()
-          return null
-        }
+      if (
+        emptyGraph &&
+        (!isMountedRef.current ||
+          emptySyncPendingRef.current ||
+          workflowStore.getState().showConfirm)
+      ) {
+        callback?.onSettled?.()
+        return null
       }
 
       const shouldRequestLeader =
@@ -318,20 +358,24 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         !options?.forceLocal
 
       if (!shouldRequestLeader) {
-        // The user grants consent in this tab, so persist a confirmed empty graph here.
-        return doSyncWorkflowDraftLocally(
-          baseParams,
-          notRefreshWhenSyncError,
-          callback,
-          options,
-          emptyGraph,
-        )
+        // Empty graphs stay in this tab so any required consent belongs to the initiating user.
+        if (emptyGraph) emptySyncPendingRef.current = true
+        try {
+          return await doSyncWorkflowDraftLocally(
+            baseParams,
+            notRefreshWhenSyncError,
+            callback,
+            options,
+          )
+        } finally {
+          if (emptyGraph) emptySyncPendingRef.current = false
+        }
       }
 
       try {
         const result = await collaborationManager.requestWorkflowSync()
         const { setSyncWorkflowDraftHash, setDraftUpdatedAt } = workflowStore.getState()
-        setSyncWorkflowDraftHash(result.hash)
+        setSyncWorkflowDraftHash(result.hash, baseParams.params.graph)
         setDraftUpdatedAt(result.updatedAt)
         callback?.onSuccess?.()
         return result
@@ -348,7 +392,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       getNodesReadOnly,
       getPostParams,
       isCollaborationEnabled,
-      t,
       workflowStore,
       appId,
     ],
