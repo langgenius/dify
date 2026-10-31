@@ -306,7 +306,7 @@ class TestApiTokenServiceCases:
         db.init_app(app)
 
         with app.app_context():
-            ApiToken.__table__.create(db.engine)
+            ApiToken.__table__.create(db.engine)  # pyrefly: ignore[missing-attribute]
             with Session(db.engine, expire_on_commit=False) as session:
                 yield session
 
@@ -316,12 +316,13 @@ class TestApiTokenServiceCases:
             app_id = str(uuid4())
             token_value = f"app-test-{uuid4()}"
 
-            api_token = ApiToken()
-            api_token.id = str(uuid4())
-            api_token.app_id = app_id
-            api_token.tenant_id = tenant_id
-            api_token.type = "app"
-            api_token.token = token_value
+            api_token = ApiToken(
+                id=str(uuid4()),
+                app_id=app_id,
+                tenant_id=tenant_id,
+                type=ApiTokenType.APP,
+                token=token_value,
+            )
             api_token_db.add(api_token)
             api_token_db.commit()
 
@@ -337,7 +338,7 @@ class TestApiTokenServiceCases:
             mock_record_usage.assert_called_once_with(token_value, "app")
 
         def test_should_cache_null_and_raise_domain_error_when_token_not_found(
-            self, api_token_db: Session, single_flight_redis: tuple[Redis, list[tuple[object, ...]]]
+            self, api_token_db: Session, single_flight_redis: tuple[Redis[bytes], list[tuple[object, ...]]]
         ) -> None:
             _client, commands = single_flight_redis
             token_value = f"missing-{uuid4()}"
@@ -348,7 +349,7 @@ class TestApiTokenServiceCases:
             assert commands == [("SETEX", f"api_token:app:{token_value}", CACHE_NULL_TTL_SECONDS, b"null")]
 
     class TestRecordTokenUsage:
-        def test_should_write_active_key_with_iso_timestamp_and_ttl(self):
+        def test_should_write_active_key_with_iso_timestamp_and_ttl(self) -> None:
             auth_token = "token-123"
             scope = "dataset"
             fixed_time = datetime(2026, 2, 24, 12, 0, 0)
@@ -362,13 +363,13 @@ class TestApiTokenServiceCases:
 
             mock_redis.set.assert_called_once_with(expected_key, fixed_time.isoformat(), ex=3600)
 
-        def test_should_not_raise_when_redis_write_fails(self):
+        def test_should_not_raise_when_redis_write_fails(self) -> None:
             with patch.object(api_token_service_module, "redis_client") as mock_redis:
                 mock_redis.set.side_effect = Exception("redis unavailable")
                 api_token_service_module.record_token_usage("token-123", "app")
 
     class TestGetEffectiveTokenLastUsedAt:
-        def test_should_surface_pending_usage_before_the_batch_flush(self):
+        def test_should_surface_pending_usage_before_the_batch_flush(self) -> None:
             pending = datetime(2026, 8, 11, 12, 30, 0)
 
             with patch.object(api_token_service_module, "redis_client") as mock_redis:
@@ -382,7 +383,7 @@ class TestApiTokenServiceCases:
             assert result == pending
             mock_redis.get.assert_called_once_with(ApiTokenCache.make_active_key("token-123", "dataset"))
 
-        def test_should_keep_a_newer_persisted_usage_timestamp(self):
+        def test_should_keep_a_newer_persisted_usage_timestamp(self) -> None:
             pending = datetime(2026, 8, 11, 12, 30, 0)
             persisted = datetime(2026, 8, 11, 12, 31, 0)
 
@@ -397,7 +398,7 @@ class TestApiTokenServiceCases:
             assert result == persisted
 
         @pytest.mark.parametrize("value", [None, b"not-a-timestamp"])
-        def test_should_fall_back_to_the_persisted_timestamp(self, value):
+        def test_should_fall_back_to_the_persisted_timestamp(self, value: bytes | None) -> None:
             persisted = datetime(2026, 8, 11, 12, 30, 0)
 
             with patch.object(api_token_service_module, "redis_client") as mock_redis:
@@ -412,7 +413,7 @@ class TestApiTokenServiceCases:
 
     @staticmethod
     @pytest.fixture
-    def single_flight_redis(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[Redis, list[tuple[object, ...]]]]:
+    def single_flight_redis(monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[Redis[bytes], list[tuple[object, ...]]]]:
         """Use the real Redis client, wrapper and lock; isolate only wire commands."""
         commands: list[tuple[object, ...]] = []
 
@@ -423,7 +424,9 @@ class TestApiTokenServiceCases:
             assert args[0] in {"SET", "SETEX", "EVALSHA"}
             return True
 
-        with Redis() as client:
+        # Annotate, do not subscript: `Redis` is not a generic class at runtime.
+        client: Redis[bytes] = Redis()
+        with client:
             monkeypatch.setattr(client, "execute_command", execute)
             wrapper = RedisClientWrapper()
             wrapper.initialize(client)
@@ -432,7 +435,7 @@ class TestApiTokenServiceCases:
 
     class TestFetchTokenWithSingleFlight:
         def test_should_return_cached_token_when_lock_acquired_and_cache_filled(
-            self, single_flight_redis: tuple[Redis, list[tuple[object, ...]]]
+            self, single_flight_redis: tuple[Redis[bytes], list[tuple[object, ...]]]
         ) -> None:
             auth_token = "token-123"
             scope = "app"
@@ -458,7 +461,7 @@ class TestApiTokenServiceCases:
             mock_query_db.assert_not_called()
 
         def test_should_query_db_when_lock_acquired_and_cache_missed(
-            self, single_flight_redis: tuple[Redis, list[tuple[object, ...]]]
+            self, single_flight_redis: tuple[Redis[bytes], list[tuple[object, ...]]]
         ) -> None:
             auth_token = "token-123"
             scope = "app"
@@ -476,7 +479,7 @@ class TestApiTokenServiceCases:
             _assert_lock_released(commands)
 
         def test_should_query_db_directly_when_lock_not_acquired(
-            self, single_flight_redis: tuple[Redis, list[tuple[object, ...]]], monkeypatch: pytest.MonkeyPatch
+            self, single_flight_redis: tuple[Redis[bytes], list[tuple[object, ...]]], monkeypatch: pytest.MonkeyPatch
         ) -> None:
             auth_token = "token-123"
             scope = "app"
@@ -506,7 +509,7 @@ class TestApiTokenServiceCases:
         def test_invalid_token_should_release_lock_without_fallback_or_usage(
             self,
             api_token_db: Session,
-            single_flight_redis: tuple[Redis, list[tuple[object, ...]]],
+            single_flight_redis: tuple[Redis[bytes], list[tuple[object, ...]]],
             stored_scope: ApiTokenType | None,
         ) -> None:
             auth_token = "token-123"
@@ -546,7 +549,7 @@ class TestApiTokenServiceCases:
             assert all(active_key not in command for command in commands)
 
         def test_should_fallback_to_db_query_when_lock_raises_exception(
-            self, single_flight_redis: tuple[Redis, list[tuple[object, ...]]], monkeypatch: pytest.MonkeyPatch
+            self, single_flight_redis: tuple[Redis[bytes], list[tuple[object, ...]]], monkeypatch: pytest.MonkeyPatch
         ) -> None:
             auth_token = "token-123"
             scope = "app"
@@ -571,7 +574,9 @@ class TestApiTokenServiceCases:
 
     class TestApiTokenCacheTenantBranches:
         @patch("services.api_token_service.redis_client")
-        def test_delete_with_scope_should_remove_from_tenant_index_when_tenant_found(self, mock_redis):
+        def test_delete_with_scope_should_remove_from_tenant_index_when_tenant_found(
+            self, mock_redis: MagicMock
+        ) -> None:
             token = "token-123"
             scope = "app"
             cache_key = ApiTokenCache._make_cache_key(token, scope)
@@ -594,7 +599,7 @@ class TestApiTokenServiceCases:
             mock_remove_index.assert_called_once_with("tenant-1", cache_key)
 
         @patch("services.api_token_service.redis_client")
-        def test_invalidate_by_tenant_should_delete_all_indexed_cache_keys(self, mock_redis):
+        def test_invalidate_by_tenant_should_delete_all_indexed_cache_keys(self, mock_redis: MagicMock) -> None:
             tenant_id = "tenant-1"
             index_key = ApiTokenCache._make_tenant_index_key(tenant_id)
             mock_redis.smembers.return_value = {
@@ -611,7 +616,7 @@ class TestApiTokenServiceCases:
             mock_redis.delete.assert_any_call(index_key)
 
     class TestApiTokenCacheCoreBranches:
-        def test_cached_api_token_repr_should_include_id_and_type(self):
+        def test_cached_api_token_repr_should_include_id_and_type(self) -> None:
             token = CachedApiToken(
                 id="id-123",
                 app_id="app-123",
@@ -623,7 +628,7 @@ class TestApiTokenServiceCases:
             )
             assert repr(token) == "<CachedApiToken id=id-123 type=app>"
 
-        def test_serialize_token_should_handle_cached_api_token_instances(self):
+        def test_serialize_token_should_handle_cached_api_token_instances(self) -> None:
             token = CachedApiToken(
                 id="id-123",
                 app_id="app-123",
@@ -637,21 +642,21 @@ class TestApiTokenServiceCases:
             assert isinstance(serialized, bytes)
             assert b'"id":"id-123"' in serialized
 
-        def test_deserialize_token_should_return_none_for_null_markers(self):
+        def test_deserialize_token_should_return_none_for_null_markers(self) -> None:
             assert ApiTokenCache._deserialize_token("null") is None
             assert ApiTokenCache._deserialize_token(b"null") is None
 
-        def test_deserialize_token_should_return_none_for_invalid_payload(self):
+        def test_deserialize_token_should_return_none_for_invalid_payload(self) -> None:
             assert ApiTokenCache._deserialize_token("not-json") is None
 
         @patch("services.api_token_service.redis_client")
-        def test_get_should_return_none_on_cache_miss(self, mock_redis):
+        def test_get_should_return_none_on_cache_miss(self, mock_redis: MagicMock) -> None:
             mock_redis.get.return_value = None
             result = ApiTokenCache.get("token-123", "app")
             assert result is None
 
         @patch("services.api_token_service.redis_client")
-        def test_get_should_deserialize_cached_payload_on_cache_hit(self, mock_redis):
+        def test_get_should_deserialize_cached_payload_on_cache_hit(self, mock_redis: MagicMock) -> None:
             token = CachedApiToken(
                 id="id-123",
                 app_id="app-123",
@@ -667,42 +672,42 @@ class TestApiTokenServiceCases:
             assert result.id == "id-123"
 
         @patch("services.api_token_service.redis_client")
-        def test_add_to_tenant_index_should_skip_when_tenant_id_missing(self, mock_redis):
+        def test_add_to_tenant_index_should_skip_when_tenant_id_missing(self, mock_redis: MagicMock) -> None:
             ApiTokenCache._add_to_tenant_index(None, "api_token:app:token-123")
             mock_redis.sadd.assert_not_called()
 
         @patch("services.api_token_service.redis_client")
-        def test_add_to_tenant_index_should_swallow_index_update_errors(self, mock_redis):
+        def test_add_to_tenant_index_should_swallow_index_update_errors(self, mock_redis: MagicMock) -> None:
             mock_redis.sadd.side_effect = Exception("redis down")
             ApiTokenCache._add_to_tenant_index("tenant-123", "api_token:app:token-123")
             mock_redis.sadd.assert_called_once()
 
         @patch("services.api_token_service.redis_client")
-        def test_remove_from_tenant_index_should_skip_when_tenant_id_missing(self, mock_redis):
+        def test_remove_from_tenant_index_should_skip_when_tenant_id_missing(self, mock_redis: MagicMock) -> None:
             ApiTokenCache._remove_from_tenant_index(None, "api_token:app:token-123")
             mock_redis.srem.assert_not_called()
 
         @patch("services.api_token_service.redis_client")
-        def test_remove_from_tenant_index_should_swallow_redis_errors(self, mock_redis):
+        def test_remove_from_tenant_index_should_swallow_redis_errors(self, mock_redis: MagicMock) -> None:
             mock_redis.srem.side_effect = Exception("redis down")
             ApiTokenCache._remove_from_tenant_index("tenant-123", "api_token:app:token-123")
             mock_redis.srem.assert_called_once()
 
         @patch("services.api_token_service.redis_client")
-        def test_set_should_return_false_when_cache_write_raises_exception(self, mock_redis):
+        def test_set_should_return_false_when_cache_write_raises_exception(self, mock_redis: MagicMock) -> None:
             mock_redis.setex.side_effect = Exception("redis write failed")
             api_token = _api_token()
             result = ApiTokenCache.set("token-123", "app", api_token)
             assert result is False
 
         @patch("services.api_token_service.redis_client")
-        def test_delete_without_scope_should_return_false_when_scan_fails(self, mock_redis):
+        def test_delete_without_scope_should_return_false_when_scan_fails(self, mock_redis: MagicMock) -> None:
             mock_redis.scan_iter.side_effect = Exception("scan failed")
             result = ApiTokenCache.delete("token-123", None)
             assert result is False
 
         @patch("services.api_token_service.redis_client")
-        def test_delete_with_scope_should_continue_when_tenant_lookup_raises(self, mock_redis):
+        def test_delete_with_scope_should_continue_when_tenant_lookup_raises(self, mock_redis: MagicMock) -> None:
             token = "token-123"
             scope = "app"
             cache_key = ApiTokenCache._make_cache_key(token, scope)
@@ -712,21 +717,21 @@ class TestApiTokenServiceCases:
             mock_redis.delete.assert_called_once_with(cache_key)
 
         @patch("services.api_token_service.redis_client")
-        def test_delete_with_scope_should_return_false_when_delete_raises(self, mock_redis):
+        def test_delete_with_scope_should_return_false_when_delete_raises(self, mock_redis: MagicMock) -> None:
             mock_redis.get.return_value = None
             mock_redis.delete.side_effect = Exception("delete failed")
             result = ApiTokenCache.delete("token-123", "app")
             assert result is False
 
         @patch("services.api_token_service.redis_client")
-        def test_invalidate_by_tenant_should_return_true_when_index_not_found(self, mock_redis):
+        def test_invalidate_by_tenant_should_return_true_when_index_not_found(self, mock_redis: MagicMock) -> None:
             mock_redis.smembers.return_value = set()
             result = ApiTokenCache.invalidate_by_tenant("tenant-123")
             assert result is True
             mock_redis.delete.assert_not_called()
 
         @patch("services.api_token_service.redis_client")
-        def test_invalidate_by_tenant_should_return_false_when_redis_raises(self, mock_redis):
+        def test_invalidate_by_tenant_should_return_false_when_redis_raises(self, mock_redis: MagicMock) -> None:
             mock_redis.smembers.side_effect = Exception("redis failed")
             result = ApiTokenCache.invalidate_by_tenant("tenant-123")
             assert result is False
