@@ -12,7 +12,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_di
 from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.human_input_v2.shared.values import AccountId, TenantId
-from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormRequiredEvent
 from core.workflow.system_variables import SystemVariableKey, system_variable_selector
 from enums import DeploymentEdition
@@ -29,6 +28,7 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity, HumanInputForm
 from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
 from services.human_input_v2.submission_service import HumanInputSubmissionService
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from tasks.app_generate.workflow_execute_task import resume_app_execution
 from tasks.human_input_im_card_tasks import update_human_input_im_card_task
 
