@@ -323,8 +323,6 @@ project-excludes = [
   "../helpers/unit/libs/_human_input/support.py",
   "../e2e_tests/contracts/libs/_human_input/test_form_service.py",
   "../e2e_tests/contracts/libs/_human_input/test_models.py",
-  "libs/broadcast_channel/redis/test_pubsub_channel.py",
-  "libs/broadcast_channel/redis/test_streams_channel.py",
   "libs/test_archive_storage.py",
   "libs/test_schedule_utils.py",
   "libs/test_datetime_utils.py",
