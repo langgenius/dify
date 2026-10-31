@@ -28,6 +28,12 @@ class AnnotationDeletionResult:
 
 
 class AnnotationWriteStore(Protocol):
+    def create(
+        self, *, tenant_id: str, app_id: str, account_id: str, question: str, answer: str
+    ) -> AnnotationWriteResult:
+        """Create a manual annotation, preserving empty question and answer strings."""
+        ...
+
     def upsert(
         self,
         *,
@@ -99,6 +105,21 @@ class AnnotationCommandService:
         self._add_index = add_index
         self._update_index = update_index
         self._delete_index = delete_index
+
+    def create(self, *, tenant_id: str, app_id: str, account_id: str, question: str, answer: str) -> AnnotationRecord:
+        """Service API creation accepts empty text and never updates an existing annotation."""
+        result = self._annotations.create(
+            tenant_id=tenant_id, app_id=app_id, account_id=account_id, question=question, answer=answer
+        )
+        if result.collection_binding_id is not None:
+            self._add_index(
+                annotation_id=result.annotation.id,
+                question=result.annotation.question,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                collection_binding_id=result.collection_binding_id,
+            )
+        return result.annotation
 
     def upsert(
         self,

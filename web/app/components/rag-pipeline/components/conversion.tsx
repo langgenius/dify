@@ -20,6 +20,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import PipelineScreenShot from './screenshot'
 
@@ -34,7 +35,9 @@ const Conversion = () => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const { mutate: convert, isPending } = useMutation(
-    consoleQuery.rag.pipelines.transform.datasets.byDatasetId.post.mutationOptions(),
+    consoleQuery.rag.pipelines.transform.datasets.byDatasetId.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const queryClient = useQueryClient()
   const invalidDatasetDetail = React.useCallback(() => {
@@ -69,8 +72,11 @@ const Conversion = () => {
             toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
           }
         },
-        onError: () => {
-          toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ??
+              t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }),
+          )
         },
       },
     )

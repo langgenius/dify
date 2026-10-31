@@ -393,6 +393,13 @@ export const zAgentConfigFileUploadPayload = z.object({
 })
 
 /**
+ * AgentConfigFilesUploadPayload
+ */
+export const zAgentConfigFilesUploadPayload = z.object({
+  upload_file_ids: z.array(z.uuid()).min(1),
+})
+
+/**
  * AgentConfigDeleteResponse
  */
 export const zAgentConfigDeleteResponse = z.object({
@@ -1081,6 +1088,14 @@ export const zAgentConfigFileListResponse = z.object({
 export const zAgentConfigFileUploadResponse = z.object({
   config_version: zAgentConfigVersionResponse,
   file: zAgentConfigFileItemResponse,
+})
+
+/**
+ * AgentConfigFilesUploadResponse
+ */
+export const zAgentConfigFilesUploadResponse = z.object({
+  config_version: zAgentConfigVersionResponse,
+  files: z.array(zAgentConfigFileItemResponse),
 })
 
 /**
@@ -2545,7 +2560,7 @@ export const zAgentSoulSandboxConfig = z.object({
  *
  * Per-item shape for an ``array``-typed declared output.
  *
- * PRD §OUTPUT 配置框 keeps arrays one level deep on first version; nested arrays
+ * The PRD output configuration section limits arrays to one level; nested arrays
  * are rejected so the runtime type checker and JSON Schema stay easy to reason
  * about. Stage 4 §4.2.
  */
@@ -3177,7 +3192,7 @@ export const zAgentSoulModelConfig = z.object({
  *
  * File-output content check via a model-based comparison against a benchmark file.
  *
- * Per PRD §OUTPUT 配置框, output check is **file-only** and optional. Stage 4 §4.3.
+ * Per the PRD output configuration section, output checks are **file-only** and optional. Stage 4 §4.3.
  */
 export const zDeclaredOutputCheckConfig = z.object({
   benchmark_file_ref: zAgentFileRefConfig.nullish(),
@@ -3703,6 +3718,7 @@ export const zHumanInputFormDefinition = z.object({
   form_content: z.string(),
   form_id: z.string(),
   form_token: z.string().nullish(),
+  form_version: z.enum(['1', '2']).optional().default('1'),
   inputs: z.array(zFormInputConfig).optional(),
   node_id: z.string(),
   node_title: z.string(),
@@ -4187,6 +4203,22 @@ export const zPostAgentByAgentIdConfigFilesQuery = z.object({
  * Uploaded config file
  */
 export const zPostAgentByAgentIdConfigFilesResponse = zAgentConfigFileUploadResponse
+
+export const zPostAgentByAgentIdConfigFilesBatchBody = zAgentConfigFilesUploadPayload
+
+export const zPostAgentByAgentIdConfigFilesBatchPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zPostAgentByAgentIdConfigFilesBatchQuery = z.object({
+  draft_type: z.enum(['debug_build', 'draft']).optional(),
+  version_id: z.string().optional(),
+})
+
+/**
+ * Bound config files
+ */
+export const zPostAgentByAgentIdConfigFilesBatchResponse = zAgentConfigFilesUploadResponse
 
 export const zDeleteAgentByAgentIdConfigFilesByNamePath = z.object({
   agent_id: z.uuid(),

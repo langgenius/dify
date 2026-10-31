@@ -1,4 +1,4 @@
-"""Detached annotation reads shared by Console annotation endpoints.
+"""Detached annotation reads shared by Console and Service API endpoints.
 
 These queries need no application orchestration. The composition root injects
 their repository implementation directly, as it does for app statistics.

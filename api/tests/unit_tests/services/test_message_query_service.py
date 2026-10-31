@@ -8,9 +8,9 @@ from sqlalchemy import delete, event
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
+from enums.human_input import HumanInputFormStatus
 from models.enums import ConversationFromSource
 from models.execution_extra_content import HumanInputContent
-from models.human_input import HumanInputFormStatus
 from models.model import Message
 from repositories.message_repository import MessageRepository
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
@@ -75,7 +75,8 @@ def test_extra_contents_are_loaded_after_message_session_closes(
         messages=MessageRepository(session_factory=sqlite_session_factory),
         files=MessageFileResolver(),
         extra_contents=ExecutionExtraContentReader(
-            repository=SQLAlchemyExecutionExtraContentRepository(session_maker=contents_factory)
+            repository=SQLAlchemyExecutionExtraContentRepository(session_maker=contents_factory),
+            session_factory=contents_factory,
         ),
     )
     try:
@@ -122,6 +123,7 @@ def test_extra_contents_are_loaded_after_message_session_closes(
         "submitted": submitted,
         "form_definition": {
             "form_id": form_id,
+            "form_version": "1",
             "node_id": "node-id",
             "node_title": "Approval",
             "form_content": "Rendered block",
@@ -167,7 +169,8 @@ def test_empty_page_does_not_open_extra_content_session(sqlite_session_factory: 
             messages=MessageRepository(session_factory=sqlite_session_factory),
             files=MessageFileResolver(),
             extra_contents=ExecutionExtraContentReader(
-                repository=SQLAlchemyExecutionExtraContentRepository(session_maker=contents_factory)
+                repository=SQLAlchemyExecutionExtraContentRepository(session_maker=contents_factory),
+                session_factory=contents_factory,
             ),
         ).get_page(
             app_id=app_id,

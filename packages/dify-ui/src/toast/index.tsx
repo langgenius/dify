@@ -53,21 +53,12 @@ type ToastPromiseOptions<Value> = {
   error: ToastPromiseResultOption<unknown>
 }
 
-type ToastCardProps = {
-  toast: ToastObject<ToastData>
-  /** Additional content composed inside the card. */
-  children?: React.ReactNode
-}
-
 type ToasterOffset = Pick<React.CSSProperties, 'top' | 'right'>
 
-// `children` fills the viewport and defaults to a `ToastCard` per toast; compose `useToasts` to
-// customize it.
-type ToasterProps = Pick<BaseToast.Provider.Props, 'timeout' | 'limit'> &
-  Pick<BaseToast.Viewport.Props, 'children'> & {
-    toastManager: ToastManager
-    offset?: ToasterOffset
-  }
+type ToasterProps = Pick<BaseToast.Provider.Props, 'timeout' | 'limit'> & {
+  toastManager: ToastManager
+  offset?: ToasterOffset
+}
 
 type ToastDismiss = (toastId?: string) => void
 type ToastCall = (title: React.ReactNode, options: ToastOptions) => string
@@ -150,7 +141,7 @@ function createToastManager(): ToastManager {
   return BaseToast.createToastManager<ToastData>()
 }
 
-function ToastCard({ toast: toastItem, children }: ToastCardProps) {
+function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
   return (
     <BaseToast.Root
       toast={toastItem}
@@ -202,7 +193,6 @@ function ToastCard({ toast: toastItem, children }: ToastCardProps) {
             <BaseToast.Description className="mt-1 min-w-0 system-xs-regular wrap-break-word text-text-secondary" />
             <BaseToast.Action render={<Button />} className="mt-2" />
           </div>
-          {children}
           <div className="flex shrink-0 items-center justify-center rounded-md p-0.5">
             <BaseToast.Close
               aria-label={toastCloseLabel}
@@ -220,22 +210,12 @@ function ToastCard({ toast: toastItem, children }: ToastCardProps) {
   )
 }
 
-function useToasts(): ToastObject<ToastData>[] {
-  return BaseToast.useToastManager<ToastData>().toasts
-}
-
 function ToastCards() {
-  const toasts = useToasts()
+  const { toasts } = BaseToast.useToastManager<ToastData>()
   return toasts.map((item) => <ToastCard key={item.id} toast={item} />)
 }
 
-function Toaster({
-  toastManager,
-  timeout,
-  limit,
-  offset,
-  children = <ToastCards />,
-}: ToasterProps) {
+function Toaster({ toastManager, timeout, limit, offset }: ToasterProps) {
   return (
     <BaseToast.Provider toastManager={toastManager} timeout={timeout} limit={limit}>
       <BaseToast.Portal>
@@ -247,13 +227,13 @@ function Toaster({
           }
           style={offset}
         >
-          {children}
+          <ToastCards />
         </BaseToast.Viewport>
       </BaseToast.Portal>
     </BaseToast.Provider>
   )
 }
 
-export { createToast, createToastManager, ToastCard, Toaster, useToasts }
+export { createToast, createToastManager, Toaster }
 
-export type { ToastApi, ToastCardProps, ToasterProps, ToastManager, ToastType }
+export type { ToastApi, ToasterProps, ToastManager, ToastType }
