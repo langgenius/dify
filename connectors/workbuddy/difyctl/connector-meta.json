@@ -1,0 +1,22 @@
+{
+  "name": "Dify（测试版）",
+  "name_zh": "Dify（测试版）",
+  "name_en": "Dify (Beta)",
+  "description": "在 WorkBuddy 里用 difyctl 运行和搭建 Dify 应用。支持 Dify Cloud 和私有部署，登录时输入 Dify 控制台地址即可",
+  "description_zh": "在 WorkBuddy 里用 difyctl 运行和搭建 Dify 应用。支持 Dify Cloud 和私有部署，登录时输入 Dify 控制台地址即可",
+  "description_en": "Run and build Dify apps with difyctl. For Dify Cloud or self-hosted, log in with your console URL.",
+  "source": "difyctl",
+  "type": "cli",
+  "version": "0.1.0",
+  "minWorkbuddyVersion": "4.24.0",
+  "examples_zh": [
+    "列出我在 Dify 上的应用",
+    "运行 Dify 里的客服工作流，问题是……",
+    "在 Dify 上建一个把网页总结成三点的工作流并发布"
+  ],
+  "examples_en": [
+    "List my apps on Dify",
+    "Run the customer support workflow in Dify. The question is...",
+    "Build a workflow on Dify that summarizes a web page in three points, then publish it"
+  ]
+}
