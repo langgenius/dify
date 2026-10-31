@@ -5,7 +5,6 @@ export async function getAgentAccessAppId(agentId: string) {
   const agent = await getQueryClient().query(
     consoleQuery.agent.byAgentId.get.queryOptions({
       input: { params: { agent_id: agentId } },
-      context: { silent: true },
       staleTime: Infinity,
       retry: false,
     }),

@@ -16,6 +16,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
@@ -44,8 +45,11 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
     onEdit?.(role)
   }, [canManageRoles, onEdit, role])
 
+  const notifyError = useErrorNotification()
   const { mutate: copyRole, isPending: isCopyingRole } = useMutation(
-    consoleQuery.workspaces.current.rbac.roles.byRoleId.copy.post.mutationOptions(),
+    consoleQuery.workspaces.current.rbac.roles.byRoleId.copy.post.mutationOptions({
+      onError: notifyError,
+    }),
   )
 
   const openCopyMembersConfirm = useCallback(() => {
@@ -71,7 +75,9 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
   )
 
   const { mutateAsync: deleteRole, isPending: isDeletingRole } = useMutation(
-    consoleQuery.workspaces.current.rbac.roles.byRoleId.delete.mutationOptions(),
+    consoleQuery.workspaces.current.rbac.roles.byRoleId.delete.mutationOptions({
+      onError: notifyError,
+    }),
   )
 
   const openDeleteConfirm = useCallback(() => {

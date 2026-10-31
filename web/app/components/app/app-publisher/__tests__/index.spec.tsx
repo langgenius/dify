@@ -393,12 +393,9 @@ it.each(['publish', 'create'] as const)(
         screen.queryByRole('dialog', { name: 'navigation.common.workflowAsTool' }),
       ).not.toBeInTheDocument(),
     )
-    expect(api.createTool).toHaveBeenCalledWith(
-      {
-        body: expect.objectContaining({ workflow_app_id: 'app-1', name: 'workflow_tool' }),
-      },
-      { context: { silent: true } },
-    )
+    expect(api.createTool).toHaveBeenCalledWith({
+      body: expect.objectContaining({ workflow_app_id: 'app-1', name: 'workflow_tool' }),
+    })
     expect(success).toHaveBeenCalledOnce()
   },
 )
@@ -447,10 +444,7 @@ it('opens the marketplace redirect after a successful submission', async () => {
       '_blank',
     ),
   )
-  expect(api.marketplace).toHaveBeenCalledExactlyOnceWith(
-    { params: { app_id: 'app-1' } },
-    { context: { silent: true } },
-  )
+  expect(api.marketplace).toHaveBeenCalledExactlyOnceWith({ params: { app_id: 'app-1' } })
 })
 
 it('shows a marketplace error and lets the user retry', async () => {

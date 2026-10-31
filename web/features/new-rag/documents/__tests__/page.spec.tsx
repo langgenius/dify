@@ -1267,12 +1267,9 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
     await user.click(screen.getByRole('menuitem', { name: 'knowledgeDocuments.downloadDocuments' }))
 
-    expect(downloadDocumentMutation).toHaveBeenCalledWith(
-      {
-        params: { control_space_id: 'space-1', document_id: 'report' },
-      },
-      { context: { silent: true } },
-    )
+    expect(downloadDocumentMutation).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', document_id: 'report' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'source-report.md' })
   })
 
@@ -1311,12 +1308,9 @@ describe('DocumentsPage', () => {
     expect(download).toBeEnabled()
     await user.click(download)
 
-    expect(downloadDocumentMutation).toHaveBeenCalledWith(
-      {
-        params: { control_space_id: 'space-1', document_id: 'failed-report' },
-      },
-      { context: { silent: true } },
-    )
+    expect(downloadDocumentMutation).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', document_id: 'failed-report' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'failed-report.pdf' })
   })
 
@@ -1402,10 +1396,10 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(createMetadataField).toHaveBeenCalledOnce()
-    expect(createMetadataField).toHaveBeenCalledWith(
-      { body: { name: 'category', type: 'string' }, params: { control_space_id: 'space-1' } },
-      { context: { silent: true } },
-    )
+    expect(createMetadataField).toHaveBeenCalledWith({
+      body: { name: 'category', type: 'string' },
+      params: { control_space_id: 'space-1' },
+    })
     expect(listLogicalDocuments).not.toHaveBeenCalled()
     expect(renameDocumentMutation).not.toHaveBeenCalled()
     await waitFor(() =>
@@ -1531,10 +1525,10 @@ describe('DocumentsPage', () => {
     await user.clear(nameInput)
     await user.type(nameInput, 'priority_1{Enter}')
     expect(nameInput).not.toHaveAttribute('aria-invalid')
-    expect(createMetadataField).toHaveBeenCalledWith(
-      { body: { name: 'priority_1', type: 'string' }, params: { control_space_id: 'space-1' } },
-      { context: { silent: true } },
-    )
+    expect(createMetadataField).toHaveBeenCalledWith({
+      body: { name: 'priority_1', type: 'string' },
+      params: { control_space_id: 'space-1' },
+    })
   })
 
   it('renames metadata through the field catalog endpoint', async () => {
@@ -1565,13 +1559,10 @@ describe('DocumentsPage', () => {
     await user.type(nameInput, 'topic')
     await user.keyboard('{Enter}')
 
-    expect(renameMetadataField).toHaveBeenCalledWith(
-      {
-        body: { expectedRowVersion: 0, name: 'topic' },
-        params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(renameMetadataField).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 0, name: 'topic' },
+      params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
+    })
     expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
 
@@ -1620,13 +1611,10 @@ describe('DocumentsPage', () => {
     await user.click(await screen.findByRole('button', { name: 'common.operation.remove' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    expect(deleteMetadataField).toHaveBeenCalledWith(
-      {
-        params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
-        query: { expectedRowVersion: 0 },
-      },
-      { context: { silent: true } },
-    )
+    expect(deleteMetadataField).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
+      query: { expectedRowVersion: 0 },
+    })
     expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
 
@@ -1977,7 +1965,6 @@ describe('DocumentsPage', () => {
       expect.objectContaining({
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       }),
-      { context: { silent: true } },
     )
   })
 
@@ -2019,16 +2006,13 @@ describe('DocumentsPage', () => {
     await user.type(input, 'Renamed handbook.pdf')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(renameDocumentMutation).toHaveBeenCalledWith(
-      {
-        body: {
-          expectedRowVersion: 1,
-          patch: { displayName: 'Renamed handbook.pdf' },
-        },
-        params: { control_space_id: 'space-1', document_id: 'document-1' },
+    expect(renameDocumentMutation).toHaveBeenCalledWith({
+      body: {
+        expectedRowVersion: 1,
+        patch: { displayName: 'Renamed handbook.pdf' },
       },
-      { context: { silent: true } },
-    )
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
     await waitFor(() =>
       expect(
         screen.queryByRole('dialog', { name: 'common.operation.rename' }),
@@ -2045,13 +2029,10 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'knowledgeSpace.disableSource' }))
 
-    expect(updateLogicalDocumentMutation).toHaveBeenCalledWith(
-      {
-        body: { enabled: false, expectedRowVersion: 1 },
-        params: { control_space_id: 'space-1', document_id: 'document-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(updateLogicalDocumentMutation).toHaveBeenCalledWith({
+      body: { enabled: false, expectedRowVersion: 1 },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
     await waitFor(() =>
       expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true),
     )
@@ -2067,13 +2048,10 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'dataset.enable' }))
 
-    expect(updateLogicalDocumentMutation).toHaveBeenCalledWith(
-      {
-        body: { enabled: true, expectedRowVersion: 1 },
-        params: { control_space_id: 'space-1', document_id: 'document-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(updateLogicalDocumentMutation).toHaveBeenCalledWith({
+      body: { enabled: true, expectedRowVersion: 1 },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
@@ -2092,14 +2070,11 @@ describe('DocumentsPage', () => {
     expect(removeDocumentMutation).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
 
-    expect(removeDocumentMutation).toHaveBeenCalledWith(
-      {
-        body: { expectedRevision: 1 },
-        headers: { 'Idempotency-Key': expect.any(String) },
-        params: { control_space_id: 'space-1', document_id: 'document-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(removeDocumentMutation).toHaveBeenCalledWith({
+      body: { expectedRevision: 1 },
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
       { queryKey: consoleQuery.features.get.key() },
       { cancelRefetch: false },
@@ -4563,19 +4538,16 @@ describe('DocumentsPage', () => {
     ).toBeEnabled()
     await user.click(within(actions).getByRole('button', { name: 'knowledgeSpace.disableSource' }))
 
-    expect(bulkUpdateLogicalDocumentsMutation).toHaveBeenCalledWith(
-      {
-        body: {
-          documents: [
-            { documentId: 'one', expectedRowVersion: 2 },
-            { documentId: 'two', expectedRowVersion: 4 },
-          ],
-          enabled: false,
-        },
-        params: { control_space_id: 'space-1' },
+    expect(bulkUpdateLogicalDocumentsMutation).toHaveBeenCalledWith({
+      body: {
+        documents: [
+          { documentId: 'one', expectedRowVersion: 2 },
+          { documentId: 'two', expectedRowVersion: 4 },
+        ],
+        enabled: false,
       },
-      { context: { silent: true } },
-    )
+      params: { control_space_id: 'space-1' },
+    })
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
@@ -4609,19 +4581,16 @@ describe('DocumentsPage', () => {
     })
     await user.click(within(actions).getByRole('button', { name: 'dataset.enable' }))
 
-    expect(bulkUpdateLogicalDocumentsMutation).toHaveBeenCalledWith(
-      {
-        body: {
-          documents: [
-            { documentId: 'one', expectedRowVersion: 3 },
-            { documentId: 'two', expectedRowVersion: 7 },
-          ],
-          enabled: true,
-        },
-        params: { control_space_id: 'space-1' },
+    expect(bulkUpdateLogicalDocumentsMutation).toHaveBeenCalledWith({
+      body: {
+        documents: [
+          { documentId: 'one', expectedRowVersion: 3 },
+          { documentId: 'two', expectedRowVersion: 7 },
+        ],
+        enabled: true,
       },
-      { context: { silent: true } },
-    )
+      params: { control_space_id: 'space-1' },
+    })
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
@@ -4697,13 +4666,10 @@ describe('DocumentsPage', () => {
       within(actions).getByRole('button', { name: 'knowledgeDocuments.downloadDocuments' }),
     )
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
-      {
-        body: { document_ids: ['one', 'two'] },
-        params: { control_space_id: 'space-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['one', 'two'] },
+      params: { control_space_id: 'space-1' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({
       data: archive,
       fileName: 'space-1-documents.zip',
@@ -4739,13 +4705,10 @@ describe('DocumentsPage', () => {
       within(actions).getByRole('button', { name: 'knowledgeDocuments.downloadDocuments' }),
     )
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
-      {
-        body: { document_ids: ['download-only'] },
-        params: { control_space_id: 'space-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['download-only'] },
+      params: { control_space_id: 'space-1' },
+    })
   })
 
   it('downloads selected failed documents without active revisions as a ZIP archive', async () => {
@@ -4788,13 +4751,10 @@ describe('DocumentsPage', () => {
     expect(download).toBeEnabled()
     await user.click(download)
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
-      {
-        body: { document_ids: ['failed'] },
-        params: { control_space_id: 'space-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['failed'] },
+      params: { control_space_id: 'space-1' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({
       data: archive,
       fileName: 'failed-documents.zip',
@@ -4881,19 +4841,16 @@ describe('DocumentsPage', () => {
     expect(bulkRemoveDocumentsMutation).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
     expect(bulkRemoveDocumentsMutation).toHaveBeenCalledOnce()
-    expect(bulkRemoveDocumentsMutation).toHaveBeenCalledWith(
-      {
-        body: {
-          documents: [
-            { documentId: 'one', expectedRevision: 2 },
-            { documentId: 'two', expectedRevision: 4 },
-          ],
-        },
-        headers: { 'Idempotency-Key': expect.any(String) },
-        params: { control_space_id: 'space-1' },
+    expect(bulkRemoveDocumentsMutation).toHaveBeenCalledWith({
+      body: {
+        documents: [
+          { documentId: 'one', expectedRevision: 2 },
+          { documentId: 'two', expectedRevision: 4 },
+        ],
       },
-      { context: { silent: true } },
-    )
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1' },
+    })
     expect(removeDocumentMutation).not.toHaveBeenCalled()
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
       { queryKey: consoleQuery.features.get.key() },

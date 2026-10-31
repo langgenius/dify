@@ -57,11 +57,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       fallbackFocus: { current: HTMLElement | null }
     }>(),
   )
-  const deletion = useMutation(
-    consoleQuery.datasets.byDatasetId.documents.delete.mutationOptions({
-      context: { silent: true },
-    }),
-  )
+  const deletion = useMutation(consoleQuery.datasets.byDatasetId.documents.delete.mutationOptions())
   const router = useRouter()
 
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)

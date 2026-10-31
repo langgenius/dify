@@ -11,12 +11,16 @@ import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 type CheckCodeFormValues = {
   code: string
 }
 
 export default function CheckCode() {
+  const [requestError, setRequestError] = useState<unknown>()
+  const { t: tRequestError } = useTranslation(['common'])
+
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -28,6 +32,7 @@ export default function CheckCode() {
   useDocumentTitle(pageTitle)
 
   const verify = async (code: string) => {
+    setRequestError(undefined)
     if (loading) return
     try {
       setLoading(true)
@@ -38,6 +43,7 @@ export default function CheckCode() {
         router.push(`/reset-password/set-password?${params.toString()}`)
       } else toast.error(t(($) => $['checkCode.invalidCode'], { ns: 'login' }))
     } catch (error) {
+      setRequestError(error)
       console.error(error)
     } finally {
       setLoading(false)
@@ -45,6 +51,7 @@ export default function CheckCode() {
   }
 
   const resendCode = async () => {
+    setRequestError(undefined)
     try {
       const res = await consoleClient.forgotPassword.post({ body: { email, language: locale } })
       if (res.result === 'success') {
@@ -53,6 +60,7 @@ export default function CheckCode() {
         router.replace(`/reset-password/check-code?${params.toString()}`)
       }
     } catch (error) {
+      setRequestError(error)
       console.error(error)
     }
   }
@@ -79,6 +87,11 @@ export default function CheckCode() {
           void verify(code)
         }}
       >
+        {!!requestError && (
+          <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+            {getErrorMessage(requestError) ?? tRequestError(($) => $['api.actionFailed'])}
+          </p>
+        )}
         <Field name="code">
           <FieldLabel>{t(($) => $['checkCode.verificationCode'], { ns: 'login' })}</FieldLabel>
           <Input
@@ -115,7 +128,7 @@ export default function CheckCode() {
         <span className="inline-block rounded-full bg-background-default-dimmed p-1">
           <span className="i-ri-arrow-left-line size-3" aria-hidden="true" />
         </span>
-        <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
+        <span className="ms-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
       </button>
     </div>
   )

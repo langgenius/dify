@@ -8,11 +8,23 @@ import {
   createStartNode,
 } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import iterationDefault from '@/app/components/workflow/nodes/iteration/default'
+import loopDefault from '@/app/components/workflow/nodes/loop/default'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleClient } from '@/service/console'
 import useOneStepRun from '../use-one-step-run'
+
+const streamRun = vi.hoisted(() =>
+  vi.fn<
+    (url: string, options: unknown, callbacks: { onError?: (message: string) => void }) => void
+  >(),
+)
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  ssePost: streamRun,
+}))
 
 const mockHitlIm = vi.hoisted(() => ({ enabled: true }))
 
@@ -55,9 +67,15 @@ vi.mock('@/service/console', async (importOriginal) => {
 
 const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
   render(createElement(AppToaster))
+  const containerDefaults =
+    type === BlockEnum.Iteration
+      ? iterationDefault.defaultValue
+      : type === BlockEnum.Loop
+        ? loopDefault.defaultValue
+        : {}
   const nodes = [
     createStartNode({ id: 'start', data: { variables: [] } }),
-    createNode({ id: 'if-else-node', data: { type, title: 'Test node' } }),
+    createNode({ id: 'if-else-node', data: { ...containerDefaults, type, title: 'Test node' } }),
   ]
   const edges = [createEdge({ source: 'start', target: 'if-else-node' })]
   return renderHook(
@@ -67,6 +85,7 @@ const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
         resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
 
         data: {
+          ...containerDefaults,
           type,
           title: 'IF/ELSE',
           desc: '',
@@ -90,6 +109,7 @@ describe('useOneStepRun single-run input vars', () => {
   beforeEach(() => {
     mockHitlIm.enabled = true
     runTrigger.mockReset()
+    streamRun.mockClear()
     window.history.replaceState(null, '', '/app/app-id/workflow')
   })
   afterEach(async () => {
@@ -197,6 +217,41 @@ describe('useOneStepRun single-run input vars', () => {
       expect(await screen.findByText('Trigger rejected')).toBeInTheDocument()
       expect(notifyError).toHaveBeenCalledExactlyOnceWith('Trigger rejected')
       expect(store.getState().isListening).toBe(false)
+    },
+  )
+
+  it.each([BlockEnum.Iteration, BlockEnum.Loop])(
+    'preserves a failed %s stream reason for the panel',
+    async (type) => {
+      const notify = vi.spyOn(toast, 'error')
+      const { result } = renderUseOneStepRun(type)
+      await act(async () => {
+        await result.current.handleRun({})
+      })
+      const options = streamRun.mock.calls.at(-1)![2]
+
+      act(() => options.onError?.('Node execution denied'))
+
+      expect(result.current.runError).toBe('Node execution denied')
+      expect(notify).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([BlockEnum.Iteration, BlockEnum.Loop])(
+    'ignores errors from an earlier %s stream after rerunning',
+    async (type) => {
+      const { result } = renderUseOneStepRun(type)
+      await act(async () => {
+        await result.current.handleRun({})
+      })
+      const earlier = streamRun.mock.calls.at(-1)![2]
+      await act(async () => {
+        await result.current.handleRun({})
+      })
+      act(() => earlier.onError?.('Earlier stream failed'))
+      expect(result.current.runError).toBeUndefined()
+      act(() => streamRun.mock.calls.at(-1)![2].onError?.('Current stream failed'))
+      expect(result.current.runError).toBe('Current stream failed')
     },
   )
 

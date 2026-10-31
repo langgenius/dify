@@ -79,7 +79,6 @@ function EnvironmentAccessControlContainer({
   const updateAccessModeMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentWebAppAccessMode.mutationOptions(
       {
-        context: { silent: true },
         onSuccess: (updatedSite) => {
           queryClient.setQueryData(siteQueryOptions.queryKey, updatedSite)
           void queryClient.invalidateQueries({ queryKey: subjectsQueryOptions.queryKey })

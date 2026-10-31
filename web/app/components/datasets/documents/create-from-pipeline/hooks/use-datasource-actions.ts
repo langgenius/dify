@@ -13,6 +13,7 @@ import {
   isPipelineProcessingRun,
   selectPreviewRunEstimate,
 } from '@/app/components/rag-pipeline/utils/query-select'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { DatasourceType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
 import {
@@ -63,12 +64,15 @@ export const useDatasourceActions = ({
   const isPreview = useRef(false)
   const formRef = useRef<{ submit: () => void } | null>(null)
 
+  const notifyError = useErrorNotification()
   const {
     mutateAsync: runPublishedPipeline,
     isIdle,
     isPending,
   } = useMutation(
-    consoleQuery.rag.pipelines.byPipelineId.workflows.published.run.post.mutationOptions(),
+    consoleQuery.rag.pipelines.byPipelineId.workflows.published.run.post.mutationOptions({
+      onError: notifyError,
+    }),
   )
 
   // Build datasource info for preview (single item)

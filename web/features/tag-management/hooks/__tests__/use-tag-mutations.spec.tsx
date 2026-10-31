@@ -46,18 +46,12 @@ it('batches only added and removed tags, then invalidates affected app lists and
       type: 'app',
     })
   })
-  expect(bindTag).toHaveBeenCalledExactlyOnceWith(
-    {
-      body: { tag_ids: ['tag-3', 'tag-4'], target_id: 'app-1', type: 'app' },
-    },
-    { context: { silent: true } },
-  )
-  expect(unbindTag).toHaveBeenCalledExactlyOnceWith(
-    {
-      body: { tag_ids: ['tag-1'], target_id: 'app-1', type: 'app' },
-    },
-    { context: { silent: true } },
-  )
+  expect(bindTag).toHaveBeenCalledExactlyOnceWith({
+    body: { tag_ids: ['tag-3', 'tag-4'], target_id: 'app-1', type: 'app' },
+  })
+  expect(unbindTag).toHaveBeenCalledExactlyOnceWith({
+    body: { tag_ids: ['tag-1'], target_id: 'app-1', type: 'app' },
+  })
   for (const key of [...appKeys(), tagKey('app')])
     expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
   expect(queryClient.getQueryState(tagKey('knowledge'))?.isInvalidated).toBe(false)

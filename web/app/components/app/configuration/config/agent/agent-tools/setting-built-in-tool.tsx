@@ -31,6 +31,7 @@ import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { getPluginLanguage } from '@/i18n/metadata'
 import { fetchBuiltInToolList, fetchCustomToolList, fetchWorkflowToolList } from '@/service/tools'
+import { getErrorMessage } from '@/utils/error-message'
 
 type Props = Readonly<{
   showBackButton?: boolean
@@ -65,6 +66,8 @@ const SettingBuiltInTool: FC<Props> = ({
   const passedTools = (collection as ToolWithProvider).tools
   const hasPassedTools = passedTools?.length > 0
   const [isLoading, setIsLoading] = useState(!hasPassedTools)
+  const [loadError, setLoadError] = useState<unknown>()
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [tools, setTools] = useState<Tool[]>(hasPassedTools ? passedTools : [])
   const currTool = tools.find((tool) => tool.name === toolName)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
@@ -81,20 +84,20 @@ const SettingBuiltInTool: FC<Props> = ({
     ;(async () => {
       setIsLoading(true)
       try {
-        const list = await new Promise<Tool[]>((resolve) => {
-          ;(async function () {
-            if (isBuiltIn) resolve(await fetchBuiltInToolList(collection.name))
-            else if (collection.type === CollectionType.workflow)
-              resolve(await fetchWorkflowToolList(collection.id))
-            else resolve(await fetchCustomToolList(collection.name))
-          })()
-        })
+        setLoadError(undefined)
+        const list = isBuiltIn
+          ? await fetchBuiltInToolList(collection.name)
+          : collection.type === CollectionType.workflow
+            ? await fetchWorkflowToolList(collection.id)
+            : await fetchCustomToolList(collection.name)
         setTools(list)
-      } catch {}
+      } catch (error) {
+        setLoadError(error)
+      }
       setIsLoading(false)
     })()
     // oxlint-disable-next-line react/exhaustive-deps
-  }, [collection?.name, collection?.id, collection?.type])
+  }, [collection?.name, collection?.id, collection?.type, loadAttempt])
 
   useEffect(() => {
     setCurrType(!readonly && hasSetting ? 'setting' : 'info')
@@ -175,12 +178,23 @@ const SettingBuiltInTool: FC<Props> = ({
             )}
           >
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+              {!!loadError && !isLoading && (
+                <div role="alert" className="p-4 system-sm-regular text-text-destructive">
+                  <p>
+                    {getErrorMessage(loadError) ??
+                      t(($) => $['api.actionFailed'], { ns: 'common' })}
+                  </p>
+                  <Button onClick={() => setLoadAttempt((attempt) => attempt + 1)}>
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                </div>
+              )}
               {isLoading && <LoadingPlaceholder className="h-full" />}
               {!isLoading && (
                 <>
                   {/* header */}
                   <div className="relative border-b border-divider-subtle p-4 pb-3">
-                    <div className="absolute top-3 right-3">
+                    <div className="absolute inset-e-3 top-3">
                       <IconButton
                         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                         onClick={onHide}
@@ -191,7 +205,7 @@ const SettingBuiltInTool: FC<Props> = ({
                     {showBackButton && (
                       <button
                         type="button"
-                        className="mb-2 flex cursor-pointer appearance-none items-center gap-1 border-0 bg-transparent p-0 text-left system-xs-semibold-uppercase text-text-accent-secondary"
+                        className="mb-2 flex cursor-pointer appearance-none items-center gap-1 border-0 bg-transparent p-0 text-start system-xs-semibold-uppercase text-text-accent-secondary"
                         onClick={onHide}
                       >
                         <RiArrowLeftLine className="size-4" />

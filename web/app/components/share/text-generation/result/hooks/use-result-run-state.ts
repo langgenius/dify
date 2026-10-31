@@ -189,14 +189,8 @@ export const useResultRunState = ({
     const abortController = abortControllerRef.current
     setIsStopping(true)
     try {
-      if (isWorkflow)
-        await stopWorkflowMessage(appId!, currentTaskId, appSourceType, appId || '', {
-          silent: true,
-        })
-      else
-        await stopChatMessageResponding(appId!, currentTaskId, appSourceType, appId || '', {
-          silent: true,
-        })
+      if (isWorkflow) await stopWorkflowMessage(appId!, currentTaskId, appSourceType, appId || '')
+      else await stopChatMessageResponding(appId!, currentTaskId, appSourceType, appId || '')
 
       if (isCurrentRequest()) abortController?.abort()
     } catch (error) {

@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { useModalContext } from '@/context/modal-context'
 import { consoleQuery } from '@/service/console'
 import {
@@ -35,6 +36,8 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
   canManageExternalKnowledgeApi,
   position,
 }) => {
+  const notifyError = useErrorNotification()
+
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
   const [showConfirm, setShowConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -74,11 +77,13 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
             })
             await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
           } catch (error) {
+            notifyError(error)
             console.error('Error updating external knowledge API:', error)
           }
         },
       })
     } catch (error) {
+      notifyError(error)
       console.error('Error fetching external knowledge API data:', error)
     }
   }
@@ -92,6 +97,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
 
       setShowConfirm(true)
     } catch (error) {
+      notifyError(error)
       console.error('Error checking external API usage:', error)
     }
   }
@@ -105,6 +111,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
       setShowConfirm(false)
       await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
     } catch (error) {
+      notifyError(error)
       console.error('Error deleting external knowledge API:', error)
     } finally {
       setIsDeleting(false)

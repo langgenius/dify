@@ -38,7 +38,6 @@ async function getSecretEnvironmentVariables(queryClient: QueryClient, appId: st
   const { items } = await queryClient.query(
     consoleQuery.apps.byAppId.workflows.draft.environmentVariables.get.queryOptions({
       input: { params: { app_id: appId } },
-      context: { silent: true },
       staleTime: 0,
     }),
   )
@@ -60,7 +59,6 @@ export async function exportAppDslFile(
           ...(format && { format }),
         },
       },
-      context: { silent: true },
       staleTime: 0,
       gcTime: 0,
     }),

@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { toast } from '@/app/notifications'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
@@ -27,6 +28,8 @@ import { getAvatarInitial } from '@/utils/avatar'
 import { buildOAuthCallbackUrl, buildReturnUrl, useSilentAuthorize } from './use-silent-authorize'
 
 export default function OAuthAuthorize() {
+  const notifyError = useErrorNotification()
+
   const { t } = useTranslation(['common', 'oauth'])
 
   const SCOPE_INFO_MAP: Record<
@@ -86,11 +89,10 @@ export default function OAuthAuthorize() {
       input: hasOAuthParams
         ? { body: { client_id: clientId, redirect_uri: redirectUri } }
         : skipToken,
-      context: { silent: true },
     }),
   )
   const { mutateAsync: authorize, isPending: authorizing } = useMutation(
-    consoleQuery.oauth.provider.authorize.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.oauth.provider.authorize.post.mutationOptions(),
   )
   const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
   const signInUrl = `/signin?redirect_url=${encodeURIComponent(returnUrl)}`
@@ -123,8 +125,8 @@ export default function OAuthAuthorize() {
     try {
       if (isLoggedIn) await logout()
       else router.push(signInUrl)
-    } catch {
-      // The request layer reports logout failures; keep the current session on this page.
+    } catch (error) {
+      notifyError(error)
     }
   }
 

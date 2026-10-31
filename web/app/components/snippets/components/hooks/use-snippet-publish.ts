@@ -17,7 +17,7 @@ export const useSnippetPublish = ({ snippetId }: UseSnippetPublishOptions) => {
   const { t } = useTranslation(['snippet'])
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()
-  const publishSnippetMutation = usePublishSnippetWorkflowMutation(snippetId, { silent: true })
+  const publishSnippetMutation = usePublishSnippetWorkflowMutation(snippetId)
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
 

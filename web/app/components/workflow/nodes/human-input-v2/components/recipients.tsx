@@ -962,7 +962,6 @@ const RuntimeRecipients = (props: RecipientsProps) => {
     ...contactsQuery.queryOptions({
       input,
       queryKey: [...contactsQuery.queryKey({ input }), { workspaceId }],
-      context: { silent: true },
     }),
     enabled: Boolean(workspaceId) && canManageContacts,
     select: (response) => response.total,

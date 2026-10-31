@@ -786,22 +786,19 @@ describe('Replacing a tenant in the configured IM provider', () => {
     expect(await screen.findByLabelText('contacts.imPlatform.bindingDialog.callback')).toHaveValue(
       replacement.webhook_url,
     )
-    expect(client.channels.im.byChannelId.replacement.post).toHaveBeenCalledExactlyOnceWith(
-      {
-        params: { channel_id: 'current-channel' },
-        body: {
-          expected_config_version: 'snapshot-version',
-          credentials: {
-            provider: 'feishu',
-            app_id: 'new-tenant-app',
-            app_secret: 'new-tenant-secret',
-            encrypt_key: null,
-            verification_token: null,
-          },
+    expect(client.channels.im.byChannelId.replacement.post).toHaveBeenCalledExactlyOnceWith({
+      params: { channel_id: 'current-channel' },
+      body: {
+        expected_config_version: 'snapshot-version',
+        credentials: {
+          provider: 'feishu',
+          app_id: 'new-tenant-app',
+          app_secret: 'new-tenant-secret',
+          encrypt_key: null,
+          verification_token: null,
         },
       },
-      { context: { silent: true } },
-    )
+    })
     expect(screen.queryByDisplayValue('new-tenant-secret')).not.toBeInTheDocument()
     expect(client.channels.im.byChannelId.put).toHaveBeenCalledTimes(1)
   })
@@ -886,23 +883,20 @@ describe('Replacing a tenant in the configured IM provider', () => {
     )
     expect(secret).toHaveValue('new-client-secret')
     expect(signingSecret).toHaveValue('new-signing-secret')
-    expect(client.channels.im.byChannelId.replacement.post).toHaveBeenCalledExactlyOnceWith(
-      {
-        params: { channel_id: 'current-channel' },
-        body: {
-          expected_config_version: 'snapshot-version',
-          credentials: {
-            provider: 'slack',
-            client_id: 'client-1',
-            client_secret: 'new-client-secret',
-            signing_secret: 'new-signing-secret',
-            bot_token: 'new-tenant-bot-token',
-            app_token: null,
-          },
+    expect(client.channels.im.byChannelId.replacement.post).toHaveBeenCalledExactlyOnceWith({
+      params: { channel_id: 'current-channel' },
+      body: {
+        expected_config_version: 'snapshot-version',
+        credentials: {
+          provider: 'slack',
+          client_id: 'client-1',
+          client_secret: 'new-client-secret',
+          signing_secret: 'new-signing-secret',
+          bot_token: 'new-tenant-bot-token',
+          app_token: null,
         },
       },
-      { context: { silent: true } },
-    )
+    })
     expect(client.channels.im.byChannelId.put).toHaveBeenCalledTimes(1)
   })
 })

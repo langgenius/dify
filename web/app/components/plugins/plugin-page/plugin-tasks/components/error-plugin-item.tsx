@@ -9,6 +9,7 @@ import useWorkspacePluginInstallPermission from '@/app/components/plugins/instal
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { toPluginText } from '@/app/components/plugins/install-plugin/utils'
 import { PluginSource } from '@/app/components/plugins/types'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import PluginItem from './plugin-item'
 
@@ -20,6 +21,8 @@ type ErrorPluginItemProps = {
 }
 
 const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, language, onClear }) => {
+  const notifyError = useErrorNotification()
+
   const { t } = useTranslation(['plugin'])
   const source = plugin.source
   const [showInstallModal, setShowInstallModal] = useState(false)
@@ -63,7 +66,8 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
       }
       setInstallPayload({ uniqueIdentifier: info.latest_package_identifier, manifest })
       setShowInstallModal(true)
-    } catch {
+    } catch (error) {
+      notifyError(error)
       // silently fail
     } finally {
       setIsFetching(false)

@@ -50,15 +50,10 @@ export default function AppInfoModals({
     ...systemFeaturesQueryOptions(),
     select: (data) => data.rbac_enabled,
   })
-  const edit = useMutation(
-    consoleQuery.apps.byAppId.put.mutationOptions({ context: { silent: true } }),
-  )
-  const copy = useMutation(
-    consoleQuery.apps.byAppId.copy.post.mutationOptions({ context: { silent: true } }),
-  )
+  const edit = useMutation(consoleQuery.apps.byAppId.put.mutationOptions())
+  const copy = useMutation(consoleQuery.apps.byAppId.copy.post.mutationOptions())
   const deletion = useMutation(
     consoleQuery.apps.byAppId.delete.mutationOptions({
-      context: { silent: true },
       onMutate: () => markAppDeletionStarted(appDetail.id),
       onError: () => markAppDeletionFailed(appDetail.id),
     }),

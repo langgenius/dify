@@ -38,7 +38,7 @@ export async function findBackgroundTasks(
         params: { control_space_id: knowledgeSpaceId },
         query: { task_ids: ids.slice(offset, offset + TASK_PAGE_SIZE).join(',') },
       },
-      { signal, context: { silent: true } },
+      { signal },
     )
     for (const candidate of response.data) {
       if (!taskIds.has(candidate.id)) continue

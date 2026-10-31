@@ -19,6 +19,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 type ApiBasedExtensionModalProps = {
   open: boolean
@@ -92,7 +93,17 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
+    <Dialog
+      onOpenChangeComplete={(open) => {
+        if (!open) {
+          createApiBasedExtensionMutation.reset()
+          updateApiBasedExtensionMutation.reset()
+        }
+      }}
+      open={open}
+      onOpenChange={onOpenChange}
+      disablePointerDismissal
+    >
       <DialogContent backdropProps={{ forceRender: true }} className="w-160">
         <DialogHeader>
           <DialogTitle>
@@ -171,6 +182,14 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
               <FieldError match="customError" />
             </Field>
           </DialogBody>
+          {!!(createApiBasedExtensionMutation.error ?? updateApiBasedExtensionMutation.error) &&
+            !isSaving && (
+              <p role="alert" className="px-6 system-sm-regular text-text-destructive">
+                {getErrorMessage(
+                  createApiBasedExtensionMutation.error ?? updateApiBasedExtensionMutation.error,
+                ) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+              </p>
+            )}
           <DialogFooter>
             <Button type="button" onClick={() => onOpenChange(false)}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

@@ -1,10 +1,13 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { getErrorMessage } from '@/utils/error-message'
 import Conversion from './components/conversion'
 import RagPipelineMain from './components/rag-pipeline-main'
 import { usePipelineInit } from './hooks/use-pipeline-init'
@@ -12,7 +15,8 @@ import { createRagPipelineSliceSlice } from './store'
 import { processNodesWithoutDataSource } from './utils'
 
 const RagPipeline = () => {
-  const { data, isLoading } = usePipelineInit()
+  const { t } = useTranslation(['common'])
+  const { data, isLoading, error, refetch } = usePipelineInit()
   const nodesData = useMemo(() => {
     if (data) return initialNodes(data.graph.nodes, data.graph.edges)
 
@@ -23,6 +27,17 @@ const RagPipeline = () => {
 
     return []
   }, [data])
+
+  if (error && !isLoading) {
+    return (
+      <div role="alert" className="flex size-full flex-col items-center justify-center gap-3 p-6">
+        <p className="system-sm-regular text-text-destructive">
+          {getErrorMessage(error) ?? t(($) => $['api.actionFailed'])}
+        </p>
+        <Button onClick={() => void refetch()}>{t(($) => $['operation.retry'])}</Button>
+      </div>
+    )
+  }
 
   if (!data || isLoading) {
     return (

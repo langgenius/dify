@@ -50,9 +50,7 @@ export default function EditAnnotationDialog({
   const removed = useRef(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const update = useMutation(
-    consoleQuery.apps.byAppId.annotations.byAnnotationId.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.apps.byAppId.annotations.byAnnotationId.post.mutationOptions(),
   )
   return (
     <Dialog

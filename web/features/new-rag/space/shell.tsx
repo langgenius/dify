@@ -87,7 +87,6 @@ export function KnowledgeSpaceShell({
   const knowledgeSpaceQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryOptions({
       input: { params: { control_space_id: knowledgeSpaceId } },
-      context: { silent: true },
     }),
     refetchInterval: (query) => (query.state.data?.state === 'provisioning' ? 1000 : false),
     retry: (failureCount, error) => {
@@ -202,7 +201,7 @@ export function KnowledgeSpaceShell({
       }
     >
       {pageTitleElement}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-hidden pl-1 sm:flex-row">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-hidden ps-1 sm:flex-row">
         <aside
           className={cn(
             'flex shrink-0 flex-col overflow-hidden rounded-lg bg-components-panel-bg shadow-xs transition-[width] motion-reduce:transition-none',
@@ -212,7 +211,7 @@ export function KnowledgeSpaceShell({
           <div
             className={cn(
               'flex min-w-0 items-center',
-              sidebarExpanded ? 'py-2 pr-2 pl-1' : 'w-full justify-center px-3 pt-2 pb-1',
+              sidebarExpanded ? 'py-2 ps-1 pe-2' : 'w-full justify-center px-3 pt-2 pb-1',
             )}
           >
             {sidebarExpanded && (
@@ -226,7 +225,7 @@ export function KnowledgeSpaceShell({
                       <BreadcrumbLink
                         render={<Link href="/" />}
                         aria-label={tCommon(($) => $['mainNav.home'], { ns: 'navigation' })}
-                        className="gap-0 rounded-lg py-2 pr-1.5 pl-0.5 hover:bg-background-default-hover"
+                        className="gap-0 rounded-lg py-2 ps-0.5 pe-1.5 hover:bg-background-default-hover"
                       >
                         <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
                         <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
@@ -414,7 +413,7 @@ export function KnowledgeSpaceShell({
             >
               {navIcon('i-custom-vender-knowledge-api-aggregate')}
               {sidebarExpanded && (
-                <span className="min-w-0 flex-1 truncate text-left">
+                <span className="min-w-0 flex-1 truncate text-start">
                   {t(($) => $.apiAgentAccess)}
                 </span>
               )}

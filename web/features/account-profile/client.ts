@@ -19,7 +19,6 @@ export const userProfileQueryOptions = () =>
       let responseHeaders: Headers | undefined
       const profile = await consoleClient.account.profile.get(undefined, {
         context: {
-          silent: true,
           onResponseHeaders: (headers) => {
             responseHeaders = headers
           },

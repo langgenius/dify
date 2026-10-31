@@ -104,26 +104,17 @@ export function useAgentConfigureSync({
   }, [store])
 
   const { mutateAsync: saveComposerDraft } = useMutation(
-    consoleQuery.agent.byAgentId.composer.put.mutationOptions({
-      context: {
-        silent: true,
-      },
-    }),
+    consoleQuery.agent.byAgentId.composer.put.mutationOptions({}),
   )
   const { mutateAsync: saveComposerDraftOnPageClose } = useMutation(
     consoleQuery.agent.byAgentId.composer.put.mutationOptions({
       context: {
         keepalive: true,
-        silent: true,
       },
     }),
   )
   const { mutateAsync: publishAgent } = useMutation(
-    consoleQuery.agent.byAgentId.publish.post.mutationOptions({
-      context: {
-        silent: true,
-      },
-    }),
+    consoleQuery.agent.byAgentId.publish.post.mutationOptions({}),
   )
 
   const applySavedDraft = useCallback(
@@ -150,12 +141,12 @@ export function useAgentConfigureSync({
       configSnapshot,
       draftBaseline,
       publish = false,
-      silent = true,
+      background = true,
     }: {
       configSnapshot: AgentSoulConfig
       draftBaseline: AgentSoulConfigFormState
       publish?: boolean
-      silent?: boolean
+      background?: boolean
     }) => {
       const permissions = getCurrentPermissions()
       if (
@@ -179,8 +170,8 @@ export function useAgentConfigureSync({
             },
           })
         } catch (error) {
-          // Autosave is silent and keeps the local draft intact; explicit commands must stop at this boundary.
-          if (!silent) {
+          // Autosave is background and keeps the local draft intact; explicit commands must stop at this boundary.
+          if (!background) {
             if (publish) throw error
             throw new Error('Failed to save agent composer draft.')
           }
@@ -277,7 +268,7 @@ export function useAgentConfigureSync({
           configSnapshot,
           draftBaseline,
           publish: true,
-          silent: false,
+          background: false,
         })
       },
     }),
@@ -318,7 +309,7 @@ export function useAgentConfigureSync({
       await saveComposer({
         configSnapshot,
         draftBaseline: draft,
-        silent: false,
+        background: false,
       })
     } catch (error) {
       toast.error(tCommon(($) => $['api.actionFailed']))

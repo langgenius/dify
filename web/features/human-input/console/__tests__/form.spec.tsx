@@ -37,7 +37,6 @@ type FormQueryOptions = Omit<
   'queryKey' | 'queryFn'
 > & {
   input: { params: { form_token: string } }
-  context: { silent: boolean }
 }
 
 vi.mock('@/service/console', () => ({
@@ -60,7 +59,7 @@ vi.mock('@/service/console', () => ({
       humanInput: {
         byFormToken: {
           get: {
-            queryOptions: ({ input, context: _context, ...options }: FormQueryOptions) => ({
+            queryOptions: ({ input, ...options }: FormQueryOptions) => ({
               ...options,
               queryKey: ['legacy-console-human-input-form', input.params.form_token],
               queryFn: () => fetchLegacyForm(input.params.form_token),
@@ -70,7 +69,7 @@ vi.mock('@/service/console', () => ({
         v2: {
           byFormToken: {
             get: {
-              queryOptions: ({ input, context: _context, ...options }: FormQueryOptions) => ({
+              queryOptions: ({ input, ...options }: FormQueryOptions) => ({
                 ...options,
                 queryKey: ['console-human-input-v2-form', input.params.form_token],
                 queryFn: () => fetchForm(input.params.form_token),

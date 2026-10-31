@@ -20,6 +20,7 @@ import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { renderI18nObject } from '@/i18n/metadata'
@@ -83,6 +84,8 @@ function Popup({
   onOpenMarketplace,
   onHide,
 }: PopupProps) {
+  const notifyError = useErrorNotification()
+
   const { t } = useTranslation(['common', 'modelProvider'])
   const { theme } = useTheme()
   const language = useLanguage()
@@ -162,7 +165,8 @@ function Popup({
           if (status !== TaskStatus.success) return
         }
         refreshPluginList({ category: PluginCategoryEnum.model })
-      } catch {
+      } catch (error) {
+        notifyError(error)
       } finally {
         setInstallingProvider(null)
       }

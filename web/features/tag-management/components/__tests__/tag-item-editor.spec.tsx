@@ -7,19 +7,11 @@ import { TagItemEditor } from '../tag-item-editor'
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: {
-    call: async (
-      _path: string[],
-      input: { body: unknown },
-      options: { context: { silent?: boolean } },
-    ) => {
-      // Keep the production request layer so a missing silent option produces a second toast.
+    call: async (_path: string[], input: { body: unknown }) => {
+      // Keep the production transport to verify the interaction owns its only notification.
       // oxlint-disable-next-line no-restricted-imports, typescript/no-deprecated -- Verify business feedback against the real request transport.
       const { request } = await import('@/service/base')
-      return request(
-        '/tags/tag-1',
-        { method: 'PATCH', body: input.body },
-        { silent: options.context.silent },
-      )
+      return request('/tags/tag-1', { method: 'PATCH', body: input.body })
     },
   },
 }))

@@ -370,10 +370,9 @@ function WorkflowGeneratorModal() {
     let currentGraph: WorkflowGraph | undefined
     if (isRefine && currentAppId) {
       try {
-        const draft = await consoleClient.apps.byAppId.workflows.draft.get(
-          { params: { app_id: currentAppId } },
-          { context: { silent: true } },
-        )
+        const draft = await consoleClient.apps.byAppId.workflows.draft.get({
+          params: { app_id: currentAppId },
+        })
         // Validate the generator's graph requirements without stripping editor metadata.
         if (zWorkflowGraph.safeParse(draft.graph).success) {
           const graph = draft.graph as WorkflowGraph
@@ -425,7 +424,6 @@ function WorkflowGeneratorModal() {
       onError: (msg) => {
         if (!settled) {
           generateWorkflow(body, {
-            silent: true,
             getAbortController: (c) => {
               abortRef.current = c
             },
@@ -603,7 +601,7 @@ function WorkflowGeneratorModal() {
       >
         <div className="flex h-full min-h-0 flex-col md:flex-row">
           {/* Left pane: instructions + ideal output + model selector */}
-          <div className="max-h-[55%] w-full shrink-0 overflow-y-auto border-b border-divider-regular p-6 md:h-full md:max-h-none md:w-1/2 md:border-r md:border-b-0 lg:w-142.5">
+          <div className="max-h-[55%] w-full shrink-0 overflow-y-auto border-b border-divider-regular p-6 md:h-full md:max-h-none md:w-1/2 md:border-e md:border-b-0 lg:w-142.5">
             <div className="mb-5">
               <DialogTitle>
                 {isRefine

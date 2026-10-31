@@ -279,9 +279,6 @@ function AgentWorkingDirectoryContent({
               path: toSandboxApiPath(path),
             },
           },
-          context: {
-            silent: true,
-          },
         })
       : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.get.queryOptions(
           {
@@ -295,9 +292,6 @@ function AgentWorkingDirectoryContent({
                 node_execution_id: source.nodeExecutionId,
                 path: toSandboxApiPath(path),
               },
-            },
-            context: {
-              silent: true,
             },
           },
         )
@@ -359,9 +353,6 @@ function AgentWorkingDirectoryContent({
                 },
               }
             : skipToken,
-          context: {
-            silent: true,
-          },
         })
       : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.read.get.queryOptions(
           {
@@ -378,9 +369,6 @@ function AgentWorkingDirectoryContent({
                   },
                 }
               : skipToken,
-            context: {
-              silent: true,
-            },
           },
         )
   const isFileDataPreview = hasFileDataPreview(selectedWorkingDirectoryFile?.icon)
@@ -581,7 +569,7 @@ function AgentWorkingDirectoryContent({
                   </Infotip>
                 </div>
                 <TabsIndicator
-                  className="pointer-events-none absolute bottom-0 left-0 h-0 border-b-2 border-components-tab-active transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
+                  className="pointer-events-none absolute inset-s-0 bottom-0 h-0 border-b-2 border-components-tab-active transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
                   style={{
                     translate: 'var(--active-tab-left)',
                     width: 'var(--active-tab-width)',

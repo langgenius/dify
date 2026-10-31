@@ -31,7 +31,7 @@ function protectedDocumentAssetQueryOptions(sources: string[]) {
           const response = await get<Response>(
             apiAssetPath,
             { signal },
-            { needAllResponseContent: true, silent: true },
+            { needAllResponseContent: true },
           )
           return { blob: await response.blob(), rawSource }
         } catch (error) {

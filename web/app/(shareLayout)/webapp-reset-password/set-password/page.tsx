@@ -15,8 +15,12 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changeWebAppPasswordWithToken } from '@/service/common'
+import { getErrorMessage } from '@/utils/error-message'
 
 const ChangePasswordForm = () => {
+  const [requestError, setRequestError] = useState<unknown>()
+  const { t: tRequestError } = useTranslation(['common'])
+
   const { t } = useTranslation(['common', 'login', 'accountSettings'])
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -67,6 +71,7 @@ const ChangePasswordForm = () => {
   }, [password, confirmPassword, showErrorMessage, t])
 
   const handleChangePassword = useCallback(async () => {
+    setRequestError(undefined)
     if (!valid()) return
     try {
       await changeWebAppPasswordWithToken({
@@ -80,6 +85,7 @@ const ChangePasswordForm = () => {
       setShowSuccess(true)
       setLeftTime(AUTO_REDIRECT_TIME)
     } catch (error) {
+      setRequestError(error)
       console.error(error)
     }
   }, [password, token, valid, confirmPassword])
@@ -101,6 +107,11 @@ const ChangePasswordForm = () => {
 
           <div className="mx-auto mt-6 w-full">
             <Form className="bg-white" onFormSubmit={() => void handleChangePassword()}>
+              {!!requestError && (
+                <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+                  {getErrorMessage(requestError) ?? tRequestError(($) => $['api.actionFailed'])}
+                </p>
+              )}
               <Field name="password" className="mb-5">
                 <div className="grid gap-0">
                   <FieldLabel className="system-md-semibold">

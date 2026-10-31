@@ -69,8 +69,8 @@ describe('SSOAuth', () => {
 
       const button = await clickSSOButton()
 
-      await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('login.error.ssoFailed'))
-      expect(mocks.toastError).toHaveBeenCalledTimes(1)
+      expect(await screen.findByRole('alert')).not.toBeEmptyDOMElement()
+      expect(mocks.toastError).not.toHaveBeenCalled()
       expect(button).toBeEnabled()
       expect(mocks.push).not.toHaveBeenCalled()
     },
@@ -88,8 +88,8 @@ describe('SSOAuth', () => {
     const button = await clickSSOButton()
 
     await waitFor(() => expect(button).toBeEnabled())
-    expect(mocks.toastError).toHaveBeenCalledTimes(1)
-    expect(mocks.toastError).toHaveBeenCalledWith('login.error.ssoFailed')
+    expect(screen.getByRole('alert')).toHaveTextContent('HTTP 502')
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
   it('should only show the server message when the error response carries one', async () => {
@@ -101,7 +101,7 @@ describe('SSOAuth', () => {
     const button = await clickSSOButton()
 
     await waitFor(() => expect(button).toBeEnabled())
-    expect(mocks.toastError).toHaveBeenCalledTimes(1)
-    expect(mocks.toastError).toHaveBeenCalledWith('SSO provider unavailable')
+    expect(screen.getByRole('alert')).toHaveTextContent('SSO provider unavailable')
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 })

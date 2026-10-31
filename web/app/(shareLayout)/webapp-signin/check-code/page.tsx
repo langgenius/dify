@@ -17,11 +17,15 @@ import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/co
 import { fetchAccessToken } from '@/service/share'
 import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
 import { encryptVerificationCode } from '@/utils/encryption'
+import { getErrorMessage } from '@/utils/error-message'
 import { getClientLoginFallback } from '@/utils/login-redirect'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 
 export default function CheckCode() {
+  const [requestError, setRequestError] = useState<unknown>()
+  const { t: tRequestError } = useTranslation(['common'])
+
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -40,6 +44,7 @@ export default function CheckCode() {
   }, [redirectUrl, router])
 
   const verify = async () => {
+    setRequestError(undefined)
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     if (!loginRedirect) {
       replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
@@ -72,6 +77,7 @@ export default function CheckCode() {
         navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
       }
     } catch (error) {
+      setRequestError(error)
       console.error(error)
     } finally {
       setLoading(false)
@@ -88,6 +94,7 @@ export default function CheckCode() {
   }, [])
 
   const resendCode = async () => {
+    setRequestError(undefined)
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     if (!loginRedirect) {
       replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
@@ -102,6 +109,7 @@ export default function CheckCode() {
         router.replace(`/webapp-signin/check-code?${params.toString()}`)
       }
     } catch (error) {
+      setRequestError(error)
       console.error(error)
     }
   }
@@ -129,6 +137,11 @@ export default function CheckCode() {
       </div>
 
       <form onSubmit={handleSubmit}>
+        {!!requestError && (
+          <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+            {getErrorMessage(requestError) ?? tRequestError(($) => $['api.actionFailed'])}
+          </p>
+        )}
         <label htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">
           {t(($) => $['checkCode.verificationCode'], { ns: 'login' })}
         </label>
@@ -161,7 +174,7 @@ export default function CheckCode() {
         <span className="inline-block rounded-full p-1">
           <span aria-hidden className="i-ri-arrow-left-line block size-3" />
         </span>
-        <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
+        <span className="ms-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
       </button>
     </div>
   )

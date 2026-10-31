@@ -64,12 +64,10 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const params = useParams()
   const { localUploadUrl, trialAppId, uploadStrategy } = useFileUploadContext()
   const { mutateAsync: uploadConsoleRemoteFile } = useMutation(
-    consoleQuery.remoteFiles.upload.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.remoteFiles.upload.post.mutationOptions(),
   )
   const { mutateAsync: uploadTrialRemoteFile } = useMutation(
-    consoleQuery.trialApps.byAppId.remoteFiles.upload.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.trialApps.byAppId.remoteFiles.upload.post.mutationOptions(),
   )
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = getFileSizeLimit(
     fileConfig.fileUploadConfig,
@@ -255,7 +253,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       if (uploadStrategy) remoteUpload = uploadStrategy.uploadRemote(url)
       else if (trialAppId)
         remoteUpload = uploadTrialRemoteFile({ params: { app_id: trialAppId }, body: { url } })
-      else if (params.token) remoteUpload = uploadPublicRemoteFileInfo(url, { silent: true })
+      else if (params.token) remoteUpload = uploadPublicRemoteFileInfo(url)
       else remoteUpload = uploadConsoleRemoteFile({ body: { url } })
 
       remoteUpload

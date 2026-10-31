@@ -45,9 +45,7 @@ export function KnowledgeFsApiAccessDialog({
   const canManageApiKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
   const apiKeyMutations = useDatasetApiKeyMutations()
-  const { data: apiBaseInfo } = useQuery(
-    consoleQuery.datasets.apiBaseInfo.get.queryOptions({ context: { silent: true } }),
-  )
+  const { data: apiBaseInfo } = useQuery(consoleQuery.datasets.apiBaseInfo.get.queryOptions())
   // The shared prefix of every KnowledgeFS service API route for this space; the operation
   // path (queries/admission, documents, sources, …) is appended by the caller.
   const endpoint = apiBaseInfo?.api_base_url

@@ -234,7 +234,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               preview: {
                 get: {
                   queryOptions: {
-                    context: { silent: true },
                     retry: false,
                     staleTime: 0,
                   },
@@ -254,13 +253,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           datasourcePlugins: {
             get: {
               queryOptions: { staleTime: 0, retry: false },
-            },
-          },
-          // DSL import failures are reported by the import flow.
-          imports: {
-            post: { mutationOptions: { context: { silent: true } } },
-            byImportId: {
-              confirm: { post: { mutationOptions: { context: { silent: true } } } },
             },
           },
           byPipelineId: {
@@ -675,14 +667,8 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             readme: {
               get: {
                 queryOptions: {
-                  context: { silent: true },
                   retry: false,
                 },
-              },
-            },
-            asset: {
-              get: {
-                queryOptions: { context: { silent: true } },
               },
             },
           },
@@ -1009,7 +995,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           get: {
             queryOptions: {
               // Passive probe: every callsite degrades to "not a student", so no toast.
-              context: { silent: true },
               retry: false,
             },
           },
@@ -1151,7 +1136,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           traceRuns: {
             bySourceKind: {
               bySourceId: {
-                get: { queryOptions: { context: { silent: true }, retry: false } },
+                get: { queryOptions: { retry: false } },
               },
             },
           },

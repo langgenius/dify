@@ -149,14 +149,14 @@ function AgentFileDropzone({
             <button
               type="button"
               disabled={disabled}
-              className="inline cursor-pointer border-none bg-transparent p-0 pl-1 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden disabled:cursor-not-allowed"
+              className="inline cursor-pointer border-none bg-transparent p-0 ps-1 text-start text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden disabled:cursor-not-allowed"
               onClick={() => fileInputRef.current?.click()}
             >
               {t(($) => $['agentDetail.configure.files.upload.browse'])}
             </button>
           </div>
         </div>
-        {dragging && <div className="absolute top-0 left-0 size-full" />}
+        {dragging && <div className="absolute inset-s-0 top-0 size-full" />}
       </div>
     </div>
   )
@@ -246,7 +246,7 @@ function AgentFileUploadPanel({ uploadFiles }: { uploadFiles: AgentFilesUploadMu
                   <div className="flex items-center justify-center p-3">
                     <FileTreeIcon type={getFileIconType(file.name, file.type)} />
                   </div>
-                  <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-1 pr-2">
+                  <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-1 pe-2">
                     <span className="max-w-full min-w-0 truncate text-[12px] leading-4 font-medium text-text-secondary">
                       {file.name}
                     </span>
@@ -257,7 +257,7 @@ function AgentFileUploadPanel({ uploadFiles }: { uploadFiles: AgentFilesUploadMu
                     </div>
                     {error && <p className="system-xs-regular text-text-destructive">{error}</p>}
                   </div>
-                  <div className="flex items-center pr-3">
+                  <div className="flex items-center pe-3">
                     <Tooltip>
                       <TooltipTrigger
                         render={
@@ -325,9 +325,7 @@ export function AgentFileUploadDialog({
   const uploadFiles = useMutation({
     mutationFn: async (pendingFiles: PendingAgentFile[]): Promise<AgentFilesUploadResult> => {
       const uploads = await Promise.allSettled(
-        pendingFiles.map(({ file }) =>
-          consoleClient.files.upload.post({ body: { file } }, { context: { silent: true } }),
-        ),
+        pendingFiles.map(({ file }) => consoleClient.files.upload.post({ body: { file } })),
       )
       const failures = pendingFiles.flatMap(({ id }, index) => {
         const upload = uploads[index]
@@ -342,29 +340,23 @@ export function AgentFileUploadDialog({
 
       const body = { upload_file_ids }
       const { files } = apiContext.workflow
-        ? await consoleClient.apps.byAppId.agent.config.files.batch.post(
-            {
-              params: { app_id: apiContext.workflow.appId },
-              query: {
-                node_id: apiContext.workflow.nodeId,
-                draft_type: apiContext.draftType,
-                version_id: apiContext.versionId,
-              },
-              body,
+        ? await consoleClient.apps.byAppId.agent.config.files.batch.post({
+            params: { app_id: apiContext.workflow.appId },
+            query: {
+              node_id: apiContext.workflow.nodeId,
+              draft_type: apiContext.draftType,
+              version_id: apiContext.versionId,
             },
-            { context: { silent: true } },
-          )
-        : await consoleClient.agent.byAgentId.config.files.batch.post(
-            {
-              params: { agent_id: apiContext.agentId },
-              query: {
-                draft_type: apiContext.draftType,
-                version_id: apiContext.versionId,
-              },
-              body,
+            body,
+          })
+        : await consoleClient.agent.byAgentId.config.files.batch.post({
+            params: { agent_id: apiContext.agentId },
+            query: {
+              draft_type: apiContext.draftType,
+              version_id: apiContext.versionId,
             },
-            { context: { silent: true } },
-          )
+            body,
+          })
       return { files, failures }
     },
     onSuccess: ({ files, failures }) => {

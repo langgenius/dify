@@ -9,6 +9,7 @@ import { useAtomValue } from 'jotai'
 import { memo, useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -38,6 +39,7 @@ const ModelListItem = ({
   onChange,
   onModifyLoadBalancing,
 }: ModelListItemProps) => {
+  const notifyError = useErrorNotification()
   const { t } = useTranslation(['modelProvider'])
   const modelNameId = useId()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
@@ -65,24 +67,28 @@ const ModelListItem = ({
 
   const toggleModelEnablingStatus = useCallback(
     async (enabled: boolean) => {
-      if (enabled)
-        await consoleClient.workspaces.current.modelProviders.byProvider.models.enable.patch({
-          params: { provider: provider.provider },
-          body: { model: model.model, model_type: model.model_type },
-        })
-      else
-        await consoleClient.workspaces.current.modelProviders.byProvider.models.disable.patch({
-          params: { provider: provider.provider },
-          body: { model: model.model, model_type: model.model_type },
-        })
+      try {
+        if (enabled)
+          await consoleClient.workspaces.current.modelProviders.byProvider.models.enable.patch({
+            params: { provider: provider.provider },
+            body: { model: model.model, model_type: model.model_type },
+          })
+        else
+          await consoleClient.workspaces.current.modelProviders.byProvider.models.disable.patch({
+            params: { provider: provider.provider },
+            body: { model: model.model, model_type: model.model_type },
+          })
 
-      queryClient.invalidateQueries({
-        queryKey: modelProviderModelListQueryKey,
-        exact: true,
-        refetchType: 'none',
-      })
-      updateModelList(model.model_type)
-      onChange?.(provider.provider)
+        queryClient.invalidateQueries({
+          queryKey: modelProviderModelListQueryKey,
+          exact: true,
+          refetchType: 'none',
+        })
+        updateModelList(model.model_type)
+        onChange?.(provider.provider)
+      } catch (error) {
+        notifyError(error)
+      }
     },
     [
       model.model,
@@ -92,6 +98,7 @@ const ModelListItem = ({
       provider.provider,
       queryClient,
       updateModelList,
+      notifyError,
     ],
   )
 

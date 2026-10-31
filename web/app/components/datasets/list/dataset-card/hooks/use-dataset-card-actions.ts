@@ -21,9 +21,7 @@ export const useDatasetCardActions = ({ dataset }: UseDatasetCardActionsOptions)
   }, [dataset.id, push])
 
   const { mutateAsync: exportPipelineConfig, isPending: exporting } = useMutation(
-    consoleQuery.rag.pipelines.byPipelineId.exports.get.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.rag.pipelines.byPipelineId.exports.get.mutationOptions(),
   )
 
   const handleExportPipeline = useCallback(

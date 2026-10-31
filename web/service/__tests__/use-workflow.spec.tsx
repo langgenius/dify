@@ -569,7 +569,6 @@ describe('useRestoreWorkflow', () => {
       const [url, , options] = mockRequest.mock.calls[0]!
       expect(new URL(url).pathname).toBe(`/console/api${path}/workflows/version-1/restore`)
       expect(options?.request?.method).toBe('POST')
-      expect(options?.silent).toBe(true)
     },
   )
 })

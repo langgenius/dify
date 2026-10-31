@@ -4,6 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from '@/app/notifications'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { consoleQuery } from '@/service/console'
 import { isShowManageMetadataLocalStorageKey } from '../types'
 import useCheckMetadataName from './use-check-metadata-name'
@@ -30,8 +31,9 @@ const useEditDatasetMetadata = ({
       input: { params: { dataset_id: datasetId } },
     }),
   )
+  const notifyError = useErrorNotification()
   const { mutateAsync: createMetaData } = useMutation(
-    consoleQuery.datasets.byDatasetId.metadata.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.metadata.post.mutationOptions({ onError: notifyError }),
   )
   const { checkName } = useCheckMetadataName()
   const handleAddMetaData = useCallback(
@@ -46,7 +48,9 @@ const useEditDatasetMetadata = ({
     [checkName, createMetaData, datasetId],
   )
   const { mutateAsync: renameMetaData } = useMutation(
-    consoleQuery.datasets.byDatasetId.metadata.byMetadataId.patch.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.metadata.byMetadataId.patch.mutationOptions({
+      onError: notifyError,
+    }),
   )
   const handleRename = useCallback(
     async (payload: MetadataItemWithValueLength) => {
@@ -64,7 +68,9 @@ const useEditDatasetMetadata = ({
     [checkName, renameMetaData, datasetId, onUpdateDocList],
   )
   const { mutateAsync: deleteMetaData } = useMutation(
-    consoleQuery.datasets.byDatasetId.metadata.byMetadataId.delete.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.metadata.byMetadataId.delete.mutationOptions({
+      onError: notifyError,
+    }),
   )
   const handleDeleteMetaData = useCallback(
     async (metaDataId: string) => {
@@ -78,7 +84,9 @@ const useEditDatasetMetadata = ({
     setBuiltInEnabled(datasetMetaData?.built_in_field_enabled)
   }, [datasetMetaData])
   const { mutateAsync: updateBuiltInStatus } = useMutation(
-    consoleQuery.datasets.byDatasetId.metadata.builtIn.byAction.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.metadata.builtIn.byAction.post.mutationOptions({
+      onError: notifyError,
+    }),
   )
   const { data: builtInMetaData } = useQuery(
     consoleQuery.datasets.metadata.builtIn.get.queryOptions(),

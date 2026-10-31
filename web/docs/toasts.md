@@ -38,16 +38,17 @@ A success toast is appropriate when the result is not on screen: a background jo
 
 ## Errors
 
-- When a request fails and the server returns an error message, the request layer shows that message unless the request is `silent`; see `afterResponseErrorCode` in [request layer]. Do not add a second toast for the same failure in `catch` or `onError`.
-- When a business flow owns the error feedback, make its requests `silent` (`{ context: { silent: true } }` for generated clients) and present the failure once at that business boundary. Prefer inline errors; use a business-specific toast only when the feedback cannot live where the user acted. For multi-request actions, let the business flow choose one message for the overall result. A `silent` request with no other error presentation fails without any feedback.
-- Failures that never reach the request layer, such as a rejected clipboard write or a client-side exception, still need their own feedback.
-- When choosing the business error, preserve the actionable reason. Prefer a localized message for a known domain error, then the server's error message; use a generic failure message only as a fallback. Making a request silent must not hide details such as name conflicts, quota limits, unsupported file types, or permission requirements.
+- HTTP transports normalize and propagate failures. They never show toasts. Authentication recovery (token refresh and sign-in redirects) remains in the authentication layer.
+- The business interaction owns feedback for the overall action, including actions that make several requests. Prefer field, form, control, or page errors. Use one business-specific toast only when the feedback cannot live where the user acted.
+- Handle network failures and timeouts as well as HTTP failures. Ignore intentional cancellation. Do not depend on transport notifications or add global Query error toasts.
+- Preserve the actionable reason: prefer a localized message for a known domain error, then the server's error message, then a localized generic fallback. Do not hide name conflicts, quota limits, unsupported file types, or permission requirements.
+- Initial query failures belong in the owning page or section with a retry action. Background refresh, polling, and prefetch failures must not produce automatic toasts.
+- Stream consumers own error presentation through their callbacks. The transport does not provide a default notification.
 - Client-side validation belongs at the field through the [form contract], never in a toast.
 
 ## Existing Code
 
-Many existing calls predate these rules and are migrated in batches. Do not copy them into new code, and do not remove an error toast without confirming the request layer covers that failure.
+Many existing calls predate these rules and are migrated in batches. Do not copy them into new code, and keep feedback at the business boundary and confirm each failed action has a visible error.
 
 [CopyFeedback]: ../app/components/base/copy-feedback/index.tsx
 [form contract]: ../../packages/dify-ui/docs/forms.md
-[request layer]: ../service/fetch.ts

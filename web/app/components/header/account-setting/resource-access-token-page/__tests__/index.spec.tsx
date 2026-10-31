@@ -9,6 +9,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import ResourceAccessTokenPage from '../index'
@@ -55,6 +56,7 @@ vi.mock('react-i18next', async (importOriginal) => {
 vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
+    error: vi.fn(),
   },
 }))
 
@@ -864,5 +866,33 @@ describe('ResourceAccessTokenPage', () => {
     expect(
       await screen.findByText('accountSettings.resourceAccessToken.emptyDescription'),
     ).toBeInTheDocument()
+  })
+  it('shows a token creation failure in the form, retains the draft, and permits retry', async () => {
+    const user = userEvent.setup()
+    mocks.createResourceAccessToken
+      .mockRejectedValueOnce(new Error('Token name already exists'))
+      .mockResolvedValueOnce({ data: [], token: 'sk-retried-token' })
+    renderWithQueryClient(<ResourceAccessTokenPage />)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'accountSettings.resourceAccessToken.createButton',
+      }),
+    )
+    const dialog = screen.getByRole('dialog')
+    const name = within(dialog).getByLabelText('accountSettings.resourceAccessToken.name')
+    await user.type(name, 'Partners')
+    await user.click(await within(dialog).findByRole('checkbox', { name: 'Sales Bot' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Token name already exists')
+    expect(name).toHaveValue('Partners')
+    expect(toast.error).not.toHaveBeenCalled()
+
+    await user.clear(name)
+    await user.type(name, 'New partners')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
+    expect(await within(dialog).findByText('sk-retried-token')).toBeInTheDocument()
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
   })
 })

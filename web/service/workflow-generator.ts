@@ -12,16 +12,12 @@ import { sseGeneratorPost } from './base'
 
 export type GenerateWorkflowOptions = {
   getAbortController?: (controller: AbortController) => void
-  silent?: boolean
 }
 
 export function generateWorkflow(body: WorkflowGeneratePayload, options?: GenerateWorkflowOptions) {
   const controller = new AbortController()
   options?.getAbortController?.(controller)
-  return consoleClient.workflowGenerate.post(
-    { body },
-    { signal: controller.signal, context: { silent: options?.silent } },
-  )
+  return consoleClient.workflowGenerate.post({ body }, { signal: controller.signal })
 }
 
 export type GenerateWorkflowStreamCallbacks = {

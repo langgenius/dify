@@ -35,9 +35,7 @@ export const createHumanInputMigrationApi = (
       // generated schema documents canonical methods only. Preserve aliases and
       // unsupported methods here so backend preflight can report precise blockers.
       const body = request as Parameters<typeof client.post>[0]['body']
-      const response = zNodeDataMigrationResponse.parse(
-        await client.post({ body }, { context: { silent: true } }),
-      )
+      const response = zNodeDataMigrationResponse.parse(await client.post({ body }))
       return {
         status: 'success',
         data: response.data.map(({ node_id, node_data }) => {

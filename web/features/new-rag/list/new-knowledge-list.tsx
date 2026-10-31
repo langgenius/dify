@@ -115,9 +115,7 @@ export function NewKnowledgeList({
     }>(),
   )
   const deletion = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions(),
   )
   const docLink = useDocLink()
   const { data: apiBaseInfo } = useQuery(consoleQuery.datasets.apiBaseInfo.get.queryOptions())
@@ -330,7 +328,7 @@ export function NewKnowledgeList({
                 )}
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-                <span className="pl-1">{createLabel}</span>
+                <span className="ps-1">{createLabel}</span>
               </Link>
             </div>
           )}

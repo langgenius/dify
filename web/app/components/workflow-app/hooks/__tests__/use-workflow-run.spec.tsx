@@ -245,22 +245,19 @@ it('saves the graph before running and applies streamed results to the real work
   })
   await waitFor(() => expect(api.sync).toHaveBeenCalledOnce())
   expect(api.ssePost).not.toHaveBeenCalled()
-  expect(api.sync).toHaveBeenCalledWith(
-    {
-      params: { app_id: 'app-1' },
-      body: expect.objectContaining({
-        graph: expect.objectContaining({
-          nodes: [
-            expect.objectContaining({
-              id: 'node-1',
-              data: expect.objectContaining({ selected: false }),
-            }),
-          ],
-        }),
+  expect(api.sync).toHaveBeenCalledWith({
+    params: { app_id: 'app-1' },
+    body: expect.objectContaining({
+      graph: expect.objectContaining({
+        nodes: [
+          expect.objectContaining({
+            id: 'node-1',
+            data: expect.objectContaining({ selected: false }),
+          }),
+        ],
       }),
-    },
-    { context: { silent: true } },
-  )
+    }),
+  })
   await act(async () => {
     pending.resolve({ result: 'success', hash: 'saved', updated_at: 1700000000 })
     await run
@@ -358,7 +355,7 @@ it.each([
     expect(api.post).toHaveBeenCalledWith(
       `/apps/app-1/workflows/draft/trigger/${url}`,
       expect.objectContaining({ body, signal: expect.any(AbortSignal) }),
-      { needAllResponseContent: true, silent: true },
+      { needAllResponseContent: true },
     )
     expect(store.getState().isListening).toBe(true)
     const request = api.post.mock.lastCall?.[1]

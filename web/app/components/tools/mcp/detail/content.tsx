@@ -24,6 +24,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import { consoleQuery } from '@/service/console'
 import { selectToolProviderTools } from '../../utils/query-select'
@@ -61,11 +62,16 @@ const MCPDetailContent: FC<Props> = ({
       select: selectToolProviderTools,
     }),
   )
+  const notifyError = useErrorNotification()
   const { mutateAsync: updateTools, isPending: isUpdating } = useMutation(
-    consoleQuery.workspaces.current.toolProvider.mcp.update.byProviderId.get.mutationOptions(),
+    consoleQuery.workspaces.current.toolProvider.mcp.update.byProviderId.get.mutationOptions({
+      onError: notifyError,
+    }),
   )
   const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useMutation(
-    consoleQuery.workspaces.current.toolProvider.mcp.auth.post.mutationOptions(),
+    consoleQuery.workspaces.current.toolProvider.mcp.auth.post.mutationOptions({
+      onError: notifyError,
+    }),
   )
   const toolList = data?.tools || []
 

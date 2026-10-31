@@ -2,7 +2,6 @@ import type { DatasetUpdatePayload } from '@dify/contracts/api/console/datasets/
 import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
 import type { FetchDatasetsParams } from '@/models/datasets'
-import type { ConsoleClientContext } from '@/service/console'
 import { DataSourceProvider } from '@/models/common'
 // oxlint-disable-next-line no-restricted-imports -- the zip download needs the raw Blob response
 import { post } from './base'
@@ -27,28 +26,22 @@ type BatchReq = {
 
 export type SortType = 'created_at' | 'hit_count' | '-created_at' | '-hit_count'
 
-export const updateDatasetSetting = (
-  {
-    datasetId,
-    body,
-  }: {
-    datasetId: string
-    body: DatasetUpdatePayload
-  },
-  context?: ConsoleClientContext,
-) => {
-  return consoleClient.datasets.byDatasetId.patch(
-    { params: { dataset_id: datasetId }, body },
-    { context },
-  )
+export const updateDatasetSetting = ({
+  datasetId,
+  body,
+}: {
+  datasetId: string
+  body: DatasetUpdatePayload
+}) => {
+  return consoleClient.datasets.byDatasetId.patch({ params: { dataset_id: datasetId }, body })
 }
 
 export const fetchDatasets = ({ params }: FetchDatasetsParams) => {
   return consoleClient.datasets.get({ query: params })
 }
 
-export const createEmptyDataset = ({ name }: { name: string }, context?: ConsoleClientContext) => {
-  return consoleClient.datasets.post({ body: { name } }, { context })
+export const createEmptyDataset = ({ name }: { name: string }) => {
+  return consoleClient.datasets.post({ body: { name } })
 }
 
 export const fetchExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
@@ -83,14 +76,11 @@ export const checkUsageExternalAPI = ({ apiTemplateId }: { apiTemplateId: string
 }
 
 export const createExternalAPI = ({ body }: { body: CreateExternalAPIReq }) => {
-  return consoleClient.datasets.externalKnowledgeApi.post({ body }, { context: { silent: true } })
+  return consoleClient.datasets.externalKnowledgeApi.post({ body })
 }
 
-export const createExternalKnowledgeBase = (
-  { body }: { body: CreateKnowledgeBaseReq },
-  context?: ConsoleClientContext,
-) => {
-  return consoleClient.datasets.external.post({ body }, { context })
+export const createExternalKnowledgeBase = ({ body }: { body: CreateKnowledgeBaseReq }) => {
+  return consoleClient.datasets.external.post({ body })
 }
 
 export const fetchIndexingStatus = ({ datasetId, documentId }: CommonDocReq) => {
@@ -105,58 +95,40 @@ export const fetchIndexingStatusBatch = ({ datasetId, batchId }: BatchReq) => {
   })
 }
 
-export const renameDocumentName = (
-  { datasetId, documentId, name }: CommonDocReq & { name: string },
-  context?: ConsoleClientContext,
-) => {
-  return consoleClient.datasets.byDatasetId.documents.byDocumentId.rename.post(
-    {
-      params: { dataset_id: datasetId, document_id: documentId },
-      body: { name },
-    },
-    { context },
-  )
+export const renameDocumentName = ({
+  datasetId,
+  documentId,
+  name,
+}: CommonDocReq & { name: string }) => {
+  return consoleClient.datasets.byDatasetId.documents.byDocumentId.rename.post({
+    params: { dataset_id: datasetId, document_id: documentId },
+    body: { name },
+  })
 }
 
-export const pauseDocIndexing = (
-  { datasetId, documentId }: CommonDocReq,
-  context?: ConsoleClientContext,
-) => {
-  return consoleClient.datasets.byDatasetId.documents.byDocumentId.processing.pause.patch(
-    {
-      params: { dataset_id: datasetId, document_id: documentId },
-    },
-    { context },
-  )
+export const pauseDocIndexing = ({ datasetId, documentId }: CommonDocReq) => {
+  return consoleClient.datasets.byDatasetId.documents.byDocumentId.processing.pause.patch({
+    params: { dataset_id: datasetId, document_id: documentId },
+  })
 }
 
-export const resumeDocIndexing = (
-  { datasetId, documentId }: CommonDocReq,
-  context?: ConsoleClientContext,
-) => {
-  return consoleClient.datasets.byDatasetId.documents.byDocumentId.processing.resume.patch(
-    {
-      params: { dataset_id: datasetId, document_id: documentId },
-    },
-    { context },
-  )
+export const resumeDocIndexing = ({ datasetId, documentId }: CommonDocReq) => {
+  return consoleClient.datasets.byDatasetId.documents.byDocumentId.processing.resume.patch({
+    params: { dataset_id: datasetId, document_id: documentId },
+  })
 }
 
 // Not migrated to the console contract: the endpoint streams a zip file, which the
 // JSON-based console client cannot return as a Blob.
-export const downloadDocumentsZip = (
-  { datasetId, documentIds }: DocumentDownloadZipRequest,
-  options?: { silent?: boolean },
-): Promise<Blob> => {
-  return post<Blob>(
-    `/datasets/${datasetId}/documents/download-zip`,
-    {
-      body: {
-        document_ids: documentIds,
-      },
+export const downloadDocumentsZip = ({
+  datasetId,
+  documentIds,
+}: DocumentDownloadZipRequest): Promise<Blob> => {
+  return post<Blob>(`/datasets/${datasetId}/documents/download-zip`, {
+    body: {
+      document_ids: documentIds,
     },
-    options,
-  )
+  })
 }
 
 type WebsiteCrawlProvider = 'firecrawl' | 'jinareader' | 'watercrawl'
@@ -170,10 +142,7 @@ const createWebsiteCrawlTask = (provider: WebsiteCrawlProvider, body: WebsiteCra
   consoleClient.website.crawl.post({ body: { ...body, provider } })
 
 const checkWebsiteCrawlTaskStatus = (provider: WebsiteCrawlProvider, jobId: string) =>
-  consoleClient.website.crawl.status.byJobId.get(
-    { params: { job_id: jobId }, query: { provider } },
-    { context: { silent: true } },
-  )
+  consoleClient.website.crawl.status.byJobId.get({ params: { job_id: jobId }, query: { provider } })
 
 export const createFirecrawlTask = (body: WebsiteCrawlTaskBody) =>
   createWebsiteCrawlTask(DataSourceProvider.fireCrawl, body)

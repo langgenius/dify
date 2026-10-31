@@ -7,6 +7,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import {
   getErrorCode,
   getErrorDetailString,
@@ -41,9 +42,7 @@ export function SkillDisplayNameEditor({
   }>()
   const [draftName, setDraftName] = useState(detail.display_name)
   const metadataMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions(),
   )
   const saving = metadataMutation.isPending
   const displayName =
@@ -110,7 +109,7 @@ export function SkillDisplayNameEditor({
           }),
         )
       } else {
-        toast.error(t(($) => $['skillManagement.detail.saveFailed']))
+        toast.error(getErrorMessage(error) ?? t(($) => $['skillManagement.detail.saveFailed']))
       }
     } finally {
       submittingRef.current = false
@@ -156,7 +155,7 @@ export function SkillDisplayNameEditor({
     <button
       type="button"
       aria-label={tCommon(($) => $['operation.rename'])}
-      className="w-full cursor-text truncate rounded-md px-1 py-0.5 text-left system-md-semibold text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      className="w-full cursor-text truncate rounded-md px-1 py-0.5 text-start system-md-semibold text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
       onClick={() => {
         setDraftName(displayName)
         onEditingChange(true)

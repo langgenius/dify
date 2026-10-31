@@ -61,9 +61,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
   const openAsyncWindow = useAsyncWindowOpen()
-  const switchWorkspaceMutation = useMutation(
-    consoleQuery.workspaces.switch.post.mutationOptions({ context: { silent: true } }),
-  )
+  const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
 
   const appliedEducationCase = (() => {
     if (!isCurrentWorkspaceManager) return AppliedEducationCase.noPaymentPermission
@@ -100,9 +98,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
     try {
       await openAsyncWindow(
         async () => {
-          const res = await consoleClient.billing.invoices.get(undefined, {
-            context: { silent: true },
-          })
+          const res = await consoleClient.billing.invoices.get(undefined)
           if (res.url) return res.url
 
           throw new Error('Failed to open billing page')
@@ -150,7 +146,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
         <div className="flex w-full flex-col items-start gap-3">
           <div className="flex w-full items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
             <span
-              className="mt-0.5 mr-2 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
+              className="me-2 mt-0.5 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
               aria-hidden="true"
             />
             <div className="system-md-regular text-text-warning">
@@ -179,7 +175,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
       <div className="flex w-full flex-col items-start gap-3">
         <div className="flex w-full items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
           <span
-            className="mt-0.5 mr-2 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
+            className="me-2 mt-0.5 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
             aria-hidden="true"
           />
           <div className="system-md-regular text-text-warning">
@@ -287,7 +283,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
             rel="noopener noreferrer"
           >
             {t(($) => $.learn, { ns: 'education' })}
-            <span className="ml-1 i-ri-external-link-line size-3" aria-hidden="true" />
+            <span className="ms-1 i-ri-external-link-line size-3" aria-hidden="true" />
           </a>
         </Form>
       )}

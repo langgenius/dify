@@ -18,16 +18,13 @@ export async function stageKnowledgeFsDocument(file: File, signal?: AbortSignal)
     {
       body: { file },
     },
-    { context: { silent: true }, signal },
+    { signal },
   )
   return staged.id
 }
 
 export async function discardKnowledgeFsStagedUpload(uploadId: string) {
-  await consoleClient.knowledgeFs.uploads.byUploadId.delete(
-    { params: { upload_id: uploadId } },
-    { context: { silent: true } },
-  )
+  await consoleClient.knowledgeFs.uploads.byUploadId.delete({ params: { upload_id: uploadId } })
 }
 
 export async function uploadKnowledgeFsDocuments(
@@ -40,13 +37,10 @@ export async function uploadKnowledgeFsDocuments(
     if (progress.get(upload.id)?.phase === 'completed') continue
     progress.set(upload.id, { phase: 'pending' })
     onProgress?.(upload.file, 'pending')
-    await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.post(
-      {
-        body: { upload_id: upload.uploadId },
-        params: { control_space_id: controlSpaceId },
-      },
-      { context: { silent: true } },
-    )
+    await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.post({
+      body: { upload_id: upload.uploadId },
+      params: { control_space_id: controlSpaceId },
+    })
     progress.set(upload.id, { phase: 'completed' })
     onProgress?.(upload.file, 'completed')
   }

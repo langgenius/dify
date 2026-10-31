@@ -41,13 +41,10 @@ describe('useSnippetDSL', () => {
 
     await act(() => result.current.handleExportDSL(false, 'workflow-1'))
 
-    expect(mockMutateAsync).toHaveBeenCalledWith(
-      {
-        params: { snippet_id: 'snippet-1' },
-        query: { include_secret: 'false', workflow_id: 'workflow-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(mockMutateAsync).toHaveBeenCalledWith({
+      params: { snippet_id: 'snippet-1' },
+      query: { include_secret: 'false', workflow_id: 'workflow-1' },
+    })
     expect(downloadBlob).toHaveBeenCalledWith({
       data: expect.any(Blob),
       fileName: 'My Snippet.yml',

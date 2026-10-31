@@ -9,12 +9,12 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { toast } from '@/app/notifications'
 import { emailRegex } from '@/config'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { encryptPassword } from '@/utils/encryption'
+import { getErrorMessage } from '@/utils/error-message'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
@@ -29,6 +29,9 @@ function hasErrorCode(error: unknown, code: string) {
 }
 
 export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndPasswordAuthProps) {
+  const [requestError, setRequestError] = useState<unknown>()
+  const { t: tRequestError } = useTranslation(['common'])
+
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -40,6 +43,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
   const [isLoading, setIsLoading] = useState(false)
 
   const handleEmailPasswordLogin = async () => {
+    setRequestError(undefined)
     if (isLoading) return
     try {
       setIsLoading(true)
@@ -64,11 +68,12 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
       } else {
-        toast.error(res.data)
+        setRequestError(new Error(res.data ?? tRequestError(($) => $['api.actionFailed'])))
       }
     } catch (error) {
+      setRequestError(error)
       if (hasErrorCode(error, 'authentication_failed'))
-        toast.error(t(($) => $['error.invalidEmailOrPassword'], { ns: 'login' }))
+        setRequestError(new Error(t(($) => $['error.invalidEmailOrPassword'], { ns: 'login' })))
     } finally {
       setIsLoading(false)
     }
@@ -80,6 +85,11 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         void handleEmailPasswordLogin()
       }}
     >
+      {!!requestError && (
+        <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+          {getErrorMessage(requestError) ?? tRequestError(($) => $['api.actionFailed'])}
+        </p>
+      )}
       <Field
         name="email"
         disabled={isInvite}

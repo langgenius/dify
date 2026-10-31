@@ -6,12 +6,13 @@ import { useNodes } from 'reactflow'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { useWorkflowFailed } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-failed'
 import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { createDeferred } from '@/test/deferred'
 import { createRagPipelineSliceSlice } from '../../store'
 import { usePipelineRunByCanEdit } from '../use-pipeline-run'
 
-// Draft persistence, canvas replacement and run-event reducers all have their own suites.
+// Keep failure handling real to verify that stream errors reach the run result.
 const mockDoSyncWorkflowDraft = vi.fn()
 vi.mock('../use-nodes-sync-draft', () => ({
   useNodesSyncDraftByCanEdit: () => ({ doSyncWorkflowDraft: mockDoSyncWorkflowDraft }),
@@ -25,7 +26,6 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
 const runEvents = vi.hoisted(() => ({
   handleWorkflowStarted: vi.fn(),
   handleWorkflowFinished: vi.fn(),
-  handleWorkflowFailed: vi.fn(),
   handleWorkflowNodeStarted: vi.fn(),
   handleWorkflowNodeFinished: vi.fn(),
   handleWorkflowNodeIterationStarted: vi.fn(),
@@ -40,7 +40,7 @@ const runEvents = vi.hoisted(() => ({
   handleWorkflowTextReplace: vi.fn(),
 }))
 vi.mock('@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event', () => ({
-  useWorkflowRunEvent: () => runEvents,
+  useWorkflowRunEvent: () => ({ ...runEvents, ...useWorkflowFailed() }),
 }))
 
 const mockFetchInspectVars = vi.fn()
@@ -261,7 +261,6 @@ describe('usePipelineRunByCanEdit', () => {
     it.each([
       ['onWorkflowStarted', 'handleWorkflowStarted'],
       ['onWorkflowFinished', 'handleWorkflowFinished'],
-      ['onError', 'handleWorkflowFailed'],
       ['onNodeStarted', 'handleWorkflowNodeStarted'],
       ['onNodeFinished', 'handleWorkflowNodeFinished'],
       ['onIterationStart', 'handleWorkflowNodeIterationStarted'],
@@ -283,10 +282,22 @@ describe('usePipelineRunByCanEdit', () => {
         act(() => (stream[event] as (params: unknown) => void)(payload))
 
         expect(runEvents[handler]).toHaveBeenCalledOnce()
-        expect(runEvents[handler].mock.calls[0]![0]).toBe(event === 'onError' ? undefined : payload)
+        expect(runEvents[handler].mock.calls[0]![0]).toBe(payload)
         expect(callerCallback).toHaveBeenCalledExactlyOnceWith(payload)
       },
     )
+
+    it('preserves a failed run request reason for the result panel without a caller callback', async () => {
+      const { result, store } = renderPipelineRun()
+      const stream = await startRun(result.current.run)
+
+      act(() => stream.onError('Datasource credentials are invalid'))
+
+      expect(store.getState().workflowRunningData?.result).toMatchObject({
+        status: WorkflowRunningStatus.Failed,
+        error: 'Datasource credentials are invalid',
+      })
+    })
 
     it('positions started nodes against the workflow container size', async () => {
       const { result } = renderPipelineRun()
@@ -324,7 +335,7 @@ describe('usePipelineRunByCanEdit', () => {
       expect(mockFetchInspectVars).toHaveBeenCalledExactlyOnceWith({})
       expect(mockInvalidAllLastRun).toHaveBeenCalledOnce()
 
-      act(() => stream.onError({} as never))
+      act(() => stream.onError('Run failed'))
       expect(mockInvalidateRunHistory).toHaveBeenCalledTimes(3)
     })
 

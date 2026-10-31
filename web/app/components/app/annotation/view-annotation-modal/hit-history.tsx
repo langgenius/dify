@@ -22,7 +22,6 @@ export function AnnotationHitHistory({ appId, annotationId }: AnnotationHitHisto
         params: { app_id: appId, annotation_id: annotationId },
         query: { page, limit: APP_PAGE_LIMIT },
       },
-      context: { silent: true },
     }),
   )
   const { data } = history

@@ -42,7 +42,6 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
   }
   const { mutate: createEndpoint, isPending } = useMutation(
     consoleQuery.workspaces.current.endpoints.post.mutationOptions({
-      context: { silent: true },
       onSuccess: hideEndpointModal,
       onError: showSaveError,
     }),

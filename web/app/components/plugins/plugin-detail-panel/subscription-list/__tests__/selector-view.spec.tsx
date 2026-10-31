@@ -112,10 +112,7 @@ it('removes the deleted subscription from the live list and clears the selection
     expect(screen.queryByRole('button', { name: 'Subscription One' })).not.toBeInTheDocument(),
   )
   expect(screen.getByLabelText('Selected subscription')).toHaveTextContent('None')
-  expect(requests.remove).toHaveBeenCalledWith(
-    { params: { subscription_id: 'sub-1' } },
-    { context: { silent: true } },
-  )
+  expect(requests.remove).toHaveBeenCalledWith({ params: { subscription_id: 'sub-1' } })
 })
 it('keeps the selection and subscription after cancelling deletion', async () => {
   const user = userEvent.setup()

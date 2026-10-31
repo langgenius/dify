@@ -557,22 +557,19 @@ describe('AgentFiles', () => {
     )
 
     await waitFor(() => {
-      expect(mocks.commitFileMutationFn).toHaveBeenCalledExactlyOnceWith(
-        {
-          params: {
-            app_id: 'app-1',
-          },
-          query: {
-            draft_type: 'draft',
-            node_id: 'node-1',
-            version_id: 'draft-1',
-          },
-          body: {
-            upload_file_ids: ['upload-1'],
-          },
+      expect(mocks.commitFileMutationFn).toHaveBeenCalledExactlyOnceWith({
+        params: {
+          app_id: 'app-1',
         },
-        expect.anything(),
-      )
+        query: {
+          draft_type: 'draft',
+          node_id: 'node-1',
+          version_id: 'draft-1',
+        },
+        body: {
+          upload_file_ids: ['upload-1'],
+        },
+      })
     })
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())

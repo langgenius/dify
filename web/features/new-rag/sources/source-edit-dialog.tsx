@@ -206,7 +206,6 @@ function ConnectedSourceEditDialogContent({
     isPending: connectionsPending,
   } = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
-      context: { silent: true },
       enabled: Boolean(source.connectionId),
       input: (pageParam) => ({
         params: { control_space_id: controlSpaceId },
@@ -506,7 +505,6 @@ function WebsiteSourceEditDialogContent({
     isFetchNextPageError,
   } = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
-      context: { silent: true },
       enabled: initialSource.type === 'web' && Boolean(initialSource.connectionId),
       input: (pageParam) => ({
         params: { control_space_id: controlSpaceId },

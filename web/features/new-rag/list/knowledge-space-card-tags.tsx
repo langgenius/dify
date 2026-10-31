@@ -40,9 +40,7 @@ export function KnowledgeSpaceCardTags({
   }, [knowledgeSpace.tags, submittedTagIds])
   const { mutateAsync: replaceTags } = useMutation(
     // The tag trigger stays in place, so a failed replacement needs its own message.
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.tags.put.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.tags.put.mutationOptions(),
   )
 
   const runReplacements = async (tagIds: string[]) => {

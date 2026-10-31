@@ -99,10 +99,9 @@ describe('Compliance', () => {
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     await user.click(screen.getByText('common.compliance.gdpr'))
     await waitFor(() =>
-      expect(consoleClient.compliance.download.get).toHaveBeenCalledWith(
-        { query: { doc_name: 'GDPR' } },
-        { context: { silent: true } },
-      ),
+      expect(consoleClient.compliance.download.get).toHaveBeenCalledWith({
+        query: { doc_name: 'GDPR' },
+      }),
     )
     expect(onPricingUrlUpdate).not.toHaveBeenCalled()
   })
@@ -118,10 +117,9 @@ describe('Compliance', () => {
       await user.click(getComplianceMenuItem('common.compliance.soc2Type1'))
 
       await waitFor(() => {
-        expect(consoleClient.compliance.download.get).toHaveBeenCalledWith(
-          { query: { doc_name: 'SOC2_Type_I' } },
-          { context: { silent: true } },
-        )
+        expect(consoleClient.compliance.download.get).toHaveBeenCalledWith({
+          query: { doc_name: 'SOC2_Type_I' },
+        })
         expect(downloadUrl).toHaveBeenCalledWith({ url: mockUrl })
         expect(toastSuccessSpy).toHaveBeenCalledWith('common.operation.downloadSuccess')
       })
@@ -139,10 +137,9 @@ describe('Compliance', () => {
       await user.click(getComplianceMenuItem('common.compliance.soc2Type1'))
 
       await waitFor(() => {
-        expect(consoleClient.compliance.download.get).toHaveBeenCalledWith(
-          { query: { doc_name: 'SOC2_Type_I' } },
-          { context: { silent: true } },
-        )
+        expect(consoleClient.compliance.download.get).toHaveBeenCalledWith({
+          query: { doc_name: 'SOC2_Type_I' },
+        })
         expect(toastErrorSpy).toHaveBeenCalledWith('common.operation.downloadFailed')
       })
       expect(consoleSpy).toHaveBeenCalled()

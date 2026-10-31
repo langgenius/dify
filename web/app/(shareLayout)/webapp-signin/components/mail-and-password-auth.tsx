@@ -11,7 +11,6 @@ import {
   navigateAfterWebAppLogin,
   resolveWebAppLoginRedirect,
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
-import { toast } from '@/app/notifications'
 import { emailRegex } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import Link from '@/next/link'
@@ -20,6 +19,7 @@ import { webAppLogin } from '@/service/common'
 import { fetchAccessToken } from '@/service/share'
 import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
 import { encryptPassword } from '@/utils/encryption'
+import { getErrorMessage } from '@/utils/error-message'
 import { getClientLoginFallback } from '@/utils/login-redirect'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
@@ -29,6 +29,9 @@ type MailAndPasswordAuthProps = {
 }
 
 export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAuthProps) {
+  const [requestError, setRequestError] = useState<unknown>()
+  const { t: tRequestError } = useTranslation(['common'])
+
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -44,6 +47,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   }, [redirectUrl, router])
 
   const handleEmailPasswordLogin = async (email: string, password: string) => {
+    setRequestError(undefined)
     if (isLoading) return
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     if (!loginRedirect) {
@@ -74,15 +78,16 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         setWebAppPassport(loginRedirect.address, access_token)
         navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
       } else {
-        toast.error(res.data)
+        setRequestError(new Error(res.data ?? tRequestError(($) => $['api.actionFailed'])))
       }
     } catch (error: unknown) {
+      setRequestError(error)
       const authenticationError = error as { code?: unknown; message?: unknown }
       if (
         authenticationError.code === 'authentication_failed' &&
         typeof authenticationError.message === 'string'
       )
-        toast.error(authenticationError.message)
+        setRequestError(new Error(authenticationError.message))
     } finally {
       setIsLoading(false)
     }
@@ -94,6 +99,11 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         void handleEmailPasswordLogin(email, password)
       }}
     >
+      {!!requestError && (
+        <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+          {getErrorMessage(requestError) ?? tRequestError(($) => $['api.actionFailed'])}
+        </p>
+      )}
       <Field
         name="email"
         className="mb-3 block"

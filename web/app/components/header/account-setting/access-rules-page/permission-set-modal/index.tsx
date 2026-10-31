@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { getEnterpriseDocUrl } from '@/context/i18n'
 import { getDocLanguage } from '@/i18n/language'
+import { getErrorMessage } from '@/utils/error-message'
 import PermissionPicker from './permission-picker'
 
 export type PermissionSetModalMode = 'create' | 'edit' | 'view'
@@ -55,7 +56,7 @@ const PermissionSetModalBody = ({
     initialValues?.permissionKeys ?? [],
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitFailed, setSubmitFailed] = useState(false)
+  const [submitError, setSubmitError] = useState<unknown>()
 
   const trimmedName = name.trim()
   const readonly = mode === 'view'
@@ -64,7 +65,7 @@ const PermissionSetModalBody = ({
   const handleConfirm = async () => {
     if (readonly || !canSubmit || isSubmitting) return
     setIsSubmitting(true)
-    setSubmitFailed(false)
+    setSubmitError(undefined)
     try {
       await onSubmit({
         name: trimmedName,
@@ -72,8 +73,8 @@ const PermissionSetModalBody = ({
         permissionKeys,
       })
       onClose()
-    } catch {
-      setSubmitFailed(true)
+    } catch (error) {
+      setSubmitError(error)
     } finally {
       setIsSubmitting(false)
     }
@@ -153,9 +154,9 @@ const PermissionSetModalBody = ({
         </DialogBody>
 
         <DialogFooter>
-          {submitFailed && (
+          {!!submitError && (
             <p role="alert" className="me-auto system-xs-regular text-text-destructive">
-              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+              {getErrorMessage(submitError) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
             </p>
           )}
           <a

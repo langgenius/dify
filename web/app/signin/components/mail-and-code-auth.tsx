@@ -11,6 +11,7 @@ import { emailRegex, TURNSTILE_SITE_KEY } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import Turnstile from './turnstile'
 
 type MailAndCodeAuthProps = {
@@ -18,6 +19,9 @@ type MailAndCodeAuthProps = {
 }
 
 export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
+  const [requestError, setRequestError] = useState<unknown>()
+  const { t: tRequestError } = useTranslation(['common'])
+
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -34,6 +38,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const shouldRenderTurnstile = isTurnstileRequired && Boolean(turnstileSiteKey)
 
   const handleGetEMailVerificationCode = async () => {
+    setRequestError(undefined)
     if (loading) return
     let shouldResetTurnstile = false
     try {
@@ -55,6 +60,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         shouldResetTurnstile = false
       }
     } catch (error) {
+      setRequestError(error)
       console.error(error)
     } finally {
       setLoading(false)
@@ -71,6 +77,11 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         void handleGetEMailVerificationCode()
       }}
     >
+      {!!requestError && (
+        <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+          {getErrorMessage(requestError) ?? tRequestError(($) => $['api.actionFailed'])}
+        </p>
+      )}
       <Field
         name="email"
         disabled={isInvite}

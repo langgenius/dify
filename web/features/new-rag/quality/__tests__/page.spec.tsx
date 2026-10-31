@@ -807,12 +807,9 @@ describe('QualityPage', () => {
     )
 
     await waitFor(() =>
-      expect(serviceMock.getTraceReference).toHaveBeenCalledWith(
-        {
-          params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
-        },
-        { context: { silent: true } },
-      ),
+      expect(serviceMock.getTraceReference).toHaveBeenCalledWith({
+        params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+      }),
     )
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/retrieval?trace=trace-42')
   })
@@ -1032,17 +1029,14 @@ describe('QualityPage', () => {
     )
 
     await waitFor(() =>
-      expect(serviceMock.updateBadCase).toHaveBeenCalledWith(
-        {
-          body: {
-            expected_revision: 1,
-            status: 'dismissed',
-            tags: ['billing'],
-          },
-          params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+      expect(serviceMock.updateBadCase).toHaveBeenCalledWith({
+        body: {
+          expected_revision: 1,
+          status: 'dismissed',
+          tags: ['billing'],
         },
-        { context: { silent: true } },
-      ),
+        params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+      }),
     )
     await waitFor(() =>
       expect(screen.queryByText('Refund after activation')).not.toBeInTheDocument(),
@@ -1142,13 +1136,10 @@ describe('QualityPage', () => {
     await user.click(promote)
     await screen.findByText('dismiss failed')
     expect(toast.error).not.toHaveBeenCalled()
-    expect(serviceMock.getBadCase).toHaveBeenLastCalledWith(
-      { params: { bad_case_id: 'bad-1', control_space_id: 'space-1' } },
-      { context: { silent: true } },
-    )
-    expect(serviceMock.updateBadCase).toHaveBeenLastCalledWith(expect.anything(), {
-      context: { silent: true },
+    expect(serviceMock.getBadCase).toHaveBeenLastCalledWith({
+      params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
     })
+    expect(serviceMock.updateBadCase).toHaveBeenLastCalledWith(expect.anything())
     await user.click(promote)
 
     await waitFor(() => expect(serviceMock.updateBadCase).toHaveBeenCalledTimes(2))

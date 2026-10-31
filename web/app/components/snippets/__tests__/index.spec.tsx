@@ -118,10 +118,7 @@ describe('SnippetPage', () => {
       expect(screen.getByRole('status', { name: 'Published workflow' })).toHaveTextContent(
         String(published),
       )
-      expect(requests.draft).toHaveBeenCalledWith(
-        { params: { snippet_id: 'snippet-1' } },
-        expect.anything(),
-      )
+      expect(requests.draft).toHaveBeenCalledWith({ params: { snippet_id: 'snippet-1' } })
     },
   )
 

@@ -348,9 +348,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   )
   const archiveMonth = formatMonth(archive.year, archive.month)
   const deleteArchiveMutation = useMutation(
-    consoleQuery.workflowRunArchives.byYear.byMonth.delete.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workflowRunArchives.byYear.byMonth.delete.mutationOptions(),
   )
   const isDeletionActive = isDeletingStatus(archive.deletion_status)
   const isDeleting = deleteArchiveMutation.isPending || isDeletionActive
@@ -379,7 +377,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
     }),
   )
   const createDownloadMutation = useMutation(
-    consoleQuery.workflowRunArchives.downloads.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.workflowRunArchives.downloads.post.mutationOptions(),
   )
   const currentTask = latestDownloadTask(cachedTask, taskQuery.data)
   const isTaskPreparing = isPreparingStatus(currentTask?.status)

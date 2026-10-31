@@ -36,10 +36,10 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         return false
       }
 
-      const { data } = await consoleClient.rag.pipelines.byPipelineId.exports.get(
-        { params: { pipeline_id: pipelineId }, query: { include_secret: String(include) } },
-        { context: { silent: true } },
-      )
+      const { data } = await consoleClient.rag.pipelines.byPipelineId.exports.get({
+        params: { pipeline_id: pipelineId },
+        query: { include_secret: String(include) },
+      })
       const file = new Blob([data], { type: 'application/yaml' })
       downloadBlob({ data: file, fileName: `${knowledgeName}.pipeline` })
       return true
@@ -61,10 +61,9 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const exportCheck = useCallback(async () => {
     if (!pipelineId) return
     try {
-      const workflowDraft = await consoleClient.rag.pipelines.byPipelineId.workflows.draft.get(
-        { params: { pipeline_id: pipelineId } },
-        { context: { silent: true } },
-      )
+      const workflowDraft = await consoleClient.rag.pipelines.byPipelineId.workflows.draft.get({
+        params: { pipeline_id: pipelineId },
+      })
       const list = workflowDraft.environment_variables.filter((env) => env.value_type === 'secret')
       if (list.length === 0) {
         await handleExportDSL()

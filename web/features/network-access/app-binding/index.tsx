@@ -133,7 +133,6 @@ function AccessControlSession({
   const bindingQuery = useQuery(
     consoleQuery.apps.byAppId.networkAccessGroup.get.queryOptions({
       input: { params: { app_id: appId } },
-      context: { silent: true },
       retry: false,
       enabled: canFetchNetworkAccess && Boolean(appId),
     }),
@@ -172,12 +171,11 @@ function AccessControlSession({
         bindingQuery.data?.entitled === true &&
         open &&
         view === 'config',
-      context: { silent: true },
       staleTime: 0,
       retry: false,
     }),
   )
-  const saveCheck = useMutation(checkCurrentIp.mutationOptions({ context: { silent: true } }))
+  const saveCheck = useMutation(checkCurrentIp.mutationOptions())
 
   if (!canFetchNetworkAccess) return null
   if (groupsQuery.isPending || bindingQuery.isPending) return null

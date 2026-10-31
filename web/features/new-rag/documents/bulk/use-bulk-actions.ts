@@ -101,9 +101,7 @@ export function useBulkReindexAction() {
   const { begin, busy, finish, pending } = useBulkActionLock('reindex')
   const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
   const { mutateAsync: reindexDocuments } = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
   )
 
   const run = useCallback(async () => {
@@ -194,13 +192,10 @@ export function useBulkDownloadAction() {
     if (!canDownload || !downloadableDocumentIds.length || !begin()) return
     try {
       const file =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.downloadZip.post(
-          {
-            body: { document_ids: downloadableDocumentIds },
-            params: { control_space_id: knowledgeSpaceId },
-          },
-          { context: { silent: true } },
-        )
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.downloadZip.post({
+          body: { document_ids: downloadableDocumentIds },
+          params: { control_space_id: knowledgeSpaceId },
+        })
       downloadBlob({
         data: file,
         fileName:
@@ -255,7 +250,6 @@ export function useBulkAvailabilityAction() {
           },
           params: { control_space_id: knowledgeSpaceId },
         },
-        { context: { silent: true } },
       )
       const failedIds = result.items.flatMap((item) =>
         item.status === 'conflict' || item.status === 'not_found' ? [item.document_id] : [],
@@ -312,19 +306,16 @@ export function useBulkRemoveAction() {
       return false
     try {
       const result =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.bulk.delete(
-          {
-            body: {
-              documents: selectedDocuments.map((document) => ({
-                documentId: document.id,
-                expectedRevision: document.rowVersion,
-              })),
-            },
-            headers: { 'Idempotency-Key': createRequestId() },
-            params: { control_space_id: knowledgeSpaceId },
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.bulk.delete({
+          body: {
+            documents: selectedDocuments.map((document) => ({
+              documentId: document.id,
+              expectedRevision: document.rowVersion,
+            })),
           },
-          { context: { silent: true } },
-        )
+          headers: { 'Idempotency-Key': createRequestId() },
+          params: { control_space_id: knowledgeSpaceId },
+        })
       const rejectedIds = (result.results ?? []).flatMap((item) =>
         item.status === 'rejected' ? [item.document_id] : [],
       )

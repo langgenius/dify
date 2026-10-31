@@ -399,6 +399,8 @@ const StepTwo: FC<StepTwoProps> = ({
         dataSourceType={dataSourceType}
         currentDocForm={currentDocForm}
         estimate={estimateHook.estimate}
+        error={estimateHook.currentMutation.error}
+        onRetry={() => estimateHook.fetchEstimate()}
         parentChildConfig={segmentation.parentChildConfig}
         isSetting={isSetting}
         pickerFiles={preview.getPreviewPickerItems()}

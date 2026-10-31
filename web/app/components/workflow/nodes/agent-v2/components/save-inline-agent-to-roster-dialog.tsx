@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next'
 import { createAgentIconSelection } from '@/features/agent-v2/roster/components/agent-form'
 import { AgentFormFields } from '@/features/agent-v2/roster/components/agent-form-fields'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 type SaveInlineAgentToRosterDialogProps = {
   resource: Extract<EditorResource, { kind: 'app' | 'snippet' }>
@@ -41,6 +42,7 @@ type SaveInlineAgentToRosterFormSessionProps = {
   initialAgent: AgentComposerAgentResponse
   nameInputRef: Ref<HTMLInputElement>
   pending: boolean
+  error?: unknown
   onCancel: () => void
   onSubmit: (formValues: AgentFormValues, agentIcon: AgentIconSelection) => void
 }
@@ -49,6 +51,7 @@ function SaveInlineAgentToRosterFormSession({
   initialAgent,
   nameInputRef,
   pending,
+  error,
   onCancel,
   onSubmit,
 }: SaveInlineAgentToRosterFormSessionProps) {
@@ -89,6 +92,11 @@ function SaveInlineAgentToRosterFormSession({
           iconAriaLabel={t(($) => $['roster.saveToRosterForm.changeIcon'], { ns: 'agentRoster' })}
           onIconChange={setAgentIcon}
         />
+        {!!error && !pending && (
+          <p role="alert" className="px-6 system-sm-regular text-text-destructive">
+            {getErrorMessage(error) ?? tCommon(($) => $['api.actionFailed'])}
+          </p>
+        )}
         <DialogFooter>
           <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
             {tCommon(($) => $['operation.cancel'])}
@@ -177,12 +185,23 @@ export function SaveInlineAgentToRosterDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
+      <Dialog
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            appSaveToRosterMutation.reset()
+            snippetSaveToRosterMutation.reset()
+          }
+        }}
+        open={open}
+        onOpenChange={handleOpenChange}
+        disablePointerDismissal
+      >
         <DialogContent initialFocus={nameInputRef} className="w-130">
           <SaveInlineAgentToRosterFormSession
             initialAgent={initialAgent}
             nameInputRef={nameInputRef}
             pending={isSavingToRoster}
+            error={appSaveToRosterMutation.error ?? snippetSaveToRosterMutation.error}
             onCancel={() => onOpenChange(false)}
             onSubmit={handleSubmit}
           />

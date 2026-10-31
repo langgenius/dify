@@ -63,9 +63,7 @@ const Datasets = ({
       fallbackFocus: { current: HTMLElement | null }
     }>(),
   )
-  const deletion = useMutation(
-    consoleQuery.datasets.byDatasetId.delete.mutationOptions({ context: { silent: true } }),
-  )
+  const deletion = useMutation(consoleQuery.datasets.byDatasetId.delete.mutationOptions())
   const invalidDatasetList = useInvalidDatasetList()
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>(null)

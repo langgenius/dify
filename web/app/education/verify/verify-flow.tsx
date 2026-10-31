@@ -29,7 +29,7 @@ const selectEducationStatus = ({ allow_refresh, is_student }: EducationStatusRes
 const selectEducationPlanEnabled = ({ education }: GetFeaturesResponse) => education.enabled
 
 const requestEducationVerification: EducationVerificationRequest = () =>
-  consoleClient.account.education.verify.get({}, { context: { silent: true } })
+  consoleClient.account.education.verify.get()
 
 export default function EducationVerifyPage() {
   return <EducationVerifyFlow />

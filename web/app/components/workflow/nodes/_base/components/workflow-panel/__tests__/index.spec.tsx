@@ -7,6 +7,7 @@ import type { Shape } from '@/app/components/workflow/store'
 import type { Node } from '@/app/components/workflow/types'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useAtomValue } from 'jotai'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { createRef, useImperativeHandle } from 'react'
 import { useNodes, useReactFlow } from 'reactflow'
@@ -14,12 +15,19 @@ import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/sto
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import WorkflowWithDefaultContext, { Workflow } from '@/app/components/workflow'
 import { createNode, createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import {
+  baseRunningData,
+  renderWorkflowComponent,
+} from '@/app/components/workflow/__tests__/workflow-test-env'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { fullWorkflowAccessControl } from '@/app/components/workflow/hooks-store/store'
+import { useWorkflowNodeFinished } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-node-finished'
+import { useWorkflowNodeStarted } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-node-started'
 import codeNodeDefault from '@/app/components/workflow/nodes/code/default'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { convertToTriggerWithProvider } from '@/service/use-triggers'
+import { useInvalidateAllLastRun } from '@/service/use-workflow'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
@@ -117,6 +125,23 @@ beforeEach(() => {
 function PanelContent() {
   return <p>Node settings</p>
 }
+const execution = createRef<{
+  start: ReturnType<typeof useWorkflowNodeStarted>['handleWorkflowNodeStarted']
+  finish: ReturnType<typeof useWorkflowNodeFinished>['handleWorkflowNodeFinished']
+  refreshResults: () => Promise<void>
+}>()
+function ExecutionHarness() {
+  const resource = useAtomValue(editorResourceAtom)
+  const refreshResults = useInvalidateAllLastRun(resource)
+  const { handleWorkflowNodeStarted } = useWorkflowNodeStarted()
+  const { handleWorkflowNodeFinished } = useWorkflowNodeFinished()
+  useImperativeHandle(execution, () => ({
+    start: handleWorkflowNodeStarted,
+    finish: handleWorkflowNodeFinished,
+    refreshResults,
+  }))
+  return null
+}
 function SelectedPanel({ graphRef }: { graphRef: RefObject<ReactFlowInstance | null> }) {
   const nodes = useNodes<Node['data']>()
   const graph = useReactFlow()
@@ -203,6 +228,7 @@ function renderPanel({
       <WorkflowWithDefaultContext nodes={[node, ...otherNodes]} edges={[]}>
         <Workflow nodes={[node, ...otherNodes]} edges={[]}>
           <SelectedPanel graphRef={graph} />
+          <ExecutionHarness />
         </Workflow>
       </WorkflowWithDefaultContext>
     </NuqsTestingAdapter>,
@@ -272,6 +298,201 @@ it('runs a configured node and displays its actual service result', async () => 
   )
   expect(await screen.findByText(/Finished transformation/)).toBeInTheDocument()
 })
+
+it('shows a failed node request inline and clears it when retrying', async () => {
+  const user = userEvent.setup()
+  api.run.mockRejectedValueOnce(new Error('Model quota exceeded'))
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+  renderPanel()
+
+  await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+  expect(await panel().findByRole('alert')).toHaveTextContent('Model quota exceeded')
+  await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+  await waitFor(() => expect(api.run).toHaveBeenCalledTimes(2))
+  expect(await screen.findByText(/Finished transformation/)).toBeInTheDocument()
+  expect(panel().queryByRole('alert')).not.toBeInTheDocument()
+  log.mockRestore()
+})
+
+it.each(['running', 'succeeded'])(
+  'ignores a stopped request failure while its retry is %s',
+  async (retryStatus) => {
+    const user = userEvent.setup()
+    const first = createDeferred<ReturnType<typeof result>>()
+    const second = createDeferred<ReturnType<typeof result>>()
+    api.run.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    renderPanel()
+    await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+    await user.click(
+      await panel().findByRole('button', {
+        name: 'workflowDebug.debug.variableInspect.trigger.stop',
+      }),
+    )
+    await user.click(await panel().findByRole('button', { name: 'workflow.panel.runThisStep' }))
+    await waitFor(() => expect(api.run).toHaveBeenCalledTimes(2))
+    if (retryStatus === 'succeeded') await act(async () => second.resolve(result()))
+    await act(async () => first.reject(new Error('Stopped request timed out')))
+    expect(panel().queryByRole('alert')).not.toBeInTheDocument()
+    if (retryStatus === 'running') {
+      expect(
+        panel().getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
+      ).toBeInTheDocument()
+      await act(async () => second.resolve(result()))
+    }
+    expect(await screen.findByText(/Finished transformation/)).toBeInTheDocument()
+    log.mockRestore()
+  },
+)
+
+it.each(['success', 'failure'])(
+  'settles a node run after its panel closes: %s',
+  async (outcome) => {
+    const user = userEvent.setup()
+    const pending = createDeferred<ReturnType<typeof result>>()
+    api.run.mockReturnValueOnce(pending.promise)
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { graph } = renderPanel()
+    await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+    await waitFor(() => expect(api.run).toHaveBeenCalledOnce())
+    await user.click(panel().getByRole('button', { name: 'common.operation.close' }))
+    expect(
+      screen.queryByRole('region', { name: /workflow.panel.nodePanel/ }),
+    ).not.toBeInTheDocument()
+    await act(async () => {
+      if (outcome === 'success') pending.resolve(result())
+      else pending.reject(new Error('Run unavailable'))
+    })
+    expect(graph.current!.getNode('node-1')!.data._singleRunningStatus).toBe(
+      outcome === 'success' ? NodeRunningStatus.Succeeded : NodeRunningStatus.Failed,
+    )
+    expect(
+      screen.queryByRole('region', { name: /workflow.panel.nodePanel/ }),
+    ).not.toBeInTheDocument()
+    const node = screen.getByRole('button', { name: /Code Node/ })
+    act(() => node.focus())
+    await user.keyboard('{Enter}')
+    await user.click(panel().getByRole('tab', { name: /lastRunTab/i }))
+    if (outcome === 'success')
+      expect(await screen.findByText(/Finished transformation/)).toBeInTheDocument()
+    else expect(await panel().findByRole('alert')).toHaveTextContent('Run unavailable')
+    log.mockRestore()
+  },
+)
+
+it('invalidates a prior run when stopped and retried after reopening its panel', async () => {
+  const user = userEvent.setup()
+  const first = createDeferred<ReturnType<typeof result>>()
+  api.run.mockReturnValueOnce(first.promise).mockResolvedValueOnce(result())
+  renderPanel()
+  await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+  await waitFor(() => expect(api.run).toHaveBeenCalledOnce())
+  await user.click(panel().getByRole('button', { name: 'common.operation.close' }))
+  act(() => screen.getByRole('button', { name: /Code Node/ }).focus())
+  await user.keyboard('{Enter}')
+  await user.click(
+    await panel().findByRole('button', {
+      name: 'workflowDebug.debug.variableInspect.trigger.stop',
+    }),
+  )
+  await user.click(await panel().findByRole('button', { name: 'workflow.panel.runThisStep' }))
+  await waitFor(() => expect(api.run).toHaveBeenCalledTimes(2))
+  await act(async () => first.reject(new Error('Earlier run failed')))
+  expect(panel().queryByRole('alert')).not.toBeInTheDocument()
+  expect(await screen.findByText(/Finished transformation/)).toBeInTheDocument()
+})
+
+it.each([true, false])(
+  'recovers from a single-run error when the workflow succeeds (start received: %s)',
+  async (withStart) => {
+    const user = userEvent.setup()
+    api.run.mockRejectedValueOnce(new Error('Model quota exceeded'))
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { graph, store } = renderPanel()
+    await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+    expect(await panel().findByRole('alert')).toHaveTextContent('Model quota exceeded')
+    const recovered = {
+      ...result(),
+      id: 'recovered-execution',
+      outputs: { result: 'Recovered full workflow output' },
+    }
+    api.lastRun.mockResolvedValue(recovered)
+    act(() => {
+      store.getState().setWorkflowRunningData(baseRunningData())
+      if (withStart)
+        execution.current!.start(
+          { event: 'node_started', task_id: 'task-1', workflow_run_id: 'run-1', data: recovered },
+          { clientWidth: 1200, clientHeight: 800 },
+        )
+      execution.current!.finish({
+        event: 'node_finished',
+        task_id: 'task-1',
+        workflow_run_id: 'run-1',
+        data: recovered,
+      })
+    })
+    await act(async () => {
+      await execution.current!.refreshResults()
+    })
+    expect(graph.current!.getNode('node-1')!.data._runningStatus).toBe(NodeRunningStatus.Succeeded)
+    expect(panel().queryByRole('alert')).not.toBeInTheDocument()
+    expect(await screen.findByText(/Recovered full workflow output/)).toBeInTheDocument()
+    log.mockRestore()
+  },
+)
+
+it.each(['success', 'failure'])(
+  'settles a pending single request after the full workflow takes over: %s',
+  async (outcome) => {
+    const user = userEvent.setup()
+    const pending = createDeferred<ReturnType<typeof result>>()
+    api.run.mockReturnValueOnce(pending.promise)
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { graph, store } = renderPanel()
+    await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+    await waitFor(() => expect(api.run).toHaveBeenCalledOnce())
+    expect(
+      store.getState().nodesWithInspectVars.find((node) => node.nodeId === 'node-1')
+        ?.isSingRunRunning,
+    ).toBe(true)
+    const trace = { ...result(), id: 'full-workflow-execution' }
+    act(() => {
+      store.getState().setWorkflowRunningData(baseRunningData())
+      execution.current!.start(
+        { event: 'node_started', task_id: 'task-1', workflow_run_id: 'full-run', data: trace },
+        { clientWidth: 1200, clientHeight: 800 },
+      )
+      execution.current!.finish({
+        event: 'node_finished',
+        task_id: 'task-1',
+        workflow_run_id: 'full-run',
+        data: trace,
+      })
+      store
+        .getState()
+        .setWorkflowRunningData(
+          baseRunningData({ result: { ...baseRunningData().result, status: 'succeeded' } }),
+        )
+    })
+    await act(async () => {
+      if (outcome === 'success') pending.resolve(result())
+      else pending.reject(new Error('Earlier single request failed'))
+    })
+    expect(graph.current!.getNode('node-1')!.data._runningStatus).toBe(NodeRunningStatus.Succeeded)
+    expect(graph.current!.getNode('node-1')!.data._singleRunningStatus).toBe(
+      outcome === 'success' ? NodeRunningStatus.Succeeded : NodeRunningStatus.Failed,
+    )
+    expect(
+      store.getState().nodesWithInspectVars.find((node) => node.nodeId === 'node-1')
+        ?.isSingRunRunning,
+    ).toBe(false)
+    expect(panel().queryByRole('alert')).not.toBeInTheDocument()
+    expect(
+      panel().queryByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.stop' }),
+    ).not.toBeInTheDocument()
+    log.mockRestore()
+  },
+)
 
 it('consumes a queued run once and leaves other nodes’ queued actions untouched', async () => {
   const { store } = renderPanel({

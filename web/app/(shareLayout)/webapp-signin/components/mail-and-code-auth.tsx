@@ -9,11 +9,15 @@ import { toast } from '@/app/notifications'
 import { emailRegex } from '@/config'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode } from '@/service/common'
+import { getErrorMessage } from '@/utils/error-message'
 import { getClientLoginFallback } from '@/utils/login-redirect'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 
 export default function MailAndCodeAuth() {
+  const [requestError, setRequestError] = useState<unknown>()
+  const { t: tRequestError } = useTranslation(['common'])
+
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -30,6 +34,7 @@ export default function MailAndCodeAuth() {
   }, [redirectUrl, router])
 
   const handleGetEMailVerificationCode = async () => {
+    setRequestError(undefined)
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     if (!loginRedirect) {
       replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
@@ -56,6 +61,7 @@ export default function MailAndCodeAuth() {
         router.push(`/webapp-signin/check-code?${params.toString()}`)
       }
     } catch (error) {
+      setRequestError(error)
       console.error(error)
     } finally {
       setLoading(false)
@@ -69,6 +75,11 @@ export default function MailAndCodeAuth() {
         void handleGetEMailVerificationCode()
       }}
     >
+      {!!requestError && (
+        <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+          {getErrorMessage(requestError) ?? tRequestError(($) => $['api.actionFailed'])}
+        </p>
+      )}
       <div className="mb-2">
         <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
           {t(($) => $.email, { ns: 'login' })}

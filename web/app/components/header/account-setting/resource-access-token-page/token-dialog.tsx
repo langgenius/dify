@@ -21,6 +21,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { candidateKey } from './resource-key'
 import ResourceSelector from './resource-selector'
 
@@ -118,7 +119,17 @@ export default function ResourceAccessTokenDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
+    <Dialog
+      onOpenChangeComplete={(open) => {
+        if (!open) {
+          createMutation.reset()
+          updateMutation.reset()
+        }
+      }}
+      open={open}
+      onOpenChange={onOpenChange}
+      disablePointerDismissal
+    >
       <DialogContent backdropProps={{ forceRender: true }} className="w-168 overflow-hidden">
         <DialogHeader>
           <DialogTitle>
@@ -183,6 +194,12 @@ export default function ResourceAccessTokenDialog({
               />
             </DialogBody>
 
+            {!!(createMutation.error ?? updateMutation.error) && !isSaving && (
+              <p role="alert" className="px-6 system-sm-regular text-text-destructive">
+                {getErrorMessage(createMutation.error ?? updateMutation.error) ??
+                  t(($) => $['api.actionFailed'], { ns: 'common' })}
+              </p>
+            )}
             <DialogFooter>
               <Button type="button" onClick={() => onOpenChange(false)}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}

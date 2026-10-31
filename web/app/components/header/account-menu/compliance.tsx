@@ -83,7 +83,7 @@ function ComplianceDocActionVisual({
           <PremiumBadge color="blue" allowHover={true}>
             <span
               aria-hidden="true"
-              className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px pl-0.75 text-components-premium-badge-indigo-text-stop-0"
+              className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center [background-clip:content-box] [background-origin:content-box] [mask-clip:content-box] [mask-origin:content-box] py-px ps-0.75 text-components-premium-badge-indigo-text-stop-0"
             />
             <div className="px-1 system-xs-medium">{upgradeText}</div>
           </PremiumBadge>
@@ -116,10 +116,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
     mutationKey: ['downloadCompliance', docName],
     mutationFn: async () => {
       try {
-        const ret = await consoleClient.compliance.download.get(
-          { query: { doc_name: docName } },
-          { context: { silent: true } },
-        )
+        const ret = await consoleClient.compliance.download.get({ query: { doc_name: docName } })
         downloadUrl({ url: ret.url })
         toast.success(t(($) => $['operation.downloadSuccess'], { ns: 'common' }))
       } catch (error) {
@@ -168,7 +165,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
 
   return (
     <MenuItem
-      className="h-10 justify-between py-1 pr-2 pl-1"
+      className="h-10 justify-between py-1 ps-1 pe-2"
       closeOnClick={!isCurrentPlanCanDownload}
       disabled={isPending}
       onClick={handleSelect}

@@ -91,7 +91,7 @@ export const TagSelector = ({
 
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const { isPending: isCreatingTag, mutate: createTag } = useMutation(
-    consoleQuery.tags.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.tags.post.mutationOptions(),
   )
   const { data: tagList = [] } = useQuery(
     consoleQuery.tags.get.queryOptions({
@@ -301,7 +301,7 @@ export const TagSelector = ({
         <TagTriggerContent tags={tagNames} emptyLabel={emptyTriggerLabel} />
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute top-0 right-0 h-full w-20 bg-tag-selector-mask-bg group-hover/tag-area:hidden group-focus-visible/tag-area:hidden group-data-popup-open/tag-area:hidden"
+          className="pointer-events-none absolute inset-e-0 top-0 h-full w-20 bg-tag-selector-mask-bg group-hover/tag-area:hidden group-focus-visible/tag-area:hidden group-data-popup-open/tag-area:hidden"
         />
       </ComboboxTrigger>
       <ComboboxPortal>

@@ -117,29 +117,25 @@ describe('request 401 handling', () => {
     vi.unstubAllGlobals()
   })
 
-  it.each([false, true])(
-    'keeps initialization password failures on the init page when silent is %s',
-    async (silent) => {
-      const message = 'Init validation failed. Please check the password and try again.'
-      const response = Response.json({ code: 'init_validate_failed', message }, { status: 401 })
-      arrangeClientRequest({ response, refreshError: new Error('No refresh token during setup') })
-      globalThis.location.pathname = '/app/init'
-      globalThis.location.href = 'https://example.com/app/init'
-      const toastError = vi.spyOn(toast, 'error').mockImplementation(() => '')
+  it('keeps initialization password failures on the init page without UI side effects', async () => {
+    const message = 'Init validation failed. Please check the password and try again.'
+    const response = Response.json({ code: 'init_validate_failed', message }, { status: 401 })
+    arrangeClientRequest({ response, refreshError: new Error('No refresh token during setup') })
+    globalThis.location.pathname = '/app/init'
+    globalThis.location.href = 'https://example.com/app/init'
+    const toastError = vi.spyOn(toast, 'error').mockImplementation(() => '')
 
-      // oxlint-disable-next-line typescript/no-deprecated -- Exercise the request transport's initialization auth handling directly.
-      await expect(request('/init', { method: 'POST' }, { silent })).rejects.toMatchObject({
-        code: 'init_validate_failed',
-        status: 401,
-        message,
-      })
+    // oxlint-disable-next-line typescript/no-deprecated -- Exercise the request transport's initialization auth handling directly.
+    await expect(request('/init', { method: 'POST' })).rejects.toMatchObject({
+      code: 'init_validate_failed',
+      status: 401,
+      message,
+    })
 
-      expect(mocks.refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
-      expect(globalThis.location.href).toBe('https://example.com/app/init')
-      if (silent) expect(toastError).not.toHaveBeenCalled()
-      else expect(toastError).toHaveBeenCalledExactlyOnceWith(message, { timeout: 4000 })
-    },
-  )
+    expect(mocks.refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
+    expect(globalThis.location.href).toBe('https://example.com/app/init')
+    expect(toastError).not.toHaveBeenCalled()
+  })
 
   it('should not run browser auth recovery when handling 401 on the server', async () => {
     const response = createUnauthorizedResponse()

@@ -668,7 +668,7 @@ export const useChat = (
       }
       const otherOptions: IOtherOptions = {
         isPublicAPI,
-        onNotifyError,
+        onNotifyError: onNotifyError ?? ((message) => toast.error(message)),
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
         },
@@ -1214,7 +1214,7 @@ export const useChat = (
 
       const otherOptions: IOtherOptions = {
         isPublicAPI,
-        onNotifyError,
+        onNotifyError: onNotifyError ?? ((message) => toast.error(message)),
         onUnhandledEvent,
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController

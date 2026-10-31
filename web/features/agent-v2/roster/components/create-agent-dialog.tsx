@@ -21,6 +21,7 @@ import { AgentScope } from '@/features/agent-v2/analytics'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { getErrorMessage } from '@/utils/error-message'
 import { getAgentDetailPath } from '../../agent-detail/routes'
 import { defaultAgentIcon } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
@@ -33,6 +34,7 @@ type CreateAgentDialogProps = {
 type CreateAgentFormSessionProps = {
   nameInputRef: Ref<HTMLInputElement>
   pending: boolean
+  error?: unknown
   onCancel: () => void
   onSubmit: (formValues: AgentFormValues, agentIcon: AgentIconSelection) => void
 }
@@ -46,6 +48,7 @@ const createAgentDefaultValues = {
 function CreateAgentFormSession({
   nameInputRef,
   pending,
+  error,
   onCancel,
   onSubmit,
 }: CreateAgentFormSessionProps) {
@@ -76,6 +79,11 @@ function CreateAgentFormSession({
           iconAriaLabel={t(($) => $['roster.createForm.changeIcon'], { ns: 'agentRoster' })}
           onIconChange={setAgentIcon}
         />
+        {!!error && !pending && (
+          <p role="alert" className="px-6 system-sm-regular text-text-destructive">
+            {getErrorMessage(error) ?? tCommon(($) => $['api.actionFailed'])}
+          </p>
+        )}
         <DialogFooter>
           <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
             {tCommon(($) => $['operation.cancel'])}
@@ -139,6 +147,11 @@ export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps
   return (
     <>
       <Dialog
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            createAgentMutation.reset()
+          }
+        }}
         open={open ?? uncontrolledOpen}
         onOpenChange={handleOpenChange}
         disablePointerDismissal
@@ -155,6 +168,7 @@ export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps
           <CreateAgentFormSession
             nameInputRef={nameInputRef}
             pending={createAgentMutation.isPending}
+            error={createAgentMutation.error}
             onCancel={() => setDialogOpen(false)}
             onSubmit={handleSubmit}
           />

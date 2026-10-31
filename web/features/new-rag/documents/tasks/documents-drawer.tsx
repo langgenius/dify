@@ -77,8 +77,8 @@ function DocumentsTaskDrawerHeader() {
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
 
   return (
-    <header className="relative shrink-0 pt-[calc(1.5rem+env(safe-area-inset-top,0px))] pr-[calc(1.5rem+env(safe-area-inset-right,0px))] pb-3.5 pl-[calc(1.5rem+env(safe-area-inset-left,0px))]">
-      <DrawerTitle className="pr-9 system-md-semibold text-text-primary">
+    <header className="relative shrink-0 ps-[calc(1.5rem+env(safe-area-inset-left,0px))] pe-[calc(1.5rem+env(safe-area-inset-right,0px))] pt-[calc(1.5rem+env(safe-area-inset-top,0px))] pb-3.5">
+      <DrawerTitle className="pe-9 system-md-semibold text-text-primary">
         {t(($) => $.backgroundTasks)}
       </DrawerTitle>
       <DrawerClose
@@ -87,7 +87,7 @@ function DocumentsTaskDrawerHeader() {
           <IconButton
             aria-label={tCommon(($) => $['operation.close'])}
             size="lg"
-            className="absolute top-[calc(1.25rem+env(safe-area-inset-top,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))]"
+            className="absolute inset-e-[calc(1.5rem+env(safe-area-inset-right,0px))] top-[calc(1.25rem+env(safe-area-inset-top,0px))]"
           >
             <span aria-hidden className="i-ri-close-line size-5" />
           </IconButton>
@@ -349,7 +349,6 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
               task_kind: task.taskKind,
             },
           },
-          { context: { silent: true } },
         ),
       ),
   })
@@ -638,7 +637,7 @@ export function DocumentsProcessingTasksDrawer() {
           <DrawerPopup className="data-[swipe-direction=right]:w-110 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]">
             <DrawerContent className="flex min-h-0 flex-1 flex-col bg-components-panel-bg p-0 pb-0">
               <DocumentsTaskDrawerHeader />
-              <div className="min-h-0 flex-1 overflow-y-auto pr-[calc(1.5rem+env(safe-area-inset-right,0px))] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pl-[calc(1.5rem+env(safe-area-inset-left,0px))]">
+              <div className="min-h-0 flex-1 overflow-y-auto ps-[calc(1.5rem+env(safe-area-inset-left,0px))] pe-[calc(1.5rem+env(safe-area-inset-right,0px))] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
                 <DocumentsTaskQueryRecovery />
                 <DocumentsTaskRows />
                 <DocumentsTaskLoadMore />

@@ -86,16 +86,13 @@ describe('ImportSnippetDSLDialog', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     await waitFor(() => {
-      expect(serviceMocks.importMutateAsync).toHaveBeenCalledWith(
-        {
-          body: {
-            mode: 'yaml-url',
-            yaml_content: undefined,
-            yaml_url: 'https://example.com/snippet.yml',
-          },
+      expect(serviceMocks.importMutateAsync).toHaveBeenCalledWith({
+        body: {
+          mode: 'yaml-url',
+          yaml_content: undefined,
+          yaml_url: 'https://example.com/snippet.yml',
         },
-        { context: { silent: true } },
-      )
+      })
       expect(onClose).toHaveBeenCalledTimes(1)
       expect(routerMocks.push).toHaveBeenCalledWith('/snippets/snippet-1/orchestrate')
     })
@@ -126,12 +123,9 @@ describe('ImportSnippetDSLDialog', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     expect(await screen.findByText('snippet.dslVersionMismatchTitle')).toBeInTheDocument()
-    expect(serviceMocks.importMutateAsync).toHaveBeenCalledExactlyOnceWith(
-      {
-        body: { mode: 'yaml-content', yaml_content: 'name: snippet', yaml_url: undefined },
-      },
-      { context: { silent: true } },
-    )
+    expect(serviceMocks.importMutateAsync).toHaveBeenCalledExactlyOnceWith({
+      body: { mode: 'yaml-content', yaml_content: 'name: snippet', yaml_url: undefined },
+    })
     expect(routerMocks.push).not.toHaveBeenCalled()
     expect(screen.getByText('0.9.0')).toBeInTheDocument()
     expect(screen.getByText('1.0.0')).toBeInTheDocument()
@@ -139,12 +133,9 @@ describe('ImportSnippetDSLDialog', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     await waitFor(() => {
-      expect(serviceMocks.confirmMutateAsync).toHaveBeenCalledWith(
-        {
-          params: { import_id: 'import-1' },
-        },
-        { context: { silent: true } },
-      )
+      expect(serviceMocks.confirmMutateAsync).toHaveBeenCalledWith({
+        params: { import_id: 'import-1' },
+      })
       expect(routerMocks.push).toHaveBeenCalledWith('/snippets/snippet-2/orchestrate')
     })
   })
@@ -189,12 +180,9 @@ describe('ImportSnippetDSLDialog', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
     if (step === 'confirm') {
       await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
-      expect(serviceMocks.confirmMutateAsync).toHaveBeenCalledWith(
-        {
-          params: { import_id: 'import-1' },
-        },
-        { context: { silent: true } },
-      )
+      expect(serviceMocks.confirmMutateAsync).toHaveBeenCalledWith({
+        params: { import_id: 'import-1' },
+      })
     }
     expect(serviceMocks.importMutateAsync).toHaveBeenCalledOnce()
     expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith('Invalid DSL')

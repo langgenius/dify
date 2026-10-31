@@ -22,7 +22,6 @@ function createBrowserLink(contract: AnyContractRouter): ClientLink<ConsoleClien
       const response = await request<Response>(normalizedURL, requestInit, {
         fetchCompat: true,
         request: normalizedRequest,
-        silent: options.context.silent,
       })
       options.context.onResponseHeaders?.(response.headers)
       return response

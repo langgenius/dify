@@ -28,9 +28,7 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDuplicateOpen, setIsDuplicateOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const deletion = useMutation(
-    consoleQuery.agent.byAgentId.delete.mutationOptions({ context: { silent: true } }),
-  )
+  const deletion = useMutation(consoleQuery.agent.byAgentId.delete.mutationOptions())
   const { exportAppDsl, isExporting } = useExportAppDsl()
   const router = useRouter()
   const capabilities = getAgentACLCapabilities(agent.permission_keys)

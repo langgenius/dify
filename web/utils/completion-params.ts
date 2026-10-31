@@ -2,7 +2,6 @@ import type {
   FormValue,
   ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { ConsoleClientContext } from '@/service/console'
 import { normalizeModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/utils'
 
 export const mergeValidCompletionParams = (
@@ -87,17 +86,13 @@ export const mergeValidCompletionParams = (
 export const fetchModelParameterRulesForModel = async (
   provider: string,
   modelId: string,
-  context?: ConsoleClientContext,
 ): Promise<ModelParameterRule[]> => {
   const { consoleClient } = await import('@/service/console')
   const { data: parameterRules } =
-    await consoleClient.workspaces.current.modelProviders.byProvider.models.parameterRules.get(
-      {
-        params: { provider },
-        query: { model: modelId },
-      },
-      { context },
-    )
+    await consoleClient.workspaces.current.modelProviders.byProvider.models.parameterRules.get({
+      params: { provider },
+      query: { model: modelId },
+    })
   return (parameterRules ?? []).map(normalizeModelParameterRule)
 }
 
@@ -107,6 +102,6 @@ export const fetchAndMergeValidCompletionParams = async (
   oldParams: FormValue | undefined,
   isAdvancedMode: boolean = false,
 ): Promise<{ params: FormValue; removedDetails: Record<string, string> }> => {
-  const parameterRules = await fetchModelParameterRulesForModel(provider, modelId, { silent: true })
+  const parameterRules = await fetchModelParameterRulesForModel(provider, modelId)
   return mergeValidCompletionParams(oldParams, parameterRules, isAdvancedMode)
 }

@@ -190,9 +190,7 @@ export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
     useState<PendingUpgradeConfirmation | null>(null)
   const [preparationFailed, setPreparationFailed] = useState(false)
   const { mutate, reset, isPending, error } = useMutation(
-    consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions(),
   )
 
   const isBusy = isPending || contactUpgrade.isChecking || contactUpgrade.isUpgrading

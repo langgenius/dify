@@ -73,12 +73,9 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
 
   const sendEmail = async (email: string, isOrigin: boolean, token?: string) => {
     try {
-      const res = await consoleClient.account.changeEmail.post(
-        {
-          body: { email, phase: isOrigin ? 'old_email' : 'new_email', token },
-        },
-        { context: { silent: true } },
-      )
+      const res = await consoleClient.account.changeEmail.post({
+        body: { email, phase: isOrigin ? 'old_email' : 'new_email', token },
+      })
       startCount()
       if (res.data) setStepToken(res.data)
     } catch (error) {
@@ -93,12 +90,9 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
     callback?: (token: string) => void,
   ) => {
     try {
-      const res = await consoleClient.account.changeEmail.validity.post(
-        {
-          body: { email, code, token },
-        },
-        { context: { silent: true } },
-      )
+      const res = await consoleClient.account.changeEmail.validity.post({
+        body: { email, code, token },
+      })
       if (res.is_valid) {
         setStepToken(res.token)
         callback?.(res.token)
@@ -127,10 +121,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
   const checkNewEmailExisted = async (email: string) => {
     setIsCheckingEmail(true)
     try {
-      await consoleClient.account.changeEmail.checkEmailUnique.post(
-        { body: { email } },
-        { context: { silent: true } },
-      )
+      await consoleClient.account.changeEmail.checkEmailUnique.post({ body: { email } })
       if (latestEmailRef.current !== email) return
       setNewEmailExited(false)
       setUnAvailableEmail(false)
@@ -181,12 +172,9 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
   const { mutateAsync: logout } = useLogout()
   const updateEmail = async (lastToken: string) => {
     try {
-      await consoleClient.account.changeEmail.reset.post(
-        {
-          body: { new_email: mail.trim(), token: lastToken },
-        },
-        { context: { silent: true } },
-      )
+      await consoleClient.account.changeEmail.reset.post({
+        body: { new_email: mail.trim(), token: lastToken },
+      })
       await logout()
     } catch (error) {
       toast.error(`Error changing email: ${getErrorMessage(error) ?? ''}`)

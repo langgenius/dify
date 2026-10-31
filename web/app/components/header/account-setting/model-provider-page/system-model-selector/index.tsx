@@ -90,7 +90,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   const open = manuallyOpen || activeDialog === 'system-models'
   const saveMutation = useMutation(
     consoleQuery.workspaces.current.defaultModel.post.mutationOptions({
-      context: { silent: true },
       onSuccess: (res) => {
         if (res.result !== 'success') return
 
@@ -217,7 +216,6 @@ function SystemModelSession({
     queries: systemModelTypes.map((modelType) =>
       consoleQuery.workspaces.current.defaultModel.get.queryOptions({
         input: { query: { model_type: modelType } },
-        context: { silent: true },
         refetchOnMount: 'always',
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,

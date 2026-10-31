@@ -22,10 +22,7 @@ const InitPasswordPopup = () => {
   const handleValidation = async () => {
     setLoading(true)
     try {
-      const response = await consoleClient.init.post(
-        { body: { password } },
-        { context: { silent: true } },
-      )
+      const response = await consoleClient.init.post({ body: { password } })
       if (response.result === 'success') {
         setValidated(true)
         router.push('/install') // or render setup form

@@ -11,6 +11,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { consoleClient } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { basePath } from '@/utils/var'
 
 type ForgotPasswordFormValues = {
@@ -22,6 +23,9 @@ const emailSchema = z.email('error.emailInValid').min(1, {
 })
 
 const ForgotPasswordForm = () => {
+  const [requestError, setRequestError] = useState<unknown>()
+  const { t: tRequestError } = useTranslation(['common'])
+
   const { t } = useTranslation(['common', 'login'])
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -34,6 +38,7 @@ const ForgotPasswordForm = () => {
   useDocumentTitle(documentTitle)
 
   const handleSubmit = async ({ email }: ForgotPasswordFormValues) => {
+    setRequestError(undefined)
     if (isSubmitting) return
 
     setIsSubmitting(true)
@@ -42,6 +47,7 @@ const ForgotPasswordForm = () => {
       if (res.result === 'success') setIsEmailSent(true)
       else console.error('Email verification failed')
     } catch (error) {
+      setRequestError(error)
       console.error('Request failed:', error)
     } finally {
       setIsSubmitting(false)
@@ -49,13 +55,17 @@ const ForgotPasswordForm = () => {
   }
 
   useEffect(() => {
-    consoleClient.setup.get().then(() => {
-      consoleClient.init.get().then((res) => {
+    void (async () => {
+      try {
+        await consoleClient.setup.get()
+        const res = await consoleClient.init.get()
         if (res.status === 'not_started') window.location.href = `${basePath}/init`
-      })
-
-      setLoading(false)
-    })
+      } catch (error) {
+        setRequestError(error)
+      } finally {
+        setLoading(false)
+      }
+    })()
   }, [])
 
   return loading ? (
@@ -81,6 +91,11 @@ const ForgotPasswordForm = () => {
               void handleSubmit(value)
             }}
           >
+            {!!requestError && (
+              <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+                {getErrorMessage(requestError) ?? tRequestError(($) => $['api.actionFailed'])}
+              </p>
+            )}
             {!isEmailSent && (
               <Field
                 name="email"

@@ -128,9 +128,7 @@ export const useChildSegmentData = (
   )
   // Mutations
   const { mutateAsync: deleteChildSegment } = useMutation(
-    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.byChildChunkId.delete.mutationOptions(
-      { context: { silent: true } },
-    ),
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.byChildChunkId.delete.mutationOptions(),
   )
   const { mutateAsync: updateChildSegment } = useMutation(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.byChildChunkId.patch.mutationOptions(),

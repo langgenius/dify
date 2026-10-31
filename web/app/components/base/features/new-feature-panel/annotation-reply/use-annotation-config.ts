@@ -50,10 +50,9 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
     let isCompleted = false
     while (!isCompleted) {
-      const res = await consoleClient.apps.byAppId.annotationReply.byAction.status.byJobId.get(
-        { params: { app_id: appId, action: status, job_id: jobId } },
-        { context: { silent: true } },
-      )
+      const res = await consoleClient.apps.byAppId.annotationReply.byAction.status.byJobId.get({
+        params: { app_id: appId, action: status, job_id: jobId },
+      })
       isCompleted = res.job_status === JobStatus.completed
       if (isCompleted) break
       if (res.job_status === JobStatus.error) {

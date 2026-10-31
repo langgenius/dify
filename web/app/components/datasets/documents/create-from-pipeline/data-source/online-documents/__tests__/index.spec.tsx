@@ -109,6 +109,7 @@ function setup({ cached = true, credential = 'credential-1', single = false, dra
   return { store, onCredentialChange }
 }
 function callbacks(): {
+  onError: (message: string) => void
   onDataSourceNodeCompleted: (data: DataSourceNodeCompletedResponse) => void
   onDataSourceNodeError: (data: DataSourceNodeErrorResponse) => void
 } {
@@ -220,9 +221,62 @@ it('reports stream failures and opens data-source configuration', async () => {
       error: 'Notion request failed',
     }),
   )
-  expect(toastError).toHaveBeenCalledExactlyOnceWith('Notion request failed')
+  expect(screen.getByRole('alert')).toHaveTextContent('Notion request failed')
+  expect(toastError).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: /^datasetPipeline\.configurationTip/ }))
   await waitFor(() =>
     expect(onUrlUpdate.mock.lastCall![0].searchParams.get('settings')).toBe('data-source'),
   )
 })
+
+it('shows transport failures inline and retries loading documents', async () => {
+  const user = userEvent.setup()
+  setup({ cached: false })
+  await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+  act(() => callbacks().onError('Documents unavailable'))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Documents unavailable')
+  expect(toastError).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+  act(() =>
+    callbacks().onDataSourceNodeCompleted({
+      event: 'datasource_completed',
+      time_consuming: 0,
+      data: documents,
+    }),
+  )
+  expect(await screen.findByText('Report')).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+
+it.each(['error', 'completion'])(
+  'ignores an old credential %s after the new documents load',
+  async (event) => {
+    const user = userEvent.setup()
+    setup({ cached: false })
+    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+    const earlier = callbacks()
+    await user.click(screen.getByRole('button', { name: /First credential/ }))
+    await user.click(await screen.findByText('Second credential'))
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    act(() =>
+      callbacks().onDataSourceNodeCompleted({
+        event: 'datasource_completed',
+        time_consuming: 0,
+        data: documents,
+      }),
+    )
+    expect(await screen.findByText('Report')).toBeInTheDocument()
+    act(() => {
+      if (event === 'error') earlier.onError('Earlier request failed')
+      else
+        earlier.onDataSourceNodeCompleted({
+          event: 'datasource_completed',
+          time_consuming: 0,
+          data: [],
+        })
+    })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText('Report')).toBeInTheDocument()
+  },
+)

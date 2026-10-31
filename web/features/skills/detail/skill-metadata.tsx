@@ -61,9 +61,7 @@ export function SkillTagsEditor({
   const tags = persistedTags
   const visibleTags = draftTags ?? tags
   const metadataMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions(),
   )
   const tagsQuery = useQuery(consoleQuery.workspaces.current.skills.tags.get.queryOptions())
   const normalizedTagSearch = tagSearch.trim()
@@ -188,7 +186,7 @@ export function SkillTagsEditor({
           type="button"
           disabled={addOpen || isSavingTags}
           aria-label={t(($) => $['skillManagement.detail.removeTag'], { tag })}
-          className="flex h-3 max-w-0 shrink-0 cursor-pointer items-center justify-center overflow-hidden text-text-quaternary opacity-0 outline-hidden transition-[max-width,margin,opacity] group-hover/tag:ml-0.5 group-hover/tag:max-w-3 group-hover/tag:opacity-100 hover:text-text-secondary focus-visible:ml-0.5 focus-visible:max-w-3 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="flex h-3 max-w-0 shrink-0 cursor-pointer items-center justify-center overflow-hidden text-text-quaternary opacity-0 outline-hidden transition-[max-width,margin,opacity] group-hover/tag:ms-0.5 group-hover/tag:max-w-3 group-hover/tag:opacity-100 hover:text-text-secondary focus-visible:ms-0.5 focus-visible:max-w-3 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           onClick={() => saveTags(tags.filter((currentTag) => currentTag !== tag))}
         >
           <span aria-hidden className="i-ri-close-line size-3" />
@@ -457,7 +455,7 @@ export function SkillPublishConfirmPanel({
       <div className="px-3 pt-3.5 pb-1">
         <h2
           id="skill-publish-confirm-title"
-          className="px-1 pr-8 system-xl-semibold text-text-primary"
+          className="px-1 pe-8 system-xl-semibold text-text-primary"
         >
           {t(($) => $['skillManagement.detail.publishReferencesTitle'])}
         </h2>
@@ -513,7 +511,7 @@ function SkillReferenceItem({
         rel="noreferrer"
         className={cn(
           'group/reference flex min-w-0 items-center gap-2 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-          compact ? 'h-7 w-full rounded-md py-1 pr-2 pl-1' : 'h-8 w-fit max-w-120 rounded-lg px-2',
+          compact ? 'h-7 w-full rounded-md py-1 ps-1 pe-2' : 'h-8 w-fit max-w-120 rounded-lg px-2',
         )}
       >
         <span aria-hidden className="shrink-0">
@@ -595,7 +593,7 @@ function SkillReferenceItem({
         rel="noreferrer"
         className={cn(
           'group/reference flex min-w-0 items-center gap-2 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-          compact ? 'h-7 w-full rounded-md py-1 pr-2 pl-1' : 'h-8 w-fit max-w-120 rounded-lg px-2',
+          compact ? 'h-7 w-full rounded-md py-1 ps-1 pe-2' : 'h-8 w-fit max-w-120 rounded-lg px-2',
         )}
       >
         {workflowContent}
@@ -607,7 +605,7 @@ function SkillReferenceItem({
     <div
       className={cn(
         'group/reference flex min-w-0 items-center gap-2 hover:bg-state-base-hover',
-        compact ? 'h-7 w-full rounded-md py-1 pr-2 pl-1' : 'h-8 w-fit max-w-120 rounded-lg px-2',
+        compact ? 'h-7 w-full rounded-md py-1 ps-1 pe-2' : 'h-8 w-fit max-w-120 rounded-lg px-2',
       )}
     >
       {workflowContent}
