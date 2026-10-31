@@ -46,7 +46,7 @@ from services.dsl_content import DSL_MAX_SIZE
 from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import AppDslExportData, DslImportWarning, ImportStatus, PackagedWorkflowTool
 from services.entities.site_dsl import SiteDsl
-from services.workflow_tool_references import iter_workflow_tool_references
+from services.workflow_tool_references import iter_workflow_tool_references, load_workflow_tools
 
 _COPY_CHUNK_SIZE = 1024 * 1024
 
@@ -489,23 +489,7 @@ class AppPackageService(RosterAgentPackageReader):
         if not provider_ids:
             return []
         with session_factory.create_session() as session:
-            rows = session.execute(
-                select(WorkflowToolProvider, App, Workflow)
-                .join(App, (App.id == WorkflowToolProvider.app_id) & (App.tenant_id == tenant_id))
-                .join(
-                    Workflow,
-                    (Workflow.app_id == WorkflowToolProvider.app_id)
-                    & (Workflow.version == WorkflowToolProvider.version)
-                    & (Workflow.tenant_id == tenant_id),
-                )
-                .where(
-                    WorkflowToolProvider.tenant_id == tenant_id,
-                    WorkflowToolProvider.id.in_(sorted(provider_ids)),
-                    App.mode == AppMode.WORKFLOW,
-                    Workflow.version != Workflow.VERSION_DRAFT,
-                )
-                .order_by(WorkflowToolProvider.id)
-            ).all()
+            rows = load_workflow_tools(session, tenant_id=tenant_id, provider_ids=provider_ids)
             labels: dict[str, list[str]] = {}
             for tool_id, label_name in session.execute(
                 select(ToolLabelBinding.tool_id, ToolLabelBinding.label_name).where(

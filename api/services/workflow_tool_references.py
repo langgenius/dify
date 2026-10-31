@@ -1,13 +1,18 @@
-"""Locate and retarget Workflow Tool references inside App DSL data."""
+"""Locate and retarget Workflow Tool references inside App DSL data, and load the workflows they call."""
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Collection, Iterator, Mapping
 from dataclasses import dataclass
 from typing import Any
 
 import yaml
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.tool.entities import ToolProviderType
+from models.model import App, AppMode
+from models.tools import WorkflowToolProvider
+from models.workflow import Workflow
 
 
 @dataclass(frozen=True)
@@ -64,6 +69,36 @@ def iter_workflow_tool_references(data: Mapping[str, Any]) -> Iterator[WorkflowT
         provider_id = config.get(id_key)
         if provider_type == ToolProviderType.WORKFLOW and isinstance(provider_id, str) and provider_id:
             yield WorkflowToolReference(config=config, id_key=id_key)
+
+
+def load_workflow_tools(
+    session: Session, *, tenant_id: str, provider_ids: Collection[str]
+) -> list[tuple[WorkflowToolProvider, App, Workflow]]:
+    """Load each Workflow Tool with its App and the published workflow version the tool runs.
+
+    Snippet-backed tools and tools whose App is gone have no workflow App here and are left out.
+    """
+    if not provider_ids:
+        return []
+    return list(
+        session.execute(
+            select(WorkflowToolProvider, App, Workflow)
+            .join(App, (App.id == WorkflowToolProvider.app_id) & (App.tenant_id == tenant_id))
+            .join(
+                Workflow,
+                (Workflow.app_id == WorkflowToolProvider.app_id)
+                & (Workflow.version == WorkflowToolProvider.version)
+                & (Workflow.tenant_id == tenant_id),
+            )
+            .where(
+                WorkflowToolProvider.tenant_id == tenant_id,
+                WorkflowToolProvider.id.in_(sorted(provider_ids)),
+                App.mode == AppMode.WORKFLOW,
+                Workflow.version != Workflow.VERSION_DRAFT,
+            )
+            .order_by(WorkflowToolProvider.id)
+        ).tuples()
+    )
 
 
 def retarget_workflow_tool_dsl(dsl: str, targets: Mapping[str, WorkflowToolTarget]) -> str:

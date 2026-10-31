@@ -65,6 +65,7 @@ from services.entities.dsl_entities import (
     AppImportPackage,
     AppImportParams,
     CheckDependenciesResult,
+    DraftDependencyCheck,
     DraftGuardedImportParams,
     Import,
     ImportStatus,
@@ -72,13 +73,14 @@ from services.entities.dsl_entities import (
 )
 from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
+from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.rbac import contracts as rbac_contracts
 from services.rbac.members import MemberService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 from services.workflow_service import WorkflowService
-from services.workflow_tool_references import WorkflowToolTarget
+from services.workflow_tool_references import WorkflowToolTarget, iter_workflow_tool_references, load_workflow_tools
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 # Positions as the console editor lays out its templates (START_INITIAL_POSITION and
@@ -414,6 +416,7 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
 
     @override
     def check_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult:
+        """Read the dependency list cached by the last import."""
         return AppDslService.check_app_dependencies(tenant_id=context.active_workspace_id, app_id=app_id)
 
     @override
@@ -481,6 +484,35 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
             privacy_policy=tool.privacy_policy,
             labels=tool.labels,
             import_id=target.provider_id,
+        )
+
+    @override
+    def check_draft_dependencies(self, context: RequestContext, app_id: str) -> DraftDependencyCheck:
+        """Compute the dependencies from the app's current draft and the Workflow Tools it calls.
+
+        Each Workflow Tool is read at the published version it runs, and each one is read once, so cycles end.
+        """
+        with self._session_factory() as session:
+            app = require_console_app(session, context, app_id)
+            dsl = self._dsl_factory(session)
+            prepared = dsl.load_export_data(app_model=app, session=session)
+            plugin_ids = list(prepared.dependency_identifiers)
+            visited: set[str] = set()
+            pending = [prepared.data]
+            while pending:
+                provider_ids = {
+                    reference.provider_id for data in pending for reference in iter_workflow_tool_references(data)
+                } - visited
+                visited |= provider_ids
+                pending = []
+                for _, tool_app, workflow in load_workflow_tools(
+                    session, tenant_id=app.tenant_id, provider_ids=provider_ids
+                ):
+                    tool = dsl.load_export_data(app_model=tool_app, session=session, workflow_id=workflow.id)
+                    plugin_ids.extend(tool.dependency_identifiers)
+                    pending.append(tool.data)
+        return DependenciesAnalysisService.find_missing_dependencies(
+            tenant_id=prepared.tenant_id, plugin_ids=plugin_ids
         )
 
     @override
