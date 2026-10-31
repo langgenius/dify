@@ -31,7 +31,7 @@ from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolDescription
 from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.tool_manager import ToolManager
+from services.tools.tool_manager import ToolManager
 
 logger = logging.getLogger(__name__)
 
@@ -327,20 +327,6 @@ def select_legacy_fallback_selection(
         pinned_count=len(pinned),
         limit=_MAX_PROMPT_TOOLS,
     )
-
-
-def select_legacy_fallback_tools(
-    entries: list[ToolCatalogueEntry],
-    *,
-    explicit_text: str = "",
-    current_graph: dict[str, Any] | None = None,
-) -> list[ToolCatalogueEntry]:
-    """Keep pinned tools while reproducing the legacy bounded prompt fallback."""
-    return select_legacy_fallback_selection(
-        entries,
-        explicit_text=explicit_text,
-        current_graph=current_graph,
-    ).entries
 
 
 def _find_explicit_tool_keys(
