@@ -16,6 +16,8 @@
   "settings.membersRequired": "حداقل یک عضو تیم را انتخاب کنید.",
   "settings.nameRequired": "نام پایگاه دانش Agent الزامی است.",
   "settings.pageDescription": "اطلاعات پایه، دسترسی API و بازیابی را مدیریت کنید.",
+  "settings.reasoningChangeConfirm": "تأیید تغییر",
+  "settings.reasoningChangeWarning": "تغییر مدل استدلال سیستم باعث پردازش مجدد اسناد ایندکس‌شده و به‌روزرسانی ایندکس‌های بازیابی آن‌ها می‌شود. این فرایند زمان می‌برد و هزینه‌های اضافی استفاده از مدل را به همراه دارد.",
   "settings.reloadLatest": "بارگیری آخرین تنظیمات",
   "settings.rerankModelRequired": "یک مدل رتبه‌بندی مجدد انتخاب کنید.",
   "settings.retrievalDepth": "عمق بازیابی",

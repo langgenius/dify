@@ -49,8 +49,12 @@ function isFileTreeIconType(value: string): value is FileTreeIconType {
   return driveFileIconTypes.has(value)
 }
 
-function getFileExtension(fileName: string) {
+export function getFileExtension(fileName: string) {
   return fileName.split('.').pop()?.toLowerCase() ?? ''
+}
+
+export function hasFileDataPreview(fileType?: FileTreeIconType) {
+  return fileType === 'image' || fileType === 'pdf'
 }
 
 export function getFileIconType(fileName: string, mimeType?: string | null): FileTreeIconType {

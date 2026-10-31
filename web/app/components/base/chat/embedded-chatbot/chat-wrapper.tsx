@@ -21,6 +21,7 @@ import {
   stopChatMessageResponding,
   submitHumanInputForm,
 } from '@/service/share'
+import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -369,10 +370,15 @@ const ChatWrapper = () => {
     async (formToken: string, formData: HumanInputFormSubmitData) => {
       if (!(await prepareHumanInputSubmission())) return
 
-      if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
-      else await submitHumanInputForm(formToken, formData)
+      const form = chatList
+        .flatMap((item) => item.humanInputFormDataList ?? [])
+        .find((item) => item.form_token === formToken)
+      if (isInstalledApp) await submitHumanInputFormService(formToken, formData, form?.form_version)
+      else if (appSourceType === AppSourceType.webApp)
+        await submitWebAppHumanInputForm(formToken, formData, form?.form_version)
+      else await submitHumanInputForm(formToken, formData, form?.form_version)
     },
-    [isInstalledApp, prepareHumanInputSubmission],
+    [chatList, isInstalledApp, appSourceType, prepareHumanInputSubmission],
   )
 
   const welcome = useMemo(() => {

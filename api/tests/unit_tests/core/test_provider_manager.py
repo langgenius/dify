@@ -21,6 +21,7 @@ from core.entities.provider_entities import (
     ModelSettings,
     ProviderQuotaType,
 )
+from core.helper.model_provider_cache import ProviderCredentialsCacheType
 from core.hosting_configuration import HostingProvider, TrialHostingQuota
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
@@ -230,6 +231,67 @@ def test__to_model_settings(mock_provider_entity, provider_db: Session):
     assert len(result[0].load_balancing_configs) == 2
     assert result[0].load_balancing_configs[0].name == "__inherit__"
     assert result[0].load_balancing_configs[1].name == "first"
+
+
+@pytest.mark.parametrize("encrypted_config", ["{", "[]"])
+def test_invalid_credentials_are_not_decrypted_or_cached(encrypted_config: str) -> None:
+    manager = _build_provider_manager()
+    with (
+        patch("core.provider_manager.ProviderCredentialsCache") as cache,
+        patch.object(manager, "_get_decoding_context") as decoding_context,
+    ):
+        cache.return_value.get.return_value = None
+        credentials = manager._get_and_decrypt_credentials(
+            tenant_id="tenant-id",
+            record_id="credential-id",
+            encrypted_config=encrypted_config,
+            secret_variables=["api_key"],
+            cache_type=ProviderCredentialsCacheType.MODEL,
+        )
+
+    assert credentials == {}
+    decoding_context.assert_not_called()
+    cache.return_value.set.assert_not_called()
+
+
+@pytest.mark.parametrize("encrypted_config", ["{", "[]"])
+def test_invalid_load_balancing_credentials_preserve_valid_configs(
+    mock_provider_entity: Mock, provider_db: Session, encrypted_config: str
+) -> None:
+    setting = ProviderModelSetting(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type="llm",
+        enabled=True,
+        load_balancing_enabled=True,
+    )
+    configs = [
+        LoadBalancingModelConfig(
+            tenant_id="tenant-id",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type="llm",
+            name=name,
+            encrypted_config=credentials,
+            enabled=True,
+        )
+        for name, credentials in [("__inherit__", None), ("invalid", encrypted_config), ("valid", "{}")]
+    ]
+    settings, configs = _persist_model_configuration(provider_db, setting, configs)
+    manager = _build_provider_manager()
+    with (
+        patch("core.provider_manager.ProviderCredentialsCache") as cache,
+        patch.object(manager, "_get_decoding_context") as decoding_context,
+    ):
+        cache.return_value.get.side_effect = [None, {"api_key": "cached-secret"}]
+        result = manager._to_model_settings(mock_provider_entity, settings, configs)
+
+    assert len(result) == 1
+    assert [config.name for config in result[0].load_balancing_configs] == ["__inherit__", "valid"]
+    assert result[0].load_balancing_configs[1].credentials == {"api_key": "cached-secret"}
+    decoding_context.assert_not_called()
+    cache.return_value.set.assert_not_called()
 
 
 @pytest.mark.parametrize(

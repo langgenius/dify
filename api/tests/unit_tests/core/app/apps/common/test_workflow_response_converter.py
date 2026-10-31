@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     NodeExecutionSnapshot,
     QueueEvent,
@@ -316,6 +316,7 @@ def _workflow_response_converter_human_input_build_converter(
         workflow_execution_id="run-1",
     )
     app_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id="task-1",
         app_config=WorkflowUIBasedAppConfig(
             app_id="app-1", tenant_id="tenant-1", workflow_id="wf-1", app_mode=AppMode.WORKFLOW
@@ -451,6 +452,7 @@ def _workflow_response_converter_resumption_build_converter(
         workflow_execution_id="run-1",
     )
     app_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id="task-1",
         app_config=WorkflowUIBasedAppConfig(
             app_id="app-1", tenant_id="tenant-1", workflow_id="wf-1", app_mode=AppMode.WORKFLOW
@@ -657,6 +659,7 @@ class TestConverterTruncationCases:
         def create_generate_entity(self) -> WorkflowAppGenerateEntity:
             """Create a validated workflow invocation for response conversion."""
             return WorkflowAppGenerateEntity(
+                user_from=UserFrom.END_USER,
                 app_config=WorkflowUIBasedAppConfig(
                     tenant_id="test-tenant-id", app_id="app", workflow_id="wf-id", app_mode=AppMode.WORKFLOW
                 ),
@@ -1062,6 +1065,7 @@ class TestConverterTruncationCases:
             )
 
             entity = WorkflowAppGenerateEntity(
+                user_from=UserFrom.END_USER,
                 task_id="test_task_id",
                 app_id="test_app_id",
                 app_config=app_config,
@@ -1593,6 +1597,7 @@ def _workflow_pause_events_build_converter(
     *, workflow_contexts, tool_providers, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API
 ) -> WorkflowResponseConverter:
     application_generate_entity = WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task",
         workflow_execution_id="run-id",
         user_id="user",
@@ -1883,3 +1888,94 @@ class TestWorkflowPauseEventsCases:
         assert isinstance(responses[-1], WorkflowPauseStreamResponse)
         pause_resp = responses[-1]
         assert pause_resp.data.reasons[0]["inputs"][0]["option_source"]["value"] == ["approve", "reject"]
+
+
+@pytest.mark.parametrize("sqlite_session", [(HumanInputForm, HumanInputFormRecipient)], indirect=True)
+def test_mixed_human_input_versions_preserve_order_and_wire_payloads(
+    sqlite_session: Session, *, workflow_contexts, tool_providers
+) -> None:
+    from pydantic import SecretStr
+
+    from core.human_input_v2.resolved_form import ResolvedForm, SelectInput
+    from core.human_input_v2.shared.values import TenantId
+    from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
+    from core.workflow.nodes.human_input_v2.runtime import PreparedForm
+    from enums.human_input import HumanInputFormKind, HumanInputFormStatus
+    from graphon.entities.pause_reason import SchedulingPause
+    from repositories.human_input_v2.form_repository import Form
+
+    _persist_human_input_form(sqlite_session)
+    now = datetime(2024, 1, 1)
+    form = Form(
+        id="form-2",
+        tenant_id=TenantId("tenant-id"),
+        app_id="app-id",
+        workflow_run_id="run-id",
+        node_execution_id="execution-2",
+        form_kind=HumanInputFormKind.RUNTIME,
+        status=HumanInputFormStatus.WAITING,
+        created_at=now,
+        updated_at=now,
+        expiration_time=now,
+        global_timeout_deadline=now,
+        submission=None,
+        resolved_form=ResolvedForm(
+            title="Frozen V2",
+            legacy_form_content="Choose",
+            actions=(),
+            parts=(SelectInput(output_variable_name="choice", options=("Frozen",), default_value=None),),
+        ),
+    )
+    v1_reason = HumanInputRequired(
+        form_id="form-1",
+        node_id="node-1",
+        node_title="V1",
+        form_content="Choose",
+        inputs=[
+            SelectInputConfig(
+                output_variable_name="choice",
+                option_source=StringListSource(
+                    type=ValueSourceType.VARIABLE,
+                    selector=["upstream", "options"],
+                ),
+            )
+        ],
+    )
+    event = QueueWorkflowPausedEvent(
+        reasons=[
+            build_human_input_v2_pause_reason(form.resolved_form, form_id=form.id, node_id="node-2"),
+            SchedulingPause(message="scheduled"),
+            v1_reason,
+        ],
+        paused_nodes=["node-2", "node-1"],
+        human_input_v2_forms={form.id: PreparedForm(form, SecretStr("v2-token"))},
+    )
+    state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
+    state.variable_pool.add(["upstream", "options"], ["One", "Two"])
+    converter = _workflow_pause_events_build_converter(
+        workflow_contexts=workflow_contexts,
+        tool_providers=tool_providers,
+    )
+    converter.workflow_start_to_stream_response(
+        task_id="task",
+        workflow_run_id="run-id",
+        workflow_id="workflow-id",
+        reason=WorkflowStartReason.INITIAL,
+    )
+    responses = converter.workflow_pause_to_stream_response(event=event, task_id="task", graph_runtime_state=state)
+    v2, v1, paused = [response.model_dump(mode="json")["data"] for response in responses]
+    assert [v2["form_id"], v1["form_id"]] == ["form-2", "form-1"]
+    assert v2["inputs"][0]["option_source"]["value"] == ["Frozen"]
+    assert v1["inputs"][0]["option_source"]["value"] == ["One", "Two"]
+    assert v2["form_token"] == "v2-token"
+    assert v1["form_token"] is None
+    reasons = paused["reasons"]
+    assert reasons[0]["form_id"] == "form-2"
+    assert reasons[1]["message"] == "scheduled"
+    assert reasons[2]["form_id"] == "form-1"
+    assert "display_in_ui" in reasons[0]
+    assert "display_in_ui" not in reasons[2]
+    assert v2["form_version"] == "2"
+    assert v1["form_version"] == "1"
+    assert reasons[0]["form_version"] == "2"
+    assert reasons[2]["form_version"] == "1"

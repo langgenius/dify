@@ -18,7 +18,6 @@ import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
@@ -28,6 +27,7 @@ import { ToolType } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
+import { useMarketplace } from '@/features/marketplace/client'
 import { consoleQuery } from '@/service/console'
 import { getProviderReference, matchesProviderReference } from '@/utils/provider-reference'
 import { useAgentPromptToolIconResolver } from './hooks'
@@ -106,13 +106,19 @@ export function AgentPromptSlashMenu({
 }: AgentPromptSlashMenuProps) {
   const { t } = useTranslation(['agentV2'])
   const title = categories.find((category) => category.key === view)?.label
+  const insertTokens = (tokens: string[]) => {
+    if (tokens.length > 0) onInsertToken(tokens.join(' '))
+  }
   const handleAddFromFooter = (skillSource?: 'library' | 'upload') => {
     if (view === 'skills') {
       onAddSkill?.({
         skillSource,
-        onAdded: (item) => {
-          if (isPromptReferenceItem(item))
-            onInsertToken(createConfigReferenceToken('skill', item.id, item.name))
+        onAdded: (items) => {
+          insertTokens(
+            items
+              .filter(isPromptReferenceItem)
+              .map((item) => createConfigReferenceToken('skill', item.id, item.name)),
+          )
         },
       })
       return
@@ -120,9 +126,14 @@ export function AgentPromptSlashMenu({
 
     if (view === 'files') {
       onAddFile?.({
-        onAdded: (item) => {
-          if (isAgentFileNode(item))
-            onInsertToken(createConfigReferenceToken('file', item.configName ?? item.id, item.name))
+        onAdded: (items) => {
+          insertTokens(
+            items
+              .filter(isAgentFileNode)
+              .map((item) =>
+                createConfigReferenceToken('file', item.configName ?? item.id, item.name),
+              ),
+          )
         },
       })
       return
@@ -130,11 +141,14 @@ export function AgentPromptSlashMenu({
 
     if (view === 'knowledge') {
       onAddKnowledge?.({
-        onAdded: (item) => {
-          if (isKnowledgeRetrievalItem(item))
-            onInsertToken(
-              createReferenceToken('knowledge', item.id, getKnowledgeRetrievalName(item, t)),
-            )
+        onAdded: (items) => {
+          insertTokens(
+            items
+              .filter(isKnowledgeRetrievalItem)
+              .map((item) =>
+                createReferenceToken('knowledge', item.id, getKnowledgeRetrievalName(item, t)),
+              ),
+          )
         },
       })
     }
@@ -208,9 +222,12 @@ export function AgentPromptSlashMenu({
             ENABLE_AGENT_CLI_TOOLS
               ? () => {
                   onAddCliTool?.({
-                    onAdded: (item) => {
-                      if (isCliToolItem(item))
-                        onInsertToken(createReferenceToken('cli_tool', item.id, item.name))
+                    onAdded: (items) => {
+                      insertTokens(
+                        items
+                          .filter(isCliToolItem)
+                          .map((item) => createReferenceToken('cli_tool', item.id, item.name)),
+                      )
                     },
                   })
                 }
@@ -695,21 +712,26 @@ function AgentPromptProviderIcon({
 
 function AgentPromptToolFooter({ onAddCliTool }: { onAddCliTool?: () => void }) {
   const { t } = useTranslation(['agentV2', 'plugin'])
+  const marketplace = useMarketplace()
+
+  if (!marketplace && !onAddCliTool) return null
 
   return (
     <div className="border-t border-divider-subtle p-1">
-      <a
-        href={getMarketplaceCategoryUrl(PluginCategoryEnum.tool)}
-        target="_blank"
-        rel="noreferrer"
-        {...agentPromptSlashMenuItemProps}
-        className="flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
-      >
-        <span aria-hidden className="i-ri-store-2-line size-4 shrink-0 text-text-secondary" />
-        <span className="system-sm-regular text-text-secondary">
-          {t(($) => $.findMoreInMarketplace, { ns: 'plugin' })}
-        </span>
-      </a>
+      {marketplace && (
+        <a
+          href={marketplace.category(PluginCategoryEnum.tool)}
+          target="_blank"
+          rel="noreferrer"
+          {...agentPromptSlashMenuItemProps}
+          className="flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+        >
+          <span aria-hidden className="i-ri-store-2-line size-4 shrink-0 text-text-secondary" />
+          <span className="system-sm-regular text-text-secondary">
+            {t(($) => $.findMoreInMarketplace, { ns: 'plugin' })}
+          </span>
+        </a>
+      )}
       {onAddCliTool && (
         <button
           type="button"

@@ -24,6 +24,7 @@ import { render } from 'vitest-browser-react'
 const pickers = [
   {
     name: 'DatePicker',
+    placeholder: 'Select date',
     wrap: (children: React.ReactNode) => <DatePicker>{children}</DatePicker>,
     Label: DatePickerLabel,
     Trigger: DatePickerTrigger,
@@ -31,6 +32,7 @@ const pickers = [
   },
   {
     name: 'TimePicker',
+    placeholder: 'Select time',
     wrap: (children: React.ReactNode) => <TimePicker>{children}</TimePicker>,
     Label: TimePickerLabel,
     Trigger: TimePickerTrigger,
@@ -38,6 +40,7 @@ const pickers = [
   },
   {
     name: 'DateTimePicker',
+    placeholder: 'Select date and time',
     wrap: (children: React.ReactNode) => <DateTimePicker timeZone="UTC">{children}</DateTimePicker>,
     Label: DateTimePickerLabel,
     Trigger: DateTimePickerTrigger,
@@ -47,7 +50,7 @@ const pickers = [
 
 it.each(pickers)(
   '$name label focuses only from its text and preserves a nested action',
-  async ({ wrap, Label, Trigger, Content }) => {
+  async ({ wrap, Label, Trigger, Content, placeholder }) => {
     const help = vi.fn()
     const screen = await render(
       wrap(
@@ -63,7 +66,7 @@ it.each(pickers)(
         </React.Fragment>,
       ),
     )
-    const trigger = screen.getByRole('button', { name: 'Departure Help' })
+    const trigger = screen.getByRole('button', { name: `Departure Help ${placeholder}` })
     await screen.getByText('Departure', { exact: true }).click()
     await expect.element(trigger).toHaveFocus()
     await expect.element(trigger).toHaveAttribute('aria-expanded', 'false')

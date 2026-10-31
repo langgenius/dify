@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Literal
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -12,16 +15,27 @@ from models.knowledge_fs import (
     KnowledgeFSAuthorizationRevision,
     KnowledgeFSCapabilityIssuanceAudit,
     KnowledgeFSControlSpace,
+    KnowledgeFSControlSpacePermission,
+    KnowledgeFSControlSpacePermissionRole,
     KnowledgeFSControlSpaceState,
+    KnowledgeFSControlSpaceVisibility,
     KnowledgeFSExternalAccessPolicy,
     KnowledgeFSLifecycleOutbox,
 )
 from services.knowledge_fs.app_binding_management import (
+    KnowledgeFSAppBindingAuthorizationPort,
     KnowledgeFSAppBindingManagementError,
     KnowledgeFSAppBindingManagementService,
 )
+from services.knowledge_fs.batch_capability import KnowledgeFSBatchCapabilityBroker
+from services.knowledge_fs.product_authorization import (
+    DifyKnowledgeFSProductRBACPort,
+    KnowledgeFSProductNotFoundError,
+)
 from services.knowledge_fs.product_dto import KnowledgeFSAppBindingPayload
 from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
+from services.knowledge_fs.product_remote import UnavailableKnowledgeFSProductRemote
+from services.knowledge_fs.product_service import KnowledgeFSProductService
 
 
 class _BindingSyncArgs(TypedDict, closed=True):
@@ -32,13 +46,19 @@ class _BindingSyncArgs(TypedDict, closed=True):
 
 
 class ProductAuthorization:
-    def __init__(self, *, fail_on: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        fail_on: str | None = None,
+        permissions: frozenset[KnowledgeFSProductPermission] = frozenset(KnowledgeFSProductPermission),
+    ) -> None:
         self.calls: list[dict[str, object]] = []
         self.fail_on = fail_on
+        self.permissions = permissions
 
     def authorize_control_space(self, **kwargs: object) -> object:
         self.calls.append(kwargs)
-        if kwargs["control_space_id"] == self.fail_on:
+        if kwargs["control_space_id"] == self.fail_on or kwargs["permission"] not in self.permissions:
             raise PermissionError("forbidden")
         return object()
 
@@ -63,13 +83,13 @@ class Revocations:
 def _service(
     sqlite_session: Session,
     *,
-    product: ProductAuthorization | None = None,
+    product: KnowledgeFSAppBindingAuthorizationPort | None = None,
     apps: AppCatalog | None = None,
     revocations: Revocations | None = None,
 ) -> KnowledgeFSAppBindingManagementService:
     return KnowledgeFSAppBindingManagementService(
         sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
-        product=product or ProductAuthorization(),  # type: ignore[arg-type]
+        product=product or ProductAuthorization(),
         apps=apps or AppCatalog(),
         revocations=revocations or Revocations(),  # type: ignore[arg-type]
     )
@@ -471,3 +491,189 @@ def test_agent_sync_preserves_workflow_channel_and_rolls_back_with_publish(bindi
     rows = {row.join_type: row for row in binding_session.scalars(select(AppKnowledgeFSSpaceJoin))}
     assert rows[KnowledgeFSAppSpaceJoinType.WORKFLOW].status is KnowledgeFSAppSpaceJoinStatus.ACTIVE
     assert rows[KnowledgeFSAppSpaceJoinType.AGENT].status is KnowledgeFSAppSpaceJoinStatus.REVOKED
+
+
+class ReadyWorkspace:
+    def require_product_routes(self, *, tenant_id: str) -> None:
+        assert tenant_id == "tenant-1"
+
+    def require_capability_v2(self, *, tenant_id: str) -> None:
+        raise AssertionError(f"Binding a space must not issue a capability for {tenant_id}")
+
+
+@pytest.fixture
+def shared_binding_service(
+    binding_session: Session, config_overrides: Callable[..., None]
+) -> KnowledgeFSAppBindingManagementService:
+    config_overrides(RBAC_ENABLED=False)
+    maker = sessionmaker(bind=binding_session.get_bind(), expire_on_commit=False)
+    gate = ReadyWorkspace()
+    product = KnowledgeFSProductService(
+        maker,
+        batch_capabilities=KnowledgeFSBatchCapabilityBroker(maker, cutover_gate=gate, issuer=None),
+        cutover_gate=gate,
+        remote=UnavailableKnowledgeFSProductRemote(),
+        rbac=DifyKnowledgeFSProductRBACPort(),
+    )
+    return _service(binding_session, product=product)
+
+
+def _bind_for_app(
+    service: KnowledgeFSAppBindingManagementService,
+    *,
+    space_id: str,
+    operation: Literal["draft", "workflow", "agent"],
+) -> None:
+    if operation == "draft":
+        service.upsert_for_app(
+            tenant_id="tenant-1",
+            actor_account_id="member-1",
+            control_space_id=space_id,
+            payload=KnowledgeFSAppBindingPayload(app_id="app-1", caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW),
+        )
+    else:
+        sync = service.sync_workflow_bindings if operation == "workflow" else service.sync_agent_bindings
+        sync(
+            tenant_id="tenant-1",
+            actor_account_id="member-1",
+            app_id="app-1",
+            control_space_ids=[space_id],
+        )
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [
+        (
+            KnowledgeFSControlSpace,
+            KnowledgeFSControlSpacePermission,
+            KnowledgeFSExternalAccessPolicy,
+            KnowledgeFSAuthorizationRevision,
+            KnowledgeFSCapabilityIssuanceAudit,
+            KnowledgeFSLifecycleOutbox,
+            AppKnowledgeFSSpaceJoin,
+        )
+    ],
+    indirect=True,
+)
+class TestSharedSpaceBindings:
+    @pytest.mark.parametrize("operation", ["draft", "workflow", "agent"])
+    @pytest.mark.parametrize(
+        "visibility",
+        [KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS, KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS],
+    )
+    def test_shared_viewer_can_bind_for_debugging_and_publishing(
+        self,
+        binding_session: Session,
+        shared_binding_service: KnowledgeFSAppBindingManagementService,
+        operation: Literal["draft", "workflow", "agent"],
+        visibility: KnowledgeFSControlSpaceVisibility,
+    ) -> None:
+        space = binding_session.scalar(select(KnowledgeFSControlSpace))
+        assert space is not None
+        space.visibility = visibility
+        if visibility is KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS:
+            binding_session.add(
+                KnowledgeFSControlSpacePermission(
+                    tenant_id="tenant-1",
+                    control_space_id=space.id,
+                    account_id="member-1",
+                    role=KnowledgeFSControlSpacePermissionRole.VIEWER,
+                )
+            )
+        binding_session.commit()
+
+        _bind_for_app(shared_binding_service, space_id=space.id, operation=operation)
+
+        binding = binding_session.scalar(select(AppKnowledgeFSSpaceJoin))
+        assert binding is not None
+        assert binding.control_space_id == space.id
+        assert binding.created_by_account_id == "member-1"
+        assert binding.status is KnowledgeFSAppSpaceJoinStatus.ACTIVE
+        assert binding.join_type is (
+            KnowledgeFSAppSpaceJoinType.AGENT if operation == "agent" else KnowledgeFSAppSpaceJoinType.WORKFLOW
+        )
+
+    @pytest.mark.parametrize("operation", ["draft", "workflow", "agent"])
+    @pytest.mark.parametrize("access", ["private", "unlisted", "other_tenant"])
+    def test_unshared_or_cross_tenant_spaces_cannot_be_bound(
+        self,
+        binding_session: Session,
+        shared_binding_service: KnowledgeFSAppBindingManagementService,
+        operation: Literal["draft", "workflow", "agent"],
+        access: str,
+    ) -> None:
+        space = binding_session.scalar(select(KnowledgeFSControlSpace))
+        assert space is not None
+        if access == "unlisted":
+            space.visibility = KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS
+        elif access == "other_tenant":
+            space.tenant_id = "other-tenant"
+            space.visibility = KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS
+        binding_session.commit()
+
+        with pytest.raises(KnowledgeFSProductNotFoundError):
+            _bind_for_app(shared_binding_service, space_id=space.id, operation=operation)
+
+        assert binding_session.scalar(select(AppKnowledgeFSSpaceJoin)) is None
+
+    @pytest.mark.parametrize("operation", ["draft", "workflow", "agent"])
+    @pytest.mark.parametrize(
+        "missing_permission", [KnowledgeFSProductPermission.READ, KnowledgeFSProductPermission.QUERY]
+    )
+    def test_binding_requires_both_read_and_query_even_with_access_configuration(
+        self,
+        binding_session: Session,
+        operation: Literal["draft", "workflow", "agent"],
+        missing_permission: KnowledgeFSProductPermission,
+    ) -> None:
+        space = binding_session.scalar(select(KnowledgeFSControlSpace))
+        assert space is not None
+        service = _service(
+            binding_session,
+            product=ProductAuthorization(permissions=frozenset(KnowledgeFSProductPermission) - {missing_permission}),
+        )
+
+        with pytest.raises(PermissionError, match="forbidden"):
+            _bind_for_app(service, space_id=space.id, operation=operation)
+
+        assert binding_session.scalar(select(AppKnowledgeFSSpaceJoin)) is None
+
+    @pytest.mark.parametrize("operation", ["list", "upsert", "revoke"])
+    def test_shared_viewer_cannot_manage_space_grants(
+        self,
+        binding_session: Session,
+        shared_binding_service: KnowledgeFSAppBindingManagementService,
+        operation: str,
+    ) -> None:
+        space = binding_session.scalar(select(KnowledgeFSControlSpace))
+        assert space is not None
+        space.visibility = KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS
+        binding_session.commit()
+
+        if operation == "list":
+            with pytest.raises(PermissionError):
+                shared_binding_service.list(
+                    tenant_id="tenant-1", actor_account_id="member-1", control_space_id=space.id
+                )
+        elif operation == "upsert":
+            with pytest.raises(PermissionError):
+                shared_binding_service.upsert(
+                    tenant_id="tenant-1",
+                    actor_account_id="member-1",
+                    control_space_id=space.id,
+                    payload=KnowledgeFSAppBindingPayload(
+                        app_id="app-1", caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW
+                    ),
+                )
+        else:
+            with pytest.raises(PermissionError):
+                shared_binding_service.revoke(
+                    tenant_id="tenant-1",
+                    actor_account_id="member-1",
+                    control_space_id=space.id,
+                    app_id="app-1",
+                    caller_kind=KnowledgeFSAppSpaceJoinType.WORKFLOW,
+                )
+
+        assert binding_session.scalar(select(AppKnowledgeFSSpaceJoin)) is None

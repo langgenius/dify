@@ -172,7 +172,7 @@ describe('EducationApplyPage billing boundary', () => {
 
     await waitFor(() => {
       expect(selector).toBeEnabled()
-      expect(vi.mocked(toast.error)).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith('switch failed')
     })
     expect(globalThis.location.reload).not.toHaveBeenCalled()
   })
