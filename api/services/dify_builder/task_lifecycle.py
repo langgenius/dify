@@ -83,16 +83,14 @@ def _bounded(summary: TaskSummary) -> TaskSummary:
     summary.changed_node_ids = _strings(summary.changed_node_ids, limit=64)
     summary.change_summary = summary.change_summary[:2000]
     summary.unresolved_risks = _strings(summary.unresolved_risks, limit=16)
-    for name in (
-        "run_id",
-        "native_run_id",
-        "execution_revision",
-        "graph_revision",
-        "mode",
-        "safety_outcome",
-        "business_acceptance_case_id",
-    ):
-        setattr(summary.test_evidence, name, getattr(summary.test_evidence, name)[:256])
+    evidence = summary.test_evidence
+    evidence.run_id = evidence.run_id[:256]
+    evidence.native_run_id = evidence.native_run_id[:256]
+    evidence.execution_revision = evidence.execution_revision[:256]
+    evidence.graph_revision = evidence.graph_revision[:256]
+    evidence.mode = evidence.mode[:256]
+    evidence.safety_outcome = evidence.safety_outcome[:256]
+    evidence.business_acceptance_case_id = evidence.business_acceptance_case_id[:256]
     return summary
 
 
