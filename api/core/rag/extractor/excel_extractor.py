@@ -177,7 +177,10 @@ class ExcelExtractor(BaseExtractor):
         workbook is unavailable (e.g. a mocked ExcelFile in tests).
         """
         overrides: dict[tuple[int, int], str] = {}
-        book = getattr(excel_file, "book", None)
+        try:
+            book = excel_file.book
+        except AttributeError:
+            return overrides
         if book is None:
             return overrides
         try:
