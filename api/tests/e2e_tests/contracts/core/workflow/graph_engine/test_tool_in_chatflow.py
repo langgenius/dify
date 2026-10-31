@@ -1,15 +1,16 @@
-from core.workflow.workflow_entry import iter_dify_graph_engine_events
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine_events import (
     GraphRunSucceededEvent,
     NodeRunStreamChunkEvent,
 )
+from services.workflow.execution.adapters.workflow_entry import iter_dify_graph_engine_events
 from tests.helpers.workflow.mock_config import MockConfigBuilder
 from tests.helpers.workflow.table_runner import TableTestRunner
+from tests.unit_tests.workflow_execution import NO_HUMAN_INPUT_FORMS
 
 
-def test_tool_in_chatflow():
+def test_tool_in_chatflow() -> None:
     runner = TableTestRunner()
 
     # Load the workflow configuration
@@ -29,7 +30,7 @@ def test_tool_in_chatflow():
         command_channel=InMemoryChannel(),
     )
 
-    events = list(iter_dify_graph_engine_events(engine))
+    events = list(iter_dify_graph_engine_events(engine, human_form_reader=NO_HUMAN_INPUT_FORMS))
 
     # Check for successful completion
     success_events = [e for e in events if isinstance(e, GraphRunSucceededEvent)]
@@ -42,7 +43,7 @@ def test_tool_in_chatflow():
     assert success_events[-1].outputs["answer"] == "hello, dify!"
 
 
-def test_answer_can_render_llm_structured_output_in_chatflow():
+def test_answer_can_render_llm_structured_output_in_chatflow() -> None:
     runner = TableTestRunner()
 
     fixture_data = runner.workflow_runner.load_fixture("basic_chatflow")
@@ -81,7 +82,7 @@ def test_answer_can_render_llm_structured_output_in_chatflow():
         command_channel=InMemoryChannel(),
     )
 
-    events = list(iter_dify_graph_engine_events(engine))
+    events = list(iter_dify_graph_engine_events(engine, human_form_reader=NO_HUMAN_INPUT_FORMS))
     success_events = [e for e in events if isinstance(e, GraphRunSucceededEvent)]
 
     assert success_events, "Workflow should complete successfully"

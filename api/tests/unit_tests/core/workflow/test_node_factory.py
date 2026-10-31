@@ -17,11 +17,9 @@ from core.app.entities.app_invoke_entities import (
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
-from core.workflow import node_factory
+from core.workflow import node_factory as core_node_factory
 from core.workflow import template_rendering as workflow_template_rendering
 from core.workflow.llm_node import DifyLLMNode
-from core.workflow.node_factory import get_node_type_classes_mapping
-from core.workflow.node_runtime import DifyPreparedLLM
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeExecutionType, NodeType
@@ -46,7 +44,10 @@ from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
+from services.workflow.execution.adapters import node_factory
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory as ServiceDifyNodeFactory
+from services.workflow.execution.adapters.node_factory import get_node_type_classes_mapping
+from services.workflow.execution.adapters.node_runtime import DifyPreparedLLM
 from services.workflow.execution.ports import WorkflowRuntime
 from tests.helpers.unit.core.model_fixtures import make_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -391,7 +392,7 @@ class TestNodeFactoryCasesWorkflow:
 
         TypeBase.metadata.create_all(sqlite_engine, tables=[Conversation.__table__])
         session_maker = sessionmaker(sqlite_engine, expire_on_commit=False)
-        monkeypatch.setattr(node_factory.session_factory, "create_session", session_maker)
+        monkeypatch.setattr(core_node_factory.session_factory, "create_session", session_maker)
         return session_maker
 
     class TestResolveWorkflowNodeClass:
@@ -440,7 +441,7 @@ class TestNodeFactoryCasesWorkflow:
             ],
         )
         def test_returns_none_when_memory_or_conversation_is_missing(self, conversation_id, memory_config):
-            result = node_factory.fetch_memory(
+            result = core_node_factory.fetch_memory(
                 conversation_id=conversation_id,
                 app_id="app-id",
                 node_data_memory=memory_config,
@@ -450,7 +451,7 @@ class TestNodeFactoryCasesWorkflow:
             assert result is None
 
         def test_returns_none_when_conversation_does_not_exist(self, memory_session_maker: sessionmaker[Session]):
-            result = node_factory.fetch_memory(
+            result = core_node_factory.fetch_memory(
                 conversation_id="conversation-id",
                 app_id="app-id",
                 node_data_memory=object(),
@@ -465,9 +466,9 @@ class TestNodeFactoryCasesWorkflow:
             memory = sentinel.memory
             _persist_conversation(memory_session_maker)
             token_buffer_memory = MagicMock(return_value=memory)
-            monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
+            monkeypatch.setattr(core_node_factory, "TokenBufferMemory", token_buffer_memory)
 
-            result = node_factory.fetch_memory(
+            result = core_node_factory.fetch_memory(
                 conversation_id="conversation-id",
                 app_id="app-id",
                 node_data_memory=object(),
@@ -490,10 +491,10 @@ class TestNodeFactoryCasesWorkflow:
 
             token_buffer_memory = MagicMock(return_value=sentinel.memory)
             _persist_conversation(memory_session_maker)
-            monkeypatch.setattr(node_factory, "db", RaisingDB(), raising=False)
-            monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
+            monkeypatch.setattr(core_node_factory, "db", RaisingDB(), raising=False)
+            monkeypatch.setattr(core_node_factory, "TokenBufferMemory", token_buffer_memory)
 
-            result = node_factory.fetch_memory(
+            result = core_node_factory.fetch_memory(
                 conversation_id="conversation-id",
                 app_id="app-id",
                 node_data_memory=object(),
@@ -677,8 +678,9 @@ class TestNodeFactoryCasesWorkflow:
 
     class TestDifyNodeFactoryCreateNode:
         @pytest.fixture
-        def factory(self):
+        def factory(self, workflow_runtime):
             factory = object.__new__(node_factory.DifyNodeFactory)
+            factory._workflow_runtime = workflow_runtime
             factory.init_params = sentinel.init_params
             factory.runtime_state = SimpleNamespace(variable_pool=MagicMock())
             factory._dify_context = SimpleNamespace(
@@ -1529,9 +1531,10 @@ class TestNodeFactoryCasesWorkflow:
 
     class TestDifyNodeFactoryMemory:
         @pytest.fixture
-        def factory(self):
+        def factory(self, workflow_runtime):
             factory = object.__new__(node_factory.DifyNodeFactory)
-            factory._dify_context = SimpleNamespace(app_id="app-id")
+            factory._dify_context = SimpleNamespace(tenant_id="tenant-id", app_id="app-id")
+            factory._workflow_runtime = workflow_runtime
             factory.runtime_state = SimpleNamespace(variable_pool=MagicMock())
             return factory
 
@@ -1544,41 +1547,27 @@ class TestNodeFactoryCasesWorkflow:
             assert result is None
             factory.runtime_state.variable_pool.get.assert_not_called()
 
-        def test_uses_string_segment_conversation_id(self, monkeypatch: pytest.MonkeyPatch, factory):
-            memory_config = sentinel.memory_config
+        def test_uses_string_segment_conversation_id(self, factory):
             factory.runtime_state.variable_pool.get.return_value = StringSegment(value="conversation-id")
-            fetch_memory = MagicMock(return_value=sentinel.memory)
-            monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
 
             result = factory._build_memory_for_llm_node(
-                node_data=SimpleNamespace(memory=memory_config),
+                node_data=SimpleNamespace(memory=sentinel.memory_config),
                 model_instance=sentinel.model_instance,
             )
 
-            assert result is sentinel.memory
+            assert isinstance(result, node_factory.NodeMemory)
+            assert result.history is factory._workflow_runtime.history
+            assert result.tenant_id == "tenant-id"
+            assert result.app_id == "app-id"
+            assert result.conversation_id == "conversation-id"
+            assert result.model_instance is sentinel.model_instance
             factory.runtime_state.variable_pool.get.assert_called_once_with(("sys", "conversation_id"))
-            fetch_memory.assert_called_once_with(
-                conversation_id="conversation-id",
-                app_id="app-id",
-                node_data_memory=memory_config,
-                model_instance=sentinel.model_instance,
-            )
 
-        def test_ignores_non_string_segment_conversation_ids(self, monkeypatch: pytest.MonkeyPatch, factory):
-            memory_config = sentinel.memory_config
+        def test_ignores_non_string_segment_conversation_ids(self, factory):
             factory.runtime_state.variable_pool.get.return_value = sentinel.segment
-            fetch_memory = MagicMock(return_value=sentinel.memory)
-            monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
-
             result = factory._build_memory_for_llm_node(
-                node_data=SimpleNamespace(memory=memory_config),
+                node_data=SimpleNamespace(memory=sentinel.memory_config),
                 model_instance=sentinel.model_instance,
             )
-
-            assert result is sentinel.memory
-            fetch_memory.assert_called_once_with(
-                conversation_id=None,
-                app_id="app-id",
-                node_data_memory=memory_config,
-                model_instance=sentinel.model_instance,
-            )
+            assert result is None
+            factory.runtime_state.variable_pool.get.assert_called_once_with(("sys", "conversation_id"))

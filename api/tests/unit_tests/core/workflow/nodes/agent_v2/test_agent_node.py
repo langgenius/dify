@@ -48,6 +48,7 @@ from core.workflow.nodes.agent_v2.session_store import (
     WorkflowAgentSessionScope,
     WorkflowAgentWorkspaceStore,
 )
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -75,6 +76,7 @@ from models.agent_config_entities import (
     WorkflowNodeJobConfig,
 )
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
+from services.workflow.execution.adapters.agent_v2.agent_node import DifyAgentNode as ServiceDifyAgentNode
 
 
 @pytest.fixture(autouse=True)
@@ -1115,13 +1117,23 @@ def test_agent_node_selects_the_configured_success_exit(enabled, count, output, 
     ],
 )
 def test_agent_routes_initialize_through_workflow_node_factory(
-    enabled, error_strategy, expected_execution_type, config_overrides
-):
-    from core.workflow.node_factory import DifyNodeFactory
+    enabled: bool,
+    error_strategy: ErrorStrategy | None,
+    expected_execution_type: NodeExecutionType | None,
+    config_overrides: Callable[..., None],
+    workflow_runtime: WorkflowExecutionDependencies,
+) -> None:
+    from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 
     config_overrides(AGENT_BACKEND_USE_FAKE=True)
-    template = _node()
-    factory = DifyNodeFactory(template.init_params, template.runtime_state)
+    binding_resolver = FakeBindingResolver()
+    template = _node(binding_resolver=binding_resolver)
+    factory = DifyNodeFactory(
+        template.init_params,
+        template.runtime_state,
+        agent_binding_resolver=binding_resolver,
+        workflow_runtime=workflow_runtime,
+    )
     node_data = template.node_data.model_dump(mode="python", by_alias=True)
     node_data.update(
         agent_output_routes={
@@ -1138,7 +1150,7 @@ def test_agent_routes_initialize_through_workflow_node_factory(
         return
 
     node = factory.create_node(node_config)
-    assert isinstance(node, DifyAgentNode)
+    assert isinstance(node, ServiceDifyAgentNode)
     assert node.execution_type == expected_execution_type
     assert node.node_data.agent_output_routes.enabled is enabled
 
