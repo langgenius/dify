@@ -1446,6 +1446,8 @@ source_modules =
     services.trigger.webhook_service
     services.trigger.schedule_service
     services.trigger.schedule_store
+    services.trigger.execution_service
+    services.trigger.execution_layer
 forbidden_modules =
     controllers
     extensions
