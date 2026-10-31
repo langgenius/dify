@@ -169,6 +169,38 @@ def test_workflow_management_updates_and_deletes_through_injected_store(
         assert session.scalar(select(ToolLabelBinding).where(ToolLabelBinding.tool_id == published_tool)) is None
 
 
+def test_agent_provider_expansion_uses_injected_workflow_queries(
+    published_tool: str,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolQueries,
+) -> None:
+    from core.app.entities.app_invoke_entities import InvokeFrom
+    from models.agent_config_entities import AgentSoulToolsConfig
+    from services.workflow.execution.adapters.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
+
+    builder = WorkflowAgentDifyToolsBuilder(tool_providers=tool_providers, workflow_queries=workflow_queries)
+    layers = builder.build_layers(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="account-1",
+        invoke_from=InvokeFrom.DEBUGGER,
+        tools=AgentSoulToolsConfig.model_validate(
+            {
+                "dify_tools": [
+                    {
+                        "provider_type": "workflow",
+                        "provider_id": published_tool,
+                        "enabled": True,
+                    }
+                ]
+            }
+        ),
+    )
+    assert layers.core_tools is not None
+    assert layers.core_tools.tools[0].tool_name == "answer"
+    assert layers.core_tools.tools[0].provider_id == published_tool
+
+
 def test_metadata_update_and_labels_roll_back_together(
     published_tool: str,
     workflow_tools: WorkflowToolManageService,
