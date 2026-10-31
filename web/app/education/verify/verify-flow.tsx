@@ -2,15 +2,19 @@
 
 import type {
   EducationStatusResponse,
+  EducationVerifyFailedError,
+  EducationVerifyLimitError,
   EducationVerifyResponse,
 } from '@dify/contracts/api/console/account/types.gen'
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactNode } from 'react'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { isDefinedError, ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { useBillingErrorMessage } from '@/app/components/billing/hooks/use-billing-error-message'
 import { useDocLink } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
@@ -25,6 +29,12 @@ const selectEducationStatus = ({ allow_refresh, is_student }: EducationStatusRes
   allowRefresh: allow_refresh,
   isEducationAccount: is_student,
 })
+
+type EducationVerifyErrorCode = (EducationVerifyFailedError | EducationVerifyLimitError)['code']
+
+function hasEducationVerifyErrorCode(error: unknown, code: EducationVerifyErrorCode) {
+  return error instanceof ORPCError && isDefinedError(error) && error.code === code
+}
 
 const selectEducationPlanEnabled = ({ education }: GetFeaturesResponse) => education.enabled
 
@@ -60,6 +70,7 @@ export function EducationVerifyFlow({
   )
   const {
     data: verification,
+    error: verificationError,
     isError: isVerificationError,
     mutate: verifyEducation,
     reset: resetVerification,
@@ -101,6 +112,7 @@ export function EducationVerifyFlow({
   if (educationStatusQuery.isError)
     return (
       <EducationVerifyError
+        error={educationStatusQuery.error}
         onRetry={() => {
           void educationStatusQuery.refetch()
         }}
@@ -152,9 +164,16 @@ export function EducationVerifyFlow({
     )
   }
 
+  if (
+    isVerificationError &&
+    hasEducationVerifyErrorCode(verificationError, 'education_verify_failed')
+  )
+    return <EducationVerifyFailedContent />
+
   if (isVerificationError)
     return (
       <EducationVerifyError
+        error={verificationError}
         onRetry={() => {
           verificationStartedRef.current = false
           resetVerification()
@@ -214,8 +233,40 @@ function EducationVerifiedContent() {
   )
 }
 
-function EducationVerifyError({ onRetry }: { onRetry: () => void }) {
+function EducationVerifyFailedContent() {
+  const { t } = useTranslation(['education', 'navigation'])
+
+  return (
+    <EducationVerifyContent>
+      <EducationStatusCard
+        icon={
+          <span
+            className="i-ri-close-circle-fill size-6 text-text-destructive"
+            aria-hidden="true"
+          />
+        }
+        title={t(($) => $['verifyFailed.title'], { ns: 'education' })}
+        actions={
+          <>
+            <Link className={buttonVariants({ variant: 'primary' })} href="/?settings=billing">
+              {t(($) => $['settings.billing'], { ns: 'navigation' })}
+            </Link>
+            <Link className={buttonVariants({ variant: 'ghost-accent' })} href="/">
+              <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
+              {t(($) => $['applied.noPaymentPermission.returnHome'], { ns: 'education' })}
+            </Link>
+          </>
+        }
+      >
+        {t(($) => $['verifyFailed.content'], { ns: 'education' })}
+      </EducationStatusCard>
+    </EducationVerifyContent>
+  )
+}
+
+function EducationVerifyError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
   const { t } = useTranslation(['common', 'education'])
+  const getBillingErrorMessage = useBillingErrorMessage()
 
   return (
     <EducationVerifyContent>
@@ -239,7 +290,9 @@ function EducationVerifyError({ onRetry }: { onRetry: () => void }) {
           </>
         }
       >
-        {t(($) => $['errorBoundary.message'], { ns: 'common' })}
+        {hasEducationVerifyErrorCode(error, 'education_verify_limit')
+          ? t(($) => $.tooManyAttempts, { ns: 'education' })
+          : getBillingErrorMessage(error)}
       </EducationStatusCard>
     </EducationVerifyContent>
   )

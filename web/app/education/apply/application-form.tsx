@@ -10,10 +10,12 @@ import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { Field, FieldDescription, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
+import { isDefinedError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { useBillingErrorMessage } from '@/app/components/billing/hooks/use-billing-error-message'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
@@ -49,7 +51,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const [hasSubmittedEducation, setHasSubmittedEducation] = useState(false)
   const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false)
   const { isPending, mutate: educationAdd } = useMutation(
-    consoleQuery.account.education.post.mutationOptions(),
+    consoleQuery.account.education.post.mutationOptions({ context: { silent: true } }),
   )
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
@@ -60,6 +62,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
+  const getBillingErrorMessage = useBillingErrorMessage()
   const openAsyncWindow = useAsyncWindowOpen()
   const switchWorkspaceMutation = useMutation(
     consoleQuery.workspaces.switch.post.mutationOptions({ context: { silent: true } }),
@@ -90,6 +93,13 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
             toast.error(t(($) => $.submitError, { ns: 'education' }))
           }
         },
+        onError: (error) => {
+          if (isDefinedError(error) && error.code === 'education_activate_failed')
+            toast.error(t(($) => $.activateFailed, { ns: 'education' }))
+          else if (isDefinedError(error) && error.code === 'education_activate_limit')
+            toast.error(t(($) => $.tooManyAttempts, { ns: 'education' }))
+          else toast.error(getBillingErrorMessage(error))
+        },
       },
     )
   }
@@ -108,8 +118,8 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
           throw new Error('Failed to open billing page')
         },
         {
-          onError: (err) => {
-            toast.error(err.message || String(err))
+          onError: (error) => {
+            toast.error(getBillingErrorMessage(error))
           },
         },
       )

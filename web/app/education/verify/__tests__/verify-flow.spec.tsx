@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
@@ -102,11 +103,50 @@ describe('EducationVerifyFlow', () => {
     expect(
       await screen.findByRole('heading', { name: 'common.errorBoundary.title' }),
     ).toBeInTheDocument()
+    expect(screen.getByText('billing.errors.operationFailed')).toBeInTheDocument()
     mockRequestVerification.mockResolvedValue({ status: 'eligible', token: 'retry-token' })
     await user.click(screen.getByRole('button', { name: 'common.errorBoundary.tryAgain' }))
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith('/education/apply?token=retry-token'),
     )
     expect(mockRequestVerification).toHaveBeenCalledTimes(2)
+  })
+
+  it('explains a failed verification and points to billing instead of retrying', async () => {
+    mockRequestVerification.mockRejectedValue(
+      new ORPCError('education_verify_failed', { defined: true, status: 400 }),
+    )
+
+    renderFlow({})
+
+    expect(
+      await screen.findByRole('heading', { name: 'education.verifyFailed.title' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('education.verifyFailed.content')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'navigation.settings.billing' })).toHaveAttribute(
+      'href',
+      '/?settings=billing',
+    )
+    expect(
+      screen.queryByRole('button', { name: 'common.errorBoundary.tryAgain' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['education_verify_limit', 429, 'education.tooManyAttempts'],
+    ['billing_request_in_progress', 429, 'billing.errors.requestInProgress'],
+    ['billing_unavailable', 503, 'billing.errors.unavailable'],
+  ])('offers a retry for %s', async (code, status, message) => {
+    mockRequestVerification.mockRejectedValue(
+      new ORPCError(code, { defined: true, status, message: 'Backend text' }),
+    )
+
+    renderFlow({})
+
+    expect(await screen.findByText(message)).toBeInTheDocument()
+    expect(screen.queryByText('Backend text')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'common.errorBoundary.tryAgain' }),
+    ).toBeInTheDocument()
   })
 })

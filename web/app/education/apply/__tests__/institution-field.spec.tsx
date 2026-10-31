@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
+import { ORPCError } from '@orpc/client'
 import { act, render as RTLRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -240,5 +241,22 @@ describe('InstitutionField', () => {
         .getAllByText('common.dynamicSelect.error')
         .some((element) => element.closest('[role="status"]') !== null),
     ).toBe(true)
+  })
+
+  it('asks to try again later while the search service is unavailable', async () => {
+    const user = userEvent.setup()
+    mockAutocomplete.mockRejectedValue(
+      new ORPCError('billing_unavailable', { defined: true, status: 503, message: 'Backend text' }),
+    )
+
+    render(<ControlledInstitutionField />)
+
+    await user.type(
+      screen.getByPlaceholderText(/(?:^|\.)form\.schoolName\.placeholder(?=$|:)/),
+      'A',
+    )
+
+    expect((await screen.findAllByText('billing.errors.unavailable')).length).toBeGreaterThan(0)
+    expect(screen.queryByText('common.dynamicSelect.error')).not.toBeInTheDocument()
   })
 })
