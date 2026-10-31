@@ -313,6 +313,7 @@
   "preflight.pluginMissing": "{{count}} integrasi tidak terpasang",
   "reset": "Mulai percakapan baru",
   "resourceNeedsAuthorization": "Otorisasi diperlukan",
+  "resourceNeedsSetup": "Perlu penyiapan",
   "resourceReady": "Terkonfigurasi · operasi belum diverifikasi",
   "runTest": "Jalankan pengujian",
   "running": "Menjalankan",

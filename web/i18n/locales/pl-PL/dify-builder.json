@@ -323,6 +323,7 @@
   "preflight.pluginMissing": "{{count}} wtyczek niezainstalowanych",
   "reset": "Rozpocznij nową rozmowę",
   "resourceNeedsAuthorization": "Wymagana autoryzacja",
+  "resourceNeedsSetup": "Wymagana konfiguracja",
   "resourceReady": "Skonfigurowano · działanie niezweryfikowane",
   "runTest": "Uruchom test",
   "running": "Uruchamianie",

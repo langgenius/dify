@@ -313,6 +313,7 @@
   "preflight.pluginMissing": "{{count}} inteqrasiya quraşdırılmayıb",
   "reset": "Yeni söhbətə başla",
   "resourceNeedsAuthorization": "İcazə tələb olunur",
+  "resourceNeedsSetup": "Quraşdırma tələb olunur",
   "resourceReady": "Konfiqurasiya edilib · işləmə vəziyyəti yoxlanılmayıb",
   "runTest": "Testi işə sal",
   "running": "İcra olunur",
