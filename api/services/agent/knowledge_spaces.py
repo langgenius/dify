@@ -9,9 +9,10 @@ the command gateway additionally checks one Agent's immutable configuration.
 from __future__ import annotations
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.db.session_factory import session_factory
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import AgentSoulConfig
 from models.knowledge_fs import (
@@ -22,6 +23,7 @@ from models.knowledge_fs import (
 )
 from models.workflow import Workflow
 from services.agent.errors import InvalidComposerConfigError
+from services.knowledge_fs.knowledge_retrieval_v2.validation import collect_control_space_ids
 from services.knowledge_fs.product_authorization import (
     DifyKnowledgeFSProductRBACPort,
     effective_product_permissions,
@@ -141,4 +143,55 @@ def collect_workflow_agent_knowledge_space_ids(*, session: Session, workflow: Wo
             for snapshot in snapshots
             for binding in AgentSoulConfig.model_validate(snapshot.config_snapshot_dict).knowledge.spaces
         )
+    )
+
+
+def sync_workflow_app_knowledge_bindings(
+    *,
+    session: Session,
+    session_maker: sessionmaker[Session],
+    workflow: Workflow,
+) -> None:
+    """Reconcile a published workflow's direct and frozen-Agent KnowledgeFS grants atomically."""
+    graph = workflow.graph_dict
+    control_space_ids = collect_control_space_ids(graph)
+    if any(
+        isinstance(node, dict) and isinstance(node.get("data"), dict) and is_dify_agent_node_data(node["data"])
+        for node in graph.get("nodes", [])
+    ):
+        # Published Agent bindings are inserted immediately before this policy runs.
+        # Flush them so the grant union cannot omit an Agent from this transaction.
+        session.flush()
+        control_space_ids = tuple(
+            dict.fromkeys(
+                (
+                    *control_space_ids,
+                    *collect_workflow_agent_knowledge_space_ids(session=session, workflow=workflow),
+                )
+            )
+        )
+
+    if (
+        not control_space_ids
+        and session.scalar(
+            select(AppKnowledgeFSSpaceJoin.id)
+            .where(
+                AppKnowledgeFSSpaceJoin.tenant_id == workflow.tenant_id,
+                AppKnowledgeFSSpaceJoin.app_id == workflow.app_id,
+                AppKnowledgeFSSpaceJoin.join_type == KnowledgeFSAppSpaceJoinType.WORKFLOW,
+            )
+            .limit(1)
+        )
+        is None
+    ):
+        return
+
+    from services.knowledge_fs.runtime import get_knowledge_fs_runtime
+
+    get_knowledge_fs_runtime(session_maker).app_bindings.sync_workflow_bindings(
+        tenant_id=workflow.tenant_id,
+        actor_account_id=workflow.created_by,
+        app_id=workflow.app_id,
+        control_space_ids=list(control_space_ids),
+        session=session,
     )

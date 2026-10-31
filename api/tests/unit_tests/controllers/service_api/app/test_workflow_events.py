@@ -53,8 +53,10 @@ from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app.generation.ports import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
+from services.app.generation.runtime import AppGenerationRuntime
 from services.app_generate_service import AppGenerateService
 from services.workflow.execution.adapters.response_converter import WorkflowResponseConverter
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow_event_snapshot_service import _build_paused_snapshot_events
 from tests.helpers.unit.config_override import apply_config_overrides
 
@@ -438,6 +440,9 @@ class TestHitlServiceApi:
         self,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
+        *,
+        workflow_variables: WorkflowExecutionVariables,
+        workflow_runtime: AppGenerationRuntime,
     ) -> None:
         apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         monkeypatch.setattr(ags_module, "RateLimit", _DummyRateLimit)
@@ -449,9 +454,9 @@ class TestHitlServiceApi:
 
         generator_instance = Mock()
         generator_instance.generate.return_value = {"result": "advanced-blocking"}
-        generator_instance.convert_to_event_stream.side_effect = lambda payload: payload
         generator_factory = Mock(return_value=generator_instance)
         monkeypatch.setattr(ags_module, "AdvancedChatAppGenerator", generator_factory)
+        monkeypatch.setattr(ags_module, "convert_to_event_stream", lambda payload: payload)
 
         app_model = _hitl_service_api_app(app_id="app-id", tenant_id="tenant-id", mode=AppMode.ADVANCED_CHAT)
         user = _hitl_service_api_end_user(user_id="user-id", app_id="app-id", tenant_id="tenant-id")
@@ -464,10 +469,17 @@ class TestHitlServiceApi:
                 args={"workflow_id": None, "query": "hi", "inputs": {}},
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=False,
+                variables=workflow_variables,
+                runtime=workflow_runtime,
             )
 
         assert result == {"result": "advanced-blocking"}
-        generator_factory.assert_called_once_with(execution_driver=ANY)
+        generator_factory.assert_called_once_with(
+            runtime=workflow_runtime,
+            execution_driver=workflow_runtime.execution_driver,
+            draft_variable_loader=workflow_variables.workflow_loader,
+            draft_variable_saver=workflow_variables.saver_factory,
+        )
         call_kwargs = generator_instance.generate.call_args.kwargs
         assert call_kwargs["streaming"] is False
         assert call_kwargs["pause_state_config"] is not None
@@ -608,10 +620,7 @@ class TestHitlServiceApi:
         assert response.data.reasons[0]["form_id"] == "form-1"
         assert response.data.reasons[0]["expiration_time"] == 123
 
-    def test_workflow_blocking_pipeline_pause_payload_contract(
-        self, monkeypatch: pytest.MonkeyPatch, *, workflow_runtime, tool_providers
-    ) -> None:
-        from services.workflow.execution.adapters.workflow import generate_task_pipeline as workflow_pipeline_module
+    def test_workflow_blocking_pipeline_pause_payload_contract(self, *, workflow_runtime, tool_providers) -> None:
         from services.workflow.execution.adapters.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 
         app_config = WorkflowUIBasedAppConfig(
@@ -646,7 +655,6 @@ class TestHitlServiceApi:
             draft_var_saver_factory=lambda **kwargs: None,
             tool_providers=tool_providers,
         )
-        monkeypatch.setattr(workflow_pipeline_module.time, "time", lambda: 1700000000)
 
         def _gen():
             yield HumanInputRequiredResponse(

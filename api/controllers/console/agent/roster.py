@@ -1,7 +1,7 @@
 from typing import Literal
 from uuid import UUID
 
-from flask import abort, request
+from flask import request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import func, or_, select
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from controllers.common.agent_access import resolve_agent_access_filter
+from controllers.common.errors import AccessDeniedError, InvalidRequestError
 from controllers.common.rbac import AgentId, RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
@@ -431,7 +432,14 @@ def _serialize_agent_app_detail(
 
     roster_service = _agent_roster_service(session)
     payload = GenericAppDetailWithSite.model_validate(
-        AppResponseView(app_model, session=session, account=current_user, access_mode=access_mode),
+        AppResponseView(
+            app_model,
+            tool_providers=application_services().tools.tool_providers,
+            workflow_queries=application_services().tools.workflow_queries,
+            session=session,
+            account=current_user,
+            access_mode=access_mode,
+        ),
         from_attributes=True,
     ).model_dump(mode="json")
     agent = (
@@ -524,7 +532,15 @@ def _serialize_agent_app_pagination(
             "limit": app_pagination.per_page,
             "total": app_pagination.total,
             "has_more": app_pagination.has_next,
-            "data": [AppResponseView(app, session=session) for app in app_pagination.items],
+            "data": [
+                AppResponseView(
+                    app,
+                    tool_providers=application_services().tools.tool_providers,
+                    workflow_queries=application_services().tools.workflow_queries,
+                    session=session,
+                )
+                for app in app_pagination.items
+            ],
         },
     ).model_dump(mode="json")
     payload["publication_counts"] = {
@@ -623,7 +639,7 @@ def _parse_observability_time_range(start: str | None, end: str | None, account:
     try:
         return parse_time_range(start, end, timezone)
     except ValueError as exc:
-        abort(400, description=str(exc))
+        raise InvalidRequestError(str(exc)) from exc
 
 
 def _query_values(name: str, alias_name: str | None = None) -> list[str]:
@@ -1210,7 +1226,7 @@ class AgentLogsApi(Resource):
                 ),
             )
         except ValueError as exc:
-            abort(400, description=str(exc))
+            raise InvalidRequestError(str(exc)) from exc
         return dump_response(AgentLogListResponse, payload)
 
 
@@ -1251,7 +1267,7 @@ class AgentLogMessagesApi(Resource):
                 ),
             )
         except ValueError as exc:
-            abort(400, description=str(exc))
+            raise InvalidRequestError(str(exc)) from exc
         return dump_response(AgentLogMessageListResponse, payload)
 
 
@@ -1307,7 +1323,7 @@ class AgentStatisticsSummaryApi(Resource):
                 params=AgentStatisticsQueryParams(source=req_data.source, start=start, end=end, timezone=timezone),
             )
         except ValueError as exc:
-            abort(400, description=str(exc))
+            raise InvalidRequestError(str(exc)) from exc
         return dump_response(AgentStatisticSummaryEnvelopeResponse, payload)
 
 
@@ -1366,7 +1382,7 @@ class AgentRosterVersionRestoreApi(Resource):
             dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
             and not FeatureService.get_workspace_plan(tenant_id).is_paid
         ):
-            abort(403, description="This feature requires a paid plan.")
+            raise AccessDeniedError("This feature requires a paid plan.")
 
         return dump_response(
             AgentConfigSnapshotRestoreResponse,

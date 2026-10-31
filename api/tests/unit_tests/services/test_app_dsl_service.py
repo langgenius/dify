@@ -1,9 +1,8 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from io import BytesIO
-from types import SimpleNamespace
 from typing import cast
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 from uuid import uuid4
 
 import pytest
@@ -17,19 +16,23 @@ from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
+from extensions.application_services.workflow import build_app_dsl_service
 from models import Account, App, AppMode
 from models.enums import CustomizeTokenStrategy
 from models.model import AppModelConfig, AppModelConfigDict, IconType, Site
 from models.workflow import Workflow
 from services.agent.dsl_entities import AgentPackage
 from services.agent.roster_package_entities import PackageIcon
+from services.agent.workflow_contracts import WorkflowAgentBindingStore
 from services.app_dsl_service import AppDslService, PendingData
 from services.app_package_service import PreparedAppPackage
-from services.entities.dsl_entities import ImportStatus
+from services.entities.dsl_entities import AppDslOverwriteStore, AppDslOverwriteTarget, ImportStatus
 from services.entities.feature_entities import FeatureModel, LimitationModel
 from services.entities.site_dsl import SiteDsl
 from services.errors.app import DraftChangedError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
+from services.workflow.contracts import DraftSyncCommand
+from services.workflow.draft_service import WorkflowDraftService
 from services.workflow.graph_diff import draft_token
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
@@ -120,7 +123,11 @@ def test_import_rejects_cloud_app_quota_before_side_effects(
 
     monkeypatch.setattr("services.app_dsl_service.FeatureService.get_features", features)
     monkeypatch.setattr("services.app_dsl_service.redis_client.setex", unexpected_side_effect)
-    service = AppDslService(unbound_session)
+    service = AppDslService(
+        unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
     monkeypatch.setattr(service, "_create_or_update_app", unexpected_side_effect)
     package = PreparedAppPackage(
         archive=BytesIO(),
@@ -176,11 +183,11 @@ def test_import_app_quota_allows_other_editions_available_capacity_and_overwrite
         return FeatureModel(apps=LimitationModel(size=size, limit=limit))
 
     monkeypatch.setattr("services.app_dsl_service.FeatureService.get_features", features)
-    monkeypatch.setattr(
-        "services.app_dsl_service.WorkflowDraftVariableService.delete_app_workflow_variables",
-        lambda *_args, **_kwargs: None,
+    service = AppDslService(
+        sqlite_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
     )
-    service = AppDslService(sqlite_session)
     app = _app(mode=AppMode.WORKFLOW)
     imported: list[App] = []
 
@@ -229,7 +236,11 @@ def test_confirm_import_rechecks_cloud_app_quota_and_preserves_pending_on_reject
     )
     monkeypatch.setattr("services.app_dsl_service.redis_client.get", pending_imports.get)
     monkeypatch.setattr("services.app_dsl_service.redis_client.delete", pending_imports.pop)
-    service = AppDslService(unbound_session)
+    service = AppDslService(
+        unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
     imported: list[App] = []
 
     def create_or_update(**_kwargs: object) -> App:
@@ -388,7 +399,11 @@ def test_import_app_rejects_oversized_yaml_content_before_parsing(
     monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
     monkeypatch.setattr("services.app_dsl_service.DSL_MAX_SIZE", 3)
-    service = AppDslService(session=unbound_session)
+    service = AppDslService(
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
     account = _account()
 
     result = service.import_app(account=account, import_mode="yaml-content", yaml_content="你你")
@@ -406,7 +421,11 @@ def test_import_app_rejects_oversized_yaml_url_bytes_before_decode(
     response.raise_for_status.return_value = None
     response.content = b"\xff\xff"
     monkeypatch.setattr("services.app_dsl_service.remote_fetcher.make_request", Mock(return_value=response))
-    service = AppDslService(session=unbound_session)
+    service = AppDslService(
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
 
     result = service.import_app(
         account=_account(),
@@ -426,7 +445,11 @@ def test_import_app_returns_decode_error_for_invalid_yaml_url_bytes(
     response.raise_for_status.return_value = None
     response.content = b"\xff"
     monkeypatch.setattr("services.app_dsl_service.remote_fetcher.make_request", Mock(return_value=response))
-    service = AppDslService(session=unbound_session)
+    service = AppDslService(
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
 
     result = service.import_app(
         account=_account(),
@@ -456,7 +479,7 @@ def test_import_app_checks_overwrite_rbac_before_database_access(
     monkeypatch.setattr("services.app_dsl_service.redis_client.setex", setex)
 
     with pytest.raises(NoPermissionError, match="permission to overwrite"):
-        AppDslService(sqlite_session).import_app(
+        build_app_dsl_service(sqlite_session).import_app(
             account=account,
             import_mode="yaml-content",
             yaml_content=_PENDING_WORKFLOW_DSL,
@@ -481,7 +504,7 @@ def test_confirm_import_rechecks_overwrite_rbac_before_database_access(
     redis_delete = Mock()
     monkeypatch.setattr("services.app_dsl_service.redis_client.delete", redis_delete)
     create_or_update = Mock()
-    service = AppDslService(sqlite_session)
+    service = build_app_dsl_service(sqlite_session)
     monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
 
     def deny_before_transaction(*_args: object, **_kwargs: object) -> bool:
@@ -517,7 +540,7 @@ def test_confirm_import_does_not_create_when_overwrite_target_disappeared(
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=True))
     redis_delete = Mock()
     monkeypatch.setattr("services.app_dsl_service.redis_client.delete", redis_delete)
-    service = AppDslService(sqlite_session)
+    service = build_app_dsl_service(sqlite_session)
     create_or_update = Mock()
     monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
 
@@ -538,7 +561,11 @@ def test_pending_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch, 
         "services.app_dsl_service.redis_client.setex",
         lambda key, _expiry, value: pending_imports.__setitem__(key, value),
     )
-    service = AppDslService(session=unbound_session)
+    service = AppDslService(
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
     creator = _account()
 
     pending = service.import_app(
@@ -588,7 +615,11 @@ def test_pending_import_requires_current_tenant(
     account = _account()
     account._current_tenant = None
 
-    result = AppDslService(session=unbound_session).import_app(
+    result = AppDslService(
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    ).import_app(
         account=account,
         import_mode="yaml-content",
         yaml_content="version: 99.0.0\nkind: app\napp: {name: Test, mode: workflow}\n",
@@ -660,7 +691,7 @@ def test_create_or_update_app_loads_existing_model_config_with_service_session(
     app = _app(app_model_config_id=app_model_config_id)
 
     with sqlite_session_factory() as service_session:
-        result = AppDslService(session=service_session)._create_or_update_app(
+        result = build_app_dsl_service(session=service_session)._create_or_update_app(
             app=app,
             data={"app": {"mode": AppMode.CHAT}, "model_config": {"model": {}}},
             account=_account(),
@@ -674,7 +705,7 @@ def test_create_or_update_app_loads_existing_model_config_with_service_session(
 
 def test_create_or_update_app_silently_discards_invalid_image_icon(sqlite_session: Session) -> None:
     app = _app(tenant_id=_TENANT_ID)
-    service = AppDslService(session=sqlite_session)
+    service = build_app_dsl_service(session=sqlite_session)
 
     result = service._create_or_update_app(
         app=app,
@@ -711,7 +742,7 @@ def test_create_or_update_app_applies_site_settings_without_changing_access(
     sqlite_session.add_all([app, site])
     sqlite_session.flush()
 
-    service = AppDslService(session=sqlite_session)
+    service = build_app_dsl_service(session=sqlite_session)
     service._create_or_update_app(
         app=app,
         data={
@@ -745,7 +776,11 @@ def test_create_or_update_app_rejects_null_required_site_setting_before_mutation
     app = _app()
 
     with pytest.raises(ValueError, match="Required Site settings cannot be null"):
-        AppDslService(unbound_session)._create_or_update_app(
+        AppDslService(
+            unbound_session,
+            drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+            overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+        )._create_or_update_app(
             app=app,
             data={"app": {"mode": AppMode.CHAT.value}, "site": {"title": None}},
             account=_account(),
@@ -757,12 +792,15 @@ def test_create_or_update_app_rejects_null_required_site_setting_before_mutation
 def test_import_app_resolves_site_entitlement_before_database_writes(
     monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
-    service = AppDslService(unbound_session)
+    service = AppDslService(
+        unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
     create_or_update = Mock(return_value=_app())
     entitlement = Mock(return_value=False)
     monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
     monkeypatch.setattr("services.app_dsl_service.FeatureService.can_import_premium_site_settings", entitlement)
-    monkeypatch.setattr("services.app_dsl_service.WorkflowDraftVariableService", Mock())
 
     result = service.import_app(
         account=_account(),
@@ -811,7 +849,11 @@ def test_confirm_import_rechecks_site_entitlement(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr("services.app_dsl_service.redis_client.delete", Mock())
     entitlement = Mock(return_value=False)
     monkeypatch.setattr("services.app_dsl_service.FeatureService.can_import_premium_site_settings", entitlement)
-    service = AppDslService(unbound_session)
+    service = AppDslService(
+        unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
     create_or_update = Mock(return_value=_app())
     monkeypatch.setattr(service, "_create_or_update_app", create_or_update)
 
@@ -892,7 +934,7 @@ def test_create_or_update_app_flushes_new_model_config_before_signal(
     app = _app()
 
     try:
-        AppDslService(session=sqlite_session)._create_or_update_app(
+        build_app_dsl_service(session=sqlite_session)._create_or_update_app(
             app=app,
             data={"app": {"mode": AppMode.CHAT}, "model_config": {"model": {}}},
             account=_account(account_id="22222222-2222-2222-2222-222222222222"),
@@ -923,7 +965,7 @@ def test_chat_dsl_import_rejects_invalid_feature_fields(
     app = _app()
 
     with pytest.raises(ValueError, match=field):
-        AppDslService(session=sqlite_session)._create_or_update_app(
+        build_app_dsl_service(session=sqlite_session)._create_or_update_app(
             app=app,
             data={"app": {"mode": AppMode.CHAT}, "model_config": {feature: {"enabled": True, field: value}}},
             account=_account(),
@@ -940,7 +982,7 @@ def test_chat_dsl_import_preserves_valid_feature_fields(sqlite_session: Session)
         "text_to_speech": {"enabled": True, "voice": "alloy", "language": "en", "autoPlay": "disabled"},
     }
 
-    AppDslService(session=sqlite_session)._create_or_update_app(
+    build_app_dsl_service(session=sqlite_session)._create_or_update_app(
         app=app,
         data={"app": {"mode": AppMode.CHAT}, "model_config": model_config},
         account=_account(),
@@ -953,23 +995,14 @@ def test_chat_dsl_import_preserves_valid_feature_fields(sqlite_session: Session)
     assert persisted.text_to_speech_dict == model_config["text_to_speech"]
 
 
-def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock()))
-    service = AppDslService(session=session)
-    app = SimpleNamespace(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Workflow",
-        description="",
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
+def test_create_or_update_app_removes_imported_workflow_viewport(unbound_session: Session) -> None:
+    drafts = create_autospec(WorkflowDraftService, instance=True, spec_set=True)
+    service = AppDslService(
+        session=unbound_session,
+        drafts=drafts,
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
     )
-    workflow_service = SimpleNamespace(
-        get_draft_workflow=Mock(return_value=None),
-        sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")),
-    )
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+    app = make_app(mode=AppMode.WORKFLOW)
     imported_graph: dict[str, object] = {
         "nodes": [],
         "edges": [],
@@ -977,72 +1010,19 @@ def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: py
     }
 
     service._create_or_update_app(
-        app=cast(App, app),
+        app=app,
         data={
             "app": {"mode": AppMode.WORKFLOW.value},
             "workflow": {"graph": imported_graph},
         },
-        account=Mock(id="account-1"),
+        account=make_account(),
     )
 
-    assert workflow_service.sync_draft_workflow.call_args.kwargs["graph"] == {
+    assert drafts.sync.call_args.args[2].graph == {
         "nodes": [],
         "edges": [],
     }
     assert imported_graph["viewport"] == {"x": 100, "y": 200, "zoom": 1.5}
-
-
-def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock()))
-    service = AppDslService(session=session)
-    app = SimpleNamespace(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Workflow",
-        description="",
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-    )
-    workflow = SimpleNamespace(id="workflow-1")
-    workflow_service = SimpleNamespace(
-        get_draft_workflow=Mock(return_value=None),
-        sync_draft_workflow=Mock(return_value=workflow),
-    )
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
-    monkeypatch.setattr(
-        "services.app_dsl_service.AgentDslService.graph_without_package_bindings",
-        Mock(return_value={"nodes": [], "edges": []}),
-    )
-    monkeypatch.setattr(
-        "services.app_dsl_service.AgentDslService.import_workflow_packages",
-        Mock(return_value=(workflow, [], {"retired-agent"})),
-    )
-    monkeypatch.setattr(
-        "services.app_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
-        Mock(),
-    )
-    retire_unowned = Mock()
-    monkeypatch.setattr(
-        "services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned",
-        retire_unowned,
-    )
-
-    service._create_or_update_app(
-        app=cast(App, app),
-        data={
-            "app": {"mode": AppMode.WORKFLOW.value},
-            "workflow": {"graph": {"nodes": [], "edges": []}},
-            "agent_packages": {"package-1": {}},
-        },
-        account=Mock(id="account-1"),
-    )
-
-    retire_unowned.assert_called_once_with(
-        tenant_id="tenant-1",
-        agent_ids={"retired-agent"},
-        account_id="account-1",
-    )
 
 
 def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session(
@@ -1088,7 +1068,11 @@ def test_agent_import_of_new_agent_checks_function_scope(
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", check)
     account = _account()
 
-    AppDslService(session=unbound_session)._ensure_agent_import_permission(account, app=None)
+    AppDslService(
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )._ensure_agent_import_permission(account, app=None)
 
     check.assert_called_once_with(
         account.current_tenant_id,
@@ -1106,7 +1090,11 @@ def test_create_or_update_app_gates_agent_mode_before_creation(
 ) -> None:
     config_overrides(RBAC_ENABLED=True)
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=False))
-    service = AppDslService(session=unbound_session)
+    service = AppDslService(
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
 
     with pytest.raises(NoPermissionError):
         service._create_or_update_app(
@@ -1125,7 +1113,11 @@ def test_import_app_reraises_permission_denial_instead_of_failed_result(
 ) -> None:
     config_overrides(RBAC_ENABLED=True)
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=False))
-    service = AppDslService(session=unbound_session)
+    service = AppDslService(
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
 
     with pytest.raises(NoPermissionError):
         service.import_app(
@@ -1219,15 +1211,16 @@ def test_export_dsl_preserves_envelope_and_mode_specific_content(
         (AppMode.ADVANCED_CHAT, "trigger-plugin"),
     ],
 )
-def test_overwrite_rejects_incompatible_nodes_before_mutation(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, mode: AppMode, node_type: str
-) -> None:
-    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
-    target = _app(tenant_id="tenant-1", mode=mode)
-    target.name = "Original"
-    sqlite_session.add(target)
-    sqlite_session.commit()
-    service = AppDslService(sqlite_session)
+def test_overwrite_rejects_incompatible_nodes_before_mutation(mode: AppMode, node_type: str) -> None:
+    session = Mock()
+    target = App(id="target", tenant_id="tenant", mode=mode, name="Original")
+    overwrites = create_autospec(AppDslOverwriteStore, instance=True, spec_set=True)
+    overwrites.snapshot.return_value = AppDslOverwriteTarget(mode, None)
+    service = AppDslService(
+        session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=overwrites,
+    )
     result = service.import_app(
         account=_account(),
         import_mode="yaml-content",
@@ -1244,10 +1237,9 @@ def test_overwrite_rejects_incompatible_nodes_before_mutation(
     assert result.status == ImportStatus.FAILED
     assert result.error is not None
     assert "incompatible" in result.error
-    sqlite_session.refresh(target)
     assert target.name == "Original"
-    assert not sqlite_session.new
-    assert not sqlite_session.deleted
+    session.add.assert_not_called()
+    overwrites.load.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -1262,9 +1254,11 @@ def test_overwrite_rejects_incompatible_nodes_before_mutation(
 def test_missing_app_section_names_the_keys_that_were_present(
     unbound_session: Session, content: dict[str, object], found: str
 ) -> None:
-    result = AppDslService(session=unbound_session).import_app(
-        account=_account(), import_mode="yaml-content", yaml_content=yaml.safe_dump(content, sort_keys=False)
-    )
+    result = AppDslService(
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    ).import_app(account=_account(), import_mode="yaml-content", yaml_content=yaml.safe_dump(content, sort_keys=False))
     assert result.status == ImportStatus.FAILED
     assert result.error is not None
     assert result.error.startswith("Missing app data in YAML content.")
@@ -1276,22 +1270,18 @@ def test_missing_app_section_names_the_keys_that_were_present(
 class _DraftWorkflowService:
     draft: Workflow | None
     lookups: list[str] = field(default_factory=list)
-    synced_hashes: list[str | None] = field(default_factory=list)
+    syncs: list[DraftSyncCommand] = field(default_factory=list)
 
     def _draft_of(self, app_model: App) -> Workflow | None:
         return self.draft if self.draft is not None and self.draft.app_id == app_model.id else None
 
-    def get_draft_workflow(self, app_model: App, **_: object) -> Workflow | None:
-        self.lookups.append("read")
+    def get_draft_workflow(self, app_model: App, *, for_update: bool = False, **_: object) -> Workflow | None:
+        self.lookups.append("locked" if for_update else "read")
         return self._draft_of(app_model)
 
-    def get_draft_workflow_for_update(self, app_model: App, **_: object) -> Workflow | None:
-        self.lookups.append("locked")
-        return self._draft_of(app_model)
-
-    def sync_draft_workflow(self, *, graph: dict[str, object], unique_hash: str | None, **_: object) -> Workflow:
-        self.synced_hashes.append(unique_hash)
-        return _workflow(graph=graph)
+    def sync(self, _context: object, _owner: object, command: DraftSyncCommand, **_: object) -> Workflow:
+        self.syncs.append(command)
+        return _workflow(graph=command.graph)
 
 
 def _workflow_draft(app: App) -> Workflow:
@@ -1301,9 +1291,16 @@ def _workflow_draft(app: App) -> Workflow:
 def _guarded_overwrite(
     monkeypatch: pytest.MonkeyPatch, session: Session, *, draft: Workflow | None
 ) -> tuple[AppDslService, _DraftWorkflowService, Callable[[str], App]]:
-    service = AppDslService(session=session)
     workflow_service = _DraftWorkflowService(draft=draft)
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", lambda: workflow_service)
+    service = AppDslService(
+        session=session,
+        drafts=cast(WorkflowDraftService[WorkflowAgentBindingStore], workflow_service),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
+    monkeypatch.setattr(
+        "services.app_dsl_service.WorkflowDefinitionStore.get_draft_workflow",
+        workflow_service.get_draft_workflow,
+    )
     app = _app(mode=AppMode.WORKFLOW)
 
     def overwrite(draft_hash: str) -> App:
@@ -1326,7 +1323,8 @@ def test_guarded_overwrite_saves_against_the_locked_draft_it_matched(
     overwrite(draft_token(draft))
 
     assert workflow_service.lookups == ["locked"]
-    assert workflow_service.synced_hashes == [draft.unique_hash]
+    assert len(workflow_service.syncs) == 1
+    assert workflow_service.syncs[0].graph == {"nodes": [], "edges": []}
 
 
 @pytest.mark.parametrize("draft_exists", [True, False], ids=["draft-changed", "draft-gone"])
@@ -1339,7 +1337,7 @@ def test_guarded_overwrite_refuses_a_draft_that_no_longer_matches(
     with pytest.raises(DraftChangedError):
         overwrite("exported")
 
-    assert workflow_service.synced_hashes == []
+    assert workflow_service.syncs == []
 
 
 def test_refused_overwrite_leaves_the_app_and_cached_dependencies_alone(
@@ -1365,7 +1363,7 @@ def test_refused_overwrite_leaves_the_app_and_cached_dependencies_alone(
 
     assert cached == []
     assert app.name == "Existing app"
-    assert workflow_service.synced_hashes == []
+    assert workflow_service.syncs == []
 
 
 def _refuse_changed_draft(forwarded: list[str | None]) -> Callable[..., App]:
@@ -1384,7 +1382,11 @@ def test_import_app_reraises_a_changed_draft_and_keeps_the_hash_for_the_confirm(
         "services.app_dsl_service.redis_client.setex",
         lambda key, _expiry, value: pending_imports.__setitem__(key, value),
     )
-    service = AppDslService(session=unbound_session)
+    service = AppDslService(
+        session=unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
     forwarded: list[str | None] = []
     monkeypatch.setattr(service, "_create_or_update_app", _refuse_changed_draft(forwarded))
 
@@ -1425,7 +1427,11 @@ def test_confirm_import_checks_the_pending_draft_hash(
     monkeypatch.setattr("services.app_dsl_service.redis_client.get", lambda _key: pending.model_dump_json())
     deleted: list[str] = []
     monkeypatch.setattr("services.app_dsl_service.redis_client.delete", deleted.append)
-    service = AppDslService(unbound_session)
+    service = AppDslService(
+        unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
     forwarded: list[str | None] = []
     monkeypatch.setattr(service, "_create_or_update_app", _refuse_changed_draft(forwarded))
 
@@ -1456,8 +1462,7 @@ def test_import_creation_marker_tracks_persisted_app(
             "workflow": {"graph": {"nodes": [], "edges": []}, "features": {}},
         }
     )
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock())
-    service = AppDslService(sqlite_session)
+    service = build_app_dsl_service(sqlite_session)
     if confirmed:
         pending = PendingData(
             tenant_id=_TENANT_ID,
@@ -1505,7 +1510,11 @@ def test_failed_import_does_not_report_creation(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, confirmed: bool
 ) -> None:
     data = "version: " + CURRENT_APP_DSL_VERSION + "\nkind: app\napp: {name: Broken, mode: chat}\n"
-    service = AppDslService(sqlite_session)
+    service = AppDslService(
+        sqlite_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
     if confirmed:
         pending = PendingData(
             tenant_id="tenant-1", account_id="account-1", import_mode="yaml-content", yaml_content=data
@@ -1523,9 +1532,11 @@ def test_pending_import_does_not_report_creation_or_cache_marker(
 ) -> None:
     cache = Mock()
     monkeypatch.setattr("services.app_dsl_service.redis_client.setex", cache)
-    result = AppDslService(unbound_session).import_app(
-        account=_account(), import_mode="yaml-content", yaml_content=_PENDING_WORKFLOW_DSL
-    )
+    result = AppDslService(
+        unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    ).import_app(account=_account(), import_mode="yaml-content", yaml_content=_PENDING_WORKFLOW_DSL)
     assert result.status == ImportStatus.PENDING
     assert not result.app_created
     assert "app_created" not in cache.call_args.args[2]
@@ -1543,7 +1554,11 @@ def test_confirmed_import_reports_creation_only_for_new_apps(
     monkeypatch.setattr("services.app_dsl_service.redis_client.get", pending_imports.get)
     monkeypatch.setattr("services.app_dsl_service.redis_client.delete", pending_imports.pop)
     existing = _app(mode=AppMode.WORKFLOW)
-    service = AppDslService(unbound_session)
+    service = AppDslService(
+        unbound_session,
+        drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+        overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+    )
     monkeypatch.setattr(service, "_load_app_for_overwrite", lambda _account, _app_id: existing)
     monkeypatch.setattr(service, "_validate_workflow_overwrite", lambda _app, _data: None)
     monkeypatch.setattr(service, "_create_or_update_app", lambda *, app, **_kwargs: app or _app(app_id=str(uuid4())))

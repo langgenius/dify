@@ -10,6 +10,7 @@ from redis import Redis
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
+from extensions.application_services.snippets import build_snippet_dsl_service, build_snippet_service
 from graphon.nodes import BuiltinNodeTypes
 from models import Account
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
@@ -24,7 +25,6 @@ from services.snippet_dsl_service import (
     SnippetPendingData,
     _check_version_compatibility,
 )
-from services.snippet_service import SnippetService
 from tests.helpers.unit.model_factories import make_account, make_tenant, make_workflow
 
 SQLITE_MODELS = (CustomizedSnippet,)
@@ -39,7 +39,7 @@ type PendingCache = tuple[Redis[bytes], dict[str, bytes], list[tuple[object, ...
 @pytest.fixture
 def service(sqlite_session: Session) -> SnippetDslService:
     """Create the service with a real caller-owned SQLite session."""
-    return SnippetDslService(session=sqlite_session)
+    return build_snippet_dsl_service(session=sqlite_session)
 
 
 @pytest.fixture
@@ -553,7 +553,7 @@ workflow:
     assert snippet.created_by == account.id
     assert snippet.name == "Override name"
     assert snippet.description == "Override description"
-    assert SnippetService(session=sqlite_session).get_draft_workflow(snippet) is not None
+    assert build_snippet_service(session=sqlite_session).get_draft_workflow(snippet) is not None
     assert commands[-1] == ("DEL", redis_key)
     assert redis_key not in values
 
@@ -683,10 +683,16 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(
     retirement_calls: list[dict[str, object]] = []
     original_retire = WorkflowAgentRetirementService.retire_unowned
 
-    def retire_unowned(*, tenant_id: str, agent_ids: Iterable[str], account_id: str | None) -> None:
+    def retire_unowned(
+        retirement: WorkflowAgentRetirementService,
+        *,
+        tenant_id: str,
+        agent_ids: Iterable[str],
+        account_id: str | None,
+    ) -> None:
         assert not sqlite_session.in_transaction()
         retirement_calls.append({"tenant_id": tenant_id, "agent_ids": set(agent_ids), "account_id": account_id})
-        original_retire(tenant_id=tenant_id, agent_ids=agent_ids, account_id=account_id)
+        original_retire(retirement, tenant_id=tenant_id, agent_ids=agent_ids, account_id=account_id)
 
     monkeypatch.setattr(WorkflowAgentRetirementService, "retire_unowned", retire_unowned)
 
@@ -710,10 +716,14 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(
     assert snippet.type == "node"
     assert snippet.icon_info == {"icon": "x"}
     assert not sqlite_session.in_transaction()
+    persisted_draft = sqlite_session.scalar(select(Workflow).where(Workflow.app_id == result.id))
+    assert persisted_draft is not None
+    assert persisted_draft.kind == "snippet"
+    assert persisted_draft.graph_dict == {"nodes": [], "edges": []}
     persisted = sqlite_session.get(CustomizedSnippet, snippet.id)
     assert persisted is not None
     assert persisted.name == "New"
-    workflow = SnippetService(session=sqlite_session).get_draft_workflow(snippet)
+    workflow = build_snippet_service(session=sqlite_session).get_draft_workflow(snippet)
     assert workflow is draft_workflow
     assert workflow.graph_dict == {"nodes": [], "edges": []}
     assert sqlite_session.get(WorkflowAgentNodeBinding, "retired-binding") is None
@@ -745,7 +755,7 @@ def test_create_or_update_snippet_creates_new_snippet_and_flushes(service: Snipp
     assert result.type == "group"
     assert not sqlite_session.in_transaction()
     assert sqlite_session.get(CustomizedSnippet, result.id) is result
-    workflow = SnippetService(session=sqlite_session).get_draft_workflow(result)
+    workflow = build_snippet_service(session=sqlite_session).get_draft_workflow(result)
     assert workflow is not None
     assert workflow.graph_dict == {"nodes": [], "edges": []}
     assert workflow.created_by == "account-1"

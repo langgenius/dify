@@ -18,6 +18,8 @@ from sqlalchemy.pool import QueuePool
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from enums.agent import WorkflowAgentBindingType
+from extensions.application_services.workflow import build_app_dsl_service
 from libs.archive_writer import (
     ArchiveLimits,
     ArchiveOptions,
@@ -33,7 +35,6 @@ from models.agent import (
     AgentScope,
     AgentSource,
     AgentStatus,
-    WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
@@ -241,7 +242,7 @@ def _import(
     prepared = AppPackageService().read_package(io.BytesIO(content), accept_roster_references=preserve_agent_bindings)
     assert prepared is not None
     with prepared:
-        result = AppDslService(session).import_app(
+        result = build_app_dsl_service(session).import_app(
             account=account or _account(),
             import_mode="yaml-content",
             yaml_content=prepared.dsl,
@@ -520,7 +521,7 @@ class TestWorkflowPackageServiceCases:
         result = _import(sqlite_session, _rewrite(content, mutate))
         assert result.status == ImportStatus.PENDING
         saved_count = len(storage.saved)
-        confirmed = AppDslService(sqlite_session).confirm_import(import_id=result.id, account=_account())
+        confirmed = build_app_dsl_service(sqlite_session).confirm_import(import_id=result.id, account=_account())
         assert confirmed.status == ImportStatus.COMPLETED_WITH_WARNINGS, confirmed.error
         assert any(
             warning.code == "agent_skill_missing" and warning.path.startswith("agent_packages.agent_1.")
@@ -538,9 +539,19 @@ class TestWorkflowPackageServiceCases:
         app = _source(sqlite_session, storage)
         with AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app) as exported:
             content = exported.archive.read()
-        monkeypatch.setattr(AppDslService, "_load_app_for_overwrite", Mock(side_effect=NoPermissionError("Denied")))
-        with pytest.raises(NoPermissionError):
+        target = make_app(
+            app_id="protected-app",
+            tenant_id="tenant-2",
+            mode=AppMode.WORKFLOW,
+            maintainer="another-user",
+        )
+        sqlite_session.add(target)
+        sqlite_session.commit()
+        denied = Mock(return_value=False)
+        monkeypatch.setattr(AppDslService, "_check_overwrite_access", denied)
+        with pytest.raises(NoPermissionError, match="permission to overwrite"):
             _import(sqlite_session, content, app_id="protected-app")
+        denied.assert_called_once()
         assert not storage.saved
 
     @staticmethod
@@ -561,7 +572,9 @@ class TestWorkflowPackageServiceCases:
         )
         sqlite_session.commit()
         retirement = Mock()
-        monkeypatch.setattr("services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned", retirement)
+        monkeypatch.setattr(
+            "services.agent.retirement_service.WorkflowAgentRetirementService.retire_unowned", retirement
+        )
         updated = _import(sqlite_session, content, app_id=original.app_id)
         assert updated.status == ImportStatus.COMPLETED, updated.error
         assert updated.app_id == original.app_id
@@ -571,8 +584,13 @@ class TestWorkflowPackageServiceCases:
             )
         )
         assert len(new_agents) == len(old_agents) == 2
+        assert None not in old_agents
         assert not (new_agents & old_agents)
-        retirement.assert_called_once_with(tenant_id="tenant-2", agent_ids=old_agents, account_id="account-1")
+        retirement.assert_called_once_with(
+            tenant_id="tenant-2",
+            agent_ids=sorted(agent_id for agent_id in old_agents if agent_id is not None),
+            account_id="account-1",
+        )
 
     @staticmethod
     @pytest.mark.parametrize("legacy_skill", [False, True])
@@ -725,7 +743,8 @@ class TestWorkflowPackageServiceCases:
         sqlite_session: Session, storage: _MemoryStorage, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(
-            "services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned", lambda **_kwargs: None
+            "services.agent.retirement_service.WorkflowAgentRetirementService.retire_unowned",
+            lambda *_args, **_kwargs: None,
         )
         content = _roster_export(sqlite_session, storage)
         account = _account("tenant-1")
@@ -771,7 +790,7 @@ class TestWorkflowPackageServiceCases:
         account = _account("tenant-1")
         result = _import(sqlite_session, _rewrite(content, mutate), account=account, preserve_agent_bindings=True)
         assert result.status == ImportStatus.PENDING
-        confirmed = AppDslService(sqlite_session).confirm_import(import_id=result.id, account=account)
+        confirmed = build_app_dsl_service(sqlite_session).confirm_import(import_id=result.id, account=account)
         assert confirmed.status in {ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS}, confirmed.error
         row = _bindings_by_node(sqlite_session, confirmed.app_id)["node-3"]
         assert row.binding_type == WorkflowAgentBindingType.ROSTER_AGENT

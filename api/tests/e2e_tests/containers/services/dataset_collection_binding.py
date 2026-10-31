@@ -1,7 +1,7 @@
 """
-Comprehensive unit tests for DatasetCollectionBindingService.
+Comprehensive unit tests for DatasetCollectionBindingRepository.
 
-This module contains extensive unit tests for the DatasetCollectionBindingService class,
+This module contains extensive unit tests for the DatasetCollectionBindingRepository class,
 which handles dataset collection binding operations for vector database collections.
 """
 
@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from models.dataset import DatasetCollectionBinding
 from models.enums import CollectionBindingType
-from services.knowledge.dataset_service import DatasetCollectionBindingService
+from repositories.knowledge.collection_binding_repository import DatasetCollectionBindingRepository
 
 
 class DatasetCollectionBindingTestDataFactory:
@@ -58,9 +58,9 @@ class DatasetCollectionBindingTestDataFactory:
         return binding
 
 
-class TestDatasetCollectionBindingServiceGetBinding:
+class TestDatasetCollectionBindingRepositoryGetBinding:
     """
-    Comprehensive unit tests for DatasetCollectionBindingService.get_dataset_collection_binding method.
+    Comprehensive unit tests for DatasetCollectionBindingRepository.get_dataset_collection_binding method.
 
     This test class covers the main collection binding retrieval/creation functionality,
     including various provider/model combinations, collection types, and edge cases.
@@ -87,7 +87,7 @@ class TestDatasetCollectionBindingServiceGetBinding:
         )
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding(
+        result = DatasetCollectionBindingRepository.get_dataset_collection_binding(
             provider_name, model_name, session=db_session_with_containers, collection_type=collection_type
         )
 
@@ -108,7 +108,7 @@ class TestDatasetCollectionBindingServiceGetBinding:
         collection_type = CollectionBindingType.DATASET
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding(
+        result = DatasetCollectionBindingRepository.get_dataset_collection_binding(
             provider_name, model_name, session=db_session_with_containers, collection_type=collection_type
         )
 
@@ -127,7 +127,7 @@ class TestDatasetCollectionBindingServiceGetBinding:
         collection_type = "custom_type"
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding(
+        result = DatasetCollectionBindingRepository.get_dataset_collection_binding(
             provider_name, model_name, session=db_session_with_containers, collection_type=collection_type
         )
 
@@ -143,7 +143,7 @@ class TestDatasetCollectionBindingServiceGetBinding:
         model_name = "text-embedding-ada-002"
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding(
+        result = DatasetCollectionBindingRepository.get_dataset_collection_binding(
             provider_name, model_name, session=db_session_with_containers
         )
 
@@ -164,7 +164,7 @@ class TestDatasetCollectionBindingServiceGetBinding:
         ]
 
         # Act
-        results = list(starmap(DatasetCollectionBindingService.get_dataset_collection_binding, combinations))
+        results = list(starmap(DatasetCollectionBindingRepository.get_dataset_collection_binding, combinations))
 
         # Assert
         assert len(results) == 3
@@ -173,9 +173,9 @@ class TestDatasetCollectionBindingServiceGetBinding:
             assert result.model_name == model
 
 
-class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
+class TestDatasetCollectionBindingRepositoryGetBindingByIdAndType:
     """
-    Comprehensive unit tests for DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type method.
+    Verify collection binding lookup by ID and type through the shared repository.
 
     This test class covers retrieval of specific collection bindings by ID and type,
     including successful retrieval and error handling for missing bindings.
@@ -193,7 +193,7 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
         )
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+        result = DatasetCollectionBindingRepository.get_dataset_collection_binding_by_id_and_type(
             binding.id, session=db_session_with_containers, collection_type=CollectionBindingType.DATASET
         )
 
@@ -211,7 +211,7 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
 
         # Act & Assert
         with pytest.raises(ValueError, match="Dataset collection binding not found"):
-            DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+            DatasetCollectionBindingRepository.get_dataset_collection_binding_by_id_and_type(
                 non_existent_id, session=db_session_with_containers, collection_type=CollectionBindingType.DATASET
             )
 
@@ -229,7 +229,7 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
         )
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+        result = DatasetCollectionBindingRepository.get_dataset_collection_binding_by_id_and_type(
             binding.id, session=db_session_with_containers, collection_type="custom_type"
         )
 
@@ -251,7 +251,7 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
         )
 
         # Act
-        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+        result = DatasetCollectionBindingRepository.get_dataset_collection_binding_by_id_and_type(
             binding.id, session=db_session_with_containers
         )
 
@@ -272,6 +272,6 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
 
         # Act & Assert
         with pytest.raises(ValueError, match="Dataset collection binding not found"):
-            DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+            DatasetCollectionBindingRepository.get_dataset_collection_binding_by_id_and_type(
                 binding.id, session=db_session_with_containers, collection_type="wrong_type"
             )

@@ -9,6 +9,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime
 from io import BytesIO
 from typing import BinaryIO, Literal, cast, override
+from unittest.mock import Mock
 from uuid import UUID, uuid4
 from zipfile import ZipFile
 
@@ -22,10 +23,9 @@ from core.plugin.entities.plugin import PluginDependency
 from core.plugin.impl.plugin import PluginInstaller
 from core.rbac import RBACPermission
 from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolProviderType
-from core.tools.tool_manager import ToolManager
 from events.app_event import app_was_updated
 from extensions.application_services.app import AppServices
-from extensions.ext_database import db
+from extensions.application_services.workflow import build_app_dsl_service
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
@@ -40,6 +40,8 @@ from models.tools import ApiToolProvider, ToolLabelBinding, WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from repositories.tools.provider_repository import ToolProviderRepository
+from repositories.tools.workflow_repository import WorkflowToolRepository
 from services.agent.errors import (
     AgentAccessNotReadyError,
     InvalidRosterAgentPackageError,
@@ -58,7 +60,6 @@ from services.app.console_service import (
     CreatorsPlatformDisabledError,
     InvalidAppExportError,
 )
-from services.app_dsl_service import AppDslService
 from services.app_package_service import AppPackageService
 from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
@@ -90,6 +91,7 @@ from services.feature_service import FeatureService
 from services.model_provider.service import ModelProviderService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAppPackageService
+from services.tools.tool_manager import ToolManager
 from services.workflow_tool_references import WorkflowToolTarget
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 from tests.helpers.unit.model_factories import make_account, make_tenant
@@ -563,6 +565,9 @@ def test_lifecycle_agent_creation_seeds_workspace_default_model(
     monkeypatch: pytest.MonkeyPatch,
     provider_name: str | None,
     expected_model: tuple[str, str, str] | None,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     with factory.begin() as session:
@@ -598,7 +603,9 @@ def test_lifecycle_agent_creation_seeds_workspace_default_model(
         )
 
     context = RequestContext("request", None, account.id, tenant.id)
-    app = AppLifecycleGateway(session_factory=factory).create(
+    app = AppLifecycleGateway(
+        session_factory=factory, tool_providers=tool_providers, workflow_queries=workflow_queries
+    ).create(
         context,
         CreateAppParams(name="Agent", mode=AppMode.AGENT.value),
         AppCreationSettings({"enable_site": False, "enable_api": False}, None),
@@ -622,7 +629,12 @@ def test_lifecycle_agent_creation_seeds_workspace_default_model(
 @pytest.mark.parametrize("failure", [None, "persist", "external"])
 @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.AGENT])
 def test_lifecycle_runs_after_atomic_creation_and_session_close(
-    sqlite_engine: Engine, failure: str | None, mode: AppMode
+    sqlite_engine: Engine,
+    failure: str | None,
+    mode: AppMode,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     with factory.begin() as session:
@@ -710,7 +722,9 @@ def test_lifecycle_runs_after_atomic_creation_and_session_close(
         transfers=Transfers(),
         creators=Creators(),
         tracing=Tracing(),
-        lifecycle=LifecycleProbe(session_factory=factory),
+        lifecycle=LifecycleProbe(
+            tool_providers=tool_providers, session_factory=factory, workflow_queries=workflow_queries
+        ),
     )
     event.listen(sqlite_engine, "checkout", checkout)
     event.listen(sqlite_engine, "checkin", checkin)
@@ -743,7 +757,12 @@ def test_lifecycle_runs_after_atomic_creation_and_session_close(
         event.remove(sqlite_engine, "checkin", checkin)
 
 
-def test_app_deletion_failure_rolls_back_backing_agent_changes(sqlite_engine: Engine) -> None:
+def test_app_deletion_failure_rolls_back_backing_agent_changes(
+    sqlite_engine: Engine,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
+) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     with factory.begin() as session:
         account = Account(name="Creator", email=f"{uuid4()}@example.com")
@@ -758,7 +777,9 @@ def test_app_deletion_failure_rolls_back_backing_agent_changes(sqlite_engine: En
             ]
         )
     context = RequestContext("request", None, account.id, tenant.id)
-    gateway = AppLifecycleGateway(session_factory=factory)
+    gateway = AppLifecycleGateway(
+        session_factory=factory, tool_providers=tool_providers, workflow_queries=workflow_queries
+    )
     app = gateway.create(
         context,
         CreateAppParams(name="Agent", mode="agent"),
@@ -786,7 +807,13 @@ def test_app_deletion_failure_rolls_back_backing_agent_changes(sqlite_engine: En
 @pytest.mark.parametrize("operation", ["get", "update", "create", "copy"])
 @pytest.mark.parametrize("remote_fails", [False, True])
 def test_detail_tool_enrichment_releases_database_before_plugin_io(
-    sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, operation: str, remote_fails: bool
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+    remote_fails: bool,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
 ) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     missing_api = str(uuid4())
@@ -894,7 +921,9 @@ def test_detail_tool_enrichment_releases_database_before_plugin_io(
         transfers=CopyTransfer(),
         creators=Creators(),
         tracing=Tracing(),
-        lifecycle=LifecycleGateway(session_factory=factory),
+        lifecycle=LifecycleGateway(
+            tool_providers=tool_providers, session_factory=factory, workflow_queries=workflow_queries
+        ),
     )
     monkeypatch.setattr(ToolManager, "get_hardcoded_provider", hardcoded)
     monkeypatch.setattr(PluginInstaller, "check_tools_existence", check_plugins)
@@ -941,7 +970,14 @@ def test_detail_tool_enrichment_releases_database_before_plugin_io(
 
 @pytest.mark.parametrize("operation", ["rename", "icon", "site"])
 @pytest.mark.parametrize("commit_fails", [False, True])
-def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operation: str, commit_fails: bool) -> None:
+def test_app_mutations_publish_only_after_commit(
+    sqlite_engine: Engine,
+    operation: str,
+    commit_fails: bool,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
+) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False, close_resets_only=False)
     context = RequestContext("request", None, str(uuid4()), str(uuid4()))
     with factory.begin() as session:
@@ -962,7 +998,9 @@ def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operatio
         transfers=Transfers(),
         creators=Creators(),
         tracing=Tracing(),
-        lifecycle=AppLifecycleGateway(session_factory=factory),
+        lifecycle=AppLifecycleGateway(
+            session_factory=factory, tool_providers=tool_providers, workflow_queries=workflow_queries
+        ),
     )
     signals: list[str] = []
     checked_out: set[object] = set()
@@ -1027,7 +1065,13 @@ def test_app_mutations_publish_only_after_commit(sqlite_engine: Engine, operatio
 
 
 @pytest.mark.parametrize("surface", ["site", "api"])
-def test_unpublished_agent_cannot_enable_access_through_console_service(sqlite_engine: Engine, surface: str) -> None:
+def test_unpublished_agent_cannot_enable_access_through_console_service(
+    sqlite_engine: Engine,
+    surface: str,
+    *,
+    tool_providers: ToolProviderRepository,
+    workflow_queries: WorkflowToolRepository,
+) -> None:
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     context = RequestContext("request", None, str(uuid4()), str(uuid4()))
     with factory.begin() as session:
@@ -1053,7 +1097,9 @@ def test_unpublished_agent_cannot_enable_access_through_console_service(sqlite_e
         transfers=Transfers(),
         creators=Creators(),
         tracing=Tracing(),
-        lifecycle=AppLifecycleGateway(session_factory=factory),
+        lifecycle=AppLifecycleGateway(
+            session_factory=factory, tool_providers=tool_providers, workflow_queries=workflow_queries
+        ),
     )
     signals: list[object] = []
 
@@ -1151,18 +1197,14 @@ def _tool_node(provider_id: str, tool_name: str) -> dict[str, object]:
 @pytest.fixture
 def workspaces(
     sqlite_session_factory: sessionmaker[Session],
-    sqlite_engine: Engine,
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
 ) -> Workspaces:
     config_overrides(RBAC_ENABLED=False, DEPLOYMENT_EDITION="COMMUNITY")
-    # Workflow Tool management opens its own sessions from the Flask-SQLAlchemy engine.
-    monkeypatch.setattr(type(db), "engine", property(lambda _: sqlite_engine))
     # Plugin metadata is resolved by the plugin daemon; these Apps use no plugins.
     monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", _no_plugin_dependencies)
     # Workflow event handlers reach the Flask-bound database; these tests check the imported records.
-    monkeypatch.setattr("services.workflow_service.app_draft_workflow_was_synced", Signal())
-    monkeypatch.setattr("services.workflow_service.app_published_workflow_was_updated", Signal())
+    monkeypatch.setattr("services.workflow.definition_gateway.app_draft_workflow_was_synced", Signal())
     actor, source_id, target_id = str(uuid4()), str(uuid4()), str(uuid4())
     caller_app_id, tool_app_id, provider_id = str(uuid4()), str(uuid4()), str(uuid4())
     version = Workflow.version_from_datetime(naive_utc_now())
@@ -1603,7 +1645,7 @@ def test_planning_new_workflow_tools_checks_tool_management_under_rbac(
     rbac_domain.transport.response = {"allowed": allowed}
     gateway = AppTransferGateway(
         session_factory=sqlite_session_factory,
-        dsl_factory=AppDslService,
+        dsl_factory=build_app_dsl_service,
         packages=AppPackageService(),
         agent_packages=RosterAgentPackageExporter(),
         agent_importer=RosterAgentPackageImporter(),
@@ -1611,6 +1653,8 @@ def test_planning_new_workflow_tools_checks_tool_management_under_rbac(
             sources=DatabaseRecommendedAppCatalogRepository(session_factory=sqlite_session_factory, redis=redis_client),
             exporter=RosterAgentPackageExporter(),
         ),
+        workflow_tools=WorkflowToolRepository(sqlite_session_factory),
+        workflow_publisher=Mock(),
     )
     tool = PackagedWorkflowTool(
         id="w_000001",

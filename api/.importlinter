@@ -32,6 +32,8 @@ layers =
 # error makes this list shrink whenever a legacy dependency is removed.
 unmatched_ignore_imports_alerting = error
 ignore_imports =
+    core.app.apps.advanced_chat.app_runner -> extensions.workflow_warm_shutdown
+    core.app.apps.workflow.app_runner -> extensions.workflow_warm_shutdown
     # The Dify node factory composes the Human Input runtime for workflow execution.
     core.workflow.node_factory -> services.human_input_v2.composition
     # Legacy generators delegate configured file defaults to the application owner during core migration.
@@ -76,7 +78,6 @@ ignore_imports =
     core.workflow.workflow_entry -> services.workflow_node_variables
     core.app.apps.workflow_app_runner -> tasks.mail_human_input_delivery_task
     core.app.features.annotation_reply.annotation_reply -> services.annotation_service
-    core.app.features.annotation_reply.annotation_reply -> services.knowledge.dataset_service
     core.app.llm.quota -> services.credit_pool_service
     core.app.task_pipeline.message_cycle_manager -> services.annotation_service
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
@@ -105,7 +106,6 @@ ignore_imports =
     # The KnowledgeFS retrieval node is owned by services.knowledge_fs and only wired in here.
     core.workflow.node_factory -> services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter
     core.workflow.node_factory -> services.knowledge_fs.knowledge_retrieval_v2.entities
-    core.workflow.nodes.agent.message_transformer -> services.tools.legacy_builtin_tools_manage_service
     core.workflow.nodes.agent_v2.agent_node -> services.agent.knowledge_citations
     core.workflow.nodes.agent_v2.agent_node -> services.agent.prompt_mentions
     core.workflow.nodes.agent_v2.agent_node -> services.agent.workspace_service
@@ -134,7 +134,6 @@ ignore_imports =
     libs.oauth_bearer -> models
     libs.rsa -> extensions.ext_storage
     libs.workspace_permission -> services.enterprise.enterprise_service
-    services.app_generate_service -> controllers.console.app.workflow
 
 [importlinter:contract:no-direct-rsa-imports]
 # Note: `libs` itself is deliberately excluded from source_modules -- import-linter's

@@ -3,23 +3,66 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass, field
 from datetime import datetime
+from typing import TypedDict, cast
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from models import App
+from core.tools.entities.tool_entities import ToolProviderType
+from machinery.context import RequestContext
 from models.enums import CreatorUserRole
 from models.model import AppMode, AppModelConfig, Conversation, ConversationFromSource, Message, MessageAgentThought
-from services import agent_service
+from repositories.app.generation_repository import AppGenerationRepository
+from services.agent.log_service import AgentLogService
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_end_user, make_message
 
 _NOW = datetime(2026, 1, 1)
+_CONTEXT = RequestContext("request", None, "account-1", "tenant-1")
 
 
-def _persist_log(
-    session: Session, monkeypatch: pytest.MonkeyPatch, *, tool_still_configured: bool = False, end_user: bool = False
-) -> App:
+class _ToolCallResult(TypedDict):
+    tool_icon: object
+
+
+class _IterationResult(TypedDict):
+    tool_calls: list[_ToolCallResult]
+    thought: str | None
+
+
+class _MetaResult(TypedDict):
+    executor: str
+    total_tokens: int
+    iterations: int
+
+
+class _AgentLogResult(TypedDict):
+    iterations: list[_IterationResult]
+    meta: _MetaResult
+
+
+class _Files:
+    def resolve(self, *, tenant_id: str, files: list[dict[str, object]]) -> list[dict[str, object]]:
+        assert tenant_id == "tenant-1"
+        assert files == []
+        return []
+
+
+@dataclass
+class _ToolIcons:
+    calls: list[dict[str, str]] = field(default_factory=list)
+
+    def __call__(self, *, tenant_id: str, provider_type: ToolProviderType, provider_id: str) -> str:
+        self.calls.append({"tenant_id": tenant_id, "provider_type": provider_type.value, "provider_id": provider_id})
+        return "icon-url"
+
+
+def _service(sessions: sessionmaker[Session], icons: _ToolIcons | None = None) -> AgentLogService:
+    return AgentLogService(records=AppGenerationRepository(sessions), icons=icons or _ToolIcons(), files=_Files())
+
+
+def _persist_log(session: Session, *, tool_still_configured: bool = False, end_user: bool = False) -> None:
     account = make_account(name="Executor", timezone="UTC")
     config = AppModelConfig(
         app_id="app-1",
@@ -74,25 +117,29 @@ def _persist_log(
         session.add(make_end_user(app_id=app.id, name="Visitor"))
     session.commit()
     session.expire_all()
-    monkeypatch.setattr(agent_service, "current_user", account)
-    return app
+
+
+def _get_log(
+    service: AgentLogService, *, conversation_id: str = "conversation-1", message_id: str = "message-1"
+) -> _AgentLogResult:
+    return cast(
+        _AgentLogResult,
+        service.get(_CONTEXT, app_id="app-1", conversation_id=conversation_id, message_id=message_id),
+    )
 
 
 @pytest.mark.parametrize("tool_still_configured", [False, True])
 @pytest.mark.parametrize("end_user", [False, True])
 def test_legacy_tool_log_without_provider_metadata_uses_configured_tool_or_blank_icon(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, tool_still_configured: bool, end_user: bool
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    tool_still_configured: bool,
+    end_user: bool,
 ) -> None:
-    app = _persist_log(sqlite_session, monkeypatch, tool_still_configured=tool_still_configured, end_user=end_user)
-    calls: list[dict[str, str]] = []
+    _persist_log(sqlite_session, tool_still_configured=tool_still_configured, end_user=end_user)
+    icons = _ToolIcons()
 
-    def get_tool_icon(*, tenant_id: str, provider_type: str, provider_id: str) -> str:
-        calls.append({"tenant_id": tenant_id, "provider_type": provider_type, "provider_id": provider_id})
-        return "icon-url"
-
-    monkeypatch.setattr(agent_service.ToolManager, "get_tool_icon", get_tool_icon)
-
-    result = agent_service.AgentService.get_agent_logs(app, "conversation-1", "message-1", sqlite_session)
+    result = _get_log(_service(sqlite_session_factory, icons))
 
     assert result["iterations"][0]["tool_calls"][0]["tool_icon"] == ("icon-url" if tool_still_configured else "")
     assert result["meta"]["executor"] == ("Visitor" if end_user else "Executor")
@@ -103,28 +150,28 @@ def test_legacy_tool_log_without_provider_metadata_uses_configured_tool_or_blank
         if tool_still_configured
         else []
     )
-    assert calls == expected_calls
+    assert icons.calls == expected_calls
 
 
 @pytest.mark.parametrize("missing", ["conversation", "message"])
 def test_agent_logs_reject_missing_records(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, missing: str
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], missing: str
 ) -> None:
-    app = _persist_log(sqlite_session, monkeypatch)
+    _persist_log(sqlite_session)
     conversation_id = "missing" if missing == "conversation" else "conversation-1"
     message_id = "missing" if missing == "message" else "message-1"
 
     with pytest.raises(
         ValueError, match="Conversation not found" if missing == "conversation" else "Message not found"
     ):
-        agent_service.AgentService.get_agent_logs(app, conversation_id, message_id, sqlite_session)
+        _get_log(_service(sqlite_session_factory), conversation_id=conversation_id, message_id=message_id)
 
 
 @pytest.mark.parametrize("foreign", ["conversation", "message"])
 def test_agent_logs_reject_records_outside_the_requested_owner_chain(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, foreign: str
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], foreign: str
 ) -> None:
-    app = _persist_log(sqlite_session, monkeypatch)
+    _persist_log(sqlite_session)
     other_app = make_app(app_id="other-app")
     other_conversation = make_conversation(
         conversation_id="other-conversation", app_id=other_app.id, from_source=ConversationFromSource.CONSOLE
@@ -145,13 +192,13 @@ def test_agent_logs_reject_records_outside_the_requested_owner_chain(
     with pytest.raises(
         ValueError, match="Conversation not found" if foreign == "conversation" else "Message not found"
     ):
-        agent_service.AgentService.get_agent_logs(app, "conversation-1", "message-1", sqlite_session)
+        _get_log(_service(sqlite_session_factory))
 
 
 def test_agent_logs_read_only_the_messages_thoughts_in_position_order(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
-    app = _persist_log(sqlite_session, monkeypatch)
+    _persist_log(sqlite_session)
     other_message = make_message(
         message_id="other-message",
         query="Other",
@@ -177,7 +224,7 @@ def test_agent_logs_read_only_the_messages_thoughts_in_position_order(
     sqlite_session.commit()
     sqlite_session.expire_all()
 
-    result = agent_service.AgentService.get_agent_logs(app, "conversation-1", "message-1", sqlite_session)
+    result = _get_log(_service(sqlite_session_factory))
 
     assert [iteration["thought"] for iteration in result["iterations"]] == ["historical thought", "middle", "last"]
     assert result["meta"]["iterations"] == 3

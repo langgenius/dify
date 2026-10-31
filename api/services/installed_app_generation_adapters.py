@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models import Account, App
 from services.account_errors import AccountNotFoundError
+from services.app.generation.runtime import AppGenerationRuntime
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_generate_service import AppGenerateService
 from services.conversation_service import ConversationService
@@ -16,13 +17,22 @@ from services.installed_app_generation_service import (
     GenerationResponse,
     InstalledAppGenerationRuntime,
 )
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 
 logger = logging.getLogger(__name__)
 
 
 class AppGenerateServiceRuntime(InstalledAppGenerationRuntime):
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        variables: WorkflowExecutionVariables,
+        runtime: AppGenerationRuntime,
+    ) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
+        self._variables = variables
+        self._runtime = runtime
 
     @override
     def generate(
@@ -41,6 +51,8 @@ class AppGenerateServiceRuntime(InstalledAppGenerationRuntime):
         )
         return self._run_generation(
             lambda session: AppGenerateService.generate(
+                variables=self._variables,
+                runtime=self._runtime,
                 session=session,
                 app_model=app,
                 user=account,

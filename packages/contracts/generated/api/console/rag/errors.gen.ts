@@ -108,12 +108,9 @@ export const get20Errors = {
 
 export const post15Errors = {
   draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
-  pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
 }
 
 export const get21Errors = { pipeline_not_found: { status: 404, data: zPipelineNotFoundError } }
-
-export const post16Errors = { pipeline_not_found: { status: 404, data: zPipelineNotFoundError } }
 
 export const post17Errors = { pipeline_not_found: { status: 404, data: zPipelineNotFoundError } }
 
@@ -127,10 +124,6 @@ export const post19Errors = {
   pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
   rate_limit_error: { status: 429, data: zRateLimitError },
 }
-
-export const post20Errors = { pipeline_not_found: { status: 404, data: zPipelineNotFoundError } }
-
-export const delete5Errors = { pipeline_not_found: { status: 404, data: zPipelineNotFoundError } }
 
 export const patch3Errors = { pipeline_not_found: { status: 404, data: zPipelineNotFoundError } }
 

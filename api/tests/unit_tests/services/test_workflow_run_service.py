@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, create_autospec
 
 import pytest
-from pydantic import TypeAdapter
+from pydantic import SecretStr, TypeAdapter
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.node_execution_process_data import (
@@ -41,12 +41,13 @@ from services.workflow_run_service import (
 """Unit tests for the Console workflow-run application service."""
 
 
-def _workflow_run_service_service(dependencies: tuple[MagicMock, MagicMock]) -> WorkflowRunService:
+def _workflow_run_service_service(dependencies: tuple[MagicMock, MagicMock], *, tool_providers) -> WorkflowRunService:
     node_executions, workflow_runs = dependencies
     return WorkflowRunService(
         workflow_runs=workflow_runs,
         session_factory=sessionmaker(),
         node_executions=node_executions,
+        tool_providers=tool_providers,
     )
 
 
@@ -86,10 +87,14 @@ class TestWorkflowRunServiceCases:
 
     class TestWorkflowRunServiceQueries:
         def test_workflow_tool_details_require_the_root_app_run_and_hide_internal_correlation(
-            self, service_dependencies: tuple[MagicMock, MagicMock], monkeypatch: pytest.MonkeyPatch
+            self,
+            service_dependencies: tuple[MagicMock, MagicMock],
+            monkeypatch: pytest.MonkeyPatch,
+            *,
+            tool_providers,
         ) -> None:
             node_executions, workflow_runs = service_dependencies
-            service = _workflow_run_service_service(service_dependencies)
+            service = _workflow_run_service_service(service_dependencies, tool_providers=tool_providers)
             workflow_runs.get_workflow_run_by_id.return_value = None
             context = _workflow_run_service_request_context()
             assert (
@@ -126,7 +131,10 @@ class TestWorkflowRunServiceCases:
                 tenant_id="tenant-1", workflow_run_id="run-1", parent_node_execution_id="parent-1"
             )
             assemble.assert_called_once_with(
-                node_executions.get_workflow_tool_executions.return_value, node_executions, session=ANY
+                node_executions.get_workflow_tool_executions.return_value,
+                node_executions,
+                session=ANY,
+                tool_providers=tool_providers,
             )
             assert result == [trace]
             assert trace.process_data == {"answer": "approved"}
@@ -134,9 +142,11 @@ class TestWorkflowRunServiceCases:
         def test_get_paginate_workflow_runs_should_forward_filters_and_parse_limit(
             self,
             service_dependencies: tuple[MagicMock, MagicMock],
+            *,
+            tool_providers,
         ) -> None:
             _, workflow_runs = service_dependencies
-            service = _workflow_run_service_service(service_dependencies)
+            service = _workflow_run_service_service(service_dependencies, tool_providers=tool_providers)
             expected = MagicMock(name="pagination")
             workflow_runs.get_paginated_workflow_runs.return_value = expected
             args = TypeAdapter(WorkflowRunListArgs).validate_python(
@@ -164,9 +174,11 @@ class TestWorkflowRunServiceCases:
             self,
             service_dependencies: tuple[MagicMock, MagicMock],
             monkeypatch: pytest.MonkeyPatch,
+            *,
+            tool_providers,
         ) -> None:
             _, workflow_runs = service_dependencies
-            service = _workflow_run_service_service(service_dependencies)
+            service = _workflow_run_service_service(service_dependencies, tool_providers=tool_providers)
             run_with_message = _workflow_run(status=WorkflowExecutionStatus.RUNNING)
             run_without_message = _workflow_run(run_id="run-2")
             pagination = SimpleNamespace(data=[run_with_message, run_without_message])
@@ -196,9 +208,11 @@ class TestWorkflowRunServiceCases:
         def test_get_workflow_run_should_delegate_to_repository_by_tenant_and_app(
             self,
             service_dependencies: tuple[MagicMock, MagicMock],
+            *,
+            tool_providers,
         ) -> None:
             _, workflow_runs = service_dependencies
-            service = _workflow_run_service_service(service_dependencies)
+            service = _workflow_run_service_service(service_dependencies, tool_providers=tool_providers)
             expected = _workflow_run()
             workflow_runs.get_workflow_run_by_id.return_value = expected
 
@@ -214,9 +228,11 @@ class TestWorkflowRunServiceCases:
         def test_get_workflow_runs_count_should_forward_optional_filters(
             self,
             service_dependencies: tuple[MagicMock, MagicMock],
+            *,
+            tool_providers,
         ) -> None:
             _, workflow_runs = service_dependencies
-            service = _workflow_run_service_service(service_dependencies)
+            service = _workflow_run_service_service(service_dependencies, tool_providers=tool_providers)
             expected = {"total": 3, "succeeded": 2}
             workflow_runs.get_workflow_runs_count.return_value = expected
 
@@ -241,8 +257,10 @@ class TestWorkflowRunServiceCases:
             self,
             service_dependencies: tuple[MagicMock, MagicMock],
             monkeypatch: pytest.MonkeyPatch,
+            *,
+            tool_providers,
         ) -> None:
-            service = _workflow_run_service_service(service_dependencies)
+            service = _workflow_run_service_service(service_dependencies, tool_providers=tool_providers)
             monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=None))
 
             result = service.get_workflow_run_node_executions(
@@ -257,9 +275,11 @@ class TestWorkflowRunServiceCases:
             self,
             service_dependencies: tuple[MagicMock, MagicMock],
             monkeypatch: pytest.MonkeyPatch,
+            *,
+            tool_providers,
         ) -> None:
             node_executions, _ = service_dependencies
-            service = _workflow_run_service_service(service_dependencies)
+            service = _workflow_run_service_service(service_dependencies, tool_providers=tool_providers)
             monkeypatch.setattr(service, "get_workflow_run", MagicMock(return_value=_workflow_run()))
             expected_executions = [SimpleNamespace(id="exec-1"), SimpleNamespace(id="exec-2")]
             expected_traces = [SimpleNamespace(id="exec-1:retry:1"), SimpleNamespace(id="exec-1")]
@@ -279,27 +299,9 @@ class TestWorkflowRunServiceCases:
                 app_id="app-1",
                 workflow_run_id="run-1",
             )
-            mock_assemble.assert_called_once_with(expected_executions, node_executions, session=ANY)
-
-
-"""Tests for Console workflow pause details."""
-
-
-def _workflow_run_service_pause_service(workflow_runs: MagicMock) -> WorkflowRunService:
-    return WorkflowRunService(
-        workflow_runs=workflow_runs,
-        node_executions=MagicMock(),
-        session_factory=sessionmaker(),
-    )
-
-
-def _workflow_run_service_pause_request_context(*, workspace_id: str = "tenant-1") -> RequestContext:
-    return RequestContext(
-        request_id="request-1",
-        trace_id="trace-1",
-        account_id="account-1",
-        active_workspace_id=workspace_id,
-    )
+            mock_assemble.assert_called_once_with(
+                expected_executions, node_executions, session=ANY, tool_providers=tool_providers
+            )
 
 
 """Tests for Console workflow pause details."""
@@ -310,11 +312,12 @@ def workflow_runs() -> DifyAPISQLAlchemyWorkflowRunRepository:
     return DifyAPISQLAlchemyWorkflowRunRepository(sessionmaker())
 
 
-def _service(workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository) -> WorkflowRunService:
+def _service(workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository, *, tool_providers) -> WorkflowRunService:
     return WorkflowRunService(
         workflow_runs=workflow_runs,
         node_executions=DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sessionmaker()),
         session_factory=sessionmaker(),
+        tool_providers=tool_providers,
     )
 
 
@@ -328,7 +331,10 @@ def _request_context(*, workspace_id: str = "tenant-1") -> RequestContext:
 
 
 def test_get_pause_details_returns_none_when_run_is_not_found(
-    workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository, monkeypatch: pytest.MonkeyPatch
+    workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    tool_providers,
 ) -> None:
     lookups: list[tuple[str, str]] = []
 
@@ -337,7 +343,9 @@ def test_get_pause_details_returns_none_when_run_is_not_found(
 
     monkeypatch.setattr(workflow_runs, "get_pause_record", missing)
 
-    result = _service(workflow_runs).get_pause_details(_request_context(), workflow_run_id="run-1")
+    result = _service(workflow_runs, tool_providers=tool_providers).get_pause_details(
+        _request_context(), workflow_run_id="run-1"
+    )
 
     assert result is None
     assert lookups == [("tenant-1", "run-1")]
@@ -348,6 +356,8 @@ def test_get_pause_details_returns_empty_details_without_an_active_pause(
     workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository,
     status: WorkflowExecutionStatus,
     monkeypatch: pytest.MonkeyPatch,
+    *,
+    tool_providers,
 ) -> None:
     record = WorkflowRunPauseRecord(
         status=status,
@@ -355,13 +365,18 @@ def test_get_pause_details_returns_empty_details_without_an_active_pause(
     )
     monkeypatch.setattr(workflow_runs, "get_pause_record", lambda *_args, **_kwargs: record)
 
-    result = _service(workflow_runs).get_pause_details(_request_context(), workflow_run_id="run-1")
+    result = _service(workflow_runs, tool_providers=tool_providers).get_pause_details(
+        _request_context(), workflow_run_id="run-1"
+    )
 
     assert result == WorkflowRunPauseDetails(paused_at=None, paused_nodes=())
 
 
 def test_get_pause_details_maps_human_input_and_token(
-    workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository, monkeypatch: pytest.MonkeyPatch
+    workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    tool_providers,
 ) -> None:
     reason = HumanInputRequired(
         form_id="form-1",
@@ -395,7 +410,7 @@ def test_get_pause_details_maps_human_input_and_token(
         ),
     )
 
-    result = _service(workflow_runs).get_pause_details(
+    result = _service(workflow_runs, tool_providers=tool_providers).get_pause_details(
         _request_context(workspace_id="tenant-context"),
         workflow_run_id="run-1",
     )
@@ -416,8 +431,62 @@ def test_get_pause_details_maps_human_input_and_token(
     assert lookups == [("tenant-context", "run-1")]
 
 
+def test_get_pause_details_maps_v2_form_version_and_initiator_token(
+    workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    tool_providers,
+) -> None:
+    reason = HumanInputRequired(
+        form_id="form-2",
+        form_content="Approve?",
+        node_id="node-2",
+        node_title="V2 Approval",
+        form_version="2",
+    )
+    paused_at = datetime(2026, 1, 2, 3, 4, 5)
+    pause_model = WorkflowPause(workflow_id="workflow-1", workflow_run_id="run-1", state_object_key="state")
+    pause_model.created_at = paused_at
+    record = WorkflowRunPauseRecord(
+        status=WorkflowExecutionStatus.PAUSED,
+        pause=_PrivateWorkflowPauseEntity(pause_model=pause_model),
+    )
+    monkeypatch.setattr(workflow_runs, "get_pause_record", lambda *_args, **_kwargs: record)
+    legacy_tokens = MagicMock()
+    monkeypatch.setattr(workflow_runs, "get_legacy_form_tokens", legacy_tokens)
+    monkeypatch.setattr(
+        "services.workflow_run_service.load_workflow_pause_snapshot",
+        lambda *_args, **_kwargs: WorkflowPauseSnapshot(
+            runtime_state=RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0),
+            reasons=(reason,),
+            v2_forms={"form-2": SimpleNamespace(form_token=SecretStr("v2-token"))},
+        ),
+    )
+
+    result = _service(workflow_runs, tool_providers=tool_providers).get_pause_details(
+        _request_context(), workflow_run_id="run-1"
+    )
+
+    assert result == WorkflowRunPauseDetails(
+        paused_at=paused_at,
+        paused_nodes=(
+            WorkflowRunPausedNode(
+                node_id="node-2",
+                node_title="V2 Approval",
+                form_id="form-2",
+                form_version="2",
+                form_token="v2-token",
+            ),
+        ),
+    )
+    legacy_tokens.assert_not_called()
+
+
 def test_get_pause_details_rejects_unsupported_pause_reason(
-    workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository, monkeypatch: pytest.MonkeyPatch
+    workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    tool_providers,
 ) -> None:
     record = WorkflowRunPauseRecord(
         status=WorkflowExecutionStatus.PAUSED,
@@ -436,4 +505,6 @@ def test_get_pause_details_rejects_unsupported_pause_reason(
     )
 
     with pytest.raises(NotImplementedError, match="Pause details do not support SchedulingPause"):
-        _service(workflow_runs).get_pause_details(_request_context(), workflow_run_id="run-1")
+        _service(workflow_runs, tool_providers=tool_providers).get_pause_details(
+            _request_context(), workflow_run_id="run-1"
+        )

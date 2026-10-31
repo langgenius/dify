@@ -148,6 +148,30 @@ def install_vector(
     return AnnotationReplyService(AnnotationReplyRepository(store.sessions), AnnotationVectorRetrieval())
 
 
+def test_query_returns_none_when_annotation_setting_is_missing(
+    annotation_store: AnnotationStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with annotation_store.sessions.begin() as session:
+        setting = session.get(AppAnnotationSetting, "setting-1")
+        assert setting is not None
+        session.delete(setting)
+
+    assert query(install_vector(monkeypatch, annotation_store)) is None
+
+
+def test_query_returns_none_when_collection_binding_is_missing(
+    annotation_store: AnnotationStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with annotation_store.sessions.begin() as session:
+        binding = session.get(DatasetCollectionBinding, "binding-1")
+        assert binding is not None
+        session.delete(binding)
+
+    assert query(install_vector(monkeypatch, annotation_store)) is None
+
+
 @pytest.mark.parametrize("source", list(ConversationFromSource))
 def test_search_releases_connection_and_commits_hit(
     annotation_store: AnnotationStore,

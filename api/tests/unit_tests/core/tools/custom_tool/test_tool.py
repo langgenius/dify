@@ -309,7 +309,7 @@ class TestCustomToolCases:
 
     @staticmethod
     def test_do_http_request_handles_file_upload_and_invoke_paths(
-        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        monkeypatch: pytest.MonkeyPatch, unbound_session: Session
     ):
         openapi = {
             "parameters": [],
@@ -350,12 +350,12 @@ class TestCustomToolCases:
         monkeypatch.setattr(tool, "assembling_request", lambda parameters: {})
         monkeypatch.setattr(tool, "do_http_request", lambda *args, **kwargs: httpx.Response(200, text='{"a":1}'))
         monkeypatch.setattr(tool, "validate_and_parse_response", lambda _: ParsedResponse({"a": 1}, True))
-        messages = list(tool.invoke(session=sqlite_session, user_id="u1", tool_parameters={}))
+        messages = list(tool.invoke(session=unbound_session, user_id="u1", tool_parameters={}))
         assert [m.type for m in messages] == [ToolInvokeMessage.MessageType.JSON, ToolInvokeMessage.MessageType.TEXT]
 
         # _invoke text path
         monkeypatch.setattr(tool, "validate_and_parse_response", lambda _: ParsedResponse("plain", False))
-        messages = list(tool.invoke(session=sqlite_session, user_id="u1", tool_parameters={}))
+        messages = list(tool.invoke(session=unbound_session, user_id="u1", tool_parameters={}))
         assert len(messages) == 1
         assert messages[0].message.text == "plain"
 

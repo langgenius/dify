@@ -54,6 +54,7 @@ from models.dataset import Document as _metadata_built_in_fields_Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, ProcessRuleMode, SegmentStatus
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
+from repositories.knowledge.collection_binding_repository import DatasetCollectionBindingRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from services.enterprise import rbac_service
 from services.entities.knowledge_entities.rag_pipeline_entities import (
@@ -62,8 +63,9 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
 )
 from services.errors.base import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
+from services.errors.document import DocumentNotFoundError
 from services.knowledge import dataset_service
-from services.knowledge.dataset_service import DatasetCollectionBindingService, DatasetPermissionService, SegmentService
+from services.knowledge.dataset_service import DatasetPermissionService, SegmentService
 from services.knowledge.dataset_service import DatasetService as _dataset_service_dataset_DatasetService
 from services.knowledge.dataset_service import DocumentService as _dataset_service_lock_not_owned_DocumentService
 from services.knowledge.dataset_service import DocumentService as _metadata_built_in_fields_DocumentService
@@ -88,7 +90,6 @@ from tests.helpers.unit.services.dataset_service_test_helpers import (
     DocumentIndexingError,
     FileInfo,
     FileNotExistsError,
-    NotFound,
     NotionIcon,
     NotionInfo,
     NotionPage,
@@ -102,7 +103,6 @@ from tests.helpers.unit.services.dataset_service_test_helpers import (
     TenantAccountRole,
     WebsiteInfo,
     _make_features,
-    _make_knowledge_configuration,
     _make_lock_context,
     _make_retrieval_model,
     _make_upload_knowledge_config,
@@ -1112,8 +1112,10 @@ class TestDatasetServiceDatasetCases:
                 lambda _session, _previous_transaction: transaction_events.append("rollback"),
             )
 
-            with _dataset_service_dataset_patch("services.knowledge.dataset_service.RagPipelineService") as service_cls:
-                service_cls.return_value.get_published_workflow.side_effect = RuntimeError("boom")
+            with _dataset_service_dataset_patch(
+                "services.knowledge.dataset_service.WorkflowDefinitionStore"
+            ) as service_cls:
+                service_cls.get_published_workflow.side_effect = RuntimeError("boom")
                 with pytest.raises(RuntimeError, match="boom"):
                     _dataset_service_dataset_DatasetService._update_pipeline_knowledge_base_node_data(
                         dataset, "user-1", sqlite_session
@@ -1258,7 +1260,7 @@ class TestDatasetServiceDatasetCases:
                 _dataset_service_dataset_patch("services.knowledge.dataset_service.current_user", account),
                 _dataset_service_dataset_patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls,
                 _dataset_service_dataset_patch.object(
-                    DatasetCollectionBindingService,
+                    DatasetCollectionBindingRepository,
                     "get_dataset_collection_binding",
                     return_value=collection_binding,
                 ),
@@ -1324,162 +1326,6 @@ class TestDatasetServiceDatasetCases:
                 _dataset_service_dataset_DatasetService._check_summary_index_setting_model_changed(dataset, data)
                 is expected
             )
-
-    class TestDatasetServiceRagPipelineSettings:
-        def test_requires_current_tenant(self, unbound_session: Session) -> None:
-            account = _dataset_service_dataset_account()
-            account._current_tenant = None
-
-            with (
-                _dataset_service_dataset_patch("services.knowledge.dataset_service.current_user", account),
-                pytest.raises(ValueError, match="Current user or current tenant not found"),
-            ):
-                _dataset_service_dataset_DatasetService.update_rag_pipeline_dataset_settings(
-                    _dataset_service_dataset_dataset(),
-                    _make_knowledge_configuration(),
-                    session=unbound_session,
-                )
-
-        def test_unpublished_high_quality_settings_use_real_merged_dataset(self, sqlite_session: Session) -> None:
-            dataset = _dataset_service_dataset_dataset(indexing_technique=IndexTechniqueType.ECONOMY)
-            sqlite_session.add(dataset)
-            sqlite_session.commit()
-            account = _dataset_service_dataset_account()
-            embedding_model = SimpleNamespace(provider="provider-2", model_name="embedding-2")
-            collection_binding = DatasetCollectionBinding(
-                provider_name="provider-2",
-                model_name="embedding-2",
-                type="dataset",
-                collection_name="collection",
-            )
-            collection_binding.id = "collection-binding-2"
-
-            with (
-                _dataset_service_dataset_patch("services.knowledge.dataset_service.current_user", account),
-                _dataset_service_dataset_patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls,
-                _dataset_service_dataset_patch.object(
-                    _dataset_service_dataset_DatasetService, "check_is_multimodal_model", return_value=True
-                ),
-                _dataset_service_dataset_patch.object(
-                    DatasetCollectionBindingService,
-                    "get_dataset_collection_binding",
-                    return_value=collection_binding,
-                ),
-            ):
-                model_manager_cls.for_tenant.return_value.get_model_instance.return_value = embedding_model
-                _dataset_service_dataset_DatasetService.update_rag_pipeline_dataset_settings(
-                    dataset,
-                    _make_knowledge_configuration(
-                        embedding_model_provider="provider-2",
-                        embedding_model="embedding-2",
-                        summary_index_setting={"enable": True},
-                    ),
-                    session=sqlite_session,
-                )
-
-            persisted = sqlite_session.get(Dataset, dataset.id)
-            assert persisted is not None
-            assert persisted.indexing_technique == IndexTechniqueType.HIGH_QUALITY
-            assert persisted.embedding_model == "embedding-2"
-            assert persisted.collection_binding_id == collection_binding.id
-            assert persisted.is_multimodal is True
-
-        def test_unpublished_economy_settings_update_keyword_number(self, sqlite_session: Session) -> None:
-            dataset = _dataset_service_dataset_dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY)
-            sqlite_session.add(dataset)
-            sqlite_session.commit()
-
-            with _dataset_service_dataset_patch(
-                "services.knowledge.dataset_service.current_user", _dataset_service_dataset_account()
-            ):
-                _dataset_service_dataset_DatasetService.update_rag_pipeline_dataset_settings(
-                    dataset,
-                    _make_knowledge_configuration(
-                        indexing_technique=IndexTechniqueType.ECONOMY,
-                        keyword_number=17,
-                    ),
-                    session=sqlite_session,
-                )
-
-            persisted = sqlite_session.get(Dataset, dataset.id)
-            assert persisted is not None
-            assert persisted.indexing_technique == IndexTechniqueType.ECONOMY
-            assert persisted.keyword_number == 17
-
-        def test_published_economy_settings_commit_keyword_change_and_dispatch_no_task(
-            self, sqlite_session: Session
-        ) -> None:
-            dataset = _dataset_service_dataset_dataset(
-                indexing_technique=IndexTechniqueType.ECONOMY, chunk_structure="paragraph"
-            )
-            dataset.keyword_number = 4
-            sqlite_session.add(dataset)
-            sqlite_session.commit()
-
-            with (
-                _dataset_service_dataset_patch(
-                    "services.knowledge.dataset_service.current_user", _dataset_service_dataset_account()
-                ),
-                _dataset_service_dataset_patch(
-                    "services.knowledge.dataset_service.deal_dataset_index_update_task.delay"
-                ) as update_task,
-            ):
-                _dataset_service_dataset_DatasetService.update_rag_pipeline_dataset_settings(
-                    dataset,
-                    _make_knowledge_configuration(
-                        chunk_structure="paragraph",
-                        indexing_technique=IndexTechniqueType.ECONOMY,
-                        keyword_number=12,
-                    ),
-                    has_published=True,
-                    session=sqlite_session,
-                )
-
-            assert sqlite_session.get(Dataset, dataset.id).keyword_number == 12
-            update_task.assert_not_called()
-
-        @pytest.mark.parametrize(
-            ("dataset", "configuration", "message"),
-            [
-                (
-                    _dataset_service_dataset_dataset(chunk_structure="paragraph"),
-                    _make_knowledge_configuration(chunk_structure="sentence"),
-                    "Chunk structure is not allowed",
-                ),
-                (
-                    _dataset_service_dataset_dataset(
-                        indexing_technique=IndexTechniqueType.HIGH_QUALITY, chunk_structure="paragraph"
-                    ),
-                    _make_knowledge_configuration(
-                        chunk_structure="paragraph",
-                        indexing_technique=IndexTechniqueType.ECONOMY,
-                    ),
-                    "not allowed to be updated to economy",
-                ),
-            ],
-        )
-        def test_published_settings_reject_incompatible_changes(
-            self,
-            sqlite_session: Session,
-            dataset: Dataset,
-            configuration,
-            message: str,
-        ) -> None:
-            sqlite_session.add(dataset)
-            sqlite_session.commit()
-
-            with (
-                _dataset_service_dataset_patch(
-                    "services.knowledge.dataset_service.current_user", _dataset_service_dataset_account()
-                ),
-                pytest.raises(ValueError, match=message),
-            ):
-                _dataset_service_dataset_DatasetService.update_rag_pipeline_dataset_settings(
-                    dataset,
-                    configuration,
-                    has_published=True,
-                    session=sqlite_session,
-                )
 
     class TestDatasetPermissions:
         def test_check_dataset_permission_enforces_tenant_and_partial_members(self, sqlite_session: Session) -> None:
@@ -1974,23 +1820,33 @@ class TestDatasetServiceDocumentCases:
             sqlite_session.commit()
             visible_when_dispatched: list[bool] = []
 
-            def record_visibility(*_args: object) -> None:
+            dispatched: list[tuple[str, dict[str, object]]] = []
+
+            def record_visibility(sender: str, **kwargs: object) -> None:
                 # Cleanup and in-flight indexing run in other sessions; they must not see the row.
                 with Session(sqlite_session.get_bind()) as other_session:
                     visible_when_dispatched.append(
                         other_session.get(_dataset_service_document_Document, "doc-1") is not None
                     )
+                dispatched.append((sender, kwargs))
 
-            with _dataset_service_document_patch(
-                "events.event_handlers.clean_when_document_deleted.clean_document_task"
-            ) as clean_task:
-                clean_task.delay.side_effect = record_visibility
+            dataset_service.document_was_deleted.connect(record_visibility, weak=False)
+            try:
                 _dataset_service_document_DocumentService.delete_document(document, sqlite_session)
+            finally:
+                dataset_service.document_was_deleted.disconnect(record_visibility)
 
-            clean_task.delay.assert_called_once_with(
-                "doc-1", dataset.id, _dataset_service_document_IndexStructureType.PARAGRAPH_INDEX, "file-1"
-            )
             assert visible_when_dispatched == [False]
+            assert dispatched == [
+                (
+                    "doc-1",
+                    {
+                        "dataset_id": dataset.id,
+                        "doc_form": _dataset_service_document_IndexStructureType.PARAGRAPH_INDEX,
+                        "file_id": "file-1",
+                    },
+                )
+            ]
 
         def test_rename_document_raises_when_dataset_is_missing(self, sqlite_session: Session):
             with _dataset_service_document_patch(
@@ -2322,7 +2178,7 @@ class TestDatasetServiceDocumentCases:
                     "services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()
                 ),
                 _dataset_service_document_patch(
-                    "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
+                    "services.knowledge.dataset_service.DatasetCollectionBindingRepository.get_dataset_collection_binding",
                     return_value=binding,
                 ),
                 _dataset_service_document_patch.object(
@@ -2463,7 +2319,7 @@ class TestDatasetServiceDocumentCases:
             with _dataset_service_document_patch.object(
                 _dataset_service_document_DatasetService, "check_dataset_model_setting"
             ) as check_model_setting:
-                with pytest.raises(NotFound, match="Document not found"):
+                with pytest.raises(DocumentNotFoundError, match="Document not found"):
                     _dataset_service_document_DocumentService.update_document_with_dataset_id(
                         dataset,
                         document_data,
@@ -3653,7 +3509,7 @@ class TestDatasetServiceDocumentCases:
                 ),
                 _dataset_service_document_patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls,
                 _dataset_service_document_patch(
-                    "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
+                    "services.knowledge.dataset_service.DatasetCollectionBindingRepository.get_dataset_collection_binding",
                     return_value=binding,
                 ) as get_binding,
                 _dataset_service_document_patch.object(
@@ -3726,7 +3582,7 @@ class TestDatasetServiceDocumentCases:
                 ),
                 _dataset_service_document_patch("services.knowledge.dataset_service.ModelManager") as model_manager_cls,
                 _dataset_service_document_patch(
-                    "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding",
+                    "services.knowledge.dataset_service.DatasetCollectionBindingRepository.get_dataset_collection_binding",
                     return_value=binding,
                 ) as get_binding,
                 _dataset_service_document_patch.object(

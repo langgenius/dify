@@ -10,6 +10,7 @@ import uuid
 from collections.abc import Callable, Generator, Iterable, Mapping
 from contextlib import contextmanager
 from datetime import datetime
+from functools import partial
 from hashlib import sha256
 from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, override
 from uuid import UUID
@@ -27,6 +28,7 @@ from extensions.ext_redis import redis_client
 from extensions.redis_names import serialize_redis_name
 from graphon.file import helpers as file_helpers
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from libs.stream import close_stream
 
 if TYPE_CHECKING:
     from models import Account
@@ -419,11 +421,15 @@ def compact_generate_response(
         def generate() -> Generator[str]:
             yield from stream_response
 
-        return Response(
+        result = Response(
             _stream_with_request_context(generate()),
             status=200,
             mimetype="text/event-stream",
         )
+        # Closing an unconsumed wrapper does not enter its yield-from scope.
+        # Explicitly forward response closure to streams that own resources.
+        result.call_on_close(partial(close_stream, stream_response))
+        return result
 
 
 def length_prefixed_response(

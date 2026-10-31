@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
@@ -73,7 +73,6 @@ def generator(
     agent_records: tuple[Conversation, Message],
     monkeypatch: pytest.MonkeyPatch,
     app_records: AppGenerationRepository,
-    sqlite_session_factory: sessionmaker[Session],
     *,
     annotation_replies: AnnotationReplies,
     workflow_runtime: WorkflowExecutionDependencies,
@@ -85,9 +84,9 @@ def generator(
     monkeypatch.setattr(TraceQueueManager, "start_timer", lambda _manager: None)
     return AgentChatAppGenerator(
         dataset_tools=workflow_runtime.dataset_tools,
+        tool_invoker=workflow_runtime.agent_tool_invoker,
         annotations=annotation_replies,
         records=app_records,
-        tool_sessions=sqlite_session_factory,
         workflow_runtime=workflow_runtime,
     )
 

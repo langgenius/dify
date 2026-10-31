@@ -95,7 +95,7 @@ jobs:
               - 'api/tests/unit_tests/core/workflow/test_node_runtime.py'
               - 'api/tests/unit_tests/services/enterprise/test_rbac_service.py'
               - 'api/tests/unit_tests/repositories/workspace/test_workspace_repository.py'
-              - 'api/tests/unit_tests/services/test_agent_tool_inner_service.py'
+              - 'api/tests/unit_tests/services/agent/test_tool_invocation_service.py'
               - 'api/tests/unit_tests/services/test_vector_space_admission_service.py'
               - 'api/tests/unit_tests/services/test_knowledge_fs_capability.py'
               - 'api/tests/unit_tests/services/knowledge_fs/test_product_operations.py'
@@ -275,7 +275,7 @@ jobs:
             api/tests/unit_tests/core/workflow/test_structured_output_compatibility.py
             api/tests/unit_tests/services/enterprise/test_rbac_service.py
             api/tests/unit_tests/repositories/workspace/test_workspace_repository.py
-            api/tests/unit_tests/services/test_agent_tool_inner_service.py
+            api/tests/unit_tests/services/agent/test_tool_invocation_service.py
             api/tests/unit_tests/services/test_vector_space_admission_service.py
             api/tests/unit_tests/services/test_tidb_binding_service.py
           )

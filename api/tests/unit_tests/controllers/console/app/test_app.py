@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
+from controllers.common.errors import NotFoundError
 from controllers.console import flask_admission
 from controllers.console.app import (
     annotation as annotation_module,
@@ -236,7 +237,7 @@ class TestAppApisCases:
             with (
                 Session(sqlite_engine) as session,
                 app.test_request_context("/", json={"inputs": {}, "model_config": {}, "query": "hi"}),
-                pytest.raises(NotFound),
+                pytest.raises(NotFoundError),
             ):
                 method(
                     api,
@@ -1014,7 +1015,7 @@ class TestAppResponseModelsCases:
 
     @staticmethod
     def test_app_response_view_uses_the_caller_session_for_query_backed_fields(
-        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, *, tool_providers, workflow_queries
     ):
         app_obj = _persist_response_graph(sqlite_session)
         decoy_tenant_id = "00000000-0000-0000-0000-000000000002"
@@ -1040,7 +1041,12 @@ class TestAppResponseModelsCases:
 
         monkeypatch.setattr("services.app_service.load_annotation_reply_config", load_annotation_reply)
 
-        view = AppResponseView(app_obj, session=sqlite_session)
+        view = AppResponseView(
+            app_obj,
+            session=sqlite_session,
+            tool_providers=tool_providers,
+            workflow_queries=workflow_queries,
+        )
         site = view.site
         workflow = view.workflow
         model_config = view.app_model_config
@@ -1629,3 +1635,6 @@ class TestCreateAppPayloadCases:
         def test_rejects_unknown_mode(self):
             with pytest.raises(ValidationError):
                 CreateAppPayload.model_validate({"name": "X", "mode": "not-a-mode"})
+
+
+pytestmark = pytest.mark.usefixtures("workflow_application")

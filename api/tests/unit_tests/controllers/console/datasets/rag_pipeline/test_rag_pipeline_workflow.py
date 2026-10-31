@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Generator, Iterator
-from contextlib import contextmanager
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
 from inspect import unwrap as unwrap_all
 from typing import TypedDict, Unpack
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, create_autospec, patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -16,11 +15,11 @@ from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
-from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound
+from werkzeug.exceptions import HTTPException
 
 import models.workflow as workflow_models
 import services
-import services.rag_pipeline.rag_pipeline as rag_pipeline_service
+from controllers.common.errors import AccessDeniedError, InvalidRequestError, NotFoundError
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as module
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as workflow_controller
@@ -55,25 +54,32 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     WorkflowUpdatePayload,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.datasource.entities.datasource_entities import DatasourceParameter
 from core.plugin.entities import OAuthSchema
 from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
 from core.plugin.impl.datasource import PluginDatasourceManager
+from extensions.ext_application_services import ApplicationServices
 from fields.workflow_run_fields import node_execution_response_source
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
+from machinery.context import RequestContext
 from models.account import Account, TenantAccountRole
 from models.dataset import Dataset, Pipeline
 from models.engine import db
 from models.enums import CreatorUserRole, PermissionEnum
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from repositories.tools.provider_repository import ToolProviderRepository
+from repositories.workflow.definition_repository import workflow_record, workflow_snapshot
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
+from services.errors.workflow_service import WorkflowInUseError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
+from services.workflow.contracts import WorkflowOwner, WorkflowSnapshot
+from services.workflow.draft_service import WorkflowDraftService
+from services.workflow.execution.adapters.pipeline.pipeline_generator import PipelineGenerator
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.controllers.error_body import raised_error
 from tests.helpers.unit.model_factories import make_account as _rag_pipeline_workflow_make_account
@@ -536,7 +542,7 @@ class TestRagPipelineWorkflowCases:
 
             with (
                 config_overrides_context(RBAC_ENABLED=False),
-                pytest.raises(Forbidden),
+                pytest.raises(AccessDeniedError),
             ):
                 handler(
                     api, session, _RAG_PIPELINE_WORKFLOW_DEFAULT_WORKFLOW_TENANT_ID, account, UUID(DEFAULT_DATASET_ID)
@@ -554,7 +560,7 @@ class TestRagPipelineWorkflowCases:
 
             with (
                 patch.object(module.RagPipelineTransformService, "transform_dataset") as transform_dataset,
-                pytest.raises(NotFound),
+                pytest.raises(NotFoundError),
             ):
                 handler(
                     api,
@@ -579,7 +585,7 @@ class TestRagPipelineWorkflowCases:
             with (
                 config_overrides_context(RBAC_ENABLED=False),
                 patch.object(module.RagPipelineTransformService, "transform_dataset") as transform_dataset,
-                pytest.raises(Forbidden),
+                pytest.raises(AccessDeniedError),
             ):
                 handler(
                     api,
@@ -633,7 +639,7 @@ class TestRagPipelineWorkflowCases:
                     "transform_dataset",
                     side_effect=RagPipelineResourceNotFoundError("Pipeline not found"),
                 ),
-                pytest.raises(NotFound, match="Pipeline not found"),
+                pytest.raises(NotFoundError, match="Pipeline not found"),
             ):
                 handler(
                     api,
@@ -687,7 +693,7 @@ class TestRagPipelineWorkflowCases:
             ),
         ],
     )
-    def test_rag_pipeline_run_uses_sqlite_session(
+    def test_rag_pipeline_run_uses_injected_generator(
         app: Flask,
         sqlite_engine: Engine,
         pipeline_application: PipelineGenerator,
@@ -714,7 +720,8 @@ class TestRagPipelineWorkflowCases:
 
         assert response == {"ok": True}
         load_pipeline.assert_called_once_with(session, pipeline.id)
-        assert generate.call_args.kwargs["session"] is session
+        assert generate.call_args.kwargs["pipeline"] is pipeline
+        assert generate.call_args.kwargs["streaming"] is (api_type is module.DraftRagPipelineRunApi)
         assert generate.call_args.kwargs["generator"] is pipeline_application
         assert session.get_bind() is sqlite_engine
 
@@ -752,7 +759,7 @@ class TestRagPipelineWorkflowCases:
         ):
             handler(api, req_data, session, _account(), pipeline.id)
 
-        assert generate.call_args.kwargs["session"] is session
+        assert generate.call_args.kwargs["pipeline"] is pipeline
         assert generate.call_args.kwargs["generator"] is pipeline_application
 
 
@@ -963,7 +970,6 @@ class TestRagPipelineWorkflowApisCases:
         database = SQLiteDatabase(engine=sqlite_engine, session=database_session)
         monkeypatch.setattr(workflow_controller, "db", database)
         monkeypatch.setattr(workflow_models, "db", database)
-        monkeypatch.setattr(rag_pipeline_service, "db", database)
 
         with database_session() as session:
             default_author = Account(name="Default Author", email="default-author@example.com")
@@ -994,7 +1000,7 @@ class TestRagPipelineWorkflowApisCases:
             workflow = make_workflow(created_by=workflow_author.id)
 
             service = MagicMock()
-            service.get_draft_workflow.return_value = workflow
+            service.get_draft_workflow_record.return_value = workflow_record(workflow, sqlite_session)
 
             with (
                 app.test_request_context("/"),
@@ -1022,7 +1028,7 @@ class TestRagPipelineWorkflowApisCases:
 
             pipeline = make_pipeline()
             service = MagicMock()
-            service.get_draft_workflow.return_value = None
+            service.get_draft_workflow_record.return_value = None
 
             with (
                 app.test_request_context("/"),
@@ -1034,25 +1040,24 @@ class TestRagPipelineWorkflowApisCases:
                 with pytest.raises(DraftWorkflowNotExist):
                     method(api, sqlite_session, pipeline)
 
-        def test_sync_hash_not_match(self, app: Flask) -> None:
+        def test_sync_hash_not_match(self, app: Flask, workflow_application: ApplicationServices) -> None:
             api = DraftRagPipelineApi()
             method = unwrap(api.post)
 
             pipeline = make_pipeline()
             user = _rag_pipeline_workflow_apis_make_account()
 
-            service = MagicMock()
-            service.sync_draft_workflow.side_effect = WorkflowHashNotEqualError()
+            service = create_autospec(WorkflowDraftService, instance=True)
+            service.sync.side_effect = WorkflowHashNotEqualError()
 
             with (
                 app.test_request_context("/", json={"graph": empty_mapping(), "features": empty_mapping()}),
-                patch(
-                    "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
-                    return_value=service,
-                ),
+                patch.object(workflow_controller, "application_services", return_value=workflow_application),
+                patch.object(workflow_application.workflow_drafts, "restore", service.restore),
+                patch.object(workflow_application.workflow_drafts, "sync", service.sync),
             ):
                 with pytest.raises(DraftWorkflowNotSync):
-                    method(api, user, pipeline)
+                    method(api, RequestContext("test", None, user.id, pipeline.tenant_id), pipeline.id)
 
         def test_sync_invalid_text_plain(self, app: Flask) -> None:
             api = DraftRagPipelineApi()
@@ -1064,10 +1069,14 @@ class TestRagPipelineWorkflowApisCases:
             with (
                 app.test_request_context("/", data="bad-json", headers={"Content-Type": "text/plain"}),
             ):
-                response, status = raised_error(lambda: method(api, user, pipeline))
+                response, status = raised_error(
+                    lambda: method(api, RequestContext("test", None, user.id, pipeline.tenant_id), pipeline.id)
+                )
                 assert status == 400
 
-        def test_restore_published_workflow_to_draft_success(self, app: Flask) -> None:
+        def test_restore_published_workflow_to_draft_success(
+            self, app: Flask, workflow_application: ApplicationServices
+        ) -> None:
             api = RagPipelineDraftWorkflowRestoreApi()
             method = unwrap(api.post)
 
@@ -1078,62 +1087,70 @@ class TestRagPipelineWorkflowApisCases:
                 created_at=datetime(2024, 1, 1),
             )
 
-            service = MagicMock()
-            service.restore_published_workflow_to_draft.return_value = workflow
+            service = create_autospec(WorkflowDraftService, instance=True)
+            service.restore.return_value = workflow_snapshot(workflow)
 
             with (
                 app.test_request_context("/", method="POST"),
-                patch(
-                    "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
-                    return_value=service,
-                ),
+                patch.object(workflow_controller, "application_services", return_value=workflow_application),
+                patch.object(workflow_application.workflow_drafts, "restore", service.restore),
+                patch.object(workflow_application.workflow_drafts, "sync", service.sync),
             ):
-                result = method(api, user, pipeline, "published-workflow")
+                result = method(
+                    api, RequestContext("test", None, user.id, pipeline.tenant_id), pipeline.id, "published-workflow"
+                )
 
             assert result["result"] == "success"
             assert result["hash"] == workflow.unique_hash
 
-        def test_restore_published_workflow_to_draft_not_found(self, app: Flask) -> None:
+        def test_restore_published_workflow_to_draft_not_found(
+            self, app: Flask, workflow_application: ApplicationServices
+        ) -> None:
             api = RagPipelineDraftWorkflowRestoreApi()
             method = unwrap(api.post)
 
             pipeline = make_pipeline()
             user = _rag_pipeline_workflow_apis_make_account(id="account-1")
 
-            service = MagicMock()
-            service.restore_published_workflow_to_draft.side_effect = WorkflowNotFoundError("Workflow not found")
+            service = create_autospec(WorkflowDraftService, instance=True)
+            service.restore.side_effect = WorkflowNotFoundError("Workflow not found")
 
             with (
                 app.test_request_context("/", method="POST"),
-                patch(
-                    "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
-                    return_value=service,
-                ),
+                patch.object(workflow_controller, "application_services", return_value=workflow_application),
+                patch.object(workflow_application.workflow_drafts, "restore", service.restore),
+                patch.object(workflow_application.workflow_drafts, "sync", service.sync),
             ):
-                with pytest.raises(NotFound):
-                    method(api, user, pipeline, "published-workflow")
+                with pytest.raises(NotFoundError):
+                    method(
+                        api,
+                        RequestContext("test", None, user.id, pipeline.tenant_id),
+                        pipeline.id,
+                        "published-workflow",
+                    )
 
-        def test_restore_published_workflow_to_draft_returns_400_for_draft_source(self, app: Flask) -> None:
+        def test_restore_published_workflow_to_draft_returns_400_for_draft_source(
+            self, app: Flask, workflow_application: ApplicationServices
+        ) -> None:
             api = RagPipelineDraftWorkflowRestoreApi()
             method = unwrap(api.post)
 
             pipeline = make_pipeline()
             user = _rag_pipeline_workflow_apis_make_account(id="account-1")
 
-            service = MagicMock()
-            service.restore_published_workflow_to_draft.side_effect = IsDraftWorkflowError(
-                "source workflow must be published"
-            )
+            service = create_autospec(WorkflowDraftService, instance=True)
+            service.restore.side_effect = IsDraftWorkflowError("source workflow must be published")
 
             with (
                 app.test_request_context("/", method="POST"),
-                patch(
-                    "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
-                    return_value=service,
-                ),
+                patch.object(workflow_controller, "application_services", return_value=workflow_application),
+                patch.object(workflow_application.workflow_drafts, "restore", service.restore),
+                patch.object(workflow_application.workflow_drafts, "sync", service.sync),
             ):
                 with pytest.raises(HTTPException) as exc:
-                    method(api, user, pipeline, "draft-workflow")
+                    method(
+                        api, RequestContext("test", None, user.id, pipeline.tenant_id), pipeline.id, "draft-workflow"
+                    )
 
             assert exc.value.code == 400
             assert exc.value.description == "source workflow must be published"
@@ -1174,7 +1191,7 @@ class TestRagPipelineWorkflowApisCases:
                     side_effect=services.errors.conversation.ConversationNotExistsError(),
                 ),
             ):
-                with pytest.raises(NotFound):
+                with pytest.raises(NotFoundError):
                     method(api, NodeRunPayload(), user, pipeline, "node")
 
         def test_loop_node_success(self, app: Flask) -> None:
@@ -1205,14 +1222,12 @@ class TestRagPipelineWorkflowApisCases:
             pipeline = make_pipeline()
             user = _rag_pipeline_workflow_apis_make_account()
 
-            service = MagicMock()
-            service.run_draft_workflow_node.return_value = None
-
             with (
                 app.test_request_context("/", json={"inputs": empty_mapping()}),
-                patch(
-                    "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
-                    return_value=service,
+                patch.object(
+                    workflow_controller.application_services().knowledge.pipeline_execution,
+                    "run_draft_workflow_node",
+                    return_value=None,
                 ),
             ):
                 with pytest.raises(ValueError, match="Workflow node execution not found"):
@@ -1254,35 +1269,42 @@ class TestRagPipelineWorkflowApisCases:
 
             assert result is None
 
-        def test_publish_success(self, app: Flask) -> None:
+        @pytest.mark.parametrize("outcome", ["success", "conflict", "missing", "invalid"])
+        def test_publish(
+            self,
+            app: Flask,
+            workflow_application: ApplicationServices,
+            monkeypatch: pytest.MonkeyPatch,
+            outcome: str,
+        ) -> None:
             api = PublishedRagPipelineApi()
             method = unwrap(api.post)
+            context = RequestContext("test", None, "account-1", "tenant-1")
+            calls: list[tuple[RequestContext, str]] = []
+            workflow = workflow_snapshot(make_workflow(id="published", created_at=naive_utc_now()))
 
-            tenant_id = str(uuid4())
-            pipeline = Pipeline(
-                tenant_id=tenant_id,
-                name="test-pipeline",
-                description="test",
-                created_by=str(uuid4()),
-            )
-            user = _rag_pipeline_workflow_apis_make_account(id="u1")
+            def publish(context: RequestContext, pipeline_id: str) -> WorkflowSnapshot:
+                calls.append((context, pipeline_id))
+                if outcome == "invalid":
+                    raise workflow_controller.RagPipelinePublicationError("Invalid configuration")
+                if outcome == "conflict":
+                    raise workflow_controller.WorkflowHashNotEqualError()
+                if outcome == "missing":
+                    raise workflow_controller.WorkflowNotFoundError("Pipeline not found")
+                return workflow
 
-            workflow = make_workflow(id=str(uuid4()), created_at=naive_utc_now())
-
-            service = MagicMock()
-            service.publish_workflow.return_value = workflow
-
-            with (
-                app.test_request_context("/"),
-                patch(
-                    "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
-                    return_value=service,
-                ),
-            ):
-                result = method(api, user, pipeline)
-
-            assert result["result"] == "success"
-            assert "created_at" in result
+            monkeypatch.setattr(workflow_controller, "application_services", lambda: workflow_application)
+            monkeypatch.setattr(workflow_application.knowledge.pipeline_publication, "publish", publish)
+            with app.test_request_context("/", method="POST"):
+                if outcome == "success":
+                    result = method(api, context, "pipeline-1")
+                    assert result["result"] == "success"
+                    assert "created_at" in result
+                else:
+                    with pytest.raises(HTTPException) as error:
+                        method(api, context, "pipeline-1")
+                    assert error.value.code == {"conflict": 409, "missing": 404, "invalid": 400}[outcome]
+            assert calls == [(context, "pipeline-1")]
 
     class TestMiscApis:
         def test_task_stop(self, app: Flask) -> None:
@@ -1344,7 +1366,12 @@ class TestRagPipelineWorkflowApisCases:
             ):
                 result = method(api, RagPipelineRecommendedPluginQuery(type="all"), tenant_id, user)
                 assert result == recommended_plugins
-                service.get_recommended_plugins.assert_called_once_with("all", user, tenant_id)
+                service.get_recommended_plugins.assert_called_once_with(
+                    "all",
+                    user,
+                    tenant_id,
+                    tool_providers=workflow_controller.application_services().tools.tool_providers,
+                )
 
     class TestDefaultBlockConfigApi:
         def test_get_block_config_success(self, app: Flask) -> None:
@@ -1377,7 +1404,7 @@ class TestRagPipelineWorkflowApisCases:
                     method(api, DefaultBlockConfigQuery(q="bad-json"), pipeline, "llm")
 
     class TestPublishedAllRagPipelineApi:
-        def test_get_published_workflows_success(self, app: Flask) -> None:
+        def test_get_published_workflows_success(self, app: Flask, sqlite_session: Session) -> None:
             api = PublishedAllRagPipelineApi()
             method = unwrap(api.get)
 
@@ -1385,7 +1412,10 @@ class TestRagPipelineWorkflowApisCases:
             user = _rag_pipeline_workflow_apis_make_account(id="u1")
 
             service = MagicMock()
-            service.get_all_published_workflow.return_value = ([make_workflow(id="w1")], False)
+            service.get_all_published_workflow.return_value = (
+                [workflow_record(make_workflow(id="w1"), sqlite_session)],
+                False,
+            )
 
             with (
                 app.test_request_context("/"),
@@ -1410,11 +1440,11 @@ class TestRagPipelineWorkflowApisCases:
             with (
                 app.test_request_context("/?user_id=u2"),
             ):
-                with pytest.raises(Forbidden):
+                with pytest.raises(AccessDeniedError):
                     method(api, WorkflowListQuery(user_id="u2"), user, pipeline)
 
     class TestRagPipelineByIdApi:
-        def test_patch_success(self, app: Flask) -> None:
+        def test_patch_success(self, app: Flask, sqlite_session: Session) -> None:
             api = RagPipelineByIdApi()
             method = unwrap(api.patch)
 
@@ -1424,7 +1454,7 @@ class TestRagPipelineWorkflowApisCases:
             workflow = make_workflow(id="w1", marked_name="test")
 
             service = MagicMock()
-            service.update_workflow.return_value = workflow
+            service.update_workflow.return_value = workflow_record(workflow, sqlite_session)
 
             payload = {"marked_name": "test"}
 
@@ -1453,82 +1483,25 @@ class TestRagPipelineWorkflowApisCases:
                 assert status == 400
                 assert result == {"code": "invalid_param", "message": "No valid fields to update"}
 
-        @pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])
-        def test_delete_retires_candidates_only_after_transaction_exit(
-            self,
-            app: Flask,
-            transaction_fails: bool,
+        @pytest.mark.parametrize("in_use", [False, True])
+        def test_delete_delegates_to_application(
+            self, app: Flask, workflow_application: ApplicationServices, in_use: bool
         ) -> None:
             api = RagPipelineByIdApi()
             method = unwrap(api.delete)
-
-            pipeline = make_pipeline(tenant_id="t1", workflow_id="active-workflow")
-            user = _rag_pipeline_workflow_apis_make_account()
-
-            events: list[str] = []
-            error = RuntimeError("commit failed")
-            workflow_service = MagicMock()
-            workflow_service.delete_workflow.side_effect = lambda **_kwargs: events.append("delete") or ["inline-agent"]
-            transaction_factory = MagicMock()
-
-            @contextmanager
-            def transaction() -> Generator[Session]:
-                events.append("transaction-enter")
-                with Session() as session:
-                    yield session
-                events.append("transaction-exit")
-                if transaction_fails:
-                    raise error
-
-            transaction_factory.begin.side_effect = transaction
-
+            context = RequestContext("delete", None, "account", "tenant")
+            delete = Mock(side_effect=WorkflowInUseError("currently in use by pipeline") if in_use else None)
             with (
                 app.test_request_context("/", method="DELETE"),
-                patch(
-                    "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.WorkflowService",
-                    return_value=workflow_service,
-                ),
-                patch(
-                    "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.sessionmaker",
-                    return_value=transaction_factory,
-                ),
-                patch(
-                    "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow."
-                    "WorkflowAgentRetirementService.retire_unowned"
-                ) as retire_unowned,
+                patch.object(workflow_controller, "application_services", return_value=workflow_application),
+                patch.object(workflow_application.console_workflows, "delete", delete),
             ):
-                retire_unowned.side_effect = lambda **_kwargs: events.append("retire")
-                if transaction_fails:
-                    with pytest.raises(RuntimeError) as exc_info:
-                        method(api, user, pipeline, "old-workflow")
-                    assert exc_info.value is error
+                if in_use:
+                    with pytest.raises(InvalidRequestError, match="currently in use by pipeline"):
+                        method(api, context, "pipeline", "version")
                 else:
-                    result = method(api, user, pipeline, "old-workflow")
-                    assert result == (None, 204)
-
-            workflow_service.delete_workflow.assert_called_once()
-            assert events == ["transaction-enter", "delete", "transaction-exit"] + (
-                [] if transaction_fails else ["retire"]
-            )
-            if transaction_fails:
-                retire_unowned.assert_not_called()
-            else:
-                retire_unowned.assert_called_once_with(
-                    tenant_id=pipeline.tenant_id,
-                    agent_ids=["inline-agent"],
-                    account_id=user.id,
-                )
-
-        def test_delete_active_workflow_rejected(self, app: Flask) -> None:
-            api = RagPipelineByIdApi()
-            method = unwrap(api.delete)
-
-            pipeline = make_pipeline(tenant_id="t1", workflow_id="active-workflow")
-            user = _rag_pipeline_workflow_apis_make_account()
-
-            with app.test_request_context("/", method="DELETE"):
-                with pytest.raises(BadRequest, match="currently in use by pipeline"):
-                    method(api, user, pipeline, "active-workflow")
+                    assert method(api, context, "pipeline", "version") == (None, 204)
+            delete.assert_called_once_with(context, WorkflowOwner("pipeline", "pipeline"), "version")
 
     class TestRagPipelineWorkflowLastRunApi:
         def test_last_run_success(self, app: Flask) -> None:
@@ -1571,11 +1544,17 @@ class TestRagPipelineWorkflowApisCases:
                     return_value=service,
                 ),
             ):
-                with pytest.raises(NotFound):
+                with pytest.raises(NotFoundError):
                     method(api, pipeline, "node1")
 
     class TestRagPipelineWorkflowRunNodeExecutionListApi:
-        def test_get_node_executions_passes_current_user(self, app: Flask, sqlite_session: Session) -> None:
+        def test_get_node_executions_passes_current_user(
+            self,
+            app: Flask,
+            sqlite_session: Session,
+            *,
+            tool_providers: ToolProviderRepository,
+        ) -> None:
             api = RagPipelineWorkflowRunNodeExecutionListApi()
             method = unwrap(api.get)
 
@@ -1594,7 +1573,11 @@ class TestRagPipelineWorkflowApisCases:
 
             service = MagicMock()
             service.get_rag_pipeline_workflow_run_node_executions.return_value = [
-                node_execution_response_source(node_exec, session=sqlite_session)
+                node_execution_response_source(
+                    node_exec,
+                    session=sqlite_session,
+                    tool_providers=tool_providers,
+                )
             ]
 
             with (
@@ -1610,6 +1593,7 @@ class TestRagPipelineWorkflowApisCases:
                 pipeline=pipeline,
                 run_id=str(run_id),
                 user=user,
+                tool_providers=workflow_controller.application_services().tools.tool_providers,
             )
             assert result["data"][0]["id"] == "node-exec-1"
             assert result["data"][0]["inputs"] == {"query": "hello"}
@@ -1632,14 +1616,12 @@ class TestRagPipelineWorkflowApisCases:
                 "start_node_title": "Node",
             }
 
-            service = MagicMock()
-            service.set_datasource_variables.return_value = make_node_execution(node_id="n1")
-
             with (
                 app.test_request_context("/", json=payload),
-                patch(
-                    "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
-                    return_value=service,
+                patch.object(
+                    workflow_controller.application_services().knowledge.pipeline_execution,
+                    "set_datasource_variables",
+                    return_value=make_node_execution(node_id="n1"),
                 ),
             ):
                 result = method(api, DatasourceVariablesPayload.model_validate(payload), user, pipeline)
