@@ -269,7 +269,7 @@ export const orpcErrorMaps = (document: SwaggerDocument): Map<string, OrpcErrorE
   return errorMaps
 }
 
-const createApiConfig = (job: ApiJob): UserConfig => ({
+export const createApiConfig = (job: ApiJob): UserConfig => ({
   input: job.document,
   logs: {
     file: false,
