@@ -21,11 +21,28 @@ export function openapi(
   let server: ViteDevServer | undefined
   let groupErrors = false
   const dependencies = new Map<string, string[]>()
+  const watchedDirectories = new Set<string>()
+  // Vite recursively watches its root. Outside it, getWatched can describe
+  // only a file's parent, so remember our full directory registrations.
+  const watchDirectory = (directory: string) => {
+    if (
+      !server ||
+      watchedDirectories.has(directory) ||
+      ((directory === root || directory.startsWith(`${root}${sep}`)) &&
+        server.watcher.getWatched()[directory])
+    )
+      return
+    // Re-adding a watched directory starts another ignoreInitial scan,
+    // which can consume new inputs before their real add event.
+    server.watcher.add(directory)
+    watchedDirectories.add(directory)
+  }
   return {
     name: 'openapi-content-mapper',
     enforce: 'pre',
     configureServer(value) {
       server = value
+      watchedDirectories.clear()
     },
     configResolved(config) {
       root = config.root
@@ -92,10 +109,11 @@ export function openapi(
         const stat = statSync(dependency, { throwIfNoEntry: false })
         // Vite treats addWatchFile as an implicit import. Missing optional
         // inputs and directories belong to the watcher, not its module graph.
-        if (server && (!stat || stat.isDirectory())) server.watcher.add(dependency)
-        else this.addWatchFile(dependency)
+        if (server && (!stat || stat.isDirectory())) {
+          watchDirectory(stat?.isDirectory() ? dependency : dirname(dependency))
+        } else this.addWatchFile(dependency)
       }
-      server?.watcher.add([`${fileName}.queries.ts`, `${fileName}.errors.ts`])
+      watchDirectory(dirname(fileName))
       return {
         code: render(
           encoded === undefined ? undefined : JSON.parse(decodeURIComponent(encoded)),

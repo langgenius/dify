@@ -1,6 +1,6 @@
 /* oxlint-disable vitest/no-import-node-test, antfu/no-import-dist -- Exercise the built adapter inside a real Vite development server. */
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { createServer } from 'vite'
@@ -10,6 +10,68 @@ import { openapi } from '../dist/tooling/vite.js'
 
 const root = resolve(import.meta.dirname, '..')
 const fixture = parse(readFileSync(join(root, 'examples/petstore/pets.openapi.yaml'), 'utf8'))
+
+test('Vite watches new sidecars beside a symlink outside its root', async (t) => {
+  const dir = mkdtempSync(join(root, 'test/.external-dev-'))
+  const client = join(dir, 'client')
+  mkdirSync(client)
+  writeFileSync(
+    join(dir, 'source.json'),
+    JSON.stringify({
+      openapi: '3.1.0',
+      paths: { '/pets': { get: { responses: { 200: { description: 'OK' } } } } },
+    }),
+  )
+  const file = join(dir, 'api.openapi')
+  symlinkSync('source.json', file)
+  writeFileSync(join(client, 'entry.ts'), "export { api, query } from '../api.openapi'")
+  const server = await createServer({
+    configFile: false,
+    root: client,
+    logLevel: 'silent',
+    plugins: [openapi()],
+    server: { port: 0, watch: { useFsEvents: false, usePolling: false } },
+  })
+  t.after(async () => {
+    await server.close()
+    rmSync(dir, { recursive: true, force: true })
+  })
+  const watcherReady = new Promise((resolve) => server.watcher.once('ready', resolve))
+  await server.listen()
+  await watcherReady
+  await server.transformRequest('/entry.ts')
+  const url = `/@fs${file}`
+  await server.transformRequest(url)
+  const query = `${url}?openapi-query=%5B%22pets%22%5D`
+  assert.doesNotMatch((await server.transformRequest(query)).code, /api\.openapi\.queries\.ts/)
+  for (const [kind, source] of [
+    ['queries', "const policy = {queryOptions: {staleTime: 42}}; export {policy as 'GET /pets'};"],
+    ['errors', "const errors = {CONFLICT: {status: 409}}; export {errors as 'GET /pets'};"],
+  ]) {
+    const sidecar = `${file}.${kind}.ts`
+    const refreshed = new Promise((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error(`No Vite reload after adding ${kind}`)),
+        10000,
+      )
+      const send = server.ws.send.bind(server.ws)
+      server.ws.send = (...args) => {
+        if (args[0]?.type === 'full-reload' && args[0].triggeredBy === sidecar) {
+          clearTimeout(timeout)
+          resolve()
+        }
+        return send(...args)
+      }
+    })
+    writeFileSync(sidecar, source)
+    await refreshed
+    const path = kind === 'queries' ? ['pets'] : ['pets', 'get']
+    const transformed = await server.transformRequest(
+      `${url}?openapi-${kind === 'queries' ? 'query' : 'errors'}=${encodeURIComponent(JSON.stringify(path))}`,
+    )
+    assert(transformed.code.includes(`api.openapi.${kind}.ts`), transformed.code)
+  }
+})
 
 for (const extension of ['yaml', 'openapi']) {
   test(`Vite dev ${extension}: nested virtual modules refresh after the source changes`, async () => {

@@ -216,7 +216,8 @@ test('Vite refreshes command sources when a new backend input is added', async (
     root: directory,
     logLevel: 'silent',
     plugins: [openapi()],
-    server: { port: 0 },
+    // Exercise Linux's NodeFs watcher on macOS too; fsevents hides late add rescans.
+    server: { port: 0, watch: { useFsEvents: false, usePolling: false } },
   })
   t.after(() => server.close())
   const watcherEvents = []
