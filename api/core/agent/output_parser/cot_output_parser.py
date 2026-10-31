@@ -6,6 +6,9 @@ from typing import Any
 from core.agent.entities import AgentScratchpadUnit
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk
 
+# Keys that name the action even when the model adds other fields to the JSON blob.
+_ACTION_NAME_KEYS = frozenset({"action", "action_name", "name", "tool", "tool_name"})
+
 
 class CotAgentOutputParser:
     @classmethod
@@ -13,6 +16,13 @@ class CotAgentOutputParser:
         cls, llm_response: Generator[LLMResultChunk], usage_dict: dict[str, Any]
     ) -> Generator[str | AgentScratchpadUnit.Action]:
         def parse_action(action) -> str | AgentScratchpadUnit.Action:
+            """Convert model-generated JSON into an action, or fall back to text.
+
+            Preconditions: ``action`` is a JSON string or a decoded JSON list or object.
+            Postconditions: returns an action only when a string name and a non-null input
+            are found; every other payload is returned as readable text and never raises.
+            The prompt allows one action per step, so only the first list item is considered.
+            """
             action_name = None
             action_input = None
             if isinstance(action, str):
@@ -21,23 +31,32 @@ class CotAgentOutputParser:
                 except json.JSONDecodeError:
                     return action or ""
 
+            payload = action
             # cohere always returns a list
-            if isinstance(action, list) and len(action) == 1:
+            if isinstance(action, list) and action:
                 action = action[0]
 
+            if not isinstance(action, dict):
+                return json.dumps(payload, ensure_ascii=False)
+
+            has_known_name_key = False
             for key, value in action.items():
-                if "input" in key.lower():
+                normalized_key = key.lower()
+                if "input" in normalized_key:
                     action_input = value
-                else:
+                elif normalized_key in _ACTION_NAME_KEYS:
+                    action_name = value
+                    has_known_name_key = True
+                elif not has_known_name_key:
                     action_name = value
 
-            if action_name is not None and action_input is not None:
+            if isinstance(action_name, str) and action_input is not None:
                 return AgentScratchpadUnit.Action(
                     action_name=action_name,
                     action_input=action_input,
                 )
             else:
-                return json.dumps(action)
+                return json.dumps(payload, ensure_ascii=False)
 
         def extra_json_from_code_block(code_block) -> list[list | dict]:
             blocks = re.findall(r"```[json]*\s*([\[{].*[]}])\s*```", code_block, re.DOTALL | re.IGNORECASE)
