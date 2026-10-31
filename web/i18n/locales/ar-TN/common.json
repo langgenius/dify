@@ -61,7 +61,7 @@
   "chat.thinking": "يفكر...",
   "chat.thought": "فكر",
   "compliance.documentNotFound": "هذا المستند غير متاح حاليًا. يرجى المحاولة مرة أخرى لاحقًا أو الاتصال بالدعم.",
-  "compliance.downloadForbidden": "لا تسمح خطتك أو دورك في مساحة العمل بتنزيل هذا المستند. قم بترقية خطتك، أو اطلب من مالك مساحة العمل تنزيله.",
+  "compliance.downloadForbidden": "يمكن لمالك مساحة العمل فقط تنزيل هذا المستند، وفقط على خطة تتضمنه. اطلب من مالك مساحة العمل تنزيله.",
   "compliance.gdpr": "GDPR DPA",
   "compliance.iso27001": "شهادة ISO 27001:2022",
   "compliance.professionalUpgradeTooltip": "متاح فقط مع خطة الفريق أو أعلى.",

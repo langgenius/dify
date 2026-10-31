@@ -9,7 +9,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { useBillingErrorMessage } from '../hooks/use-billing-error-message'
+import { billingErrorMessageKey } from '../billing-error'
 import PlanComp from '../plan'
 
 const Billing: FC = () => {
@@ -23,7 +23,6 @@ const Billing: FC = () => {
       context: { silent: true },
     }),
   )
-  const getBillingErrorMessage = useBillingErrorMessage()
   const billingUrl = billingQuery.data?.url
 
   return (
@@ -48,13 +47,13 @@ const Billing: FC = () => {
           target={billingUrl ? '_blank' : undefined}
           rel={billingUrl ? 'noopener noreferrer' : undefined}
         >
-          <div className="flex flex-col gap-0.5 text-left">
+          <div className="flex flex-col gap-0.5 text-start">
             <div className="system-md-semibold text-text-primary">
               {t(($) => $.viewBillingTitle, { ns: 'billing' })}
             </div>
             <div className="system-sm-regular text-text-secondary">
-              {billingQuery.isError
-                ? getBillingErrorMessage(billingQuery.error)
+              {!billingUrl && billingQuery.isError
+                ? t(($) => $[billingErrorMessageKey(billingQuery.error)], { ns: 'billing' })
                 : t(($) => $.viewBillingDescription, { ns: 'billing' })}
             </div>
           </div>

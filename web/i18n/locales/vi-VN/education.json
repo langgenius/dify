@@ -54,6 +54,5 @@
   "toVerifiedTip.front": "Bạn hiện đủ điều kiện để có trạng thái Xác minh Giáo dục. Vui lòng nhập thông tin giáo dục của bạn bên dưới để hoàn tất quá trình và nhận một",
   "tooManyAttempts": "Thử quá nhiều lần. Vui lòng thử lại sau.",
   "useEducationDiscount": "Sử dụng giảm giá giáo dục",
-  "verifyFailed.content": "Xác minh giáo dục hiện tại của bạn có thể vẫn còn hiệu lực. Bạn có thể xác minh lại khi sắp hết hạn. Kiểm tra trạng thái của bạn trong mục Thanh toán.",
-  "verifyFailed.title": "Không thể xác minh tình trạng giáo dục của bạn"
+  "verifyFailed": "Không thể xác minh tình trạng giáo dục của bạn. Nếu bạn vừa xác minh gần đây, xác minh giáo dục hiện tại của bạn có thể vẫn còn hiệu lực. Nếu không, vui lòng thử lại sau."
 }

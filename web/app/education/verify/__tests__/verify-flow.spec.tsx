@@ -20,6 +20,17 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
 }))
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'account.education.verify.get': mockRequestVerification,
+    }),
+  }
+})
+
 vi.mock('@/app/education/user-info', () => ({
   default: () => <div>Student account</div>,
 }))
@@ -40,7 +51,7 @@ function renderFlow({
   })
   seedFeatures(queryClient, { education: { enabled: true } })
 
-  return render(<EducationVerifyFlow requestVerification={mockRequestVerification} />, { wrapper })
+  return render(<EducationVerifyFlow />, { wrapper })
 }
 
 describe('EducationVerifyFlow', () => {
@@ -71,7 +82,7 @@ describe('EducationVerifyFlow', () => {
 
     render(
       <StrictMode>
-        <EducationVerifyFlow requestVerification={mockRequestVerification} />
+        <EducationVerifyFlow />
       </StrictMode>,
       { wrapper },
     )
@@ -112,27 +123,8 @@ describe('EducationVerifyFlow', () => {
     expect(mockRequestVerification).toHaveBeenCalledTimes(2)
   })
 
-  it('explains a failed verification and points to billing instead of retrying', async () => {
-    mockRequestVerification.mockRejectedValue(
-      new ORPCError('education_verify_failed', { defined: true, status: 400 }),
-    )
-
-    renderFlow({})
-
-    expect(
-      await screen.findByRole('heading', { name: 'education.verifyFailed.title' }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('education.verifyFailed.content')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'navigation.settings.billing' })).toHaveAttribute(
-      'href',
-      '/?settings=billing',
-    )
-    expect(
-      screen.queryByRole('button', { name: 'common.errorBoundary.tryAgain' }),
-    ).not.toBeInTheDocument()
-  })
-
   it.each([
+    ['education_verify_failed', 400, 'education.verifyFailed'],
     ['education_verify_limit', 429, 'education.tooManyAttempts'],
     ['billing_request_in_progress', 429, 'billing.errors.requestInProgress'],
     ['billing_unavailable', 503, 'billing.errors.unavailable'],

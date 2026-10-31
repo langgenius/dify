@@ -61,7 +61,7 @@
   "chat.thinking": "Düşünüyor...",
   "chat.thought": "Düşünce",
   "compliance.documentNotFound": "Bu belge şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin veya destekle iletişime geçin.",
-  "compliance.downloadForbidden": "Planınız veya çalışma alanı rolünüz bu belgenin indirilmesine izin vermiyor. Planınızı yükseltin veya çalışma alanı sahibinden belgeyi indirmesini isteyin.",
+  "compliance.downloadForbidden": "Bu belgeyi yalnızca çalışma alanı sahibi ve yalnızca belgeyi içeren bir planda indirebilir. Çalışma alanı sahibinden belgeyi indirmesini isteyin.",
   "compliance.gdpr": "GDPR DPA",
   "compliance.iso27001": "ISO 27001:2022 Sertifikası",
   "compliance.professionalUpgradeTooltip": "Yalnızca Takım planı veya üstü ile mevcuttur.",

@@ -61,7 +61,7 @@
   "chat.thinking": "Suy nghĩ...",
   "chat.thought": "Tư duy",
   "compliance.documentNotFound": "Tài liệu này hiện không khả dụng. Vui lòng thử lại sau hoặc liên hệ bộ phận hỗ trợ.",
-  "compliance.downloadForbidden": "Gói hoặc vai trò của bạn trong không gian làm việc không cho phép tải xuống tài liệu này. Hãy nâng cấp gói của bạn hoặc nhờ chủ sở hữu không gian làm việc tải xuống.",
+  "compliance.downloadForbidden": "Chỉ chủ sở hữu không gian làm việc mới có thể tải xuống tài liệu này, và chỉ với gói có bao gồm tài liệu đó. Hãy nhờ chủ sở hữu không gian làm việc tải xuống.",
   "compliance.gdpr": "GDPR DPA",
   "compliance.iso27001": "Chứng nhận ISO 27001:2022",
   "compliance.professionalUpgradeTooltip": "Chỉ có sẵn với gói Team hoặc cao hơn.",

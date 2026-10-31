@@ -54,6 +54,5 @@
   "toVerifiedTip.front": "Zdaj ste upravičeni do statusa Preverjeno izobraževanje. Prosimo, vnesite svoje izobraževalne podatke spodaj, da zaključite postopek in prejmete",
   "tooManyAttempts": "Preveč poskusov. Poskusite znova pozneje.",
   "useEducationDiscount": "Uporabi izobraževalni popust",
-  "verifyFailed.content": "Vaša trenutna izobraževalna verifikacija je morda še aktivna. Ponovno se lahko verificirate, ko bo blizu poteka. Svoje stanje preverite v razdelku Zaračunavanje.",
-  "verifyFailed.title": "Vašega izobraževalnega statusa ni bilo mogoče preveriti"
+  "verifyFailed": "Vašega izobraževalnega statusa ni bilo mogoče preveriti. Če ste se nedavno verificirali, je vaša trenutna izobraževalna verifikacija morda še aktivna. V nasprotnem primeru poskusite znova pozneje."
 }

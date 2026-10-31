@@ -104,6 +104,25 @@ describe('Cloud plan payment flow', () => {
     },
   )
 
+  it('explains a failed checkout and keeps the user on the plan', async () => {
+    const user = userEvent.setup()
+    const startUrl = window.location.href
+    mockGetSubscription.mockRejectedValueOnce(
+      new ORPCError('billing_request_in_progress', {
+        defined: true,
+        status: 429,
+        message: 'Backend text',
+      }),
+    )
+    renderPlan()
+    const button = screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })
+    await user.click(button)
+    expect(await screen.findByText('billing.errors.requestInProgress')).toBeInTheDocument()
+    expect(screen.queryByText('Backend text')).not.toBeInTheDocument()
+    expect(window.location.href).toBe(startUrl)
+    expect(button).toBeEnabled()
+  })
+
   it.each([
     { currentPlan: 'sandbox', plan: 'sandbox', label: 'currentPlan' },
     { currentPlan: 'professional', plan: 'sandbox', label: 'startForFree' },

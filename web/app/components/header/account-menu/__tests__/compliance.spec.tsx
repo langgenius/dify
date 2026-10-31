@@ -1,13 +1,7 @@
 import { Menu, MenuContent, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { ORPCError } from '@orpc/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import {
-  act,
-  fireEvent,
-  render as renderWithoutPricing,
-  screen,
-  waitFor,
-} from '@testing-library/react'
+import { fireEvent, render as renderWithoutPricing, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
@@ -133,31 +127,8 @@ describe('Compliance', () => {
       })
     })
 
-    it('offers an upgrade when the plan does not allow the document', async () => {
-      const user = userEvent.setup()
-      vi.mocked(consoleClient.compliance.download.get).mockRejectedValue(
-        new ORPCError('compliance_download_forbidden', { defined: true, status: 403 }),
-      )
-      seedFeatures(queryClient, { billing: { subscription: { plan: 'team' } } })
-
-      await openMenuAndRender()
-      await user.click(getComplianceMenuItem('common.compliance.soc2Type1'))
-
-      await waitFor(() =>
-        expect(toastErrorSpy).toHaveBeenCalledWith('common.compliance.downloadForbidden', {
-          actionProps: {
-            children: 'billing.upgradeBtn.encourageShort',
-            onClick: expect.any(Function),
-          },
-        }),
-      )
-      act(() => toastErrorSpy.mock.lastCall?.[1]?.actionProps?.onClick?.({} as never))
-      await waitFor(() =>
-        expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('billing'),
-      )
-    })
-
     it.each([
+      ['compliance_download_forbidden', 403, 'common.compliance.downloadForbidden'],
       ['compliance_document_not_found', 404, 'common.compliance.documentNotFound'],
       ['compliance_rate_limit', 429, 'common.compliance.rateLimit'],
       ['billing_request_in_progress', 429, 'billing.errors.requestInProgress'],

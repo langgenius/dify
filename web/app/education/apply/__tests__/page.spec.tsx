@@ -245,27 +245,34 @@ describe('EducationApplyPage billing boundary', () => {
     ['billing_request_in_progress', 429, 'billing.errors.requestInProgress'],
     ['billing_unavailable', 503, 'billing.errors.unavailable'],
     ['billing_operation_failed', 502, 'billing.errors.operationFailed'],
-  ])('explains a %s application failure', async (code, status, message) => {
-    setupContext(true)
-    mockEducationAdd.mockRejectedValue(
-      new ORPCError(code, { defined: true, status, message: 'Backend text' }),
-    )
-    const user = userEvent.setup()
-    renderPage(false)
+  ])(
+    'explains a %s application failure next to the submit button',
+    async (code, status, message) => {
+      setupContext(true)
+      mockEducationAdd.mockRejectedValue(
+        new ORPCError(code, { defined: true, status, message: 'Backend text' }),
+      )
+      const user = userEvent.setup()
+      renderPage(false)
 
-    await user.type(
-      screen.getByRole('combobox', { name: 'education.form.schoolName.title' }),
-      'DifyUniversity',
-    )
-    await user.keyboard('{Escape}')
-    await user.click(screen.getByRole('checkbox', { name: 'education.form.terms.option.age' }))
-    await user.click(screen.getByRole('checkbox', { name: 'education.form.terms.option.inSchool' }))
-    await user.click(
-      screen.getByRole('checkbox', { name: 'education.form.terms.option.personalUse' }),
-    )
-    await user.click(screen.getByRole('button', { name: 'education.submit' }))
+      await user.type(
+        screen.getByRole('combobox', { name: 'education.form.schoolName.title' }),
+        'DifyUniversity',
+      )
+      await user.keyboard('{Escape}')
+      await user.click(screen.getByRole('checkbox', { name: 'education.form.terms.option.age' }))
+      await user.click(
+        screen.getByRole('checkbox', { name: 'education.form.terms.option.inSchool' }),
+      )
+      await user.click(
+        screen.getByRole('checkbox', { name: 'education.form.terms.option.personalUse' }),
+      )
+      await user.click(screen.getByRole('button', { name: 'education.submit' }))
 
-    await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalledWith(message))
-    expect(screen.getByRole('button', { name: 'education.submit' })).toBeInTheDocument()
-  })
+      expect(await screen.findByRole('alert')).toHaveTextContent(message)
+      expect(screen.queryByText('Backend text')).not.toBeInTheDocument()
+      expect(vi.mocked(toast.error)).not.toHaveBeenCalled()
+      expect(screen.getByRole('button', { name: 'education.submit' })).toBeInTheDocument()
+    },
+  )
 })

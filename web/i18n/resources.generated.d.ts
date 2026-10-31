@@ -1714,7 +1714,7 @@ export default interface Resources {
     'chat.thinking': 'Thinking...'
     'chat.thought': 'Thought'
     'compliance.documentNotFound': 'This document is not available right now. Please try again later or contact support.'
-    'compliance.downloadForbidden': "Your plan or workspace role doesn't allow downloading this document. Upgrade your plan, or ask the workspace owner to download it."
+    'compliance.downloadForbidden': 'Only the workspace owner can download this document, and only on a plan that includes it. Ask your workspace owner to download it.'
     'compliance.gdpr': 'GDPR DPA'
     'compliance.iso27001': 'ISO 27001:2022 Certification'
     'compliance.professionalUpgradeTooltip': 'Only available with a Team plan or above.'
@@ -3379,8 +3379,7 @@ export default interface Resources {
     'toVerifiedTip.front': 'You are now eligible for Education Verified status. Please enter your education information below to complete the process and receive an'
     tooManyAttempts: 'Too many attempts. Please try again later.'
     useEducationDiscount: 'Use education discount'
-    'verifyFailed.content': 'Your current Education Verified status may still be active. You can verify again when it is about to expire. Check your status in Billing.'
-    'verifyFailed.title': "We couldn't verify your education status"
+    verifyFailed: "We couldn't verify your education status. If you verified recently, your current Education Verified status may still be active. Otherwise, please try again later."
   }
   explore: {
     'appCard.try': 'Details'

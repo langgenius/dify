@@ -54,6 +54,5 @@
   "toVerifiedTip.front": "Sie sind jetzt berechtigt, den Status Bildung verifiziert zu erhalten. Bitte geben Sie unten Ihre Bildungsinformationen ein, um den Prozess abzuschließen und eine zu erhalten.",
   "tooManyAttempts": "Zu viele Versuche. Bitte versuchen Sie es später erneut.",
   "useEducationDiscount": "Bildungsrabatt verwenden",
-  "verifyFailed.content": "Ihre aktuelle Bildungsverifizierung ist möglicherweise noch aktiv. Sie können sich erneut verifizieren, wenn sie bald abläuft. Prüfen Sie Ihren Status unter Abrechnung.",
-  "verifyFailed.title": "Ihr Bildungsstatus konnte nicht verifiziert werden"
+  "verifyFailed": "Ihr Bildungsstatus konnte nicht verifiziert werden. Wenn Sie sich kürzlich verifiziert haben, ist Ihre aktuelle Bildungsverifizierung möglicherweise noch aktiv. Andernfalls versuchen Sie es bitte später erneut."
 }

@@ -18,8 +18,8 @@ import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { consoleClient } from '@/service/console'
+import { billingErrorMessageKey } from '../../../billing-error'
 import { ALL_PLANS } from '../../../config'
-import { useBillingErrorMessage } from '../../../hooks/use-billing-error-message'
 import { useEducationDiscount } from '../../../hooks/use-education-discount'
 import Professional from '../../assets/professional'
 import Sandbox from '../../assets/sandbox'
@@ -74,7 +74,6 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
       : undefined
   const openAsyncWindow = useAsyncWindowOpen()
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
-  const getBillingErrorMessage = useBillingErrorMessage()
   const [showEducationPricingConfirm, setShowEducationPricingConfirm] = React.useState(false)
 
   const buttonLabel =
@@ -114,7 +113,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
           },
           {
             onError: (error) => {
-              toast.error(getBillingErrorMessage(error))
+              toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
             },
           },
         )
@@ -140,7 +139,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
       // Adb Block additional tracking block the gtag, so we need to redirect directly
       window.location.href = url
     } catch (error) {
-      toast.error(getBillingErrorMessage(error))
+      toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
     } finally {
       setIsPlanActionPending(false)
     }
@@ -221,7 +220,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
             variant="tertiary"
             size={null}
             disabled={isPlanDisabled}
-            className="h-auto w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 pr-4 pl-5 system-xl-semibold whitespace-normal text-text-primary hover:bg-components-button-tertiary-bg-hover data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-text-disabled data-disabled:hover:bg-components-button-tertiary-bg-disabled data-[plan=professional]:not-data-disabled:bg-saas-dify-blue-static data-[plan=professional]:not-data-disabled:text-text-primary-on-surface data-[plan=professional]:not-data-disabled:hover:bg-saas-dify-blue-static-hover data-[plan=team]:not-data-disabled:bg-saas-background-inverted data-[plan=team]:not-data-disabled:text-background-default data-[plan=team]:not-data-disabled:hover:bg-saas-background-inverted-hover xl:whitespace-nowrap"
+            className="h-auto w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 ps-5 pe-4 system-xl-semibold whitespace-normal text-text-primary hover:bg-components-button-tertiary-bg-hover data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-text-disabled data-disabled:hover:bg-components-button-tertiary-bg-disabled data-[plan=professional]:not-data-disabled:bg-saas-dify-blue-static data-[plan=professional]:not-data-disabled:text-text-primary-on-surface data-[plan=professional]:not-data-disabled:hover:bg-saas-dify-blue-static-hover data-[plan=team]:not-data-disabled:bg-saas-background-inverted data-[plan=team]:not-data-disabled:text-background-default data-[plan=team]:not-data-disabled:hover:bg-saas-background-inverted-hover xl:whitespace-nowrap"
             onClick={handlePlanButtonClick}
           >
             <span className="min-w-0 grow text-start">{buttonLabel}</span>
@@ -230,7 +229,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
             )}
           </Button>
           {educationDiscountWarningText && (
-            <div className="absolute inset-x-0 top-full mt-1.5 text-left system-2xs-medium text-text-tertiary">
+            <div className="absolute inset-x-0 top-full mt-1.5 text-start system-2xs-medium text-text-tertiary">
               {educationDiscountWarningText}
             </div>
           )}

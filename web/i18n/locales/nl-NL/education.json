@@ -54,6 +54,5 @@
   "toVerifiedTip.front": "You are now eligible for Education Verified status. Please enter your education information below to complete the process and receive an",
   "tooManyAttempts": "Te veel pogingen. Probeer het later opnieuw.",
   "useEducationDiscount": "Gebruik onderwijskorting",
-  "verifyFailed.content": "Je huidige onderwijsverificatie is mogelijk nog actief. Je kunt opnieuw verifiëren wanneer deze bijna verloopt. Bekijk je status onder Billing.",
-  "verifyFailed.title": "We konden je onderwijsstatus niet verifiëren"
+  "verifyFailed": "We konden je onderwijsstatus niet verifiëren. Als je onlangs bent geverifieerd, is je huidige onderwijsverificatie mogelijk nog actief. Probeer het anders later opnieuw."
 }

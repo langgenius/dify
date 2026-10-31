@@ -5,13 +5,12 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { consoleClient } from '@/service/console'
-import { useBillingErrorMessage } from './use-billing-error-message'
+import { billingErrorMessageKey } from '../billing-error'
 
 export function useEducationDiscount() {
   const { t } = useTranslation(['billing'])
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const [isEducationDiscountLoading, setIsEducationDiscountLoading] = useState(false)
-  const getBillingErrorMessage = useBillingErrorMessage()
 
   const handleEducationDiscount = useCallback(async () => {
     if (isEducationDiscountLoading) return
@@ -29,11 +28,11 @@ export function useEducationDiscount() {
       )
       window.location.href = url
     } catch (error) {
-      toast.error(getBillingErrorMessage(error))
+      toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
     } finally {
       setIsEducationDiscountLoading(false)
     }
-  }, [getBillingErrorMessage, isCurrentWorkspaceManager, isEducationDiscountLoading, t])
+  }, [isCurrentWorkspaceManager, isEducationDiscountLoading, t])
 
   return {
     handleEducationDiscount,

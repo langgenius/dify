@@ -109,4 +109,27 @@ describe('Billing', () => {
       screen.queryByRole('link', { name: /billing\.viewBillingTitle/ }),
     ).not.toBeInTheDocument()
   })
+
+  it('keeps a working billing link when a background refresh fails', async () => {
+    mocks.getInvoices.mockRejectedValueOnce(
+      new ORPCError('billing_unavailable', { defined: true, status: 503 }),
+    )
+
+    const { queryClient } = renderBilling()
+    await act(() =>
+      queryClient.refetchQueries({
+        queryKey: consoleQuery.billing.invoices.get.queryOptions().queryKey,
+      }),
+    )
+
+    expect(
+      queryClient.getQueryState(consoleQuery.billing.invoices.get.queryOptions().queryKey)?.status,
+    ).toBe('error')
+    expect(screen.getByRole('link', { name: /billing\.viewBillingTitle/ })).toHaveAttribute(
+      'href',
+      'https://billing.example.com',
+    )
+    expect(screen.getByText('billing.viewBillingDescription')).toBeInTheDocument()
+    expect(screen.queryByText('billing.errors.unavailable')).not.toBeInTheDocument()
+  })
 })

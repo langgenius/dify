@@ -54,6 +54,5 @@
   "toVerifiedTip.front": "Vous êtes maintenant éligible pour le statut Vérifié en Éducation. Veuillez entrer vos informations éducatives ci-dessous pour compléter le processus et recevoir un",
   "tooManyAttempts": "Trop de tentatives. Veuillez réessayer plus tard.",
   "useEducationDiscount": "Utiliser la remise éducative",
-  "verifyFailed.content": "Votre vérification éducative actuelle est peut-être encore active. Vous pourrez vous vérifier à nouveau lorsqu'elle sera sur le point d'expirer. Consultez votre statut dans Facturation.",
-  "verifyFailed.title": "Impossible de vérifier votre statut éducatif"
+  "verifyFailed": "Impossible de vérifier votre statut éducatif. Si vous vous êtes vérifié récemment, votre vérification éducative actuelle est peut-être encore active. Sinon, veuillez réessayer plus tard."
 }

@@ -61,7 +61,7 @@
   "chat.thinking": "Myślenie...",
   "chat.thought": "Myśl",
   "compliance.documentNotFound": "Ten dokument jest obecnie niedostępny. Spróbuj ponownie później lub skontaktuj się z pomocą techniczną.",
-  "compliance.downloadForbidden": "Twój plan lub rola w przestrzeni roboczej nie pozwala na pobranie tego dokumentu. Uaktualnij plan lub poproś właściciela przestrzeni roboczej o jego pobranie.",
+  "compliance.downloadForbidden": "Tylko właściciel przestrzeni roboczej może pobrać ten dokument i tylko w planie, który go obejmuje. Poproś właściciela przestrzeni roboczej o jego pobranie.",
   "compliance.gdpr": "GDPR DPA",
   "compliance.iso27001": "Certyfikacja ISO 27001:2022",
   "compliance.professionalUpgradeTooltip": "Dostępne tylko w planie zespołowym lub wyższym.",

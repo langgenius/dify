@@ -54,6 +54,5 @@
   "toVerifiedTip.front": "您現在符合教育驗證狀態的資格。請在下面輸入您的教育資訊以完成此流程並獲得一個",
   "tooManyAttempts": "嘗試次數過多，請稍後再試。",
   "useEducationDiscount": "使用教育優惠",
-  "verifyFailed.content": "您目前的教育驗證可能仍在有效期內，接近到期時可以重新驗證。可以在賬單設定中查看驗證狀態。",
-  "verifyFailed.title": "無法驗證您的教育身分"
+  "verifyFailed": "無法驗證您的教育身分。如果您最近完成過驗證，目前的教育驗證可能仍在有效期內；否則請稍後重試。"
 }

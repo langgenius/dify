@@ -61,7 +61,7 @@
   "chat.thinking": "考え中...",
   "chat.thought": "思考",
   "compliance.documentNotFound": "このドキュメントは現在利用できません。しばらくしてからもう一度お試しいただくか、サポートにお問い合わせください。",
-  "compliance.downloadForbidden": "現在のプランまたはワークスペースのロールでは、このドキュメントをダウンロードできません。プランをアップグレードするか、ワークスペースのオーナーにダウンロードを依頼してください。",
+  "compliance.downloadForbidden": "このドキュメントをダウンロードできるのはワークスペースのオーナーのみで、対象のドキュメントを含むプランが必要です。ワークスペースのオーナーにダウンロードを依頼してください。",
   "compliance.gdpr": "GDPR データ処理契約（DPA）",
   "compliance.iso27001": "ISO 27001:2022 認証",
   "compliance.professionalUpgradeTooltip": "チームプラン以上の契約が必要です",

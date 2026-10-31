@@ -54,6 +54,5 @@
   "toVerifiedTip.front": "Artık Eğitim Doğrulandı statüsüne uygun oldunuz. Lütfen süreci tamamlamak ve bir almak için eğitim bilgilerinizi aşağıya girin.",
   "tooManyAttempts": "Çok fazla deneme. Lütfen daha sonra tekrar deneyin.",
   "useEducationDiscount": "Eğitim indirimini kullan",
-  "verifyFailed.content": "Mevcut eğitim doğrulamanız hâlâ etkin olabilir. Süresi dolmak üzereyken yeniden doğrulayabilirsiniz. Durumunuzu Faturalandırma bölümünden kontrol edin.",
-  "verifyFailed.title": "Eğitim durumunuz doğrulanamadı"
+  "verifyFailed": "Eğitim durumunuz doğrulanamadı. Yakın zamanda doğrulama yaptıysanız mevcut eğitim doğrulamanız hâlâ etkin olabilir. Aksi takdirde lütfen daha sonra tekrar deneyin."
 }

@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { useBillingErrorMessage } from '@/app/components/billing/hooks/use-billing-error-message'
+import { billingErrorMessageKey } from '@/app/components/billing/billing-error'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
@@ -43,14 +43,18 @@ type EducationApplyPageProps = {
 }
 
 const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
-  const { t } = useTranslation(['common', 'education'])
+  const { t } = useTranslation(['billing', 'common', 'education'])
   const queryClient = useQueryClient()
   const [schoolName, setSchoolName] = useState('')
   const [role, setRole] = useState<EducationRole>('Student')
   const [agreements, setAgreements] = useState<string[]>([])
   const [hasSubmittedEducation, setHasSubmittedEducation] = useState(false)
   const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false)
-  const { isPending, mutate: educationAdd } = useMutation(
+  const {
+    error: submitError,
+    isPending,
+    mutate: educationAdd,
+  } = useMutation(
     consoleQuery.account.education.post.mutationOptions({ context: { silent: true } }),
   )
   const { data: isEducationAccount = false } = useQuery(
@@ -62,7 +66,6 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
-  const getBillingErrorMessage = useBillingErrorMessage()
   const openAsyncWindow = useAsyncWindowOpen()
   const switchWorkspaceMutation = useMutation(
     consoleQuery.workspaces.switch.post.mutationOptions({ context: { silent: true } }),
@@ -93,13 +96,6 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
             toast.error(t(($) => $.submitError, { ns: 'education' }))
           }
         },
-        onError: (error) => {
-          if (isDefinedError(error) && error.code === 'education_activate_failed')
-            toast.error(t(($) => $.activateFailed, { ns: 'education' }))
-          else if (isDefinedError(error) && error.code === 'education_activate_limit')
-            toast.error(t(($) => $.tooManyAttempts, { ns: 'education' }))
-          else toast.error(getBillingErrorMessage(error))
-        },
       },
     )
   }
@@ -119,7 +115,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
         },
         {
           onError: (error) => {
-            toast.error(getBillingErrorMessage(error))
+            toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
           },
         },
       )
@@ -127,6 +123,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
       setIsOpeningBillingPortal(false)
     }
   }
+  const submitErrorCode = isDefinedError(submitError) ? submitError.code : undefined
   const renderBackToDifyButton = () => (
     <Link className={buttonVariants({ variant: 'ghost-accent' })} href="/">
       <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
@@ -160,7 +157,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
         <div className="flex w-full flex-col items-start gap-3">
           <div className="flex w-full items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
             <span
-              className="mt-0.5 mr-2 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
+              className="me-2 mt-0.5 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
               aria-hidden="true"
             />
             <div className="system-md-regular text-text-warning">
@@ -189,7 +186,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
       <div className="flex w-full flex-col items-start gap-3">
         <div className="flex w-full items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
           <span
-            className="mt-0.5 mr-2 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
+            className="me-2 mt-0.5 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
             aria-hidden="true"
           />
           <div className="system-md-regular text-text-warning">
@@ -289,6 +286,15 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
           >
             {t(($) => $.submit, { ns: 'education' })}
           </Button>
+          {submitError && (
+            <p role="alert" className="mt-2 system-sm-regular text-text-destructive">
+              {submitErrorCode === 'education_activate_failed'
+                ? t(($) => $.activateFailed, { ns: 'education' })
+                : submitErrorCode === 'education_activate_limit'
+                  ? t(($) => $.tooManyAttempts, { ns: 'education' })
+                  : t(($) => $[billingErrorMessageKey(submitError)], { ns: 'billing' })}
+            </p>
+          )}
           <div className="mt-5 mb-4 h-px bg-linear-to-r from-[rgba(16,24,40,0.08)]" />
           <a
             className="flex items-center system-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
@@ -297,7 +303,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
             rel="noopener noreferrer"
           >
             {t(($) => $.learn, { ns: 'education' })}
-            <span className="ml-1 i-ri-external-link-line size-3" aria-hidden="true" />
+            <span className="ms-1 i-ri-external-link-line size-3" aria-hidden="true" />
           </a>
         </Form>
       )}

@@ -54,6 +54,5 @@
   "toVerifiedTip.front": "Sunteți acum eligibil pentru statutul de Educație Verificată. Vă rugăm să introduceți informațiile despre educația dumneavoastră mai jos pentru a finaliza procesul și a primi un",
   "tooManyAttempts": "Prea multe încercări. Încercați din nou mai târziu.",
   "useEducationDiscount": "Folosește reducerea educațională",
-  "verifyFailed.content": "Verificarea educațională actuală poate fi încă activă. Vă puteți verifica din nou când este aproape de expirare. Verificați starea în Facturare.",
-  "verifyFailed.title": "Nu am putut verifica statutul dvs. educațional"
+  "verifyFailed": "Nu am putut verifica statutul dvs. educațional. Dacă v-ați verificat recent, verificarea educațională actuală poate fi încă activă. În caz contrar, încercați din nou mai târziu."
 }

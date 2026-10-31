@@ -54,6 +54,5 @@
   "toVerifiedTip.front": "Anda sekarang memenuhi syarat untuk status Terverifikasi Pendidikan. Silakan masukkan informasi pendidikan Anda di bawah ini untuk menyelesaikan proses dan menerima",
   "tooManyAttempts": "Terlalu banyak percobaan. Silakan coba lagi nanti.",
   "useEducationDiscount": "Gunakan diskon pendidikan",
-  "verifyFailed.content": "Verifikasi pendidikan Anda saat ini mungkin masih aktif. Anda dapat memverifikasi lagi saat akan kedaluwarsa. Periksa status Anda di Penagihan.",
-  "verifyFailed.title": "Kami tidak dapat memverifikasi status pendidikan Anda"
+  "verifyFailed": "Kami tidak dapat memverifikasi status pendidikan Anda. Jika Anda baru saja memverifikasi, verifikasi pendidikan Anda saat ini mungkin masih aktif. Jika tidak, silakan coba lagi nanti."
 }

@@ -54,6 +54,5 @@
   "toVerifiedTip.front": "You are now eligible for Education Verified status. Please enter your education information below to complete the process and receive an",
   "tooManyAttempts": "Too many attempts. Please try again later.",
   "useEducationDiscount": "Use education discount",
-  "verifyFailed.content": "Your current Education Verified status may still be active. You can verify again when it is about to expire. Check your status in Billing.",
-  "verifyFailed.title": "We couldn't verify your education status"
+  "verifyFailed": "We couldn't verify your education status. If you verified recently, your current Education Verified status may still be active. Otherwise, please try again later."
 }

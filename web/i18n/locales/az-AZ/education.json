@@ -54,6 +54,5 @@
   "toVerifiedTip.front": "Artıq təsdiqlənmiş təhsil statusu almaq hüququnuz var. Prosesi tamamlamaq üçün təhsil məlumatlarınızı aşağıya daxil edin. Əldə edəcəyiniz üstünlük:",
   "tooManyAttempts": "Həddindən çox cəhd. Zəhmət olmasa, sonra yenidən cəhd edin.",
   "useEducationDiscount": "Təhsil endirimindən istifadə et",
-  "verifyFailed.content": "Cari təhsil statusu təsdiqiniz hələ də aktiv ola bilər. Müddəti bitmək üzrə olanda yenidən təsdiqləyə bilərsiniz. Statusunuzu Ödənişlər bölməsində yoxlayın.",
-  "verifyFailed.title": "Təhsil statusunuzu təsdiqləyə bilmədik"
+  "verifyFailed": "Təhsil statusunuzu təsdiqləyə bilmədik. Bu yaxınlarda təsdiqləmisinizsə, cari təhsil statusu təsdiqiniz hələ də aktiv ola bilər. Əks halda, zəhmət olmasa, sonra yenidən cəhd edin."
 }

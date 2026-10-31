@@ -54,6 +54,5 @@
   "toVerifiedTip.front": "Ora sei idoneo per lo stato di Educazione Verificata. Per favore, inserisci le tue informazioni educative qui sotto per completare il processo e ricevere un",
   "tooManyAttempts": "Troppi tentativi. Riprova più tardi.",
   "useEducationDiscount": "Utilizza lo sconto educativo",
-  "verifyFailed.content": "La tua verifica educativa attuale potrebbe essere ancora attiva. Potrai verificarti di nuovo quando sarà in scadenza. Controlla il tuo stato in Fatturazione.",
-  "verifyFailed.title": "Non è stato possibile verificare il tuo stato educativo"
+  "verifyFailed": "Non è stato possibile verificare il tuo stato educativo. Se ti sei verificato di recente, la tua verifica educativa attuale potrebbe essere ancora attiva. Altrimenti, riprova più tardi."
 }
