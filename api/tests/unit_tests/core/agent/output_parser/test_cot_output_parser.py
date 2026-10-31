@@ -221,6 +221,13 @@ class TestCotAgentOutputParser:
         result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
         assert result == [json.dumps(payload)]
 
+    @pytest.mark.parametrize("action_input", [42, 1.5, True, ["x"]])
+    def test_unsupported_action_input_type_returns_string(self, make_chunk, usage_dict, action_input) -> None:
+        payload = {"action": "search", "action_input": action_input}
+        chunks = [make_chunk(json.dumps(payload))]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert result == [json.dumps(payload)]
+
     def test_non_action_json_keeps_non_ascii_text(self, make_chunk, usage_dict) -> None:
         chunks = [make_chunk('{"姓名": "张三"}')]
         result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))

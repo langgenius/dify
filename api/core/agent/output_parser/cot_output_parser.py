@@ -19,8 +19,8 @@ class CotAgentOutputParser:
             """Convert model-generated JSON into an action, or fall back to text.
 
             Preconditions: ``action`` is a JSON string or a decoded JSON list or object.
-            Postconditions: returns an action only when a string name and a non-null input
-            are found; every other payload is returned as readable text and never raises.
+            Postconditions: returns an action only when a string name and a dict or string
+            input are found; every other payload is returned as readable text and never raises.
             The prompt allows one action per step, so only the first list item is considered.
             """
             action_name = None
@@ -50,7 +50,7 @@ class CotAgentOutputParser:
                 elif not has_known_name_key:
                     action_name = value
 
-            if isinstance(action_name, str) and action_input is not None:
+            if isinstance(action_name, str) and isinstance(action_input, dict | str):
                 return AgentScratchpadUnit.Action(
                     action_name=action_name,
                     action_input=action_input,
