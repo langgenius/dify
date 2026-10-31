@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "Các liên hệ đã chọn sẽ bị xóa vĩnh viễn khỏi không gian làm việc này. Không thể hoàn tác hành động này.",
+  "directory.removalTitle": "Xóa liên hệ?",
+  "imPlatform.bindingDialog.clearSavedCredential": "Xóa giá trị đã lưu",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Giá trị đã lưu này sẽ bị xóa khi bạn lưu.",
+  "imPlatform.bindingDialog.replacementRequired": "Thông tin xác thực này thuộc về một tenant IM khác nên không thể lưu trực tiếp. Để chuyển tenant, bạn phải thay thế kênh IM hiện tại; thao tác này sẽ xóa toàn bộ liên kết IM tự động và thủ công. Hãy đồng bộ lại danh bạ sau khi thay thế.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Đã lưu cấu hình nhưng không thể tải thông tin chi tiết. Hãy đóng hộp thoại này rồi mở lại.",
+  "imPlatform.bindingDialog.undoClearCredential": "Hoàn tác xóa"
+}

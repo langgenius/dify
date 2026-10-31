@@ -5,7 +5,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, RootModel, ValidationError
+from pydantic import BaseModel, Field, RootModel
 from sqlalchemy.orm import Session, sessionmaker
 
 import services.errors.base
@@ -287,7 +287,7 @@ class DraftRagPipelineApi(Resource):
         elif "text/plain" in content_type:
             try:
                 payload = DraftWorkflowSyncPayload.model_validate_json(request.data)
-            except (ValueError, ValidationError) as caught_error:
+            except ValueError as caught_error:
                 raise InvalidArgumentError("Invalid JSON data") from caught_error
         else:
             raise UnsupportedMediaTypeError()

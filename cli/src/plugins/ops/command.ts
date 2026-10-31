@@ -9,7 +9,7 @@ import type {
 } from '@/plugins/commands/command'
 import { executeCall } from '@/call/execute'
 import { CALL_FLAG, CALL_FLAG_SCHEMA, CALL_FLAGS, callOptionsSchema } from '@/call/flags'
-import { Command, HELP_WORD } from '@/plugins/commands/command'
+import { Command, HELP_WORD, isCommandEffect } from '@/plugins/commands/command'
 import { GLOBAL_INPUT } from '@/plugins/global-flags'
 import { propertiesOf } from '@/protocol/shape'
 import { pinsFor } from './pins'
@@ -39,6 +39,13 @@ export function effectOf(method: string): CommandEffect | undefined {
   return METHOD_EFFECT[method.toUpperCase()]
 }
 
+// An absent effect is an older server: the method decides. A value this CLI does not
+// know shows no label rather than a guess.
+export function opEffect(op: CatalogOp): CommandEffect | undefined {
+  if (op.effect === undefined) return effectOf(op.method)
+  return isCommandEffect(op.effect) ? op.effect : undefined
+}
+
 // Parse-only: the op's own fields minus the reserved names, plus the call options its
 // kind accepts. `required` is left out on purpose — executeCall validates the assembled
 // body against the op's real schema, which the fields alone do not have to satisfy.
@@ -57,7 +64,7 @@ export function opCommand(id: string, op: CatalogOp): CommandConstructor {
   const parseSchema = flagSchema(op, options)
   return class OpCommand extends Command {
     static override summary = op.summary
-    static override effect = effectOf(op.method)
+    static override effect = opEffect(op)
     static override examples = op.examples
     static override hidden = op.internal
 

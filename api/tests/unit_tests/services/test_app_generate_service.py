@@ -2,7 +2,6 @@ import json
 import threading
 import uuid
 from collections.abc import Callable
-from contextlib import contextmanager
 from unittest.mock import MagicMock
 
 import pytest
@@ -10,7 +9,7 @@ from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 import services.app_generate_service as ags_module
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from enums import DeploymentEdition, QuotaType
 from models.account import Account
 from models.enums import AppStatus
@@ -129,12 +128,6 @@ def _make_workflow(
     )
 
 
-@contextmanager
-def _noop_rate_limit_context(rate_limit, request_id):
-    """Drop-in replacement for rate_limit_context that doesn't touch Redis."""
-    yield
-
-
 # ---------------------------------------------------------------------------
 # _build_streaming_task_on_subscribe
 # ---------------------------------------------------------------------------
@@ -162,7 +155,6 @@ class TestAppGenerateServiceCases(_RealSessionTest):
     def _common_generation(self, mocker: MockerFixture, config_overrides: Callable[..., None]) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
-        mocker.patch("services.app_generate_service.rate_limit_context", _noop_rate_limit_context)
 
     class TestBuildStreamingTaskOnSubscribe:
         def test_streams_starts_only_when_hook_is_invoked_without_creating_timer(
@@ -638,6 +630,8 @@ class TestAppGenerateServiceCases(_RealSessionTest):
         call_kwargs = gen_spy.call_args.kwargs
         assert call_kwargs.get("pause_state_config") is not None
         assert call_kwargs["pause_state_config"].state_owner_user_id == "owner-id"
+        assert call_kwargs["execution_identity"].user_id == "user-id"
+        assert call_kwargs["execution_identity"].user_from == UserFrom.ACCOUNT
 
     @pytest.mark.parametrize(
         "invoke_from",
@@ -810,10 +804,6 @@ class TestGenerateBilling(_RealSessionTest):
     @pytest.fixture(autouse=True)
     def _common(self, mocker: MockerFixture):
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
-        mocker.patch(
-            "services.app_generate_service.rate_limit_context",
-            _noop_rate_limit_context,
-        )
 
     def test_cloud_edition_consumes_quota(
         self,
@@ -1174,6 +1164,8 @@ class TestGenerateSingleIteration(_RealSessionTest):
         )
         iter_spy.assert_called_once()
         assert "session" not in iter_spy.call_args.kwargs
+        assert iter_spy.call_args.kwargs["execution_identity"].user_id == "user-id"
+        assert iter_spy.call_args.kwargs["execution_identity"].user_from == UserFrom.ACCOUNT
         assert result == {"event": "wf-iteration"}
 
     def test_invalid_mode_raises(
@@ -1259,6 +1251,8 @@ class TestGenerateSingleLoop(_RealSessionTest):
         )
         loop_spy.assert_called_once()
         assert "session" not in loop_spy.call_args.kwargs
+        assert loop_spy.call_args.kwargs["execution_identity"].user_id == "user-id"
+        assert loop_spy.call_args.kwargs["execution_identity"].user_from == UserFrom.ACCOUNT
         assert result == {"event": "wf-loop"}
 
     def test_invalid_mode_raises(

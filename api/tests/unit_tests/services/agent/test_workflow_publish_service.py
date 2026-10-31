@@ -97,24 +97,43 @@ def test_draft_sync_resolves_roster_agents(sqlite_session: Session) -> None:
         '"agent_binding":{"binding_type":"roster_agent","agent_id":"agent-a"}}}'
         '],"edges":[]}'
     )
+    roster_agents: list[Agent] = []
+    roster_snapshots: list[AgentConfigSnapshot] = []
     for agent_id in ("agent-a", "agent-b"):
-        sqlite_session.add(
+        roster_agents.append(
             Agent(
                 id=agent_id,
                 tenant_id="tenant-1",
-                name=agent_id,
+                name=f"Roster {agent_id}",
                 scope=AgentScope.ROSTER,
                 source=AgentSource.ROSTER,
                 status=AgentStatus.ACTIVE,
                 active_config_snapshot_id=f"{agent_id}-snapshot",
             )
         )
+        roster_snapshots.append(_snapshot(snapshot_id=f"{agent_id}-snapshot", agent_id=agent_id))
+    sqlite_session.add_all([*roster_agents, *roster_snapshots])
     sqlite_session.commit()
     build_workflow_agent_service(sqlite_session).synchronize_bindings(
         draft_workflow=workflow_binding_scope(draft_workflow),
         account_id="account-1",
     )
-    assert set(sqlite_session.scalars(select(WorkflowAgentNodeBinding.agent_id))) == {"agent-a", "agent-b"}
+
+    bindings = {
+        binding.node_id: binding
+        for binding in sqlite_session.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
+                WorkflowAgentNodeBinding.workflow_version == Workflow.VERSION_DRAFT,
+            )
+        ).all()
+    }
+    assert set(bindings) == {"node-a", "node-b"}
+    for node_id, agent_id in (("node-a", "agent-a"), ("node-b", "agent-b")):
+        assert bindings[node_id].binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+        assert bindings[node_id].agent_id == agent_id
+        assert bindings[node_id].current_snapshot_id == f"{agent_id}-snapshot"
+        assert bindings[node_id].created_by == "account-1"
 
 
 def test_restore_replaces_bindings_and_returns_only_replaced_inline_agent(sqlite_session: Session) -> None:
@@ -212,27 +231,38 @@ def test_publish_copy_uses_current_roster_snapshot(sqlite_session: Session) -> N
         node_job_config={},
         created_by="account-1",
     )
-    active_agent = Agent(
+    roster_agent = Agent(
         id="roster-agent",
         tenant_id="tenant-1",
-        name="Roster",
+        name="Roster Agent",
         scope=AgentScope.ROSTER,
         source=AgentSource.ROSTER,
         status=AgentStatus.ACTIVE,
         active_config_snapshot_id="active-snapshot",
     )
-    sqlite_session.add_all([binding, active_agent])
+    sqlite_session.add_all([binding, roster_agent, _snapshot(snapshot_id="active-snapshot", agent_id="roster-agent")])
     sqlite_session.commit()
+
     build_workflow_agent_service(sqlite_session).copy_agent_node_bindings_to_published(
         draft_workflow=workflow_binding_scope(draft_workflow),
         published_workflow=workflow_binding_scope(published_workflow),
     )
-    copied = sqlite_session.scalars(
-        select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == "published")
-    ).one()
+    sqlite_session.flush()
+
+    copied = sqlite_session.scalar(
+        select(WorkflowAgentNodeBinding).where(
+            WorkflowAgentNodeBinding.workflow_id == "published",
+            WorkflowAgentNodeBinding.workflow_version == "published",
+        )
+    )
+    assert copied is not None
     assert copied.agent_id == "roster-agent"
     assert copied.current_snapshot_id == "active-snapshot"
-    assert binding.current_snapshot_id == "old-snapshot"
+    assert copied.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+    # Publishing freezes the copied row only; the draft binding keeps its own snapshot.
+    draft_binding = sqlite_session.get(WorkflowAgentNodeBinding, binding.id)
+    assert draft_binding is not None
+    assert draft_binding.current_snapshot_id == "old-snapshot"
 
 
 @pytest.mark.parametrize(

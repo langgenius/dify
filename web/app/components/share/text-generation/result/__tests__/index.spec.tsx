@@ -203,6 +203,7 @@ describe('Result', () => {
         'task-1',
         AppSourceType.webApp,
         'app-1',
+        { silent: true },
       )
     })
 

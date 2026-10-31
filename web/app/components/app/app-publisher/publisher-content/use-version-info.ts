@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useInvalidateAppWorkflow, useUpdateWorkflow } from '@/service/use-workflow'
+import { getErrorMessage } from '@/utils/error-message'
 
 type VersionInfoUpdate = {
   id?: string
@@ -21,7 +22,7 @@ export function useVersionInfo({
 }) {
   const { t } = useTranslation(['workflowHistory'])
   const [isOpen, setIsOpen] = useState(false)
-  const { mutateAsync: updateWorkflow } = useUpdateWorkflow()
+  const { mutateAsync: updateWorkflow } = useUpdateWorkflow({ silent: true })
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
 
   function openEditor() {
@@ -43,8 +44,11 @@ export function useVersionInfo({
       })
       toast.success(t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflowHistory' }))
       invalidateAppWorkflow(appId)
-    } catch {
-      toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ??
+          t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }),
+      )
     } finally {
       setIsOpen(false)
     }

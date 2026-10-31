@@ -18,7 +18,7 @@ from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, UserFrom
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
@@ -193,6 +193,7 @@ class PipelineGenerator(AppInputAdapter):
             if invoke_from == InvokeFrom.PUBLISHED_PIPELINE and not is_retry:
                 document_id = document_id or document_seeds[i].id
             application_generate_entity = RagPipelineGenerateEntity(
+                user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
                 task_id=str(uuid.uuid4()),
                 app_config=pipeline_config,
                 pipeline_config=pipeline_config,
@@ -422,6 +423,7 @@ class PipelineGenerator(AppInputAdapter):
 
         # init application generate entity - use RagPipelineGenerateEntity instead
         application_generate_entity = RagPipelineGenerateEntity(
+            user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
             task_id=str(uuid.uuid4()),
             app_config=pipeline_config,
             pipeline_config=pipeline_config,
@@ -512,6 +514,7 @@ class PipelineGenerator(AppInputAdapter):
 
         # init application generate entity
         application_generate_entity = RagPipelineGenerateEntity(
+            user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
             task_id=str(uuid.uuid4()),
             app_config=pipeline_config,
             pipeline_config=pipeline_config,
