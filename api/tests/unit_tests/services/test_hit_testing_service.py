@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from models import Account
 from models.dataset import Dataset, DatasetQuery
 from services.hit_testing_service import HitTestingService
@@ -68,7 +69,12 @@ class _FakeRetrievalRecord:
 class TestHitTestingServiceRetrieveTransaction:
     """Regression tests for https://github.com/langgenius/dify/issues/38998."""
 
-    def test_retrieve_should_not_close_caller_managed_transaction(self, sqlite_session: Session) -> None:
+    def test_retrieve_should_not_close_caller_managed_transaction(
+        self,
+        sqlite_session: Session,
+        *,
+        workflow_runtime: WorkflowExecutionDependencies,
+    ) -> None:
         """retrieve() must not commit the caller-managed session mid-flow.
 
         When the caller manages the session inside a ``session.begin()`` block, an
@@ -94,7 +100,15 @@ class TestHitTestingServiceRetrieveTransaction:
             mock_format.return_value = [record]
 
             with sqlite_session.begin():
-                result = HitTestingService.retrieve(dataset, query, account, None, {}, session=sqlite_session)
+                result = HitTestingService.retrieve(
+                    dataset,
+                    query,
+                    account,
+                    None,
+                    {},
+                    session=sqlite_session,
+                    retrieval=workflow_runtime.retrieval,
+                )
 
         assert result["query"]["content"] == query
         query_log = sqlite_session.scalar(select(DatasetQuery))
@@ -128,6 +142,8 @@ class TestHitTestingServiceRetrievalMethod:
         indexing_technique: IndexTechniqueType,
         retrieval_model: dict[str, object] | None,
         expected_method: RetrievalMethod,
+        *,
+        workflow_runtime: WorkflowExecutionDependencies,
     ) -> None:
         dataset = Dataset(
             id="dataset-123",
@@ -145,6 +161,14 @@ class TestHitTestingServiceRetrievalMethod:
         ):
             no_documents: list[Document] = []
             mock_retrieve.return_value = no_documents
-            HitTestingService.retrieve(dataset, query, account, retrieval_model, {}, session=sqlite_session)
+            HitTestingService.retrieve(
+                dataset,
+                query,
+                account,
+                retrieval_model,
+                {},
+                session=sqlite_session,
+                retrieval=workflow_runtime.retrieval,
+            )
 
         assert mock_retrieve.call_args.kwargs["retrieval_method"] == expected_method
