@@ -776,6 +776,7 @@ class TestAppGeneratorExtraCases:
                 graph_runtime_state=runtime_state,
             )
         assert observed == [(user.id, expected_user_from, expected_system_user_id)]
+
     class TestWorkflowAppGeneratorValidation:
         def test_generate_stream_joins_worker_after_response_exhaustion(
             self,
@@ -886,9 +887,7 @@ class TestAppGeneratorExtraCases:
                     workflow=_app_generator_extra_workflow(),
                     node_id="",
                     user=_end_user(),
-                    execution_identity=WorkflowExecutionIdentity(
-                        user_id=_end_user().id, user_from=UserFrom.END_USER
-                    ),
+                    execution_identity=WorkflowExecutionIdentity(user_id=_end_user().id, user_from=UserFrom.END_USER),
                     args={"inputs": {}},
                     streaming=False,
                 )
@@ -991,9 +990,7 @@ class TestAppGeneratorExtraCases:
                     workflow=_app_generator_extra_workflow(),
                     node_id="node",
                     user=_end_user(),
-                    execution_identity=WorkflowExecutionIdentity(
-                        user_id=_end_user().id, user_from=UserFrom.END_USER
-                    ),
+                    execution_identity=WorkflowExecutionIdentity(user_id=_end_user().id, user_from=UserFrom.END_USER),
                     args={"inputs": None},
                     streaming=False,
                 )
