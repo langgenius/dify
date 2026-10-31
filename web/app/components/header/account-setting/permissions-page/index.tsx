@@ -11,6 +11,7 @@ import { useLocale } from '#i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { useRoleGroups } from './hooks'
 import RoleList from './role-list'
@@ -28,7 +29,7 @@ type ModalState = {
 const PAGE_SIZE = 20
 
 const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
-  const { t } = useTranslation(['permission'])
+  const { t } = useTranslation(['permission', 'common'])
   const locale = useLocale()
   const [modalState, setModalState] = useState<ModalState>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
@@ -37,13 +38,21 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
 
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
-  const { roleGroups, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage, error } =
-    useRoleGroups({
-      page: 1,
-      limit: PAGE_SIZE,
-      include_owner: 1,
-      language,
-    })
+  const {
+    roleGroups,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    error,
+    refetch,
+    isFetching,
+  } = useRoleGroups({
+    page: 1,
+    limit: PAGE_SIZE,
+    include_owner: 1,
+    language,
+  })
 
   const { mutateAsync: createWorkspaceRole } = useMutation(
     consoleQuery.workspaces.current.rbac.roles.post.mutationOptions(),
@@ -133,6 +142,17 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
             </div>
           )}
         </div>
+        {error && (
+          <div
+            role="alert"
+            className="flex flex-col items-start gap-3 system-sm-regular text-text-destructive"
+          >
+            <p>{getErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+            <Button loading={isFetching} onClick={() => void refetch()}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        )}
         <RoleList
           groups={roleGroups}
           isLoading={isLoading}

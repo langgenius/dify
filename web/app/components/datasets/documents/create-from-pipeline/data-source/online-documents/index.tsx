@@ -40,6 +40,7 @@ const OnlineDocuments = ({
 }: OnlineDocumentsProps) => {
   const { t } = useTranslation(['common'])
   const [loadError, setLoadError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const docLink = useDocLink()
   const pipelineId = useDatasetDetailContextWithSelector((s) => s.dataset?.pipeline_id)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
@@ -103,9 +104,11 @@ const OnlineDocuments = ({
       generation === requestGenerationRef.current &&
       currentCredentialId === dataSourceStore.getState().currentCredentialId
     setLoadError('')
+    setIsLoading(true)
     const handleError = (message: string) => {
       if (!isCurrentRequest()) return
       settled = true
+      setIsLoading(false)
       setLoadError(message || t(($) => $['api.actionFailed']))
     }
     // Convert datasource_parameters to inputs format for the API
@@ -137,6 +140,7 @@ const OnlineDocuments = ({
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
           if (!isCurrentRequest()) return
           settled = true
+          setIsLoading(false)
           const { setDocumentsData } = dataSourceStore.getState()
           setLoadError('')
           setDocumentsData(documentsData.data as DataSourceNotionWorkspace[])
@@ -212,7 +216,7 @@ const OnlineDocuments = ({
                 {t(($) => $['operation.retry'])}
               </Button>
             </div>
-          ) : documentsData ? (
+          ) : !isLoading || documentsData.length > 0 ? (
             <PageSelector
               key={`${currentCredentialId}:${supportBatchUpload ? 'multiple' : 'single'}`}
               checkedIds={selectedPagesId}

@@ -85,7 +85,7 @@ const credentials: DatasourceCredentialResponse[] = [
 ]
 function setup({ cached = true, credential = 'credential-1', single = false, draft = false } = {}) {
   const store = createDataSourceStore()
-  store.setState({ documentsData: cached ? documents : undefined, currentCredentialId: credential })
+  store.setState({ documentsData: cached ? documents : [], currentCredentialId: credential })
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(
     consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
@@ -280,3 +280,22 @@ it.each(['error', 'completion'])(
     expect(screen.getByText('Report')).toBeInTheDocument()
   },
 )
+
+it('shows loading for an uncached request and retry, and accepts a successful empty result', async () => {
+  const user = userEvent.setup()
+  setup({ cached: false })
+  expect(await screen.findByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
+  act(() => callbacks().onError('Documents unavailable'))
+  expect(screen.queryByRole('progressbar', { name: 'common.loading' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  expect(await screen.findByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
+  act(() =>
+    callbacks().onDataSourceNodeCompleted({
+      event: 'datasource_completed',
+      time_consuming: 0,
+      data: [],
+    }),
+  )
+  expect(screen.queryByRole('progressbar', { name: 'common.loading' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
