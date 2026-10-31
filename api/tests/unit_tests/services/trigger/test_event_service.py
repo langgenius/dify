@@ -64,8 +64,10 @@ def _prepare(harness: _Harness, subscription: TriggerSubscriptionRuntime) -> Pre
     with harness.app.test_request_context(
         "/incoming?source=github", method="POST", data=b"webhook-body", headers={"X-Webhook-Signature": "signed"}
     ):
-        TriggerHttpRequestCachingService.persist_request(request_id, request)
-        TriggerHttpRequestCachingService.persist_payload(request_id, {"count": 0, "nested": {"empty": []}})
+        TriggerHttpRequestCachingService(storage=storage).persist_request(request_id, request)
+        TriggerHttpRequestCachingService(storage=storage).persist_payload(
+            request_id, {"count": 0, "nested": {"empty": []}}
+        )
     prepared = application_services().workspaces.trigger_events.prepare(
         subscription=subscription, event_name="push", request_id=request_id
     )

@@ -9,12 +9,11 @@ from werkzeug.wrappers import Response
 from controllers.common.access_response import webhook_not_found_response
 from controllers.trigger import bp
 from controllers.trigger.webhook_request import WebhookRequestParser, WebhookRequestValidationError
-from core.trigger.debug.event_bus import TriggerDebugEventBus
-from core.trigger.debug.events import WebhookDebugEvent, build_webhook_pool_key
 from core.trigger.utils.endpoint import generate_webhook_trigger_endpoint
 from enums import QuotaType
 from extensions.ext_application_services import application_services
 from services.errors.app import QuotaExceededError
+from services.trigger.debug_events import WebhookDebugEvent, build_webhook_pool_key
 from services.trigger.webhook_service import WebhookContext, WebhookNotFoundError, build_webhook_workflow_inputs
 
 logger = logging.getLogger(__name__)
@@ -120,7 +119,7 @@ def handle_webhook_debug(webhook_id: str) -> Response | tuple[Response, int]:
                 "method": webhook_data.get("method"),
             },
         )
-        dispatch_count = TriggerDebugEventBus.dispatch(
+        dispatch_count = application_services().workspaces.trigger_debug_events.dispatch(
             tenant_id=context.tenant_id,
             event=event,
             pool_key=pool_key,
