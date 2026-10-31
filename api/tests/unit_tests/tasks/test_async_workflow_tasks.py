@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from models.enums import AppTriggerType, WorkflowRunTriggeredFrom
 from models.model import AppMode
 from repositories.workflow.definition_repository import workflow_snapshot
@@ -109,6 +109,7 @@ def test_resume_workflow_projects_the_persisted_workflow_before_resuming(
         inputs={},
         files=[],
         user_id=user.id,
+        user_from=UserFrom.ACCOUNT,
         stream=False,
         invoke_from=InvokeFrom.WEB_APP,
         workflow_execution_id=workflow_run.id,
