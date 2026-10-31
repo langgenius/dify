@@ -1,4 +1,5 @@
 {
+  "activateFailed": "Kami tidak dapat mengaktifkan diskon pendidikan Anda. Verifikasi pendidikan Anda saat ini mungkin masih aktif, atau email ini sudah tidak memenuhi syarat.",
   "applied.activeSubscription.description": "Anda memiliki langganan aktif. Anda dapat menggunakan diskon pendidikan setelah langganan Anda berakhir. Konfirmasi langganan Anda di <stripeLink>Stripe</stripeLink>.",
   "applied.noPaymentPermission.description": "Anda tidak memiliki izin pembayaran di workspace ini. Silakan beralih ke workspace di mana Anda dapat mengelola penagihan untuk menggunakan diskon pendidikan.",
   "applied.noPaymentPermission.returnHome": "Kembali ke Dify",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "kupon eksklusif 100%",
   "toVerifiedTip.end": "untuk Paket Profesional Dify.",
   "toVerifiedTip.front": "Anda sekarang memenuhi syarat untuk status Terverifikasi Pendidikan. Silakan masukkan informasi pendidikan Anda di bawah ini untuk menyelesaikan proses dan menerima",
-  "useEducationDiscount": "Gunakan diskon pendidikan"
+  "tooManyAttempts": "Terlalu banyak percobaan. Silakan coba lagi nanti.",
+  "useEducationDiscount": "Gunakan diskon pendidikan",
+  "verifyFailed": "Kami tidak dapat memverifikasi status pendidikan Anda. Jika Anda baru saja memverifikasi, verifikasi pendidikan Anda saat ini mungkin masih aktif. Jika tidak, silakan coba lagi nanti."
 }

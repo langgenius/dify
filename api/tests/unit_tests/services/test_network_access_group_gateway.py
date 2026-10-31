@@ -268,7 +268,7 @@ def test_known_reason_maps_to_service_error(
         NetworkAccessGroupGateway().get_group(TENANT_ID, GROUP_ID, ACCOUNT_ID)
 
     assert type(exc_info.value) is expected
-    assert isinstance(exc_info.value.__cause__, saas.UpstreamError)
+    assert isinstance(exc_info.value.__cause__, saas.SaasNetworkAccessPolicyUpstreamError)
 
 
 @pytest.mark.parametrize(
@@ -306,7 +306,7 @@ def test_unknown_reason_falls_back_to_status_and_is_reported(
 
     assert exc_info.value.unavailable is unavailable
     cause = exc_info.value.__cause__
-    assert isinstance(cause, saas.UpstreamError)
+    assert isinstance(cause, saas.SaasNetworkAccessPolicyUpstreamError)
     assert cause.reason == UnknownErrorReason("NETWORK_ACCESS_SHIPPED_LATER")
     [record] = [record for record in caplog.records if record.name == transport.__name__]
     assert record.levelname == "ERROR"
@@ -335,7 +335,7 @@ def test_reply_without_reason_falls_back_to_status(
 
     assert exc_info.value.unavailable is unavailable
     cause = exc_info.value.__cause__
-    assert isinstance(cause, saas.UpstreamError)
+    assert isinstance(cause, saas.SaasNetworkAccessPolicyUpstreamError)
     assert cause.reason is None
 
 
@@ -344,7 +344,7 @@ def test_unreachable_upstream_maps_to_unavailable() -> None:
         patch.object(
             saas,
             "network_access_policy_list_network_access_groups",
-            side_effect=saas.UpstreamUnavailableError("GET failed"),
+            side_effect=saas.SaasNetworkAccessPolicyUpstreamUnavailableError("GET failed"),
         ),
         pytest.raises(NetworkAccessGroupUpstreamError) as exc_info,
     ):
