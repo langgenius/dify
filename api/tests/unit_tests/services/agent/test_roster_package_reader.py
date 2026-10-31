@@ -1059,31 +1059,33 @@ def test_export_uses_current_workspace_skill_bindings(
 ) -> None:
     monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
     workspace_payload = _skill_archive("legacy-published")
-    storage = _MemoryStorage({"tools/workspace.zip": workspace_payload})
+    archive_storage_key = "tools/workspace.zip"
+    archive_file_id = "11111111-1111-4111-8111-111111111111"
+    storage = _MemoryStorage({archive_storage_key: workspace_payload})
     pool = sqlite_engine.pool
     assert isinstance(pool, QueuePool)
 
-    def load_legacy_skill(*, tenant_id: str, file_id: str) -> bytes:
-        assert tenant_id == "tenant-1"
-        assert file_id
+    def load_legacy_skill(storage_key: str) -> bytes:
+        assert storage_key == archive_storage_key
+        assert not sqlite_session.in_transaction()
         assert pool.checkedout() == 0
-        return workspace_payload
+        return storage.files[storage_key]
 
     monkeypatch.setattr(
-        "services.skill_management_service.SkillManagementService._load_tool_file_bytes",
-        staticmethod(load_legacy_skill),
+        "services.skill_management_service.storage.load_once",
+        load_legacy_skill,
     )
     archive_file = ToolFile(
         user_id="account-1",
         tenant_id="tenant-1",
         conversation_id=None,
-        file_key="tools/workspace.zip",
+        file_key=archive_storage_key,
         mimetype="application/zip",
         name="workspace-research.zip",
         size=len(workspace_payload),
         original_url=None,
     )
-    archive_file.id = "11111111-1111-4111-8111-111111111111"
+    archive_file.id = archive_file_id
     skill = Skill(
         tenant_id="tenant-1",
         name="renamed-workspace",
