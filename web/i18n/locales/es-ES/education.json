@@ -1,4 +1,5 @@
 {
+  "activateFailed": "No pudimos activar tu descuento educativo. Es posible que tu verificación educativa actual siga activa o que este correo electrónico ya no cumpla los requisitos.",
   "applied.activeSubscription.description": "Tienes una suscripción activa. Puedes usar el descuento educativo después de que expire tu suscripción. Confirma tu suscripción en <stripeLink>Stripe</stripeLink>.",
   "applied.noPaymentPermission.description": "No tienes permiso de pago en este workspace. Por favor, cambia a un workspace donde puedas gestionar la facturación para usar el descuento educativo.",
   "applied.noPaymentPermission.returnHome": "Volver a Dify",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "cupón exclusivo del 100%",
   "toVerifiedTip.end": "para el Plan Profesional de Dify.",
   "toVerifiedTip.front": "Ahora eres elegible para el estado de Educación Verificada. Por favor, introduce tu información educativa a continuación para completar el proceso y recibir un",
-  "useEducationDiscount": "Usar descuento educativo"
+  "tooManyAttempts": "Demasiados intentos. Inténtalo de nuevo más tarde.",
+  "useEducationDiscount": "Usar descuento educativo",
+  "verifyFailed": "No pudimos verificar tu estado educativo. Si te verificaste recientemente, es posible que tu verificación educativa actual siga activa. De lo contrario, inténtalo de nuevo más tarde."
 }
