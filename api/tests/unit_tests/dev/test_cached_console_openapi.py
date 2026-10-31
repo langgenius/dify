@@ -3,6 +3,7 @@
 import concurrent.futures
 import json
 import os
+import py_compile
 import shutil
 import subprocess
 import sys
@@ -145,6 +146,36 @@ def test_environment_and_file_additions_invalidate_memory_cache(backend: CacheCl
     assert added["snapshot"] != first["snapshot"]
     (api / "new_dependency.py").unlink()
     assert call()["snapshot"] != added["snapshot"]
+
+
+def test_sibling_python_models_refresh_cached_exports_without_stale_bytecode(backend: CacheClient) -> None:
+    package = backend.api.parent / "dify-agent/src/citation_fixture"
+    package.mkdir(parents=True)
+    (package / "__init__.py").touch()
+    model = package / "model.py"
+    model.write_text("FIELD = 'string'\n")
+    compiled = py_compile.compile(str(model), doraise=True)
+    assert compiled is not None
+    bytecode = Path(compiled).read_bytes()
+    # This module is imported by the export worker, not by the preloaded snapshot.
+    (backend.api / "controllers/fixture.py").write_text("from citation_fixture.model import FIELD\n")
+    backend.env["PYTHONPATH"] = os.pathsep.join([str(backend.api), str(package.parent)])
+    first = backend.export()
+    assert first["field"] == "string"
+    assert backend.export() == first
+    stat = model.stat()
+    model.write_text("FIELD = 'number'\n")
+    os.utime(model, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    changed = backend.export()
+    assert changed["field"] == "number"
+    assert changed["pid"] != first["pid"]
+    added = package / "new_model.py"
+    added.write_text("VALUE = 1\n")
+    with_added = backend.export()
+    assert with_added["pid"] != changed["pid"]
+    added.unlink()
+    assert backend.export()["pid"] != with_added["pid"]
+    assert Path(compiled).read_bytes() == bytecode
 
 
 def test_native_threads_use_fresh_exports_and_propagate_failures(backend: CacheClient) -> None:

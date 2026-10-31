@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zPaidPlanRequiredError } from './zod.gen.ts'
 import {
   zDeleteWorkflowRunArchivesByYearByMonthPath,
   zDeleteWorkflowRunArchivesByYearByMonthResponse,
@@ -26,6 +27,7 @@ export const get = oc
   })
   .input(z.object({ params: zGetWorkflowRunArchivesDownloadsByDownloadIdPath }))
   .output(zGetWorkflowRunArchivesDownloadsByDownloadIdResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const byDownloadId = {
   get,
@@ -46,6 +48,7 @@ export const post = oc
   })
   .input(z.object({ body: zPostWorkflowRunArchivesDownloadsBody }))
   .output(zPostWorkflowRunArchivesDownloadsResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const downloads = {
   post,
@@ -67,6 +70,7 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteWorkflowRunArchivesByYearByMonthPath }))
   .output(zDeleteWorkflowRunArchivesByYearByMonthResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const byMonth = {
   delete: delete_,
@@ -89,6 +93,7 @@ export const get2 = oc
     tags: ['console'],
   })
   .output(zGetWorkflowRunArchivesResponse)
+  .errors({ paid_plan_required: { status: 403, data: zPaidPlanRequiredError } })
 
 export const workflowRunArchives = {
   get: get2,

@@ -15,6 +15,7 @@ import DocumentFileIcon from '@/app/components/datasets/common/document-file-ico
 import { toast } from '@/app/notifications'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
+import { getErrorMessage } from '@/utils/error-message'
 import { resolveLogicalDocumentCitation } from '../documents/resolve-logical-document-id'
 import { newKnowledgeDocumentDetailPath } from '../routes'
 import { retrievalKnowledgeSpaceIdAtom } from './state/inputs'
@@ -92,8 +93,11 @@ function EvidenceOpenAction({ evidence }: { evidence: RetrievalEvidence }) {
           revision: citation.revision,
         }),
       )
-    } catch {
-      toast.error(t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ??
+          t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' }),
+      )
     } finally {
       setIsResolving(false)
     }

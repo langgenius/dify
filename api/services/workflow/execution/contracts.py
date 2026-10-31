@@ -16,6 +16,7 @@ from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.nodes.human_input.pause_reason import PauseReason
+from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from graphon.engine import Engine
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.engine.layer import Layer
@@ -77,6 +78,7 @@ class WorkflowRunRunner(Protocol):
         node_run_index: int = 1,
         node_execution_snapshots: tuple[NodeExecutionSnapshot, ...] = (),
         pause_reasons: Sequence[PauseReason] = (),
+        human_input_v2_forms: Mapping[str, PreparedForm] | None = None,
     ) -> None: ...
 
 

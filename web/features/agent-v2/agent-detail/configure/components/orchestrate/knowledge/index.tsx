@@ -8,6 +8,7 @@ import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   agentComposerKnowledgeRetrievalsAtom,
+  getVisibleKnowledgeRetrievals,
   removeKnowledgeRetrievalAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentKnowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
@@ -69,10 +70,12 @@ export function AgentKnowledgeRetrieval() {
   const removeKnowledgeRetrieval = useSetAtom(removeKnowledgeRetrievalAtom)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const addOptionsRef = useRef<AgentOrchestrateAddActionOptions | undefined>(undefined)
-  const knowledgeRetrievalTip = t(($) => $['agentDetail.configure.knowledgeFs.description'])
+  const knowledgeRetrievalTip = t(
+    ($) => $['agentDetail.configure.knowledgeRetrieval.empty.description'],
+  )
   const retrievalListId = useId()
   const addRetrieval = (options?: AgentOrchestrateAddActionOptions) => {
-    if (!enabled || readOnly) return
+    if (readOnly) return
     addOptionsRef.current = options
     setIsDialogOpen(true)
   }
@@ -80,34 +83,27 @@ export function AgentKnowledgeRetrieval() {
     setRetrievals(next)
     setIsDialogOpen(false)
     const added = next.find((item) => !retrievals.some((previous) => previous.id === item.id))
-    if (added) addOptionsRef.current?.onAdded?.(added)
+    if (added) addOptionsRef.current?.onAdded?.([added])
     addOptionsRef.current = undefined
   }
   useRegisterAgentOrchestrateAddAction('knowledge', addRetrieval)
 
-  const visibleRetrievals = enabled ? retrievals : retrievals.filter((item) => !item.controlSpaceId)
-  if (!enabled && visibleRetrievals.length === 0) return null
+  const visibleRetrievals = getVisibleKnowledgeRetrievals(retrievals, enabled)
 
   return (
     <>
       <ConfigureSection
-        label={
-          enabled
-            ? t(($) => $['agentDetail.configure.knowledgeFs.title'])
-            : t(($) => $['agentDetail.configure.knowledgeRetrieval.label'])
-        }
+        label={t(($) => $['agentDetail.configure.knowledgeRetrieval.label'])}
         labelId={`${retrievalListId}-label`}
         panelId={retrievalListId}
-        tip={enabled ? knowledgeRetrievalTip : undefined}
+        tip={knowledgeRetrievalTip}
         panelContentClassName="flex flex-col gap-1"
         actions={
-          enabled && (
-            <ConfigureSectionAddButton
-              ariaLabel={t(($) => $['agentDetail.configure.knowledgeFs.add'])}
-              onClick={() => addRetrieval()}
-              disabled={readOnly}
-            />
-          )
+          <ConfigureSectionAddButton
+            ariaLabel={t(($) => $['agentDetail.configure.knowledgeRetrieval.add'])}
+            onClick={() => addRetrieval()}
+            disabled={readOnly}
+          />
         }
       >
         {visibleRetrievals.length === 0 ? (
@@ -121,13 +117,14 @@ export function AgentKnowledgeRetrieval() {
               key={item.id}
               item={item}
               onDelete={() => removeKnowledgeRetrieval(item.id)}
-              onEdit={enabled ? () => addRetrieval() : undefined}
+              onEdit={() => addRetrieval()}
             />
           ))
         )}
       </ConfigureSection>
       <AgentKnowledgeRetrievalDialog
-        open={enabled && isDialogOpen}
+        open={isDialogOpen && !readOnly}
+        knowledgeFsEnabled={enabled}
         initialBindings={retrievals}
         onConfirm={confirmBindings}
         onOpenChange={(open) => {

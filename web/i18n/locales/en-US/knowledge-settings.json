@@ -16,6 +16,8 @@
   "settings.membersRequired": "Select at least one team member.",
   "settings.nameRequired": "Agent Knowledge Base name is required.",
   "settings.pageDescription": "Manage basic info, API access, and retrieval.",
+  "settings.reasoningChangeConfirm": "Confirm change",
+  "settings.reasoningChangeWarning": "Changing the system reasoning model will reprocess indexed documents and update their retrieval indexes. This takes time and incurs additional model usage costs.",
   "settings.reloadLatest": "Reload latest settings",
   "settings.rerankModelRequired": "Select a rerank model.",
   "settings.retrievalDepth": "Retrieval depth",

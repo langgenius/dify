@@ -38,6 +38,15 @@ import { useStore } from '../../store'
 import { BlockEnum, PromptRole, VarType } from '../../types'
 import { useChecklist, useChecklistBeforePublish, useWorkflowRunValidation } from '../use-checklist'
 
+const mockHitlIm = vi.hoisted(() => ({ enabled: true }))
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return mockHitlIm.enabled
+  },
+}))
+
 const marketplace = vi.hoisted(() =>
   vi.fn<
     (url: string, options: unknown) => Promise<{ data: PluginsFromMarketplaceByInfoResponse }>
@@ -49,7 +58,7 @@ vi.mock('@/service/base', async (importOriginal) => ({
 }))
 
 function createChecklistQueryClient(builtInTools: ToolProviderListResponse = []) {
-  const { queryClient } = createConsoleQueryWrapper()
+  const { queryClient } = createConsoleQueryWrapper({ features: {} })
   seedModelProviderQueries(queryClient)
   seedToolProviders(queryClient, { builtInTools, customTools: [], workflowTools: [], mcpTools: [] })
   queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
@@ -84,15 +93,15 @@ function createChecklistWrapper({ nodes, edges }: Graph, options: ChecklistOptio
     <QueryProvider>
       <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
         <WorkflowContext value={store}>
-          <CatalogProvider>
-            <DatasetsDetailProvider nodes={nodes}>
-              <ReactFlowProvider>
+          <ReactFlowProvider>
+            <CatalogProvider>
+              <DatasetsDetailProvider nodes={nodes}>
                 <ReactFlow nodes={nodes} edges={edges} />
                 {children}
                 <AppToaster timeout={0} />
-              </ReactFlowProvider>
-            </DatasetsDetailProvider>
-          </CatalogProvider>
+              </DatasetsDetailProvider>
+            </CatalogProvider>
+          </ReactFlowProvider>
         </WorkflowContext>
       </EditorResourceScope>
     </QueryProvider>
@@ -116,6 +125,7 @@ function renderChecklist(nodes: Node[], edges: Edge[], options: ChecklistOptions
 }
 
 beforeEach(() => {
+  mockHitlIm.enabled = true
   resetFixtureCounters()
   marketplace.mockReset().mockImplementation((url: string) => {
     throw new Error(`Unexpected marketplace request: ${url}`)
@@ -680,4 +690,65 @@ describe('useWorkflowRunValidation', () => {
     expect(result.current.validateBeforeRun()).toBe(true)
     expect(screen.queryByText('workflow.panel.checklistTip')).not.toBeInTheDocument()
   })
+})
+
+describe('HITL release gate in workflow validation', () => {
+  it.each([
+    { version: '1', enabled: false, allowed: true },
+    { version: '2', enabled: false, allowed: false },
+    { version: '2', enabled: true, allowed: true },
+  ])(
+    'validates V$version with enabled=$enabled before running and publishing',
+    async ({ version, enabled, allowed }) => {
+      mockHitlIm.enabled = enabled
+      const start = createInputNode()
+      const humanInput = createNode({
+        id: 'review',
+        data: {
+          type: BlockEnum.HumanInput,
+          title: 'Review',
+          version,
+          form_content: 'Please approve',
+          inputs: [],
+          user_actions: [{ id: 'approve', title: 'Approve', button_style: 'primary' }],
+          timeout: 36,
+          timeout_unit: 'hour',
+          ...(version === '1'
+            ? { delivery_methods: [{ id: 'webapp', type: 'webapp', enabled: true }] }
+            : {
+                recipients_spec: [{ type: 'initiator' }],
+                message_template: { subject: 'Review request', body: 'Please review {{#url#}}' },
+                debug_mode: { enabled: false, channels: [] },
+              }),
+        },
+      })
+      const { wrapper } = createChecklistWrapper({
+        nodes: [start, humanInput],
+        edges: [createEdge({ source: 'start', target: 'review' })],
+      })
+      const { result } = renderHook(
+        () => ({
+          run: useWorkflowRunValidation(),
+          publish: useChecklistBeforePublish(),
+        }),
+        { wrapper },
+      )
+
+      expect(result.current.run.hasValidationErrors).toBe(!allowed)
+      if (!allowed) {
+        expect(result.current.run.warningNodes).toEqual([
+          expect.objectContaining({
+            id: 'review',
+            errorMessages: ['workflow.nodes.humanInputV2.disabled'],
+          }),
+        ])
+      }
+      act(() => {
+        expect(result.current.run.validateBeforeRun()).toBe(allowed)
+      })
+      await act(async () => {
+        expect(await result.current.publish.handleCheckBeforePublish()).toBe(allowed)
+      })
+    },
+  )
 })

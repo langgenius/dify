@@ -10,6 +10,7 @@ import {
 } from '@langgenius/dify-ui/breadcrumb'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -130,13 +131,13 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
             <DialogTrigger
               handle={gotoAnythingDialogHandle}
               render={
-                <button
-                  type="button"
+                <IconButton
+                  size="lg"
                   aria-label={tApp(($) => $['gotoAnything.searchTitle'])}
-                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
+                  className="shrink-0 rounded-[10px] transition-colors"
                 >
                   <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
-                </button>
+                </IconButton>
               }
             />
           }

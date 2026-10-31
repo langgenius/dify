@@ -133,6 +133,8 @@ class SegmentUpdateState:
     content: str
     enabled: bool
     keywords: tuple[str, ...] | None
+    # The stored QA answer, or None when the segment has none (non-QA documents).
+    answer: str | None
 
 
 class SegmentStore(Protocol):
@@ -766,17 +768,18 @@ class SegmentMutationService:
         if not previous.enabled and args.enabled is not True:
             raise ValueError("Can't update disabled segment")
         content = args.content or previous.content
+        answer = args.answer if "answer" in args.model_fields_set else previous.answer
         content_changed = content != previous.content
         keyword_changed = bool(args.keywords) and Counter(previous.keywords or ()) != Counter(args.keywords or ())
         changes: dict[str, object] = {
             "content": content,
-            "word_count": len(content) + (len(args.answer or "") if scope.document.doc_form == "qa_model" else 0),
+            "word_count": len(content) + (len(answer or "") if scope.document.doc_form == "qa_model" else 0),
             "enabled": True,
             "disabled_at": None,
             "disabled_by": None,
         }
         if scope.document.doc_form == "qa_model":
-            changes["answer"] = args.answer
+            changes["answer"] = answer
         if keyword_changed and not content_changed:
             changes["keywords"] = args.keywords
         try:
@@ -786,7 +789,7 @@ class SegmentMutationService:
                     index_node_hash=self._text_hash(content),
                     tokens=self._index.count_tokens(
                         scope.dataset,
-                        content + (args.answer or "") if scope.document.doc_form == "qa_model" else content,
+                        content + (answer or "") if scope.document.doc_form == "qa_model" else content,
                     ),
                     status="completed",
                     indexing_at=now,

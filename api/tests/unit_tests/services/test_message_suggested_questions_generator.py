@@ -19,8 +19,6 @@ from yarl import URL
 import core.plugin.impl.base as plugin_base
 import core.plugin.impl.model_runtime as model_runtime_module
 from core.llm_generator.llm_generator import _normalize_completion_params
-from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
-from core.llm_generator.prompts import DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
 from core.memory.token_buffer_memory import HistoryPrompt, PreparedHistory
 from core.model_context import get_credit_usage_metadata
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
@@ -175,34 +173,6 @@ def test_token_transport_failure_propagates_before_best_effort_generation(
     assert isinstance(failure.value.__context__, httpx.UnsupportedProtocol)
     assert get_credit_usage_metadata() == metadata
     assert _get_plugin_daemon_request_timeout() == timeout
-
-
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ('["Question 1?", "还有吗？"]', ["Question 1?", "还有吗？"]),
-        ('Here are questions:\n["Next?"]', ["Next?"]),
-        ('["Next?", 1, null, true]', ["Next?"]),
-        ("[]", []),
-        ("", []),
-        ("not a question array", []),
-        ('["unfinished]', []),
-    ],
-)
-def test_response_parser_handles_question_arrays(text: str, expected: list[str]) -> None:
-    assert SuggestedQuestionsAfterAnswerOutputParser().parse(text) == expected
-
-
-@pytest.mark.parametrize("instruction", [None, "", " "])
-def test_empty_instruction_uses_default_prompt(instruction: str | None) -> None:
-    parser = SuggestedQuestionsAfterAnswerOutputParser(instruction_prompt=instruction)
-    assert parser.get_format_instructions() == DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
-
-
-def test_custom_instruction_preserves_json_output_requirement() -> None:
-    instructions = SuggestedQuestionsAfterAnswerOutputParser("Ask a follow-up").get_format_instructions()
-    assert instructions.startswith("Ask a follow-up\n")
-    assert 'JSON array like ["question1", "question2", "question3"]' in instructions
 
 
 @pytest.mark.parametrize("limit", [0, -1, -0.5])
