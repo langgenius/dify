@@ -133,6 +133,8 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
   const currentProvider = providers.find((provider) => provider.key === localeData.type)
 
   const handleDataTypeChange = (type: string) => {
+    if (localeDataRef.current.type === type) return
+
     let config: undefined | Record<string, string>
     const currProvider = providers.find((provider) => provider.key === type)
 

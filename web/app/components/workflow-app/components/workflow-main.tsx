@@ -158,7 +158,9 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
               3,
           },
           opening: {
-            enabled: !!features.opening_statement,
+            enabled:
+              !!features.opening_statement?.trim() ||
+              !!features.suggested_questions?.some((question: string) => question.trim()),
             opening_statement: features.opening_statement,
             suggested_questions: features.suggested_questions,
           },
