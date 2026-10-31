@@ -19,13 +19,13 @@ from models.workflow import WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.account_errors import AccountNotFoundError
+from services.app.generation.runtime import AppGenerationRuntime
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskControlService
 from services.errors.llm import InvokeRateLimitError
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationService
-from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
@@ -416,7 +416,7 @@ def test_workflow_run_revalidates_app_while_stop_uses_admission_snapshot(
     action: str,
     *,
     workflow_variables: WorkflowExecutionVariables,
-    workflow_runtime: WorkflowRuntime,
+    workflow_runtime: AppGenerationRuntime,
 ) -> None:
     def remove_app() -> None:
         with sqlite_session_factory.begin() as session:

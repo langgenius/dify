@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import TypedDict, cast
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -19,6 +20,26 @@ from tests.helpers.unit.model_factories import make_account, make_app, make_conv
 
 _NOW = datetime(2026, 1, 1)
 _CONTEXT = RequestContext("request", None, "account-1", "tenant-1")
+
+
+class _ToolCallResult(TypedDict):
+    tool_icon: object
+
+
+class _IterationResult(TypedDict):
+    tool_calls: list[_ToolCallResult]
+    thought: str | None
+
+
+class _MetaResult(TypedDict):
+    executor: str
+    total_tokens: int
+    iterations: int
+
+
+class _AgentLogResult(TypedDict):
+    iterations: list[_IterationResult]
+    meta: _MetaResult
 
 
 class _Files:
@@ -98,8 +119,13 @@ def _persist_log(session: Session, *, tool_still_configured: bool = False, end_u
     session.expire_all()
 
 
-def _get_log(service: AgentLogService, *, conversation_id: str = "conversation-1", message_id: str = "message-1"):
-    return service.get(_CONTEXT, app_id="app-1", conversation_id=conversation_id, message_id=message_id)
+def _get_log(
+    service: AgentLogService, *, conversation_id: str = "conversation-1", message_id: str = "message-1"
+) -> _AgentLogResult:
+    return cast(
+        _AgentLogResult,
+        service.get(_CONTEXT, app_id="app-1", conversation_id=conversation_id, message_id=message_id),
+    )
 
 
 @pytest.mark.parametrize("tool_still_configured", [False, True])

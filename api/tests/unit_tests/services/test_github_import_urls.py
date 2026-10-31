@@ -1,5 +1,7 @@
 """Check URL selection at the legacy YAML import download boundary."""
 
+from unittest.mock import create_autospec
+
 import httpx
 import pytest
 from sqlalchemy.orm import Session
@@ -7,7 +9,9 @@ from sqlalchemy.orm import Session
 from core.file import remote_fetcher
 from models import Account
 from services.app_dsl_service import AppDslService
+from services.entities.dsl_entities import AppDslOverwriteStore
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
+from services.workflow.draft_service import WorkflowDraftService
 
 
 @pytest.mark.parametrize("importer", ["app", "rag-pipeline"])
@@ -46,7 +50,11 @@ def test_yaml_import_preserves_github_url_components(
     monkeypatch.setattr(remote_fetcher, "make_request", fetch)
     account = Account(name="Test Account", email="test@example.com")
     if importer == "app":
-        result = AppDslService(session=unbound_session).import_app(
+        result = AppDslService(
+            session=unbound_session,
+            drafts=create_autospec(WorkflowDraftService, instance=True, spec_set=True),
+            overwrites=create_autospec(AppDslOverwriteStore, instance=True, spec_set=True),
+        ).import_app(
             account=account, import_mode="yaml-url", yaml_url=url
         )
     else:

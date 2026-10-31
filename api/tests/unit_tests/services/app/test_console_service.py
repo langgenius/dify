@@ -25,6 +25,7 @@ from core.rbac import RBACPermission
 from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolProviderType
 from events.app_event import app_was_updated
 from extensions.application_services.app import AppServices
+from extensions.application_services.workflow import build_app_dsl_service
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
@@ -59,7 +60,6 @@ from services.app.console_service import (
     CreatorsPlatformDisabledError,
     InvalidAppExportError,
 )
-from services.app_dsl_service import AppDslService
 from services.app_package_service import AppPackageService
 from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
@@ -1645,7 +1645,7 @@ def test_planning_new_workflow_tools_checks_tool_management_under_rbac(
     rbac_domain.transport.response = {"allowed": allowed}
     gateway = AppTransferGateway(
         session_factory=sqlite_session_factory,
-        dsl_factory=AppDslService,
+        dsl_factory=build_app_dsl_service,
         packages=AppPackageService(),
         agent_packages=RosterAgentPackageExporter(),
         agent_importer=RosterAgentPackageImporter(),
