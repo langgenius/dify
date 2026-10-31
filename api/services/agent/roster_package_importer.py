@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import BinaryIO
+from typing import IO
 from urllib.parse import urlsplit
 from uuid import uuid4
 
@@ -137,7 +137,7 @@ class RosterAgentPackageImporter:
     def import_package(
         self,
         *,
-        source: BinaryIO,
+        source: IO[bytes],
         tenant_id: str,
         account: Account,
         name: str | None = None,
