@@ -599,7 +599,8 @@ def auth(
     # Determine effective scope using priority-based strategy
     effective_scope = get_effective_scope(scope_from_www_auth, prm, server_metadata, credentials.get("scope"))
 
-    if not client_information:
+    has_corrupted_client_id = bool(client_information and "*" in client_information.client_id)
+    if not client_information or (has_corrupted_client_id and authorization_code is None):
         if authorization_code is not None:
             raise ValueError("Existing OAuth client information is required when exchanging an authorization code")
 
@@ -624,6 +625,9 @@ def auth(
         )
 
         client_information = full_information
+
+    if has_corrupted_client_id and authorization_code is not None:
+        raise ValueError("Corrupted OAuth client information cannot be used to exchange an authorization code")
 
     # Handle client credentials flow
     if effective_grant_type == MCPSupportGrantType.CLIENT_CREDENTIALS.value:

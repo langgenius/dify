@@ -316,7 +316,13 @@ class MCPToolManageService:
 
             # Update credentials if provided
             if authentication and authentication.client_id:
-                mcp_provider.encrypted_credentials = self._process_credentials(authentication, mcp_provider, tenant_id)
+                new_encrypted_credentials, credentials_changed = self._process_credentials(
+                    authentication, mcp_provider, tenant_id
+                )
+                mcp_provider.encrypted_credentials = new_encrypted_credentials
+                if credentials_changed:
+                    mcp_provider.authed = False
+                    mcp_provider.tools = EMPTY_TOOLS_JSON
 
             # Update user-identity forwarding mode. The controller has already
             # resolved "leave unchanged" and applied the Enterprise-edition gate,
@@ -799,15 +805,44 @@ class MCPToolManageService:
 
     def _process_credentials(
         self, authentication: MCPAuthentication, mcp_provider: MCPToolProvider, tenant_id: str
-    ) -> str:
-        """Process credentials update, handling masked values."""
+    ) -> tuple[str, bool]:
+        """Process credentials update, handling masked values.
+
+        Returns:
+            Tuple of (encrypted_credentials_json, credentials_changed)
+        """
         # Merge with existing credentials
         final_client_id, final_client_secret = self._merge_credentials_with_masked(
             authentication.client_id, authentication.client_secret, mcp_provider
         )
 
+        mcp_provider_entity = mcp_provider.to_entity()
+        existing_client_info = mcp_provider_entity.retrieve_client_information()
+        existing_decrypted = mcp_provider_entity.decrypt_credentials()
+
+        existing_client_id = (
+            existing_client_info.client_id if existing_client_info else existing_decrypted.get("client_id")
+        )
+        existing_client_secret = (
+            existing_client_info.client_secret if existing_client_info else existing_decrypted.get("client_secret")
+        )
+
+        has_existing_credentials = bool(
+            mcp_provider.encrypted_credentials and mcp_provider.encrypted_credentials != EMPTY_CREDENTIALS_JSON
+        )
+
+        credentials_changed = (
+            not has_existing_credentials
+            or existing_client_id != final_client_id
+            or existing_client_secret != final_client_secret
+        )
+
+        if not credentials_changed:
+            # Preserve existing credentials, tokens, and registration metadata intact
+            return mcp_provider.encrypted_credentials or EMPTY_CREDENTIALS_JSON, False
+
         # Build and encrypt
-        return self._build_and_encrypt_credentials(final_client_id, final_client_secret, tenant_id)
+        return self._build_and_encrypt_credentials(final_client_id, final_client_secret, tenant_id), True
 
     def _merge_headers_with_masked(
         self, incoming_headers: dict[str, str], mcp_provider: MCPToolProvider
@@ -853,18 +888,30 @@ class MCPToolManageService:
         mcp_provider_entity = mcp_provider.to_entity()
         existing_decrypted = mcp_provider_entity.decrypt_credentials()
         existing_masked = mcp_provider_entity.masked_credentials()
+        existing_client_info = mcp_provider_entity.retrieve_client_information()
+
+        existing_client_id = (
+            existing_client_info.client_id if existing_client_info else existing_decrypted.get("client_id")
+        )
+        existing_client_secret = (
+            existing_client_info.client_secret if existing_client_info else existing_decrypted.get("client_secret")
+        )
 
         # Check if client_id is masked and unchanged
         final_client_id = client_id
         if existing_masked.get("client_id") and client_id == existing_masked["client_id"]:
-            # Use existing decrypted value
-            final_client_id = existing_decrypted.get("client_id", client_id)
+            # Use existing unmasked value
+            final_client_id = existing_client_id if existing_client_id is not None else client_id
+        elif existing_client_id and "*" in client_id:
+            final_client_id = existing_client_id
 
         # Check if client_secret is masked and unchanged
         final_client_secret = client_secret
         if existing_masked.get("client_secret") and client_secret == existing_masked["client_secret"]:
-            # Use existing decrypted value
-            final_client_secret = existing_decrypted.get("client_secret", client_secret)
+            # Use existing unmasked value
+            final_client_secret = existing_client_secret if existing_client_secret is not None else client_secret
+        elif existing_client_secret and client_secret and "*" in client_secret:
+            final_client_secret = existing_client_secret
 
         return final_client_id, final_client_secret
 

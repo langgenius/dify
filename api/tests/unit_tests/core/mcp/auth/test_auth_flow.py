@@ -652,6 +652,74 @@ class TestAuthOrchestration:
         mock_register.assert_called_once()
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
+    @patch("core.mcp.auth.auth_flow.register_client")
+    @patch("core.mcp.auth.auth_flow.start_authorization")
+    def test_auth_heals_corrupted_masked_client_id(self, mock_start_auth, mock_register, mock_discover, provider):
+        """Test auth flow automatically re-registers when stored client_id has asterisks."""
+        mock_discover.return_value = (
+            OAuthMetadata(
+                authorization_endpoint="https://auth.example.com/authorize",
+                token_endpoint="https://auth.example.com/token",
+                response_types_supported=["code"],
+                grant_types_supported=["authorization_code"],
+            ),
+            None,
+            None,
+        )
+        mock_register.return_value = OAuthClientInformationFull(
+            client_id="healed-clean-client-id",
+            client_name="Dify",
+            redirect_uris=["https://redirect.example.com"],
+        )
+        mock_start_auth.return_value = ("https://auth.example.com/authorize?...", "code-verifier")
+
+        provider_with_corrupted_client = provider.model_copy(
+            update={
+                "credentials": {
+                    "client_information": {
+                        "client_id": "ba****c2",
+                        "is_dynamic_registration": True,
+                    }
+                }
+            }
+        )
+
+        result = auth(provider_with_corrupted_client)
+
+        assert isinstance(result, AuthResult)
+        mock_register.assert_called_once()
+        client_info_action = next(a for a in result.actions if a.action_type == AuthActionType.SAVE_CLIENT_INFO)
+        assert client_info_action.data == {"client_information": mock_register.return_value.model_dump()}
+        assert client_info_action.data["client_information"]["client_id"] == "healed-clean-client-id"
+
+    @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
+    def test_auth_rejects_corrupted_client_id_when_exchanging_code(self, mock_discover, provider):
+        """Test auth flow rejects corrupted client_id when code exchange is attempted."""
+        mock_discover.return_value = (
+            OAuthMetadata(
+                authorization_endpoint="https://auth.example.com/authorize",
+                token_endpoint="https://auth.example.com/token",
+                response_types_supported=["code"],
+                grant_types_supported=["authorization_code"],
+            ),
+            None,
+            None,
+        )
+        provider_with_corrupted_client = provider.model_copy(
+            update={
+                "credentials": {
+                    "client_information": {
+                        "client_id": "ba****c2",
+                        "is_dynamic_registration": True,
+                    }
+                }
+            }
+        )
+
+        with pytest.raises(ValueError, match="Corrupted OAuth client information"):
+            auth(provider_with_corrupted_client, authorization_code="test-code", state_param="state-key")
+
+    @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
     @patch("core.mcp.auth.auth_flow._retrieve_redis_state")
     @patch("core.mcp.auth.auth_flow.exchange_authorization")
     def test_auth_exchange_code(self, mock_exchange, mock_retrieve_state, mock_discover, provider):
