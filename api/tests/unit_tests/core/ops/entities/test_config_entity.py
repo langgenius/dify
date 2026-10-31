@@ -11,7 +11,7 @@ from core.ops.entities.config_entity import TracingProviderEnum
 class TestTracingProviderEnum:
     """Test cases for TracingProviderEnum"""
 
-    def test_enum_values(self):
+    def test_enum_values(self) -> None:
         """Test that all expected enum values are present"""
         assert TracingProviderEnum.ARIZE == "arize"
         assert TracingProviderEnum.PHOENIX == "phoenix"
@@ -25,7 +25,7 @@ class TestTracingProviderEnum:
 class TestConfigIntegration:
     """Cross-provider configuration sanity checks"""
 
-    def test_all_configs_can_be_instantiated(self):
+    def test_all_configs_can_be_instantiated(self) -> None:
         """Test that all config classes can be instantiated with valid data"""
         configs = [
             ArizeConfig(api_key="key"),
@@ -40,7 +40,7 @@ class TestConfigIntegration:
         for config in configs:
             assert config is not None
 
-    def test_url_normalization_consistency(self):
+    def test_url_normalization_consistency(self) -> None:
         """Test that URL normalization works consistently across configs"""
         arize_config = ArizeConfig(endpoint="https://arize.com/api/v1/test")
         phoenix_with_path_config = PhoenixConfig(endpoint="https://app.phoenix.arize.com/s/dify-integration")
@@ -60,7 +60,7 @@ class TestConfigIntegration:
         assert langsmith_config.endpoint == "https://langsmith.internal/api/v1"
         assert weave_config.endpoint == "https://weave.internal/wandb"
 
-    def test_project_default_values(self):
+    def test_project_default_values(self) -> None:
         """Test that project default values are set correctly"""
         arize_config = ArizeConfig(project="")
         phoenix_config = PhoenixConfig(project="")

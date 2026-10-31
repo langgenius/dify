@@ -6,7 +6,9 @@ from services.tools.tools_manage_service import ToolCommonService
 class TestToolCommonService:
     @patch("services.tools.tools_manage_service.ToolTransformService")
     @patch("services.tools.tools_manage_service.ToolManager")
-    def test_list_tool_providers_transforms_and_returns(self, mock_manager, mock_transform):
+    def test_list_tool_providers_transforms_and_returns(
+        self, mock_manager: MagicMock, mock_transform: MagicMock
+    ) -> None:
         mock_provider1 = MagicMock()
         mock_provider1.to_dict.return_value = {"name": "provider1"}
         mock_provider2 = MagicMock()
@@ -21,8 +23,9 @@ class TestToolCommonService:
 
     @patch("services.tools.tools_manage_service.ToolTransformService")
     @patch("services.tools.tools_manage_service.ToolManager")
-    def test_list_tool_providers_with_type_filter(self, mock_manager, mock_transform):
-        mock_manager.list_providers_from_api.return_value = []
+    def test_list_tool_providers_with_type_filter(self, mock_manager: MagicMock, mock_transform: MagicMock) -> None:
+        providers: list[object] = []
+        mock_manager.list_providers_from_api.return_value = providers
 
         result = ToolCommonService.list_tool_providers("user-1", "tenant-1", typ="builtin")
 
@@ -31,8 +34,9 @@ class TestToolCommonService:
 
     @patch("services.tools.tools_manage_service.ToolTransformService")
     @patch("services.tools.tools_manage_service.ToolManager")
-    def test_list_tool_providers_empty(self, mock_manager, mock_transform):
-        mock_manager.list_providers_from_api.return_value = []
+    def test_list_tool_providers_empty(self, mock_manager: MagicMock, mock_transform: MagicMock) -> None:
+        providers: list[object] = []
+        mock_manager.list_providers_from_api.return_value = providers
 
         result = ToolCommonService.list_tool_providers("u", "t")
 
