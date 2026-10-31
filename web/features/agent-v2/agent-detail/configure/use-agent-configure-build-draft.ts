@@ -16,6 +16,7 @@ import isEqual from 'fast-deep-equal'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { useAgentBuildDraftRefresh } from '@/features/agent-v2/build-draft-refresh'
 import { consoleQuery } from '@/service/console'
@@ -276,6 +277,7 @@ export function useAgentConfigureBuildDraftActions({
   setSoulSourceOverride: (source: AgentConfigureSoulSource | null) => void
 }) {
   const { t: tCommon } = useTranslation(['common'])
+  const notifyError = useErrorNotification()
   const queryClient = useQueryClient()
   const forceCheckoutBeforeNextBuildRunRef = useRef(false)
   const [isApplyingBuildDraftWorkflow, setIsApplyingBuildDraftWorkflow] = useState(false)
@@ -397,8 +399,8 @@ export function useAgentConfigureBuildDraftActions({
         queryKey: consoleQuery.agent.get.key(),
       })
       if (await exitBuildDraftMode(true)) toast.success(tCommon(($) => $['api.actionSuccess']))
-    } catch {
-      // Each failed request already surfaces its backend error through the console client.
+    } catch (error) {
+      notifyError(error)
     } finally {
       setIsApplyingBuildDraftWorkflow(false)
     }

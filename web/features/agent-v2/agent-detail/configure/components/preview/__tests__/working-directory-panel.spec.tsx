@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   })),
   downloadUrl: vi.fn(),
   toastSuccess: vi.fn(),
+  toastError: vi.fn(),
 }))
 
 const agentSource = {
@@ -209,6 +210,7 @@ vi.mock('@/utils/download', () => ({
 vi.mock('@/app/notifications', () => ({
   toast: {
     success: mocks.toastSuccess,
+    error: mocks.toastError,
   },
 }))
 
@@ -840,6 +842,7 @@ describe('AgentWorkingDirectoryPanel', () => {
     })
     expect(mocks.downloadUrl).not.toHaveBeenCalled()
     expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('download failed')
   })
 
   it('should clear workflow download pending state without reporting success after failure', async () => {
@@ -870,5 +873,6 @@ describe('AgentWorkingDirectoryPanel', () => {
     })
     expect(mocks.downloadUrl).not.toHaveBeenCalled()
     expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith('download failed')
   })
 })

@@ -18,6 +18,7 @@ import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-qu
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { getFileIconType, hasFileDataPreview } from '@/features/agent-v2/file-icon'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { isNotFoundError } from '@/service/http-error'
@@ -453,6 +454,7 @@ function AgentWorkingDirectoryContent({
     refetchOnWindowFocus: false,
     retry: false,
   })
+  const notifyError = useErrorNotification()
   const handleDownloadFile = useCallback(
     async (action: AgentSkillDetailDownloadAction) => {
       if (!selectedWorkingDirectoryFile || isFileDownloadPending) return
@@ -472,8 +474,8 @@ function AgentWorkingDirectoryContent({
           })
           downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
           toast.success(tCommon(($) => $['operation.downloadSuccess']))
-        } catch {
-          // The generated client reports the mutation failure through its shared error handler.
+        } catch (error) {
+          notifyError(error)
         } finally {
           setDownloadActionLoadingTarget(null)
         }
@@ -495,8 +497,8 @@ function AgentWorkingDirectoryContent({
         })
         downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
         toast.success(tCommon(($) => $['operation.downloadSuccess']))
-      } catch {
-        // The generated client reports the mutation failure through its shared error handler.
+      } catch (error) {
+        notifyError(error)
       } finally {
         setDownloadActionLoadingTarget(null)
       }
@@ -508,6 +510,7 @@ function AgentWorkingDirectoryContent({
       tCommon,
       downloadAgentSandboxFile,
       downloadWorkflowSandboxFile,
+      notifyError,
     ],
   )
 
