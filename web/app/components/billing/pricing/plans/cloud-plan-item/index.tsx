@@ -18,6 +18,7 @@ import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { consoleClient } from '@/service/console'
+import { billingErrorMessageKey } from '../../../billing-error'
 import { ALL_PLANS } from '../../../config'
 import { useEducationDiscount } from '../../../hooks/use-education-discount'
 import Professional from '../../assets/professional'
@@ -109,8 +110,8 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
             throw new Error('Failed to open billing page')
           },
           {
-            onError: (err) => {
-              toast.error(err.message || String(err))
+            onError: (error) => {
+              toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
             },
           },
         )
@@ -129,11 +130,14 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
         return
       }
 
-      const { url } = await consoleClient.billing.subscription.get({
-        query: { plan, interval: billingInterval },
-      })
+      const { url } = await consoleClient.billing.subscription.get(
+        { query: { plan, interval: billingInterval } },
+        { context: { silent: true } },
+      )
       // Adb Block additional tracking block the gtag, so we need to redirect directly
       window.location.href = url
+    } catch (error) {
+      toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
     } finally {
       setIsPlanActionPending(false)
     }

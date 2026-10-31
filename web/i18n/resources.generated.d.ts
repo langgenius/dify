@@ -1504,6 +1504,9 @@ export default interface Resources {
     'apps.fullTip2': 'Plan limit reached'
     'apps.fullTip2des': 'It is recommended to clean up inactive applications to free up usage, or contact us.'
     buyPermissionDeniedTip: 'Please contact your enterprise administrator to subscribe'
+    'errors.operationFailed': "We couldn't complete this request. Please try again later. If the problem persists, contact support."
+    'errors.requestInProgress': 'Your previous request is still being processed. Please try again in a moment.'
+    'errors.unavailable': 'This service is temporarily unavailable. Please try again later.'
     'plans.community.btnText': 'Get Started'
     'plans.community.description': 'For open-source enthusiasts, individual developers, and non-commercial projects'
     'plans.community.features': [
@@ -1710,9 +1713,12 @@ export default interface Resources {
     'chat.renameConversation': 'Rename Conversation'
     'chat.thinking': 'Thinking...'
     'chat.thought': 'Thought'
+    'compliance.documentNotFound': 'This document is not available right now. Please try again later or contact support.'
+    'compliance.downloadForbidden': 'Only the workspace owner can download this document, and only on a plan that includes it. Ask your workspace owner to download it.'
     'compliance.gdpr': 'GDPR DPA'
     'compliance.iso27001': 'ISO 27001:2022 Certification'
     'compliance.professionalUpgradeTooltip': 'Only available with a Team plan or above.'
+    'compliance.rateLimit': 'Too many downloads. Please try again later.'
     'compliance.sandboxUpgradeTooltip': 'Only available with a Professional or Team plan.'
     'compliance.soc2Type1': 'SOC 2 Type I Report'
     'compliance.soc2Type2': 'SOC 2 Type II Report'
@@ -3318,6 +3324,7 @@ export default interface Resources {
     tryAgain: '← Try again'
   }
   education: {
+    activateFailed: "We couldn't activate your education discount. Your current Education Verified status may still be active, or this email is no longer eligible."
     'applied.activeSubscription.description': 'You have an active subscription. You can use the education discount after your subscription expires. Confirm your subscription in <stripeLink>Stripe</stripeLink>.'
     'applied.noPaymentPermission.description': "You don't have payment permission in this workspace. Please switch to a workspace where you can manage billing to use the education discount."
     'applied.noPaymentPermission.returnHome': 'Back to Dify'
@@ -3370,7 +3377,9 @@ export default interface Resources {
     'toVerifiedTip.coupon': 'exclusive 100% coupon'
     'toVerifiedTip.end': 'for the Dify Professional Plan.'
     'toVerifiedTip.front': 'You are now eligible for Education Verified status. Please enter your education information below to complete the process and receive an'
+    tooManyAttempts: 'Too many attempts. Please try again later.'
     useEducationDiscount: 'Use education discount'
+    verifyFailed: "We couldn't verify your education status. If you verified recently, your current Education Verified status may still be active. Otherwise, please try again later."
   }
   explore: {
     'appCard.try': 'Details'

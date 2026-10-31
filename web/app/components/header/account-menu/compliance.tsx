@@ -9,10 +9,12 @@ import {
   MenuSubmenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { isDefinedError } from '@orpc/client'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { billingErrorMessageKey } from '@/app/components/billing/billing-error'
 import {
   pricingQueryParamName,
   pricingQueryParser,
@@ -22,7 +24,7 @@ import {
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { toast } from '@/app/notifications'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import PremiumBadge from '../../base/premium-badge'
 import { MenuItemContent } from './menu-item-content'
@@ -112,19 +114,24 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const isFreePlan = plan === 'sandbox'
 
-  const { isPending, mutate: downloadCompliance } = useMutation({
-    mutationKey: ['downloadCompliance', docName],
-    mutationFn: async () => {
-      try {
-        const ret = await consoleClient.compliance.download.get({ query: { doc_name: docName } })
+  const { isPending, mutate: downloadCompliance } = useMutation(
+    consoleQuery.compliance.download.get.mutationOptions({
+      onSuccess: (ret) => {
         downloadUrl({ url: ret.url })
         toast.success(t(($) => $['operation.downloadSuccess'], { ns: 'common' }))
-      } catch (error) {
-        console.error(error)
-        toast.error(t(($) => $['operation.downloadFailed'], { ns: 'common' }))
-      }
-    },
-  })
+      },
+      onError: (error) => {
+        const code = isDefinedError(error) ? error.code : undefined
+        if (code === 'compliance_download_forbidden')
+          toast.error(t(($) => $['compliance.downloadForbidden'], { ns: 'common' }))
+        else if (code === 'compliance_document_not_found')
+          toast.error(t(($) => $['compliance.documentNotFound'], { ns: 'common' }))
+        else if (code === 'compliance_rate_limit')
+          toast.error(t(($) => $['compliance.rateLimit'], { ns: 'common' }))
+        else toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
+      },
+    }),
+  )
 
   const whichPlanCanDownloadCompliance: Record<DocName, CloudPlan[]> = {
     [DocName.SOC2_Type_I]: ['professional', 'team'],
@@ -139,13 +146,14 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
 
   const handleSelect = useCallback(() => {
     if (isCurrentPlanCanDownload) {
-      if (!isPending) downloadCompliance()
+      if (!isPending) downloadCompliance({ query: { doc_name: docName } })
       return
     }
 
     if (isFreePlan) setPricing('open')
     else setSettingsDestination('billing')
   }, [
+    docName,
     downloadCompliance,
     isCurrentPlanCanDownload,
     isFreePlan,

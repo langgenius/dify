@@ -1856,11 +1856,6 @@
       "count": 1
     }
   },
-  "web/app/components/billing/billing-page/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/billing/plan/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
