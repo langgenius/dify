@@ -365,12 +365,15 @@ def _map_messages_to_prompt_messages(
     model_request_parameters: ModelRequestParameters,
 ) -> list[PromptMessage]:
     prompt_messages: list[PromptMessage] = []
-    provider_tool_call_ids = _collect_provider_tool_call_ids(messages)
+    # Renamed ids are only unique within one response, so restore them only for the tool
+    # returns and retry prompts that answer the latest response.
+    provider_tool_call_ids: dict[str, str] = {}
 
     for message in messages:
         if isinstance(message, ModelRequest):
             prompt_messages.extend(_map_model_request_to_prompt_messages(message, provider_tool_call_ids))
         elif isinstance(message, ModelResponse):
+            provider_tool_call_ids = _response_provider_tool_call_ids(message)
             assistant_message = _map_model_response_to_prompt_message(message)
             if assistant_message is not None:
                 prompt_messages.append(assistant_message)
@@ -416,17 +419,14 @@ def _order_system_messages_first(
     return [SystemPromptMessage(content="\n\n".join(system_contents)), *non_system_messages]
 
 
-def _collect_provider_tool_call_ids(messages: Sequence[ModelMessage]) -> dict[str, str]:
-    """Map adapter-assigned tool call ids in history back to the ids their plugin produced."""
+def _response_provider_tool_call_ids(message: ModelResponse) -> dict[str, str]:
+    """Map the tool call ids this adapter renamed in one response back to their plugin ids."""
     provider_ids: dict[str, str] = {}
-    for message in messages:
-        if not isinstance(message, ModelResponse):
-            continue
-        for part in message.parts:
-            if isinstance(part, ToolCallPart):
-                provider_id = _provider_tool_call_id(part)
-                if provider_id is not None:
-                    provider_ids[part.tool_call_id] = provider_id
+    for part in message.parts:
+        if isinstance(part, ToolCallPart):
+            provider_id = _provider_tool_call_id(part)
+            if provider_id is not None:
+                provider_ids[part.tool_call_id] = provider_id
     return provider_ids
 
 
