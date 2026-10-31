@@ -6,8 +6,9 @@ from typing import Any
 from core.agent.entities import AgentScratchpadUnit
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk
 
-# Keys that name the action even when the model adds other fields to the JSON blob.
-_ACTION_NAME_KEYS = frozenset({"action", "action_name", "name", "tool", "tool_name"})
+# Keys that name the action even when the model adds other fields to the JSON blob,
+# highest priority first, so the selected tool does not depend on JSON key order.
+_ACTION_NAME_KEYS = ("action", "action_name", "tool", "tool_name", "name")
 
 
 class CotAgentOutputParser:
@@ -22,6 +23,8 @@ class CotAgentOutputParser:
             Postconditions: returns an action only when a string name and a dict or string
             input are found; every other payload is returned as readable text and never raises.
             The prompt allows one action per step, so only the first list item is considered.
+            The name comes from the highest-priority key in ``_ACTION_NAME_KEYS``, or from the
+            last non-input key when no known key is present.
             """
             action_name = None
             action_input = None
@@ -39,16 +42,18 @@ class CotAgentOutputParser:
             if not isinstance(action, dict):
                 return json.dumps(payload, ensure_ascii=False)
 
-            has_known_name_key = False
+            name_candidates = {}
             for key, value in action.items():
                 normalized_key = key.lower()
                 if "input" in normalized_key:
                     action_input = value
-                elif normalized_key in _ACTION_NAME_KEYS:
+                else:
+                    name_candidates[normalized_key] = value
                     action_name = value
-                    has_known_name_key = True
-                elif not has_known_name_key:
-                    action_name = value
+
+            known_name_keys = [key for key in _ACTION_NAME_KEYS if key in name_candidates]
+            if known_name_keys:
+                action_name = name_candidates[known_name_keys[0]]
 
             if isinstance(action_name, str) and isinstance(action_input, dict | str):
                 return AgentScratchpadUnit.Action(

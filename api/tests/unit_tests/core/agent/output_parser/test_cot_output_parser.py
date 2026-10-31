@@ -210,6 +210,22 @@ class TestCotAgentOutputParser:
         result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
         assert result == [AgentScratchpadUnit.Action(action_name="search", action_input={"q": "x"})]
 
+    @pytest.mark.parametrize(
+        "content",
+        [
+            '{"action": "search", "name": "wrong", "action_input": {"q": "x"}}',
+            '{"name": "wrong", "action": "search", "action_input": {"q": "x"}}',
+            '{"tool": "search", "name": "wrong", "action_input": {"q": "x"}}',
+            '{"name": "wrong", "tool": "search", "action_input": {"q": "x"}}',
+            '{"action_name": "search", "tool": "wrong", "action_input": {"q": "x"}}',
+            '{"tool": "wrong", "action_name": "search", "action_input": {"q": "x"}}',
+        ],
+    )
+    def test_name_key_priority_ignores_key_order(self, make_chunk, usage_dict, content) -> None:
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert result == [AgentScratchpadUnit.Action(action_name="search", action_input={"q": "x"})]
+
     def test_unknown_name_key_is_still_accepted(self, make_chunk, usage_dict) -> None:
         chunks = [make_chunk('{"function": "search", "function_input": {"q": "x"}}')]
         result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
