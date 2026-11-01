@@ -108,7 +108,7 @@ describe('Builder draft preparation', () => {
       act(() => {
         request =
           command === 'start'
-            ? result.current.startFix('app-1', 'run-1')
+            ? result.current.startBuild('app-1', 'Build a workflow')
             : command === 'action'
               ? result.current.runAction('approve_plan')
               : result.current.sendMessage('Update the prompt')
@@ -144,7 +144,7 @@ describe('Builder draft preparation', () => {
       await act(async () => {
         expect(
           await (command === 'start'
-            ? result.current.startFix('app-1', 'run-1')
+            ? result.current.startBuild('app-1', 'Build a workflow')
             : result.current.runAction('approve_plan')),
         ).toBe(false)
       })

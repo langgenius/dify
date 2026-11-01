@@ -327,6 +327,7 @@
   "resourceReady": "Skonfigurowano · działanie niezweryfikowane",
   "runTest": "Uruchom test",
   "running": "Uruchamianie",
+  "taskControl.abandon": "Opuść zadanie",
   "taskControl.conflict": "Stan zadania się zmienił. Sprawdź aktualny stan i spróbuj ponownie.",
   "taskControl.paused": "Wstrzymano. Edytuj obszar roboczy, a następnie wznów zadanie.",
   "taskControl.resume": "Wznów zadanie",

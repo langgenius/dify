@@ -327,6 +327,7 @@
   "resourceReady": "Nastavljeno · izvajanje ni preverjeno",
   "runTest": "Zaženi test",
   "running": "Tek",
+  "taskControl.abandon": "Zapusti opravilo",
   "taskControl.conflict": "Stanje opravila se je spremenilo. Preverite trenutno stanje in poskusite znova.",
   "taskControl.paused": "Začasno ustavljeno. Uredite platno in nato nadaljujte opravilo.",
   "taskControl.resume": "Nadaljuj opravilo",

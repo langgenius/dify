@@ -7,7 +7,7 @@ import type { WorkflowDraftRefreshResult } from '../../../hooks/use-workflow-ref
 import type { ConversationItem, SessionView } from '../types'
 import type { MarkdownProps } from '@/app/components/base/markdown'
 import { zDefaultModelDataResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
   editTargetNodeIds: [] as string[],
   action: vi.fn(),
   create: vi.fn(),
+  clear: vi.fn(),
+  fix: vi.fn(),
   conversation: vi.fn(),
   get: vi.fn(),
   message: vi.fn(),
@@ -60,6 +62,8 @@ vi.mock('@/service/console', async (importOriginal) => {
             stream: { get: mocks.stream },
             actions: { post: mocks.action },
             messages: { post: mocks.message },
+            clear: { post: mocks.clear },
+            fixIntents: { post: mocks.fix },
           },
         },
       },
@@ -841,6 +845,21 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(true)
 
     await user.click(screen.getByRole('button', { name: 'difyBuilder.reset' }))
+    mocks.clear.mockImplementation(async ({ body }) => ({
+      session_id: waiting.session_id,
+      version: 7,
+      task_id: '',
+      task_status: 'abandoned',
+      last_command_id: body.client_action_id,
+      conversation_cleared: true,
+      conversation_last_seq: -1,
+      settlement: 'settled',
+    }))
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.confirm',
+      }),
+    )
 
     expect(
       screen.queryByRole('button', { name: 'workflow.common.retryCanvasSync' }),
@@ -851,6 +870,92 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       window.sessionStorage.getItem('dify-builder:v1:workspace-1:user-1:app-1:active-session-id'),
     ).toBeNull()
   })
+
+  it.each(['pending settlement', 'lost response'] as const)(
+    'keeps clear blocked across a real unmount and fresh mount after %s',
+    async (outcome) => {
+      const storageKey = 'dify-builder:v1:workspace-1:user-1:app-1:active-session-id'
+      window.sessionStorage.setItem(storageKey, 'session-1')
+      const view = createSessionView({
+        version: 4,
+        task_id: 'task-1',
+        task_status: 'completed',
+        run_status: 'complete',
+        phase: 'understand',
+        conversation_last_seq: 0,
+      })
+      const previous: ConversationItem = {
+        seq: 0,
+        at_version: 1,
+        kind: 'user',
+        payload: { text: 'Previous private goal', turn_id: 'previous-turn' },
+      }
+      mocks.get.mockResolvedValue(view)
+      mocks.conversation.mockResolvedValue(conversationPage([previous]))
+      if (outcome === 'lost response') mocks.clear.mockRejectedValue(new TypeError('Offline'))
+      else
+        mocks.clear.mockImplementation(async ({ body }) => ({
+          session_id: 'session-1',
+          version: 5,
+          task_id: 'task-1',
+          task_status: 'abandoned',
+          last_command_id: body.client_action_id,
+          conversation_cleared: true,
+          conversation_last_seq: -1,
+          settlement: 'pending',
+        }))
+      const user = userEvent.setup()
+      const { unmount } = renderFlow()
+      await screen.findByText('Previous private goal')
+      await user.click(screen.getByRole('button', { name: 'difyBuilder.reset' }))
+      await user.click(
+        within(screen.getByRole('alertdialog')).getByRole('button', {
+          name: 'common.operation.confirm',
+        }),
+      )
+      await waitFor(() => expect(mocks.clear).toHaveBeenCalledOnce())
+      await waitFor(() => expect(getComposer()).toBeDisabled())
+      const clientActionId = mocks.clear.mock.calls[0]![0].body.client_action_id
+      expect(JSON.parse(window.sessionStorage.getItem(`${storageKey}:control`)!)).toMatchObject({
+        sessionId: 'session-1',
+        operation: 'clear',
+        phase: 'unknown',
+        clientActionId,
+      })
+      if (outcome === 'pending settlement') {
+        expect(screen.queryByText('Previous private goal')).not.toBeInTheDocument()
+        mocks.get.mockResolvedValue({
+          ...view,
+          version: 5,
+          task_status: 'abandoned',
+          last_command_id: clientActionId,
+          conversation_cleared: true,
+          conversation_last_seq: -1,
+        })
+      }
+      unmount()
+      renderFlow()
+      await waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(2))
+      await waitFor(() => expect(getComposer()).toBeDisabled())
+      await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+      await waitFor(() => expect(mocks.get).toHaveBeenCalledTimes(3))
+      expect(getComposer()).toBeDisabled()
+      expect(mocks.clear).toHaveBeenCalledOnce()
+      expect(mocks.create).not.toHaveBeenCalled()
+      expect(mocks.action).not.toHaveBeenCalled()
+      expect(mocks.message).not.toHaveBeenCalled()
+      expect(mocks.stream).not.toHaveBeenCalled()
+      expect(window.sessionStorage.getItem(storageKey)).toBe('session-1')
+      expect(JSON.parse(window.sessionStorage.getItem(`${storageKey}:control`)!)).toMatchObject({
+        sessionId: 'session-1',
+        operation: 'clear',
+        phase: 'unknown',
+        clientActionId,
+      })
+      if (outcome === 'pending settlement')
+        expect(screen.queryByText('Previous private goal')).not.toBeInTheDocument()
+    },
+  )
 
   it('restores completed and active progress on refresh, then continues without regressing queued updates', async () => {
     const processing = createSessionView({ version: 2, run_status: 'processing' })
@@ -1400,7 +1505,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     expect(mocks.get).toHaveBeenCalledOnce()
   })
 
-  it('replaces an unfinished Build session with Fix and restores the new session on remount', async () => {
+  it('stages and dismisses Fix in the same unfinished conversation, then restores the original form', async () => {
     const storageKey = 'dify-builder:v1:workspace-1:user-1:app-1:active-session-id'
     window.sessionStorage.setItem(storageKey, 'build-session')
     const buildForm: ConversationItem = {
@@ -1415,104 +1520,86 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     }
     const build = createSessionView({
       actions: [{ id: 'submit_requirements', kind: 'primary', label: 'Submit requirements' }],
-      active_interaction: {
-        action_id: 'submit_requirements',
-        card_seq: buildForm.seq,
-        valid_at_version: 2,
-      },
+      active_interaction: { action_id: 'submit_requirements', card_seq: 0, valid_at_version: 2 },
       conversation_last_seq: 0,
       phase: 'clarify',
       session_id: 'build-session',
       version: 2,
+      task_id: 'task-1',
     })
-    const fixNotice: ConversationItem = {
-      seq: 0,
-      at_version: 2,
-      kind: 'notice',
-      payload: { text: 'Repair the selected failed run.' },
+    const payload = { fix_intent_id: 'fix-1', expected_task_id: 'task-1' }
+    const pending: SessionView = {
+      ...build,
+      actions: [
+        { id: 'dismiss_fix', label: 'Keep current task', kind: 'secondary', payload },
+        { id: 'stop_and_switch_fix', label: 'Stop and fix', kind: 'destructive', payload },
+      ],
+      decision: {
+        title: 'Switch to fixing this error?',
+        default_option_id: 'dismiss_fix',
+        options: [
+          { id: 'dismiss_fix', label: 'Keep current task' },
+          { id: 'stop_and_switch_fix', label: 'Stop and fix' },
+        ],
+      },
+      pending_fix_context: {
+        run_id: 'failed-run-42',
+        title: '',
+        error_code: '',
+        message: '',
+        trace_ref: '',
+      },
     }
-    const fix = createSessionView({
-      actions: [{ id: 'approve_plan', kind: 'primary', label: 'Approve repair' }],
-      conversation_last_seq: 0,
-      phase: 'plan',
-      run_status: 'waiting_confirmation',
-      session_id: 'fix-session',
-      version: 2,
+    mocks.get.mockResolvedValue(build)
+    mocks.conversation.mockResolvedValue(conversationPage([buildForm]))
+    mocks.fix.mockResolvedValue({
+      fix_intent_id: 'fix-1',
+      status: 'awaiting_confirmation',
+      session: pending,
     })
-    mocks.get.mockResolvedValueOnce(build).mockResolvedValue(fix)
-    mocks.conversation.mockImplementation(({ params }: { params: { session_id: string } }) =>
-      Promise.resolve(
-        conversationPage(params.session_id === 'build-session' ? [buildForm] : [fixNotice]),
-      ),
-    )
-    let finishSync!: () => void
-    mocks.syncDraft.mockResolvedValueOnce(undefined).mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          finishSync = resolve
-        }),
-    )
-    const fixStream = createControlledEventStream()
-    mocks.create.mockResolvedValue(fixStream.iterable)
+    mocks.action.mockResolvedValue(streamOf(stateEvent(build)))
     const user = userEvent.setup()
     const { unmount } = renderFlow()
-
-    const audience = await screen.findByRole('textbox', { name: 'Build audience' })
-    const fixEntry = screen.getByRole('button', { name: 'Fix failed run' })
-    await waitFor(() => expect(fixEntry).toBeEnabled())
-    expect(
-      screen.queryByRole('textbox', { name: 'difyBuilder.messagePlaceholder' }),
-    ).not.toBeInTheDocument()
-    await user.click(fixEntry)
-    await waitFor(() => expect(fixEntry).toBeDisabled())
-    expect(audience).toBeDisabled()
-    expect(
-      screen.queryByRole('textbox', { name: 'difyBuilder.messagePlaceholder' }),
-    ).not.toBeInTheDocument()
-    expect(mocks.create).not.toHaveBeenCalled()
-
-    await act(async () => finishSync())
-    await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce())
+    expect(await screen.findByRole('textbox', { name: 'Build audience' })).toHaveValue(
+      'Support agents',
+    )
+    const preparationCount = mocks.syncDraft.mock.calls.length
+    await user.click(screen.getByRole('button', { name: 'Fix failed run' }))
+    expect(await screen.findByRole('radio', { name: 'Keep current task' })).toBeEnabled()
     expect(screen.queryByRole('textbox', { name: 'Build audience' })).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'difyBuilder.copy.actions.submitRequirements' }),
-    ).not.toBeInTheDocument()
-
-    await act(async () => {
-      fixStream.push(
-        commandStartedEvent({
-          ...fix,
-          actions: [],
-          canvas_read_only: true,
-          conversation_last_seq: -1,
-          phase: 'understand',
-          run_status: 'processing',
-          version: 1,
-        }),
-      )
-      fixStream.push(stateEvent(fix))
-      fixStream.close()
-    })
-    await screen.findByRole('radio', { name: 'Approve repair' })
-    expect(screen.queryByText('Repair the selected failed run.')).not.toBeInTheDocument()
-    await waitFor(() => expect(screen.getByRole('radio', { name: 'Approve repair' })).toBeEnabled())
-    expect(window.sessionStorage.getItem(storageKey)).toBe('fix-session')
-    expect(mocks.create.mock.calls[0]?.[0].body).toMatchObject({
-      scenario: 'fix',
-      app_id: 'app-1',
-      failed_run_id: 'failed-run-42',
-    })
-
-    unmount()
-    renderFlow()
-
-    await screen.findByRole('radio', { name: 'Approve repair' })
-    expect(screen.queryByText('Repair the selected failed run.')).not.toBeInTheDocument()
-    expect(screen.queryByRole('textbox', { name: 'Build audience' })).not.toBeInTheDocument()
-    expect(mocks.get).toHaveBeenLastCalledWith(
-      { params: { session_id: 'fix-session' } },
+    expect(mocks.fix).toHaveBeenCalledWith(
+      {
+        params: { session_id: 'build-session' },
+        body: {
+          base_version: 2,
+          client_action_id: expect.any(String),
+          failed_run_id: 'failed-run-42',
+        },
+      },
       { context: { silent: true }, signal: expect.any(AbortSignal) },
     )
-    expect(mocks.create).toHaveBeenCalledOnce()
+    expect(mocks.syncDraft).toHaveBeenCalledTimes(preparationCount)
+    expect(mocks.create).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Keep current task' }))
+    expect(await screen.findByRole('textbox', { name: 'Build audience' })).toHaveValue(
+      'Support agents',
+    )
+    expect(mocks.action.mock.calls[0]![0].body).toMatchObject({
+      action_id: 'confirm',
+      base_version: 2,
+      client_action_id: expect.any(String),
+      payload: { option_id: 'dismiss_fix', ...payload },
+    })
+    expect(window.sessionStorage.getItem(storageKey)).toBe('build-session')
+    unmount()
+    renderFlow()
+    expect(await screen.findByRole('textbox', { name: 'Build audience' })).toHaveValue(
+      'Support agents',
+    )
+    expect(mocks.get).toHaveBeenLastCalledWith(
+      { params: { session_id: 'build-session' } },
+      { context: { silent: true }, signal: expect.any(AbortSignal) },
+    )
+    expect(mocks.create).not.toHaveBeenCalled()
   })
 })

@@ -1,9 +1,37 @@
 import type {
+  DifyBuilderConversationLifecyclePayload,
+  DifyBuilderFixIntentPayload,
   DifyBuilderReceiptSnapshot,
   DifyBuilderTaskControlPayload,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ChecklistErrorPayload, SessionModel } from '../types'
 import { consoleClient } from '@/service/console'
+
+export const controlSessionConversation = (
+  sessionId: string,
+  operation: 'clear' | 'abandon',
+  body: DifyBuilderConversationLifecyclePayload,
+  signal: AbortSignal,
+) =>
+  operation === 'clear'
+    ? consoleClient.difyBuilder.sessions.bySessionId.clear.post(
+        { params: { session_id: sessionId }, body: { ...body, confirmed: true } },
+        { context: { silent: true }, signal },
+      )
+    : consoleClient.difyBuilder.sessions.bySessionId.abandon.post(
+        { params: { session_id: sessionId }, body },
+        { context: { silent: true }, signal },
+      )
+
+export const prepareSessionFix = (
+  sessionId: string,
+  body: DifyBuilderFixIntentPayload,
+  signal: AbortSignal,
+) =>
+  consoleClient.difyBuilder.sessions.bySessionId.fixIntents.post(
+    { params: { session_id: sessionId }, body },
+    { context: { silent: true }, signal },
+  )
 
 export const createFixSession = (
   appId: string,

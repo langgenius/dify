@@ -317,6 +317,7 @@
   "resourceReady": "Yapılandırıldı · çalışma durumu doğrulanmadı",
   "runTest": "Testi çalıştır",
   "running": "Çalışıyor",
+  "taskControl.abandon": "Görevden çık",
   "taskControl.conflict": "Görevin durumu değişti. Güncel durumu kontrol edip tekrar deneyin.",
   "taskControl.paused": "Duraklatıldı. Tuvali düzenleyin, ardından göreve devam edin.",
   "taskControl.resume": "Göreve devam et",

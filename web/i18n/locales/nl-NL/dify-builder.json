@@ -317,6 +317,7 @@
   "resourceReady": "Geconfigureerd · uitvoering niet gecontroleerd",
   "runTest": "Test uitvoeren",
   "running": "Running",
+  "taskControl.abandon": "Taak verlaten",
   "taskControl.conflict": "De taakstatus is gewijzigd. Controleer de huidige status en probeer het opnieuw.",
   "taskControl.paused": "Gepauzeerd. Bewerk het canvas en hervat daarna de taak.",
   "taskControl.resume": "Taak hervatten",

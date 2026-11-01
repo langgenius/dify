@@ -3295,6 +3295,7 @@ export default interface Resources {
     resourceReady: 'Configured · runtime unverified'
     runTest: 'Run the test'
     running: 'Running'
+    'taskControl.abandon': 'Exit task'
     'taskControl.conflict': 'Task state changed. Review the latest state and try again.'
     'taskControl.paused': 'Paused. Edit the canvas, then resume the task.'
     'taskControl.resume': 'Resume task'

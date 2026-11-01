@@ -107,6 +107,8 @@ export type DifyBuilderSessionController = {
   sendMessage: (text: string, clientTurnId?: string) => Promise<boolean>
   updateModel: (modelConfig: SessionModel) => Promise<boolean>
   reset: () => void
+  clearConversation: () => Promise<boolean>
+  abandonTask: () => Promise<boolean>
   getTrace: () => TraceSnapshot
   onCanvasRefreshed: () => void
 }

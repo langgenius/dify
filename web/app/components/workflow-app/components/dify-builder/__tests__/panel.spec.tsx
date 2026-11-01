@@ -12,6 +12,7 @@ import {
   difyBuilderConversationAtom,
   difyBuilderConversationHasMoreAtom,
   difyBuilderRetryableMessageAtom,
+  difyBuilderSessionBusyAtom,
   difyBuilderSessionErrorCodeAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
@@ -35,6 +36,8 @@ const mocks = vi.hoisted(() => ({
     provider: 'openai',
   } as SessionModel | null,
   reset: vi.fn(),
+  clearConversation: vi.fn(async () => true),
+  abandonTask: vi.fn(async () => true),
   runAction: vi.fn(async () => true),
   sendMessage: vi.fn(async () => true),
   startBuild: vi.fn(async () => true),
@@ -157,6 +160,8 @@ const renderPanel = (
       stopTask: vi.fn(async () => true),
       resumeTask: vi.fn(async () => true),
       reset: mocks.reset,
+      clearConversation: mocks.clearConversation,
+      abandonTask: mocks.abandonTask,
       runAction: mocks.runAction,
       sendMessage: mocks.sendMessage,
       startBuild: mocks.startBuild,
@@ -183,6 +188,7 @@ const renderPanel = (
 describe('DifyBuilderPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.clearConversation.mockResolvedValue(true)
     mocks.model = {
       completion_params: {},
       mode: 'chat',
@@ -283,12 +289,114 @@ describe('DifyBuilderPanel', () => {
     }
   })
 
+  it('confirms clearing the conversation before resetting the local history', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.reset' }))
+    expect(mocks.reset).not.toHaveBeenCalled()
+    expect(mocks.clearConversation).not.toHaveBeenCalled()
+    const dialog = screen.getByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+    expect(mocks.clearConversation).toHaveBeenCalledOnce()
+    expect(mocks.reset).toHaveBeenCalledOnce()
+  })
+
+  it('keeps history and the unsent draft when the confirmed server clear fails', async () => {
+    mocks.clearConversation.mockResolvedValue(false)
+    const user = userEvent.setup()
+    const { store } = renderPanel()
+    act(() => store.set(difyBuilderDraftAtom, 'Keep my draft'))
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.reset' }))
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.confirm',
+      }),
+    )
+    expect(mocks.clearConversation).toHaveBeenCalledOnce()
+    expect(mocks.reset).not.toHaveBeenCalled()
+    expect(screen.getByText('I found the failing configuration.')).toBeInTheDocument()
+    expect(store.get(difyBuilderDraftAtom)).toBe('Keep my draft')
+  })
+
+  it('exits an active task through confirmation while keeping the conversation and draft', async () => {
+    const user = userEvent.setup()
+    const { store } = renderPanel({ ...sessionView, task_id: 'task-1', task_status: 'active' })
+    act(() => store.set(difyBuilderDraftAtom, 'Next requirement'))
+    expect(screen.getByRole('button', { name: 'difyBuilder.reset' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.taskControl.abandon' }))
+    expect(mocks.abandonTask).not.toHaveBeenCalled()
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.confirm',
+      }),
+    )
+    expect(mocks.abandonTask).toHaveBeenCalledOnce()
+    expect(mocks.clearConversation).not.toHaveBeenCalled()
+    expect(mocks.reset).not.toHaveBeenCalled()
+    expect(store.get(difyBuilderDraftAtom)).toBe('Next requirement')
+    expect(screen.getByText('I found the failing configuration.')).toBeInTheDocument()
+  })
+
+  it('offers only server-provided Fix decisions while the original command is busy', async () => {
+    const user = userEvent.setup()
+    const fixPayload = { fix_intent_id: 'fix-1', expected_task_id: 'task-1' }
+    renderPanel(
+      {
+        ...sessionView,
+        run_status: 'processing',
+        task_id: 'task-1',
+        pending_fix_context: {
+          run_id: 'run-1',
+          title: '',
+          error_code: '',
+          message: '',
+          trace_ref: '',
+        },
+        actions: [
+          { id: 'dismiss_fix', label: 'Keep current task', kind: 'secondary', payload: fixPayload },
+          {
+            id: 'stop_and_switch_fix',
+            label: 'Stop and fix',
+            kind: 'destructive',
+            payload: fixPayload,
+          },
+        ],
+        decision: {
+          title: 'Switch to fixing this error?',
+          default_option_id: 'dismiss_fix',
+          options: [
+            { id: 'dismiss_fix', label: 'Keep current task' },
+            { id: 'stop_and_switch_fix', label: 'Stop and fix' },
+            { id: 'run_test', label: 'Unrelated test command' },
+          ],
+        },
+      },
+      (store) => store.set(difyBuilderSessionBusyAtom, true),
+    )
+    expect(screen.getByRole('radio', { name: 'Keep current task' })).toBeEnabled()
+    expect(screen.getByText('run-1')).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: 'Unrelated test command' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'difyBuilder.reset' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Keep current task' }))
+    expect(mocks.runAction).toHaveBeenCalledWith('confirm', {
+      option_id: 'dismiss_fix',
+      ...fixPayload,
+    })
+    expect(screen.getByText('I found the failing configuration.')).toBeInTheDocument()
+    expect(mocks.reset).not.toHaveBeenCalled()
+  })
+
   it('allows reset from the header after a conversation rendering failure', async () => {
     const user = userEvent.setup()
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {
       renderPanel(sessionView, undefined, malformedConversation)
       await user.click(screen.getByRole('button', { name: 'difyBuilder.reset' }))
+      await user.click(
+        within(screen.getByRole('alertdialog')).getByRole('button', {
+          name: 'common.operation.confirm',
+        }),
+      )
       expect(mocks.reset).toHaveBeenCalledOnce()
       expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeEnabled()
     } finally {
@@ -1096,7 +1204,11 @@ describe('DifyBuilderPanel', () => {
     expect(reset).toBeEnabled()
 
     await user.click(reset)
-
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.confirm',
+      }),
+    )
     expect(mocks.reset).toHaveBeenCalledOnce()
   })
 
