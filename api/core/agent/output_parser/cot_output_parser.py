@@ -12,9 +12,30 @@ class CotAgentOutputParser:
     def handle_react_stream_output(
         cls, llm_response: Generator[LLMResultChunk], usage_dict: dict[str, Any]
     ) -> Generator[str | AgentScratchpadUnit.Action]:
-        def parse_action(action) -> str | AgentScratchpadUnit.Action:
+        def _is_callable_action(action_name: Any, action_input: Any) -> bool:
+            # AgentScratchpadUnit.Action requires a str name and a dict/str
+            # input; anything else cannot be dispatched as a tool call.
+            return (
+                action_name is not None
+                and isinstance(action_name, str)
+                and action_input is not None
+                and isinstance(action_input, dict | str)
+            )
+
+        def _split_action_fields(action: dict) -> tuple[Any, Any]:
             action_name = None
             action_input = None
+            for key, value in action.items():
+                if "input" in key.lower():
+                    action_input = value
+                elif action_name is None:
+                    # The first non-input key names the action. Extra keys
+                    # added after it (e.g. a trailing "reason") must not
+                    # override the tool the agent is about to call.
+                    action_name = value
+            return action_name, action_input
+
+        def parse_action(action) -> str | AgentScratchpadUnit.Action:
             if isinstance(action, str):
                 try:
                     action = json.loads(action, strict=False)
@@ -22,22 +43,38 @@ class CotAgentOutputParser:
                     return action or ""
 
             # cohere always returns a list
-            if isinstance(action, list) and len(action) == 1:
-                action = action[0]
+            if isinstance(action, list):
+                # The prompt allows exactly one action per turn, so a list of
+                # actions runs its first action-shaped item. A list without
+                # one (a direct answer that happens to be JSON data, or
+                # non-object items like [1]) is not an action and is kept as
+                # text - iterating it raised AttributeError on .items().
+                for item in action:
+                    if not isinstance(item, dict):
+                        continue
+                    action_name, action_input = _split_action_fields(item)
+                    if _is_callable_action(action_name, action_input):
+                        return AgentScratchpadUnit.Action(
+                            action_name=action_name,
+                            action_input=action_input,
+                        )
+                return json.dumps(action, ensure_ascii=False)
 
-            for key, value in action.items():
-                if "input" in key.lower():
-                    action_input = value
-                else:
-                    action_name = value
+            if not isinstance(action, dict):
+                return json.dumps(action, ensure_ascii=False)
 
-            if action_name is not None and action_input is not None:
+            action_name, action_input = _split_action_fields(action)
+            if _is_callable_action(action_name, action_input):
                 return AgentScratchpadUnit.Action(
                     action_name=action_name,
                     action_input=action_input,
                 )
             else:
-                return json.dumps(action)
+                # A non-string action name (e.g. {"action": ["search"]}) or a
+                # non-dict/str action input is not callable; keep the payload
+                # as text instead of raising a validation error from
+                # AgentScratchpadUnit.Action.
+                return json.dumps(action, ensure_ascii=False)
 
         def extra_json_from_code_block(code_block) -> list[list | dict]:
             blocks = re.findall(r"```[json]*\s*([\[{].*[]}])\s*```", code_block, re.DOTALL | re.IGNORECASE)
