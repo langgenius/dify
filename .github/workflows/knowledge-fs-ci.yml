@@ -265,6 +265,7 @@ jobs:
             api/tests/unit_tests/controllers/common/test_errors.py
             api/tests/unit_tests/controllers/console/datasets/test_data_source.py
             api/tests/unit_tests/controllers/console/datasets/test_datasets.py
+            api/tests/unit_tests/controllers/console/test_apikey.py
             api/tests/unit_tests/controllers/console/test_wraps.py
             api/tests/unit_tests/controllers/console/workspace/rbac/test_roles.py
             api/tests/unit_tests/controllers/inner_api/agent/test_tools.py
