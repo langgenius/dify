@@ -180,6 +180,31 @@ class DifyBuilderFixIntentPayload(DifyBuilderPayload):
         return self
 
 
+class DifyBuilderFixControlQuery(DifyBuilderPayload):
+    operation: Literal["fix", "dismiss_fix", "stop_and_switch_fix"]
+    client_action_id: ClientTurnId
+    base_version: int = Field(ge=1)
+    fix_intent_id: NonEmptyString | None = None
+    expected_task_id: NonEmptyString | None = None
+
+    @model_validator(mode="after")
+    def require_decision_identity(self) -> "DifyBuilderFixControlQuery":
+        if self.operation != "fix" and (not self.fix_intent_id or not self.expected_task_id):
+            raise ValueError("Fix decision identity is required")
+        return self
+
+
+class DifyBuilderFixControlResponse(ResponseModel):
+    session_id: str
+    operation: Literal["fix", "dismiss_fix", "stop_and_switch_fix"]
+    client_action_id: str
+    base_version: int
+    fix_intent_id: str
+    target_task_id: str
+    status: str
+    acknowledged: bool
+
+
 class DifyBuilderConversationLifecycleResponse(ResponseModel):
     session_id: str
     version: int
