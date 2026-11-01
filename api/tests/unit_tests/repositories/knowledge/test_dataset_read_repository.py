@@ -36,7 +36,7 @@ from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, I
 from models.model import UploadFile
 from models.tools import ToolFile
 from repositories.knowledge.dataset_read_repository import get_external_api_bindings_batch, load_segment_read_batch
-from repositories.knowledge.segment_read_adapter import sign_segment_content
+from repositories.knowledge.segment_read_adapter import sign_segment_content, sign_segment_contents
 from services.knowledge.dataset_read_service import (
     get_dataset_queries,
     get_document_metadata_details,
@@ -172,6 +172,35 @@ def test_foreign_file_reference_never_receives_a_signature(sqlite_session: Sessi
     assert sign_segment_content(_segment(tool_path + "?nonce=old&sign=old"), session=sqlite_session) == tool_path
 
 
+def test_page_signing_checks_each_segment_against_its_own_tenant(sqlite_session: Session) -> None:
+    own = _upload()
+    foreign = _upload("tenant-2")
+    other_tenant_file = _upload("tenant-2")
+    sqlite_session.add_all([own, foreign, other_tenant_file])
+    sqlite_session.flush()
+    stale = "?timestamp=1&nonce=old&sign=old"
+    own_path = f"/files/{own.id}/file-preview"
+    foreign_path = f"/files/{foreign.id}/file-preview"
+    other_tenant_path = f"/files/{other_tenant_file.id}/file-preview"
+
+    own_segment = _segment(own_path + stale)
+    foreign_segment = _segment(foreign_path + stale)
+    plain_segment = _segment("plain text")
+    other_tenant_segment = _segment(other_tenant_path)
+    other_tenant_segment.tenant_id = "tenant-2"
+
+    signed = sign_segment_contents(
+        [own_segment, foreign_segment, plain_segment, other_tenant_segment], session=sqlite_session
+    )
+
+    own_params = {key: values[0] for key, values in parse_qs(urlsplit(signed[own_segment.id]).query).items()}
+    assert own_params["nonce"] != "old"
+    assert file_helpers.verify_file_signature(upload_file_id=own.id, **own_params)
+    assert signed[foreign_segment.id] == foreign_path
+    assert signed[plain_segment.id] == "plain text"
+    assert "?timestamp=" in signed[other_tenant_segment.id]
+
+
 def test_signing_respects_end_user_ownership_in_same_tenant(sqlite_session: Session) -> None:
     upload = _upload()
     sqlite_session.add(upload)
@@ -272,25 +301,27 @@ def test_segment_page_load_is_bounded_for_hierarchical_documents(sqlite_session:
     sqlite_session.add_all([_dataset(), rule, document])
     sqlite_session.flush()
     document.dataset_process_rule_id = rule.id
+    uploads = [_upload() for _ in range(20)]
+    sqlite_session.add_all(uploads)
+    sqlite_session.flush()
+
     segments = [
         DocumentSegment(
             tenant_id="tenant-1",
             dataset_id="dataset-1",
             document_id="document-1",
             position=index,
-            content=f"segment {index}",
+            content=f"segment {index} ![](/files/{upload.id}/image-preview)",
             word_count=1,
             tokens=1,
             created_by="account-1",
         )
-        for index in range(1, 21)
+        for index, upload in enumerate(uploads, start=1)
     ]
     sqlite_session.add_all(segments)
     sqlite_session.flush()
-    for segment in segments:
-        upload = _upload()
-        sqlite_session.add(upload)
-        sqlite_session.flush()
+
+    for segment, upload in zip(segments, uploads, strict=True):
         sqlite_session.add_all(
             [
                 ChildChunk(

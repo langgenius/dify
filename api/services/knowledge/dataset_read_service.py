@@ -29,6 +29,7 @@ from repositories.knowledge.dataset_read_repository import (
 from repositories.knowledge.segment_read_adapter import (
     format_segment_attachments,
     sign_segment_content,
+    sign_segment_contents,
 )
 from services.knowledge.entities.datasets import DatasetDetailRecord
 
@@ -132,18 +133,25 @@ def load_document_details(documents: Iterable[Document], *, session: Session) ->
 
 
 def load_segment_detail(
-    segment: DocumentSegment, summary: str | None, *, session: Session, batch: SegmentReadBatch | None = None
+    segment: DocumentSegment,
+    summary: str | None,
+    *,
+    session: Session,
+    batch: SegmentReadBatch | None = None,
+    sign_content: str | None = None,
 ) -> dict[str, Any]:
     """Load relations and authorize file links before handing plain values to the response model."""
     if batch is None:
         batch = load_segment_read_batch([segment], session=session)
     child_chunks = batch.child_chunks.get(segment.id, [])
+    if sign_content is None:
+        sign_content = sign_segment_content(segment, session=session)
     return {
         "id": segment.id,
         "position": segment.position,
         "document_id": segment.document_id,
         "content": segment.content,
-        "sign_content": sign_segment_content(segment, session=session),
+        "sign_content": sign_content,
         "answer": segment.answer,
         "word_count": segment.word_count,
         "tokens": segment.tokens,
@@ -186,7 +194,13 @@ def load_segment_details(
 ) -> list[dict[str, Any]]:
     items = list(segments)
     batch = load_segment_read_batch(items, session=session)
-    return [load_segment_detail(segment, summaries.get(segment.id), session=session, batch=batch) for segment in items]
+    signed_contents = sign_segment_contents(items, session=session)
+    return [
+        load_segment_detail(
+            segment, summaries.get(segment.id), session=session, batch=batch, sign_content=signed_contents[segment.id]
+        )
+        for segment in items
+    ]
 
 
 def format_document_source_detail(document: Document, file: UploadFile | None) -> dict[str, Any]:
