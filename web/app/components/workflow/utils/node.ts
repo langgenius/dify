@@ -22,6 +22,14 @@ export function getNodePersistedType(catalogType: BlockEnum): BlockEnum {
   return catalogType
 }
 
+/** Resolve the iteration/loop container id for a nested node. */
+export const resolveContainerParentId = (node: Node): string | undefined => {
+  if (node.parentId) return node.parentId
+  if (node.data.isInLoop && node.data.loop_id) return node.data.loop_id
+  if (node.data.isInIteration && node.data.iteration_id) return node.data.iteration_id
+  return undefined
+}
+
 export function generateNewNode({
   data,
   position,
