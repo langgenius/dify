@@ -8,7 +8,7 @@ from contextlib import nullcontext
 from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from pydantic import BaseModel
@@ -1378,3 +1378,126 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(
         WorkflowStartReason.RESUMPTION,
     )
     workflow_run_repo.delete_workflow_pause.assert_called_once_with(pause_entity)
+
+
+class TestWorkflowBasedAppExecutionTaskDeduplication:
+    """A lost Redis reply during publish makes kombu deliver the same payload
+    twice; both copies carry the same workflow_run_id and would each create a
+    conversation, a message, and duplicate external calls (#44911). The task
+    must claim the run id atomically and skip redeliveries."""
+
+    @staticmethod
+    def _payload(workflow_run_id: str = "run-1") -> str:
+        return json.dumps(
+            {
+                "app_id": "app-1",
+                "workflow_id": "wf-1",
+                "tenant_id": "tenant-1",
+                "app_mode": "advanced-chat",
+                "user": {"TYPE": "account", "user_id": "user-1"},
+                "args": {},
+                "invoke_from": "service-api",
+                "streaming": True,
+                "call_depth": 0,
+                "workflow_run_id": workflow_run_id,
+            }
+        )
+
+    @pytest.fixture
+    def redis_claim(self):
+        from extensions.ext_redis import redis_client
+
+        redis_client.reset_mock()
+        # Restore the default truthy MagicMock return afterwards so later
+        # tests that go through the task entry are unaffected.
+        yield redis_client
+        redis_client.set.reset_mock(return_value=True, side_effect=True)
+        redis_client.get.reset_mock(return_value=True, side_effect=True)
+
+    def test_runs_when_claim_succeeds(self, redis_claim: MagicMock):
+        redis_claim.set.return_value = True
+        with (
+            patch("tasks.app_generate.workflow_execute_task._AppRunner") as runner_cls,
+            patch("tasks.app_generate.workflow_execute_task.db"),
+        ):
+            runner_cls.return_value.run.return_value = None
+            workflow_execute_task_module.workflow_based_app_execution_task(self._payload())
+
+        runner_cls.assert_called_once()
+        runner_cls.return_value.run.assert_called_once()
+        args, kwargs = redis_claim.set.call_args
+        assert "run-1" in args[0]
+        assert kwargs["nx"] is True
+        assert kwargs["ex"] > 0
+
+    def test_skips_redelivered_payload_when_claim_fails(self, redis_claim: MagicMock):
+        redis_claim.set.return_value = None
+        redis_claim.get.return_value = b"first-delivery-token"
+        with patch("tasks.app_generate.workflow_execute_task._AppRunner") as runner_cls:
+            result = workflow_execute_task_module.workflow_based_app_execution_task(self._payload())
+
+        assert result is None
+        runner_cls.assert_not_called()
+
+    def test_lost_reply_retry_of_own_claim_still_runs(self, redis_claim: MagicMock):
+        # redis-py (default Retry: 3 attempts, ConnectionError/TimeoutError)
+        # re-sends SET NX when the success reply is lost; the retry finds its
+        # own key and returns None. The original delivery must still run:
+        # distinguish our own claim token from another attempt's (#44937).
+        redis_claim.set.return_value = None
+        redis_claim.get.side_effect = lambda key: redis_claim.set.call_args[0][1]
+        with (
+            patch("tasks.app_generate.workflow_execute_task._AppRunner") as runner_cls,
+            patch("tasks.app_generate.workflow_execute_task.db"),
+        ):
+            runner_cls.return_value.run.return_value = None
+            workflow_execute_task_module.workflow_based_app_execution_task(self._payload())
+
+        runner_cls.assert_called_once()
+        runner_cls.return_value.run.assert_called_once()
+
+    def test_lost_reply_retry_skips_when_claim_belongs_to_another_attempt(self, redis_claim: MagicMock):
+        redis_claim.set.return_value = None
+        redis_claim.get.return_value = b"another-attempts-token"
+        with patch("tasks.app_generate.workflow_execute_task._AppRunner") as runner_cls:
+            result = workflow_execute_task_module.workflow_based_app_execution_task(self._payload())
+
+        assert result is None
+        runner_cls.assert_not_called()
+
+    def test_redelivery_after_runner_failure_is_still_skipped(self, redis_claim: MagicMock):
+        # The claim is deliberately not released when the runner crashes: the
+        # failed attempt may already have produced partial external side
+        # effects, so replaying is worse than blocking the duplicate until
+        # the claim TTL expires. Pin that recovery semantic.
+        redis_claim.set.side_effect = [True, None]
+        # The redelivery's SET loses to the original claim; the stored token
+        # is the original attempt's, not the redelivery's.
+        redis_claim.get.side_effect = lambda key: redis_claim.set.call_args_list[0][0][1]
+        with (
+            patch("tasks.app_generate.workflow_execute_task._AppRunner") as runner_cls,
+            patch("tasks.app_generate.workflow_execute_task.db"),
+        ):
+            runner_cls.return_value.run.side_effect = RuntimeError("worker crashed")
+            with pytest.raises(RuntimeError, match="worker crashed"):
+                workflow_execute_task_module.workflow_based_app_execution_task(self._payload())
+
+            # Redelivery of the same payload must not start a second run.
+            result = workflow_execute_task_module.workflow_based_app_execution_task(self._payload())
+
+        assert result is None
+        assert runner_cls.return_value.run.call_count == 1
+
+    def test_distinct_run_ids_are_not_deduplicated(self, redis_claim: MagicMock):
+        # Two genuine user messages must both run; only the same
+        # workflow_run_id may be skipped.
+        redis_claim.set.return_value = True
+        with (
+            patch("tasks.app_generate.workflow_execute_task._AppRunner") as runner_cls,
+            patch("tasks.app_generate.workflow_execute_task.db"),
+        ):
+            runner_cls.return_value.run.return_value = None
+            workflow_execute_task_module.workflow_based_app_execution_task(self._payload("run-1"))
+            workflow_execute_task_module.workflow_based_app_execution_task(self._payload("run-2"))
+
+        assert runner_cls.call_count == 2
