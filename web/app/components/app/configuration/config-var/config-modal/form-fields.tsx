@@ -113,7 +113,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         />
       </div>
 
-      <Field name="variable" invalid={!!getError('variable')} className="block">
+      <Field name="variable" invalid={!!getError('variable')}>
         <label
           htmlFor={`${fieldId}-variable`}
           className="block system-sm-semibold leading-8! text-text-secondary"
@@ -127,11 +127,9 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
           onBlur={onVarKeyBlur}
           placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
         />
-        <FieldError match={!!getError('variable')} className="mt-1">
-          {getError('variable')}
-        </FieldError>
+        <FieldError match={!!getError('variable')}>{getError('variable')}</FieldError>
       </Field>
-      <Field name="label" invalid={!!getError('label')} className="block">
+      <Field name="label" invalid={!!getError('label')}>
         <label
           htmlFor={`${fieldId}-label`}
           className="block system-sm-semibold leading-8! text-text-secondary"
@@ -144,9 +142,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
           onValueChange={(value) => onPayloadChange('label')(value)}
           placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
         />
-        <FieldError match={!!getError('label')} className="mt-1">
-          {getError('label')}
-        </FieldError>
+        <FieldError match={!!getError('label')}>{getError('label')}</FieldError>
       </Field>
 
       {isStringInput && (

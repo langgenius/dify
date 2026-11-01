@@ -132,7 +132,7 @@ const FileUploadSetting: FC<Props> = ({
   )
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       {!inFeaturePanel && (
         <ConfigField
           title={t(($) => $['variableConfig.file.supportFileTypes'], { ns: 'appDebug' })}
@@ -172,7 +172,7 @@ const FileUploadSetting: FC<Props> = ({
           </div>
         </ConfigField>
       )}
-      <Field className="mt-4">
+      <Field>
         <Fieldset
           className="flex flex-col items-stretch gap-0"
           render={
@@ -205,10 +205,7 @@ const FileUploadSetting: FC<Props> = ({
         </Fieldset>
       </Field>
       {isMultiple && (
-        <ConfigField
-          className="mt-4"
-          title={t(($) => $['variableConfig.maxNumberOfUploads'], { ns: 'appDebug' })!}
-        >
+        <ConfigField title={t(($) => $['variableConfig.maxNumberOfUploads'], { ns: 'appDebug' })!}>
           <div>
             <div className="mb-1.5 body-xs-regular text-text-tertiary">
               {t(($) => $['variableConfig.maxNumberTip'], {
@@ -234,7 +231,6 @@ const FileUploadSetting: FC<Props> = ({
       {inFeaturePanel && !hideSupportFileType && (
         <ConfigField
           title={t(($) => $['variableConfig.file.supportFileTypes'], { ns: 'appDebug' })}
-          className="mt-4"
           errorMessage={validationError?.message}
           errorId={errorId}
         >

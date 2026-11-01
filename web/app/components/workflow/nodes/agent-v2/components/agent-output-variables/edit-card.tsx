@@ -118,7 +118,7 @@ export function OutputEditCard({
       }}
     >
       <div className="px-2 pt-2">
-        <div className="grid grid-cols-[repeat(3,auto)] items-center justify-start gap-x-2">
+        <div className="grid grid-cols-[repeat(3,auto)] items-center justify-start gap-x-2 gap-y-1">
           <Field name="name" invalid={hasNameError} className="contents">
             <FieldLabel className="sr-only">
               {t(($) => $['nodes.agent.outputVars.nameLabel'], { ns: 'workflowAgent' })}
@@ -136,7 +136,7 @@ export function OutputEditCard({
               onChange={(event) => updateDraft({ name: event.currentTarget.value })}
             />
             {hasNameError && (
-              <FieldError match className="col-span-full row-start-2 mt-1 px-1 py-0">
+              <FieldError match className="col-span-full row-start-2 px-1">
                 {duplicateName
                   ? t(($) => $['nodes.agent.outputVars.nameDuplicate'], { ns: 'workflowAgent' })
                   : t(($) => $['nodes.agent.outputVars.nameInvalid'], { ns: 'workflowAgent' })}

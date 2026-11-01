@@ -130,12 +130,12 @@ function DatasourceParameterField({
               onChange(checked)
             }}
           />
-          <span className="min-w-0 flex-1">
-            <span className="block system-xs-medium text-text-primary">
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="system-xs-medium text-text-primary">
               <ParameterLabel label={label} required={parameter.required} />
             </span>
             {description && (
-              <span className="mt-0.5 block body-xs-regular text-text-tertiary">{description}</span>
+              <span className="body-xs-regular text-text-tertiary">{description}</span>
             )}
           </span>
         </FieldLabel>
@@ -156,9 +156,7 @@ function DatasourceParameterField({
               <ParameterLabel label={label} required={parameter.required} />
             </FieldLabel>
             {description && (
-              <FieldDescription className="mt-0.5 py-0 wrap-break-word">
-                {description}
-              </FieldDescription>
+              <FieldDescription className="wrap-break-word">{description}</FieldDescription>
             )}
           </div>
           <Switch

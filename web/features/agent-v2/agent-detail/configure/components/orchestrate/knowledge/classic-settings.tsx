@@ -214,34 +214,36 @@ function ClassicSettingsFields({
   )
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-1 py-2">
-      <div className="flex flex-col gap-1 py-2">
-        <div id={queryModeLabelId} className="system-sm-medium text-text-secondary">
-          {t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.label'])}
+      <div className="flex flex-col gap-2 py-2">
+        <div className="flex flex-col gap-1">
+          <div id={queryModeLabelId} className="system-sm-medium text-text-secondary">
+            {t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.label'])}
+          </div>
+          <RadioGroup<KnowledgeRetrievalQueryMode>
+            aria-labelledby={queryModeLabelId}
+            className="w-full gap-2"
+            value={queryMode}
+            onValueChange={(nextMode) => {
+              if (nextMode) onChange({ queryMode: nextMode })
+            }}
+          >
+            {queryModeOptions.map((mode) => (
+              <RadioItem<KnowledgeRetrievalQueryMode>
+                key={mode}
+                value={mode}
+                nativeButton
+                render={<button type="button" className={optionCardClassName} />}
+              >
+                <span className="min-w-0 truncate">
+                  {t(($) => $[`agentDetail.configure.knowledgeRetrieval.dialog.query.${mode}`])}
+                </span>
+              </RadioItem>
+            ))}
+          </RadioGroup>
         </div>
-        <RadioGroup<KnowledgeRetrievalQueryMode>
-          aria-labelledby={queryModeLabelId}
-          className="w-full gap-2"
-          value={queryMode}
-          onValueChange={(nextMode) => {
-            if (nextMode) onChange({ queryMode: nextMode })
-          }}
-        >
-          {queryModeOptions.map((mode) => (
-            <RadioItem<KnowledgeRetrievalQueryMode>
-              key={mode}
-              value={mode}
-              nativeButton
-              render={<button type="button" className={optionCardClassName} />}
-            >
-              <span className="min-w-0 truncate">
-                {t(($) => $[`agentDetail.configure.knowledgeRetrieval.dialog.query.${mode}`])}
-              </span>
-            </RadioItem>
-          ))}
-        </RadioGroup>
         {queryMode === 'custom' ? (
           <>
-            <Field className="pt-1" invalid={Boolean(queryError)}>
+            <Field invalid={Boolean(queryError)}>
               <FieldLabel>
                 {t(
                   ($) =>
@@ -271,7 +273,7 @@ function ClassicSettingsFields({
             </Field>
           </>
         ) : (
-          <p className="pt-1 system-xs-regular text-text-tertiary">
+          <p className="system-xs-regular text-text-tertiary">
             {t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.agentDescription'])}
           </p>
         )}
