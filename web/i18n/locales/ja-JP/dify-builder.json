@@ -317,6 +317,7 @@
   "resourceReady": "設定済み・実行状態は未確認",
   "runTest": "テストを実行",
   "running": "実行中",
+  "taskControl.abandon": "タスクを終了",
   "taskControl.conflict": "タスクの状態が変わりました。最新の状態を確認して再試行してください。",
   "taskControl.paused": "一時停止中です。キャンバスを編集してからタスクを再開できます。",
   "taskControl.resume": "タスクを再開",

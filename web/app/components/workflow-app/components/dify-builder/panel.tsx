@@ -1,6 +1,15 @@
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { Suspense, useCallback, useEffect, useRef } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ErrorBoundary from '@/app/components/base/error-boundary'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -19,14 +28,16 @@ import {
   difyBuilderLocalUserMessageAtom,
 } from './session/state'
 import {
+  difyBuilderAbandonTaskAtom,
+  difyBuilderCanAbandonTaskAtom,
+  difyBuilderCanClearConversationAtom,
   difyBuilderCanvasReadyAtom,
+  difyBuilderClearConversationAtom,
   difyBuilderHasSessionAtom,
   difyBuilderInteractionBusyAtom,
   difyBuilderInterruptedAtom,
   difyBuilderLoadOlderConversationAtom,
   difyBuilderLocalInteractionResponseAtom,
-  difyBuilderNativeTestUnresolvedAtom,
-  difyBuilderResetAtom,
   difyBuilderSessionIdAtom,
   difyBuilderViewVersionAtom,
 } from './store'
@@ -43,12 +54,15 @@ const DifyBuilderPanelContent = () => {
   const localInteractionResponse = useAtomValue(difyBuilderLocalInteractionResponseAtom)
   const hasSession = useAtomValue(difyBuilderHasSessionAtom)
   const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
-  const nativeTestUnresolved = useAtomValue(difyBuilderNativeTestUnresolvedAtom)
+  const canClearConversation = useAtomValue(difyBuilderCanClearConversationAtom)
   const canvasReady = useAtomValue(difyBuilderCanvasReadyAtom)
   const interrupted = useAtomValue(difyBuilderInterruptedAtom)
   const sessionId = useAtomValue(difyBuilderSessionIdAtom)
   const viewVersion = useAtomValue(difyBuilderViewVersionAtom)
-  const reset = useSetAtom(difyBuilderResetAtom)
+  const clearConversation = useSetAtom(difyBuilderClearConversationAtom)
+  const abandonTask = useSetAtom(difyBuilderAbandonTaskAtom)
+  const canAbandonTask = useAtomValue(difyBuilderCanAbandonTaskAtom)
+  const [confirmation, setConfirmation] = useState<'clear' | 'abandon' | null>(null)
   const loadOlderConversation = useSetAtom(difyBuilderLoadOlderConversationAtom)
   const panelTitleRef = useRef<HTMLHeadingElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -89,9 +103,11 @@ const DifyBuilderPanelContent = () => {
     })
   }, [loadOlderConversation])
 
-  const handleReset = () => {
-    reset()
-    pinnedToBottomRef.current = true
+  const handleReset = async () => {
+    const operation = confirmation
+    setConfirmation(null)
+    if (operation === 'abandon') await abandonTask()
+    else if (operation === 'clear' && (await clearConversation())) pinnedToBottomRef.current = true
   }
 
   return (
@@ -103,9 +119,11 @@ const DifyBuilderPanelContent = () => {
         <DifyBuilderPanelBackground />
 
         <DifyBuilderPanelHeader
-          resetDisabled={!hasSession || interactionBusy || nativeTestUnresolved}
+          resetDisabled={!canClearConversation}
+          abandonDisabled={!canAbandonTask}
           titleRef={panelTitleRef}
-          onReset={handleReset}
+          onReset={() => setConfirmation('clear')}
+          onAbandon={() => setConfirmation('abandon')}
           onClose={() => setShowDifyBuilderPanel(false)}
         />
 
@@ -168,6 +186,28 @@ const DifyBuilderPanelContent = () => {
         </div>
 
         <DifyBuilderPanelFooter focusTargetRef={panelTitleRef} />
+        <AlertDialog
+          open={confirmation !== null}
+          onOpenChange={(open) => !open && setConfirmation(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {confirmation === 'abandon'
+                  ? t(($) => $['taskControl.abandon'], { ns: 'difyBuilder' })
+                  : t(($) => $.reset, { ns: 'difyBuilder' })}
+              </AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancelButton>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton onClick={() => void handleReset()}>
+                {t(($) => $['operation.confirm'], { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </aside>
   )
