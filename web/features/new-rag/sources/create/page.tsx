@@ -820,7 +820,6 @@ function AddSourcePageContent({
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get.queryOptions({
       input: { params: { control_space_id: knowledgeSpaceId } },
-      context: { silent: true },
       enabled: websiteSourceSelected,
       retry: false,
       select: sourceProviderListFromApi,
@@ -828,7 +827,6 @@ function AddSourcePageContent({
   )
   const datasourceAuthQuery = useQuery(
     consoleQuery.auth.plugin.datasource.defaultList.get.queryOptions({
-      context: { silent: true },
       enabled: websiteSourceSelected,
       retry: false,
     }),
@@ -840,7 +838,6 @@ function AddSourcePageContent({
   )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
-      context: { silent: true },
       enabled: websiteSourceSelected,
       input: (pageParam) => ({
         params: { control_space_id: knowledgeSpaceId },

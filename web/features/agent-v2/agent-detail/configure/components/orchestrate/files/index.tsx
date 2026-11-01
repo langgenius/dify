@@ -20,6 +20,7 @@ import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { useDocLink } from '@/context/i18n'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import {
@@ -208,6 +209,7 @@ function AgentFileItem({
   const handleRemove = useCallback(() => {
     onRemove(file.id)
   }, [file.id, onRemove])
+  const notifyError = useErrorNotification()
   const downloadFile = useCallback(
     async (targetFile: AgentFileNode) => {
       if (targetFile.virtualContent !== undefined) {
@@ -243,9 +245,9 @@ function AgentFileItem({
   )
   const downloadFileAction = useCallback(
     (targetFile: AgentFileNode) => {
-      void downloadFile(targetFile).catch(noop)
+      void downloadFile(targetFile).catch(notifyError)
     },
-    [downloadFile],
+    [downloadFile, notifyError],
   )
   const onDownloadFile = canDownload ? downloadFileAction : undefined
   const handleDownload = useCallback(
@@ -281,8 +283,8 @@ function AgentFileItem({
               aria-current={selected ? 'true' : undefined}
               disabled={file.isMissing}
               className={cn(
-                'group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md pl-2 text-left select-none focus-visible:ring-inset',
-                file.isMissing && 'cursor-default pr-6',
+                'group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md ps-2 text-start select-none focus-visible:ring-inset',
+                file.isMissing && 'cursor-default pe-6',
               )}
             />
           }
@@ -318,14 +320,14 @@ function AgentFileItem({
       </Dialog>
       {file.isMissing && (
         <MissingReferenceWarning
-          className="absolute top-1/2 right-1 -translate-y-1/2"
+          className="absolute inset-e-1 top-1/2 -translate-y-1/2"
           label={t(($) => $['agentDetail.configure.files.missing'])}
         />
       )}
       <div
         className={cn(
           'pointer-events-none absolute top-1/2 z-10 flex -translate-y-1/2 items-center justify-end gap-1 opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100',
-          file.isMissing ? 'right-7' : 'right-1',
+          file.isMissing ? 'inset-e-7' : 'inset-e-1',
         )}
       >
         {!file.isMissing && onDownloadFile && (
@@ -378,7 +380,7 @@ function AgentBuildNoteFileRow() {
       <FileTreeLabel className="w-auto flex-none" title={BUILD_NOTE_FILE_NAME}>
         {BUILD_NOTE_FILE_NAME}
       </FileTreeLabel>
-      <div className="ml-1 flex shrink-0 items-center gap-0.5">
+      <div className="ms-1 flex shrink-0 items-center gap-0.5">
         <AgentBuildNoteBadge />
         <AgentBuildNoteInfotip />
       </div>

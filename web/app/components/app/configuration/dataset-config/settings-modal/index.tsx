@@ -183,7 +183,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
           }
         })
       }
-      await updateDatasetSetting(requestParams, { silent: true })
+      await updateDatasetSetting(requestParams)
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onSave({
         ...localeCurrentDataset,
@@ -237,7 +237,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       }}
       ref={ref}
     >
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular ps-6 pe-5">
         <div className="flex flex-col text-base font-semibold text-text-primary">
           <div className="leading-6">{t(($) => $.title, { ns: 'datasetSettings' })}</div>
         </div>
@@ -340,7 +340,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 {t(($) => $['form.embeddingModelTip'], { ns: 'datasetSettings' })}
                 <button
                   type="button"
-                  className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  className="cursor-pointer border-none bg-transparent p-0 text-start text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                   onClick={() => setSettingsDestination('provider')}
                 >
                   {t(($) => $['form.embeddingModelTipLink'], { ns: 'datasetSettings' })}
@@ -384,7 +384,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       />
 
       <div className="sticky bottom-0 z-5 flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4">
-        <Button onClick={onCancel} className="mr-2">
+        <Button onClick={onCancel} className="me-2">
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <Button variant="primary" disabled={loading} onClick={handleSave}>

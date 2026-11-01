@@ -10,6 +10,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { consoleClient } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { ConnectedSourceConfiguration } from '../sources/setup/connected-source-configuration'
 import { CrawlPreviewPageSelection } from '../sources/setup/crawl-selection'
 import { WebsiteDatasourceParameterForm } from '../sources/setup/datasource-parameter-form'
@@ -48,7 +49,7 @@ type CreateSourceSetupProps = {
 
 export function CreateSourceSetup(props: CreateSourceSetupProps) {
   const { disabled, draft, onDraftChange, onSourceTypeChange } = props
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'common'])
   const { datasourcePluginsQuery, providerOptions, providerOption, providerDraft, sessionKey } =
     useSourceSetupInputs(draft)
   const selectProvider = (providerKey: string) => {
@@ -118,7 +119,7 @@ function CreateSourceSetupSession({
   onDraftChange,
   shouldPreservePreviewOnUnmount,
 }: CreateSourceSetupProps) {
-  const { t } = useTranslation(['knowledgeSpace', 'knowledgeCreate'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeCreate', 'common'])
   const {
     datasourcePluginsQuery,
     datasourceAuthQuery,
@@ -133,6 +134,7 @@ function CreateSourceSetupSession({
   } = useSourceSetupInputs(draft)
   const [selection, setSelection] = useAtom(createSourceSelectionAtom)
   const currentSelection = selection?.sessionKey === sessionKey ? selection : undefined
+  const [crawlActionError, setCrawlActionError] = useState<unknown>()
   const [crawlState, setCrawlState] = useState<LocalCrawlState>('idle')
   const crawlActionLabelId = useId()
   const [stoppingPreview, setStoppingPreview] = useState(false)
@@ -173,6 +175,7 @@ function CreateSourceSetupSession({
       setCrawlState('stopped')
       return
     }
+    setCrawlActionError(undefined)
     setStoppingPreview(true)
     try {
       const response = await consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId.delete({
@@ -198,7 +201,8 @@ function CreateSourceSetupSession({
       } else {
         setCrawlState('running')
       }
-    } catch {
+    } catch (error) {
+      setCrawlActionError(error)
       // Keep the job handle and running state so Stop can be retried and unmount
       // cleanup can still revoke a task whose cancellation response was lost.
       setCrawlState('running')
@@ -235,6 +239,7 @@ function CreateSourceSetupSession({
   )
 
   const startPreview = async () => {
+    setCrawlActionError(undefined)
     if (
       providerDraft.sourceType !== 'websiteCrawl' ||
       !previewReady ||
@@ -442,7 +447,7 @@ function CreateSourceSetupSession({
                   type="button"
                   variant="ghost-accent"
                   size="small"
-                  className="ml-auto shrink-0"
+                  className="ms-auto shrink-0"
                   loading={stoppingPreview}
                   onClick={() => void stopPreview()}
                 >
@@ -470,6 +475,12 @@ function CreateSourceSetupSession({
                   </span>
                 </div>
               ))}
+            {!!crawlActionError && crawlState !== 'error' && (
+              <p role="alert" className="system-xs-regular text-text-destructive">
+                {getErrorMessage(crawlActionError) ??
+                  t(($) => $['api.actionFailed'], { ns: 'common' })}
+              </p>
+            )}
             {crawlState === 'error' && (
               <p role="alert" className="system-xs-regular text-text-destructive">
                 {t(($) => $.crawlStartFailed)}

@@ -1,9 +1,11 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
+import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
@@ -11,7 +13,6 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType } from '@/models/pipeline'
@@ -37,6 +38,9 @@ const OnlineDocuments = ({
   supportBatchUpload = true,
   onCredentialChange,
 }: OnlineDocumentsProps) => {
+  const { t } = useTranslation(['common'])
+  const [loadError, setLoadError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const docLink = useDocLink()
   const pipelineId = useDatasetDetailContextWithSelector((s) => s.dataset?.pipeline_id)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
@@ -75,12 +79,38 @@ const OnlineDocuments = ({
     return pagesMap
   }, [documentsData])
 
+  const requestGenerationRef = useRef(0)
+  const requestControllerRef = useRef<AbortController | null>(null)
   const datasourceNodeRunURL = !isInPipeline
     ? `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${nodeId}/run`
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
+  useEffect(
+    () => () => {
+      requestGenerationRef.current += 1
+      requestControllerRef.current?.abort()
+    },
+    [datasourceNodeRunURL, currentCredentialId],
+  )
+
+  // oxlint-disable eslint-react/set-state-in-effect -- Subscribe to a datasource SSE request; callbacks own its asynchronous error and completion state.
   const getOnlineDocuments = useCallback(async () => {
     const { currentCredentialId } = dataSourceStore.getState()
+    const generation = ++requestGenerationRef.current
+    requestControllerRef.current?.abort()
+    let settled = false
+    const isCurrentRequest = () =>
+      !settled &&
+      generation === requestGenerationRef.current &&
+      currentCredentialId === dataSourceStore.getState().currentCredentialId
+    setLoadError('')
+    setIsLoading(true)
+    const handleError = (message: string) => {
+      if (!isCurrentRequest()) return
+      settled = true
+      setIsLoading(false)
+      setLoadError(message || t(($) => $['api.actionFailed']))
+    }
     // Convert datasource_parameters to inputs format for the API
     const inputs = Object.entries(nodeData.datasource_parameters || {}).reduce(
       (acc, [key, value]) => {
@@ -101,16 +131,27 @@ const OnlineDocuments = ({
         },
       },
       {
+        getAbortController: (controller) => {
+          if (isCurrentRequest()) requestControllerRef.current = controller
+          else controller.abort()
+        },
+        onCompleted: (_hasError, message) => handleError(message ?? ''),
+        onError: handleError,
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
+          if (!isCurrentRequest()) return
+          settled = true
+          setIsLoading(false)
           const { setDocumentsData } = dataSourceStore.getState()
+          setLoadError('')
           setDocumentsData(documentsData.data as DataSourceNotionWorkspace[])
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
-          toast.error(error.error)
+          handleError(error.error)
         },
       },
     )
-  }, [dataSourceStore, datasourceNodeRunURL, nodeData.datasource_parameters])
+  }, [dataSourceStore, datasourceNodeRunURL, nodeData.datasource_parameters, t])
+  // oxlint-enable eslint-react/set-state-in-effect
 
   useEffect(() => {
     if (!currentCredentialId) return
@@ -161,20 +202,27 @@ const OnlineDocuments = ({
         credentials={dataSourceAuth?.result || []}
       />
       <div className="rounded-xl border border-components-panel-border bg-background-default-subtle">
-        <div className="flex items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-1 pl-3">
+        <div className="flex items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-1 ps-3">
           <div className="flex grow items-center">
             <Title name={nodeData.datasource_label} />
           </div>
           <SearchInput value={searchValue} onChange={handleSearchValueChange} />
         </div>
         <div className="overflow-hidden rounded-b-xl">
-          {documentsData?.length ? (
+          {loadError ? (
+            <div role="alert" className="p-3 system-sm-regular text-text-destructive">
+              <p>{loadError}</p>
+              <Button onClick={() => void getOnlineDocuments()}>
+                {t(($) => $['operation.retry'])}
+              </Button>
+            </div>
+          ) : !isLoading || documentsData.length > 0 ? (
             <PageSelector
               key={`${currentCredentialId}:${supportBatchUpload ? 'multiple' : 'single'}`}
               checkedIds={selectedPagesId}
               disabledValue={new Set()}
               searchValue={searchValue}
-              list={documentsData[0]!.pages || []}
+              list={documentsData[0]?.pages || []}
               pagesMap={PagesMapAndSelectedPagesId}
               onSelect={handleSelectPages}
               canPreview={!isInPipeline}

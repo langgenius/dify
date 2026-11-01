@@ -216,10 +216,7 @@ describe('Leaving Build', () => {
     await receive()
     await changeMode(user, 'preview')
     await confirm(user)
-    expect(api.stop).toHaveBeenCalledWith(
-      { params: { agent_id: 'agent-1', task_id: 'task-0' } },
-      { context: { silent: true } },
-    )
+    expect(api.stop).toHaveBeenCalledWith({ params: { agent_id: 'agent-1', task_id: 'task-0' } })
     expect(api.stop.mock.invocationCallOrder[0]).toBeLessThan(
       api.discard.mock.invocationCallOrder[0]!,
     )

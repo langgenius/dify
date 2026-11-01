@@ -8,22 +8,23 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Countdown from '@/app/components/signin/countdown'
-import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 type CheckCodeFormValues = {
   code: string
 }
 
 export default function CheckCode() {
-  const { t } = useTranslation(['login'])
+  const { t } = useTranslation(['login', 'common'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)
   const [token, setToken] = useState(() => decodeURIComponent(searchParams.get('token') as string))
   const [loading, setLoading] = useState(false)
+  const [requestError, setRequestError] = useState<unknown>()
   const locale = useLocale()
   const { mutateAsync: submitMail } = useMutation(
     consoleQuery.emailRegister.sendEmail.post.mutationOptions(),
@@ -36,6 +37,7 @@ export default function CheckCode() {
 
   const verify = async (code: string) => {
     if (loading) return
+    setRequestError(undefined)
     try {
       setLoading(true)
       const res = await verifyCode({ body: { email, code, token } })
@@ -44,16 +46,17 @@ export default function CheckCode() {
         params.set('token', encodeURIComponent(res.token))
         router.push(`/signup/set-password?${params.toString()}`)
       } else {
-        toast.error(t(($) => $['checkCode.invalidCode'], { ns: 'login' }))
+        setRequestError(new Error(t(($) => $['checkCode.invalidCode'], { ns: 'login' })))
       }
     } catch (error) {
-      console.error(error)
+      if (!(error instanceof Error && error.name === 'AbortError')) setRequestError(error)
     } finally {
       setLoading(false)
     }
   }
 
   const resendCode = async () => {
+    setRequestError(undefined)
     try {
       const res = await submitMail({ body: { email, language: locale } })
       if (res.result === 'success') {
@@ -64,7 +67,7 @@ export default function CheckCode() {
         router.replace(`/signup/check-code?${params.toString()}`)
       }
     } catch (error) {
-      console.error(error)
+      if (!(error instanceof Error && error.name === 'AbortError')) setRequestError(error)
     }
   }
 
@@ -93,6 +96,11 @@ export default function CheckCode() {
           void verify(code)
         }}
       >
+        {!!requestError && (
+          <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+            {getErrorMessage(requestError) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+          </p>
+        )}
         <Field name="code">
           <FieldLabel>{t(($) => $['checkCode.verificationCode'], { ns: 'login' })}</FieldLabel>
           <Input
@@ -129,7 +137,7 @@ export default function CheckCode() {
         <span className="inline-block rounded-full p-1">
           <span className="i-ri-arrow-left-line size-3" aria-hidden="true" />
         </span>
-        <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
+        <span className="ms-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
       </button>
     </div>
   )

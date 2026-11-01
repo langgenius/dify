@@ -133,7 +133,7 @@ describe('useCreateSnippet', () => {
       expect(result.current.isCreatingSnippet).toBe(false)
     })
 
-    it('should rely on API error handling when create fails', async () => {
+    it('exposes a create failure for the owning form', async () => {
       mockMutateAsync.mockRejectedValue(new Error('create failed'))
 
       const { result } = renderHook(() => useCreateSnippet())
@@ -151,6 +151,7 @@ describe('useCreateSnippet', () => {
         })
       })
 
+      expect(result.current.createError).toEqual(new Error('create failed'))
       expect(mockToastError).not.toHaveBeenCalled()
       expect(mockSyncDraftWorkflow).not.toHaveBeenCalled()
       expect(mockPush).not.toHaveBeenCalled()

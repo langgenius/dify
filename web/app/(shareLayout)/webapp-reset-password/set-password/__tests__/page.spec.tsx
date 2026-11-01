@@ -54,4 +54,25 @@ describe('Webapp Reset Password Set Password Page', () => {
     })
     expect(document.title).toContain('login.passwordChangedTip')
   })
+  it('keeps the password draft after a failed reset and permits retry', async () => {
+    const user = userEvent.setup()
+    vi.mocked(changeWebAppPasswordWithToken).mockRejectedValueOnce(new Error('Reset token expired'))
+    render(<ChangePasswordForm />)
+    const password = screen.getByLabelText('accountSettings.account.newPassword')
+    await user.type(password, 'ValidPass123!')
+    await user.type(
+      screen.getByLabelText('accountSettings.account.confirmPassword'),
+      'ValidPass123!',
+    )
+    await user.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Reset token expired')
+    expect(password).toHaveValue('ValidPass123!')
+    expect(screen.queryByText('login.passwordChangedTip')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+        'login.passwordChangedTip',
+      ),
+    )
+  })
 })

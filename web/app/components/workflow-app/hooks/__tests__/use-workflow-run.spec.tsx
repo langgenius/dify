@@ -245,22 +245,19 @@ it('saves the graph before running and applies streamed results to the real work
   })
   await waitFor(() => expect(api.sync).toHaveBeenCalledOnce())
   expect(api.ssePost).not.toHaveBeenCalled()
-  expect(api.sync).toHaveBeenCalledWith(
-    {
-      params: { app_id: 'app-1' },
-      body: expect.objectContaining({
-        graph: expect.objectContaining({
-          nodes: [
-            expect.objectContaining({
-              id: 'node-1',
-              data: expect.objectContaining({ selected: false }),
-            }),
-          ],
-        }),
+  expect(api.sync).toHaveBeenCalledWith({
+    params: { app_id: 'app-1' },
+    body: expect.objectContaining({
+      graph: expect.objectContaining({
+        nodes: [
+          expect.objectContaining({
+            id: 'node-1',
+            data: expect.objectContaining({ selected: false }),
+          }),
+        ],
       }),
-    },
-    { context: { silent: true } },
-  )
+    }),
+  })
   await act(async () => {
     pending.resolve({ result: 'success', hash: 'saved', updated_at: 1700000000 })
     await run
@@ -358,7 +355,7 @@ it.each([
     expect(api.post).toHaveBeenCalledWith(
       `/apps/app-1/workflows/draft/trigger/${url}`,
       expect.objectContaining({ body, signal: expect.any(AbortSignal) }),
-      { needAllResponseContent: true, silent: true },
+      { needAllResponseContent: true },
     )
     expect(store.getState().isListening).toBe(true)
     const request = api.post.mock.lastCall?.[1]
@@ -390,6 +387,45 @@ it('stops an identified task through the stop endpoint', async () => {
     }),
   )
   expect(store.getState().workflowRunningData?.result.status).toBe(WorkflowRunningStatus.Stopped)
+})
+
+it('keeps the run active until stopping succeeds and reports failures for retry', async () => {
+  const notifyError = vi.spyOn(toast, 'error')
+  const { result, store } = await setup()
+  await act(async () => result.current.run.handleRun({ inputs: {} }))
+  const callbacks = api.ssePost.mock.lastCall?.[2]
+  act(() => callbacks?.onWorkflowStarted?.(started))
+  const pending = createDeferred<{ result: 'success' }>()
+  api.stop.mockReturnValueOnce(pending.promise)
+
+  act(() => result.current.run.handleStopRun('task-1'))
+  await waitFor(() => expect(api.stop).toHaveBeenCalledOnce())
+  expect(store.getState().workflowRunningData?.result.status).toBe(WorkflowRunningStatus.Running)
+  await act(async () => pending.reject(new Error('Stop unavailable')))
+  await waitFor(() => expect(notifyError).toHaveBeenCalledExactlyOnceWith('Stop unavailable'))
+  expect(store.getState().workflowRunningData?.result.status).toBe(WorkflowRunningStatus.Running)
+
+  act(() => result.current.run.handleStopRun('task-1'))
+  await waitFor(() =>
+    expect(store.getState().workflowRunningData?.result.status).toBe(WorkflowRunningStatus.Stopped),
+  )
+  expect(api.stop).toHaveBeenCalledTimes(2)
+})
+
+it('preserves a completed result when the stop response arrives later', async () => {
+  const { result, store } = await setup()
+  await act(async () => result.current.run.handleRun({ inputs: {} }))
+  const callbacks = api.ssePost.mock.lastCall?.[2]
+  act(() => callbacks?.onWorkflowStarted?.(started))
+  const pending = createDeferred<{ result: 'success' }>()
+  api.stop.mockReturnValueOnce(pending.promise)
+  act(() => result.current.run.handleStopRun('task-1'))
+  await waitFor(() => expect(api.stop).toHaveBeenCalledOnce())
+
+  act(() => callbacks?.onWorkflowFinished?.(finished))
+  await act(async () => pending.resolve({ result: 'success' }))
+
+  expect(store.getState().workflowRunningData?.result.status).toBe(WorkflowRunningStatus.Succeeded)
 })
 
 it('keeps the first draft backup while inspecting another graph and restores its canvas and environment', async () => {

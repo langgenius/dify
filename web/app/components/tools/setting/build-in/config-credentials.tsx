@@ -24,14 +24,15 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { toast } from '@/app/notifications'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
+import { getErrorMessage } from '@/utils/error-message'
 import { addDefaultValue, toolCredentialToFormSchemas } from '../../utils/to-form-schema'
 
 type Props = Readonly<{
   collection: Collection
   onCancel: () => void
-  onSaved: (value: Record<string, any>) => void
+  onSaved: (value: Record<string, any>) => void | Promise<void>
   isHideRemoveBtn?: boolean
-  onRemove?: () => void
+  onRemove?: () => void | Promise<void>
   isSaving?: boolean
   readonly?: boolean
 }>
@@ -45,24 +46,30 @@ const ConfigCredential: FC<Props> = ({
   isSaving,
   readonly,
 }) => {
+  const [submitError, setSubmitError] = useState<unknown>()
   const { t } = useTranslation(['common', 'tools'])
   const language = useLanguage()
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
   const { name: collectionName } = collection
   const [tempCredential, setTempCredential] = React.useState<any>({})
   const [isLoading, setIsLoading] = React.useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   useEffect(() => {
-    fetchBuiltInToolCredentialSchema(collectionName).then(async (res) => {
-      const toolCredentialSchemas = toolCredentialToFormSchemas(res)
-      const credentialValue = await fetchBuiltInToolCredential(collectionName)
-      setTempCredential(credentialValue)
-      const defaultCredentials = addDefaultValue(credentialValue, toolCredentialSchemas)
-      setCredentialSchema(toolCredentialSchemas)
-      setTempCredential(defaultCredentials)
-    })
-  }, [])
+    void fetchBuiltInToolCredentialSchema(collectionName)
+      .then(async (res) => {
+        setSubmitError(undefined)
+        const toolCredentialSchemas = toolCredentialToFormSchemas(res)
+        const credentialValue = await fetchBuiltInToolCredential(collectionName)
+        setTempCredential(credentialValue)
+        const defaultCredentials = addDefaultValue(credentialValue, toolCredentialSchemas)
+        setCredentialSchema(toolCredentialSchemas)
+        setTempCredential(defaultCredentials)
+      })
+      .catch(setSubmitError)
+  }, [collectionName, loadAttempt])
 
   const handleSave = async () => {
+    if (!credentialSchema) return
     for (const field of credentialSchema) {
       if (field.required && !tempCredential[field.name]) {
         toast.error(
@@ -76,8 +83,11 @@ const ConfigCredential: FC<Props> = ({
     }
     setIsLoading(true)
     try {
+      setSubmitError(undefined)
       await onSaved(tempCredential)
       setIsLoading(false)
+    } catch (error) {
+      setSubmitError(error)
     } finally {
       setIsLoading(false)
     }
@@ -118,8 +128,24 @@ const ConfigCredential: FC<Props> = ({
                 </DrawerDescription>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+                {!!submitError && (
+                  <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+                    {getErrorMessage(submitError) ??
+                      t(($) => $['api.actionFailed'], { ns: 'common' })}
+                  </p>
+                )}
+                {!!submitError && !credentialSchema && (
+                  <Button
+                    onClick={() => {
+                      setSubmitError(undefined)
+                      setLoadAttempt((attempt) => attempt + 1)
+                    }}
+                  >
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                )}
                 {!credentialSchema ? (
-                  <LoadingPlaceholder className="h-full" />
+                  !submitError && <LoadingPlaceholder className="h-full" />
                 ) : (
                   <>
                     <Form
@@ -159,7 +185,16 @@ const ConfigCredential: FC<Props> = ({
                       )}
                     >
                       {collection.is_team_authorization && !isHideRemoveBtn && !readonly && (
-                        <Button onClick={onRemove}>
+                        <Button
+                          onClick={async () => {
+                            setSubmitError(undefined)
+                            try {
+                              await onRemove()
+                            } catch (error) {
+                              setSubmitError(error)
+                            }
+                          }}
+                        >
                           {t(($) => $['operation.remove'], { ns: 'common' })}
                         </Button>
                       )}

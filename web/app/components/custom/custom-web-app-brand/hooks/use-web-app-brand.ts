@@ -30,7 +30,12 @@ const useWebAppBrand = () => {
   const customConfigQuery = useQuery(consoleQuery.workspaces.customConfig.get.queryOptions())
   const { data: customConfig } = customConfigQuery
   const updateCustomConfigMutation = useMutation(
-    consoleQuery.workspaces.customConfig.post.mutationOptions(),
+    consoleQuery.workspaces.customConfig.post.mutationOptions({
+      onSuccess: () =>
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.customConfig.get.key(),
+        }),
+    }),
   )
   const webappLogo = customConfig?.replace_webapp_logo || ''
   const webappBrandRemoved = customConfig?.remove_webapp_brand ?? undefined
@@ -41,12 +46,9 @@ const useWebAppBrand = () => {
   const workspaceLogo = systemFeatures.branding.enabled
     ? systemFeatures.branding.workspace_logo
     : ''
-  const persistWorkspaceBrand = async (body: WorkspaceCustomConfigPayload) => {
+  const persistWorkspaceBrand = (body: WorkspaceCustomConfigPayload, onSuccess?: () => void) => {
     if (isCustomConfigUnavailable || !canReplaceLogo || !canManageCustomBrand) return
-    await updateCustomConfigMutation.mutateAsync({ body })
-    await queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.customConfig.get.key(),
-    })
+    updateCustomConfigMutation.mutate({ body }, { onSuccess })
   }
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (uploadDisabled || uploading) return
@@ -82,22 +84,26 @@ const useWebAppBrand = () => {
       WEB_APP_LOGO_UPLOAD_URL,
     )
   }
-  const handleApply = async () => {
-    await persistWorkspaceBrand({
-      remove_webapp_brand: webappBrandRemoved,
-      replace_webapp_logo: fileId,
-    })
-    setFileId('')
-    setImgKey(Date.now())
+  const handleApply = () => {
+    persistWorkspaceBrand(
+      {
+        remove_webapp_brand: webappBrandRemoved,
+        replace_webapp_logo: fileId,
+      },
+      () => {
+        setFileId('')
+        setImgKey(Date.now())
+      },
+    )
   }
-  const handleRestore = async () => {
-    await persistWorkspaceBrand({
+  const handleRestore = () => {
+    persistWorkspaceBrand({
       remove_webapp_brand: false,
       replace_webapp_logo: '',
     })
   }
-  const handleSwitch = async (checked: boolean) => {
-    await persistWorkspaceBrand({
+  const handleSwitch = (checked: boolean) => {
+    persistWorkspaceBrand({
       remove_webapp_brand: checked,
     })
   }
@@ -106,6 +112,11 @@ const useWebAppBrand = () => {
     setUploadProgress(0)
   }
   return {
+    saveError:
+      !updateCustomConfigMutation.isPending &&
+      updateCustomConfigMutation.error?.name !== 'AbortError'
+        ? updateCustomConfigMutation.error
+        : null,
     fileId,
     imgKey,
     uploadProgress,

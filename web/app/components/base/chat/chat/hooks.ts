@@ -35,6 +35,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { TransferMethod } from '@/types/app'
+import { getErrorMessage } from '@/utils/error-message'
 import { getThreadMessages } from '../utils'
 import { getProcessedInputs, processOpeningStatement } from './utils'
 
@@ -583,11 +584,16 @@ export const useChat = (
       if (generation !== workflowRequestGenerationRef.current) return
     }
     if (!options.isNewAgent && stopChat && taskIdRef.current && !pausedStateRef.current) {
+      const scope = captureAppAccessScope()
       void (async () => {
         try {
           await stopChat(taskIdRef.current)
-        } catch {
-          // The request layer owns error feedback; stopping locally must still finish.
+        } catch (error) {
+          if (!isAppAccessScopeCurrent(scope) || hasAppAccessError(scope)) return
+          if (error instanceof Error && error.name === 'AbortError') return
+          toast.error(
+            `${t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}: ${getErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}`,
+          )
         }
       })()
     }
@@ -668,7 +674,7 @@ export const useChat = (
       }
       const otherOptions: IOtherOptions = {
         isPublicAPI,
-        onNotifyError,
+        onNotifyError: onNotifyError ?? ((message) => toast.error(message)),
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
         },
@@ -1214,7 +1220,7 @@ export const useChat = (
 
       const otherOptions: IOtherOptions = {
         isPublicAPI,
-        onNotifyError,
+        onNotifyError: onNotifyError ?? ((message) => toast.error(message)),
         onUnhandledEvent,
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController

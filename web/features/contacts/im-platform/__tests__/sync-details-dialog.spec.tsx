@@ -187,14 +187,8 @@ describe('Contact IM sync details dialog', () => {
     expect(content).toContain('removed-member')
     expect(content).toContain('Directory access denied')
     for (const result of ['added', 'not_matched', 'failed', 'removed', 'skipped'])
-      expect(results).toHaveBeenCalledWith(
-        { query: { result, page: 1, limit: 20 } },
-        { context: { silent: true } },
-      )
-    expect(results).toHaveBeenCalledWith(
-      { query: { result: 'added', page: 2, limit: 20 } },
-      { context: { silent: true } },
-    )
+      expect(results).toHaveBeenCalledWith({ query: { result, page: 1, limit: 20 } })
+    expect(results).toHaveBeenCalledWith({ query: { result: 'added', page: 2, limit: 20 } })
   })
 
   it('does not download a partial report when a page fails and permits a complete retry', async () => {
@@ -270,10 +264,7 @@ describe('Contact IM sync details dialog', () => {
       ).toBeInTheDocument()
     }
     expect(screen.queryByRole('radio', { name: /filter.all/ })).not.toBeInTheDocument()
-    expect(results).toHaveBeenCalledWith(
-      { query: { result: 'added', page: 1, limit: 20 } },
-      { context: { silent: true } },
-    )
+    expect(results).toHaveBeenCalledWith({ query: { result: 'added', page: 1, limit: 20 } })
   })
 
   it('filters unmatched results with nullable entries and isolates results when switching categories', async () => {
@@ -286,10 +277,7 @@ describe('Contact IM sync details dialog', () => {
     )
     await waitFor(() => expect(screen.queryByText('Member 1')).not.toBeInTheDocument())
     expect(screen.getAllByText('contacts.imPlatform.details.missing').length).toBeGreaterThan(0)
-    expect(results).toHaveBeenCalledWith(
-      { query: { result: 'not_matched', page: 1, limit: 20 } },
-      { context: { silent: true } },
-    )
+    expect(results).toHaveBeenCalledWith({ query: { result: 'not_matched', page: 1, limit: 20 } })
     await user.click(
       screen.getByRole('radio', { name: 'contacts.imPlatform.details.filter.failed 1' }),
     )
@@ -314,10 +302,7 @@ describe('Contact IM sync details dialog', () => {
     await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.loadMore' }))
     expect(await screen.findByText('Member 21')).toBeInTheDocument()
     expect(screen.getAllByText('Member 1')).toHaveLength(1)
-    expect(results).toHaveBeenLastCalledWith(
-      { query: { result: 'added', page: 2, limit: 20 } },
-      { context: { silent: true } },
-    )
+    expect(results).toHaveBeenLastCalledWith({ query: { result: 'added', page: 2, limit: 20 } })
     expect(
       screen.queryByRole('button', { name: 'contacts.imPlatform.action.loadMore' }),
     ).not.toBeInTheDocument()

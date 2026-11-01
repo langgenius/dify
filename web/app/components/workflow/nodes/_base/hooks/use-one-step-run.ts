@@ -60,6 +60,7 @@ import { ssePost } from '@/service/base'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { useInvalidateLastRun } from '@/service/use-workflow'
 import { fetchNodeInspectVars, singleNodeRun } from '@/service/workflow'
+import { getErrorMessage } from '@/utils/error-message'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
 import { useWorkflow } from '../../../hooks/use-workflow'
@@ -308,6 +309,7 @@ const useOneStepRun = <T>({
   )
   const invalidLastRun = useInvalidateLastRun(resource, id)
   const [runResult, doSetRunResult] = useState<NodeTracing | null>(null)
+  const runError = useStore((state) => state.singleNodeRunErrors[id])
   const { appendNodeInspectVars, invalidateSysVarValues, invalidateConversationVarValues } =
     useInspectVarsCrud()
   const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
@@ -325,6 +327,17 @@ const useOneStepRun = <T>({
   useEffect(() => {
     isPausedRef.current = isPaused
   }, [isPaused])
+  const handleRunError = (error: unknown, errorGeneration: number) => {
+    if (errorGeneration !== workflowStore.getState().singleNodeRunErrorGenerations[id]) return
+    if (isPausedRef.current || (error instanceof Error && error.name === 'AbortError')) return
+    workflowStore
+      .getState()
+      .setSingleNodeRunError(
+        id,
+        (typeof error === 'string' ? error : getErrorMessage(error)) ||
+          t(($) => $['api.actionFailed'], { ns: 'common' }),
+      )
+  }
   const { eventEmitter } = useEventEmitterContextContext()
 
   const isScheduleTriggerNode = data.type === BlockEnum.TriggerSchedule
@@ -333,7 +346,11 @@ const useOneStepRun = <T>({
   const isTriggerNode = isWebhookTriggerNode || isPluginTriggerNode || isScheduleTriggerNode
 
   const setRunResult = useCallback(
-    async (data: NodeTracing | null) => {
+    async (
+      data: NodeTracing | null,
+      generation = workflowStore.getState().singleNodeRunGenerations[id] ?? 0,
+    ) => {
+      if (generation !== (workflowStore.getState().singleNodeRunGenerations[id] ?? 0)) return
       const isPaused = isPausedRef.current
 
       // The backend don't support pause the single run, so the frontend handle the pause state.
@@ -347,6 +364,11 @@ const useOneStepRun = <T>({
 
       // run fail may also update the inspect vars when the node set the error default output.
       const vars = await fetchNodeInspectVars(resource, id)
+      if (
+        generation !== (workflowStore.getState().singleNodeRunGenerations[id] ?? 0) ||
+        isPausedRef.current
+      )
+        return
       const { getNodes } = store.getState()
       const nodes = getNodes()
       appendNodeInspectVars(id, vars, nodes)
@@ -370,6 +392,7 @@ const useOneStepRun = <T>({
       isTriggerNode,
       invalidateSysVarValues,
       invalidateConversationVarValues,
+      workflowStore,
     ],
   )
 
@@ -379,7 +402,6 @@ const useOneStepRun = <T>({
     handleNodeDataUpdate({
       id,
       data: {
-        ...data,
         _singleRunningStatus: NodeRunningStatus.Running,
       },
     })
@@ -453,94 +475,231 @@ const useOneStepRun = <T>({
     setListeningTriggerIsAll,
   ])
 
-  const runScheduleSingleRun = useCallback(async (): Promise<NodeTracing | null> => {
-    if (resource.kind !== 'app') return null
-
-    try {
-      const response: any =
-        await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post(
-          {
-            params: { app_id: resource.appId, node_id: id },
-          },
-          { context: { silent: true } },
-        )
-
-      if (!response) {
-        const message = t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
-        throw new Error(message)
-      }
-
-      if (response?.status === 'error') {
-        const message =
-          response?.message || t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
-        throw new Error(message)
-      }
-
-      handleNodeDataUpdate({
-        id,
-        data: {
-          ...data,
-          _isSingleRun: false,
-          _singleRunningStatus: NodeRunningStatus.Succeeded,
-        },
-      })
-
-      return response as NodeTracing
-    } catch (error) {
-      console.error('handleRun: schedule trigger single run error', error)
-      handleNodeDataUpdate({
-        id,
-        data: {
-          ...data,
-          _isSingleRun: false,
-          _singleRunningStatus: NodeRunningStatus.Failed,
-        },
-      })
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' }),
-      )
-      throw error
-    }
-  }, [resource, id, handleNodeDataUpdate, data, t])
-
-  const runWebhookSingleRun = useCallback(async (): Promise<any | null> => {
-    if (resource.kind !== 'app') return null
-
-    webhookSingleRunActiveRef.current = true
-    const token = ++webhookSingleRunTokenRef.current
-
-    while (webhookSingleRunActiveRef.current && token === webhookSingleRunTokenRef.current) {
-      const controller = new AbortController()
-      webhookSingleRunAbortRef.current = controller
+  const runScheduleSingleRun = useCallback(
+    async (generation: number): Promise<NodeTracing | null> => {
+      if (resource.kind !== 'app') return null
 
       try {
         const response: any =
-          await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post(
-            { params: { app_id: resource.appId, node_id: id } },
-            { context: { silent: true }, signal: controller.signal },
-          )
+          await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post({
+            params: { app_id: resource.appId, node_id: id },
+          })
 
-        if (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
+        if (generation !== (workflowStore.getState().singleNodeRunGenerations[id] ?? 0)) return null
+        if (!response) {
+          const message = t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
+          throw new Error(message)
+        }
+
+        if (response?.status === 'error') {
+          const message =
+            response?.message || t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
+          throw new Error(message)
+        }
+
+        handleNodeDataUpdate({
+          id,
+          data: {
+            _isSingleRun: false,
+            _singleRunningStatus: NodeRunningStatus.Succeeded,
+          },
+        })
+
+        return response as NodeTracing
+      } catch (error) {
+        if (generation !== (workflowStore.getState().singleNodeRunGenerations[id] ?? 0)) return null
+        console.error('handleRun: schedule trigger single run error', error)
+        handleNodeDataUpdate({
+          id,
+          data: {
+            _isSingleRun: false,
+            _singleRunningStatus: NodeRunningStatus.Failed,
+          },
+        })
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' }),
+        )
+        throw error
+      }
+    },
+    [resource, id, handleNodeDataUpdate, data, t, workflowStore],
+  )
+
+  const runWebhookSingleRun = useCallback(
+    async (generation: number): Promise<any | null> => {
+      if (resource.kind !== 'app') return null
+
+      webhookSingleRunActiveRef.current = true
+      const token = ++webhookSingleRunTokenRef.current
+
+      while (
+        generation === (workflowStore.getState().singleNodeRunGenerations[id] ?? 0) &&
+        webhookSingleRunActiveRef.current &&
+        token === webhookSingleRunTokenRef.current
+      ) {
+        const controller = new AbortController()
+        webhookSingleRunAbortRef.current = controller
+
+        try {
+          const response: any =
+            await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post(
+              { params: { app_id: resource.appId, node_id: id } },
+              { signal: controller.signal },
+            )
+
+          if (
+            generation !== (workflowStore.getState().singleNodeRunGenerations[id] ?? 0) ||
+            !webhookSingleRunActiveRef.current ||
+            token !== webhookSingleRunTokenRef.current
+          )
+            return null
+
+          if (!response) {
+            const message =
+              response?.message || t(($) => $['common.webhookDebugFailed'], { ns: 'workflow' })
+            throw new Error(message)
+          }
+
+          if (response?.status === 'waiting') {
+            const delay = Number(response.retry_in) || 2000
+            webhookSingleRunAbortRef.current = null
+            if (
+              generation !== (workflowStore.getState().singleNodeRunGenerations[id] ?? 0) ||
+              !webhookSingleRunActiveRef.current ||
+              token !== webhookSingleRunTokenRef.current
+            )
+              return null
+
+            await new Promise<void>((resolve) => {
+              const timeoutId = window.setTimeout(resolve, delay)
+              webhookSingleRunTimeoutRef.current = timeoutId
+              webhookSingleRunDelayResolveRef.current = resolve
+              controller.signal.addEventListener(
+                'abort',
+                () => {
+                  window.clearTimeout(timeoutId)
+                  resolve()
+                },
+                { once: true },
+              )
+            })
+
+            webhookSingleRunTimeoutRef.current = undefined
+            webhookSingleRunDelayResolveRef.current = null
+            continue
+          }
+
+          if (response?.status === 'error') {
+            const message =
+              response.message || t(($) => $['common.webhookDebugFailed'], { ns: 'workflow' })
+            throw new Error(message)
+          }
+
+          handleNodeDataUpdate({
+            id,
+            data: {
+              _isSingleRun: false,
+              _singleRunningStatus: NodeRunningStatus.Listening,
+            },
+          })
+
+          cancelWebhookSingleRun()
+          return response
+        } catch (error) {
+          if (generation !== (workflowStore.getState().singleNodeRunGenerations[id] ?? 0))
+            return null
+          if (
+            controller.signal.aborted &&
+            (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
+          )
+            return null
+          if (controller.signal.aborted) return null
+
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : t(($) => $['common.webhookDebugRequestFailed'], { ns: 'workflow' }),
+          )
+          cancelWebhookSingleRun()
+          if (error instanceof Error) throw error
+          throw new Error(String(error))
+        } finally {
+          webhookSingleRunAbortRef.current = null
+        }
+      }
+
+      return null
+    },
+    [resource, id, data, handleNodeDataUpdate, cancelWebhookSingleRun, t, workflowStore],
+  )
+
+  const runPluginSingleRun = useCallback(
+    async (generation: number): Promise<any | null> => {
+      if (resource.kind !== 'app') return null
+
+      pluginSingleRunActiveRef.current = true
+      const token = ++pluginSingleRunTokenRef.current
+
+      while (
+        generation === (workflowStore.getState().singleNodeRunGenerations[id] ?? 0) &&
+        pluginSingleRunActiveRef.current &&
+        token === pluginSingleRunTokenRef.current
+      ) {
+        const controller = new AbortController()
+        pluginSingleRunAbortRef.current = controller
+
+        let requestError: unknown
+        const response: any =
+          await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run
+            .post(
+              { params: { app_id: resource.appId, node_id: id } },
+              { signal: controller.signal },
+            )
+            .catch((error: unknown) => {
+              requestError = error
+              return null
+            })
+            .finally(() => {
+              pluginSingleRunAbortRef.current = null
+            })
+
+        if (
+          generation !== (workflowStore.getState().singleNodeRunGenerations[id] ?? 0) ||
+          !pluginSingleRunActiveRef.current ||
+          token !== pluginSingleRunTokenRef.current
+        )
           return null
 
+        if (requestError) {
+          if (controller.signal.aborted) return null
+
+          toast.error(requestError instanceof Error ? requestError.message : 'Unknown error')
+          cancelPluginSingleRun()
+          throw requestError
+        }
+
         if (!response) {
-          const message =
-            response?.message || t(($) => $['common.webhookDebugFailed'], { ns: 'workflow' })
+          const message = 'Plugin debug failed'
+          toast.error(message)
+          cancelPluginSingleRun()
           throw new Error(message)
         }
 
         if (response?.status === 'waiting') {
           const delay = Number(response.retry_in) || 2000
-          webhookSingleRunAbortRef.current = null
-          if (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
+          if (
+            generation !== (workflowStore.getState().singleNodeRunGenerations[id] ?? 0) ||
+            !pluginSingleRunActiveRef.current ||
+            token !== pluginSingleRunTokenRef.current
+          )
             return null
 
           await new Promise<void>((resolve) => {
             const timeoutId = window.setTimeout(resolve, delay)
-            webhookSingleRunTimeoutRef.current = timeoutId
-            webhookSingleRunDelayResolveRef.current = resolve
+            pluginSingleRunTimeoutRef.current = timeoutId
+            pluginSingleRunDelayResolveRef.current = resolve
             controller.signal.addEventListener(
               'abort',
               () => {
@@ -551,141 +710,34 @@ const useOneStepRun = <T>({
             )
           })
 
-          webhookSingleRunTimeoutRef.current = undefined
-          webhookSingleRunDelayResolveRef.current = null
+          pluginSingleRunTimeoutRef.current = undefined
+          pluginSingleRunDelayResolveRef.current = null
           continue
         }
 
         if (response?.status === 'error') {
-          const message =
-            response.message || t(($) => $['common.webhookDebugFailed'], { ns: 'workflow' })
+          const message = response.message || 'Plugin debug failed'
+          toast.error(message)
+          cancelPluginSingleRun()
           throw new Error(message)
         }
 
         handleNodeDataUpdate({
           id,
           data: {
-            ...data,
             _isSingleRun: false,
             _singleRunningStatus: NodeRunningStatus.Listening,
           },
         })
 
-        cancelWebhookSingleRun()
+        cancelPluginSingleRun()
         return response
-      } catch (error) {
-        if (
-          controller.signal.aborted &&
-          (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
-        )
-          return null
-        if (controller.signal.aborted) return null
-
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : t(($) => $['common.webhookDebugRequestFailed'], { ns: 'workflow' }),
-        )
-        cancelWebhookSingleRun()
-        if (error instanceof Error) throw error
-        throw new Error(String(error))
-      } finally {
-        webhookSingleRunAbortRef.current = null
-      }
-    }
-
-    return null
-  }, [resource, id, data, handleNodeDataUpdate, cancelWebhookSingleRun, t])
-
-  const runPluginSingleRun = useCallback(async (): Promise<any | null> => {
-    if (resource.kind !== 'app') return null
-
-    pluginSingleRunActiveRef.current = true
-    const token = ++pluginSingleRunTokenRef.current
-
-    while (pluginSingleRunActiveRef.current && token === pluginSingleRunTokenRef.current) {
-      const controller = new AbortController()
-      pluginSingleRunAbortRef.current = controller
-
-      let requestError: unknown
-      const response: any =
-        await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run
-          .post(
-            { params: { app_id: resource.appId, node_id: id } },
-            { signal: controller.signal, context: { silent: true } },
-          )
-          .catch((error: unknown) => {
-            requestError = error
-            return null
-          })
-          .finally(() => {
-            pluginSingleRunAbortRef.current = null
-          })
-
-      if (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current)
-        return null
-
-      if (requestError) {
-        if (controller.signal.aborted) return null
-
-        toast.error(requestError instanceof Error ? requestError.message : 'Unknown error')
-        cancelPluginSingleRun()
-        throw requestError
       }
 
-      if (!response) {
-        const message = 'Plugin debug failed'
-        toast.error(message)
-        cancelPluginSingleRun()
-        throw new Error(message)
-      }
-
-      if (response?.status === 'waiting') {
-        const delay = Number(response.retry_in) || 2000
-        if (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current)
-          return null
-
-        await new Promise<void>((resolve) => {
-          const timeoutId = window.setTimeout(resolve, delay)
-          pluginSingleRunTimeoutRef.current = timeoutId
-          pluginSingleRunDelayResolveRef.current = resolve
-          controller.signal.addEventListener(
-            'abort',
-            () => {
-              window.clearTimeout(timeoutId)
-              resolve()
-            },
-            { once: true },
-          )
-        })
-
-        pluginSingleRunTimeoutRef.current = undefined
-        pluginSingleRunDelayResolveRef.current = null
-        continue
-      }
-
-      if (response?.status === 'error') {
-        const message = response.message || 'Plugin debug failed'
-        toast.error(message)
-        cancelPluginSingleRun()
-        throw new Error(message)
-      }
-
-      handleNodeDataUpdate({
-        id,
-        data: {
-          ...data,
-          _isSingleRun: false,
-          _singleRunningStatus: NodeRunningStatus.Listening,
-        },
-      })
-
-      cancelPluginSingleRun()
-      return response
-    }
-
-    return null
-  }, [resource, id, data, handleNodeDataUpdate, cancelPluginSingleRun])
+      return null
+    },
+    [resource, id, data, handleNodeDataUpdate, cancelPluginSingleRun, workflowStore],
+  )
 
   const checkValidWrap = () => {
     if (!checkValid) return { isValid: true, errorMessage: '' }
@@ -694,7 +746,6 @@ const useOneStepRun = <T>({
       handleNodeDataUpdate({
         id,
         data: {
-          ...data,
           _isSingleRun: false,
         },
       })
@@ -727,7 +778,6 @@ const useOneStepRun = <T>({
     handleNodeDataUpdate({
       id,
       data: {
-        ...data,
         _isSingleRun: false,
       },
     })
@@ -736,7 +786,6 @@ const useOneStepRun = <T>({
     handleNodeDataUpdate({
       id,
       data: {
-        ...data,
         _isSingleRun: true,
       },
     })
@@ -745,6 +794,10 @@ const useOneStepRun = <T>({
     runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
 
   const handleRun = async (submitData: Record<string, any>) => {
+    const generation = workflowStore.getState().advanceSingleNodeRunGeneration(id)
+    const errorGeneration = workflowStore.getState().singleNodeRunErrorGenerations[id]!
+    const isCurrentRun = () =>
+      generation === (workflowStore.getState().singleNodeRunGenerations[id] ?? 0)
     if (isWebhookTriggerNode) cancelWebhookSingleRun()
     if (isPluginTriggerNode) cancelPluginSingleRun()
 
@@ -756,7 +809,6 @@ const useOneStepRun = <T>({
     handleNodeDataUpdate({
       id,
       data: {
-        ...data,
         _isSingleRun: false,
         _singleRunningStatus: isTriggerNode
           ? NodeRunningStatus.Listening
@@ -768,15 +820,15 @@ const useOneStepRun = <T>({
     try {
       if (!isIteration && !isLoop) {
         if (isScheduleTriggerNode) {
-          res = await runScheduleSingleRun()
+          res = await runScheduleSingleRun(generation)
         } else if (isWebhookTriggerNode) {
-          res = await runWebhookSingleRun()
+          res = await runWebhookSingleRun(generation)
+          if (!isCurrentRun()) return false
           if (!res) {
             if (webhookSingleRunActiveRef.current) {
               handleNodeDataUpdate({
                 id,
                 data: {
-                  ...data,
                   _isSingleRun: false,
                   _singleRunningStatus: NodeRunningStatus.Stopped,
                 },
@@ -785,13 +837,13 @@ const useOneStepRun = <T>({
             return false
           }
         } else if (isPluginTriggerNode) {
-          res = await runPluginSingleRun()
+          res = await runPluginSingleRun(generation)
+          if (!isCurrentRun()) return false
           if (!res) {
             if (pluginSingleRunActiveRef.current) {
               handleNodeDataUpdate({
                 id,
                 data: {
-                  ...data,
                   _isSingleRun: false,
                   _singleRunningStatus: NodeRunningStatus.Stopped,
                 },
@@ -820,11 +872,11 @@ const useOneStepRun = <T>({
           {
             onWorkflowStarted: noop,
             onWorkflowFinished: (params) => {
+              if (!isCurrentRun()) return
               if (isPausedRef.current) return
               handleNodeDataUpdate({
                 id,
                 data: {
-                  ...data,
                   _isSingleRun: false,
                   _singleRunningStatus: NodeRunningStatus.Succeeded,
                 },
@@ -834,6 +886,7 @@ const useOneStepRun = <T>({
               setRunResult(_runResult)
             },
             onIterationStart: (params) => {
+              if (!isCurrentRun()) return
               const newIterationRunResult = produce(_iterationResult, (draft) => {
                 draft.push({
                   ...params.data,
@@ -844,11 +897,13 @@ const useOneStepRun = <T>({
               setIterationRunResult(newIterationRunResult)
             },
             onIterationNext: () => {
+              if (!isCurrentRun()) return
               // iteration next trigger time is triggered one more time than iterationTimes
               if (_iterationResult.length >= iterationTimes!)
                 return _iterationResult.length >= iterationTimes!
             },
             onIterationFinish: (params) => {
+              if (!isCurrentRun()) return
               _runResult = params.data
               setRunResult(_runResult)
               const iterationRunResult = _iterationResult
@@ -867,6 +922,7 @@ const useOneStepRun = <T>({
               setIterationRunResult(newIterationRunResult)
             },
             onNodeStarted: (params) => {
+              if (!isCurrentRun()) return
               const newIterationRunResult = produce(_iterationResult, (draft) => {
                 draft.push({
                   ...params.data,
@@ -877,6 +933,7 @@ const useOneStepRun = <T>({
               setIterationRunResult(newIterationRunResult)
             },
             onNodeFinished: (params) => {
+              if (!isCurrentRun()) return
               const iterationRunResult = _iterationResult
 
               const { data } = params
@@ -893,18 +950,20 @@ const useOneStepRun = <T>({
               setIterationRunResult(newIterationRunResult)
             },
             onNodeRetry: (params) => {
+              if (!isCurrentRun()) return
               const newIterationRunResult = produce(_iterationResult, (draft) => {
                 draft.push(params.data)
               })
               _iterationResult = newIterationRunResult
               setIterationRunResult(newIterationRunResult)
             },
-            onError: () => {
+            onError: (message) => {
+              if (!isCurrentRun()) return
               if (isPausedRef.current) return
+              handleRunError(message, errorGeneration)
               handleNodeDataUpdate({
                 id,
                 data: {
-                  ...data,
                   _isSingleRun: false,
                   _singleRunningStatus: NodeRunningStatus.Failed,
                 },
@@ -922,11 +981,11 @@ const useOneStepRun = <T>({
           {
             onWorkflowStarted: noop,
             onWorkflowFinished: (params) => {
+              if (!isCurrentRun()) return
               if (isPausedRef.current) return
               handleNodeDataUpdate({
                 id,
                 data: {
-                  ...data,
                   _isSingleRun: false,
                   _singleRunningStatus: NodeRunningStatus.Succeeded,
                 },
@@ -936,6 +995,7 @@ const useOneStepRun = <T>({
               setRunResult(_runResult)
             },
             onLoopStart: (params) => {
+              if (!isCurrentRun()) return
               const newLoopRunResult = produce(_loopResult, (draft) => {
                 draft.push({
                   ...params.data,
@@ -946,10 +1006,12 @@ const useOneStepRun = <T>({
               setLoopRunResult(newLoopRunResult)
             },
             onLoopNext: () => {
+              if (!isCurrentRun()) return
               // loop next trigger time is triggered one more time than loopTimes
               if (_loopResult.length >= loopTimes!) return _loopResult.length >= loopTimes!
             },
             onLoopFinish: (params) => {
+              if (!isCurrentRun()) return
               _runResult = params.data
               setRunResult(_runResult)
 
@@ -967,6 +1029,7 @@ const useOneStepRun = <T>({
               setLoopRunResult(newLoopRunResult)
             },
             onNodeStarted: (params) => {
+              if (!isCurrentRun()) return
               const newLoopRunResult = produce(_loopResult, (draft) => {
                 draft.push({
                   ...params.data,
@@ -977,6 +1040,7 @@ const useOneStepRun = <T>({
               setLoopRunResult(newLoopRunResult)
             },
             onNodeFinished: (params) => {
+              if (!isCurrentRun()) return
               const loopRunResult = _loopResult
 
               const { data } = params
@@ -993,18 +1057,20 @@ const useOneStepRun = <T>({
               setLoopRunResult(newLoopRunResult)
             },
             onNodeRetry: (params) => {
+              if (!isCurrentRun()) return
               const newLoopRunResult = produce(_loopResult, (draft) => {
                 draft.push(params.data)
               })
               _loopResult = newLoopRunResult
               setLoopRunResult(newLoopRunResult)
             },
-            onError: () => {
+            onError: (message) => {
+              if (!isCurrentRun()) return
               if (isPausedRef.current) return
+              handleRunError(message, errorGeneration)
               handleNodeDataUpdate({
                 id,
                 data: {
-                  ...data,
                   _isSingleRun: false,
                   _singleRunningStatus: NodeRunningStatus.Failed,
                 },
@@ -1012,15 +1078,19 @@ const useOneStepRun = <T>({
               trackEvent('workflow_run_failed', {
                 workflow_id: flowId,
                 node_id: id,
-                reason: res.error,
+                reason: message,
                 node_type: data?.type,
               })
             },
           },
         )
       }
+      if (!isCurrentRun()) return
       if (res && res.error) throw new Error(res.error)
     } catch (e: any) {
+      if (!isCurrentRun()) return
+      // Execution failures carry tracing data that the last-run panel must keep visible.
+      if (!isTriggerNode && !res) handleRunError(e, errorGeneration)
       console.error(e)
       hasError = true
       invalidLastRun()
@@ -1029,7 +1099,6 @@ const useOneStepRun = <T>({
         handleNodeDataUpdate({
           id,
           data: {
-            ...data,
             _isSingleRun: false,
             _singleRunningStatus: NodeRunningStatus.Failed,
           },
@@ -1037,26 +1106,27 @@ const useOneStepRun = <T>({
         return false
       }
     } finally {
-      if (isWebhookTriggerNode) cancelWebhookSingleRun()
-      if (isPluginTriggerNode) cancelPluginSingleRun()
-      if (isTriggerNode) stopTriggerListening()
-      if (!isIteration && !isLoop) updateNodeInspectRunningState(id, false)
-      if (!isPausedRef.current && !isIteration && !isLoop && res) {
-        setRunResult({
-          ...res,
-          total_tokens: res.execution_metadata?.total_tokens || 0,
-          created_by: res.created_by_account?.name || '',
-        })
+      if (isCurrentRun()) {
+        if (isWebhookTriggerNode) cancelWebhookSingleRun()
+        if (isPluginTriggerNode) cancelPluginSingleRun()
+        if (isTriggerNode) stopTriggerListening()
+        if (!isIteration && !isLoop) updateNodeInspectRunningState(id, false)
+        if (!isPausedRef.current && !isIteration && !isLoop && res) {
+          setRunResult({
+            ...res,
+            total_tokens: res.execution_metadata?.total_tokens || 0,
+            created_by: res.created_by_account?.name || '',
+          })
+        }
       }
     }
-    if (isPausedRef.current) return
+    if (!isCurrentRun() || isPausedRef.current) return
 
     if (!isIteration && !isLoop && !hasError) {
       if (isPausedRef.current) return
       handleNodeDataUpdate({
         id,
         data: {
-          ...data,
           _isSingleRun: false,
           _singleRunningStatus: NodeRunningStatus.Succeeded,
         },
@@ -1075,6 +1145,7 @@ const useOneStepRun = <T>({
       return
     }
 
+    workflowStore.getState().advanceSingleNodeRunGeneration(id)
     cancelWebhookSingleRun()
     cancelPluginSingleRun()
     handleNodeDataUpdate({
@@ -1210,6 +1281,7 @@ const useOneStepRun = <T>({
     runInputDataRef,
     setRunInputData: handleSetRunInputData,
     runResult,
+    runError,
     setRunResult: doSetRunResult,
     iterationRunResult,
     loopRunResult,

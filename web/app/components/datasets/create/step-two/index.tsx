@@ -22,6 +22,7 @@ import { LanguagesSupported } from '@/i18n/language'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, ProcessMode } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import {
   GeneralChunkingOptions,
   IndexingModeSection,
@@ -67,9 +68,10 @@ const StepTwo: FC<StepTwoProps> = ({
 }) => {
   const generalChunkingModes: readonly ChunkingMode[] = [ChunkingMode.text, ChunkingMode.qa]
 
-  const { t } = useTranslation(['datasetCreation'])
+  const { t } = useTranslation(['datasetCreation', 'common'])
   const locale = useLocale()
   const isMobile = useBreakpoints() === MediaType.mobile
+  const [creationError, setCreationError] = useState<unknown>()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const previewTriggerRef = useRef<HTMLButtonElement | null>(null)
   const currentDataset = useDatasetDetailContextWithSelector((s) => s.dataset)
@@ -250,10 +252,11 @@ const StepTwo: FC<StepTwoProps> = ({
       segmentation.summaryIndexSetting,
     )
     if (!params) return
+    setCreationError(undefined)
     try {
       await creation.executeCreation(params, indexing.indexType, indexing.retrievalConfig)
-    } catch {
-      // The service reports request failures; keep this step and its draft available for retry.
+    } catch (error) {
+      if (!(error instanceof Error && error.name === 'AbortError')) setCreationError(error)
     }
   }, [canCreateDocument, creation, segmentation, indexing, currentDocForm, docLanguage])
 
@@ -383,6 +386,11 @@ const StepTwo: FC<StepTwoProps> = ({
           onQAConfirmDialogClose={() => setIsQAConfirmDialogOpen(false)}
           onQAConfirmDialogConfirm={handleQAConfirm}
         />
+        {!!creationError && (
+          <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
+            {getErrorMessage(creationError) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+          </p>
+        )}
         <StepTwoFooter
           isSetting={isSetting}
           isCreating={creation.isCreating}
@@ -399,6 +407,8 @@ const StepTwo: FC<StepTwoProps> = ({
         dataSourceType={dataSourceType}
         currentDocForm={currentDocForm}
         estimate={estimateHook.estimate}
+        error={estimateHook.currentMutation.error}
+        onRetry={() => estimateHook.fetchEstimate()}
         parentChildConfig={segmentation.parentChildConfig}
         isSetting={isSetting}
         pickerFiles={preview.getPreviewPickerItems()}

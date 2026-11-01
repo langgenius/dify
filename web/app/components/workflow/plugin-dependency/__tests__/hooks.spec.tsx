@@ -48,7 +48,7 @@ describe('usePluginDependencies', () => {
       expect(mocks.request).toHaveBeenCalledWith(
         expect.stringContaining(path),
         expect.any(Object),
-        expect.objectContaining({ fetchCompat: true, ...(!isPipeline && { silent: true }) }),
+        expect.objectContaining({ fetchCompat: true, ...(!isPipeline && {}) }),
       )
       await act(async () => result.current.handleCheckPluginDependencies('resource-1', isPipeline))
       expect(useStore.getState().dependencies).toEqual([])

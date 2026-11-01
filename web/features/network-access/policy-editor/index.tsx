@@ -72,7 +72,6 @@ export function IpPolicyDialog({
       retry: false,
       staleTime: 0,
       gcTime: 0,
-      context: { silent: true },
     }),
   )
   const resolvedCurrentIp =

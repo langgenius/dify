@@ -173,7 +173,7 @@ export function createContactImSyncApi(
     if (!workspaceId) throw new ContactImRepositoryError(ContactImRepositoryErrorCode.NoPermission)
 
     try {
-      const response = await client.imSyncRuns.latest.get(undefined, { context: { silent: true } })
+      const response = await client.imSyncRuns.latest.get()
       return toContactImSyncRunView(response.run)
     } catch (error) {
       if (typeof error === 'object' && error !== null && 'status' in error && error.status === 404)
@@ -206,12 +206,9 @@ export function createContactImSyncApi(
         throw new ContactImRepositoryError(ContactImRepositoryErrorCode.InvalidCommand)
 
       const run = await getSyncRun(runId)
-      const response = await client.imSyncRuns.latest.results.get(
-        {
-          query: { result, page, limit: pageSize },
-        },
-        { context: { silent: true } },
-      )
+      const response = await client.imSyncRuns.latest.results.get({
+        query: { result, page, limit: pageSize },
+      })
       await getSyncRun(run.id)
       return {
         items: response.data.map(toContactImSyncItemView),
@@ -222,7 +219,7 @@ export function createContactImSyncApi(
     async startSync() {
       if (!workspaceId)
         throw new ContactImRepositoryError(ContactImRepositoryErrorCode.NoPermission)
-      const response = await client.imSyncRuns.post(undefined, { context: { silent: true } })
+      const response = await client.imSyncRuns.post(undefined)
       return toContactImSyncRunView(response.run)
     },
   }
@@ -493,7 +490,6 @@ export function createContactImApiRepository(
     'channelProviders' | 'channels'
   > = consoleClient.workspaces.current.humanInput.v2,
 ): ContactImPlatformRepository {
-  const requestOptions = { context: { silent: true } }
   const guard = (organizationId: string) => {
     if (
       !organization.canManage ||
@@ -593,14 +589,14 @@ export function createContactImApiRepository(
     const input = { params: { channel_id: summary.id } }
     const detail =
       summary.kind === 'email'
-        ? await client.channels.email.byChannelId.get(input, requestOptions)
-        : await client.channels.im.byChannelId.get(input, requestOptions)
+        ? await client.channels.email.byChannelId.get(input)
+        : await client.channels.im.byChannelId.get(input)
     return toDetailView(detail)
   }
   const getIntegrations = async (organizationId: string) => {
     guard(organizationId)
     return channelRequest(async () => {
-      const { channels } = await client.channels.get(undefined, requestOptions)
+      const { channels } = await client.channels.get()
       return Promise.all(channels.map(getDetail))
     })
   }
@@ -611,7 +607,7 @@ export function createContactImApiRepository(
     async getProviderDefinitions(organizationId) {
       guard(organizationId)
       return channelRequest(async () => {
-        const providers = await client.channelProviders.get(undefined, requestOptions)
+        const providers = await client.channelProviders.get()
         return [...providers.email_providers, ...providers.im_providers].map(
           ({ provider: apiProvider }) => {
             const provider = apiProviderNames[apiProvider]
@@ -648,39 +644,35 @@ export function createContactImApiRepository(
         if (params && version && !command.replaceActiveProvider) {
           const credentials = updateCredentialsFor(command)
           if (credentials.provider === 'resend') {
-            response = await client.channels.email.byChannelId.put(
-              {
-                params,
-                body: {
-                  ...updateEmailSettingsFor(command),
-                  credentials,
-                  expected_config_version: version,
-                },
+            response = await client.channels.email.byChannelId.put({
+              params,
+              body: {
+                ...updateEmailSettingsFor(command),
+                credentials,
+                expected_config_version: version,
               },
-              requestOptions,
-            )
+            })
           } else {
-            response = await client.channels.im.byChannelId.put(
-              { params, body: { credentials, expected_config_version: version } },
-              requestOptions,
-            )
+            response = await client.channels.im.byChannelId.put({
+              params,
+              body: { credentials, expected_config_version: version },
+            })
           }
         } else {
           const credentials = createCredentialsFor(command)
           if (credentials.provider === 'resend') {
             if (command.replaceActiveProvider)
               throw new ContactImRepositoryError(ContactImRepositoryErrorCode.InvalidCommand)
-            response = await client.channels.email.post(
-              { body: { ...emailSettingsFor(command), credentials } },
-              requestOptions,
-            )
+            response = await client.channels.email.post({
+              body: { ...emailSettingsFor(command), credentials },
+            })
           } else if (params && version) {
-            response = await client.channels.im.byChannelId.replacement.post(
-              { params, body: { credentials, expected_config_version: version } },
-              requestOptions,
-            )
+            response = await client.channels.im.byChannelId.replacement.post({
+              params,
+              body: { credentials, expected_config_version: version },
+            })
           } else {
-            response = await client.channels.im.post({ body: { credentials } }, requestOptions)
+            response = await client.channels.im.post({ body: { credentials } })
           }
         }
         try {
@@ -704,26 +696,22 @@ export function createContactImApiRepository(
           }
           response =
             credentials.provider === 'resend'
-              ? await client.channels.email.byChannelId.test.post(
-                  {
-                    ...input,
-                    body: { ...input.body, ...updateEmailSettingsFor(command), credentials },
-                  },
-                  requestOptions,
-                )
-              : await client.channels.im.byChannelId.test.post(
-                  { ...input, body: { ...input.body, credentials } },
-                  requestOptions,
-                )
+              ? await client.channels.email.byChannelId.test.post({
+                  ...input,
+                  body: { ...input.body, ...updateEmailSettingsFor(command), credentials },
+                })
+              : await client.channels.im.byChannelId.test.post({
+                  ...input,
+                  body: { ...input.body, credentials },
+                })
         } else {
           const credentials = createCredentialsFor(command)
           response =
             credentials.provider === 'resend'
-              ? await client.channels.email.test.post(
-                  { body: { ...emailSettingsFor(command), credentials } },
-                  requestOptions,
-                )
-              : await client.channels.im.test.post({ body: { credentials } }, requestOptions)
+              ? await client.channels.email.test.post({
+                  body: { ...emailSettingsFor(command), credentials },
+                })
+              : await client.channels.im.test.post({ body: { credentials } })
         }
         if (response.status !== 'connected')
           throw new ContactImRepositoryError(
@@ -747,8 +735,8 @@ export function createContactImApiRepository(
       }
       await channelRequest(() =>
         command.provider === 'email'
-          ? client.channels.email.byChannelId.delete(input, requestOptions)
-          : client.channels.im.byChannelId.delete(input, requestOptions),
+          ? client.channels.email.byChannelId.delete(input)
+          : client.channels.im.byChannelId.delete(input),
       )
       return []
     },

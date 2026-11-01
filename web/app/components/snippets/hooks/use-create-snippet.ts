@@ -13,15 +13,18 @@ export const useCreateSnippet = () => {
   const createSnippetMutation = useCreateSnippetMutation()
   const [isCreateSnippetDialogOpen, setIsCreateSnippetDialogOpen] = useState(false)
   const [isCreatingSnippet, setIsCreatingSnippet] = useState(false)
+  const [createError, setCreateError] = useState<unknown>()
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
 
   const handleOpenCreateSnippetDialog = () => {
     if (!canCreateAndModifySnippet) return
 
+    setCreateError(undefined)
     setIsCreateSnippetDialogOpen(true)
   }
 
   const handleCloseCreateSnippetDialog = () => {
+    setCreateError(undefined)
     setIsCreateSnippetDialogOpen(false)
   }
 
@@ -33,6 +36,7 @@ export const useCreateSnippet = () => {
   }: CreateSnippetDialogPayload) => {
     if (!canCreateAndModifySnippet) return
 
+    setCreateError(undefined)
     setIsCreatingSnippet(true)
 
     try {
@@ -55,8 +59,8 @@ export const useCreateSnippet = () => {
 
       handleCloseCreateSnippetDialog()
       push(`/snippets/${snippet.id}/orchestrate`)
-    } catch {
-      // The API client surfaces the response message. Avoid showing a second generic create-failed toast here.
+    } catch (error) {
+      if (!(error instanceof Error && error.name === 'AbortError')) setCreateError(error)
     } finally {
       setIsCreatingSnippet(false)
     }
@@ -65,6 +69,7 @@ export const useCreateSnippet = () => {
   return {
     canCreateAndModifySnippet,
     createSnippetMutation,
+    createError,
     handleCloseCreateSnippetDialog,
     handleCreateSnippet,
     handleOpenCreateSnippetDialog,

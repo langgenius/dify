@@ -12,6 +12,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 type Props = {
   onSuccess: (email: string, payload: string) => void
@@ -22,21 +23,29 @@ type SignupEmailFormValues = {
 }
 
 export default function SignupEmailForm({ onSuccess }: Props) {
-  const { t } = useTranslation(['login'])
+  const { t } = useTranslation(['login', 'common'])
   const locale = useLocale()
   const searchParams = useSearchParams()
   const queryString = searchParams.toString()
   const signinHref = queryString ? `/signin?${queryString}` : '/signin'
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
-  const { mutateAsync: submitMail, isPending } = useMutation(
-    consoleQuery.emailRegister.sendEmail.post.mutationOptions(),
-  )
+  const {
+    mutate: submitMail,
+    isPending,
+    error: submitError,
+  } = useMutation(consoleQuery.emailRegister.sendEmail.post.mutationOptions())
 
-  const handleSubmit = async (email: string) => {
+  const handleSubmit = (email: string) => {
     if (isPending) return
-    const res = await submitMail({ body: { email, language: locale } })
-    if (res.result === 'success') onSuccess(email, res.data ?? '')
+    submitMail(
+      { body: { email, language: locale } },
+      {
+        onSuccess: (res) => {
+          if (res.result === 'success') onSuccess(email, res.data ?? '')
+        },
+      },
+    )
   }
 
   return (
@@ -69,6 +78,11 @@ export default function SignupEmailForm({ onSuccess }: Props) {
           )}
         </FieldValidity>
       </Field>
+      {submitError && !isPending && (
+        <p role="alert" className="mb-2 system-sm-regular text-text-destructive">
+          {getErrorMessage(submitError) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+        </p>
+      )}
       <div className="mb-2">
         <Button variant="primary" type="submit" loading={isPending} className="w-full">
           {t(($) => $['signup.verifyMail'], { ns: 'login' })}

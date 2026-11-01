@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
 import CreateEntryCard from '../provider/create-entry-card'
@@ -21,8 +22,9 @@ type Props = Readonly<{
 
 function useMCPCreateAction({ handleCreate }: Props) {
   const canManageMCP = useCanManageMCP()
+  const notifyError = useErrorNotification()
   const { mutateAsync: createMCP } = useMutation(
-    consoleQuery.workspaces.current.toolProvider.mcp.post.mutationOptions(),
+    consoleQuery.workspaces.current.toolProvider.mcp.post.mutationOptions({ onError: notifyError }),
   )
   const [showModal, setShowModal] = useState(false)
 

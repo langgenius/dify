@@ -154,7 +154,7 @@ function UpdateDSLModal({
   }
 
   const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.imports.post.mutationOptions(),
   )
   const importMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -181,7 +181,6 @@ function UpdateDSLModal({
   })
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
       onError: (error) => notifyImportError(error),
       onSettled: async (response) => {
         if (response) await handleImportResponse(response)
@@ -317,7 +316,7 @@ function ImportForm({
       </DialogHeader>
       <DialogBody>
         <div className="relative mb-2 flex grow gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs">
-          <div className="pointer-events-none absolute top-0 left-0 size-full bg-toast-warning-bg opacity-40" />
+          <div className="pointer-events-none absolute inset-s-0 top-0 size-full bg-toast-warning-bg opacity-40" />
           <div className="flex items-start justify-center p-1">
             <RiAlertFill className="size-4 shrink-0 text-text-warning-secondary" />
           </div>

@@ -76,9 +76,7 @@ export function EducationVerifyFlow() {
     isError: isVerificationError,
     mutate: verifyEducation,
     reset: resetVerification,
-  } = useMutation(
-    consoleQuery.account.education.verify.get.mutationOptions({ context: { silent: true } }),
-  )
+  } = useMutation(consoleQuery.account.education.verify.get.mutationOptions())
 
   const startVerification = useCallback(() => {
     if (verificationStartedRef.current) return

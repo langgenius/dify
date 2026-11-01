@@ -176,7 +176,7 @@ describe('ssePost and sseGet', () => {
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith('TypeError: Network failed')
     })
-    expect(toast.error).toHaveBeenCalledWith('TypeError: Network failed')
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('should route fetch failures through a custom notifier', async () => {
@@ -231,7 +231,7 @@ describe('ssePost and sseGet', () => {
     expect(toast.error).not.toHaveBeenCalled()
   })
 
-  it('should preserve the default response error notification', async () => {
+  it('should report a response error to its consumer without notifying', async () => {
     const onError = vi.fn()
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response(JSON.stringify({ message: 'Base model not found' }), {
@@ -243,12 +243,12 @@ describe('ssePost and sseGet', () => {
     await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError })
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Base model not found')
+      expect(toast.error).not.toHaveBeenCalled()
     })
     expect(onError).toHaveBeenCalledWith('Base model not found')
   })
 
-  it('should preserve the response error for silent requests without notifying', async () => {
+  it('should preserve the response error for requests without notifying', async () => {
     const onError = vi.fn()
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response(JSON.stringify({ code: 'model_not_found', message: 'Base model not found' }), {
@@ -257,7 +257,7 @@ describe('ssePost and sseGet', () => {
       }),
     )
 
-    await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError, silent: true })
+    await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError })
 
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith('Base model not found', 'model_not_found')
@@ -361,10 +361,10 @@ describe('ssePost and sseGet', () => {
       )
     })
     expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
-    expect(toast.error).toHaveBeenCalledWith('Error: stream lost')
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
-  it('should not notify stream reader failures when silent', async () => {
+  it('should not notify stream reader failures without a notification callback', async () => {
     const onError = vi.fn()
     const onCompleted = vi.fn()
     const response = failedStream(new Error('stream lost'))
@@ -381,7 +381,6 @@ describe('ssePost and sseGet', () => {
       {
         onError,
         onCompleted,
-        silent: true,
       },
     )
 

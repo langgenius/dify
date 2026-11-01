@@ -90,7 +90,6 @@ describe('KnowledgeFS processing task events', () => {
         query: { task_ids: 'task/1' },
       },
       expect.objectContaining({
-        context: { silent: true },
         signal: expect.any(AbortSignal),
       }),
     )
@@ -113,7 +112,6 @@ describe('KnowledgeFS processing task events', () => {
         query: { task_ids: 'task-1' },
       },
       expect.objectContaining({
-        context: { silent: true },
         signal: expect.any(AbortSignal),
       }),
     )

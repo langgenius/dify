@@ -180,6 +180,8 @@ describe('MailAndCodeAuth', () => {
         },
       })
     })
+    expect(await screen.findByRole('alert')).toHaveTextContent('email send failed')
+
     await waitFor(() => {
       expect(continueButton).toBeDisabled()
       expect(mocks.render).toHaveBeenCalledTimes(2)

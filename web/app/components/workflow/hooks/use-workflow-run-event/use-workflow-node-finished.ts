@@ -14,6 +14,9 @@ export const useWorkflowNodeFinished = () => {
   const handleWorkflowNodeFinished = useCallback(
     (params: NodeFinishedResponse) => {
       const { data } = params
+      workflowStore
+        .getState()
+        .clearSingleNodeRunErrorForExecution(data.node_id, data.id, params.workflow_run_id)
       const { workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
       const { getNodes, setNodes, edges, setEdges } = store.getState()
       const nodes = getNodes()

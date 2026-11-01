@@ -117,8 +117,8 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
   const { push } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
-  const importSnippetMutation = useImportSnippetDSLMutation({ silent: true })
-  const confirmSnippetImportMutation = useConfirmSnippetImportMutation({ silent: true })
+  const importSnippetMutation = useImportSnippetDSLMutation()
+  const confirmSnippetImportMutation = useConfirmSnippetImportMutation()
   const [currentTab, setCurrentTab] = useState<ImportSnippetDSLDialogTab>(
     ImportSnippetDSLDialogTab.FromFile,
   )

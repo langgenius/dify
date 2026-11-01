@@ -29,7 +29,6 @@ export function DeleteDatasetConfirmation({
       input: { params: { dataset_id: datasetId } },
       staleTime: 0,
       retry: false,
-      context: { silent: true },
     }),
   )
 

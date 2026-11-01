@@ -359,12 +359,9 @@ describe('Contact IM channel API repository', () => {
     const integrations = await createContactImApiRepository(organization, client).getIntegrations(
       organization.organizationId,
     )
-    expect(client.channels.email.byChannelId.get).toHaveBeenCalledWith(
-      {
-        params: { channel_id: 'email-channel' },
-      },
-      { context: { silent: true } },
-    )
+    expect(client.channels.email.byChannelId.get).toHaveBeenCalledWith({
+      params: { channel_id: 'email-channel' },
+    })
     expect(integrations[0]).toMatchObject({
       provider: 'email',
       status: 'configured',
@@ -411,7 +408,7 @@ describe('Contact IM channel API repository', () => {
         provider === 'email'
           ? { sender_email: 'sender@example.test', sender_name: 'Sender', credentials: expected }
           : { credentials: expected }
-      expect(endpoint).toHaveBeenCalledWith({ body }, { context: { silent: true } })
+      expect(endpoint).toHaveBeenCalledWith({ body })
       expect(result).toMatchObject({ provider, status: 'connected', configuredValues: {} })
       expect(JSON.stringify(result)).not.toContain('test-secret')
     },
@@ -475,23 +472,20 @@ describe('Contact IM channel API repository', () => {
         secret,
       })
 
-      expect(client.channels.im.byChannelId.put).toHaveBeenCalledWith(
-        {
-          params: { channel_id: 'channel-1' },
-          body: {
-            expected_config_version: 'snapshot-version',
-            credentials: {
-              provider: 'feishu',
-              app_id: { type: 'unchanged' },
-              app_secret: { type: 'unchanged' },
-              verification_token: { type: 'unchanged' },
-              encrypt_key: { type: 'unchanged' },
-              ...changed,
-            },
+      expect(client.channels.im.byChannelId.put).toHaveBeenCalledWith({
+        params: { channel_id: 'channel-1' },
+        body: {
+          expected_config_version: 'snapshot-version',
+          credentials: {
+            provider: 'feishu',
+            app_id: { type: 'unchanged' },
+            app_secret: { type: 'unchanged' },
+            verification_token: { type: 'unchanged' },
+            encrypt_key: { type: 'unchanged' },
+            ...changed,
           },
         },
-        { context: { silent: true } },
-      )
+      })
       expect(saved).toMatchObject({
         configVersion: 'new-version',
         configuredValues: { appId: 'app-1' },
@@ -524,24 +518,21 @@ describe('Contact IM channel API repository', () => {
       secret,
     })
 
-    expect(client.channels.im.byChannelId.put).toHaveBeenCalledWith(
-      {
-        params: { channel_id: 'channel-1' },
-        body: {
-          expected_config_version: 'snapshot-version',
-          credentials: {
-            provider: 'slack',
-            client_id: { type: 'unchanged' },
-            client_secret: { type: 'unchanged' },
-            signing_secret: { type: 'unchanged' },
-            bot_token: { type: 'unchanged' },
-            app_token: { type: 'unchanged' },
-            ...changed,
-          },
+    expect(client.channels.im.byChannelId.put).toHaveBeenCalledWith({
+      params: { channel_id: 'channel-1' },
+      body: {
+        expected_config_version: 'snapshot-version',
+        credentials: {
+          provider: 'slack',
+          client_id: { type: 'unchanged' },
+          client_secret: { type: 'unchanged' },
+          signing_secret: { type: 'unchanged' },
+          bot_token: { type: 'unchanged' },
+          app_token: { type: 'unchanged' },
+          ...changed,
         },
       },
-      { context: { silent: true } },
-    )
+    })
   })
 
   it('sends null only for explicitly cleared optional fields', async () => {
@@ -656,32 +647,29 @@ describe('Contact IM channel API repository', () => {
         provider === 'email'
           ? client.channels.email.byChannelId.test.post
           : client.channels.im.byChannelId.test.post
-      expect(endpoint).toHaveBeenCalledWith(
-        {
-          params: { channel_id: 'channel-1' },
-          body: {
-            expected_config_version: 'snapshot-version',
-            ...(provider === 'email'
-              ? { sender_email: { type: 'unchanged' }, sender_name: 'Updated sender' }
-              : {}),
-            credentials:
-              provider === 'email'
-                ? {
-                    provider: 'resend',
-                    api_key: { type: 'unchanged' },
-                  }
-                : {
-                    provider: 'slack',
-                    client_id: { type: 'unchanged' },
-                    client_secret: { type: 'unchanged' },
-                    bot_token: 'Updated bot',
-                    signing_secret: { type: 'unchanged' },
-                    app_token: { type: 'unchanged' },
-                  },
-          },
+      expect(endpoint).toHaveBeenCalledWith({
+        params: { channel_id: 'channel-1' },
+        body: {
+          expected_config_version: 'snapshot-version',
+          ...(provider === 'email'
+            ? { sender_email: { type: 'unchanged' }, sender_name: 'Updated sender' }
+            : {}),
+          credentials:
+            provider === 'email'
+              ? {
+                  provider: 'resend',
+                  api_key: { type: 'unchanged' },
+                }
+              : {
+                  provider: 'slack',
+                  client_id: { type: 'unchanged' },
+                  client_secret: { type: 'unchanged' },
+                  bot_token: 'Updated bot',
+                  signing_secret: { type: 'unchanged' },
+                  app_token: { type: 'unchanged' },
+                },
         },
-        { context: { silent: true } },
-      )
+      })
       expect(client.channels.im.byChannelId.put).not.toHaveBeenCalled()
       expect(client.channels.email.byChannelId.put).not.toHaveBeenCalled()
       expect(client.channels.im.test.post).not.toHaveBeenCalled()
@@ -796,7 +784,6 @@ describe('Contact IM channel API repository', () => {
         params: { channel_id: 'channel-1' },
         body: expect.objectContaining({ expected_config_version: 'snapshot-version' }),
       }),
-      { context: { silent: true } },
     )
     expect(
       await repository.saveCredentials({
@@ -810,22 +797,19 @@ describe('Contact IM channel API repository', () => {
         expectedConfigVersion: 'snapshot-version',
       }),
     ).toMatchObject({ provider: 'feishu', configVersion: 'replaced-version' })
-    expect(client.channels.im.byChannelId.replacement.post).toHaveBeenCalledWith(
-      {
-        params: { channel_id: 'channel-1' },
-        body: {
-          expected_config_version: 'snapshot-version',
-          credentials: {
-            provider: 'feishu',
-            app_id: 'replacement-app',
-            app_secret: 'replacement-secret',
-            encrypt_key: null,
-            verification_token: null,
-          },
+    expect(client.channels.im.byChannelId.replacement.post).toHaveBeenCalledWith({
+      params: { channel_id: 'channel-1' },
+      body: {
+        expected_config_version: 'snapshot-version',
+        credentials: {
+          provider: 'feishu',
+          app_id: 'replacement-app',
+          app_secret: 'replacement-secret',
+          encrypt_key: null,
+          verification_token: null,
         },
       },
-      { context: { silent: true } },
-    )
+    })
     expect(client.channels.get).not.toHaveBeenCalled()
   })
 
@@ -851,22 +835,18 @@ describe('Contact IM channel API repository', () => {
       channelId: 'email-id',
       expectedConfigVersion: 'email-snapshot',
     })
-    expect(client.channels.email.post).toHaveBeenCalledWith(
-      {
-        body: {
-          sender_email: 'sender@example.test',
-          sender_name: 'Sender',
-          credentials: { provider: 'resend', api_key: 'email-secret' },
-        },
+    expect(client.channels.email.post).toHaveBeenCalledWith({
+      body: {
+        sender_email: 'sender@example.test',
+        sender_name: 'Sender',
+        credentials: { provider: 'resend', api_key: 'email-secret' },
       },
-      { context: { silent: true } },
-    )
+    })
     expect(client.channels.email.byChannelId.put).toHaveBeenCalledWith(
       expect.objectContaining({
         params: { channel_id: 'email-id' },
         body: expect.objectContaining({ expected_config_version: 'email-snapshot' }),
       }),
-      { context: { silent: true } },
     )
     await repository.disconnect({
       organizationId: organization.organizationId,
@@ -880,20 +860,14 @@ describe('Contact IM channel API repository', () => {
       channelId: 'im-id',
       expectedConfigVersion: 'im-snapshot',
     })
-    expect(client.channels.email.byChannelId.delete).toHaveBeenCalledWith(
-      {
-        params: { channel_id: 'email-id' },
-        query: { expected_config_version: 'email-snapshot' },
-      },
-      { context: { silent: true } },
-    )
-    expect(client.channels.im.byChannelId.delete).toHaveBeenCalledWith(
-      {
-        params: { channel_id: 'im-id' },
-        query: { expected_config_version: 'im-snapshot' },
-      },
-      { context: { silent: true } },
-    )
+    expect(client.channels.email.byChannelId.delete).toHaveBeenCalledWith({
+      params: { channel_id: 'email-id' },
+      query: { expected_config_version: 'email-snapshot' },
+    })
+    expect(client.channels.im.byChannelId.delete).toHaveBeenCalledWith({
+      params: { channel_id: 'im-id' },
+      query: { expected_config_version: 'im-snapshot' },
+    })
   })
 
   it.each(['invalid_credentials', 'connection_failure'] as const)(
@@ -1067,7 +1041,6 @@ describe('Contact IM channel API repository', () => {
       expect(JSON.stringify(error)).not.toContain('unsafe-secret-provider-message')
       expect(client.channels.im.byChannelId.put).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({ params: { channel_id: 'channel-1' } }),
-        { context: { silent: true } },
       )
       expect(client.channels.im.byChannelId.get).not.toHaveBeenCalled()
       expect(client.channels.im.byChannelId.replacement.post).not.toHaveBeenCalled()

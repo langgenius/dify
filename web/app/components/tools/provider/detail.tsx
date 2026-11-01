@@ -46,6 +46,7 @@ import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-m
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { useModalContext } from '@/context/modal-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { getPluginLanguage } from '@/i18n/metadata'
@@ -62,6 +63,7 @@ import {
   updateBuiltInToolCredential,
   updateCustomCollection,
 } from '@/service/tools'
+import { getErrorMessage } from '@/utils/error-message'
 import { basePath } from '@/utils/var'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
 import ToolItem from './tool-item'
@@ -85,6 +87,8 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const canOpenCredentialSettings = isAuthed ? canUseCredential : canCreateCredential
   const canSaveCredentialSettings = isAuthed ? canManageCredential : canCreateCredential
   const canManageTools = useCanManageTools()
+  const notifyError = useErrorNotification()
+  const [detailError, setDetailError] = useState<unknown>()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
   // built in provider
@@ -118,7 +122,9 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
             onRefreshData()
           },
         })
-      } catch {}
+      } catch (error) {
+        notifyError(error)
+      }
     } else {
       setShowSettingAuth(true)
     }
@@ -134,29 +140,39 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const getCustomProvider = useCallback(async () => {
     if (!canManageTools) return
 
+    setDetailError(undefined)
     setIsDetailLoading(true)
-    const res = await fetchCustomCollection(collection.name)
-    if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
-      if (res.credentials.api_key_value)
-        res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
+    try {
+      const res = await fetchCustomCollection(collection.name)
+      if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
+        if (res.credentials.api_key_value)
+          res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
+      }
+      setCustomCollection({
+        ...res,
+        labels: collection.labels,
+        provider: collection.name,
+      })
+    } catch (error) {
+      setDetailError(error)
+    } finally {
+      setIsDetailLoading(false)
     }
-    setCustomCollection({
-      ...res,
-      labels: collection.labels,
-      provider: collection.name,
-    })
-    setIsDetailLoading(false)
   }, [canManageTools, collection.labels, collection.name])
 
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
     if (!canManageTools) return
 
-    await updateCustomCollection(data)
-    onRefreshData()
-    await getCustomProvider()
-    // Use fresh data from form submission to avoid race condition with collection.labels
-    setCustomCollection((prev) => (prev ? { ...prev, labels: data.labels } : null))
-    setIsShowEditCustomCollectionModal(false)
+    try {
+      await updateCustomCollection(data)
+      onRefreshData()
+      await getCustomProvider()
+      // Use fresh data from form submission to avoid race condition with collection.labels
+      setCustomCollection((prev) => (prev ? { ...prev, labels: data.labels } : null))
+      setIsShowEditCustomCollectionModal(false)
+    } catch (error) {
+      notifyError(error)
+    }
   }
   const doRemoveCustomToolCollection = async () => {
     if (!canManageTools) return
@@ -168,24 +184,30 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   // workflow provider
   const [workflowToolDrawerOpen, setWorkflowToolDrawerOpen] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {
+    setDetailError(undefined)
     setIsDetailLoading(true)
-    const res = await fetchWorkflowToolDetail(collection.id)
-    const payload = {
-      ...res,
-      parameters:
-        res.tool?.parameters.map((item) => {
-          return {
-            name: item.name,
-            description: item.llm_description,
-            form: item.form,
-            required: item.required,
-            type: item.type,
-          }
-        }) || [],
-      labels: res.tool?.labels || [],
+    try {
+      const res = await fetchWorkflowToolDetail(collection.id)
+      const payload = {
+        ...res,
+        parameters:
+          res.tool?.parameters.map((item) => {
+            return {
+              name: item.name,
+              description: item.llm_description,
+              form: item.form,
+              required: item.required,
+              type: item.type,
+            }
+          }) || [],
+        labels: res.tool?.labels || [],
+      }
+      setCustomCollection(payload)
+    } catch (error) {
+      setDetailError(error)
+    } finally {
+      setIsDetailLoading(false)
     }
-    setCustomCollection(payload)
-    setIsDetailLoading(false)
   }, [collection.id])
   const removeWorkflowToolProvider = async () => {
     if (!canManageTools) return
@@ -203,13 +225,17 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   ) => {
     if (!canManageTools) return
 
-    await saveWorkflowToolProvider(data)
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.current.tools.workflow.get.queryKey(),
-    })
-    onRefreshData()
-    getWorkflowToolProvider()
-    setWorkflowToolDrawerOpen(false)
+    try {
+      await saveWorkflowToolProvider(data)
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.tools.workflow.get.queryKey(),
+      })
+      onRefreshData()
+      getWorkflowToolProvider()
+      setWorkflowToolDrawerOpen(false)
+    } catch (error) {
+      notifyError(error)
+    }
   }
   const onClickCustomToolDelete = () => {
     setDeleteAction('customTool')
@@ -219,16 +245,20 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     setDeleteAction('workflowTool')
     setShowConfirmDelete(true)
   }
-  const handleConfirmDelete = () => {
-    if (deleteAction === 'customTool') doRemoveCustomToolCollection()
-    else if (deleteAction === 'workflowTool') removeWorkflowToolProvider()
-
-    setShowConfirmDelete(false)
+  const handleConfirmDelete = async () => {
+    try {
+      if (deleteAction === 'customTool') await doRemoveCustomToolCollection()
+      else if (deleteAction === 'workflowTool') await removeWorkflowToolProvider()
+      setShowConfirmDelete(false)
+    } catch (error) {
+      notifyError(error)
+    }
   }
 
   // ToolList
   const [toolList, setToolList] = useState<Tool[]>([])
   const getProviderToolList = useCallback(async () => {
+    setDetailError(undefined)
     setIsDetailLoading(true)
     try {
       if (collection.type === CollectionType.builtIn) {
@@ -240,8 +270,11 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
         const list = await fetchCustomToolList(collection.name)
         setToolList(list)
       }
-    } catch {}
-    setIsDetailLoading(false)
+    } catch (error) {
+      setDetailError(error)
+    } finally {
+      setIsDetailLoading(false)
+    }
   }, [collection.name, collection.type])
 
   useEffect(() => {
@@ -369,6 +402,24 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                       </>
                     )}
                 </div>
+                {!!detailError && !isDetailLoading && (
+                  <div role="alert" className="p-3 system-sm-regular text-text-destructive">
+                    <p>
+                      {getErrorMessage(detailError) ??
+                        t(($) => $['api.actionFailed'], { ns: 'common' })}
+                    </p>
+                    <Button
+                      onClick={() => {
+                        void getProviderToolList()
+                        if (collection.type === CollectionType.custom) void getCustomProvider()
+                        if (collection.type === CollectionType.workflow)
+                          void getWorkflowToolProvider()
+                      }}
+                    >
+                      {t(($) => $['operation.retry'], { ns: 'common' })}
+                    </Button>
+                  </div>
+                )}
                 <div className="flex min-h-0 flex-1 flex-col pt-3">
                   {isDetailLoading && (
                     <div className="flex h-50">

@@ -204,6 +204,7 @@ export function PublisherContent({
             onEditVersion: versionInfo.openEditor,
             publishDisabled,
             published: publish.published,
+            publishError: publish.publishError,
             publishedAt: publish.currentPublishedAt,
             startNodeLimitExceeded,
             upgradeHighlightStyle,

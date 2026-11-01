@@ -78,6 +78,7 @@ export const useWorkflowInit = () => {
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
   const setSyncWorkflowDraftHash = useStore((s) => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
+  const [error, setError] = useState<unknown>()
   const [isLoading, setIsLoading] = useState(true)
 
   const { data: fileUploadConfigResponse, isLoading: isFileUploadConfigLoading } = useQuery(
@@ -157,28 +158,30 @@ export const useWorkflowInit = () => {
             return
           }
 
-          consoleClient.apps.byAppId.workflows.draft
-            .post(
-              {
-                params: { app_id: appDetail.id },
-                body: {
-                  graph: initialGraph,
-                  force: true,
-                  features: {
-                    retriever_resource: { enabled: true },
-                  },
-                  conversation_variables: [],
+          try {
+            const res = await consoleClient.apps.byAppId.workflows.draft.post({
+              params: { app_id: appDetail.id },
+              body: {
+                graph: initialGraph,
+                force: true,
+                features: {
+                  retriever_resource: { enabled: true },
                 },
+                conversation_variables: [],
               },
-              { context: { silent: true } },
-            )
-            .then((res) => {
-              workflowStore.getState().setDraftUpdatedAt(res.updated_at)
-              setSyncWorkflowDraftHash(res.hash, initialGraph)
-              handleGetInitialWorkflowData()
             })
+            workflowStore.getState().setDraftUpdatedAt(res.updated_at)
+            setSyncWorkflowDraftHash(res.hash, initialGraph)
+            await handleGetInitialWorkflowData()
+          } catch (initializationError) {
+            setError(initializationError)
+            setIsLoading(false)
+          }
+          return
         }
       }
+      setError(error)
+      setIsLoading(false)
     }
   }, [
     appACLCapabilities.canEdit,
@@ -245,6 +248,12 @@ export const useWorkflowInit = () => {
   }, [data, workflowStore])
 
   return {
+    error,
+    refetch: () => {
+      setError(undefined)
+      setIsLoading(true)
+      return handleGetInitialWorkflowData()
+    },
     data,
     isLoading: isLoading || isFileUploadConfigLoading,
     fileUploadConfigResponse,

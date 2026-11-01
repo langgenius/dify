@@ -2,9 +2,11 @@
 
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
+import { Button } from '@langgenius/dify-ui/button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { isWorkflowAppMode } from '@/app/components/apps/app-type'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -21,6 +23,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useParams, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { fetchRunDetail } from '@/service/log'
+import { getErrorMessage } from '@/utils/error-message'
 import { getAppACLCapabilities } from '@/utils/permission'
 import WorkflowAppMain from './components/workflow-main'
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
@@ -29,7 +32,8 @@ import { createWorkflowSlice } from './store/workflow/workflow-slice'
 import { buildInitialFeatures, buildTriggerStatusMap, coerceReplayUserInputs } from './utils'
 
 const WorkflowAppWithAdditionalContext = () => {
-  const { data, isLoading, fileUploadConfigResponse } = useWorkflowInit()
+  const { t } = useTranslation(['common'])
+  const { data, isLoading, error, refetch, fileUploadConfigResponse } = useWorkflowInit()
   const workflowStore = useWorkflowStore()
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
@@ -119,6 +123,17 @@ const WorkflowAppWithAdditionalContext = () => {
       setShowDebugAndPreviewPanel(true)
     })
   }, [appACLCapabilities.canTestAndRun, replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
+
+  if (error && !isLoading) {
+    return (
+      <div role="alert" className="flex size-full flex-col items-center justify-center gap-3 p-6">
+        <p className="system-sm-regular text-text-destructive">
+          {getErrorMessage(error) ?? t(($) => $['api.actionFailed'])}
+        </p>
+        <Button onClick={() => void refetch()}>{t(($) => $['operation.retry'])}</Button>
+      </div>
+    )
+  }
 
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (

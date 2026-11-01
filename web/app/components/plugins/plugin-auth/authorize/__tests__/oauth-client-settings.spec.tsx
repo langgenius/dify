@@ -15,7 +15,7 @@ vi.mock('../../hooks/use-credential', () => ({
   useDeletePluginOAuthCustomClientHook: () => ({ mutateAsync: commands.remove }),
   useInvalidPluginOAuthClientSchemaHook: () => commands.invalidate,
 }))
-vi.mock('@/app/notifications', () => ({ toast: { success: vi.fn() } }))
+vi.mock('@/app/notifications', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 const payload = { category: AuthCategory.tool, provider: 'test-provider' }
 const schemas: FormSchema[] = [
   {
@@ -46,10 +46,12 @@ it('validates client fields and requests authorization only after a successful s
   )
   await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
   expect(commands.save).not.toHaveBeenCalled()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   await user.type(screen.getByRole('textbox', { name: /Client ID/ }), 'new-client')
   commands.save.mockRejectedValueOnce(new Error('Save failed'))
   await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
-  await waitFor(() => expect(commands.save).toHaveBeenCalledOnce())
+  expect(await screen.findByRole('alert')).toHaveTextContent('Save failed')
+  expect(screen.getByRole('textbox', { name: /Client ID/ })).toHaveValue('new-client')
   expect(authorize).not.toHaveBeenCalled()
   expect(onClose).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
@@ -117,3 +119,30 @@ it('keeps the source popover open when typing in the OAuth settings dialog', asy
   expect(onClose).not.toHaveBeenCalled()
   expect(onPopoverClose).not.toHaveBeenCalled()
 })
+
+it.each(['plugin.auth.saveOnly', 'common.operation.remove'])(
+  'shows server failures and permits retry for %s',
+  async (action) => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    const command = action === 'plugin.auth.saveOnly' ? commands.save : commands.remove
+    command.mockRejectedValueOnce(new Error('Client configuration unavailable'))
+    render(
+      <OAuthClientSettings
+        pluginPayload={payload}
+        schemas={schemas}
+        editValues={{ __oauth_client__: 'custom', client_id: 'saved-id' }}
+        hasOriginalClientParams
+        onClose={onClose}
+      />,
+    )
+    const button = screen.getByRole('button', { name: action })
+    await user.click(button)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Client configuration unavailable')
+    expect(screen.getByRole('textbox', { name: /Client ID/ })).toHaveValue('saved-id')
+    expect(onClose).not.toHaveBeenCalled()
+    await user.click(button)
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  },
+)

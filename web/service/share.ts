@@ -82,23 +82,16 @@ export const stopChatMessageResponding = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
-  options?: Pick<IOtherOptions, 'silent'>,
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.chatMessages.byTaskId.stop.post(
-      {
-        params: { installed_app_id: installedAppId, task_id: taskId },
-      },
-      { context: options },
-    )
+    return consoleClient.installedApps.byInstalledAppId.chatMessages.byTaskId.stop.post({
+      params: { installed_app_id: installedAppId, task_id: taskId },
+    })
   if (appSourceType === AppSourceType.tryApp)
-    return consoleClient.trialApps.byAppId.chatMessages.byTaskId.stop.post(
-      {
-        params: { app_id: installedAppId, task_id: taskId },
-      },
-      { context: options },
-    )
-  return post(getUrl(`chat-messages/${taskId}/stop`, appSourceType, installedAppId), {}, options)
+    return consoleClient.trialApps.byAppId.chatMessages.byTaskId.stop.post({
+      params: { app_id: installedAppId, task_id: taskId },
+    })
+  return post(getUrl(`chat-messages/${taskId}/stop`, appSourceType, installedAppId))
 }
 
 export const sendCompletionMessage = async (
@@ -164,24 +157,17 @@ export const stopWorkflowMessage = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
-  options?: Pick<IOtherOptions, 'silent'>,
 ) => {
   if (!taskId) return
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.workflows.tasks.byTaskId.stop.post(
-      {
-        params: { installed_app_id: installedAppId, task_id: taskId },
-      },
-      { context: options },
-    )
+    return consoleClient.installedApps.byInstalledAppId.workflows.tasks.byTaskId.stop.post({
+      params: { installed_app_id: installedAppId, task_id: taskId },
+    })
   if (appSourceType === AppSourceType.tryApp)
-    return consoleClient.trialApps.byAppId.workflows.tasks.byTaskId.stop.post(
-      {
-        params: { app_id: installedAppId, task_id: taskId },
-      },
-      { context: options },
-    )
-  return post(getUrl(`workflows/tasks/${taskId}/stop`, appSourceType, installedAppId), {}, options)
+    return consoleClient.trialApps.byAppId.workflows.tasks.byTaskId.stop.post({
+      params: { app_id: installedAppId, task_id: taskId },
+    })
+  return post(getUrl(`workflows/tasks/${taskId}/stop`, appSourceType, installedAppId))
 }
 
 export const fetchAppInfo = async () => {
@@ -476,19 +462,10 @@ export const saveMessage = (
 
 export const fetchSavedMessage = async (appSourceType: AppSourceType, installedAppId = '') => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.savedMessages.get(
-      {
-        params: { installed_app_id: installedAppId },
-      },
-      { context: { silent: true } },
-    )
-  return getAction('get', appSourceType)(
-    getUrl('/saved-messages', appSourceType, installedAppId),
-    {},
-    {
-      silent: true,
-    },
-  )
+    return consoleClient.installedApps.byInstalledAppId.savedMessages.get({
+      params: { installed_app_id: installedAppId },
+    })
+  return getAction('get', appSourceType)(getUrl('/saved-messages', appSourceType, installedAppId))
 }
 
 export const removeMessage = (

@@ -55,9 +55,7 @@ function SkillDetailDeleteDialog({
   const queryClient = useQueryClient()
   const router = useRouter()
   const deleteMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions(),
   )
   const referencesQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
@@ -216,9 +214,7 @@ export function SkillDetailSidebarActions({
   const [deleteOpen, setDeleteOpen] = useState(false)
   const router = useRouter()
   const duplicateMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
   )
   const exportMutation = useMutation({
     mutationFn: () => fetchSkillArchiveBlob(detail.id),

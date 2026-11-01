@@ -13,6 +13,7 @@ import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import {
   appEnvironmentDeploymentsAtom,
   appEnvironmentDeploymentsIsErrorAtom,
@@ -61,37 +62,37 @@ function EnvironmentTableHeader() {
       <tr className="sticky top-0 z-10 h-7 bg-background-section-burn">
         <th
           scope="col"
-          className="rounded-l-lg pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+          className="rounded-s-lg ps-3 pe-2 text-start system-xs-medium-uppercase text-text-tertiary"
         >
           {t(($) => $['deployTab.col.environment'])}
         </th>
         <th
           scope="col"
-          className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+          className="ps-3 pe-2 text-start system-xs-medium-uppercase text-text-tertiary"
         >
           {t(($) => $['studio.liveVersion'])}
         </th>
         <th
           scope="col"
-          className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+          className="ps-3 pe-2 text-start system-xs-medium-uppercase text-text-tertiary"
         >
           {t(($) => $['deployTab.col.status'])}
         </th>
         <th
           scope="col"
-          className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+          className="ps-3 pe-2 text-start system-xs-medium-uppercase text-text-tertiary"
         >
           {t(($) => $['studio.lastActivity'])}
         </th>
         <th
           scope="col"
-          className="pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+          className="ps-3 pe-2 text-start system-xs-medium-uppercase text-text-tertiary"
         >
           {t(($) => $['studio.accessPoints'])}
         </th>
         <th
           scope="col"
-          className="rounded-r-lg pr-2 pl-3 text-left system-xs-medium-uppercase text-text-tertiary"
+          className="rounded-e-lg ps-3 pe-2 text-start system-xs-medium-uppercase text-text-tertiary"
         >
           {t(($) => $['deployTab.col.actions'])}
         </th>
@@ -102,6 +103,8 @@ function EnvironmentTableHeader() {
 
 export const EnvironmentTable = memo(
   ({ appId, canViewAccessPoint, onUndeploy }: EnvironmentTableProps) => {
+    const notifyError = useErrorNotification()
+
     const { t } = useTranslation(['deployments'])
     const { t: tCommon } = useTranslation(['common'])
     const { t: tWorkflow } = useTranslation(['workflowHistory'])
@@ -147,8 +150,8 @@ export const EnvironmentTable = memo(
       try {
         await onUndeploy(deployment)
         setUndeploySession((session) => session && { ...session, open: false })
-      } catch {
-        // The request layer reports the error; keep the dialog open so the user can retry.
+      } catch (error) {
+        notifyError(error)
       } finally {
         setIsUndeploying(false)
       }

@@ -22,6 +22,8 @@ import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
@@ -479,8 +481,11 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     ],
   )
 
+  const notifyError = useErrorNotification()
   const { mutate: stopRun } = useMutation(
-    consoleQuery.apps.byAppId.workflowRuns.tasks.byTaskId.stop.post.mutationOptions(),
+    consoleQuery.apps.byAppId.workflowRuns.tasks.byTaskId.stop.post.mutationOptions({
+      onError: notifyError,
+    }),
   )
 
   const handleStopRun = useCallback(
@@ -504,8 +509,20 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       }
 
       if (taskId) {
-        stopRun({ params: { app_id: appId, task_id: taskId } })
-        setStoppedState()
+        stopRun(
+          { params: { app_id: appId, task_id: taskId } },
+          {
+            onSuccess: () => {
+              const current = workflowStore.getState().workflowRunningData
+              if (
+                current?.task_id === taskId &&
+                (current.result.status === WorkflowRunningStatus.Running ||
+                  current.result.status === WorkflowRunningStatus.Paused)
+              )
+                setStoppedState()
+            },
+          },
+        )
         return
       }
 

@@ -20,10 +20,10 @@ responses in the cache; do not mirror their types or cache object URLs.
 
 ## Query and display decisions
 
-| Operation      | Shared policy                                                         | Consumer-owned input and presentation                                                                               |
-| -------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Readme text    | Silent transport errors; no retries; normal client freshness          | Complete plugin unique identifier and model-language value; loading, empty and failure presentation                 |
-| Local resource | Silent transport errors; normal client freshness and observer retries | Complete plugin unique identifier and normalized asset filename; marketplace image fallback and object URL lifetime |
+| Operation      | Shared policy                                | Consumer-owned input and presentation                                                                               |
+| -------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Readme text    | No retries; normal client freshness          | Complete plugin unique identifier and model-language value; loading, empty and failure presentation                 |
+| Local resource | Normal client freshness and observer retries | Complete plugin unique identifier and normalized asset filename; marketplace image fallback and object URL lifetime |
 
 The normal browser client freshness is five minutes. A missing required input
 uses `skipToken`. Text identity includes the language; asset identity includes

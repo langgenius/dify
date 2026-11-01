@@ -114,6 +114,6 @@ describe('Contact details IM channel availability', () => {
       await within(details).findByRole('button', { name: 'contacts.imBinding.bind' }),
     ).toBeEnabled()
     expect(within(details).getByText('Feishu')).toBeInTheDocument()
-    expect(channels.get).toHaveBeenCalledExactlyOnceWith(undefined, { context: { silent: true } })
+    expect(channels.get).toHaveBeenCalledExactlyOnceWith(undefined)
   })
 })

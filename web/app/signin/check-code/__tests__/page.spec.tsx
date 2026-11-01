@@ -597,4 +597,23 @@ describe('CheckCode', () => {
       expect(locationReplace).not.toHaveBeenCalled()
     })
   })
+  it.each(['verify', 'resend'])('shows a failed %s request in the code form', async (action) => {
+    const user = userEvent.setup()
+    const command =
+      action === 'verify'
+        ? consoleClient.emailCodeLogin.validity.post
+        : consoleClient.emailCodeLogin.post
+    vi.mocked(command).mockRejectedValueOnce(new Error('Email service unavailable'))
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+    const code = screen.getByLabelText('login.checkCode.verificationCode')
+    await user.type(code, '123456')
+    await user.click(screen.getByRole('button', { name: `login.checkCode.${action}` }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Email service unavailable')
+    expect(code).toHaveValue('123456')
+    expect(navigationMocks.replace).not.toHaveBeenCalled()
+  })
 })

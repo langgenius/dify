@@ -7,9 +7,9 @@ import { Dialog } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useQueryClient } from '@tanstack/react-query'
-import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import { MissingReferenceWarning } from '../common/missing-reference-warning'
@@ -29,6 +29,7 @@ export function AgentSkillItem({
   skill: AgentSkill
   onRemove: (skillId: string) => void
 }) {
+  const notifyError = useErrorNotification()
   const { t } = useTranslation(['agentV2'])
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
@@ -93,8 +94,8 @@ export function AgentSkillItem({
     downloadUrl({ url: result.url, fileName: skill.name })
   }, [apiContext, queryClient, skill.isMissing, skill.name])
   const handleDownload = useCallback(() => {
-    void downloadSkill().catch(noop)
-  }, [downloadSkill])
+    void downloadSkill().catch(notifyError)
+  }, [downloadSkill, notifyError])
   const onDownloadSkill = canDownload ? handleDownload : undefined
   const hasActions = (!skill.isMissing && !!onDownloadSkill) || canRemove
   const handleOpenPreview = useCallback(() => {
@@ -124,7 +125,7 @@ export function AgentSkillItem({
           type="button"
           aria-label={skill.name}
           disabled={skill.isMissing}
-          className="flex h-full w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid disabled:cursor-default"
+          className="flex h-full w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-start outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid disabled:cursor-default"
           onClick={handleOpenPreview}
         >
           <span
@@ -150,7 +151,7 @@ export function AgentSkillItem({
         </button>
         {skill.isMissing && (
           <MissingReferenceWarning
-            className="absolute top-1/2 right-1 -translate-y-1/2"
+            className="absolute inset-e-1 top-1/2 -translate-y-1/2"
             label={t(($) => $['agentDetail.configure.skills.missing'])}
           />
         )}
@@ -169,7 +170,7 @@ export function AgentSkillItem({
                     name: skill.name,
                   })}
                   className={cn(
-                    'pointer-events-none absolute top-1/2 right-1 z-10 -translate-y-1/2 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
+                    'pointer-events-none absolute inset-e-1 top-1/2 z-10 -translate-y-1/2 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
                     isRemoveHighlighted && 'text-text-destructive!',
                   )}
                   onClick={(event) => event.stopPropagation()}

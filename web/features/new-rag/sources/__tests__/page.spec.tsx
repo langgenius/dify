@@ -1171,10 +1171,9 @@ describe('SourcesPage', () => {
     expect(
       within(sourceRow).queryByRole('button', { name: 'common.operation.retry' }),
     ).not.toBeInTheDocument()
-    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith(
-      { params: { control_space_id: 'space-1', run_id: 'initial-workflow' } },
-      { context: { silent: true } },
-    )
+    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', run_id: 'initial-workflow' },
+    })
     expect(clientMock.syncSource).not.toHaveBeenCalled()
 
     await user.click(
@@ -1229,10 +1228,9 @@ describe('SourcesPage', () => {
     await user.click(screen.getByRole('menuitem', { name: 'common.operation.retry' }))
 
     await waitFor(() => expect(clientMock.retrySourceWorkflow).toHaveBeenCalledOnce())
-    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith(
-      { params: { control_space_id: 'space-1', run_id: 'import-workflow' } },
-      { context: { silent: true } },
-    )
+    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', run_id: 'import-workflow' },
+    })
     expect(clientMock.syncSource).not.toHaveBeenCalled()
     expect(within(sourceRow).getByRole('status')).toHaveTextContent(
       'knowledgeSpace.sourceStatus.syncing',
@@ -2454,13 +2452,10 @@ describe('SourcesPage', () => {
     await user.click(screen.getByRole('menuitem', { name: 'knowledgeSources.syncNow' }))
 
     await waitFor(() =>
-      expect(clientMock.syncSource).toHaveBeenCalledWith(
-        {
-          headers: { 'Idempotency-Key': expect.any(String) },
-          params: { control_space_id: 'space-1', source_id: 'source-1' },
-        },
-        { context: { silent: true } },
-      ),
+      expect(clientMock.syncSource).toHaveBeenCalledWith({
+        headers: { 'Idempotency-Key': expect.any(String) },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
+      }),
     )
     expect(
       within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
@@ -3059,15 +3054,12 @@ describe('SourcesPage', () => {
     expect(clientMock.deleteSource).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'knowledgeSources.removeSource' }))
     await waitFor(() =>
-      expect(clientMock.deleteSource).toHaveBeenCalledWith(
-        {
-          body: { expectedRevision: 3 },
-          headers: { 'Idempotency-Key': expect.any(String) },
-          params: { control_space_id: 'space-1', source_id: 'source-1' },
-          query: { documents: 'keep' },
-        },
-        { context: { silent: true } },
-      ),
+      expect(clientMock.deleteSource).toHaveBeenCalledWith({
+        body: { expectedRevision: 3 },
+        headers: { 'Idempotency-Key': expect.any(String) },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
+        query: { documents: 'keep' },
+      }),
     )
     expect(screen.queryByText('Product documentation')).not.toBeInTheDocument()
   })
@@ -3107,9 +3099,7 @@ describe('SourcesPage', () => {
 
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith(message))
     expect(toastErrorMock).toHaveBeenCalledOnce()
-    expect(clientMock.deleteSource).toHaveBeenCalledWith(expect.anything(), {
-      context: { silent: true },
-    })
+    expect(clientMock.deleteSource).toHaveBeenCalledWith(expect.anything())
     expect(
       screen.getByRole('button', { name: 'knowledgeSources.removeSource' }),
     ).toBeInTheDocument()
@@ -3174,7 +3164,7 @@ describe('SourcesPage', () => {
       )
       expect(toastErrorMock).toHaveBeenCalledOnce()
       expect(screen.queryByText('knowledgeSpace.sourceStatus.syncing')).not.toBeInTheDocument()
-      expect(mutation).toHaveBeenCalledWith(expect.anything(), { context: { silent: true } })
+      expect(mutation).toHaveBeenCalledWith(expect.anything())
     },
   )
 

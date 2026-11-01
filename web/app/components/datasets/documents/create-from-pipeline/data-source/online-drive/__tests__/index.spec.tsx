@@ -75,6 +75,7 @@ function setup({ cached = true, credential = 'credential-1', single = false, dra
   return store
 }
 function callbacks(): {
+  onError: (message: string) => void
   onDataSourceNodeCompleted: (data: DataSourceNodeCompletedResponse) => void
   onDataSourceNodeError: (data: DataSourceNodeErrorResponse) => void
 } {
@@ -157,9 +158,73 @@ it('reports a failed stream and opens datasource configuration', async () => {
   setup({ cached: false })
   await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
   act(() => callbacks().onDataSourceNodeError({ event: 'datasource_error', error: 'Drive failed' }))
-  expect(toastError).toHaveBeenCalledWith('Drive failed')
+  expect(screen.getByRole('alert')).toHaveTextContent('Drive failed')
+  expect(toastError).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: /^datasetPipeline\.configurationTip/ }))
   await waitFor(() =>
     expect(onUrlUpdate.mock.lastCall![0].searchParams.get('settings')).toBe('data-source'),
   )
 })
+
+it('shows transport failures inline and releases loading so retry can fetch files', async () => {
+  const user = userEvent.setup()
+  setup({ cached: false })
+  await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+  act(() => callbacks().onError('Drive unavailable'))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Drive unavailable')
+  expect(toastError).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+  act(() =>
+    callbacks().onDataSourceNodeCompleted({
+      event: 'datasource_completed',
+      time_consuming: 0,
+      data: [
+        {
+          bucket: 'bucket-a',
+          files: [{ id: 'new-file', name: 'New.pdf', size: 1024, type: 'file' }],
+          is_truncated: false,
+          next_page_parameters: {},
+        },
+      ],
+    }),
+  )
+  expect(await screen.findByText('New.pdf')).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+
+it.each(['error', 'completion'])(
+  'ignores an old drive %s when switching credentials while loading',
+  async (event) => {
+    const store = setup({ cached: false })
+    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+    const earlier = callbacks()
+    act(() => store.getState().setCurrentCredentialId('credential-2'))
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    act(() =>
+      callbacks().onDataSourceNodeCompleted({
+        event: 'datasource_completed',
+        time_consuming: 0,
+        data: [
+          {
+            bucket: 'bucket-a',
+            files: [{ id: 'current', name: 'Current.pdf', size: 1, type: 'file' }],
+            is_truncated: false,
+            next_page_parameters: {},
+          },
+        ],
+      }),
+    )
+    act(() => {
+      if (event === 'error') earlier.onError('Earlier drive request failed')
+      else
+        earlier.onDataSourceNodeCompleted({
+          event: 'datasource_completed',
+          time_consuming: 0,
+          data: [],
+        })
+    })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(await screen.findByText('Current.pdf')).toBeInTheDocument()
+  },
+)

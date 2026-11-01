@@ -33,11 +33,13 @@ import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/us
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import { checkGitHubPluginUpdate } from '@/app/components/plugins/update-plugin/check-github-update'
 import MarketplaceUpdateDialog from '@/app/components/plugins/update-plugin/from-market-place'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { useModalContext } from '@/context/modal-context'
 import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 import { normalizeInstalledPluginDetail, usePluginAutoUpgradeSettings } from '@/service/use-plugins'
+import { getErrorMessage } from '@/utils/error-message'
 import { isEarlierThanVersion } from '@/utils/semver'
 
 type Props =
@@ -71,6 +73,7 @@ type UpdateSession = {
 
 function ProviderCardActions(props: Props) {
   const { t } = useTranslation(['appDebug', 'common', 'plugin', 'appLog'])
+  const notifyError = useErrorNotification()
   const versionMenuLabelId = useId()
   const { formatDate } = useTimestamp()
   const dateFormat = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]!
@@ -169,7 +172,9 @@ function ProviderCardActions(props: Props) {
         setInfo(loaded)
         setInfoOpen(true)
       }
-    } catch {}
+    } catch (error) {
+      notifyError(error)
+    }
   }
   const handleUpdate = async () => {
     if (!canUpdatePlugin) return
@@ -189,7 +194,9 @@ function ProviderCardActions(props: Props) {
         })
         setUpdateOpen(true)
       }
-    } catch {}
+    } catch (error) {
+      notifyError(error)
+    }
   }
   const remove = useMutation(
     consoleQuery.workspaces.current.plugin.uninstall.post.mutationOptions({
@@ -311,7 +318,10 @@ function ProviderCardActions(props: Props) {
         source={source}
         onInfo={handleInfo}
         onCheckVersion={handleUpdate}
-        onRemove={() => setShowDeleteConfirm(true)}
+        onRemove={() => {
+          remove.reset()
+          setShowDeleteConfirm(true)
+        }}
         marketplacePlugin={
           organization && pluginName
             ? {
@@ -344,6 +354,11 @@ function ProviderCardActions(props: Props) {
               {t(($) => $['action.deleteContentRight'], { ns: 'plugin' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {remove.error && !remove.isPending && (
+            <p role="alert" className="system-sm-regular text-text-destructive">
+              {getErrorMessage(remove.error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </p>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancelButton disabled={remove.isPending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

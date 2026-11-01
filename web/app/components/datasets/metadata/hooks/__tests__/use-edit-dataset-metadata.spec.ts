@@ -1,5 +1,6 @@
 import { act, waitFor } from '@testing-library/react'
 import { expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { DataType, isShowManageMetadataLocalStorageKey } from '../../types'
 import useEditDatasetMetadata from '../use-edit-dataset-metadata'
@@ -122,4 +123,23 @@ it('updates built-in metadata after the server accepts the requested status', as
     params: { dataset_id: 'ds-1', action: 'disable' },
   })
   expect(result.current.builtInEnabled).toBe(false)
+})
+
+it.each([
+  new Error('Metadata is referenced by a filter'),
+  new TypeError('Failed to fetch'),
+  new DOMException('The operation timed out.', 'TimeoutError'),
+])('reports metadata deletion failures once and does not refresh documents: %s', async (error) => {
+  const onUpdateDocList = vi.fn()
+  mockDoDeleteMetaData.mockRejectedValueOnce(error)
+  const { result } = renderHook(() =>
+    useEditDatasetMetadata({ datasetId: 'ds-1', onUpdateDocList }),
+  )
+
+  await act(async () => {
+    await expect(result.current.handleDeleteMetaData('1')).rejects.toBe(error)
+  })
+
+  expect(toast.error).toHaveBeenCalledExactlyOnceWith(error.message)
+  expect(onUpdateDocList).not.toHaveBeenCalled()
 })

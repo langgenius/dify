@@ -55,9 +55,9 @@ const SnippetCard = ({
   )
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const updateSnippetMutation = useUpdateSnippetMutation({ silent: true })
-  const exportSnippetMutation = useExportSnippetMutation({ silent: true })
-  const deleteSnippetMutation = useDeleteSnippetMutation({ silent: true })
+  const updateSnippetMutation = useUpdateSnippetMutation()
+  const exportSnippetMutation = useExportSnippetMutation()
+  const deleteSnippetMutation = useDeleteSnippetMutation()
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const canManageSnippet = canManageSnippets(workspacePermissionKeys)
   const canShowOperations = canCreateAndModifySnippet || canManageSnippet
@@ -168,9 +168,9 @@ const SnippetCard = ({
           </div>
         </StudioListLink>
 
-        <div className="absolute right-0 bottom-1 left-0 flex h-10.5 shrink-0 items-center pt-1 pr-1.5 pb-1.5 pl-3.5">
+        <div className="absolute inset-s-0 inset-e-0 bottom-1 flex h-10.5 shrink-0 items-center ps-3.5 pe-1.5 pt-1 pb-1.5">
           <div className="flex w-0 grow items-center gap-1">
-            <div className="mr-10.25 min-w-0 grow">
+            <div className="me-10.25 min-w-0 grow">
               <TagSelector
                 type="snippet"
                 targetId={snippet.id}
@@ -183,7 +183,7 @@ const SnippetCard = ({
             </div>
           </div>
           {canShowOperations && (
-            <div className="pointer-events-none absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100">
+            <div className="pointer-events-none absolute inset-e-1.5 top-1/2 flex -translate-y-1/2 items-center opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100">
               <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular" />
               <Menu modal={false}>
                 <MenuTrigger

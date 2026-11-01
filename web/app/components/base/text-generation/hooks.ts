@@ -49,7 +49,7 @@ export const useTextGeneration = () => {
         onError() {
           setIsResponding(false)
         },
-        onNotifyError,
+        onNotifyError: onNotifyError ?? ((message) => toast.error(message)),
       },
     )
     return true

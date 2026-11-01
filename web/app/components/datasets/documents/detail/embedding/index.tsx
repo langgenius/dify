@@ -64,7 +64,6 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
     [t],
   )
   const pauseMutation = usePauseIndexing({
-    context: { silent: true },
     datasetId,
     documentId,
     onSuccess: () => {
@@ -74,7 +73,6 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
     onError: handleError,
   })
   const resumeMutation = useResumeIndexing({
-    context: { silent: true },
     datasetId,
     documentId,
     onSuccess: () => {

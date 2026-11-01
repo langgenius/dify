@@ -1,8 +1,11 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { DatasetACLPermission } from '@/utils/permission'
 import ApiAccess from '../index'
+
+vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 let mockDatasetId = 'dataset-123'
 let mockMutateDatasetRes = vi.fn()
@@ -112,5 +115,17 @@ describe('Dataset API access', () => {
     await user.click(screen.getByRole('button', { name: 'common.appMenus.apiAccess' }))
 
     expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('reports an API toggle failure once and keeps the server value', async () => {
+    const user = userEvent.setup()
+    mockEnableApi.mockRejectedValueOnce(new Error('Permission revoked'))
+    render(<ApiAccess expand apiEnabled={false} />)
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.apiAccess' }))
+    await user.click(screen.getByRole('switch'))
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledExactlyOnceWith('Permission revoked'))
+    expect(screen.getByRole('switch')).not.toBeChecked()
+    expect(mockMutateDatasetRes).not.toHaveBeenCalled()
   })
 })

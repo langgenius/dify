@@ -1,18 +1,31 @@
 import type { HumanInputV2NodeType } from '@/app/components/workflow/nodes/human-input-v2/types'
+// oxlint-disable-next-line no-restricted-imports -- Exercise the SSE callback contract; generated JSON clients do not expose stream events.
+import type { IOtherOptions } from '@/service/base'
 import { ORPCError } from '@orpc/client'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import {
   createEdge,
   createNode,
+  createNodeTracing,
   createStartNode,
 } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import iterationDefault from '@/app/components/workflow/nodes/iteration/default'
+import loopDefault from '@/app/components/workflow/nodes/loop/default'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleClient } from '@/service/console'
 import useOneStepRun from '../use-one-step-run'
+
+const streamRun = vi.hoisted(() =>
+  vi.fn<(url: string, options: unknown, callbacks: IOtherOptions) => void>(),
+)
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  ssePost: streamRun,
+}))
 
 const mockHitlIm = vi.hoisted(() => ({ enabled: true }))
 
@@ -55,9 +68,15 @@ vi.mock('@/service/console', async (importOriginal) => {
 
 const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
   render(createElement(AppToaster))
+  const containerDefaults =
+    type === BlockEnum.Iteration
+      ? iterationDefault.defaultValue
+      : type === BlockEnum.Loop
+        ? loopDefault.defaultValue
+        : {}
   const nodes = [
     createStartNode({ id: 'start', data: { variables: [] } }),
-    createNode({ id: 'if-else-node', data: { type, title: 'Test node' } }),
+    createNode({ id: 'if-else-node', data: { ...containerDefaults, type, title: 'Test node' } }),
   ]
   const edges = [createEdge({ source: 'start', target: 'if-else-node' })]
   return renderHook(
@@ -67,6 +86,7 @@ const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
         resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
 
         data: {
+          ...containerDefaults,
           type,
           title: 'IF/ELSE',
           desc: '',
@@ -90,6 +110,7 @@ describe('useOneStepRun single-run input vars', () => {
   beforeEach(() => {
     mockHitlIm.enabled = true
     runTrigger.mockReset()
+    streamRun.mockClear()
     window.history.replaceState(null, '', '/app/app-id/workflow')
   })
   afterEach(async () => {
@@ -147,6 +168,58 @@ describe('useOneStepRun single-run input vars', () => {
   )
 
   it.each([BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
+    'continues %s polling until the trigger is ready',
+    async (type) => {
+      vi.useFakeTimers()
+      try {
+        runTrigger
+          .mockResolvedValueOnce({ status: 'waiting', retry_in: 2000 })
+          .mockResolvedValueOnce({ id: 'execution-ready', status: 'succeeded' })
+        const { result, store } = renderUseOneStepRun(type)
+        let pending: ReturnType<typeof result.current.handleRun>
+        await act(async () => {
+          pending = result.current.handleRun({})
+        })
+        expect(runTrigger).toHaveBeenCalledOnce()
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(2000)
+          await pending
+        })
+        expect(runTrigger).toHaveBeenCalledTimes(2)
+        expect(store.getState().isListening).toBe(false)
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      } finally {
+        vi.useRealTimers()
+      }
+    },
+  )
+
+  it.each([BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
+    'cancels the %s polling delay without starting another request',
+    async (type) => {
+      vi.useFakeTimers()
+      try {
+        runTrigger.mockResolvedValue({ status: 'waiting', retry_in: 2000 })
+        const { result, store } = renderUseOneStepRun(type)
+        let pending: ReturnType<typeof result.current.handleRun>
+        await act(async () => {
+          pending = result.current.handleRun({})
+        })
+        act(() => result.current.handleStop())
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(2000)
+          await pending
+        })
+        expect(runTrigger).toHaveBeenCalledOnce()
+        expect(store.getState().isListening).toBe(false)
+        expect(result.current.runError).toBeUndefined()
+      } finally {
+        vi.useRealTimers()
+      }
+    },
+  )
+
+  it.each([BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
     'aborts the pending %s request when listening stops',
     async (type) => {
       const run = vi.mocked(
@@ -197,6 +270,96 @@ describe('useOneStepRun single-run input vars', () => {
       expect(await screen.findByText('Trigger rejected')).toBeInTheDocument()
       expect(notifyError).toHaveBeenCalledExactlyOnceWith('Trigger rejected')
       expect(store.getState().isListening).toBe(false)
+    },
+  )
+
+  it.each([BlockEnum.Iteration, BlockEnum.Loop])(
+    'preserves a failed %s stream reason for the panel',
+    async (type) => {
+      const notify = vi.spyOn(toast, 'error')
+      const { result } = renderUseOneStepRun(type)
+      await act(async () => {
+        await result.current.handleRun({})
+      })
+      const options = streamRun.mock.calls.at(-1)![2]
+
+      act(() => options.onError?.('Node execution denied'))
+
+      expect(result.current.runError).toBe('Node execution denied')
+      expect(notify).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([BlockEnum.Iteration, BlockEnum.Loop])(
+    'ignores errors from an earlier %s stream after rerunning',
+    async (type) => {
+      const { result } = renderUseOneStepRun(type)
+      await act(async () => {
+        await result.current.handleRun({})
+      })
+      const earlier = streamRun.mock.calls.at(-1)![2]
+      await act(async () => {
+        await result.current.handleRun({})
+      })
+      act(() => earlier.onError?.('Earlier stream failed'))
+      expect(result.current.runError).toBeUndefined()
+      act(() => streamRun.mock.calls.at(-1)![2].onError?.('Current stream failed'))
+      expect(result.current.runError).toBe('Current stream failed')
+    },
+  )
+
+  it.each([BlockEnum.Iteration, BlockEnum.Loop])(
+    'discards replayed %s progress and results after rerunning',
+    async (type) => {
+      const { result } = renderUseOneStepRun(type)
+      await act(async () => {
+        await result.current.handleRun({})
+      })
+      const stale = streamRun.mock.calls.at(-1)![2]
+      await act(async () => {
+        await result.current.handleRun({})
+      })
+      const event = {
+        task_id: 'old-task',
+        workflow_run_id: 'old-run',
+        event: 'node_started',
+        data: createNodeTracing(),
+      }
+      act(() => {
+        if (type === BlockEnum.Iteration) {
+          stale.onIterationStart?.(event)
+          stale.onIterationNext?.(event)
+          stale.onIterationFinish?.(event)
+        } else {
+          stale.onLoopStart?.(event)
+          stale.onLoopNext?.(event)
+          stale.onLoopFinish?.(event)
+        }
+        stale.onNodeStarted?.(event)
+        stale.onNodeRetry?.(event)
+        stale.onNodeFinished?.(event)
+        stale.onWorkflowFinished?.({
+          ...event,
+          data: {
+            id: 'old-run',
+            workflow_id: 'workflow',
+            status: 'succeeded',
+            outputs: {},
+            error: '',
+            elapsed_time: 1,
+            total_tokens: 1,
+            total_steps: 1,
+            created_at: 0,
+            finished_at: 1,
+            created_by: { id: 'user', name: 'User', email: 'user@example.com' },
+          },
+        })
+      })
+      expect(result.current.iterationRunResult).toEqual([])
+      expect(result.current.loopRunResult).toEqual([])
+      expect(result.current.runResult).toBeNull()
+      act(() => streamRun.mock.calls.at(-1)![2].onError?.('Current request failed'))
+      expect(result.current.runError).toBe('Current request failed')
     },
   )
 

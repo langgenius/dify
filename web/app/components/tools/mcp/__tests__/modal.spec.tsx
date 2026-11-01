@@ -89,7 +89,7 @@ describe('MCP server configuration', () => {
     expect(request).toHaveBeenCalledWith(
       expect.stringContaining('/remote-files/upload'),
       expect.anything(),
-      expect.objectContaining({ silent: true }),
+      expect.objectContaining({}),
     )
     expect(request.mock.calls[0]?.[2]?.request?.method).toBe('POST')
     expect(await request.mock.calls[0]?.[2]?.request?.json()).toEqual({

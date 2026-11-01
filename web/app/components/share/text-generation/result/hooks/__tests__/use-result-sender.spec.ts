@@ -15,7 +15,7 @@ import { useResultSender } from '../use-result-sender'
 type CompletionHandlers = {
   onData: NonNullable<IOtherOptions['onData']>
   onCompleted: () => void
-  onError: () => void
+  onError: (message: string) => void
   onMessageReplace: (message: { answer: string }) => void
 }
 
@@ -24,11 +24,14 @@ const mocks = vi.hoisted(() => ({
   workflow: vi.fn(),
   sleep: vi.fn(),
   track: vi.fn(),
+  stop: vi.fn(),
 }))
 vi.mock('@/service/share', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/share')>()),
   sendCompletionMessage: mocks.completion,
   sendWorkflowMessage: mocks.workflow,
+  stopChatMessageResponding: mocks.stop,
+  stopWorkflowMessage: mocks.stop,
 }))
 vi.mock('@/utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/utils')>()),
@@ -101,10 +104,144 @@ beforeEach(() => {
   captureAppAccessScope()
   mocks.completion.mockResolvedValue(undefined)
   mocks.workflow.mockResolvedValue(undefined)
+  mocks.stop.mockResolvedValue(undefined)
   mocks.sleep.mockImplementation(() => new Promise<void>(() => {}))
 })
 
 describe('result sending', () => {
+  it.each([false, true])(
+    'reports stream failures and allows retry (workflow: %s)',
+    async (isWorkflow) => {
+      const { result, notify, onCompleted } = renderSender({ isWorkflow })
+      await act(async () => {
+        await result.current.handleSend()
+      })
+      const service = isWorkflow ? mocks.workflow : mocks.completion
+      const handlers = service.mock.calls[0]![1] as IOtherOptions
+      act(() => {
+        handlers.onError?.('Model quota exceeded')
+      })
+      expect(notify).toHaveBeenCalledExactlyOnceWith({
+        type: 'error',
+        message: 'Model quota exceeded',
+      })
+      expect(result.current.state.isResponding).toBe(false)
+      expect(onCompleted).toHaveBeenCalledExactlyOnceWith('', 7, false)
+      await act(async () => {
+        await result.current.handleSend()
+      })
+      expect(service).toHaveBeenCalledTimes(2)
+      expect(result.current.state.isResponding).toBe(true)
+    },
+  )
+
+  it.each([false, true])(
+    'settles intentionally aborted streams without error feedback (workflow: %s)',
+    async (isWorkflow) => {
+      const { result, notify, onCompleted } = renderSender({ isWorkflow })
+      await act(async () => {
+        await result.current.handleSend()
+      })
+      const service = isWorkflow ? mocks.workflow : mocks.completion
+      const handlers = service.mock.calls[0]![1] as IOtherOptions
+      const controller = new AbortController()
+      act(() => {
+        handlers.getAbortController?.(controller)
+        controller.abort()
+        handlers.onError?.('AbortError: The operation was aborted')
+      })
+      expect(notify).not.toHaveBeenCalled()
+      expect(onCompleted).toHaveBeenCalledExactlyOnceWith('', 7, false)
+      expect(result.current.state.isResponding).toBe(false)
+    },
+  )
+
+  it.each([false, true])(
+    'allows another run after a successful stop (workflow: %s)',
+    async (isWorkflow) => {
+      let finishTimeout!: () => void
+      mocks.sleep.mockReturnValueOnce(
+        new Promise<void>((resolve) => {
+          finishTimeout = resolve
+        }),
+      )
+      const { result, notify, onCompleted } = renderSender({ isWorkflow })
+      await act(async () => {
+        await result.current.handleSend()
+      })
+      const service = isWorkflow ? mocks.workflow : mocks.completion
+      const handlers = service.mock.calls[0]![1] as IOtherOptions
+      const controller = new AbortController()
+      act(() => {
+        handlers.getAbortController?.(controller)
+        result.current.state.setCurrentTaskId('task-1')
+      })
+      await act(async () => {
+        await result.current.state.handleStop()
+      })
+      expect(mocks.stop).toHaveBeenCalledOnce()
+      expect(controller.signal.aborted).toBe(true)
+      expect(result.current.state.isResponding).toBe(false)
+      expect(result.current.state.currentTaskId).toBeNull()
+      expect(onCompleted).toHaveBeenCalledExactlyOnceWith('', 7, false)
+      act(() => {
+        handlers.onError?.('AbortError: The operation was aborted')
+        handlers.onCompleted?.(true, 'AbortError: The operation was aborted')
+      })
+      await act(async () => {
+        finishTimeout()
+      })
+      expect(onCompleted).toHaveBeenCalledOnce()
+      expect(notify).not.toHaveBeenCalled()
+      await act(async () => {
+        await result.current.handleSend()
+      })
+      expect(service).toHaveBeenCalledTimes(2)
+      expect(result.current.state.isResponding).toBe(true)
+    },
+  )
+
+  it('does not let an old controller abort a newer run', async () => {
+    const { result, onCompleted } = renderSender()
+    await act(async () => {
+      await result.current.handleSend()
+    })
+    const oldHandlers = mocks.completion.mock.calls[0]![1] as IOtherOptions
+    const oldController = new AbortController()
+    act(() => {
+      oldHandlers.getAbortController?.(oldController)
+      oldHandlers.onCompleted?.()
+    })
+    await act(async () => {
+      await result.current.handleSend()
+    })
+    const handlers = mocks.completion.mock.calls[1]![1] as IOtherOptions
+    const controller = new AbortController()
+    act(() => {
+      handlers.getAbortController?.(controller)
+      oldController.abort()
+    })
+    expect(result.current.state.isResponding).toBe(true)
+    expect(controller.signal.aborted).toBe(false)
+    expect(onCompleted).toHaveBeenCalledOnce()
+  })
+
+  it('does not report completion after a failed stream completes again', async () => {
+    const { result, notify, onCompleted } = renderSender()
+    await act(async () => {
+      await result.current.handleSend()
+    })
+    const handlers = mocks.completion.mock.calls[0]![1] as IOtherOptions
+    act(() => {
+      handlers.onCompleted?.(true, 'Connection lost')
+      handlers.onError?.('Connection lost')
+      handlers.onCompleted?.()
+    })
+    expect(notify).toHaveBeenCalledExactlyOnceWith({ type: 'error', message: 'Connection lost' })
+    expect(onCompleted).toHaveBeenCalledExactlyOnceWith('', 7, false)
+    expect(result.current.state.isResponding).toBe(false)
+  })
+
   it('rejects missing required inputs before sending or tracking a run', async () => {
     const { result, notify } = renderSender({ inputs: {} })
     await act(async () => {
@@ -204,7 +341,7 @@ describe('result sending', () => {
       expect(onCompleted).toHaveBeenCalledExactlyOnceWith('', 7, false)
       const callbacks = mocks.completion.mock.calls[0]![1] as CompletionHandlers
       act(() => {
-        callbacks[callback]!()
+        callbacks[callback]!('')
       })
       expect(notify).toHaveBeenCalledWith({
         type: 'warning',
@@ -234,7 +371,7 @@ describe('result sending', () => {
       })
       expect(result.current.state.currentTaskId).toBeNull()
       act(() => {
-        callbacks[callback]!()
+        callbacks[callback]!('')
       })
       await act(async () => {
         timeout()
@@ -265,7 +402,7 @@ describe('result sending', () => {
           captureAppAccessScope()
         }
         callbacks.onCompleted()
-        callbacks.onError()
+        callbacks.onError('')
       })
       expect(notify).not.toHaveBeenCalled()
       expect(result.current.state.isResponding).toBe(false)

@@ -259,3 +259,35 @@ it.each([
   expect(await screen.findByRole('button', { name: 'custom.apply' })).toBeEnabled()
   expect(screen.queryByText('custom.uploadedFail')).not.toBeInTheDocument()
 })
+
+it.each(['apply', 'restore', 'remove'] as const)(
+  'shows a failed %s inline, preserves the configuration, and allows retry',
+  async (action) => {
+    updateConfig.mockRejectedValueOnce(
+      new ORPCError('forbidden', { message: 'Brand update denied' }),
+    )
+    const { user } = renderBrand()
+    if (action === 'apply') await user.upload(uploadInput(), logoFile())
+    const control =
+      action === 'remove'
+        ? removalSwitch()
+        : await screen.findByRole('button', { name: `custom.${action}` })
+    await user.click(control)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Brand update denied')
+    expectPreviewLogo('https://example.com/logo.png')
+    expect(removalSwitch()).not.toBeChecked()
+    if (action === 'apply')
+      expect(screen.getByRole('button', { name: 'custom.apply' })).toBeEnabled()
+    await user.click(control)
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    if (action === 'remove') {
+      await waitFor(() => expect(removalSwitch()).toBeChecked())
+    } else if (action === 'restore') {
+      await waitFor(() => expect(screen.getAllByRole('img', { name: 'Dify' })).toHaveLength(2))
+    } else {
+      await waitFor(() => expectPreviewLogo('new-logo'))
+      expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument()
+    }
+    expect(updateConfig).toHaveBeenCalledTimes(2)
+  },
+)

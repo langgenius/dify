@@ -17,6 +17,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { createAgentIconSelection } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
 
@@ -30,6 +31,7 @@ type DuplicateAgentFormSessionProps = {
   agent: AgentFormSource
   nameInputRef: Ref<HTMLInputElement>
   pending: boolean
+  error?: unknown
   onCancel: () => void
   onSubmit: (formValues: AgentFormValues, agentIcon: AgentIconSelection) => void
 }
@@ -43,6 +45,7 @@ function DuplicateAgentFormSession({
   agent,
   nameInputRef,
   pending,
+  error,
   onCancel,
   onSubmit,
 }: DuplicateAgentFormSessionProps) {
@@ -90,6 +93,11 @@ function DuplicateAgentFormSession({
           })}
           onIconChange={setAgentIcon}
         />
+        {!!error && !pending && (
+          <p role="alert" className="px-6 system-sm-regular text-text-destructive">
+            {getErrorMessage(error) ?? tCommon(($) => $['api.actionFailed'])}
+          </p>
+        )}
         <DialogFooter>
           <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
             {tCommon(($) => $['operation.cancel'])}
@@ -153,13 +161,23 @@ export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAge
 
   return (
     <>
-      <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
+      <Dialog
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            duplicateAgentMutation.reset()
+          }
+        }}
+        open={open}
+        onOpenChange={handleOpenChange}
+        disablePointerDismissal
+      >
         <DialogContent initialFocus={nameInputRef} className="w-130">
           <DuplicateAgentFormSession
             key={latestAgent.id}
             agent={latestAgent}
             nameInputRef={nameInputRef}
             pending={duplicateAgentMutation.isPending}
+            error={duplicateAgentMutation.error}
             onCancel={() => onOpenChange(false)}
             onSubmit={handleSubmit}
           />

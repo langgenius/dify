@@ -19,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { trackNetworkAccessEvent } from '@/features/network-access/analytics'
 import { PolicyReferencedApps } from '@/features/network-access/policy-references'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -43,8 +44,11 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const notifyError = useErrorNotification()
   const deleteGroup = useMutation(
-    consoleQuery.workspaces.current.networkAccessGroups.byGroupId.delete.mutationOptions(),
+    consoleQuery.workspaces.current.networkAccessGroups.byGroupId.delete.mutationOptions({
+      onError: notifyError,
+    }),
   )
   const isBound = group.used_by_count > 0
   const usedByLabel =

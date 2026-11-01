@@ -20,16 +20,13 @@ describe('annotation service', () => {
       0,
     )
 
-    expect(consoleClient.apps.byAppId.annotationReply.byAction.post).toHaveBeenCalledWith(
-      {
-        params: { app_id: 'app-1', action: 'enable' },
-        body: {
-          embedding_model_name: 'model',
-          embedding_provider_name: 'provider',
-          score_threshold: 0,
-        },
+    expect(consoleClient.apps.byAppId.annotationReply.byAction.post).toHaveBeenCalledWith({
+      params: { app_id: 'app-1', action: 'enable' },
+      body: {
+        embedding_model_name: 'model',
+        embedding_provider_name: 'provider',
+        score_threshold: 0,
       },
-      { context: { silent: true } },
-    )
+    })
   })
 })

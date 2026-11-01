@@ -4,6 +4,7 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getErrorMessage } from '@/utils/error-message'
 import ChatPreviewCard from './components/chat-preview-card'
 import WorkflowPreviewCard from './components/workflow-preview-card'
 import useWebAppBrand from './hooks/use-web-app-brand'
@@ -17,6 +18,7 @@ const CustomWebAppBrand = () => {
   const logoInputRef = useRef<HTMLInputElement>(null)
   const { t } = useTranslation(['appOverview', 'common', 'custom'])
   const {
+    saveError,
     fileId,
     imgKey,
     uploadProgress,
@@ -120,6 +122,11 @@ const CustomWebAppBrand = () => {
           )}
         </div>
       </div>
+      {saveError && (
+        <p role="alert" className="mt-2 system-sm-regular text-text-destructive">
+          {getErrorMessage(saveError) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+        </p>
+      )}
       {uploadProgress === -1 && (
         <div className="mt-2 text-xs text-[#D92D20]">
           {t(($) => $.uploadedFail, { ns: 'custom' })}

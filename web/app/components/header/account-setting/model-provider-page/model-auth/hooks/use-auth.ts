@@ -14,6 +14,7 @@ import {
   useRefreshModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { toast } from '@/app/notifications'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { consoleQuery } from '@/service/console'
 import { useAuthService } from './use-auth-service'
 
@@ -38,6 +39,7 @@ export const useAuth = (
     mode?: ModelModalModeEnum
   } = {},
 ) => {
+  const notifyError = useErrorNotification()
   const { isModelCredential, onUpdate, onRemove, mode } = extra
   const { t } = useTranslation(['common'])
   const {
@@ -115,11 +117,21 @@ export const useAuth = (
         }
         toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
         handleRefreshModel(provider, undefined, true)
+      } catch (error) {
+        notifyError(error)
+        throw error
       } finally {
         handleSetDoingAction(false)
       }
     },
-    [getActiveCredentialService, isModelCredential, resolveModelContext, t, handleSetDoingAction],
+    [
+      getActiveCredentialService,
+      isModelCredential,
+      resolveModelContext,
+      t,
+      handleSetDoingAction,
+      notifyError,
+    ],
   )
   const handleConfirmDelete = useCallback(async () => {
     if (doingActionRef.current) return
@@ -164,6 +176,9 @@ export const useAuth = (
       handleRefreshModel(provider, undefined, true)
       onRemove?.(pendingOperationCredentialId.current ?? '')
       closeConfirmDelete()
+    } catch (error) {
+      notifyError(error)
+      throw error
     } finally {
       handleSetDoingAction(false)
     }
@@ -177,6 +192,7 @@ export const useAuth = (
     configurationMethod,
     deleteModelService,
     resolveModelContext,
+    notifyError,
   ])
   const handleSaveCredential = useCallback(
     async (payload: Record<string, any>) => {
@@ -193,11 +209,14 @@ export const useAuth = (
           toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           handleRefreshModel(provider, undefined, !payload.credential_id)
         }
+      } catch (error) {
+        notifyError(error)
+        throw error
       } finally {
         handleSetDoingAction(false)
       }
     },
-    [t, handleSetDoingAction, getEditCredentialService, getAddCredentialService],
+    [t, handleSetDoingAction, getEditCredentialService, getAddCredentialService, notifyError],
   )
   const handleOpenModal = useCallback(
     (credential?: Credential, model?: CustomModel) => {

@@ -295,9 +295,7 @@ export const documentSubmissionPendingAtom = atom((get) => {
 })
 
 const reindexDocumentMutationAtom = atomWithMutation(() =>
-  consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions({
-    context: { silent: true },
-  }),
+  consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions(),
 )
 const cancelTaskMutationAtom = atomWithMutation(() =>
   consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post.mutationOptions(),

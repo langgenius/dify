@@ -17,6 +17,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { consoleQuery } from '@/service/console'
 
 type AccessRuleRowMenuProps = {
@@ -29,11 +30,16 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
   const { t } = useTranslation(['common', 'permission'])
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
+  const notifyError = useErrorNotification()
   const { mutate: copyAccessRule } = useMutation(
-    consoleQuery.workspaces.current.rbac.accessPolicies.byPolicyId.copy.post.mutationOptions(),
+    consoleQuery.workspaces.current.rbac.accessPolicies.byPolicyId.copy.post.mutationOptions({
+      onError: notifyError,
+    }),
   )
   const { mutate: deleteAccessRule, isPending: isDeletingAccessRule } = useMutation(
-    consoleQuery.workspaces.current.rbac.accessPolicies.byPolicyId.delete.mutationOptions(),
+    consoleQuery.workspaces.current.rbac.accessPolicies.byPolicyId.delete.mutationOptions({
+      onError: notifyError,
+    }),
   )
 
   const handleView = useCallback(() => {

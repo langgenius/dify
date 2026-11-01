@@ -27,6 +27,18 @@ type MousePosition = {
 }
 
 export type WorkflowSliceShape = {
+  singleNodeRunGenerations: Record<string, number | undefined>
+  singleNodeRunErrorGenerations: Record<string, number | undefined>
+  singleNodeRunErrors: Record<string, string | undefined>
+  workflowNodeExecutions: Record<string, { id: string; errorGeneration: number } | undefined>
+  trackWorkflowNodeExecution: (nodeId: string, executionId: string, workflowRunId: string) => void
+  clearSingleNodeRunErrorForExecution: (
+    nodeId: string,
+    executionId: string,
+    workflowRunId: string,
+  ) => void
+  advanceSingleNodeRunGeneration: (nodeId: string) => number
+  setSingleNodeRunError: (nodeId: string, message: string) => void
   workflowRunningData?: PreviewRunningData
   setWorkflowRunningData: (workflowData: PreviewRunningData) => void
   isListening: boolean
@@ -72,7 +84,58 @@ export type WorkflowSliceShape = {
   setFileUploadConfig: (fileUploadConfig: UploadConfig) => void
 }
 
-export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = (set) => ({
+export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = (set, get) => ({
+  singleNodeRunGenerations: {},
+  singleNodeRunErrorGenerations: {},
+  singleNodeRunErrors: {},
+  workflowNodeExecutions: {},
+  trackWorkflowNodeExecution: (nodeId, executionId, workflowRunId) => {
+    const key = JSON.stringify([workflowRunId, nodeId])
+    if (get().workflowNodeExecutions[key]?.id === executionId) return
+    // Taking over feedback must leave an in-flight single request free to settle and clean up.
+    const errorGeneration = (get().singleNodeRunErrorGenerations[nodeId] ?? 0) + 1
+    set((state) => ({
+      singleNodeRunErrorGenerations: {
+        ...state.singleNodeRunErrorGenerations,
+        [nodeId]: errorGeneration,
+      },
+      singleNodeRunErrors: { ...state.singleNodeRunErrors, [nodeId]: undefined },
+      workflowNodeExecutions: {
+        ...state.workflowNodeExecutions,
+        [key]: { id: executionId, errorGeneration },
+      },
+    }))
+  },
+  clearSingleNodeRunErrorForExecution: (nodeId, executionId, workflowRunId) => {
+    const key = JSON.stringify([workflowRunId, nodeId])
+    const execution = get().workflowNodeExecutions[key]
+    if (!execution) {
+      get().trackWorkflowNodeExecution(nodeId, executionId, workflowRunId)
+      return
+    }
+    if (
+      execution.id !== executionId ||
+      execution.errorGeneration !== get().singleNodeRunErrorGenerations[nodeId]
+    )
+      return
+    set((state) => ({ singleNodeRunErrors: { ...state.singleNodeRunErrors, [nodeId]: undefined } }))
+  },
+  advanceSingleNodeRunGeneration: (nodeId) => {
+    const generation = (get().singleNodeRunGenerations[nodeId] ?? 0) + 1
+    set((state) => ({
+      singleNodeRunGenerations: { ...state.singleNodeRunGenerations, [nodeId]: generation },
+      singleNodeRunErrorGenerations: {
+        ...state.singleNodeRunErrorGenerations,
+        [nodeId]: (state.singleNodeRunErrorGenerations[nodeId] ?? 0) + 1,
+      },
+      singleNodeRunErrors: { ...state.singleNodeRunErrors, [nodeId]: undefined },
+    }))
+    return generation
+  },
+  setSingleNodeRunError: (nodeId, message) =>
+    set((state) => ({
+      singleNodeRunErrors: { ...state.singleNodeRunErrors, [nodeId]: message },
+    })),
   workflowRunningData: undefined,
   setWorkflowRunningData: (workflowRunningData) => set(() => ({ workflowRunningData })),
   isListening: false,

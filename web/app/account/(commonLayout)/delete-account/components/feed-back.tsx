@@ -14,6 +14,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useLogout } from '@/service/use-common'
 import { useDeleteAccountFeedback } from '../state'
@@ -28,6 +29,8 @@ type FeedbackFormValues = {
 }
 
 export default function FeedBack(props: DeleteAccountProps) {
+  const notifyError = useErrorNotification()
+
   const { t } = useTranslation(['common', 'accountSettings'])
   const { data: userProfileEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -40,9 +43,10 @@ export default function FeedBack(props: DeleteAccountProps) {
     try {
       await logout()
     } catch (error) {
+      notifyError(error)
       console.error(error)
     }
-  }, [logout])
+  }, [logout, notifyError])
 
   const handleSubmit = useCallback(
     async (feedback: string) => {
@@ -51,10 +55,11 @@ export default function FeedBack(props: DeleteAccountProps) {
         props.onConfirm()
         await handleSuccess()
       } catch (error) {
+        notifyError(error)
         console.error(error)
       }
     },
-    [handleSuccess, sendFeedback, userProfileEmail, props],
+    [handleSuccess, sendFeedback, userProfileEmail, props, notifyError],
   )
 
   const handleSkip = useCallback(() => {

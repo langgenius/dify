@@ -10,6 +10,10 @@ export type CommentSliceShape = {
   setComments: (comments: WorkflowCommentBasic[]) => void
   commentsLoading: boolean
   setCommentsLoading: (loading: boolean) => void
+  commentsLoaded: boolean
+  setCommentsLoaded: (loaded: boolean) => void
+  commentsLoadError: unknown
+  setCommentsLoadError: (error: unknown) => void
   showResolvedComments: boolean
   setShowResolvedComments: (showResolved: boolean) => void
   activeCommentDetail: WorkflowCommentDetail | null
@@ -33,6 +37,10 @@ export const createCommentSlice: StateCreator<CommentSliceShape> = (set) => ({
   setComments: (comments) => set({ comments }),
   commentsLoading: false,
   setCommentsLoading: (commentsLoading) => set({ commentsLoading }),
+  commentsLoaded: false,
+  setCommentsLoaded: (commentsLoaded) => set({ commentsLoaded }),
+  commentsLoadError: undefined,
+  setCommentsLoadError: (commentsLoadError) => set({ commentsLoadError }),
   showResolvedComments: false,
   setShowResolvedComments: (showResolvedComments) => set({ showResolvedComments }),
   activeCommentDetail: null,

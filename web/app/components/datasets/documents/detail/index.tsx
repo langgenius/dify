@@ -63,11 +63,7 @@ const NON_TERMINAL_DISPLAY_STATUSES = new Set<(typeof DisplayStatusList)[number]
 
 const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const deletion = useMutation(
-    consoleQuery.datasets.byDatasetId.documents.delete.mutationOptions({
-      context: { silent: true },
-    }),
-  )
+  const deletion = useMutation(consoleQuery.datasets.byDatasetId.documents.delete.mutationOptions())
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t } = useTranslation(['common', 'datasetDocuments', 'navigation'])
@@ -102,9 +98,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const resetImportStatus = () => setImportStatus(undefined)
 
   const { mutateAsync: checkSegmentBatchImportProgress } = useMutation(
-    consoleQuery.datasets.batchImportStatus.byJobId.get.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.datasets.batchImportStatus.byJobId.get.mutationOptions(),
   )
   const checkProcess = async (jobID: string) => {
     await checkSegmentBatchImportProgress(
@@ -129,9 +123,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   }
 
   const { mutateAsync: segmentBatchImport } = useMutation(
-    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post.mutationOptions(
-      { context: { silent: true } },
-    ),
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post.mutationOptions(),
   )
   const runBatch = async (csv: FileItem) => {
     await segmentBatchImport(
@@ -305,7 +297,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const metadataPanel = docDetail && (
     <Metadata
-      className={cn(isMobile && 'mt-3 mr-2')}
+      className={cn(isMobile && 'me-2 mt-3')}
       datasetId={datasetId}
       documentId={documentId}
       docDetail={docDetail}
@@ -324,7 +316,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts are not React 19 context components.
     <DocumentContext.Provider value={contextValue}>
       <div className="flex h-full flex-col bg-background-default">
-        <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pr-4 pl-3">
+        <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 ps-3 pe-4">
           <button
             type="button"
             aria-label={backButtonLabel}
@@ -391,7 +383,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               aria-label={metadataToggleLabel}
               aria-expanded={showMetadata}
               title={metadataToggleLabel}
-              className="ml-2"
+              className="ms-2"
               onClick={() => setShowMetadata(!showMetadata)}
             >
               {showMetadata ? (
@@ -416,7 +408,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               className={cn(
                 'flex h-full min-w-0 grow flex-col',
                 !embedding && isFullDocMode && 'relative px-11 pt-4',
-                !embedding && !isFullDocMode && 'relative pt-3 pr-11 pl-5',
+                !embedding && !isFullDocMode && 'relative ps-5 pe-11 pt-3',
               )}
             >
               {embedding ? (

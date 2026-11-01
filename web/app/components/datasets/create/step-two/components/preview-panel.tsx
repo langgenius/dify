@@ -4,6 +4,7 @@ import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datas
 import type { ComponentProps, FC } from 'react'
 import type { ParentChildConfig } from '../hooks'
 import type { DataSourceType } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiSearchEyeLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +18,7 @@ import {
 } from '@/app/components/base/skeleton'
 import { FULL_DOC_PREVIEW_LENGTH } from '@/config'
 import { ChunkingMode } from '@/models/datasets'
+import { getErrorMessage } from '@/utils/error-message'
 import { ChunkContainer, QAPreview } from '../../../chunk'
 import PreviewDocumentPicker from '../../../common/document-picker/preview-document-picker'
 import SummaryLabel from '../../../documents/detail/completed/common/summary-label'
@@ -39,6 +41,8 @@ type PreviewPanelProps = {
   pickerFiles: Array<{ id: string; name: string; extension: string }>
   pickerValue?: { id: string; name: string; extension: string }
   // Mutation state
+  error?: unknown
+  onRetry?: () => void
   isIdle: boolean
   isPending: boolean
   // Actions
@@ -57,6 +61,8 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
   isSetting,
   pickerFiles,
   pickerValue,
+  error,
+  onRetry,
   isIdle,
   isPending,
   onPickerChange,
@@ -111,7 +117,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
         }
         className={cn(
           'relative flex min-w-0 shrink-0 p-4',
-          isMobile ? 'min-h-0 w-full flex-1' : 'h-full w-1/2 pr-0',
+          isMobile ? 'min-h-0 w-full flex-1' : 'h-full w-1/2 pe-0',
         )}
         mainClassName="space-y-6 wrap-break-word"
       >
@@ -190,6 +196,12 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
         )}
 
         {/* Loading State */}
+        {!!error && !isPending && (
+          <div role="alert" className="p-4 system-sm-regular text-text-destructive">
+            <p>{getErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+            <Button onClick={onRetry}>{t(($) => $['operation.retry'], { ns: 'common' })}</Button>
+          </div>
+        )}
         {isPending && (
           <div className="space-y-6">
             {Array.from({ length: 10 }, (_, i) => (

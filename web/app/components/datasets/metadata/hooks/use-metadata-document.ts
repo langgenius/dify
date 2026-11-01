@@ -5,6 +5,7 @@ import { get } from 'es-toolkit/compat'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { useLanguages, useMetadataMap } from '@/hooks/use-metadata'
 import { consoleQuery } from '@/service/console'
@@ -20,8 +21,11 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
   const { t } = useTranslation(['common'])
   const { dataset } = useDatasetDetailContext()
   const embeddingAvailable = !!dataset?.embedding_available
+  const notifyError = useErrorNotification()
   const { mutateAsync: updateDocumentMetadata } = useMutation(
-    consoleQuery.datasets.byDatasetId.documents.metadata.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.documents.metadata.post.mutationOptions({
+      onError: notifyError,
+    }),
   )
   const { checkName } = useCheckMetadataName()
   const [isEdit, setIsEdit] = useState(false)
@@ -38,7 +42,7 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
   const builtList = allList.filter((item) => item.id === 'built-in')
   const [tempList, setTempList] = useState<MetadataItemWithValue[]>(list)
   const { mutateAsync: createMetaData } = useMutation(
-    consoleQuery.datasets.byDatasetId.metadata.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.metadata.post.mutationOptions({ onError: notifyError }),
   )
   const handleSelectMetaData = useCallback((metaData: MetadataItemWithValue) => {
     setTempList((prev) => {

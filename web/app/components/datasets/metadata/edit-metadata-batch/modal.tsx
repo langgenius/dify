@@ -20,6 +20,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { consoleQuery } from '@/service/console'
 import useCheckMetadataName from '../hooks/use-check-metadata-name'
 import { DatasetMetadataPicker } from '../metadata-dataset/dataset-metadata-picker'
@@ -94,8 +95,9 @@ const EditMetadataBatchModal: FC<Props> = ({
     [list, templeList],
   )
   const { checkName } = useCheckMetadataName()
+  const notifyError = useErrorNotification()
   const { mutateAsync: createMetaData } = useMutation(
-    consoleQuery.datasets.byDatasetId.metadata.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.metadata.post.mutationOptions({ onError: notifyError }),
   )
   const handleAddMetaData = useCallback(
     async (payload: BuiltInMetadataItem) => {

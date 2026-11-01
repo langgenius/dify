@@ -95,4 +95,19 @@ describe('ResetPasswordPage', () => {
     expect(emailInput).toHaveFocus()
     expect(consoleClient.forgotPassword.post).not.toHaveBeenCalled()
   })
+  it('retains the email and reports a failed reset-code request before retrying', async () => {
+    const user = userEvent.setup()
+    vi.mocked(consoleClient.forgotPassword.post).mockRejectedValueOnce(
+      new Error('Email service unavailable'),
+    )
+    render(<ResetPasswordPage />)
+    const email = screen.getByRole('textbox', { name: 'login.email' })
+    await user.type(email, 'user@example.com{Enter}')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Email service unavailable')
+    expect(email).toHaveValue('user@example.com')
+    expect(mockPush).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'login.sendVerificationCode' }))
+    await waitFor(() => expect(mockPush).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
 })

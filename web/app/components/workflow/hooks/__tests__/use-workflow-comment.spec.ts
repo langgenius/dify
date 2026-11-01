@@ -4,6 +4,7 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import { act, waitFor } from '@testing-library/react'
 import { useReactFlow } from 'reactflow'
+import { toast } from '@/app/notifications'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
 import { createNode } from '../../__tests__/fixtures'
@@ -164,6 +165,30 @@ describe('useWorkflowComment', () => {
 
     expect(store.getState().comments).toEqual([comment])
     expect(store.getState().commentsLoading).toBe(false)
+  })
+
+  it('keeps an already loaded list when a collaboration refresh fails without notifying', async () => {
+    const comment = baseComment()
+    mockFetchWorkflowComments.mockResolvedValueOnce({ data: [comment] })
+    const notify = vi.spyOn(toast, 'error')
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const { result, store } = renderWorkflowHook(useCommentCanvas, {
+        queryClient: createSeededQueryClient(),
+      })
+      await waitFor(() => expect(store.getState().commentsLoaded).toBe(true))
+      mockFetchWorkflowComments.mockRejectedValueOnce(new Error('Refresh unavailable'))
+
+      await act(async () => commentsUpdateState.handler?.())
+      await waitFor(() => expect(store.getState().commentsLoading).toBe(false))
+
+      expect(result.current.comments).toEqual([comment])
+      expect(result.current.loadError).toBeUndefined()
+      expect(notify).not.toHaveBeenCalled()
+    } finally {
+      notify.mockRestore()
+      log.mockRestore()
+    }
   })
 
   it('does not load comment list when collaboration is disabled', async () => {

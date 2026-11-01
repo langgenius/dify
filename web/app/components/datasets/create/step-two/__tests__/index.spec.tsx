@@ -245,11 +245,13 @@ it('retains failed document edits for retry', async () => {
   await user.click(save)
   await waitFor(() => expect(save).not.toHaveAttribute('aria-disabled', 'true'))
   expect(length).toHaveValue('700')
+  expect(await screen.findByRole('alert')).toHaveTextContent('Save failed')
   expect(onSave).not.toHaveBeenCalled()
   await user.click(save)
   await waitFor(() => expect(onSave).toHaveBeenCalledOnce())
   expect(api.save.mock.calls[1]).toEqual(api.save.mock.calls[0])
   expect(api.save).toHaveBeenCalledTimes(2)
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 })
 
 it.each([

@@ -1,16 +1,17 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
+import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
@@ -36,8 +37,10 @@ const OnlineDrive = ({
   supportBatchUpload = true,
   onCredentialChange,
 }: OnlineDriveProps) => {
+  const { t } = useTranslation(['common'])
+  const [loadError, setLoadError] = useState('')
   const docLink = useDocLink()
-  const [isInitialMount, setIsInitialMount] = useState(true)
+  const isInitialMountRef = useRef(true)
   const pipelineId = useDatasetDetailContextWithSelector((s) => s.dataset?.pipeline_id)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const {
@@ -63,7 +66,6 @@ const OnlineDrive = ({
   )
   const dataSourceStore = useDataSourceStore()
   const [isLoading, setIsLoading] = useState(false)
-  const isLoadingRef = useRef(false)
 
   const { data: dataSourceAuth } = useQuery(
     consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
@@ -71,16 +73,38 @@ const OnlineDrive = ({
     }),
   )
 
+  const requestGenerationRef = useRef(0)
+  const requestControllerRef = useRef<AbortController | null>(null)
   const datasourceNodeRunURL = !isInPipeline
     ? `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${nodeId}/run`
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
+  useEffect(
+    () => () => {
+      requestGenerationRef.current += 1
+      requestControllerRef.current?.abort()
+    },
+    [datasourceNodeRunURL, currentCredentialId],
+  )
+
   const getOnlineDriveFiles = useCallback(async () => {
-    if (isLoadingRef.current) return
     const { nextPageParameters, prefix, bucket, onlineDriveFileList, currentCredentialId } =
       dataSourceStore.getState()
+    const generation = ++requestGenerationRef.current
+    requestControllerRef.current?.abort()
+    let settled = false
+    const isCurrentRequest = () =>
+      !settled &&
+      generation === requestGenerationRef.current &&
+      currentCredentialId === dataSourceStore.getState().currentCredentialId
+    setLoadError('')
+    const handleError = (message: string) => {
+      if (!isCurrentRequest()) return
+      settled = true
+      setLoadError(message || t(($) => $['api.actionFailed']))
+      setIsLoading(false)
+    }
     setIsLoading(true)
-    isLoadingRef.current = true
     ssePost(
       datasourceNodeRunURL,
       {
@@ -96,7 +120,15 @@ const OnlineDrive = ({
         },
       },
       {
+        getAbortController: (controller) => {
+          if (isCurrentRequest()) requestControllerRef.current = controller
+          else controller.abort()
+        },
+        onCompleted: (_hasError, message) => handleError(message ?? ''),
+        onError: handleError,
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
+          if (!isCurrentRequest()) return
+          settled = true
           const {
             setOnlineDriveFileList,
             isTruncated,
@@ -109,32 +141,30 @@ const OnlineDrive = ({
             nextPageParameters: newNextPageParameters,
             hasBucket: newHasBucket,
           } = convertOnlineDriveData(documentsData.data, breadcrumbs, bucket)
+          setLoadError('')
           setOnlineDriveFileList([...onlineDriveFileList, ...newFileList])
           isTruncated.current = newIsTruncated
           currentNextPageParametersRef.current = newNextPageParameters
           setHasBucket(newHasBucket)
           setIsLoading(false)
-          isLoadingRef.current = false
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
-          toast.error(error.error)
-          setIsLoading(false)
-          isLoadingRef.current = false
+          handleError(error.error)
         },
       },
     )
-  }, [dataSourceStore, datasourceNodeRunURL, breadcrumbs])
+  }, [dataSourceStore, datasourceNodeRunURL, breadcrumbs, t])
 
   useEffect(() => {
     if (!currentCredentialId) return
-    if (isInitialMount) {
+    if (isInitialMountRef.current) {
       // Only fetch files on initial mount if fileList is empty
       if (onlineDriveFileList.length === 0) getOnlineDriveFiles()
-      setIsInitialMount(false)
+      isInitialMountRef.current = false
     } else {
       getOnlineDriveFiles()
     }
-  }, [nextPageParameters, prefix, bucket, currentCredentialId])
+  }, [nextPageParameters, prefix, bucket, currentCredentialId, datasourceNodeRunURL])
 
   const filteredOnlineDriveFileList = useMemo(() => {
     if (keywords)
@@ -221,6 +251,14 @@ const OnlineDrive = ({
         onCredentialChange={onCredentialChange}
         credentials={dataSourceAuth?.result || []}
       />
+      {loadError && (
+        <div role="alert" className="p-3 system-sm-regular text-text-destructive">
+          <p>{loadError}</p>
+          <Button onClick={() => void getOnlineDriveFiles()}>
+            {t(($) => $['operation.retry'])}
+          </Button>
+        </div>
+      )}
       <FileList
         fileList={filteredOnlineDriveFileList}
         selectedFileIds={selectedFileIds}

@@ -107,6 +107,7 @@ it.each([
 )
 
 it('blocks duplicate downloads while pending and allows retry after a failed request', async () => {
+  const errorToast = vi.spyOn(toast, 'error')
   const response = createDeferred<{ url: string }>()
   mockDownloadDocument.mockReturnValueOnce(response.promise)
   const user = userEvent.setup()
@@ -119,6 +120,7 @@ it('blocks duplicate downloads while pending and allows retry after a failed req
   expect(mockDownloadDocument).toHaveBeenCalledTimes(1)
   await act(async () => response.reject(new Error('Download unavailable')))
   await waitFor(() => expect(download).toBeEnabled())
+  expect(errorToast).toHaveBeenCalledExactlyOnceWith('Download unavailable')
   expect(mockDownloadUrl).not.toHaveBeenCalled()
   await user.click(download)
   await waitFor(() =>
@@ -256,13 +258,10 @@ it('resolves a historical KnowledgeFS asset through document revisions', async (
   )
   await openPopup(user)
   await user.click(screen.getByRole('button', { name: /linkToDataset/ }))
-  expect(resolveDocumentReference).toHaveBeenCalledExactlyOnceWith(
-    {
-      params: { control_space_id: 'space-1' },
-      query: { document_asset_id: 'asset-1', document_asset_version: 1 },
-    },
-    { context: { silent: true } },
-  )
+  expect(resolveDocumentReference).toHaveBeenCalledExactlyOnceWith({
+    params: { control_space_id: 'space-1' },
+    query: { document_asset_id: 'asset-1', document_asset_version: 1 },
+  })
   expect(navigationMock.push).toHaveBeenCalledWith(
     '/datasets/new/space-1/documents/logical-document-1?revision=2&chunk=node-1',
   )

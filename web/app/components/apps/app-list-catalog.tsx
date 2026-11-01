@@ -111,9 +111,7 @@ function AppListCatalogContent({
 }: AppListCatalogContentProps) {
   const { t } = useTranslation(['app', 'common'])
   const [deleteDialog] = useState(() => createAlertDialogHandle<DeleteAppDialogPayload>())
-  const deletion = useMutation(
-    consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
-  )
+  const deletion = useMutation(consoleQuery.apps.byAppId.delete.mutationOptions())
   const openDeleteDialog = useCallback(
     (app: Pick<AppPartial, 'id' | 'name'>, item: HTMLLIElement | null) =>
       deleteDialog.openWithPayload({

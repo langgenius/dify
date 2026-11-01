@@ -537,9 +537,7 @@ function RunEvaluationForm({
   // the submitted payload until the server definitively answers or the payload changes.
   const submissionRef = useRef<{ idempotencyKey: string; mode: RetrievalMode }>(undefined)
   const createMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.post.mutationOptions(),
   )
 
   const startEvaluation = async () => {
@@ -561,7 +559,6 @@ function RunEvaluationForm({
       const detailOptions =
         consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.byRunId.get.queryOptions(
           {
-            context: { silent: true },
             input: { params: { control_space_id: knowledgeSpaceId, run_id: run.id } },
           },
         )

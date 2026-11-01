@@ -1,6 +1,7 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
 import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { WorkflowInitializationProbe } from '@/app/components/workflow/__tests__/workflow-initialization-probe'
@@ -330,5 +331,16 @@ describe('WorkflowApp', () => {
     expect(workflowStore.getState().inputs).toEqual({})
     expect(workflowStore.getState().showInputsPanel).toBe(false)
     expect(workflowStore.getState().showDebugAndPreviewPanel).toBe(false)
+  })
+
+  it('shows an initialization error and loads the canvas when retry succeeds', async () => {
+    const user = userEvent.setup()
+    fetchDraft.mockRejectedValueOnce(new Error('Draft unavailable'))
+    render(<WorkflowApp />)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Draft unavailable')
+    expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

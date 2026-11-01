@@ -17,6 +17,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
 import { encryptVerificationCode } from '@/utils/encryption'
+import { getErrorMessage } from '@/utils/error-message'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
@@ -28,6 +29,9 @@ type CheckCodeFormValues = {
 }
 
 export default function CheckCode() {
+  const [requestError, setRequestError] = useState<unknown>()
+  const { t: tRequestError } = useTranslation(['common'])
+
   const { t, i18n } = useTranslation(['login'])
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -53,6 +57,7 @@ export default function CheckCode() {
   useDocumentTitle(pageTitle)
 
   const verify = async (code: string) => {
+    setRequestError(undefined)
     if (loading || isResending || showResendTurnstile) return
 
     let shouldResetTurnstile = false
@@ -88,6 +93,7 @@ export default function CheckCode() {
         }
       }
     } catch (error) {
+      setRequestError(error)
       console.error(error)
     } finally {
       setLoading(false)
@@ -103,6 +109,7 @@ export default function CheckCode() {
   }, [])
 
   const resendCode = async (turnstileToken?: string) => {
+    setRequestError(undefined)
     setIsResending(true)
     try {
       const ret = await consoleClient.emailCodeLogin.post({
@@ -120,6 +127,7 @@ export default function CheckCode() {
         router.replace(`/signin/check-code?${params.toString()}`)
       }
     } catch (error) {
+      setRequestError(error)
       console.error(error)
     } finally {
       setIsResending(false)
@@ -159,6 +167,11 @@ export default function CheckCode() {
       </div>
 
       <Form<CheckCodeFormValues> onFormSubmit={({ code }) => void verify(code)}>
+        {!!requestError && (
+          <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+            {getErrorMessage(requestError) ?? tRequestError(($) => $['api.actionFailed'])}
+          </p>
+        )}
         <Field name="code">
           <FieldLabel>{t(($) => $['checkCode.verificationCode'], { ns: 'login' })}</FieldLabel>
           <Input
@@ -238,7 +251,7 @@ export default function CheckCode() {
         <span className="inline-block rounded-full bg-background-default-dimmed p-1">
           <span className="i-ri-arrow-left-line size-3" aria-hidden="true" />
         </span>
-        <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
+        <span className="ms-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
       </button>
     </div>
   )

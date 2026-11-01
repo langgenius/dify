@@ -47,7 +47,7 @@ describe('KnowledgeFS upload quota preflight', () => {
       '/console/api/features',
       '/console/api/features/vector-space',
     ])
-    for (const call of request.mock.calls) expect(call[2]).toMatchObject({ silent: true })
+    for (const call of request.mock.calls) expect(call[2]).toMatchObject({})
   })
 
   it.each([

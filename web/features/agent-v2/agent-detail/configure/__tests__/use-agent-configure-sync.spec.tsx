@@ -55,7 +55,7 @@ const composerPutMutationFn = vi.hoisted(() =>
 )
 
 const composerPutRequestContexts = vi.hoisted(
-  () => [] as Array<{ keepalive?: boolean; silent?: boolean } | undefined>,
+  () => [] as Array<{ keepalive?: boolean } | undefined>,
 )
 
 const composerPutMutationOptions = vi.hoisted(() =>
@@ -63,7 +63,6 @@ const composerPutMutationOptions = vi.hoisted(() =>
     (options?: {
       context?: {
         keepalive?: boolean
-        silent?: boolean
       }
       onSuccess?: (
         data: { agent_soul: Record<string, unknown> },
@@ -115,9 +114,6 @@ const publishAgentMutationFn = vi.hoisted(() =>
 const publishAgentMutationOptions = vi.hoisted(() =>
   vi.fn(
     (options?: {
-      context?: {
-        silent?: boolean
-      }
       onSuccess?: (data: PublishAgentResponse, variables: PublishAgentVariables) => void
     }) => ({
       ...options,
@@ -550,7 +546,7 @@ describe('useAgentConfigureSync', () => {
     expect(composerPutMutationFn.mock.calls[0]?.[0]).not.toHaveProperty(
       'body.agent_soul.config_files',
     )
-    expect(composerPutRequestContexts).toEqual([{ keepalive: true, silent: true }])
+    expect(composerPutRequestContexts).toEqual([{ keepalive: true }])
     expect(composerPutMutationFn).toHaveBeenCalledWith(
       expect.objectContaining({
         params: {
@@ -662,10 +658,7 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
-    expect(composerPutRequestContexts).toEqual([
-      { silent: true },
-      { keepalive: true, silent: true },
-    ])
+    expect(composerPutRequestContexts).toEqual([undefined, { keepalive: true }])
     expect(composerPutMutationFn).toHaveBeenLastCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({
@@ -712,10 +705,7 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
-    expect(composerPutRequestContexts).toEqual([
-      { silent: true },
-      { keepalive: true, silent: true },
-    ])
+    expect(composerPutRequestContexts).toEqual([undefined, { keepalive: true }])
 
     await act(async () => {
       saveDeferred.resolve({ agent_soul: {} })
@@ -960,7 +950,7 @@ describe('useAgentConfigureSync', () => {
     expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
     expect(store.get(agentComposerDraftAtom).prompt).toBe('Unsaved autosave prompt')
     expect(toastMock.error).not.toHaveBeenCalled()
-    expect(composerPutRequestContexts).toEqual([{ silent: true }])
+    expect(composerPutRequestContexts).toEqual([undefined])
   })
 
   it('should save the latest draft immediately when requested', async () => {
@@ -1565,10 +1555,7 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledTimes(2)
-    expect(composerPutRequestContexts).toEqual([
-      { silent: true },
-      { keepalive: true, silent: true },
-    ])
+    expect(composerPutRequestContexts).toEqual([undefined, { keepalive: true }])
     expect(composerPutMutationFn).toHaveBeenLastCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({

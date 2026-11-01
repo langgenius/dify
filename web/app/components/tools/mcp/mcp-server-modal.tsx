@@ -18,6 +18,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import MCPServerParamItem from '@/app/components/tools/mcp/mcp-server-param-item'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 type ModalProps = {
   appID: string
@@ -33,12 +34,16 @@ type ModalProps = {
 const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo }: ModalProps) => {
   const { t } = useTranslation(['common', 'tools'])
   const queryClient = useQueryClient()
-  const { mutateAsync: createMCPServer, isPending: creating } = useMutation(
-    consoleQuery.apps.byAppId.server.post.mutationOptions(),
-  )
-  const { mutateAsync: updateMCPServer, isPending: updating } = useMutation(
-    consoleQuery.apps.byAppId.server.put.mutationOptions(),
-  )
+  const {
+    mutateAsync: createMCPServer,
+    isPending: creating,
+    error: createError,
+  } = useMutation(consoleQuery.apps.byAppId.server.post.mutationOptions())
+  const {
+    mutateAsync: updateMCPServer,
+    isPending: updating,
+    error: updateError,
+  } = useMutation(consoleQuery.apps.byAppId.server.put.mutationOptions())
   const invalidateMCPServerDetail = () =>
     queryClient.invalidateQueries({
       queryKey: consoleQuery.apps.byAppId.server.get.queryKey({
@@ -70,30 +75,34 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
   }
 
   const submit = async () => {
-    if (!data) {
-      const body: {
-        description?: string
-        parameters: Record<string, string>
-      } = {
-        parameters: getParamValue(),
-      }
-
-      if (description.trim()) body.description = description
-
-      await createMCPServer({ params: { app_id: appID }, body })
-      invalidateMCPServerDetail()
-      onHide()
-    } else {
-      await updateMCPServer({
-        params: { app_id: appID },
-        body: {
-          id: data.id,
+    try {
+      if (!data) {
+        const body: {
+          description?: string
+          parameters: Record<string, string>
+        } = {
           parameters: getParamValue(),
-          description,
-        },
-      })
-      invalidateMCPServerDetail()
-      onHide()
+        }
+
+        if (description.trim()) body.description = description
+
+        await createMCPServer({ params: { app_id: appID }, body })
+        invalidateMCPServerDetail()
+        onHide()
+      } else {
+        await updateMCPServer({
+          params: { app_id: appID },
+          body: {
+            id: data.id,
+            parameters: getParamValue(),
+            description,
+          },
+        })
+        invalidateMCPServerDetail()
+        onHide()
+      }
+    } catch {
+      // The form renders the failed mutation and retains its values.
     }
   }
 
@@ -177,6 +186,12 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
                   })}
                 </div>
               </div>
+            )}
+            {!!(createError ?? updateError) && !creating && !updating && (
+              <p role="alert" className="system-sm-regular text-text-destructive">
+                {getErrorMessage(createError ?? updateError) ??
+                  t(($) => $['api.actionFailed'], { ns: 'common' })}
+              </p>
             )}
           </DialogBody>
           <DialogFooter className="max-sm:flex-col max-sm:items-stretch">

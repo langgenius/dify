@@ -91,9 +91,7 @@ const MembersPageContent = () => {
     }>(),
   )
   const removal = useMutation(
-    consoleQuery.workspaces.current.members.byMemberId.delete.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workspaces.current.members.byMemberId.delete.mutationOptions(),
   )
   const accounts = data?.accounts || []
   const deploymentEdition = systemFeatures.deployment_edition
@@ -122,9 +120,7 @@ const MembersPageContent = () => {
     : t(($) => $['members.role'], { ns: 'workspaceMembers' })
 
   const { mutateAsync: updateRolesOfMember, isPending: isSavingMember } = useMutation(
-    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions(),
   )
 
   const handleAssignRolesSubmit = (member: AccountWithRoleResponse, roles: Role[]) => {

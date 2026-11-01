@@ -12,9 +12,13 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '../components/signin/storage'
 
 export default function CheckCode() {
+  const [requestError, setRequestError] = useState<unknown>()
+  const { t: tRequestError } = useTranslation(['common'])
+
   const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -25,6 +29,7 @@ export default function CheckCode() {
   useDocumentTitle(pageTitle)
 
   const handleGetEMailVerificationCode = async (email: string) => {
+    setRequestError(undefined)
     if (loading) return
     try {
       setLoading(true)
@@ -39,6 +44,7 @@ export default function CheckCode() {
         toast.error(res.data)
       }
     } catch (error) {
+      setRequestError(error)
       console.error(error)
     } finally {
       setLoading(false)
@@ -65,6 +71,11 @@ export default function CheckCode() {
           void handleGetEMailVerificationCode(email)
         }}
       >
+        {!!requestError && (
+          <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+            {getErrorMessage(requestError) ?? tRequestError(($) => $['api.actionFailed'])}
+          </p>
+        )}
         <Field
           name="email"
           validate={(value) => {
@@ -107,7 +118,7 @@ export default function CheckCode() {
         <div className="inline-block rounded-full bg-background-default-dimmed p-1">
           <span className="i-ri-arrow-left-line size-3" aria-hidden="true" />
         </div>
-        <span className="ml-2 system-xs-regular">{t(($) => $.backToLogin, { ns: 'login' })}</span>
+        <span className="ms-2 system-xs-regular">{t(($) => $.backToLogin, { ns: 'login' })}</span>
       </Link>
     </div>
   )

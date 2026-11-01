@@ -90,16 +90,10 @@ export function useWorkflowInlineAgentConfigureSync({
   )
 
   const { mutateAsync: replaceAppComposer } = useMutation(
-    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
   )
   const { mutateAsync: replaceSnippetComposer } = useMutation(
-    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(
-      {
-        context: { silent: true },
-      },
-    ),
+    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
   )
 
   useEffect(() => {

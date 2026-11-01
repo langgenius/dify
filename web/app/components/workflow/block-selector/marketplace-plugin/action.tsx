@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { marketplaceQuery } from '@/service/marketplace'
 import { downloadBlob } from '@/utils/download'
 
@@ -22,8 +23,10 @@ function OperationMenu({ marketplace, open, onOpenChange, author, name, version 
   const { t } = useTranslation(['common'])
   const { theme } = useTheme()
 
+  const notifyError = useErrorNotification()
   const downloadMutation = useMutation(
     marketplaceQuery.downloadPlugin.mutationOptions({
+      onError: notifyError,
       onSuccess: (blob) => {
         downloadBlob({ data: blob, fileName: `${author}-${name}_${version}.zip` })
       },

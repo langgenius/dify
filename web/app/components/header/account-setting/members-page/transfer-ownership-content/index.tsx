@@ -63,18 +63,23 @@ const TransferOwnershipContent = () => {
       }, 1000),
     )
   }
-  const { mutate: sendEmail, isPending: isSendingCode } = useMutation({
+  const {
+    mutate: sendEmail,
+    isPending: isSendingCode,
+    error: sendEmailError,
+  } = useMutation({
     mutationFn: () =>
       consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post({ body: {} }),
   })
+  const sendEmailErrorMessage =
+    sendEmailError && !isSendingCode && sendEmailError.name !== 'AbortError'
+      ? (getErrorMessage(sendEmailError) ?? t(($) => $['api.actionFailed'], { ns: 'common' }))
+      : undefined
   const verifyEmailAddress = async (code: string, token: string, callback?: () => void) => {
     try {
-      const res = await consoleClient.workspaces.current.members.ownerTransferCheck.post(
-        {
-          body: { code, token },
-        },
-        { context: { silent: true } },
-      )
+      const res = await consoleClient.workspaces.current.members.ownerTransferCheck.post({
+        body: { code, token },
+      })
       if (res.is_valid) {
         setStepToken(res.token)
         callback?.()
@@ -101,13 +106,10 @@ const TransferOwnershipContent = () => {
   const handleTransfer = async () => {
     setIsTransfer(true)
     try {
-      await consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post(
-        {
-          params: { member_id: newOwner },
-          body: { token: stepToken },
-        },
-        { context: { silent: true } },
-      )
+      await consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post({
+        params: { member_id: newOwner },
+        body: { token: stepToken },
+      })
       globalThis.location.reload()
     } catch (error) {
       toast.error(`Error ownership transfer: ${getErrorMessage(error) ?? ''}`)
@@ -149,6 +151,11 @@ const TransferOwnershipContent = () => {
                 />
               </div>
             </div>
+            {sendEmailErrorMessage && (
+              <p role="alert" className="system-sm-regular text-text-destructive">
+                {sendEmailErrorMessage}
+              </p>
+            )}
           </DialogBody>
           <DialogFooter className="flex-col items-stretch">
             <Button variant="primary" loading={isSendingCode} onClick={sendCodeToOriginEmail}>
@@ -207,6 +214,11 @@ const TransferOwnershipContent = () => {
                 maxLength={6}
               />
             </div>
+            {sendEmailErrorMessage && (
+              <p role="alert" className="system-sm-regular text-text-destructive">
+                {sendEmailErrorMessage}
+              </p>
+            )}
           </DialogBody>
           <DialogFooter className="flex-col items-stretch">
             <Button

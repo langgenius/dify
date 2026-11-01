@@ -90,17 +90,14 @@ export function RetrievalQualityWorkflow() {
     setQualityPendingKey(resultKey)
     try {
       try {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post(
-          {
-            body: {
-              reason,
-              tags: ['retrieval-test'],
-              trace_id: selectedTraceId,
-            },
-            params: { control_space_id: knowledgeSpaceId },
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post({
+          body: {
+            reason,
+            tags: ['retrieval-test'],
+            trace_id: selectedTraceId,
           },
-          { context: { silent: true } },
-        )
+          params: { control_space_id: knowledgeSpaceId },
+        })
       } catch (error) {
         // 409: the trace already has an unresolved bad case, so the record is in the wanted state.
         if (getHttpErrorStatus(error) !== 409) throw error

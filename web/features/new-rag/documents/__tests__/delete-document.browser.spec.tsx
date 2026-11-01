@@ -146,7 +146,6 @@ describe('Knowledge document deletion', () => {
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     expect(api.remove).toHaveBeenCalledWith(
       expect.objectContaining({ body: { expectedRevision: 2 } }),
-      { context: { silent: true } },
     )
   })
 

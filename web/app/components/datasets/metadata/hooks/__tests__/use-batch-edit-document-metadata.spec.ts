@@ -16,7 +16,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-vi.mock('@/app/notifications', () => ({ toast: { success: vi.fn() } }))
+vi.mock('@/app/notifications', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const title: MetadataItemWithValue = {
   id: 'title',

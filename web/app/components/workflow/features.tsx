@@ -9,6 +9,7 @@ import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { editorAppIdAtom, isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { updateFeatures } from '@/service/workflow'
 import { useNodesReadOnly } from './hooks/use-workflow'
 import useConfig from './nodes/start/use-config'
@@ -16,6 +17,8 @@ import { useStore } from './store'
 import { InputVarType } from './types'
 
 const Features = () => {
+  const notifyError = useErrorNotification()
+
   const setShowFeaturesPanel = useStore((s) => s.setShowFeaturesPanel)
   const appId = useAtomValue(editorAppIdAtom)
   const isChatflow = useAtomValue(isChatflowAtom)
@@ -74,11 +77,12 @@ const Features = () => {
         })
       }
     } catch (error) {
+      notifyError(error)
       console.error('Failed to update features:', error)
     }
 
     setShowFeaturesPanel(true)
-  }, [appId, featuresStore, setShowFeaturesPanel])
+  }, [appId, featuresStore, setShowFeaturesPanel, notifyError])
 
   return (
     <NewFeaturePanel

@@ -6,6 +6,7 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -28,8 +29,11 @@ const Card = ({ apiEnabled }: CardProps) => {
     select: (data) => data.profile.id,
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { mutateAsync: updateDatasetServiceApiStatus } = useMutation(
-    consoleQuery.datasets.byDatasetId.apiKeys.byStatus.post.mutationOptions(),
+  const notifyError = useErrorNotification()
+  const { mutate: updateDatasetServiceApiStatus } = useMutation(
+    consoleQuery.datasets.byDatasetId.apiKeys.byStatus.post.mutationOptions({
+      onError: notifyError,
+    }),
   )
 
   const datasetACLCapabilities = React.useMemo(
@@ -46,11 +50,17 @@ const Card = ({ apiEnabled }: CardProps) => {
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
   const onToggle = useCallback(
-    async (state: boolean) => {
-      const { result } = await updateDatasetServiceApiStatus({
-        params: { dataset_id: datasetId ?? '', status: state ? 'enable' : 'disable' },
-      })
-      if (result === 'success') mutateDatasetRes?.()
+    (state: boolean) => {
+      updateDatasetServiceApiStatus(
+        {
+          params: { dataset_id: datasetId ?? '', status: state ? 'enable' : 'disable' },
+        },
+        {
+          onSuccess: ({ result }) => {
+            if (result === 'success') mutateDatasetRes?.()
+          },
+        },
+      )
     },
     [datasetId, updateDatasetServiceApiStatus, mutateDatasetRes],
   )

@@ -1,4 +1,5 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -17,16 +18,24 @@ import { useStore } from '@/app/components/workflow/store'
 import { ControlMode } from '@/app/components/workflow/types'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { getErrorMessage } from '@/utils/error-message'
 import { useWorkflowComment } from '../../hooks/use-workflow-comment'
 
 const CommentsPanel = () => {
-  const { t } = useTranslation(['workflowComments'])
+  const { t } = useTranslation(['workflowComments', 'common'])
   const activeCommentId = useStore((s) => s.activeCommentId)
   const setActiveCommentId = useStore((s) => s.setActiveCommentId)
   const setControlMode = useStore((s) => s.setControlMode)
   const showResolvedComments = useStore((s) => s.showResolvedComments)
   const setShowResolvedComments = useStore((s) => s.setShowResolvedComments)
-  const { comments, loading, handleCommentIconClick, handleCommentResolve } = useWorkflowComment()
+  const {
+    comments,
+    loading,
+    loadError,
+    loadComments,
+    handleCommentIconClick,
+    handleCommentResolve,
+  } = useWorkflowComment()
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   const [showOnlyMine, setShowOnlyMine] = useState(false)
@@ -70,7 +79,7 @@ const CommentsPanel = () => {
   return (
     <div
       className={cn(
-        'relative flex h-full w-105 flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg',
+        'relative flex h-full w-105 flex-col rounded-s-2xl border border-components-panel-border bg-components-panel-bg',
       )}
     >
       <div className="flex items-center justify-between p-4 pb-2">
@@ -94,10 +103,10 @@ const CommentsPanel = () => {
             />
           </button>
           {showFilter && (
-            <div className="absolute top-9 right-10 z-50 min-w-46 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]">
+            <div className="absolute inset-e-10 top-9 z-50 min-w-46 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[10px]">
               <button
                 className={cn(
-                  'flex w-full items-center justify-between rounded-md p-2 text-left text-sm hover:bg-state-base-hover',
+                  'flex w-full items-center justify-between rounded-md p-2 text-start text-sm hover:bg-state-base-hover',
                   !showOnlyMine && 'bg-components-panel-on-panel-item-bg',
                 )}
                 onClick={() => {
@@ -112,7 +121,7 @@ const CommentsPanel = () => {
               </button>
               <button
                 className={cn(
-                  'mt-1 flex w-full items-center justify-between rounded-md p-2 text-left text-sm hover:bg-state-base-hover',
+                  'mt-1 flex w-full items-center justify-between rounded-md p-2 text-start text-sm hover:bg-state-base-hover',
                   showOnlyMine && 'bg-components-panel-on-panel-item-bg',
                 )}
                 onClick={() => {
@@ -172,7 +181,7 @@ const CommentsPanel = () => {
               <div className="min-w-0">
                 <div className="mb-1 flex items-center justify-between">
                   <UserAvatarList users={c.participants} maxVisible={3} size="sm" />
-                  <div className="ml-2 flex items-center">
+                  <div className="ms-2 flex items-center">
                     {c.resolved ? (
                       <RiCheckboxCircleFill className="size-4 text-text-secondary" />
                     ) : (
@@ -214,7 +223,15 @@ const CommentsPanel = () => {
             </div>
           )
         })}
-        {!loading && filteredSorted.length === 0 && (
+        {!!loadError && (
+          <div role="alert" className="mt-3 system-sm-regular text-text-destructive">
+            <p>{getErrorMessage(loadError) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+            <Button loading={loading} onClick={() => void loadComments()}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </div>
+        )}
+        {!loading && !loadError && filteredSorted.length === 0 && (
           <div className="mt-6 text-center system-sm-regular text-text-tertiary">
             {t(($) => $['comments.noComments'], { ns: 'workflowComments' })}
           </div>

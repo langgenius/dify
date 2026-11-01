@@ -17,7 +17,6 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { ORPCError } from '@orpc/client'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,6 +24,7 @@ import { toast } from '@/app/notifications'
 import { validPassword } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 type ChangePasswordFormValues = {
   'current-password'?: string
@@ -69,6 +69,7 @@ function PasswordField({ name, label, autoComplete, readOnly }: PasswordFieldPro
 
 type ChangePasswordFormProps = {
   isPasswordSet: boolean
+  error?: unknown
   isPending: boolean
   onSave: (password: AccountPasswordPayload) => Promise<void>
 }
@@ -76,6 +77,7 @@ type ChangePasswordFormProps = {
 function ChangePasswordForm({
   isPasswordSet: initialIsPasswordSet,
   isPending,
+  error,
   onSave,
 }: ChangePasswordFormProps) {
   const { t } = useTranslation(['common', 'login', 'accountSettings'])
@@ -140,6 +142,11 @@ function ChangePasswordForm({
           autoComplete="new-password"
           readOnly={isPending}
         />
+        {!!error && !isPending && (
+          <p role="alert" className="system-sm-regular text-text-destructive">
+            {getErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+          </p>
+        )}
       </DialogBody>
       <DialogFooter>
         <DialogClose render={<Button disabled={isPending} />}>
@@ -173,17 +180,17 @@ export function ChangePasswordDialog({ isPasswordSet }: { isPasswordSet: boolean
       await updatePassword.mutateAsync({ body: password })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       actionsRef.current?.close()
-    } catch (error) {
-      // HTTP error notifications are owned by the request layer.
-      // Only report a failure that never produced a response.
-      if (!(error instanceof ORPCError) && error instanceof Error && error.message)
-        toast.error(error.message)
+    } catch {
+      // The form renders the mutation error and keeps the draft for retry.
     }
   }
 
   return (
     <Dialog
       actionsRef={actionsRef}
+      onOpenChangeComplete={(open) => {
+        if (!open) updatePassword.reset()
+      }}
       onOpenChange={(open, details) => {
         if (!open && updatePassword.isPending && details.reason !== 'imperative-action')
           details.cancel()
@@ -196,6 +203,7 @@ export function ChangePasswordDialog({ isPasswordSet }: { isPasswordSet: boolean
       </DialogTrigger>
       <DialogContent className="w-105">
         <ChangePasswordForm
+          error={updatePassword.error}
           isPasswordSet={isPasswordSet}
           isPending={updatePassword.isPending}
           onSave={handleSave}

@@ -20,6 +20,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 type PasswordFormValues = {
   password: string
@@ -27,6 +28,9 @@ type PasswordFormValues = {
 }
 
 const ChangePasswordForm = () => {
+  const [requestError, setRequestError] = useState<unknown>()
+  const { t: tRequestError } = useTranslation(['common'])
+
   const { t } = useTranslation(['login', 'accountSettings'])
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -72,6 +76,7 @@ const ChangePasswordForm = () => {
 
   const handleChangePassword = useCallback(
     async (formValues: PasswordFormValues) => {
+      setRequestError(undefined)
       if (isSubmitting) return
       setIsSubmitting(true)
       try {
@@ -85,6 +90,7 @@ const ChangePasswordForm = () => {
         setShowSuccess(true)
         setLeftTime(AUTO_REDIRECT_TIME)
       } catch (error) {
+        setRequestError(error)
         console.error(error)
       } finally {
         setIsSubmitting(false)
@@ -113,6 +119,11 @@ const ChangePasswordForm = () => {
               actionsRef={formActionsRef}
               onFormSubmit={(formValues) => void handleChangePassword(formValues)}
             >
+              {!!requestError && (
+                <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
+                  {getErrorMessage(requestError) ?? tRequestError(($) => $['api.actionFailed'])}
+                </p>
+              )}
               <Field
                 name="password"
                 validate={(value) => {

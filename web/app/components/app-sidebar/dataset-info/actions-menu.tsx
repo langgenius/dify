@@ -31,9 +31,7 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   const { push, replace } = useRouter()
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const deletion = useMutation(
-    consoleQuery.datasets.byDatasetId.delete.mutationOptions({ context: { silent: true } }),
-  )
+  const deletion = useMutation(consoleQuery.datasets.byDatasetId.delete.mutationOptions())
 
   const dataset = useDatasetDetailContextWithSelector(
     (state) => state.dataset,
@@ -85,9 +83,7 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   }, [invalidDatasetDetail, invalidDatasetList])
 
   const { mutateAsync: exportPipelineConfig } = useMutation(
-    consoleQuery.rag.pipelines.byPipelineId.exports.get.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.rag.pipelines.byPipelineId.exports.get.mutationOptions(),
   )
 
   const handleExportPipeline = useCallback(

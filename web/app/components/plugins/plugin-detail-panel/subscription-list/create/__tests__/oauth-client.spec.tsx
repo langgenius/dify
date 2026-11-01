@@ -157,10 +157,7 @@ it('reports removal errors and closes only when the retry succeeds', async () =>
   expect(onOpenChange).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
   await waitFor(() => expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false))
-  expect(requests.remove).toHaveBeenLastCalledWith(
-    { params: { provider: 'provider-a' } },
-    { context: { silent: true } },
-  )
+  expect(requests.remove).toHaveBeenLastCalledWith({ params: { provider: 'provider-a' } })
 })
 
 it('continues authorization polling after errors and stops when verification succeeds', async () => {

@@ -421,12 +421,9 @@ describe('Agent sends and interruptions', () => {
           await screen.findByRole('button', { name: 'appDebug.operation.stopResponding' }),
         )
       else await act(async () => controllerRef.current?.stop())
-      expect(api.stop).toHaveBeenCalledExactlyOnceWith(
-        {
-          params: { agent_id: 'agent-1', task_id: 'task-0' },
-        },
-        { context: { silent: true } },
-      )
+      expect(api.stop).toHaveBeenCalledExactlyOnceWith({
+        params: { agent_id: 'agent-1', task_id: 'task-0' },
+      })
       await waitFor(() => expect(abortControllers[0]?.signal.aborted).toBe(true))
       await act(async () => {
         stream().onError?.('Connection closed')
@@ -619,12 +616,9 @@ describe('Agent stop and failure ownership', () => {
     })
     await user.click(screen.getByRole('button', { name: 'appDebug.operation.stopResponding' }))
     await waitFor(() => expect(abortControllers[0]?.signal.aborted).toBe(true))
-    expect(api.stop).toHaveBeenCalledExactlyOnceWith(
-      {
-        params: { agent_id: 'agent-1', task_id: 'task-thought' },
-      },
-      { context: { silent: true } },
-    )
+    expect(api.stop).toHaveBeenCalledExactlyOnceWith({
+      params: { agent_id: 'agent-1', task_id: 'task-thought' },
+    })
     await send(user, 'Next turn')
     await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
     await user.click(screen.getByRole('button', { name: 'appDebug.operation.stopResponding' }))
@@ -652,10 +646,9 @@ describe('Agent stop and failure ownership', () => {
     await receive(1)
     await stop()
     expect(api.stop).toHaveBeenCalledTimes(2)
-    expect(api.stop).toHaveBeenLastCalledWith(
-      { params: { agent_id: 'agent-1', task_id: 'task-1' } },
-      { context: { silent: true } },
-    )
+    expect(api.stop).toHaveBeenLastCalledWith({
+      params: { agent_id: 'agent-1', task_id: 'task-1' },
+    })
     await act(async () => firstStop.resolve({ result: 'success' }))
     expect(abortControllers[1]?.signal.aborted).toBe(false)
     await stop()

@@ -1245,7 +1245,7 @@ describe('DocumentDetailPage', () => {
       1,
       '/knowledge-fs/image-1',
       { signal: expect.any(AbortSignal) },
-      { needAllResponseContent: true, silent: true },
+      { needAllResponseContent: true },
     )
     fireEvent.error(image)
     await waitFor(() =>
@@ -1257,7 +1257,7 @@ describe('DocumentDetailPage', () => {
       2,
       '/knowledge-fs/image-1?variant=thumbnail',
       { signal: expect.any(AbortSignal) },
-      { needAllResponseContent: true, silent: true },
+      { needAllResponseContent: true },
     )
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:asset')
     expect(
@@ -1523,13 +1523,10 @@ describe('DocumentDetailPage', () => {
     await user.type(valueInput, 'security')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(patchDocumentMetadata).toHaveBeenCalledWith(
-      {
-        body: { expectedRowVersion: 2, patch: { category: 'security' } },
-        params: { control_space_id: 'space-1', document_id: 'document-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(patchDocumentMetadata).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 2, patch: { category: 'security' } },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
     await waitFor(() => expect(toastState.success).toHaveBeenCalledWith('common.api.actionSuccess'))
     await waitFor(() => expect(documentQuery.refetch).toHaveBeenCalled())
     expect(queryClient.getQueryState(documentsListKey)?.isInvalidated).toBe(true)
@@ -1593,13 +1590,10 @@ describe('DocumentDetailPage', () => {
     await user.type(valueInput, '42')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(patchDocumentMetadata).toHaveBeenCalledWith(
-      {
-        body: { expectedRowVersion: 2, patch: { priority: 42 } },
-        params: { control_space_id: 'space-1', document_id: 'document-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(patchDocumentMetadata).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 2, patch: { priority: 42 } },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
   })
 
   it('keeps selected number and time metadata empty until the user enters a value', async () => {
@@ -1671,13 +1665,10 @@ describe('DocumentDetailPage', () => {
     expect(metadataFieldsQuery.refetch).toHaveBeenCalledOnce()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(patchDocumentMetadata).toHaveBeenCalledWith(
-      {
-        body: { expectedRowVersion: 2, patch: { category: 'product' } },
-        params: { control_space_id: 'space-1', document_id: 'document-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(patchDocumentMetadata).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 2, patch: { category: 'product' } },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
   })
 
   it('converts UTC metadata timestamps to local datetime input values', async () => {
@@ -1717,20 +1708,14 @@ describe('DocumentDetailPage', () => {
     )
     await user.keyboard('{Enter}')
 
-    expect(createMetadataField).toHaveBeenCalledWith(
-      {
-        body: { name: 'priority', type: 'number' },
-        params: { control_space_id: 'space-1' },
-      },
-      { context: { silent: true } },
-    )
-    expect(patchDocumentMetadata).toHaveBeenCalledWith(
-      {
-        body: { expectedRowVersion: 2, patch: { priority: 0 } },
-        params: { control_space_id: 'space-1', document_id: 'document-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(createMetadataField).toHaveBeenCalledWith({
+      body: { name: 'priority', type: 'number' },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(patchDocumentMetadata).toHaveBeenCalledWith({
+      body: { expectedRowVersion: 2, patch: { priority: 0 } },
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
     expect(patchDocumentMetadata).toHaveBeenCalledOnce()
     expect(listLogicalDocuments).not.toHaveBeenCalled()
   })
@@ -2751,7 +2736,7 @@ describe('DocumentDetailPage', () => {
       'knowledgeErrors.taskFailure.vectorSpaceQuotaUnavailable',
     )
     expect(within(drawer).getByRole('button', { name: 'knowledgeSpace.retryTask' })).toBeEnabled()
-    expect(retryTaskRequest).toHaveBeenCalledWith(expect.anything(), { context: { silent: true } })
+    expect(retryTaskRequest).toHaveBeenCalledWith(expect.anything())
     expect(permissionState.refresh).not.toHaveBeenCalled()
   })
 
@@ -3165,13 +3150,10 @@ describe('DocumentDetailPage', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       await waitFor(() =>
-        expect(patchDocumentMetadata).toHaveBeenCalledWith(
-          {
-            body: { expectedRowVersion: 2, patch: { category: 'security' } },
-            params: { control_space_id: 'space-1', document_id: 'document-1' },
-          },
-          { context: { silent: true } },
-        ),
+        expect(patchDocumentMetadata).toHaveBeenCalledWith({
+          body: { expectedRowVersion: 2, patch: { category: 'security' } },
+          params: { control_space_id: 'space-1', document_id: 'document-1' },
+        }),
       )
     })
 

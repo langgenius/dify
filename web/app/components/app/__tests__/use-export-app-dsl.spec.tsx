@@ -141,7 +141,7 @@ describe('useExportAppDsl', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
     expect(mocks.exportAppDsl).toHaveBeenLastCalledWith(
       expect.objectContaining({ query: expect.objectContaining({ include_secret: true }) }),
-      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
+      expect.any(Object),
     )
     expect(mocks.downloadBlob).toHaveBeenCalledTimes(1)
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
@@ -170,7 +170,7 @@ describe('useExportAppDsl', () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith('app.ifpkgDownloaded')
     expect(mocks.exportAppDsl).toHaveBeenCalledWith(
       { params: { app_id: 'agent-app-id' }, query: { include_secret: false, format: 'ifpkg' } },
-      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
+      expect.any(Object),
     )
     expect(mocks.downloadBlob).toHaveBeenCalledWith({ data: archive, fileName })
     const [{ data }] = mocks.downloadBlob.mock.calls[0] as [{ data: Blob }]
@@ -205,7 +205,7 @@ describe('useExportAppDsl', () => {
           format: 'ifpkg',
         },
       },
-      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
+      expect.any(Object),
     )
     expect(mocks.downloadBlob).toHaveBeenCalledWith({
       data: archive,
@@ -265,7 +265,7 @@ describe('useExportAppDsl', () => {
         params: { app_id: input.appId },
         query: { include_secret: false, version_id: input.versionId },
       },
-      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
+      expect.any(Object),
     )
     expect(mocks.downloadBlob).toHaveBeenCalledTimes(1)
     expect(mocks.downloadBlob).toHaveBeenCalledWith({
@@ -304,7 +304,7 @@ describe('useExportAppDsl', () => {
         params: { app_id: '4f6ae8f8-86c8-4ec8-82ef-e27f5932692b' },
         query: { include_secret: false },
       },
-      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
+      expect.any(Object),
     )
     expect(mocks.toastPromise).toHaveBeenCalledTimes(1)
     expect(mocks.getEnvironmentVariables).not.toHaveBeenCalled()
@@ -453,7 +453,7 @@ describe('useExportWorkflowAppDsl', () => {
 
     expect(mocks.getEnvironmentVariables).toHaveBeenCalledWith(
       { params: { app_id: 'workflow-app-id' } },
-      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
+      expect.any(Object),
     )
     expect(mocks.getEnvironmentVariables.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.exportAppDsl.mock.invocationCallOrder[0]!,

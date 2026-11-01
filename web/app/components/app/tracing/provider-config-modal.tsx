@@ -59,23 +59,19 @@ export function ProviderConfigModal({
   onSaved,
 }: ProviderConfigModalProps) {
   const { t } = useTranslation(['app', 'common', 'modelProvider'])
-  const createAppConfig = useMutation(
-    consoleQuery.apps.byAppId.traceConfig.post.mutationOptions({ context: { silent: true } }),
-  )
+  const createAppConfig = useMutation(consoleQuery.apps.byAppId.traceConfig.post.mutationOptions())
   const createAgentConfig = useMutation(
-    consoleQuery.agent.byAgentId.traceConfig.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.traceConfig.post.mutationOptions(),
   )
-  const updateAppConfig = useMutation(
-    consoleQuery.apps.byAppId.traceConfig.patch.mutationOptions({ context: { silent: true } }),
-  )
+  const updateAppConfig = useMutation(consoleQuery.apps.byAppId.traceConfig.patch.mutationOptions())
   const updateAgentConfig = useMutation(
-    consoleQuery.agent.byAgentId.traceConfig.patch.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.traceConfig.patch.mutationOptions(),
   )
   const removeAppConfig = useMutation(
-    consoleQuery.apps.byAppId.traceConfig.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.traceConfig.delete.mutationOptions(),
   )
   const removeAgentConfig = useMutation(
-    consoleQuery.agent.byAgentId.traceConfig.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.traceConfig.delete.mutationOptions(),
   )
   const createConfig = resource.kind === 'agent' ? createAgentConfig : createAppConfig
   const updateConfig = resource.kind === 'agent' ? updateAgentConfig : updateAppConfig

@@ -2286,10 +2286,11 @@ describe('useChat', () => {
   })
 
   describe('handleStop and handleRestart', () => {
-    it.each(['rejection', 'throw'] as const)(
-      'should finish stopping locally after a service %s',
+    it.each(['rejection', 'throw', 'abort'] as const)(
+      'reports a stop service %s while finishing local cleanup',
       async (failure) => {
         const error = new Error('Stop request failed')
+        if (failure === 'abort') error.name = 'AbortError'
         const stopChat = vi.fn(() => {
           if (failure === 'throw') throw error
           return Promise.reject(error)
@@ -2310,7 +2311,11 @@ describe('useChat', () => {
 
         expect(result.current.isResponding).toBe(false)
         expect(controller.abort).toHaveBeenCalledOnce()
-        expect(toast.error).not.toHaveBeenCalled()
+        if (failure === 'abort') expect(toast.error).not.toHaveBeenCalled()
+        else
+          expect(toast.error).toHaveBeenCalledExactlyOnceWith(
+            'appDebug.operation.stopResponding: Stop request failed',
+          )
         unmount()
       },
     )

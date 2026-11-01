@@ -8,7 +8,6 @@ import type {
   ConversationVariable,
   EnvironmentVariable,
 } from '@/app/components/workflow/types'
-import type { ConsoleClientContext } from '@/service/console'
 import type { FetchWorkflowDraftResponse, HumanInputFormData, VarInInspect } from '@/types/workflow'
 import { consoleClient } from '@/service/console'
 import { get } from './base'
@@ -19,7 +18,7 @@ export type EnvironmentVariablePatch = {
 }
 
 export const fetchWorkflowDraft = (url: string) => {
-  return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
+  return get(url) as Promise<FetchWorkflowDraftResponse>
 }
 
 export const singleNodeRun = (
@@ -123,27 +122,21 @@ export const fetchNodeInspectVars = async (resource: EditorResource, nodeId: str
   }
 }
 
-export const updateEnvironmentVariables = (
-  {
-    appId,
-    environmentVariables,
-    deletedEnvironmentVariableIds,
-  }: {
-    appId: string
-  } & EnvironmentVariablePatch,
-  context?: ConsoleClientContext,
-) => {
-  return consoleClient.apps.byAppId.workflows.draft.environmentVariables.post(
-    {
-      params: { app_id: appId },
-      body: {
-        environment_variables: environmentVariables,
-        patch: true,
-        deleted_environment_variable_ids: deletedEnvironmentVariableIds,
-      },
+export const updateEnvironmentVariables = ({
+  appId,
+  environmentVariables,
+  deletedEnvironmentVariableIds,
+}: {
+  appId: string
+} & EnvironmentVariablePatch) => {
+  return consoleClient.apps.byAppId.workflows.draft.environmentVariables.post({
+    params: { app_id: appId },
+    body: {
+      environment_variables: environmentVariables,
+      patch: true,
+      deleted_environment_variable_ids: deletedEnvironmentVariableIds,
     },
-    { context },
-  )
+  })
 }
 
 export const updateConversationVariables = ({

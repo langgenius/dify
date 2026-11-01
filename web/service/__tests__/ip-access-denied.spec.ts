@@ -278,7 +278,7 @@ describe('WebApp IP access denial transport', () => {
       expect(isAppAccessError(error)).toBe(false)
       expect(appAccessStore.get(appAccessErrorAtom)).toBeNull()
       expect((error as ORPCError<string, unknown>).data).toEqual(data)
-      expect(toast.error).toHaveBeenCalledWith(data.message)
+      expect(toast.error).not.toHaveBeenCalled()
       expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
     },
   )

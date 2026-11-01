@@ -54,7 +54,6 @@ const metadataTypeIconClass: Record<DocumentMetadataType, string> = {
   time: 'i-ri-time-line',
 }
 // Requests report failures once through useMetadataFieldMutation, including server messages.
-const silentRequest = { context: { silent: true } }
 
 function useMetadataFields() {
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
@@ -118,13 +117,10 @@ function CreateMetadataPopover() {
   // DocumentMetadataCreateForm validates the name against the same fields before submitting.
   const createMetadata = (name: string, type: DocumentMetadataType) =>
     mutate(() =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post(
-        {
-          body: { name, type },
-          params: { control_space_id: knowledgeSpaceId },
-        },
-        silentRequest,
-      ),
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post({
+        body: { name, type },
+        params: { control_space_id: knowledgeSpaceId },
+      }),
     )
 
   return (
@@ -136,7 +132,7 @@ function CreateMetadataPopover() {
             className="mt-3"
             disabled={!canWrite || pending || catalogUnavailable}
           >
-            <span aria-hidden className="mr-1 i-ri-add-line size-4" />
+            <span aria-hidden className="me-1 i-ri-add-line size-4" />
             {t(($) => $['metadata.datasetMetadata.addMetaData'], { ns: 'dataset' })}
           </Button>
         }
@@ -181,24 +177,18 @@ function MetadataItem({
   const renameMetadata = async (nextName: string) => {
     if (nextName === field.name) return true
     return mutate(() =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.patch(
-        {
-          body: { expectedRowVersion: field.rowVersion, name: nextName },
-          params: { control_space_id: knowledgeSpaceId, field_id: field.id },
-        },
-        silentRequest,
-      ),
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.patch({
+        body: { expectedRowVersion: field.rowVersion, name: nextName },
+        params: { control_space_id: knowledgeSpaceId, field_id: field.id },
+      }),
     )
   }
   const deleteMetadata = () =>
     mutate(() =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.delete(
-        {
-          params: { control_space_id: knowledgeSpaceId, field_id: field.id },
-          query: { expectedRowVersion: field.rowVersion },
-        },
-        silentRequest,
-      ),
+      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.delete({
+        params: { control_space_id: knowledgeSpaceId, field_id: field.id },
+        query: { expectedRowVersion: field.rowVersion },
+      }),
     )
 
   return (
@@ -219,14 +209,14 @@ function MetadataItem({
             {t(($) => $[`metadata.type.${field.type}`], { ns: 'dataset' })}
           </div>
         </div>
-        <div className="ml-2 shrink-0 system-xs-regular text-text-tertiary">
+        <div className="ms-2 shrink-0 system-xs-regular text-text-tertiary">
           {t(($) => $['metadata.datasetMetadata.values'], {
             ns: 'dataset',
             num: field.count,
           })}
         </div>
         {canEdit && (
-          <div className="ml-2 flex shrink-0 items-center space-x-1 text-text-tertiary">
+          <div className="ms-2 flex shrink-0 items-center space-x-1 text-text-tertiary">
             <IconButton
               size="md"
               aria-label={t(($) => $['operation.edit'], { ns: 'common' })}

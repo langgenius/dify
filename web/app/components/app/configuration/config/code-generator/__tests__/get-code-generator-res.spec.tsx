@@ -266,4 +266,30 @@ describe('GetCodeGeneratorResModal', () => {
 
     expect(screen.queryByTestId('monaco-editor')).not.toBeInTheDocument()
   })
+  it('shows a rejected request inline, retains instructions and retries successfully', async () => {
+    const user = userEvent.setup()
+    mockGenerateRule
+      .mockRejectedValueOnce(new Error('Provider unavailable'))
+      .mockResolvedValueOnce({ code: 'print(2)' })
+    render(
+      <GetCodeGeneratorResModal
+        flowId="flow-1"
+        nodeId="node-1"
+        modelMode="chat"
+        isShow
+        codeLanguages={CodeLanguage.python3}
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+      />,
+    )
+    await user.click(instruction())
+    await user.paste('Keep this instruction')
+    await user.click(screen.getByRole('button', { name: /codegen.generate/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Provider unavailable')
+    expect(instruction()).toHaveTextContent('Keep this instruction')
+    await user.click(screen.getByRole('button', { name: /codegen.generate/ }))
+    await waitFor(() => expect(screen.getByTestId('monaco-editor')).toHaveValue('print(2)'))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(mockGenerateRule).toHaveBeenCalledTimes(2)
+  })
 })

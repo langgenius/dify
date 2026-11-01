@@ -96,7 +96,6 @@ export function WebAppAccessPointCard({
   const [showWorkflowLaunch, setShowWorkflowLaunch] = useState(false)
   const toggleSiteMutation = useMutation(
     consoleQuery.apps.byAppId.siteEnable.post.mutationOptions({
-      context: { silent: true },
       scope: {
         id: `app-web-app-toggle:${appInfo.id}`,
       },
@@ -110,7 +109,6 @@ export function WebAppAccessPointCard({
   )
   const resetSiteAccessToken = useMutation(
     consoleQuery.apps.byAppId.site.accessTokenReset.post.mutationOptions({
-      context: { silent: true },
       onSuccess: () => setShowRegenerate(false),
       onError: (error) => {
         toast.error(

@@ -136,9 +136,7 @@ export function createContactsApiRepository(
     supportsExternalContactUpgrade: false,
     async listIMChannels() {
       const { channels } = await requestContactIM(() =>
-        consoleClient.workspaces.current.humanInput.v2.channels.get(undefined, {
-          context: { silent: true },
-        }),
+        consoleClient.workspaces.current.humanInput.v2.channels.get(undefined),
       )
       return channels
         .filter((channel) => channel.kind === 'im')
@@ -146,21 +144,17 @@ export function createContactsApiRepository(
     },
     async listAvailablePlatformContacts(query) {
       if (!canImportPlatformContacts) throw new Error('Platform contact import is not available')
-      const result = await client.organizationCandidates.get(
-        {
-          query: {
-            keyword: query.search.trim() || undefined,
-            page: query.page,
-            limit: query.limit,
-          },
+      const result = await client.organizationCandidates.get({
+        query: {
+          keyword: query.search.trim() || undefined,
+          page: query.page,
+          limit: query.limit,
         },
-        { context: { silent: true } },
-      )
+      })
       const existing = result.data.length
-        ? await client.contacts.batch.get(
-            { query: { contact_ids: result.data.map((candidate) => candidate.id) } },
-            { context: { silent: true } },
-          )
+        ? await client.contacts.batch.get({
+            query: { contact_ids: result.data.map((candidate) => candidate.id) },
+          })
         : { data: [] }
       const existingIds = new Set(existing.data.map((contact) => contact.id))
       return {
@@ -176,10 +170,9 @@ export function createContactsApiRepository(
       if (command.upgradeExternalContacts) return { kind: 'external_upgrade_unsupported' }
       if (command.contactIds.length === 0) return { kind: 'failed' }
       try {
-        const result = await client.contacts.platform.post(
-          { body: { candidate_ids: [...new Set(command.contactIds)] } },
-          { context: { silent: true } },
-        )
+        const result = await client.contacts.platform.post({
+          body: { candidate_ids: [...new Set(command.contactIds)] },
+        })
         if (result.data.length === 0) return { kind: 'failed' }
         return { kind: 'added', contactIds: result.data.map((contact) => contact.id) }
       } catch (error) {
@@ -190,16 +183,13 @@ export function createContactsApiRepository(
     },
     async listIMIdentities(query) {
       const result = await requestContactIM(() =>
-        client.imIdentities.get(
-          {
-            query: {
-              keyword: query.search.trim() || undefined,
-              page: query.page,
-              limit: query.limit,
-            },
+        client.imIdentities.get({
+          query: {
+            keyword: query.search.trim() || undefined,
+            page: query.page,
+            limit: query.limit,
           },
-          { context: { silent: true } },
-        ),
+        }),
       )
       return { ...result, has_more: result.page * result.limit < result.total }
     },
@@ -210,8 +200,8 @@ export function createContactsApiRepository(
       }
       const result = await requestContactIM(() =>
         command.override
-          ? client.contacts.byContactId.imOverride.put(input, { context: { silent: true } })
-          : client.contacts.byContactId.imBindings.put(input, { context: { silent: true } }),
+          ? client.contacts.byContactId.imOverride.put(input)
+          : client.contacts.byContactId.imBindings.put(input),
       )
       return toContactView(result.contact)
     },
@@ -219,42 +209,30 @@ export function createContactsApiRepository(
       await requestContactIM(async () => {
         const params = { contact_id: command.contactId }
         if (command.binding.scope === 'workspace') {
-          await client.contacts.byContactId.imOverride.delete(
-            { params },
-            { context: { silent: true } },
-          )
+          await client.contacts.byContactId.imOverride.delete({ params })
         } else {
-          await client.contacts.byContactId.imBindings.delete(
-            {
-              params,
-            },
-            { context: { silent: true } },
-          )
+          await client.contacts.byContactId.imBindings.delete({
+            params,
+          })
         }
       })
     },
     async unbindIMBinding(command) {
       await requestContactIM(() =>
-        client.contacts.byContactId.imBindings.delete(
-          {
-            params: { contact_id: command.contactId },
-          },
-          { context: { silent: true } },
-        ),
+        client.contacts.byContactId.imBindings.delete({
+          params: { contact_id: command.contactId },
+        }),
       )
     },
     async listContacts(query) {
-      const result = await client.contacts.get(
-        {
-          query: {
-            page: query.page,
-            limit: query.limit,
-            group: query.kind === 'all' ? undefined : query.kind,
-            keyword: query.search.trim() || undefined,
-          },
+      const result = await client.contacts.get({
+        query: {
+          page: query.page,
+          limit: query.limit,
+          group: query.kind === 'all' ? undefined : query.kind,
+          keyword: query.search.trim() || undefined,
         },
-        { context: { silent: true } },
-      )
+      })
       return {
         ...result,
         data: result.data.map(toContactView),
@@ -263,10 +241,7 @@ export function createContactsApiRepository(
     },
     async getContact(contactId) {
       try {
-        const result = await client.contacts.byContactId.get(
-          { params: { contact_id: contactId } },
-          { context: { silent: true } },
-        )
+        const result = await client.contacts.byContactId.get({ params: { contact_id: contactId } })
         return { ...toContactView(result.contact), im_binding_details: result.im_binding_details }
       } catch (error) {
         if (hasStatus(error, 404)) return null
@@ -275,16 +250,13 @@ export function createContactsApiRepository(
     },
     async createExternalContact(command) {
       try {
-        const result = await client.contacts.external.post(
-          {
-            body: {
-              name: command.displayName,
-              email: command.email,
-              ...(command.avatar !== undefined ? { avatar: command.avatar } : {}),
-            },
+        const result = await client.contacts.external.post({
+          body: {
+            name: command.displayName,
+            email: command.email,
+            ...(command.avatar !== undefined ? { avatar: command.avatar } : {}),
           },
-          { context: { silent: true } },
-        )
+        })
         return { kind: 'created', contactId: result.contact.id }
       } catch (error) {
         return { kind: hasStatus(error, 409) ? 'duplicate_external_contact' : 'failed' }
@@ -292,17 +264,14 @@ export function createContactsApiRepository(
     },
     async updateExternalContact(command) {
       try {
-        const result = await client.contacts.external.byContactId.patch(
-          {
-            params: { contact_id: command.contactId },
-            body: {
-              name: command.displayName,
-              email: command.email,
-              ...(command.avatar !== undefined ? { avatar: command.avatar } : {}),
-            },
+        const result = await client.contacts.external.byContactId.patch({
+          params: { contact_id: command.contactId },
+          body: {
+            name: command.displayName,
+            email: command.email,
+            ...(command.avatar !== undefined ? { avatar: command.avatar } : {}),
           },
-          { context: { silent: true } },
-        )
+        })
         return { kind: 'updated', contactId: result.contact.id }
       } catch (error) {
         return { kind: hasStatus(error, 409) ? 'duplicate_external_contact' : 'failed' }
@@ -310,10 +279,9 @@ export function createContactsApiRepository(
     },
     async removeContacts(command) {
       try {
-        const result = await client.contacts.remove.post(
-          { body: { contact_ids: command.contactIds } },
-          { context: { silent: true } },
-        )
+        const result = await client.contacts.remove.post({
+          body: { contact_ids: command.contactIds },
+        })
         return { kind: 'removed', removedContactIds: result.removed_contact_ids }
       } catch {
         return { kind: 'failed' }

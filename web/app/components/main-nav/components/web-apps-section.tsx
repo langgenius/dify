@@ -28,6 +28,7 @@ import AppNavItem from '@/app/components/explore/installed-app-navigation/app-na
 import { InstalledAppPaginationSkeleton } from '@/app/components/explore/installed-app-navigation/pagination-skeleton'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { toast } from '@/app/notifications'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -86,8 +87,9 @@ const WebAppsSectionContent = () => {
     }),
   )
   const installedApps = installedAppsQuery.data ?? emptyInstalledApps
+  const notifyError = useErrorNotification()
   const updatePinStatusMutation = useMutation(
-    consoleQuery.installedApps.byInstalledAppId.patch.mutationOptions(),
+    consoleQuery.installedApps.byInstalledAppId.patch.mutationOptions({ onError: notifyError }),
   )
 
   const webAppRows = useMemo<WebAppListRow[]>(() => {

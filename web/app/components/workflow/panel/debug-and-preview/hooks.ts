@@ -51,7 +51,7 @@ export const useChat = (
   prevChatTree?: ChatItemInTree[],
   stopChat?: (taskId: string) => void,
 ) => {
-  const { t } = useTranslation(['appDebug'])
+  const { t } = useTranslation(['appDebug', 'common'])
   const { handleRun } = useWorkflowRun()
   const hasStopRespondedRef = useRef(false)
   const workflowStore = useWorkflowStore()
@@ -60,6 +60,10 @@ export const useChat = (
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
   const workflowEventsAbortControllerRef = useRef<AbortController | null>(null)
+  const [resumeFailure, setResumeFailure] = useState<{
+    message: string
+    retry: () => void
+  }>()
   const resource = useAtomValue(editorResourceAtom)
   const canRun = useHooksStore((s) => s.accessControl.canRun)
   const invalidAllLastRun = useInvalidateAllLastRun(resource)
@@ -186,6 +190,7 @@ export const useChat = (
   )
 
   const handleStop = useCallback(() => {
+    setResumeFailure(undefined)
     hasStopRespondedRef.current = true
     handleResponding(false)
     if (stopChat && taskIdRef.current) stopChat(taskIdRef.current)
@@ -261,6 +266,7 @@ export const useChat = (
         return false
       }
 
+      setResumeFailure(undefined)
       // Abort previous handleResume SSE connection if any
       if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
 
@@ -711,12 +717,23 @@ export const useChat = (
   }
 
   const handleResume = useCallback(
-    (messageId: string, workflowRunId: string, { onGetSuggestedQuestions }: SendCallback) => {
+    (messageId: string, workflowRunId: string, { onGetSuggestedQuestions }: SendCallback): void => {
+      setResumeFailure(undefined)
+      let controller: AbortController | undefined
+      const handleResumeError = (message?: string) => {
+        if (controller?.signal.aborted) return
+        handleResponding(false)
+        setResumeFailure({
+          message: message || t(($) => $['api.actionFailed'], { ns: 'common' }),
+          retry: () => handleResume(messageId, workflowRunId, { onGetSuggestedQuestions }),
+        })
+      }
       // Re-subscribe to workflow events for the specific message
       const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true&continue_on_pause=true`
 
       const otherOptions: IOtherOptions = {
         getAbortController: (abortController) => {
+          controller = abortController
           workflowEventsAbortControllerRef.current = abortController
         },
         onData: (
@@ -744,7 +761,8 @@ export const useChat = (
           })
         },
 
-        async onCompleted(hasError?: boolean) {
+        async onCompleted(hasError?: boolean, errorMessage?: string) {
+          if (hasError) handleResumeError(errorMessage)
           const { workflowRunningData } = workflowStore.getState()
           handleResponding(false)
 
@@ -786,9 +804,7 @@ export const useChat = (
             responseItem.content = messageReplace.answer
           })
         },
-        onError() {
-          handleResponding(false)
-        },
+        onError: handleResumeError,
         onWorkflowStarted: ({ workflow_run_id, task_id }) => {
           handleResponding(true)
           hasStopRespondedRef.current = false
@@ -967,11 +983,13 @@ export const useChat = (
       fetchInspectVars,
       invalidAllLastRun,
       config?.suggested_questions_after_answer,
+      t,
     ],
   )
 
   const handleSwitchSibling = useCallback(
     (siblingMessageId: string, callbacks: SendCallback) => {
+      setResumeFailure(undefined)
       setTargetMessageId(siblingMessageId)
 
       // Helper to find message in tree
@@ -1003,6 +1021,7 @@ export const useChat = (
 
   return {
     conversationId: conversationIdRef.current,
+    resumeFailure,
     chatList,
     setTargetMessageId,
     handleSwitchSibling,

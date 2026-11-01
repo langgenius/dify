@@ -50,6 +50,31 @@ describe('useWorkflowNodeStarted', () => {
     ])
   })
 
+  it('keeps a newer single-run error when workflow execution events are replayed', () => {
+    const { result, store } = renderViewportHook(
+      () => ({ ...useWorkflowNodeStarted(), ...useWorkflowNodeFinished() }),
+      { initialStoreState: { workflowRunningData: baseRunningData() } },
+    )
+    const started = createNodeStartedResponse()
+    act(() => result.current.handleWorkflowNodeStarted(started, containerParams))
+    act(() => {
+      store.getState().advanceSingleNodeRunGeneration(started.data.node_id)
+      store.getState().setSingleNodeRunError(started.data.node_id, 'Newer single run failed')
+    })
+    act(() => {
+      result.current.handleWorkflowNodeStarted(started, containerParams)
+      result.current.handleWorkflowNodeFinished(
+        createNodeFinishedResponse({
+          workflow_run_id: started.workflow_run_id,
+          data: { ...started.data, status: NodeRunningStatus.Succeeded },
+        }),
+      )
+    })
+    expect(store.getState().singleNodeRunErrors[started.data.node_id]).toBe(
+      'Newer single run failed',
+    )
+  })
+
   it('pushes to tracing, sets node running, and adjusts viewport for root node', async () => {
     const { result, store } = renderViewportHook(() => useWorkflowNodeStarted(), {
       initialStoreState: { workflowRunningData: baseRunningData() },

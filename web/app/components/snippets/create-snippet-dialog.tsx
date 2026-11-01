@@ -17,6 +17,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getErrorMessage } from '@/utils/error-message'
 
 const CREATE_SNIPPET_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
@@ -39,6 +40,7 @@ type CreateSnippetDialogProps = {
   onClose: () => void
   onConfirm: (payload: CreateSnippetDialogPayload) => void
   isSubmitting?: boolean
+  error?: unknown
   title?: string
   confirmText?: string
   initialValue?: CreateSnippetDialogInitialValue
@@ -57,6 +59,7 @@ export function CreateSnippetDialog({
   onClose,
   onConfirm,
   isSubmitting = false,
+  error,
   title,
   confirmText,
   initialValue,
@@ -162,6 +165,11 @@ export function CreateSnippetDialog({
                 disabled={isSubmitting}
               />
             </div>
+            {!!error && !isSubmitting && (
+              <p role="alert" className="system-sm-regular text-text-destructive">
+                {getErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
+              </p>
+            )}
           </DialogBody>
 
           <DialogFooter>

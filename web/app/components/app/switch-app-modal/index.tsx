@@ -63,12 +63,8 @@ const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) 
   const { t } = useTranslation(['app'])
   const { push, replace } = useRouter()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const conversion = useMutation(
-    consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions({ context: { silent: true } }),
-  )
-  const deletion = useMutation(
-    consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
-  )
+  const conversion = useMutation(consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions())
+  const deletion = useMutation(consoleQuery.apps.byAppId.delete.mutationOptions())
   const isPending = conversion.isPending || deletion.isPending
   const submit = (body: ConvertToWorkflowPayload, removeOriginal: boolean) => {
     if (isPending) return
@@ -272,7 +268,7 @@ function SwitchAppSession({
                   if (checked) setShowConfirmDelete(true)
                 }}
               />
-              <span className="ml-2 text-left text-sm/5 text-text-secondary">
+              <span className="ms-2 text-start text-sm/5 text-text-secondary">
                 {t(($) => $.removeOriginal, { ns: 'app' })}
               </span>
             </label>

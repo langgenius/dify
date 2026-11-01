@@ -393,12 +393,9 @@ it.each(['publish', 'create'] as const)(
         screen.queryByRole('dialog', { name: 'navigation.common.workflowAsTool' }),
       ).not.toBeInTheDocument(),
     )
-    expect(api.createTool).toHaveBeenCalledWith(
-      {
-        body: expect.objectContaining({ workflow_app_id: 'app-1', name: 'workflow_tool' }),
-      },
-      { context: { silent: true } },
-    )
+    expect(api.createTool).toHaveBeenCalledWith({
+      body: expect.objectContaining({ workflow_app_id: 'app-1', name: 'workflow_tool' }),
+    })
     expect(success).toHaveBeenCalledOnce()
   },
 )
@@ -410,6 +407,28 @@ it('disables configuring a workflow tool without tool.manage', async () => {
   await screen.findByText('Release 5')
   expect(screen.getByRole('button', { name: /navigation.common.workflowAsTool/ })).toBeDisabled()
 })
+
+it.each(['chat', 'workflow'] as const)(
+  'shows a %s publish error and clears it after retry',
+  async (mode) => {
+    const user = userEvent.setup()
+    const error = vi.spyOn(toast, 'error')
+    const onPublish = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Publish permission denied'))
+      .mockResolvedValue(undefined)
+    renderPublisher({ app: { mode }, props: { onPublish } })
+    await user.click(trigger())
+    await user.click(publishUpdate())
+    expect(await screen.findByRole('alert')).toHaveTextContent('Publish permission denied')
+    expect(publishUpdate()).toBeEnabled()
+    expect(error).not.toHaveBeenCalled()
+    await user.click(publishUpdate())
+    expect(await screen.findByRole('button', { name: 'workflow.common.published' })).toBeDisabled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(onPublish).toHaveBeenCalledTimes(2)
+  },
+)
 
 it('keeps failed publish and restore actions available for retry', async () => {
   const user = userEvent.setup()
@@ -447,10 +466,7 @@ it('opens the marketplace redirect after a successful submission', async () => {
       '_blank',
     ),
   )
-  expect(api.marketplace).toHaveBeenCalledExactlyOnceWith(
-    { params: { app_id: 'app-1' } },
-    { context: { silent: true } },
-  )
+  expect(api.marketplace).toHaveBeenCalledExactlyOnceWith({ params: { app_id: 'app-1' } })
 })
 
 it('shows a marketplace error and lets the user retry', async () => {

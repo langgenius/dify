@@ -83,7 +83,7 @@ function CurrentDraftItem({
       aria-current={isActive ? 'true' : undefined}
       onClick={onSelect}
       className={cn(
-        'flex w-full items-start gap-1 rounded-lg py-1 pr-1.25 pl-2 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        'flex w-full items-start gap-1 rounded-lg py-1 ps-2 pe-1.25 text-start outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         isActive ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
       )}
     >
@@ -148,7 +148,7 @@ function VersionFilter({
             <button
               key={filterValue}
               type="button"
-              className="flex h-8 w-full cursor-pointer items-center justify-between gap-1 rounded-lg px-2 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="flex h-8 w-full cursor-pointer items-center justify-between gap-1 rounded-lg px-2 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               onClick={() => {
                 onChange(filterValue)
                 setOpen(false)
@@ -199,9 +199,7 @@ function VersionRow({
   const [versionName, setVersionName] = useState(version.version_name)
   const [publishNote, setPublishNote] = useState(version.publish_note)
   const renameMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions(),
   )
   const restoreMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions({
@@ -271,7 +269,7 @@ function VersionRow({
       <li className="group relative">
         <div
           className={cn(
-            'relative flex w-full items-start gap-1 rounded-lg py-1 pr-1.25 pl-2 text-left outline-hidden focus-within:ring-2 focus-within:ring-state-accent-solid',
+            'relative flex w-full items-start gap-1 rounded-lg py-1 ps-2 pe-1.25 text-start outline-hidden focus-within:ring-2 focus-within:ring-state-accent-solid',
             selected ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
           )}
         >
@@ -279,11 +277,11 @@ function VersionRow({
           <button
             type="button"
             aria-current={selected ? 'true' : undefined}
-            className="min-w-0 flex-1 cursor-pointer py-0.5 text-left outline-hidden"
+            className="min-w-0 flex-1 cursor-pointer py-0.5 text-start outline-hidden"
             onClick={() => onSelect(version.id)}
           >
             <span className="flex min-w-0 flex-col gap-0.5">
-              <span className="flex min-w-0 items-center gap-1 py-px pr-6">
+              <span className="flex min-w-0 items-center gap-1 py-px pe-6">
                 <span
                   className={cn(
                     'min-w-0 flex-1 truncate system-sm-semibold',
@@ -317,7 +315,7 @@ function VersionRow({
           <Menu modal={false}>
             <MenuTrigger
               aria-label={tCommon(($) => $['operation.more'])}
-              className="absolute top-1 right-1 flex size-6 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-1 opacity-0 shadow-xs group-hover:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100"
+              className="absolute inset-e-1 top-1 flex size-6 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-1 opacity-0 shadow-xs group-hover:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100"
             >
               <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
             </MenuTrigger>
@@ -461,8 +459,8 @@ export function VersionPanel({
 
   return (
     <section aria-labelledby={titleId} className="flex w-67 shrink-0 flex-col py-1">
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-l-lg bg-components-panel-bg">
-        <div className="flex shrink-0 items-center gap-2 pt-3 pr-3 pl-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-s-lg bg-components-panel-bg">
+        <div className="flex shrink-0 items-center gap-2 ps-4 pe-3 pt-3">
           <h2 id={titleId} className="min-w-0 flex-1 truncate system-xl-semibold text-text-primary">
             {t(($) => $['skillManagement.detail.versions'])}
           </h2>

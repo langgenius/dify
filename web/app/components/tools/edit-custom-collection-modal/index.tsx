@@ -30,6 +30,7 @@ import {
 import LabelSelector from '@/app/components/tools/labels/selector'
 import { toast } from '@/app/notifications'
 import { parseParamsSchema } from '@/service/tools'
+import { getErrorMessage } from '@/utils/error-message'
 import { AuthHeaderPrefix, AuthType } from '../types'
 import ConfigCredentials from './config-credentials'
 import GetSchema from './get-schema'
@@ -102,6 +103,7 @@ const EditCustomCollectionModal: FC<Props> = ({
     })
     setCustomCollection(newCollection)
   }
+  const [schemaError, setSchemaError] = useState<unknown>()
   const schema = customCollection.schema
   const debouncedSchema = useDebounce(schema, { wait: 500 })
   const setSchema = (schema: any) => {
@@ -119,6 +121,7 @@ const EditCustomCollectionModal: FC<Props> = ({
     }
     ;(async () => {
       try {
+        setSchemaError(undefined)
         const { parameters_schema, schema_type } = await parseParamsSchema(debouncedSchema)
         const customCollection = getCustomCollection()
         const newCollection = produce(customCollection, (draft) => {
@@ -126,7 +129,8 @@ const EditCustomCollectionModal: FC<Props> = ({
         })
         setCustomCollection(newCollection)
         setParamsSchemas(parameters_schema)
-      } catch {
+      } catch (error) {
+        setSchemaError(error)
         const customCollection = getCustomCollection()
         const newCollection = produce(customCollection, (draft) => {
           draft.schema_type = ''
@@ -336,6 +340,12 @@ const EditCustomCollectionModal: FC<Props> = ({
                             ns: 'tools',
                           })!}
                         />
+                        {!!schemaError && (
+                          <p role="alert" className="system-sm-regular text-text-destructive">
+                            {getErrorMessage(schemaError) ??
+                              t(($) => $['api.actionFailed'], { ns: 'common' })}
+                          </p>
+                        )}
                       </div>
 
                       {/* Available Tools  */}

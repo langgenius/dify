@@ -7,6 +7,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Countdown from '@/app/components/signin/countdown'
+import { useErrorNotification } from '@/app/notifications/use-error-notification'
 import Link from '@/next/link'
 import { useAccountDeleteStore, useConfirmDeleteAccount, useSendDeleteAccountEmail } from '../state'
 
@@ -20,6 +21,8 @@ type VerifyEmailFormValues = {
 }
 
 export default function VerifyEmail(props: DeleteAccountProps) {
+  const notifyError = useErrorNotification()
+
   const { t } = useTranslation(['common', 'accountSettings'])
   const emailToken = useAccountDeleteStore((state) => state.sendEmailToken)
   const { mutate: sendEmail } = useSendDeleteAccountEmail()
@@ -33,10 +36,11 @@ export default function VerifyEmail(props: DeleteAccountProps) {
         const ret = await confirmDeleteAccount({ code: verificationCode, token: emailToken })
         if (ret.result === 'success') props.onConfirm()
       } catch (error) {
+        notifyError(error)
         console.error(error)
       }
     },
-    [emailToken, confirmDeleteAccount, isDeleting, props],
+    [emailToken, confirmDeleteAccount, isDeleting, props, notifyError],
   )
   return (
     <Form<VerifyEmailFormValues>
@@ -85,7 +89,7 @@ export default function VerifyEmail(props: DeleteAccountProps) {
         <Button onClick={props.onCancel}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
-        <Countdown onResend={sendEmail} />
+        <Countdown onResend={() => sendEmail(undefined, { onError: notifyError })} />
       </DialogFooter>
     </Form>
   )

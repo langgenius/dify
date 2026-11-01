@@ -178,12 +178,9 @@ it('migrates the real graph through one shared dialog and updates the insertion 
   expect(view.graph().nodes[0]!.data).not.toHaveProperty('delivery_methods')
   expect(view.graph().nodes[1]!.data).toEqual(unrelated.data)
   expect(view.graph().edges).toEqual(edges)
-  expect(postMigration).toHaveBeenCalledExactlyOnceWith(
-    {
-      body: { nodes: [{ node_id: 'legacy-human-input', node_data: createLegacyNode().data }] },
-    },
-    { context: { silent: true } },
-  )
+  expect(postMigration).toHaveBeenCalledExactlyOnceWith({
+    body: { nodes: [{ node_id: 'legacy-human-input', node_data: createLegacyNode().data }] },
+  })
   expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   await act(async () => vi.advanceTimersByTime(500))

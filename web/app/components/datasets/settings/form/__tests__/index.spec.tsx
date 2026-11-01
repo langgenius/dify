@@ -126,16 +126,13 @@ describe('Dataset settings form', () => {
     await waitFor(() => expectLoadingButton(save))
     await user.click(save)
     expect(updateDatasetSetting).toHaveBeenCalledTimes(1)
-    expect(updateDatasetSetting).toHaveBeenCalledWith(
-      {
-        datasetId: 'dataset-1',
-        body: expect.objectContaining({
-          name: 'Updated Dataset',
-          description: 'Updated description',
-        }),
-      },
-      { silent: true },
-    )
+    expect(updateDatasetSetting).toHaveBeenCalledWith({
+      datasetId: 'dataset-1',
+      body: expect.objectContaining({
+        name: 'Updated Dataset',
+        description: 'Updated description',
+      }),
+    })
     expect(mockMutateDatasets).not.toHaveBeenCalled()
     await act(async () => pending.resolve(mockDataset))
     await waitFor(() => expect(mockMutateDatasets).toHaveBeenCalledTimes(1))

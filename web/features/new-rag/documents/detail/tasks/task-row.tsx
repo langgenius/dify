@@ -95,7 +95,6 @@ export function DocumentTaskRow({
               task_kind: task.taskKind,
             },
           },
-          { context: { silent: true } },
         ),
       ),
   })
