@@ -10,6 +10,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pydantic import ValidationError
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.entities import (
@@ -317,6 +318,63 @@ class TestUnsubscribeTrigger:
 
 
 class TestRefreshTrigger:
+    @pytest.mark.parametrize("response_parameters", [{}, {"parameters": None}])
+    @patch("core.trigger.provider.PluginTriggerClient")
+    def test_preserves_parameters_when_plugin_omits_them(
+        self, mock_client: MagicMock, response_parameters: dict[str, object]
+    ) -> None:
+        ctrl = make_controller()
+        subscription = make_subscription(parameters={"mailbox_address": "support@example.com"})
+        response = {
+            "expires_at": 456,
+            "endpoint": "https://e",
+            "properties": {"subscription_id": "renewed"},
+            **response_parameters,
+        }
+        mock_client.return_value.refresh.return_value.subscription = response
+
+        result = ctrl.refresh_trigger(subscription=subscription, credentials={}, credential_type=CredentialType.OAUTH2)
+
+        assert result.parameters == subscription.parameters
+        assert result.expires_at == 456
+        assert result.properties == {"subscription_id": "renewed"}
+        assert response.get("parameters") is None
+        assert subscription.parameters == {"mailbox_address": "support@example.com"}
+
+    @pytest.mark.parametrize("parameters", [{}, {"mailbox_address": "updated@example.com"}])
+    @patch("core.trigger.provider.PluginTriggerClient")
+    def test_keeps_explicit_parameters(self, mock_client: MagicMock, parameters: dict[str, str]) -> None:
+        ctrl = make_controller()
+        mock_client.return_value.refresh.return_value.subscription = {
+            "expires_at": 456,
+            "endpoint": "https://e",
+            "properties": dict[str, object](),
+            "parameters": parameters,
+        }
+
+        result = ctrl.refresh_trigger(
+            subscription=make_subscription(parameters={"mailbox_address": "original@example.com"}),
+            credentials={},
+            credential_type=CredentialType.OAUTH2,
+        )
+
+        assert result.parameters == parameters
+
+    @patch("core.trigger.provider.PluginTriggerClient")
+    def test_rejects_invalid_parameters(self, mock_client: MagicMock) -> None:
+        ctrl = make_controller()
+        mock_client.return_value.refresh.return_value.subscription = {
+            "expires_at": 456,
+            "endpoint": "https://e",
+            "properties": dict[str, object](),
+            "parameters": "invalid",
+        }
+
+        with pytest.raises(ValidationError, match="parameters"):
+            ctrl.refresh_trigger(
+                subscription=make_subscription(), credentials={}, credential_type=CredentialType.OAUTH2
+            )
+
     @patch("core.trigger.provider.PluginTriggerClient")
     def test_uses_system_user_id(self, mock_client: MagicMock) -> None:
         ctrl = make_controller()
