@@ -43,8 +43,13 @@ def _replay(service, session_id, receipt):
         view = service._build_session_view(session, context)
         saved = False
 
-        def save(_sql, current, fc, view=view):
+        def save(_sql, current, fc, view=view, receipt_id=receipt["id"]):
             nonlocal saved
+            # Another replay may have finalized this receipt after our read.
+            # Reuse its immutable projection; never overwrite a newer identity.
+            current_receipt = fc.task_control.get("receipt", {})
+            if current_receipt.get("id") != receipt_id or current_receipt.get("view"):
+                return False
             if current.version != view.version:
                 return False
             view.version = current.version + 1

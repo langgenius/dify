@@ -529,3 +529,49 @@ def test_simultaneous_same_stop_identity_commits_one_durable_projection(task_wor
         assert world.draft() == world.graph
     finally:
         event.remove(engine, "before_cursor_execute", before_sql)
+
+
+def test_delayed_same_stop_receipt_reuses_concurrently_saved_projection(
+    task_world: TaskWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from services.dify_builder import task_control_service
+
+    world = task_world
+    stale_receipt_captured = threading.Event()
+    projection_saved = threading.Event()
+    replay = task_control_service._replay
+
+    def delay_first_replay(service: DifyBuilderService, session_id: str, receipt: dict[str, object]) -> SessionView:
+        if not stale_receipt_captured.is_set():
+            assert not receipt.get("view")
+            stale_receipt_captured.set()
+            assert projection_saved.wait(_TIMEOUT)
+        return replay(service, session_id, receipt)
+
+    # Delay only scheduling: both callers retain the real service, SQL receipt,
+    # row locks and projection persistence. No timing-dependent sleeps.
+    monkeypatch.setattr(task_control_service, "_replay", delay_first_replay)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        first = pool.submit(world.stop)
+        try:
+            assert stale_receipt_captured.wait(_TIMEOUT)
+            second_view = world.stop()
+        finally:
+            projection_saved.set()
+        first_view = first.result(timeout=_TIMEOUT)
+    assert asdict(first_view) == asdict(second_view)
+    current, context = world.repo.get_session(world.session_id)
+    assert current.version == second_view.version
+    assert context.task_control["receipt"]["view"] == asdict(second_view)
+    with world.factory() as sql:
+        assert (
+            sql.scalar(
+                select(func.count())
+                .select_from(DifyBuilderSessionCommit)
+                .where(
+                    DifyBuilderSessionCommit.session_id == world.session_id,
+                    DifyBuilderSessionCommit.version > second_view.version,
+                )
+            )
+            == 0
+        )
