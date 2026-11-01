@@ -514,3 +514,28 @@ def test_native_model_projection_rejects_malformed_classification(stage: object,
         )
         == {}
     )
+
+
+def test_resource_plan_missing_id_code_survives_projection_report_and_history() -> None:
+    from core.dify_builder.models import ConversationItem
+
+    records = []
+    with diagnostics.scope(records.append, "reconcile-resource-plan"):
+        diagnostics.report(
+            "response_schema_invalid",
+            validation_code="RESOURCE_PLAN_ID_MISSING",
+            error=ValueError("private-resource-id provider answer"),
+        )
+        diagnostics.report("response_schema_invalid", validation_code="private-resource-id provider answer")
+    projected = diagnostics.project(records[0])
+    assert projected["validation_codes"] == ["RESOURCE_PLAN_ID_MISSING"]
+    assert records[1]["validation_codes"] == []
+    history = diagnostics.from_history(
+        [ConversationItem(seq=0, kind="assistant_turn", payload={"diagnostics": records})],
+        session_id="session",
+        version=1,
+    )
+    assert history[0]["validation_codes"] == ["RESOURCE_PLAN_ID_MISSING"]
+    assert history[1]["validation_codes"] == []
+    assert "private-resource-id" not in json.dumps(history)
+    assert "provider answer" not in json.dumps(history)
