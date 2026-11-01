@@ -329,6 +329,48 @@ const createTimeoutContext = (timeoutMs: number): TimeoutContext => {
   }
 }
 
+/** Keep the response deadline and cancellation attached to the consumer's stream. */
+const withResponseDeadline = (source: Readable, timeout: TimeoutContext): Readable => {
+  const cleanup = () => {
+    timeout.cleanup()
+    timeout.signal.removeEventListener('abort', abort)
+  }
+  const stream = new Readable({
+    read() {
+      source.resume()
+    },
+    destroy(error, callback) {
+      cleanup()
+      source.destroy()
+      callback(error)
+    },
+  })
+  const abort = () => {
+    stream.destroy(new TimeoutError('Request timed out', { cause: timeout.reason }))
+  }
+
+  source.on('data', (chunk: Buffer) => {
+    if (!stream.push(chunk)) {
+      source.pause()
+    }
+  })
+  source.pause()
+  source.once('end', () => {
+    cleanup()
+    stream.push(null)
+  })
+  source.once('error', (error: Error) => stream.destroy(error))
+
+  // The deadline can expire before the caller starts consuming. Keep the error
+  // on the Readable so a later iterator observes it without an unhandled event.
+  stream.on('error', () => {})
+  timeout.signal.addEventListener('abort', abort, { once: true })
+  if (timeout.signal.aborted) {
+    abort()
+  }
+  return stream
+}
+
 const parseResponseBody = async <TResponseType extends HttpResponseType>(
   response: Response,
   responseType: TResponseType,
@@ -522,6 +564,7 @@ export class HttpClient {
       }
 
       const timeoutContext = createTimeoutContext(timeout * 1000)
+      let ownsTimeout = true
       const requestInit: FetchRequestInit = {
         method,
         headers: requestHeaders,
@@ -556,6 +599,13 @@ export class HttpClient {
           console.info(`dify-client-node response ${response.status} ${method} ${url}`)
         }
 
+        if (responseType === 'stream') {
+          response.data = withResponseDeadline(
+            parsedBody as Readable,
+            timeoutContext,
+          ) as ResponseDataFor<TResponseType>
+          ownsTimeout = false
+        }
         return response
       } catch (error) {
         const mapped = mapTransportError(error, timeoutContext)
@@ -577,7 +627,9 @@ export class HttpClient {
         attempt += 1
         await sleep(delay)
       } finally {
-        timeoutContext.cleanup()
+        if (ownsTimeout) {
+          timeoutContext.cleanup()
+        }
       }
     }
   }

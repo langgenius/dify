@@ -4,6 +4,7 @@ import { Readable } from 'node:stream'
 import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test'
 import { ChatClient } from '../src/client/chat'
 import { KnowledgeBaseClient } from '../src/client/knowledge-base'
+import { TimeoutError } from '../src/errors/dify-error'
 import { HttpClient } from '../src/http/client'
 
 const readBody = async (stream: NodeJS.ReadableStream): Promise<Buffer> => {
@@ -45,6 +46,16 @@ describe('HttpClient integration', () => {
       if (req.url === '/stream') {
         res.writeHead(200, { 'content-type': 'text/event-stream' })
         res.end('data: {"answer":"hello"}\n\ndata: {"delta":" world"}\n\n')
+        return
+      }
+
+      if (req.url === '/stalled-sse' || req.url === '/stalled-binary') {
+        const sse = req.url === '/stalled-sse'
+        res.writeHead(200, {
+          'content-type': sse ? 'text/event-stream' : 'application/octet-stream',
+        })
+        res.write(sse ? 'data: {"answer":"partial"}\n\n' : 'partial')
+        // Leave the body open so the client must enforce its deadline after headers.
         return
       }
 
@@ -165,6 +176,28 @@ describe('HttpClient integration', () => {
 
     expect(Array.from(response.data.values())).toEqual([1, 2, 3, 4])
   })
+
+  it.each(['sse', 'binary'] as const)(
+    'rejects a stalled %s body using native fetch',
+    async (mode) => {
+      const timedClient = new HttpClient({ ...client.getSettings(), timeout: 0.1 })
+      if (mode === 'sse') {
+        const stream = await timedClient.requestStream({ method: 'GET', path: '/stalled-sse' })
+        await expect(stream.toText()).rejects.toBeInstanceOf(TimeoutError)
+      } else {
+        const stream = await timedClient.requestBinaryStream({
+          method: 'GET',
+          path: '/stalled-binary',
+        })
+        const consume = async () => {
+          for await (const chunk of stream.data) {
+            void chunk
+          }
+        }
+        await expect(consume()).rejects.toBeInstanceOf(TimeoutError)
+      }
+    },
+  )
 
   const keywordRequests = [
     {
