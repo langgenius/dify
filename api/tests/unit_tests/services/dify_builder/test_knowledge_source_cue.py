@@ -32,6 +32,7 @@ CAPTURED_AGENT_GOAL = (
     "写画布、运行 Agent/Workflow、测试或发布。"
 )
 CAPTURED_FORBIDDEN_ADDITIONS = {"forbidden_additions": ["其他 Agent", "工具", "HTTP", "Code", "文件", "知识库"]}
+CAPTURED_NO_EXTRA_COMPONENTS = {"no_extra_components": ["其他 Agent", "工具", "HTTP", "Code", "文件", "知识库"]}
 
 
 @pytest.mark.parametrize(
@@ -178,3 +179,70 @@ def test_exclusion_lists_never_hide_positive_unknown_or_node_only_requirements(
     goal: str, requirements: dict[str, object]
 ) -> None:
     assert has_knowledge_source_cue(goal, requirements)
+
+
+@pytest.mark.parametrize("goal", ["", CAPTURED_AGENT_GOAL], ids=["requirements", "combined"])
+def test_captured_no_extra_components_list_does_not_invent_knowledge_use(goal: str) -> None:
+    assert not has_knowledge_source_cue(goal, CAPTURED_NO_EXTRA_COMPONENTS)
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "no_extra_components",
+        "disallowed_resources",
+        "without_components",
+        "forbidden_other_resources",
+        "excluded_additional_components",
+        "no_additions",
+        "without_extra_additions",
+        "disallowed_other_components",
+    ],
+)
+def test_explicit_negative_resource_collection_role_recognizes_bounded_identifier_variants(key: str) -> None:
+    assert not has_knowledge_source_cue("Format supplied text", {"scope": {key: ["知识库", "knowledge base"]}})
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "not_forbidden_resources",
+        "allowed_no_extra_components",
+        "no_extra_nodes",
+        "forbidden_nodes",
+        "forbidden_resources_backup",
+        "no_extra_components_maybe",
+        "unknown_no_extra_components",
+        "no_extra",
+        "no__resources",
+        "no_extra_other_resources",
+        "no_extra_components_to_add",
+        "no_extra_resource",
+        "disallowedresources",
+        "if_no_extra_components",
+    ],
+)
+def test_negative_substrings_and_node_collection_keys_never_hide_source_mentions(key: str) -> None:
+    assert has_knowledge_source_cue("Format supplied text", {key: ["知识库"]})
+
+
+@pytest.mark.parametrize(
+    "requirements",
+    [
+        {"no_extra_components": "知识库"},
+        {"without_resources": {"source": "知识库"}},
+        {"no_extra_components": ("知识库",)},
+        {"no_extra_components": ["知识库节点"]},
+        {"no_extra_components": ["知识库", {"required_resources": ["知识库"]}]},
+        {"no_extra_components": ["知识库", "必须使用知识库回答"]},
+        {"no_extra_components": ["知识库", "如果需要就查询知识库"]},
+        {"no_extra_components": ["知识库A"]},
+        {"no_extra_components": ["知识库", ["知识库"]]},
+    ],
+)
+def test_general_resource_list_role_never_skips_unknown_or_positive_children(requirements: object) -> None:
+    assert has_knowledge_source_cue("Format supplied text", requirements)
+
+
+def test_positive_goal_dominates_a_general_negative_resource_list_role() -> None:
+    assert has_knowledge_source_cue("必须使用知识库回答", CAPTURED_NO_EXTRA_COMPONENTS)
