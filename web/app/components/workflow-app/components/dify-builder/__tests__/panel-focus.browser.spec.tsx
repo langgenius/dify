@@ -38,6 +38,8 @@ const createRuntime = (
     onCanvasRefreshed: vi.fn(),
     refresh: async () => true,
     reset: vi.fn(),
+    clearConversation: async () => true,
+    abandonTask: async () => true,
     restore: async () => true,
     stopTask: async () => true,
     resumeTask: async () => true,

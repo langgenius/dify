@@ -36,6 +36,15 @@ export const difyBuilderConversationHasMoreAtom = atom(false)
 export const difyBuilderConversationLoadingAtom = atom(false)
 export const difyBuilderSessionBusyAtom = atom(false)
 export const difyBuilderTaskControlAtom = atom<DifyBuilderTaskControl | null>(null)
+export type DifyBuilderLifecycleControl = {
+  operation: 'clear' | 'abandon' | 'fix' | 'dismiss_fix' | 'stop_and_switch_fix'
+  phase: 'pending' | 'unknown'
+  sessionId: string
+  clientActionId: string
+  baseVersion: number
+  expectedTaskId?: string
+}
+export const difyBuilderLifecycleControlAtom = atom<DifyBuilderLifecycleControl | null>(null)
 export const difyBuilderSessionLastErrorAtom = atom('')
 export const difyBuilderSessionErrorCodeAtom = atom<BuilderErrorCode | null>(null)
 export const difyBuilderRetryableMessageAtom = atom<DifyBuilderRetryableMessage | null>(null)
@@ -53,6 +62,7 @@ export const difyBuilderSessionScopedAtoms = [
   difyBuilderConversationLoadingAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderTaskControlAtom,
+  difyBuilderLifecycleControlAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionErrorCodeAtom,
   difyBuilderRetryableMessageAtom,
