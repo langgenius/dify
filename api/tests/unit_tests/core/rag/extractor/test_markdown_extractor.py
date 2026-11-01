@@ -159,3 +159,52 @@ after
         docs = extractor.extract()
 
         assert [doc.page_content for doc in docs] == ["plain", "\n\nHeader\nvalue"]
+
+    def test_remove_images_removes_inline_and_wiki_images(self):
+        extractor = MarkdownExtractor(file_path="dummy_path", remove_images=True)
+
+        assert extractor.remove_images("before ![diagram](diagram.png) after") == "before  after"
+        assert extractor.remove_images("before ![[diagram.png]] after") == "before  after"
+
+    def test_remove_images_keeps_text_between_images(self):
+        extractor = MarkdownExtractor(file_path="dummy_path", remove_images=True)
+
+        assert extractor.remove_images("![[one.png]] useful text ![[two.png]]") == " useful text "
+
+    def test_remove_hyperlinks_keeps_images_intact(self):
+        extractor = MarkdownExtractor(file_path="dummy_path", remove_hyperlinks=True)
+
+        assert extractor.remove_hyperlinks("![diagram](diagram.png) and [guide](guide.html)") == (
+            "![diagram](diagram.png) and guide"
+        )
+
+    def test_extract_removes_inline_images_but_keeps_link_text(self, tmp_path: Path):
+        path = tmp_path / "images.md"
+        path.write_text("before ![diagram](diagram.png) after", encoding="utf-8")
+
+        docs = MarkdownExtractor(str(path), remove_images=True, encoding="utf-8").extract()
+
+        assert [doc.page_content for doc in docs] == ["before  after"]
+
+    def test_remove_images_handles_parenthesized_destinations(self):
+        extractor = MarkdownExtractor(file_path="dummy_path", remove_images=True)
+
+        assert extractor.remove_images("before ![plot](figures/plot(v2).png) after") == "before  after"
+        assert extractor.remove_images("before ![chart](https://example.com/charts/(a)/render.png) after") == "before  after"
+        assert extractor.remove_images(r"before ![esc](a\(b\).png) after") == "before  after"
+
+    def test_extract_removes_parenthesized_image_with_surrounding_prose(self, tmp_path: Path):
+        path = tmp_path / "plots.md"
+        path.write_text(
+            "Quarterly revenue rose. ![plot](figures/plot(v2).png) Costs fell.",
+            encoding="utf-8",
+        )
+
+        docs = MarkdownExtractor(str(path), remove_images=True, encoding="utf-8").extract()
+
+        assert [doc.page_content for doc in docs] == ["Quarterly revenue rose.  Costs fell."]
+
+    def test_remove_hyperlinks_handles_parenthesized_destinations(self):
+        extractor = MarkdownExtractor(file_path="dummy_path", remove_hyperlinks=True)
+
+        assert extractor.remove_hyperlinks("see [plot](figures/plot(v2).png) here") == "see plot here"
