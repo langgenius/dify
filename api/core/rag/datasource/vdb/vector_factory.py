@@ -96,7 +96,9 @@ class _LazyEmbeddings(Embeddings):
         provider = self._dataset.embedding_model_provider
         model_name = self._dataset.embedding_model
         if provider and model_name:
-            cached_embedding = CacheEmbedding.get_cached_query_embedding(provider, model_name, text)
+            cached_embedding = CacheEmbedding.get_cached_query_embedding(
+                provider, model_name, text, tenant_id=self._dataset.tenant_id
+            )
             if cached_embedding is not None:
                 return cached_embedding
         return self._ensure().embed_query(text)
