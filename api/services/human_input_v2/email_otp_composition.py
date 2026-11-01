@@ -4,7 +4,6 @@ import logging
 from smtplib import SMTPException
 
 from python_http_client.exceptions import HTTPError
-from requests.exceptions import RequestException
 from resend.exceptions import ResendError
 
 from core.db.session_factory import session_factory
@@ -26,7 +25,7 @@ def _send(email: str, otp: str) -> None:
             subject="Verify your approval form submission",
             html=_OTP_TEMPLATE.format(code=otp),
         )
-    except (SMTPException, OSError, HTTPError, ResendError, RequestException, ValueError):
+    except (SMTPException, OSError, HTTPError, ResendError, ValueError):
         logger.warning("Human Input OTP mail delivery failed")
         raise EmailOtpError(OtpFailure.DELIVERY) from None
 

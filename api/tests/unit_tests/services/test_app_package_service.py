@@ -1221,7 +1221,9 @@ class TestPackageIconsCases:
                 assert backend.files[source.key] == payload
 
     @staticmethod
-    def test_app_package_restores_independent_site_image_icon(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_app_package_restores_independent_site_image_icon(
+        monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ) -> None:
         app_icon_id, site_icon_id = str(uuid4()), str(uuid4())
         backend = Mock()
         backend.load_stream.side_effect = lambda key: iter([key.encode()])
@@ -1237,8 +1239,8 @@ class TestPackageIconsCases:
         )
         app = {"mode": "chat", "icon_type": "image", "icon": app_icon_id}
         site = {"title": "Site", "icon_type": "image", "icon": site_icon_id}
-        exporter.collect_icon(session=Mock(), tenant_id="source", metadata=app)
-        exporter.collect_icon(session=Mock(), tenant_id="source", metadata=site)
+        exporter.collect_icon(session=unbound_session, tenant_id="source", metadata=app)
+        exporter.collect_icon(session=unbound_session, tenant_id="source", metadata=site)
         with AppPackageService().export(
             dsl=yaml.safe_dump({"kind": "app", "app": app, "site": site}),
             name="App",
@@ -1260,12 +1262,16 @@ class TestPackageIconsCases:
                 assert data["site"]["icon"] == "new-site-icon"
 
     @staticmethod
-    def test_icon_export_rejects_unavailable_tenant_upload(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_icon_export_rejects_unavailable_tenant_upload(
+        monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ) -> None:
         exporter = AgentPackageResourceExporter(storage_backend=Mock())
         monkeypatch.setattr(exporter, "_upload_files", Mock(return_value={}))
         with pytest.raises(RosterAgentPackageExportFailedError, match="unavailable"):
             exporter.collect_icon(
-                session=Mock(), tenant_id="tenant", metadata={"icon_type": "image", "icon": str(uuid4())}
+                session=unbound_session,
+                tenant_id="tenant",
+                metadata={"icon_type": "image", "icon": str(uuid4())},
             )
 
     @staticmethod
@@ -1286,7 +1292,7 @@ class TestPackageIconsCases:
             AppPackageService().read_package(_icon_archive())
 
     @staticmethod
-    def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
         from models.agent_config_entities import AgentSoulConfig
         from models.model import App, AppMode
         from services.agent.dsl_entities import AgentPackage, AgentPackageMetadata, make_agent_app_dsl
@@ -1308,7 +1314,7 @@ class TestPackageIconsCases:
                 }
             ),
         )
-        resources.collect_icon(session=Mock(), tenant_id="source", metadata=metadata)
+        resources.collect_icon(session=unbound_session, tenant_id="source", metadata=metadata)
         app = make_agent_app_dsl(
             App(name="Agent", mode=AppMode.AGENT),
             package_ref="agent_1",

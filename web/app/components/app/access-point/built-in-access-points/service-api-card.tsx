@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { getAccessPointStatus } from '@/app/components/base/access-point/status'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { ServiceApiCardView } from '../shared/service-api-card-view'
 import { getBuiltInAccessUrls } from '../shared/utils'
 import { ApiSecretKeyButton } from './api-secret-key-button'
@@ -27,11 +28,15 @@ export function ServiceApiAccessPointCard({
   const { t } = useTranslation(['common'])
   const toggleApiMutation = useMutation(
     consoleQuery.apps.byAppId.apiEnable.post.mutationOptions({
+      context: { silent: true },
       scope: {
         id: `app-service-api-toggle:${appInfo.id}`,
       },
-      onError: () => {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
       },
     }),
   )

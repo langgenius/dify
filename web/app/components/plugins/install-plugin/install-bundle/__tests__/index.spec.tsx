@@ -2,6 +2,7 @@ import type { Dependency, PackageDependency, Plugin } from '../../../types'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createPluginDeclarationFixture, createPluginEntity } from '@/test/fixtures/plugin'
@@ -126,6 +127,20 @@ const renderInstall = (
   )
   return { onInstalled, onClose }
 }
+
+it('waits for marketplace metadata before rendering imported plugin icons', async () => {
+  const metadata = createDeferred<{ data: { list: { plugin: Plugin }[] } }>()
+  marketplace.mockReturnValue(metadata.promise)
+  renderInstall([dependencies[0]!])
+
+  expect(screen.queryByRole('presentation')).not.toBeInTheDocument()
+
+  metadata.resolve({ data: { list: [{ plugin: plugins[0]! }] } })
+
+  const icon = await screen.findByRole('presentation')
+  expect(icon).toHaveAttribute('src', `${MARKETPLACE_API_PREFIX}/plugins/test/finished/icon`)
+  expect(icon).toBeVisible()
+})
 
 it('aggregates finished, failed and running installs and polls only the unfinished task', async () => {
   const user = userEvent.setup()

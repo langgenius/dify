@@ -30,6 +30,7 @@ import {
   useUpdateSnippetMutation,
 } from '@/service/use-snippets'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 
 type SnippetInfoMenuProps = {
   snippet: SnippetDetail
@@ -41,9 +42,9 @@ const SnippetInfoMenu = ({ snippet }: SnippetInfoMenuProps) => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
-  const updateSnippetMutation = useUpdateSnippetMutation()
-  const exportSnippetMutation = useExportSnippetMutation()
-  const deleteSnippetMutation = useDeleteSnippetMutation()
+  const updateSnippetMutation = useUpdateSnippetMutation({ silent: true })
+  const exportSnippetMutation = useExportSnippetMutation({ silent: true })
+  const deleteSnippetMutation = useDeleteSnippetMutation({ silent: true })
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const canManageSnippet = canManageSnippets(workspacePermissionKeys)
   const canShowOperations = canCreateAndModifySnippet || canManageSnippet
@@ -67,8 +68,8 @@ const SnippetInfoMenu = ({ snippet }: SnippetInfoMenuProps) => {
       const data = await exportSnippetMutation.mutateAsync({ snippetId: snippet.id })
       const file = new Blob([data], { type: 'application/yaml' })
       downloadBlob({ data: file, fileName: `${snippet.name}.yml` })
-    } catch {
-      toast.error(t(($) => $.exportFailed))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $.exportFailed))
     }
   }, [canCreateAndModifySnippet, exportSnippetMutation, snippet.id, snippet.name, t])
 

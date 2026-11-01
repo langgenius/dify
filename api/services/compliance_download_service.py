@@ -1,14 +1,15 @@
 """Application service for compliance document downloads."""
 
 from collections.abc import Callable
-from typing import Protocol, TypedDict
+from typing import Protocol
 
 from machinery.context import RequestContext
 from services.errors.billing import ComplianceRateLimitExceededError
 
 
-class ComplianceDownloadLink(TypedDict):
-    url: str
+class ComplianceDownloadLink(Protocol):
+    @property
+    def url(self) -> str: ...
 
 
 class ComplianceDownloadRateLimiter(Protocol):

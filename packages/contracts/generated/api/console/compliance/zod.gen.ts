@@ -10,15 +10,6 @@ export const zComplianceDownloadResponse = z.object({
 })
 
 /**
- * BillingUnprocessableEntityErrorResponse
- */
-export const zBillingUnprocessableEntityErrorResponse = z.object({
-  code: z.literal('unprocessable_entity'),
-  message: z.string(),
-  status: z.literal(422),
-})
-
-/**
  * ErrorResponse
  *
  * Documented non-2xx body emitted by ``register_external_error_handlers``.
@@ -35,6 +26,39 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * ComplianceDownloadForbiddenError
+ *
+ * Your current plan does not allow downloading this compliance document.
+ */
+export const zComplianceDownloadForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('compliance_download_forbidden'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * ComplianceDocumentNotFoundError
+ *
+ * The compliance document was not found.
+ */
+export const zComplianceDocumentNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('compliance_document_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * BillingUnprocessableEntityErrorResponse
+ */
+export const zBillingUnprocessableEntityErrorResponse = z.object({
+  code: z.literal('unprocessable_entity'),
+  message: z.string(),
+  status: z.literal(422),
+})
+
+/**
  * ComplianceRateLimitErrorResponse
  */
 export const zComplianceRateLimitErrorResponse = z.object({
@@ -42,6 +66,18 @@ export const zComplianceRateLimitErrorResponse = z.object({
   message: z.string(),
   status: z.literal(429),
 })
+
+/**
+ * BillingRequestInProgressError
+ *
+ * A previous request is still being processed. Please try again shortly.
+ */
+export const zBillingRequestInProgressError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_request_in_progress'),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * ComplianceRateLimitError

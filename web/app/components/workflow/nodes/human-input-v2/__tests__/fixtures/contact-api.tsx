@@ -48,12 +48,14 @@ export const contact = {
   name: 'Evan Zhang',
   email: 'evan@example.com',
   type: 'workspace' as const,
+  im_providers: [],
 }
 export const organizationContact = {
   id: 'contact-amanda',
   name: 'Amanda Lin',
   email: 'amanda@example.com',
   type: 'platform' as const,
+  im_providers: [],
 }
 export function resetContactApi() {
   contactApi.features

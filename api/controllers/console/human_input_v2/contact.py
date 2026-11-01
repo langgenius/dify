@@ -356,13 +356,15 @@ def _contact_payload(view: ContactWithIMBindings) -> dict[str, object]:
     }
 
 
-def _contact_option_payload(contact: Contact) -> dict[str, object]:
+def _contact_option_payload(view: ContactWithIMBindings) -> dict[str, object]:
+    contact = view.contact
     return {
         "id": contact.id,
         "type": contact.type,
         "name": contact.name,
         "avatar_url": _contact_avatar_url(contact) or None,
         "email": contact.email,
+        "im_providers": list(dict.fromkeys(binding.provider for binding in view.im_bindings)),
     }
 
 
@@ -395,7 +397,6 @@ def _raise_contact_error(error: ContactError) -> Never:
     if error.code is ContactErrorCode.CONFLICT:
         abort(HTTPStatus.CONFLICT, str(error))
     abort(HTTPStatus.UNPROCESSABLE_ENTITY, str(error))
-    raise AssertionError("unreachable")
 
 
 @console_ns.route("/workspaces/current/human-input/v2/contacts")
@@ -469,7 +470,8 @@ class WorkspaceContactOptionsApi(Resource):
         params=query_params_from_model(ContactOptionsQuery),
         description=(
             "List editor-safe Contact options for static recipient selection. "
-            "The projection omits IM bindings and management metadata; unavailable Contacts are omitted."
+            "The projection includes effective IM providers and omits binding details and management metadata; "
+            "unavailable Contacts are omitted."
         ),
     )
     @console_ns.response(200, "Success", console_ns.models[ListContactOptionsResponse.__name__])
@@ -920,6 +922,7 @@ class BatchGetContactOptionsAPI(Resource):
         params=query_params_from_model(BatchGetContactOptionsQuery),
         description=(
             "Resolve Contact IDs persisted in workflow recipient configuration. "
+            "Include effective IM providers for each Contact. "
             "Contacts unavailable in the current workspace are omitted."
         ),
     )

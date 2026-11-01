@@ -156,8 +156,10 @@ describe('Authorized credential management', () => {
     await user.click(confirm)
     expect(confirm).toBeDisabled()
     await user.click(confirm)
-    expect(requests.post).toHaveBeenCalledExactlyOnceWith(`${baseUrl}/delete`, {
-      body: { credential_id: 'credential-b' },
+    await waitFor(() => {
+      expect(requests.post).toHaveBeenCalledExactlyOnceWith(`${baseUrl}/delete`, {
+        body: { credential_id: 'credential-b' },
+      })
     })
     expect(onUpdate).not.toHaveBeenCalled()
     await act(async () => {

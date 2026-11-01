@@ -9,6 +9,7 @@ import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
@@ -193,10 +194,13 @@ export function useBulkDownloadAction() {
     if (!canDownload || !downloadableDocumentIds.length || !begin()) return
     try {
       const file =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.downloadZip.post({
-          body: { document_ids: downloadableDocumentIds },
-          params: { control_space_id: knowledgeSpaceId },
-        })
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.downloadZip.post(
+          {
+            body: { document_ids: downloadableDocumentIds },
+            params: { control_space_id: knowledgeSpaceId },
+          },
+          { context: { silent: true } },
+        )
       downloadBlob({
         data: file,
         fileName:
@@ -204,8 +208,10 @@ export function useBulkDownloadAction() {
             ? file.name
             : 'knowledge-documents.zip',
       })
-    } catch {
-      toast.error(t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }),
+      )
     } finally {
       finish()
     }
@@ -249,6 +255,7 @@ export function useBulkAvailabilityAction() {
           },
           params: { control_space_id: knowledgeSpaceId },
         },
+        { context: { silent: true } },
       )
       const failedIds = result.items.flatMap((item) =>
         item.status === 'conflict' || item.status === 'not_found' ? [item.document_id] : [],
@@ -258,7 +265,7 @@ export function useBulkAvailabilityAction() {
       invalidateDocuments()
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $.documentsErrorDescription))
+      else toast.error(getErrorMessage(error) ?? t(($) => $.documentsErrorDescription))
     } finally {
       finish()
     }
@@ -305,16 +312,19 @@ export function useBulkRemoveAction() {
       return false
     try {
       const result =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.bulk.delete({
-          body: {
-            documents: selectedDocuments.map((document) => ({
-              documentId: document.id,
-              expectedRevision: document.rowVersion,
-            })),
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.bulk.delete(
+          {
+            body: {
+              documents: selectedDocuments.map((document) => ({
+                documentId: document.id,
+                expectedRevision: document.rowVersion,
+              })),
+            },
+            headers: { 'Idempotency-Key': createRequestId() },
+            params: { control_space_id: knowledgeSpaceId },
           },
-          headers: { 'Idempotency-Key': createRequestId() },
-          params: { control_space_id: knowledgeSpaceId },
-        })
+          { context: { silent: true } },
+        )
       const rejectedIds = (result.results ?? []).flatMap((item) =>
         item.status === 'rejected' ? [item.document_id] : [],
       )
@@ -332,7 +342,7 @@ export function useBulkRemoveAction() {
       return true
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) onWriteDenied()
-      else toast.error(t(($) => $.documentsErrorDescription))
+      else toast.error(getErrorMessage(error) ?? t(($) => $.documentsErrorDescription))
       return false
     } finally {
       finish()
