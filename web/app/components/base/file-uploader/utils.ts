@@ -144,10 +144,19 @@ export const getFileAppearanceType = (fileName: string, fileMimetype: string) =>
   return FileAppearanceTypeEnum.custom
 }
 
-export const getSupportFileType = (fileName: string, fileMimetype: string, isCustom?: boolean) => {
-  if (isCustom) return SupportUploadFileTypes.custom
-
+export const getSupportFileType = (
+  fileName: string,
+  fileMimetype: string,
+  isCustom?: boolean,
+  isDocumentAllowed?: boolean,
+) => {
   const extension = getFileExtension(fileName, fileMimetype)
+  if (isCustom) {
+    if (isDocumentAllowed && FILE_EXTS.document!.includes(extension.toUpperCase()))
+      return SupportUploadFileTypes.document
+    return SupportUploadFileTypes.custom
+  }
+
   for (const key in FILE_EXTS) {
     if (FILE_EXTS[key]!.includes(extension.toUpperCase())) return key
   }
