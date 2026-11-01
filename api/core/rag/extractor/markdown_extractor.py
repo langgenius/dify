@@ -100,11 +100,13 @@ class MarkdownExtractor(BaseExtractor):
     def remove_images(self, content: str) -> str:
         """Remove wiki and inline image references, keeping the surrounding text."""
         content = re.sub(r"!\[\[[^\]]*\]\]", "", content)
-        return re.sub(r"!\[[^\]]*\]\([^)]*\)", "", content)
+        # A destination may contain one level of balanced parentheses, e.g.
+        # ![plot](figures/plot(v2).png), so it cannot stop at the first ")".
+        return re.sub(r"!\[[^\]]*\]\((?:[^()\\]|\\.|\([^()]*\))*\)", "", content)
 
     def remove_hyperlinks(self, content: str) -> str:
         """Unwrap ``[text](url)`` links and leave images untouched."""
-        return re.sub(r"(?<!!)\[([^\]]*)\]\([^)]*\)", r"\1", content)
+        return re.sub(r"(?<!!)\[([^\]]*)\]\((?:[^()\\]|\\.|\([^()]*\))*\)", r"\1", content)
 
     def parse_tups(self, filepath: str) -> list[tuple[str | None, str]]:
         """Parse file into tuples."""
