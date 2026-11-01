@@ -51,7 +51,7 @@ export function ContactImSyncDetailsDialog({
         setDisplayedRunId(nextOpen ? runId : null)
       }}
     >
-      <DialogContent className="h-180 w-173.25">
+      <DialogContent backdropProps={{ forceRender: true }} className="h-180 w-173.25">
         {subject && <SyncDetailsContent key={subject} runId={subject} />}
       </DialogContent>
     </Dialog>

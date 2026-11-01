@@ -300,6 +300,7 @@ export function ContactsImPlatformManagementSurface() {
         }}
       >
         <DialogContent
+          backdropProps={{ forceRender: true }}
           className={bindingTarget?.provider.provider === 'resend' ? 'w-130' : 'w-120'}
         >
           {bindingTarget && (
@@ -318,7 +319,7 @@ export function ContactsImPlatformManagementSurface() {
           if (!open) setReplacementProvider(null)
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
           <AlertDialogHeader>
             <AlertDialogTitle>
               {t(($) => $['imPlatform.replacement.title'], {
@@ -361,7 +362,7 @@ export function ContactsImPlatformManagementSurface() {
           if (!open) setDeleteTarget(null)
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
           <AlertDialogHeader>
             <AlertDialogTitle>
               {t(($) => $['imPlatform.delete.title'], {
