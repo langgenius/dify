@@ -1,0 +1,44 @@
+# Dev memory reservations measured for the four API roles (ENG-1311).
+# Overlay only: do not perform a full Helm upgrade until its image/config
+# baseline is reconciled with live state. See dev-builder-resources.md.
+api:
+  resources:
+    requests:
+      memory: 1536Mi
+    limits:
+      memory: 2Gi
+  affinity: &builderRolePlacement
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchExpressions:
+                - key: app
+                  operator: In
+                  values: [dify-api, dify-api-websocket, dify-worker, dify-worker-beat]
+                - key: app.kubernetes.io/instance
+                  operator: In
+                  values: [dify]
+collaboration:
+  websocket:
+    resources:
+      requests:
+        memory: 768Mi
+      limits:
+        memory: 1536Mi
+worker:
+  resources:
+    requests:
+      memory: 2Gi
+    limits:
+      memory: 3Gi
+  affinity: *builderRolePlacement
+workerBeat:
+  resources:
+    requests:
+      memory: 768Mi
+    limits:
+      memory: 1Gi
+  affinity: *builderRolePlacement
