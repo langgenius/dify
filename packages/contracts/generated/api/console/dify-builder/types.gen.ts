@@ -145,6 +145,17 @@ export type DifyBuilderConversationPageResponse = {
   last_seq: number | null
 }
 
+export type DifyBuilderFixControlResponse = {
+  acknowledged: boolean
+  base_version: number
+  client_action_id: string
+  fix_intent_id: string
+  operation: 'dismiss_fix' | 'fix' | 'stop_and_switch_fix'
+  session_id: string
+  status: string
+  target_task_id: string
+}
+
 export type DifyBuilderFixIntentPayload = {
   base_version: number
   checklist_errors?: Array<DifyBuilderChecklistErrorPayload>
@@ -2295,6 +2306,38 @@ export type GetDifyBuilderSessionsBySessionIdConversationResponses = {
 
 export type GetDifyBuilderSessionsBySessionIdConversationResponse =
   GetDifyBuilderSessionsBySessionIdConversationResponses[keyof GetDifyBuilderSessionsBySessionIdConversationResponses]
+
+export type GetDifyBuilderSessionsBySessionIdFixIntentsData = {
+  body?: never
+  path: {
+    session_id: string
+  }
+  query: {
+    base_version: number
+    client_action_id: string
+    expected_task_id?: string
+    fix_intent_id?: string
+    operation: 'dismiss_fix' | 'fix' | 'stop_and_switch_fix'
+  }
+  url: '/dify-builder/sessions/{session_id}/fix-intents'
+}
+
+export type GetDifyBuilderSessionsBySessionIdFixIntentsErrors = {
+  400: DifyBuilderErrorResponse | ErrorResponse
+  404: DifyBuilderErrorResponse | ErrorResponse
+  409: DifyBuilderErrorResponse | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetDifyBuilderSessionsBySessionIdFixIntentsError =
+  GetDifyBuilderSessionsBySessionIdFixIntentsErrors[keyof GetDifyBuilderSessionsBySessionIdFixIntentsErrors]
+
+export type GetDifyBuilderSessionsBySessionIdFixIntentsResponses = {
+  200: DifyBuilderFixControlResponse
+}
+
+export type GetDifyBuilderSessionsBySessionIdFixIntentsResponse =
+  GetDifyBuilderSessionsBySessionIdFixIntentsResponses[keyof GetDifyBuilderSessionsBySessionIdFixIntentsResponses]
 
 export type PostDifyBuilderSessionsBySessionIdFixIntentsData = {
   body: DifyBuilderFixIntentPayload

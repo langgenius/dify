@@ -37,6 +37,9 @@ export const parseStoredLifecycleControl = (
       sessionId: parsed.sessionId,
       clientActionId: parsed.clientActionId,
       baseVersion: parsed.baseVersion,
+      ...('fixIntentId' in parsed && typeof parsed.fixIntentId === 'string'
+        ? { fixIntentId: parsed.fixIntentId }
+        : {}),
       ...('expectedTaskId' in parsed && typeof parsed.expectedTaskId === 'string'
         ? { expectedTaskId: parsed.expectedTaskId }
         : {}),

@@ -23,6 +23,7 @@ const api = vi.hoisted(() => ({
   clear: vi.fn(),
   abandon: vi.fn(),
   fix: vi.fn(),
+  fixRead: vi.fn(),
   action: vi.fn(),
 }))
 
@@ -38,7 +39,7 @@ vi.mock('@/service/console', async (importOriginal) => ({
           stream: { get: api.stream },
           clear: { post: api.clear },
           abandon: { post: api.abandon },
-          fixIntents: { post: api.fix },
+          fixIntents: { post: api.fix, get: api.fixRead },
           actions: { post: api.action },
         },
       },
@@ -572,3 +573,142 @@ it('stages an existing-session Fix while busy and dismisses it without interrupt
     await building
   })
 })
+
+it.each(['task-1', 'other-task'])(
+  'recovers completed abandon only with its exact settled task %s',
+  async (taskId) => {
+    const { result, store } = renderSessionHook()
+    seed(store)
+    act(() =>
+      store.set(difyBuilderLifecycleControlAtom, {
+        operation: 'abandon',
+        phase: 'unknown',
+        sessionId: 'session-1',
+        clientActionId: 'abandon-completed',
+        baseVersion: 4,
+        expectedTaskId: 'task-1',
+      }),
+    )
+    api.get.mockResolvedValue(
+      createSessionView({
+        version: 5,
+        task_id: taskId,
+        task_status: 'completed',
+        run_status: 'complete',
+        canvas_read_only: false,
+        conversation_last_seq: 0,
+        last_command_id: 'abandon-completed',
+        lifecycle_settlement: 'settled',
+      }),
+    )
+    await act(async () => expect(await result.current.restore('session-1')).toBe(true))
+    expect(store.get(difyBuilderLifecycleControlAtom)?.phase ?? null).toBe(
+      taskId === 'task-1' ? null : 'unknown',
+    )
+    expect(api.abandon).not.toHaveBeenCalled()
+  },
+)
+
+it.each(['fix', 'dismiss_fix', 'stop_and_switch_fix'] as const)(
+  'restores only the exact authenticated %s control receipt without replay',
+  async (operation) => {
+    const { result, store } = renderSessionHook()
+    seed(store)
+    const control = {
+      operation,
+      phase: 'unknown' as const,
+      sessionId: 'session-1',
+      clientActionId: 'lost-action',
+      baseVersion: 4,
+      expectedTaskId: 'task-1',
+      ...(operation !== 'fix' ? { fixIntentId: 'intent-1' } : {}),
+    }
+    act(() => store.set(difyBuilderLifecycleControlAtom, control))
+    api.get.mockResolvedValue(
+      createSessionView({
+        version: 6,
+        run_status: 'complete',
+        conversation_last_seq: 0,
+        task_id: 'task-2',
+      }),
+    )
+    const receipt = {
+      session_id: 'session-1',
+      operation,
+      client_action_id: 'lost-action',
+      base_version: 4,
+      target_task_id: 'task-1',
+      fix_intent_id: 'intent-1',
+      status:
+        operation === 'fix'
+          ? 'awaiting_confirmation'
+          : operation === 'dismiss_fix'
+            ? 'dismissed'
+            : 'activated',
+      acknowledged: true,
+    }
+    for (const forged of [
+      { client_action_id: 'wrong' },
+      { target_task_id: 'wrong' },
+      { acknowledged: false },
+      ...(operation === 'fix' ? [] : [{ fix_intent_id: 'wrong' }]),
+    ]) {
+      api.fixRead.mockResolvedValueOnce({ ...receipt, ...forged })
+      await act(async () => expect(await result.current.refresh()).toBe(true))
+      expect(store.get(difyBuilderLifecycleControlAtom)).toEqual(control)
+    }
+    api.fixRead.mockResolvedValueOnce(receipt)
+    await act(async () => expect(await result.current.refresh()).toBe(true))
+    expect(store.get(difyBuilderLifecycleControlAtom)).toBeNull()
+    expect(api.fixRead).toHaveBeenLastCalledWith(
+      {
+        params: { session_id: 'session-1' },
+        query: {
+          operation,
+          client_action_id: 'lost-action',
+          base_version: 4,
+          expected_task_id: 'task-1',
+          ...(operation !== 'fix' ? { fix_intent_id: 'intent-1' } : {}),
+        },
+      },
+      { context: { silent: true }, signal: expect.any(AbortSignal) },
+    )
+    expect(api.fix).not.toHaveBeenCalled()
+    expect(api.action).not.toHaveBeenCalled()
+  },
+)
+
+it.each([409, undefined])(
+  'keeps unknown Fix fenced if explicit clear fails with %s, using a fresh task/version',
+  async (status) => {
+    const { result, store } = renderSessionHook()
+    seed(store)
+    const control = {
+      operation: 'fix' as const,
+      phase: 'unknown' as const,
+      sessionId: 'session-1',
+      clientActionId: 'lost-alias',
+      baseVersion: 4,
+      expectedTaskId: 'task-1',
+    }
+    act(() => store.set(difyBuilderLifecycleControlAtom, control))
+    api.get.mockResolvedValue(
+      createSessionView({ version: 7, task_id: 'task-new', run_status: 'complete' }),
+    )
+    api.clear.mockRejectedValue(
+      Object.assign(new Error('Request failed'), status ? { status } : {}),
+    )
+    await act(async () => expect(await result.current.clearConversation()).toBe(false))
+    expect(api.get).toHaveBeenCalledOnce()
+    expect(api.clear.mock.calls[0]![0].body).toMatchObject({
+      base_version: 7,
+      expected_task_id: 'task-new',
+      confirmed: true,
+    })
+    expect(store.get(difyBuilderLifecycleControlAtom)?.operation).toBe(
+      status === 409 ? 'fix' : 'clear',
+    )
+    expect(store.get(difyBuilderLifecycleControlAtom)?.phase).toBe('unknown')
+    expect(api.fix).not.toHaveBeenCalled()
+  },
+)

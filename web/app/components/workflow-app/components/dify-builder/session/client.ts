@@ -4,6 +4,7 @@ import type {
   DifyBuilderFixIntentPayload,
   DifyBuilderReceiptSnapshot,
   DifyBuilderTaskControlPayload,
+  GetDifyBuilderSessionsBySessionIdFixIntentsData,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ChecklistErrorPayload, SessionModel } from '../types'
 import { consoleClient } from '@/service/console'
@@ -23,6 +24,16 @@ export const controlSessionConversation = (
         { params: { session_id: sessionId }, body },
         { context: { silent: true }, signal },
       )
+
+export const getSessionFixControl = (
+  sessionId: string,
+  query: GetDifyBuilderSessionsBySessionIdFixIntentsData['query'],
+  signal: AbortSignal,
+) =>
+  consoleClient.difyBuilder.sessions.bySessionId.fixIntents.get(
+    { params: { session_id: sessionId }, query },
+    { context: { silent: true }, signal },
+  )
 
 export const prepareSessionFix = (
   sessionId: string,

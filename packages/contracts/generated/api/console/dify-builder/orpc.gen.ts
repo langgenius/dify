@@ -6,6 +6,9 @@ import {
   zGetDifyBuilderSessionsBySessionIdConversationPath,
   zGetDifyBuilderSessionsBySessionIdConversationQuery,
   zGetDifyBuilderSessionsBySessionIdConversationResponse,
+  zGetDifyBuilderSessionsBySessionIdFixIntentsPath,
+  zGetDifyBuilderSessionsBySessionIdFixIntentsQuery,
+  zGetDifyBuilderSessionsBySessionIdFixIntentsResponse,
   zGetDifyBuilderSessionsBySessionIdNativeTestInputPath,
   zGetDifyBuilderSessionsBySessionIdNativeTestInputResponse,
   zGetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdPath,
@@ -163,6 +166,22 @@ export const conversation = {
   get,
 }
 
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDifyBuilderSessionsBySessionIdFixIntents',
+    path: '/dify-builder/sessions/{session_id}/fix-intents',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetDifyBuilderSessionsBySessionIdFixIntentsPath,
+      query: zGetDifyBuilderSessionsBySessionIdFixIntentsQuery,
+    }),
+  )
+  .output(zGetDifyBuilderSessionsBySessionIdFixIntentsResponse)
+
 export const post5 = oc
   .route({
     inputStructure: 'detailed',
@@ -180,6 +199,7 @@ export const post5 = oc
   .output(zPostDifyBuilderSessionsBySessionIdFixIntentsResponse)
 
 export const fixIntents = {
+  get: get2,
   post: post5,
 }
 
@@ -208,7 +228,7 @@ export const messages = {
  *
  * @deprecated
  */
-export const get2 = oc
+export const get3 = oc
   .route({
     deprecated: true,
     description:
@@ -223,7 +243,7 @@ export const get2 = oc
   .output(zGetDifyBuilderSessionsBySessionIdNativeTestInputResponse)
 
 export const nativeTestInput = {
-  get: get2,
+  get: get3,
 }
 
 /**
@@ -315,7 +335,7 @@ export const resume = {
  *
  * @deprecated
  */
-export const get3 = oc
+export const get4 = oc
   .route({
     deprecated: true,
     description:
@@ -330,7 +350,7 @@ export const get3 = oc
   .output(zGetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResponse)
 
 export const byRequestId = {
-  get: get3,
+  get: get4,
   cancel,
   decisions,
   resume,
@@ -406,7 +426,7 @@ export const execute = {
   post: post12,
 }
 
-export const get4 = oc
+export const get5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -418,7 +438,7 @@ export const get4 = oc
   .output(zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdResponse)
 
 export const byConsentId = {
-  get: get4,
+  get: get5,
   confirm,
   execute,
 }
@@ -485,7 +505,7 @@ export const stop = {
   post: post15,
 }
 
-export const get5 = oc
+export const get6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -503,10 +523,10 @@ export const get5 = oc
   .output(eventIterator(zGetDifyBuilderSessionsBySessionIdStreamResponse))
 
 export const stream = {
-  get: get5,
+  get: get6,
 }
 
-export const get6 = oc
+export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -518,7 +538,7 @@ export const get6 = oc
   .output(zGetDifyBuilderSessionsBySessionIdResponse)
 
 export const bySessionId = {
-  get: get6,
+  get: get7,
   abandon,
   actions,
   clear,

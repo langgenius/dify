@@ -14,6 +14,7 @@ import {
   difyBuilderMaterialControlAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderTaskControlAtom,
+  isUnknownFixControl,
 } from '../session/state'
 import {
   difyBuilderActiveInteractionAtom,
@@ -165,6 +166,11 @@ export const DifyBuilderPanelFooter = ({
         >
           {error}
         </div>
+      )}
+      {isUnknownFixControl(lifecycleControl) && (
+        <p className="mx-4 mb-2 system-xs-regular text-text-warning">
+          {t(($) => $['fixControl.unknown'], { ns: 'difyBuilder' })}
+        </p>
       )}
       {lifecycleControl?.phase === 'unknown' && (
         <div className="mx-4 mb-2 flex justify-end">
