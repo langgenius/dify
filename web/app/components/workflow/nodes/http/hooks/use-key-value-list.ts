@@ -1,6 +1,6 @@
 import type { KeyValue } from '../types'
 import { uniqueId } from 'es-toolkit/compat'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const UNIQUE_ID_PREFIX = 'key-value-'
 const strToKeyValueList = (value: string) => {
@@ -28,39 +28,52 @@ const stringifyList = (items: KeyValue[], noFilter?: boolean) => {
 
 const useKeyValueList = (value: string, onChange: (value: string) => void, noFilter?: boolean) => {
   const [list, doSetList] = useState<KeyValue[]>(() => (value ? strToKeyValueList(value) : []))
+  // Mirror the latest committed list synchronously so callbacks never close over
+  // a stale render-time value when several updates fire within one event — e.g.
+  // an `onChange` immediately followed by `onAdd` while typing into the trailing row.
+  const listRef = useRef(list)
+  const commitList = useCallback((next: KeyValue[]) => {
+    listRef.current = next
+    doSetList(next)
+  }, [])
   const setList = useCallback(
     (nextList: KeyValue[]) => {
       const normalized = normalizeList(nextList)
-      doSetList(normalized)
+      commitList(normalized)
       if (noFilter) return
 
       const newValue = stringifyList(normalized, noFilter)
       if (newValue !== value) onChange(newValue)
     },
-    [noFilter, onChange, value],
+    [commitList, noFilter, onChange, value],
   )
 
   useEffect(() => {
     Promise.resolve().then(() => {
-      doSetList((prev) => {
-        const targetItems = value ? strToKeyValueList(value) : []
-        const currentValue = stringifyList(prev, noFilter)
-        const targetValue = stringifyList(targetItems, noFilter)
-        if (currentValue === targetValue) return prev
-        return normalizeList(targetItems)
-      })
+      const prev = listRef.current
+      const targetItems = value ? strToKeyValueList(value) : []
+      const currentValue = stringifyList(prev, noFilter)
+      const targetValue = stringifyList(targetItems, noFilter)
+      if (currentValue === targetValue) return
+      // Preserve ids of rows that already exist (matched positionally) so the
+      // Lexical editor is not remounted; only genuinely new rows get a fresh id.
+      const reconciled = targetItems.map((item, index) => ({
+        ...item,
+        id: prev[index]?.id || item.id,
+      }))
+      commitList(normalizeList(reconciled))
     })
-  }, [value, noFilter])
+  }, [value, noFilter, commitList])
   const addItem = useCallback(() => {
     setList([
-      ...list,
+      ...listRef.current,
       {
         id: uniqueId(UNIQUE_ID_PREFIX),
         key: '',
         value: '',
       },
     ])
-  }, [list, setList])
+  }, [setList])
 
   const [isKeyValueEdit, setIsKeyValueEdit] = useState(true)
 
