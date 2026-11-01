@@ -9,6 +9,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from controllers.common.errors import NoFileUploadedError
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import RBACCheck, Workspace
@@ -51,6 +52,46 @@ _FILE_UPLOAD_PARAMS = {
         "required": True,
     },
 }
+
+# Multipart framing around the file itself: boundary lines, part headers and the
+# other form fields. Sized generously so a file at the configured limit is never
+# refused for its envelope.
+_MULTIPART_ENVELOPE_BYTES = 1024 * 1024
+
+
+def _cap_skill_upload_body(max_file_bytes: int) -> None:
+    """Cap the request body before the handler reads the uploaded file.
+
+    ``request.files[...].read()`` and ``file.stream.read()`` materialize the
+    whole part, and Flask defaults ``max_content_length`` to None, so without
+    this the configured file size limit is only consulted after the process has
+    already buffered the upload. Setting it makes the request fail at the read
+    that would have crossed it. The ``inner_api`` controllers cap the same way.
+    """
+    request.max_content_length = max_file_bytes + _MULTIPART_ENVELOPE_BYTES
+
+
+def _skill_archive_bytes() -> int:
+    """Bytes allowed for one imported skill archive, matching import_skill's check."""
+    return dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024
+
+
+def _max_draft_file_bytes() -> int:
+    """Largest draft file any extension may upload.
+
+    ``upload_file`` checks the real limit per extension, which depends on the
+    filename and so cannot be known before the body arrives. Use the widest of
+    the configured limits as the envelope ceiling: too coarse to reject a file
+    this side, precise enough to bound the buffer, and it leaves the
+    per-extension decision where it already lives.
+    """
+    limits_mib = (
+        dify_config.UPLOAD_FILE_SIZE_LIMIT,
+        dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
+        dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
+        dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
+    )
+    return max(limits_mib) * 1024 * 1024
 
 
 class WorkspaceSkillsQuery(BaseModel):
@@ -356,6 +397,7 @@ class WorkspaceSkillFileUploadApi(Resource):
     @edit_permission_required
     @with_session
     def post(self, session: Session, request_context: RequestContext):
+        _cap_skill_upload_body(_max_draft_file_bytes())
         if "file" not in request.files:
             raise NoFileUploadedError("no file uploaded")
 
@@ -401,6 +443,7 @@ class WorkspaceSkillImportApi(Resource):
     @edit_permission_required
     @with_session
     def post(self, session: Session, request_context: RequestContext):
+        _cap_skill_upload_body(_skill_archive_bytes())
         upload = request.files.get("file")
         if upload is None:
             raise SkillRequestError("file is required")
