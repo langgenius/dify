@@ -60,8 +60,8 @@ client_request_buffer_max_size 100 MB
 ################################## Performance & Concurrency ###############################
 max_filedescriptors 65536
 connect_timeout 30 seconds
-request_timeout 2 minutes
-read_timeout 2 minutes
+request_timeout ${SSRF_REQUEST_TIMEOUT} seconds
+read_timeout ${SSRF_READ_TIMEOUT} seconds
 client_lifetime 5 minutes
 shutdown_lifetime 30 seconds
 
