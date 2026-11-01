@@ -28,7 +28,8 @@ prepare-docker:
 	else \
 		echo "Docker middleware.env already exists"; \
 	fi
-	@cd $(DOCKER_DIR) && docker compose -f docker-compose.middleware.yaml --env-file middleware.env -p $(DOCKER_MIDDLEWARE_PROJECT) up -d
+	@sed -i "s/^SANDBOX_API_KEY=$$/SANDBOX_API_KEY=$$(openssl rand -hex 32)/" "$(DOCKER_MIDDLEWARE_ENV)"
+	@cd $(DOCKER_DIR) && docker compose -f docker-compose.middleware.yaml -f docker-compose.middleware.sandbox-port.yaml --env-file middleware.env -p $(DOCKER_MIDDLEWARE_PROJECT) up -d
 	@echo "✅ Docker middleware started"
 
 # Step 2: Prepare web environment
@@ -42,6 +43,7 @@ prepare-web:
 prepare-api:
 	@echo "🔧 Setting up API environment..."
 	@cp -n api/.env.example api/.env 2>/dev/null || echo "API .env already exists"
+	@key=$$(sed -n 's/^SANDBOX_API_KEY=//p' "$(DOCKER_MIDDLEWARE_ENV)"); sed -i "s/^CODE_EXECUTION_API_KEY=.*/CODE_EXECUTION_API_KEY=$$key/" api/.env
 	@cd api && uv sync --dev
 	@cd api && uv run flask db upgrade
 	@echo "✅ API environment prepared (not started)"

@@ -1,0 +1,4 @@
+services:
+  ssrf_proxy:
+    ports:
+      - "127.0.0.1:${EXPOSE_SANDBOX_PORT:-8194}:${SSRF_SANDBOX_PROXY_PORT:-8194}"

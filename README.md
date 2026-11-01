@@ -78,6 +78,7 @@ The easiest way to start the Dify server is through [Docker Compose](docker/dock
 cd dify
 cd docker
 cp .env.example .env
+# Set SANDBOX_API_KEY in .env to a unique random secret before starting.
 docker compose up -d
 ```
 
