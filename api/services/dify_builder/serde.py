@@ -22,6 +22,7 @@ from core.dify_builder.models import (
     Risk,
     TestInput,
 )
+from services.dify_builder.plan import validated_confirmed_requirement_keys
 
 
 def context_to_dict(fc: DifyBuilderContext) -> dict[str, Any]:
@@ -36,6 +37,7 @@ def context_to_dict(fc: DifyBuilderContext) -> dict[str, Any]:
     from services.dify_builder.task_lifecycle import validated_task_summaries
 
     result = asdict(fc)
+    result["confirmed_requirement_keys"] = validated_confirmed_requirement_keys(fc.confirmed_requirement_keys)
     result["code_risk_assessments"] = validated_assessments(fc.code_risk_assessments)
     result["task_summaries"] = [asdict(summary) for summary in validated_task_summaries(fc.task_summaries)]
     return result
@@ -84,6 +86,7 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         attachment_material=list(d.get("attachment_material") or []),
         active_entry_mode=d.get("active_entry_mode", ""),
         requirements=dict(d.get("requirements") or {}),
+        confirmed_requirement_keys=validated_confirmed_requirement_keys(d.get("confirmed_requirement_keys")),
         plan_items=list(d.get("plan_items") or []),
         plan_title=d.get("plan_title", ""),
         plan_input_summary=d.get("plan_input_summary", ""),

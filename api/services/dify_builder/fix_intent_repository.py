@@ -359,6 +359,7 @@ class SqlFixIntentRepository:
             context.last_repair_error = context.last_repair_graph_revision = context.last_edit_rejection = ""
             context.goal_text = ""
             context.requirements = context.edit_rules = context.resource_selection = {}
+            context.confirmed_requirement_keys = None
             context.plan_items = context.built_node_ids = context.edit_target_node_ids = []
             context.attachment_material = []
             context.last_snapshot_hash = revision

@@ -36,6 +36,7 @@ def _reset_for_new_task(session: Session, context: DifyBuilderContext, mode: Ent
     context.paused = False
     context.recovery_class = ""
     context.attachment_material = []
+    context.confirmed_requirement_keys = None
     context.retained_test_input_ref = context.test_input_ref or context.retained_test_input_ref
     context.confirmed_consent_id = ""
     context.confirmed_command_id = ""
