@@ -109,6 +109,7 @@ from services.dify_builder.repair_gate import NO_REPAIR_REASON
 logger = logging.getLogger(__name__)
 
 _ADJUSTMENT_REQUEST = "__builder_adjustment_request"
+_ADJUSTMENT_HISTORY = "__builder_adjustment_history"
 
 __all__ = [
     "build_registry",
@@ -732,10 +733,16 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     out (it all already exists), so apply_repair([]) is a no-op rather than
     raising on a colliding node id.
 
+    Continue adjusting collects changes through the requirements gate, keeping
+    the original goal, selected resources and draft. A replacement plan still
+    requires explicit approval before building.
+
     The service-owned initial-draft policy replaces placeholder Start nodes or
     the unconfigured Chatflow template in the same batch as generation. IDs
     being replaced do not suppress the generated nodes or connections."""
     kind = action_kind(turn)
+    if kind == "re_fix":
+        return _collect_adjustment(fc)
     if kind != "approve_repair":
         return StepResult(next=PcState.BUILD_PLAN_APPROVAL, context=fc)
 
@@ -1579,6 +1586,43 @@ def handle_await_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
     return StepResult(next=PcState.BUILD_AWAIT_REPAIR, context=fc)
 
 
+def _collect_adjustment(fc: DifyBuilderContext) -> StepResult:
+    """Reuse the requirements gate without approving or applying a new plan."""
+    # Archive the prior accepted change once, when opening a fresh form.
+    # Planning retries reuse that form and must not duplicate its feedback.
+    previous_request = fc.requirements.get(_ADJUSTMENT_REQUEST)
+    if isinstance(previous_request, str) and previous_request.strip():
+        fc.requirements[_ADJUSTMENT_HISTORY] = [*fc.requirements.get(_ADJUSTMENT_HISTORY, []), previous_request]
+    fc.form_fields = [field for field in fc.form_fields if field.get("key") != _ADJUSTMENT_REQUEST]
+    fc.form_fields.append(
+        {
+            "key": _ADJUSTMENT_REQUEST,
+            "label_copy": asdict(copy_text(BuilderCopyId.FORMS_GOAL)),
+            "type": "text",
+            "required": True,
+        }
+    )
+    fc.requirements[_ADJUSTMENT_REQUEST] = ""
+    fc.test_input_ref = ""
+    fc.verify_run_id = ""
+    fc.repair_attempts = 0
+    fc.last_repair_error = ""
+    fc.unknown_outcome_count = 0
+    decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.ACTIONS_CONTINUE_ADJUSTING)))
+    form_items = append_card(
+        fc,
+        FormCard(
+            variant="build_requirements",
+            title=copy_text(BuilderCopyId.FORMS_REQUIREMENTS_TITLE),
+            description=copy_text(BuilderCopyId.FORMS_EDIT_RULES_DESCRIPTION),
+            fields=build_form_fields(fc.form_fields),
+            values=dict(fc.requirements),
+            frozen=False,
+        ),
+    )
+    return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc, items=[*decision_items, *form_items])
+
+
 def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Terminal decision. publish_workflow -> build.publish;
     keep_draft -> build.complete (skips publish); continue_adjusting
@@ -1609,38 +1653,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         )
         return StepResult(next=PcState.BUILD_COMPLETE, context=fc, items=[*decision_items, *turn_items])
     if kind == "re_fix":  # continue_adjusting
-        fc.form_fields = [field for field in fc.form_fields if field.get("key") != _ADJUSTMENT_REQUEST]
-        fc.form_fields.append(
-            {
-                "key": _ADJUSTMENT_REQUEST,
-                "label_copy": asdict(copy_text(BuilderCopyId.FORMS_GOAL)),
-                "type": "text",
-                "required": True,
-            }
-        )
-        fc.requirements[_ADJUSTMENT_REQUEST] = ""
-        fc.test_input_ref = ""
-        fc.verify_run_id = ""
-        fc.repair_attempts = 0
-        fc.last_repair_error = ""
-        fc.unknown_outcome_count = 0
-        decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.ACTIONS_CONTINUE_ADJUSTING)))
-        form_items = append_card(
-            fc,
-            FormCard(
-                variant="build_requirements",
-                title=copy_text(BuilderCopyId.FORMS_REQUIREMENTS_TITLE),
-                description=copy_text(BuilderCopyId.FORMS_EDIT_RULES_DESCRIPTION),
-                fields=build_form_fields(fc.form_fields),
-                values=dict(fc.requirements),
-                frozen=False,
-            ),
-        )
-        return StepResult(
-            next=PcState.BUILD_GOAL_ANALYSIS,
-            context=fc,
-            items=[*decision_items, *form_items],
-        )
+        return _collect_adjustment(fc)
     if kind == "undo":  # revert
         perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_REQUESTED_A_REVERT)))

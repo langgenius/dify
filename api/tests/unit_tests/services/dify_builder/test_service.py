@@ -1981,6 +1981,225 @@ def test_failed_build_planning_reload_reoffers_confirmed_requirements_and_retry_
     assert all(item.payload["cards"] == ["form"] for item in failures)
 
 
+@pytest.mark.parametrize("planning_succeeds", [True, False])
+def test_build_plan_adjustment_preserves_context_and_requires_another_approval(planning_succeeds: bool) -> None:
+    """Replanning must collect changes and leave the draft untouched until approval."""
+    from copy import deepcopy
+    from datetime import datetime
+
+    from core.dify_builder.contract import CONFIRM_ACTION_ID, ResourceOption
+    from core.dify_builder.models import BuildNodesResult, Turn
+    from services.dify_builder.application.handlers_build import build_registry
+    from services.dify_builder.application.runner import Env, Runner
+    from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
+
+    resource_id = "model:openai:gpt-4o"
+    goal = "Create the quarterly report from CSV and POST to the supplied endpoint."
+    requirements = {"currency": "USD", "endpoint": "https://example.test/report", "constraint": "Use only CSV"}
+    change = "Add a separate risk summary; preserve the input and destination."
+
+    class Replanner(StubAgent):
+        def __init__(self) -> None:
+            self.sources: list[tuple[str, dict[str, object]]] = []
+            self.fail_next = False
+
+        @override
+        def propose_plan_v1(
+            self, requirements: dict[str, object], *, goal_text: str, reply_language: str | None = None
+        ) -> WorkflowPlan | None:
+            self.sources.append((goal_text, deepcopy(requirements)))
+            if not planning_succeeds or self.fail_next:
+                self.fail_next = False
+                return None
+            return WorkflowPlan("Revised report", "CSV", "Report and risks", ["Produce report", "Summarize risks"])
+
+        @override
+        def discover_resources(
+            self, plan_items: list[str], *, goal_text: str, requirements: Inputs, reply_language: str | None = None
+        ) -> list[ResourceOption]:
+            return [
+                ResourceOption(id=resource_id, label="Report model", meta="Configured", kind="model", readiness="ready")
+            ]
+
+        @override
+        def reconcile_resource_plan(
+            self,
+            plan: WorkflowPlan,
+            resource_ids: list[str],
+            *,
+            goal_text: str,
+            requirements: Inputs,
+            reply_language: str | None = None,
+        ) -> WorkflowPlan:
+            return WorkflowPlan(plan.title, plan.input_summary, plan.output_summary, plan.items, resource_ids)
+
+        @override
+        def build_nodes(
+            self,
+            plan_items: list[str],
+            resource_ids: list[str] | None = None,
+            *,
+            trusted_text: str = "",
+            reply_language: str | None = None,
+        ) -> BuildNodesResult:
+            raise AssertionError("adjusting or replanning must not generate a workflow before approval")
+
+    class UnchangedDraft(FakeDifyPort):
+        @override
+        def apply_repair(self, *_args: object, **_kwargs: object) -> Never:
+            raise AssertionError("adjusting or replanning must not write the draft")
+
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_PLAN_APPROVAL,
+    )
+    context = DifyBuilderContext(
+        goal_text=goal,
+        requirements=deepcopy(requirements),
+        form_fields=[{"key": "currency", "label": "Currency", "type": "text"}],
+        plan_items=["Prior plan"],
+        resource_selection={"resource_ids": [resource_id]},
+        last_snapshot_hash="h0",
+    )
+    repo = InMemoryRepository()
+    repo.create_session(session, context, [])
+    agent = Replanner()
+    dify = UnchangedDraft()
+    original_draft = deepcopy(dify.graph)
+    canvas: list[Graph] = []
+    runner = Runner(
+        Env(repo=repo, dify=dify, agent=agent, now=lambda: datetime.min, emit_canvas=canvas.append), build_registry()
+    )
+    service = DifyBuilderService(repo, FakeSessionLock(), lambda *_args: None)
+
+    action = Action(
+        kind=resolve_submitted_action(CONFIRM_ACTION_ID, {"option_id": "continue_adjusting"}),
+        payload={"option_id": "continue_adjusting"},
+        base_version=session.version,
+    )
+    service._prepare_action(session.id, _actor(), action)
+    runner.advance(session.id, Turn(actor=_actor(), action=action))
+    view = service.get_session_view(session.id, _actor())
+    _, stored = repo.get_session(session.id)
+    assert view.state == "build.goal_analysis"
+    assert stored.goal_text == goal
+    assert stored.plan_items == ["Prior plan"]
+    assert stored.resource_selection == {"resource_ids": [resource_id]}
+    assert agent.sources == []
+    assert view.active_interaction is not None
+    assert view.active_interaction.action_id == "submit_requirements"
+    form = view.active_interaction.card.payload
+    assert form["values"] == {**requirements, "__builder_adjustment_request": ""}
+    assert next(field for field in form["fields"] if field["key"] == "__builder_adjustment_request")["required"]
+
+    blank = Action(
+        kind="submit_requirements", payload={"__builder_adjustment_request": "  "}, base_version=view.version
+    )
+    service._prepare_action(session.id, _actor(), blank)
+    runner.advance(session.id, Turn(actor=_actor(), action=blank))
+    assert agent.sources == []
+    assert repo.get_session(session.id)[0].current_state == PcState.BUILD_GOAL_ANALYSIS
+
+    current = service.get_session_view(session.id, _actor())
+    submit = Action(
+        kind="submit_requirements", payload={"__builder_adjustment_request": change}, base_version=current.version
+    )
+    service._prepare_action(session.id, _actor(), submit)
+    runner.advance(session.id, Turn(actor=_actor(), action=submit))
+    view = service.get_session_view(session.id, _actor())
+    _, stored = repo.get_session(session.id)
+    assert agent.sources == [(goal, {**requirements, "__builder_adjustment_request": change})]
+    assert stored.goal_text == goal
+    assert stored.requirements == {**requirements, "__builder_adjustment_request": change}
+    assert stored.resource_selection["resource_ids"] == [resource_id]
+
+    if planning_succeeds:
+        assert view.state == "build.resource_recommendation"
+        confirm = Action(kind="confirm_resources", payload={"resource_ids": [resource_id]}, base_version=view.version)
+        service._prepare_action(session.id, _actor(), confirm)
+        runner.advance(session.id, Turn(actor=_actor(), action=confirm))
+        view = service.get_session_view(session.id, _actor())
+        _, stored = repo.get_session(session.id)
+        assert view.state == "build.plan_approval"
+        assert view.run_status == "waiting_confirmation"
+        assert stored.plan_items == ["Produce report", "Summarize risks"]
+        assert stored.resource_selection == {"resource_ids": [resource_id]}
+        assert view.decision is not None
+        assert view.decision.default_option_id == "approve_plan"
+        assert [option.id for option in view.decision.options] == ["approve_plan", "continue_adjusting"]
+
+        # A fresh request must not erase a prior accepted amendment. Failed
+        # planning and retrying this same form must not archive it twice.
+        adjust_again = Action(kind="re_fix", base_version=view.version)
+        service._prepare_action(session.id, _actor(), adjust_again)
+        runner.advance(session.id, Turn(actor=_actor(), action=adjust_again))
+        view = service.get_session_view(session.id, _actor())
+        _, stored = repo.get_session(session.id)
+        assert stored.requirements == {
+            **requirements,
+            "__builder_adjustment_history": [change],
+            "__builder_adjustment_request": "",
+        }
+        blank_again = Action(
+            kind="submit_requirements", payload={"__builder_adjustment_request": ""}, base_version=view.version
+        )
+        service._prepare_action(session.id, _actor(), blank_again)
+        runner.advance(session.id, Turn(actor=_actor(), action=blank_again))
+        assert agent.sources == [(goal, {**requirements, "__builder_adjustment_request": change})]
+
+        second_change = "Also add an appendix."
+        combined = {
+            **requirements,
+            "__builder_adjustment_history": [change],
+            "__builder_adjustment_request": second_change,
+        }
+        agent.fail_next = True
+        for expected_state in ("build.goal_analysis", "build.resource_recommendation"):
+            view = service.get_session_view(session.id, _actor())
+            second_submit = Action(
+                kind="submit_requirements",
+                payload={"__builder_adjustment_request": second_change},
+                base_version=view.version,
+            )
+            service._prepare_action(session.id, _actor(), second_submit)
+            runner.advance(session.id, Turn(actor=_actor(), action=second_submit))
+            view = service.get_session_view(session.id, _actor())
+            _, stored = repo.get_session(session.id)
+            assert view.state == expected_state
+            assert stored.goal_text == goal
+            assert stored.requirements == combined
+            assert stored.resource_selection["resource_ids"] == [resource_id]
+        assert agent.sources == [
+            (goal, {**requirements, "__builder_adjustment_request": change}),
+            (goal, combined),
+            (goal, combined),
+        ]
+        second_confirm = Action(
+            kind="confirm_resources", payload={"resource_ids": [resource_id]}, base_version=view.version
+        )
+        service._prepare_action(session.id, _actor(), second_confirm)
+        runner.advance(session.id, Turn(actor=_actor(), action=second_confirm))
+        view = service.get_session_view(session.id, _actor())
+        assert view.state == "build.plan_approval"
+        assert view.decision is not None
+        assert view.decision.default_option_id == "approve_plan"
+    else:
+        assert view.state == "build.goal_analysis"
+        assert stored.plan_items == ["Prior plan"]
+        assert view.active_interaction is not None
+        assert view.active_interaction.card.payload["values"]["__builder_adjustment_request"] == change
+
+    assert dify.graph == original_draft
+    assert canvas == []
+    with pytest.raises(ConflictError, match="stale base_version"):
+        service._prepare_action(
+            session.id, _actor(), Action(kind="re_fix" if planning_succeeds else "submit_requirements", base_version=1)
+        )
+
+
 def test_prepare_form_action_snapshots_submitted_field_values(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:
@@ -2117,7 +2336,7 @@ def test_build_waiting_state_actions_resolve_to_handled_kinds() -> None:
     handled: dict[PcState, set[str]] = {
         PcState.BUILD_GOAL_ANALYSIS: {"submit_requirements"},
         PcState.BUILD_RESOURCE_RECOMMENDATION: {"confirm_resources"},
-        PcState.BUILD_PLAN_APPROVAL: {"approve_repair"},
+        PcState.BUILD_PLAN_APPROVAL: {"approve_repair", "re_fix"},
         PcState.BUILD_EXECUTION: {"run_test", "undo"},
         PcState.BUILD_REVIEW: {"publish_workflow", "keep_draft", "re_fix", "undo"},
         PcState.BUILD_REVERTED: {"re_fix"},

@@ -399,6 +399,9 @@ class SessionView:
     task_status: Literal["active", "paused", "completed", "abandoned"] = "active"
     task_summaries: list[TaskSummary] = field(default_factory=list)
     conversation_cleared: bool = False
+    # Current clear/abandon execution state, never physical cleanup proof.
+    # None means no applicable control; absent applicable evidence is unknown.
+    lifecycle_settlement: Literal["settled", "pending", "unknown"] | None = None
     pending_fix_context: "RunContextCard | PreflightContextCard | None" = None
 
 

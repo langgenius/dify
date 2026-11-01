@@ -232,6 +232,12 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             kind=ActionKind.PRIMARY,
             next_state="build.execution",
         ),
+        UiAction(
+            id="continue_adjusting",
+            label=copy_text(BuilderCopyId.ACTIONS_CONTINUE_ADJUSTING),
+            kind=ActionKind.SECONDARY,
+            next_state="build.goal_analysis",
+        ),
     ],
     PcState.BUILD_EXECUTION: [
         UiAction(
@@ -815,7 +821,7 @@ _BACKEND_ACTIONS_FOR: dict[PcState, frozenset[str]] = {
     # no longer gates on any action, so it has no entry here, matching every
     # other working Build/Edit state (BUILD_TEST_AND_REPAIR, BUILD_PUBLISH, ...).
     PcState.BUILD_RESOURCE_RECOMMENDATION: frozenset({"confirm_resources", "rediscover_resources"}),
-    PcState.BUILD_PLAN_APPROVAL: frozenset({"approve_repair"}),
+    PcState.BUILD_PLAN_APPROVAL: frozenset({"approve_repair", "re_fix"}),
     PcState.BUILD_EXECUTION: frozenset({"run_test", "undo"}),
     PcState.BUILD_AWAIT_TESTDATA: frozenset({"provide_testdata"}),
     PcState.BUILD_AWAIT_REPAIR: frozenset({"approve_repair", "keep_draft", "undo"}),
@@ -1712,7 +1718,11 @@ class DifyBuilderService:
         )
 
     def _build_session_view(self, s: Session, fc: DifyBuilderContext) -> SessionView:
-        from services.dify_builder.conversation_lifecycle import cleared_session_view, is_conversation_cleared
+        from services.dify_builder.conversation_lifecycle import (
+            cleared_session_view,
+            is_conversation_cleared,
+            lifecycle_settlement,
+        )
         from services.dify_builder.conversation_tasks import active_entry_mode
         from services.dify_builder.task_lifecycle import task_identity
 
@@ -1808,6 +1818,7 @@ class DifyBuilderService:
             if projection is not None:
                 actions, decision, pending_context = projection
         return SessionView(
+            lifecycle_settlement=lifecycle_settlement(fc),
             task_id=task_identity(s, fc),
             task_status="completed"
             if is_terminal(st)

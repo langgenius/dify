@@ -122,6 +122,158 @@ def test_clear_fences_late_insert_in_its_sql_transaction(
         late_insert()
 
 
+@pytest.mark.parametrize("settlement", ["settled", "pending", "unknown"])
+def test_clear_reload_projects_durable_settlement_without_reviving_history(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, settlement: str
+) -> None:
+    from copy import deepcopy
+
+    from services.dify_builder.wiring import _public_session_view, session_view_to_dict
+
+    session = seed(repo)
+    base = session.version
+    if settlement != "settled":
+        run = Run(kind="verify", status="unknown" if settlement == "unknown" else "running", inputs_ref="inputs")
+        repo.save_run(session.id, run)
+        current, context = repo.get_session(session.id)
+        context.verify_run_id = run.id
+        base = repo.compare_and_advance(session.id, current.version, current.current_state, context, [])
+    receipt = lifecycle().clear(
+        service, session.id, _actor(), base_version=base, client_action_id="clear", confirmed=True
+    )
+    original = deepcopy(receipt)
+    assert receipt["settlement"] == settlement
+    service._get_app_revision_fn = forbidden
+    service._read_task_dsl_fn = forbidden
+    service._build_session_view = forbidden
+    service._enqueue_fn = forbidden
+    view = service.get_session_view(session.id, _actor())
+    assert view.lifecycle_settlement == settlement
+    assert view.conversation_cleared
+    assert view.conversation_last_seq == -1
+    assert view.test_execution is None
+    assert view.attachments == []
+    assert service.get_conversation_page(session.id, _actor(), limit=20).data == []
+    streamed = service._read_stream_session_view(session.id, _actor())
+    assert streamed is not None
+    assert _public_session_view(streamed, include_last_command_id=False)["lifecycle_settlement"] == settlement
+    assert session_view_to_dict(view)["lifecycle_settlement"] == settlement
+    assert (
+        lifecycle().clear(service, session.id, _actor(), base_version=base, client_action_id="clear", confirmed=True)
+        == original
+    )
+    assert repo.get_session(session.id)[0].version == receipt["version"]
+    with pytest.raises(NotFoundError):
+        service.get_session_view(session.id, Actor(account_id="other", tenant_id=TENANT_ID))
+
+
+@pytest.mark.parametrize("cleared", [True, False])
+@pytest.mark.parametrize(
+    "evidence",
+    [
+        {},
+        {"settlement": "settled"},
+        {"lifecycle_receipt": {"id": "old"}, "settlement": "settled"},
+        {"lifecycle_receipt": {"id": "current"}},
+        {"lifecycle_receipt": {"id": "current"}, "settlement": "unproved"},
+        {"lifecycle_receipt": None, "settlement": "settled"},
+        {"lifecycle_receipt": {"id": "current"}, "settlement": []},
+    ],
+)
+def test_applicable_lifecycle_without_current_control_evidence_is_unknown(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, cleared: bool, evidence: dict[str, object]
+) -> None:
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_PLAN_APPROVAL,
+    )
+    context = DifyBuilderContext(task_status="abandoned", last_command_id="current", task_control=dict(evidence))
+    if cleared:
+        context.task_control["conversation_clear"] = {"version": 1, "seq_floor": 0}
+    repo.create_session(session, context, [])
+    assert service.get_session_view(session.id, _actor()).lifecycle_settlement == "unknown"
+
+
+def test_abandon_get_observes_current_settlement_without_replaying_cancel_or_old_receipt(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from copy import deepcopy
+
+    from models.dify_builder import DifyBuilderExecutionRequest
+    from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
+    from services.dify_builder.test_actions import BuilderTestActions
+
+    session = seed(repo)
+    request_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    with repo._session_factory() as sql, sql.begin():
+        sql.add(
+            DifyBuilderExecutionRequest(
+                id=request_id,
+                tenant_id=TENANT_ID,
+                app_id=APP_ID,
+                workflow_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                actor_id=ACCOUNT_ID,
+                session_id=session.id,
+                test_input_id="inputs",
+                context={"policy_version": "builder-native-test-v1"},
+                context_digest="a" * 64,
+                state="running",
+            )
+        )
+    current = NativeTestPublicReceipt(
+        request_id=request_id,
+        generation=0,
+        version=1,
+        status="running",
+        wait_reason=None,
+        native_run_id=None,
+        native_status=None,
+        pending=(),
+        outcome=None,
+        evidence_refs=(),
+    )
+    cancellations: list[str] = []
+
+    def execute(**_kwargs: object) -> NativeTestPublicReceipt:
+        cancellations.append("cancel")
+        return current
+
+    actions = BuilderTestActions(repo._session_factory, forbidden)
+    monkeypatch.setattr(actions, "execute", execute)
+    monkeypatch.setattr(actions, "current", lambda **_kwargs: current)
+    service._test_actions = actions
+    receipt = lifecycle().abandon(service, session.id, _actor(), base_version=1, client_action_id="abandon")
+    original = deepcopy(receipt)
+    assert receipt["settlement"] == "pending"
+    assert service.get_session_view(session.id, _actor()).lifecycle_settlement == "pending"
+    current = current.model_copy(update={"status": "terminal", "outcome": "cancelled"})
+    with repo._session_factory() as sql, sql.begin():
+        request = sql.get(DifyBuilderExecutionRequest, request_id)
+        assert request is not None
+        request.state = "sealed"
+        request.completion_summary = {"outcome": "cancelled"}
+    view = service.get_session_view(session.id, _actor())
+    assert view.lifecycle_settlement == "settled"
+    assert cancellations == ["cancel"]
+    assert lifecycle().abandon(service, session.id, _actor(), base_version=1, client_action_id="abandon") == original
+    assert repo.get_session(session.id)[1].task_control["lifecycle_receipt"]["receipt"] == original
+    current_task, context, activated = repo.activate_abandoned_continuation(
+        session.id,
+        _actor(),
+        base_version=view.version,
+        client_turn_id="fresh",
+        text="New task",
+        app_revision="revision",
+        dsl={"graph": {"nodes": []}},
+    )
+    assert activated
+    assert context.task_control["lifecycle_receipt"]["receipt"] == original
+    assert service.get_session_view(current_task.id, _actor()).lifecycle_settlement is None
+
+
 def test_clear_keeps_run_evidence_and_rejects_cross_owner_or_key_reuse(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:
