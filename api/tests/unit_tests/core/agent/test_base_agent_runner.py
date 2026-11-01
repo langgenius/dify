@@ -770,7 +770,9 @@ def test_init_uses_real_session_for_count_and_dependencies(
     assert get_dataset_tools.call_args.kwargs["session"] is sqlite_session
 
 
-def test_init_filters_files_by_type_not_vision(sqlite_session: Session, mocker: MockerFixture) -> None:
+def test_init_filters_files_by_type_not_vision(
+    sqlite_session: Session, mocker: MockerFixture, queue_manager: MessageBasedAppQueueManager
+) -> None:
     """Regression test for https://github.com/langgenius/dify/issues/39431
 
     Documents should be kept when the model supports DOCUMENT, even if it
@@ -820,7 +822,7 @@ def test_init_filters_files_by_type_not_vision(sqlite_session: Session, mocker: 
         app_config=app_config,
         model_config=ModelConfigWithCredentialsEntity.model_construct(),
         config=_agent(),
-        queue_manager=mocker.Mock(spec=module.AppQueueManager),
+        queue_manager=queue_manager,
         message=_message(message_id="msg1"),
         user_id="user",
         model_instance=model_instance,
