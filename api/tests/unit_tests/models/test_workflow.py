@@ -667,6 +667,48 @@ class TestWorkflowFeatureCompatibilityCases:
 
         assert workflow.features_dict == NEW_VERSION_WORKFLOW_FEATURES
 
+    @staticmethod
+    @pytest.mark.parametrize(
+        "image",
+        [{"enabled": True}, {"enabled": True, "number_limits": 3}, {"enabled": True, "number_limits": 6}],
+    )
+    @pytest.mark.parametrize(
+        "normalized",
+        [pytest.param(False, id="features_dict"), pytest.param(True, id="normalized_features_dict")],
+    )
+    @pytest.mark.parametrize("enabled", [True, False])
+    def test_workflow_features_preserve_top_level_file_upload_config(
+        image: dict[str, JsonValue], normalized: bool, enabled: bool
+    ) -> None:
+        workflow = _workflow_feature_compatibility_Workflow(
+            features=json.dumps(
+                {
+                    "file_upload": {
+                        "enabled": enabled,
+                        "number_limits": 10,
+                        "allowed_file_upload_methods": ["local_file"],
+                        "image": image,
+                    }
+                }
+            )
+        )
+
+        features = workflow.normalized_features_dict if normalized else workflow.features_dict
+        file_upload = features["file_upload"]
+
+        assert file_upload["enabled"] is enabled
+        assert file_upload["number_limits"] == 10
+        assert file_upload["allowed_file_upload_methods"] == ["local_file"]
+        assert "image" not in file_upload
+
+    @staticmethod
+    def test_workflow_features_default_legacy_file_upload_limit() -> None:
+        workflow = _workflow_feature_compatibility_Workflow(
+            features=json.dumps({"file_upload": {"image": {"enabled": True}}})
+        )
+
+        assert workflow.features_dict["file_upload"]["number_limits"] == 3
+
 
 """
 Comprehensive unit tests for Workflow models.

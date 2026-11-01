@@ -953,6 +953,65 @@ def test_chat_dsl_import_preserves_valid_feature_fields(sqlite_session: Session)
     assert persisted.text_to_speech_dict == model_config["text_to_speech"]
 
 
+def _export_workflow_dsl(
+    session: Session, monkeypatch: pytest.MonkeyPatch, *, mode: AppMode, features: dict[str, object]
+) -> str:
+    app = _app(mode=mode)
+    session.add(make_workflow(tenant_id=app.tenant_id, app_id=app.id, features=features))
+    session.flush()
+    monkeypatch.setattr("services.app_dsl_service.DependenciesAnalysisService.generate_dependencies", lambda **_: [])
+    return AppDslService.export_dsl(app, session=session)
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+@pytest.mark.parametrize("enabled", [True, False])
+def test_export_dsl_keeps_file_upload_settings_over_legacy_image_config(
+    mode: AppMode, enabled: bool, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    file_upload = {
+        "enabled": enabled,
+        "number_limits": 10,
+        "allowed_file_types": ["image"],
+        "allowed_file_extensions": [".png"],
+        "allowed_file_upload_methods": ["local_file"],
+    }
+
+    exported = yaml.safe_load(
+        _export_workflow_dsl(
+            sqlite_session,
+            monkeypatch,
+            mode=mode,
+            features={"file_upload": {**file_upload, "image": {"enabled": True}}},
+        )
+    )
+
+    assert exported["workflow"]["features"]["file_upload"] == file_upload
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+def test_workflow_dsl_round_trip_preserves_feature_settings(
+    mode: AppMode, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    features: dict[str, object] = {
+        "opening_statement": "",
+        "suggested_questions": ["What can you do?"],
+        "suggested_questions_after_answer": {"enabled": True, "prompt": "Suggest follow-ups"},
+        "speech_to_text": {"enabled": True},
+        "text_to_speech": {"enabled": True, "language": "en-US", "voice": "alloy", "autoPlay": "enabled"},
+        "retriever_resource": {"enabled": True},
+        "sensitive_word_avoidance": {"enabled": True, "type": "keywords", "config": {"keywords": "blocked"}},
+        "file_upload": {"enabled": True, "number_limits": 10, "allowed_file_upload_methods": ["local_file"]},
+    }
+    exported = yaml.safe_load(_export_workflow_dsl(sqlite_session, monkeypatch, mode=mode, features=features))
+    workflow_service = _DraftWorkflowService(draft=None)
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", lambda: workflow_service)
+
+    AppDslService(session=sqlite_session)._create_or_update_app(app=_app(mode=mode), data=exported, account=_account())
+
+    assert exported["workflow"]["features"] == features
+    assert workflow_service.synced_features == [features]
+
+
 def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: pytest.MonkeyPatch) -> None:
     session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock()))
     service = AppDslService(session=session)
@@ -1277,6 +1336,7 @@ class _DraftWorkflowService:
     draft: Workflow | None
     lookups: list[str] = field(default_factory=list)
     synced_hashes: list[str | None] = field(default_factory=list)
+    synced_features: list[dict[str, object]] = field(default_factory=list)
 
     def _draft_of(self, app_model: App) -> Workflow | None:
         return self.draft if self.draft is not None and self.draft.app_id == app_model.id else None
@@ -1289,8 +1349,11 @@ class _DraftWorkflowService:
         self.lookups.append("locked")
         return self._draft_of(app_model)
 
-    def sync_draft_workflow(self, *, graph: dict[str, object], unique_hash: str | None, **_: object) -> Workflow:
+    def sync_draft_workflow(
+        self, *, graph: dict[str, object], features: dict[str, object], unique_hash: str | None, **_: object
+    ) -> Workflow:
         self.synced_hashes.append(unique_hash)
+        self.synced_features.append(features)
         return _workflow(graph=graph)
 
 

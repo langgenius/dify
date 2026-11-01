@@ -4,7 +4,6 @@ import { DSLImportStatus } from '@/models/app'
 import {
   getImportNotificationPayload,
   isImportCompleted,
-  normalizeWorkflowFeatures,
   validateDSLContent,
 } from '../update-dsl-modal.helpers'
 
@@ -80,7 +79,7 @@ workflow:
     })
   })
 
-  describe('status and feature normalization', () => {
+  describe('import status and notifications', () => {
     it('should treat completed statuses as successful imports', () => {
       expect(isImportCompleted(DSLImportStatus.COMPLETED)).toBe(true)
       expect(isImportCompleted(DSLImportStatus.COMPLETED_WITH_WARNINGS)).toBe(true)
@@ -100,24 +99,6 @@ workflow:
         message: 'workflow.common.importWarning',
         children: 'workflow.common.importWarningDetails',
       })
-    })
-
-    it('should normalize workflow features with defaults', () => {
-      const features = normalizeWorkflowFeatures({
-        file_upload: {
-          image: {
-            enabled: true,
-          },
-        },
-        opening_statement: 'hello',
-        suggested_questions: ['what can you do?'],
-      })
-
-      expect(features.file.enabled).toBe(true)
-      expect(features.file.number_limits).toBe(3)
-      expect(features.opening.enabled).toBe(true)
-      expect(features.suggested).toEqual({ enabled: false })
-      expect(features.text2speech).toEqual({ enabled: false })
     })
   })
 })

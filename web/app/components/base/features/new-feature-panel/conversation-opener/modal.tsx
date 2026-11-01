@@ -61,11 +61,11 @@ const OpeningSettingModal = ({
     useBoolean(false)
   const [notIncludeKeys, setNotIncludeKeys] = useState<string[]>([])
 
-  const isSaveDisabled = useMemo(() => !tempValue.trim(), [tempValue])
+  const isSaveDisabled =
+    !tempValue.trim() && !tempSuggestedQuestions.some((question) => question.trim())
 
   const handleSave = useCallback(
     (ignoreVariablesCheck?: boolean) => {
-      // Prevent saving if opening statement is empty
       if (isSaveDisabled) return
 
       if (!ignoreVariablesCheck) {
