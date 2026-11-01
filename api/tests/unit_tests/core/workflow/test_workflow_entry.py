@@ -50,6 +50,7 @@ from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.answer.answer_node import AnswerNode
 from graphon.nodes.answer.entities import AnswerNodeData
 from graphon.nodes.code.code_node import CodeNode
+from graphon.nodes.code.entities import CodeNodeData
 from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.nodes.human_input.entities import HumanInputNodeData as GraphonHumanInputNodeData
 from graphon.nodes.human_input.human_input_node import HumanInputNode
@@ -364,6 +365,40 @@ class TestWorkflowEntryCases:
 
     class TestWorkflowEntry:
         """Test WorkflowEntry class methods."""
+
+        @pytest.mark.parametrize("input_key", ["item_ext", "code.item_ext"])
+        @pytest.mark.parametrize(
+            ("attribute", "value"),
+            [("name", "report.pdf"), ("extension", ".pdf"), ("mime_type", "application/pdf"), ("size", 1024)],
+        )
+        def test_mapping_iteration_file_attribute_inputs(
+            self, input_key: str, attribute: str, value: str | int
+        ) -> None:
+            selector = ["iteration", "item", attribute]
+            node_data = CodeNodeData.model_validate(
+                {
+                    "title": "Classify file",
+                    "code_language": "python3",
+                    "code": "def main(item_ext):\n    return {'result': str(item_ext)}",
+                    "variables": [{"variable": "item_ext", "value_selector": selector}],
+                    "outputs": {"result": {"type": "string"}},
+                }
+            )
+            variable_mapping = CodeNode.extract_variable_selector_to_variable_mapping(
+                graph_config={}, config={"id": "code", "data": node_data}
+            )
+            variable_pool = VariablePool()
+
+            WorkflowEntry.mapping_user_inputs_to_variable_pool(
+                variable_mapping=variable_mapping,
+                user_inputs={input_key: value},
+                variable_pool=variable_pool,
+                tenant_id="tenant",
+            )
+
+            attribute_value = variable_pool.get(selector)
+            assert attribute_value is not None
+            assert attribute_value.value == value
 
         @pytest.mark.parametrize("value", [0, False, "", [], {}])
         def test_qualified_input_preserves_falsy_values(self, value):
