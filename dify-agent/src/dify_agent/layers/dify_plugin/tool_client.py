@@ -294,6 +294,13 @@ def merge_blob_chunks(
             is_end = resp.message.end
 
             if chunk_id not in files:
+                # Validate the declared size before allocating the buffer.
+                # total_length comes from the plugin and the whole buffer is
+                # pre-allocated, so an oversized claim would exhaust memory
+                # (or raise an unhandled MemoryError/OverflowError) before the
+                # size limit below is ever checked.
+                if total_length > max_file_size:
+                    raise ValueError(f"File is too large which reached the limit of {max_file_size / 1024 / 1024}MB")
                 files[chunk_id] = FileChunk(total_length)
 
             if files[chunk_id].bytes_written + len(blob_data) > max_file_size:
