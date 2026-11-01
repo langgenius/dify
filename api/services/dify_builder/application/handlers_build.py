@@ -100,9 +100,10 @@ from services.dify_builder.initial_draft import build_intents_for_draft
 from services.dify_builder.plan import (
     ResourceDiscovery,
     WorkflowPlan,
-    has_knowledge_source_cue,
+    has_confirmed_knowledge_source_cue,
     make_plan_card,
     store_plan,
+    validated_confirmed_requirement_keys,
 )
 from services.dify_builder.repair_gate import NO_REPAIR_REASON
 
@@ -174,6 +175,7 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     analysis = env.agent.analyze_goal(fc.goal_text, reply_language=fc.reply_language or None)
     fc.form_fields = list(analysis.get("fields") or [])
     fc.requirements = dict(analysis.get("values") or {})
+    fc.confirmed_requirement_keys = []
     _refine_app_name(env, fc)
 
     progress.activate("build-prepare-requirements")
@@ -259,6 +261,20 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         keys = [f["key"] for f in fc.form_fields if isinstance(f, dict) and f.get("key")]
         previous_requirements = fc.requirements
         fc.requirements = merge_known_keys(fc.requirements, turn.action.payload, keys)
+        confirmed_keys = validated_confirmed_requirement_keys(fc.confirmed_requirement_keys)
+        if confirmed_keys is not None:
+            fc.confirmed_requirement_keys = list(
+                dict.fromkeys(
+                    [
+                        *confirmed_keys,
+                        *(
+                            key
+                            for key in keys
+                            if isinstance(key, str) and key in turn.action.payload and key in fc.requirements
+                        ),
+                    ]
+                )
+            )
         if fc.requirements != previous_requirements:
             clear_task_acceptance(fc)
 
@@ -622,7 +638,7 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
             or fc.resource_selection.get("blocked_capability") == "knowledge_retrieval_phase_two"
             or fc.resource_selection.get("knowledge_source_unavailable")
             or fc.resource_selection.get("knowledge_requires_clarification")
-            or has_knowledge_source_cue(fc.goal_text, fc.requirements)
+            or has_confirmed_knowledge_source_cue(fc.goal_text, fc.requirements, fc.confirmed_requirement_keys)
         )
     ):
         progress.fail_step("build-bind-resources")
@@ -1593,6 +1609,13 @@ def _collect_adjustment(fc: DifyBuilderContext) -> StepResult:
     previous_request = fc.requirements.get(_ADJUSTMENT_REQUEST)
     if isinstance(previous_request, str) and previous_request.strip():
         fc.requirements[_ADJUSTMENT_HISTORY] = [*fc.requirements.get(_ADJUSTMENT_HISTORY, []), previous_request]
+    confirmed_keys = validated_confirmed_requirement_keys(fc.confirmed_requirement_keys)
+    if confirmed_keys is not None and _ADJUSTMENT_REQUEST in confirmed_keys:
+        # The accepted request moved into history; do not lose its source cue
+        # when the next form clears the current request for another submission.
+        fc.confirmed_requirement_keys = [key for key in confirmed_keys if key != _ADJUSTMENT_REQUEST]
+        if isinstance(previous_request, str) and previous_request.strip() and _ADJUSTMENT_HISTORY not in confirmed_keys:
+            fc.confirmed_requirement_keys.append(_ADJUSTMENT_HISTORY)
     fc.form_fields = [field for field in fc.form_fields if field.get("key") != _ADJUSTMENT_REQUEST]
     fc.form_fields.append(
         {
