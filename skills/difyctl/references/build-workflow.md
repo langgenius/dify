@@ -19,7 +19,8 @@ Four phases. Each ends with a gate; never skip one, even for a small app.
 
 ## Read next
 
-- [`build-workflow/change.md`](build-workflow/change.md): read first when the app already exists.
+- Read [`build-workflow/maintenance.md`](build-workflow/maintenance.md) when reviewing a live app before deciding whether it needs a change.
+- [`build-workflow/change.md`](build-workflow/change.md): read first when changing an existing app.
 - [`build-workflow/spec.md`](build-workflow/spec.md): read in the spec phase.
 - [`build-workflow/plan.md`](build-workflow/plan.md): read in the plan phase.
 - [`build-workflow/build.md`](build-workflow/build.md): read in the build phase.
