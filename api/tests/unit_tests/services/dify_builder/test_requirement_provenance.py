@@ -185,7 +185,7 @@ def test_confirmation_provenance_roundtrips_without_aliasing(keys: list[str] | N
     _, _, context = setup_context()
     context.confirmed_requirement_keys = keys
     restored = context_from_dict(json.loads(json.dumps(context_to_dict(context))))
-    assert getattr(restored, "confirmed_requirement_keys", "missing") == keys
+    assert restored.confirmed_requirement_keys == keys
     if keys is not None:
         assert restored.confirmed_requirement_keys is not None
         restored.confirmed_requirement_keys.append("other")
@@ -195,7 +195,7 @@ def test_confirmation_provenance_roundtrips_without_aliasing(keys: list[str] | N
 @pytest.mark.parametrize("raw", ["answer", {}, [1], ["answer", None], [""], ["answer", "answer"]])
 def test_malformed_serialized_provenance_decodes_as_legacy_unknown(raw: object) -> None:
     restored = context_from_dict({"confirmed_requirement_keys": raw})
-    assert getattr(restored, "confirmed_requirement_keys", "missing") is None
+    assert restored.confirmed_requirement_keys is None
 
 
 def test_missing_serialized_provenance_stays_unknown_after_a_later_submission() -> None:
@@ -208,7 +208,7 @@ def test_missing_serialized_provenance_stays_unknown_after_a_later_submission() 
         }
     )
     submit(env, session, context, {"style": "brief"})
-    assert getattr(context, "confirmed_requirement_keys", "missing") is None
+    assert context.confirmed_requirement_keys is None
     result, _, _, _ = _confirm(context)
     assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
 
@@ -217,7 +217,7 @@ def test_reanalysis_replaces_stale_confirmation_provenance() -> None:
     env, session, context = setup_context()
     context.confirmed_requirement_keys = ["old"]
     handle_capability_check(env, Turn(actor=Actor(account_id="actor", tenant_id="tenant")), session, context)
-    assert getattr(context, "confirmed_requirement_keys", "missing") == []
+    assert context.confirmed_requirement_keys == []
 
 
 @pytest.mark.parametrize("mode", list(EntryMode))
@@ -235,7 +235,7 @@ def test_adjustment_history_retains_confirmed_source_after_request_is_cleared() 
     submit(env, session, context, {"__builder_adjustment_request": "使用知识库"})
     _collect_adjustment(context)
     assert context.requirements["__builder_adjustment_request"] == ""
-    assert getattr(context, "confirmed_requirement_keys", None) == ["__builder_adjustment_history"]
+    assert context.confirmed_requirement_keys == ["__builder_adjustment_history"]
     result, _, agent, _ = _confirm(context)
     assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
     assert agent.requests == []
@@ -256,7 +256,7 @@ def test_clear_discards_confirmation_provenance_at_the_durable_owner(
         service, session.id, _actor(), base_version=current.version, client_action_id="clear", confirmed=True
     )
     _, cleared = repo.get_session(session.id)
-    assert getattr(cleared, "confirmed_requirement_keys", "missing") is None
+    assert cleared.confirmed_requirement_keys is None
 
 
 def test_fix_activation_clears_provenance_with_replaced_requirements(repo: SqlDifyBuilderRepository) -> None:
