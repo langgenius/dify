@@ -26,6 +26,7 @@ from controllers.service_api.wraps import (
     cloud_edition_billing_resource_check,
     validate_and_get_api_token,
     validate_app_token,
+    validate_dataset_list_token,
     validate_dataset_token,
 )
 from core.db.session_factory import get_session_maker
@@ -43,6 +44,7 @@ from models.resource_access_token import (
     ResourceAccessTokenResourceType,
 )
 from services.api_token_service import ApiTokenCache, ApiTokenInvalidError
+from services.auth.resource_access_token_contracts import DatasetServiceApiGrant
 from services.knowledge_fs.control_space_commands import KnowledgeFSControlSpaceCommandService
 from tests.helpers.unit.config_override import config_overrides_context
 
@@ -999,6 +1001,7 @@ class TestValidateDatasetToken:
     @patch("controllers.service_api.wraps.user_logged_in")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.current_app")
+    @pytest.mark.parametrize("collection_read", [False, True])
     def test_dataset_admission_releases_request_session_before_handler(
         self,
         mock_current_app: Mock,
@@ -1006,6 +1009,7 @@ class TestValidateDatasetToken:
         mock_user_logged_in: Mock,
         app: Flask,
         sqlite_session: Session,
+        collection_read: bool,
     ) -> None:
         """Dataset handlers open their own sessions, so admission must not keep a connection for them."""
         _configure_current_app_mock(mock_current_app)
@@ -1016,9 +1020,11 @@ class TestValidateDatasetToken:
         sqlite_session.commit()
 
         observed: list[tuple[str, bool]] = []
+        admission = validate_dataset_list_token if collection_read else validate_dataset_token
 
-        @validate_dataset_token
-        def protected_view(tenant_id: str) -> str:
+        @admission
+        def protected_view(tenant_id: str, *, dataset_grant: DatasetServiceApiGrant) -> str:
+            assert dataset_grant.tenant_id == tenant_id
             observed.append((tenant_id, sqlite_session.in_transaction()))
             return "ok"
 
