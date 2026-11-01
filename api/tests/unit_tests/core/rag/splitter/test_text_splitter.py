@@ -2092,6 +2092,7 @@ class TestPerformanceCharacteristics:
         # Small chunk size should produce more chunks
         assert len(result_small) > len(result_large)
 
+
 # ============================================================================
 # Additional regression tests (added by PR, kept alongside the original suite)
 # ============================================================================
