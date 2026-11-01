@@ -16,6 +16,7 @@ from services.dify_builder.application.runner import Env, Runner
 from services.dify_builder.plan import WorkflowPlan
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
 from tests.unit_tests.services.dify_builder.test_bound_resource_plan_reconciliation import ReconciliationAgent
+from tests.unit_tests.services.dify_builder.test_knowledge_source_cue import MEETING_GOAL
 
 DATASET = "25f76fa8-db3b-499d-b7fc-2bfbddad778a"
 KNOWLEDGE = "knowledge:" + DATASET
@@ -307,6 +308,50 @@ def test_knowledge_catalogue_failure_without_selected_id_cannot_approve() -> Non
     )
     result, _, _, _ = confirm(ReconciliationAgent(PLAN), offered=[], ids=[], context=ctx)
     assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
+
+
+def test_model_only_confirmation_does_not_ask_to_waive_an_explicitly_excluded_knowledge_goal() -> None:
+    plan = WorkflowPlan(
+        "Text summary", "Supplied text", "Summary", ["Use the selected model"], used_resource_ids=[MODEL]
+    )
+    context = DifyBuilderContext(
+        goal_text=MEETING_GOAL,
+        requirements={"no_tools_http_agent_kb_files_external_accounts": True},
+        resource_selection={"knowledge_source_unavailable": False, "knowledge_requires_clarification": False},
+    )
+    result, stored, _, items = confirm(ReconciliationAgent(plan), offered=[], ids=[MODEL], context=context)
+    assert result.current_state == PcState.BUILD_PLAN_APPROVAL
+    assert stored.resource_selection["resource_ids"] == [MODEL]
+    assert "knowledge_decision_pending" not in stored.resource_selection
+    assert not any(item.kind == "form" for item in items)
+
+
+@pytest.mark.parametrize(
+    ("goal", "requirements"),
+    [
+        ("不使用工具，必须查询文档和知识库", {}),
+        ("Do not use tools, retrieve answers from documents and knowledge bases.", {}),
+        ("不可以不使用知识库", {}),
+        ("You cannot avoid using the knowledge base.", {}),
+        ("整理用户文本", {"rules": [{"source": "不使用工具，必须查询文档和知识库"}]}),
+        ("不使用知识库A，需要知识库B回答。", {}),
+        ("不要生成知识库节点但仍需检索", {}),
+        ("Do not use a knowledge base unless retrieval is necessary.", {}),
+    ],
+)
+def test_mixed_or_uncertain_source_cannot_bypass_handler_with_false_model_hint(
+    goal: str, requirements: dict[str, object]
+) -> None:
+    plan = WorkflowPlan("Text summary", "Input", "Summary", ["Use the selected model"], used_resource_ids=[MODEL])
+    context = DifyBuilderContext(
+        goal_text=goal,
+        requirements=requirements,
+        resource_selection={"knowledge_source_unavailable": False, "knowledge_requires_clarification": False},
+    )
+    result, stored, _, _ = confirm(ReconciliationAgent(plan), offered=[], ids=[MODEL], context=context)
+    assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert stored.resource_selection["knowledge_decision_pending"]["original_goal"] == goal
+    assert not stored.checkpoint_id
 
 
 def decision_dialog() -> tuple[Runner, InMemoryRepository, str, ReconciliationAgent]:
