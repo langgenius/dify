@@ -330,6 +330,22 @@ def cloud_edition_billing_rate_limit_check[**P, R](
 
 
 def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
+    """Admit an ordinary dataset operation without allowing scoped-key discovery."""
+    return _validate_dataset_token(view, list_datasets=False)
+
+
+def validate_dataset_list_token[R](view: Callable[..., R]) -> Callable[..., R]:
+    """Admit collection reads with a server-resolved DatasetServiceApiGrant.
+
+    The view must consume the grant as a hard query boundary before pagination.
+    Invalid credentials remain rejected; resource access tokens keep their existing
+    resolver. Restricted Dataset API keys must have at least one legacy binding;
+    KnowledgeFS-only keys remain forbidden on this legacy collection.
+    """
+    return _validate_dataset_token(view, list_datasets=True)
+
+
+def _validate_dataset_token[R](view: Callable[..., R], *, list_datasets: bool) -> Callable[..., R]:
     view_parameters = inspect.signature(view).parameters
     positional_parameters = [
         parameter
@@ -338,6 +354,8 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
     ]
     expects_bound_instance = bool(positional_parameters and positional_parameters[0].name in {"self", "cls"})
     accepts_dataset_grant = "dataset_grant" in view_parameters
+    if list_datasets and not accepts_dataset_grant:
+        raise TypeError("Dataset list views must consume dataset_grant.")
 
     @wraps(view)
     def decorated(*args: object, **kwargs: object) -> R:
@@ -369,9 +387,9 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
             #   no rows  -> the key can reach every dataset in its tenant (default / back-compat)
             #   N rows   -> the key is limited to exactly those resources
             # Only legacy-dataset bindings count here: a key bound solely to KnowledgeFS spaces
-            # is restricted but has no reachable legacy dataset, so it is rejected. A bound key
-            # may only call endpoints carrying one of its dataset ids; endpoints without a
-            # dataset id (e.g. list/create datasets) are rejected. The scope is queried per
+            # is restricted but has no reachable legacy dataset, so it remains forbidden.
+            # Collection reads accept legacy or mixed bindings and receive only legacy IDs;
+            # other operations still require a bound dataset id. The scope is queried per
             # request (not cached) so changes take effect immediately.
             # db.session is Flask-SQLAlchemy's scoped_session proxy; cast so the plain-Session
             # typed helper accepts it (runtime proxies every Session method through unchanged).
@@ -382,12 +400,13 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
             )
             if scope is None:
                 raise Unauthorized("API key is no longer valid.")
-            if not scope.allows_dataset(str(dataset_id) if dataset_id else None):
+            allows_dataset_list = list_datasets and (not scope.restricted or bool(scope.dataset_ids))
+            if not allows_dataset_list and not scope.allows_dataset(str(dataset_id) if dataset_id else None):
                 raise Forbidden("The API key is not authorized to access this knowledge base.")
             dataset_grant = DatasetServiceApiGrant(
                 token_id=str(api_token.id),
                 tenant_id=tenant_id,
-                dataset_ids=None,
+                dataset_ids=scope.dataset_ids if scope.restricted else None,
             )
 
         if dataset_id:
