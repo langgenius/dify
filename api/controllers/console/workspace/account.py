@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
 from werkzeug.exceptions import NotFound
 
@@ -28,10 +28,18 @@ from controllers.console.auth.error import (
     InvalidEmailError,
     InvalidTokenError,
 )
+from controllers.console.billing.error import (
+    BillingOperationFailedError,
+    BillingRequestInProgressError,
+    BillingUnavailableError,
+    to_billing_request_error,
+)
 from controllers.console.error import (
     AccountInFreezeError,
     AccountNotFound,
+    EducationActivateFailedError,
     EducationActivateLimitError,
+    EducationVerifyFailedError,
     EducationVerifyLimitError,
     EmailDomainSuspendedError,
     EmailSendIpLimitError,
@@ -50,12 +58,14 @@ from controllers.console.wraps import model_validate, setup_required
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.member_fields import AccountResponse
+from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
 from machinery.context import RequestContext
 from services import account_errors
 from services.account_education_service import EDUCATION_EDITIONS
 from services.entities.account_entities import AccountProfileChanges
+from services.errors.billing import BillingUpstreamError
 
 
 class AccountInitPayload(BaseModel):
@@ -203,8 +213,24 @@ class AccountIntegrateListResponse(ResponseModel):
     data: list[AccountIntegrateResponse]
 
 
-class EducationVerifyResponse(ResponseModel):
-    token: str | None = None
+class EducationVerifyEligibleResponse(ResponseModel):
+    status: Literal["eligible"]
+    token: str
+
+
+class EducationVerifyNotEligibleResponse(ResponseModel):
+    status: Literal["not_eligible"]
+
+
+class EducationVerifyResponse(
+    RootModel[
+        Annotated[
+            EducationVerifyEligibleResponse | EducationVerifyNotEligibleResponse,
+            Field(discriminator="status"),
+        ]
+    ]
+):
+    """Education verification result: a token for an eligible account, none for an ineligible one."""
 
 
 class EducationActivateResponse(ResponseModel):
@@ -212,10 +238,10 @@ class EducationActivateResponse(ResponseModel):
 
 
 class EducationStatusResponse(ResponseModel):
-    result: bool | None = None
-    is_student: bool | None = None
-    expire_at: int | None = None
-    allow_refresh: bool | None = None
+    result: bool
+    is_student: bool
+    expire_at: int | None
+    allow_refresh: bool
 
     @field_validator("expire_at", mode="before")
     @classmethod
@@ -224,9 +250,9 @@ class EducationStatusResponse(ResponseModel):
 
 
 class EducationAutocompleteResponse(ResponseModel):
-    data: list[str] = Field(default_factory=list)
-    curr_page: int | None = None
-    has_next: bool | None = None
+    data: list[str]
+    curr_page: int
+    has_next: bool
 
 
 register_response_schema_models(
@@ -409,9 +435,39 @@ class AccountDeleteUpdateFeedbackApi(Resource):
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
+_EDUCATION_BILLING_ERRORS = (
+    account_errors.EducationVerificationFailedError,
+    account_errors.EducationActivationFailedError,
+    account_errors.EducationRequestInProgressError,
+    BillingUpstreamError,
+)
+
+
+def _education_billing_error(
+    error: account_errors.EducationVerificationFailedError
+    | account_errors.EducationActivationFailedError
+    | account_errors.EducationRequestInProgressError
+    | BillingUpstreamError,
+) -> BaseHTTPException:
+    if isinstance(error, account_errors.EducationVerificationFailedError):
+        return EducationVerifyFailedError()
+    if isinstance(error, account_errors.EducationActivationFailedError):
+        return EducationActivateFailedError()
+    if isinstance(error, account_errors.EducationRequestInProgressError):
+        return BillingRequestInProgressError()
+    return to_billing_request_error(error)
+
+
 @console_ns.route("/account/education/verify")
 class EducationVerifyApi(Resource):
-    @error_responses(AccountNotFound, EducationVerifyLimitError)
+    @error_responses(
+        AccountNotFound,
+        BillingOperationFailedError,
+        BillingRequestInProgressError,
+        BillingUnavailableError,
+        EducationVerifyFailedError,
+        EducationVerifyLimitError,
+    )
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationVerifyResponse.__name__])
     @console_account_admission(editions=EDUCATION_EDITIONS)
     def get(self, request_context: RequestContext):
@@ -421,12 +477,21 @@ class EducationVerifyApi(Resource):
             raise AccountNotFound() from error
         except account_errors.EducationRateLimitExceededError as error:
             raise EducationVerifyLimitError() from error
+        except _EDUCATION_BILLING_ERRORS as error:
+            raise _education_billing_error(error) from error
         return dump_response(EducationVerifyResponse, verification)
 
 
 @console_ns.route("/account/education")
 class EducationApi(Resource):
-    @error_responses(AccountNotFound, EducationActivateLimitError)
+    @error_responses(
+        AccountNotFound,
+        BillingOperationFailedError,
+        BillingRequestInProgressError,
+        BillingUnavailableError,
+        EducationActivateFailedError,
+        EducationActivateLimitError,
+    )
     @console_ns.expect(console_ns.models[EducationActivatePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationActivateResponse.__name__])
     @console_account_admission(editions=EDUCATION_EDITIONS)
@@ -443,30 +508,39 @@ class EducationApi(Resource):
             raise AccountNotFound() from error
         except account_errors.EducationRateLimitExceededError as error:
             raise EducationActivateLimitError() from error
+        except _EDUCATION_BILLING_ERRORS as error:
+            raise _education_billing_error(error) from error
         return dump_response(EducationActivateResponse, activation)
 
+    @error_responses(BillingOperationFailedError, BillingRequestInProgressError, BillingUnavailableError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationStatusResponse.__name__])
     @console_account_admission(editions=EDUCATION_EDITIONS)
     def get(self, request_context: RequestContext):
-        return dump_response(EducationStatusResponse, application_services().accounts.education.status(request_context))
+        try:
+            status = application_services().accounts.education.status(request_context)
+        except _EDUCATION_BILLING_ERRORS as error:
+            raise _education_billing_error(error) from error
+        return dump_response(EducationStatusResponse, status)
 
 
 @console_ns.route("/account/education/autocomplete")
 class EducationAutoCompleteApi(Resource):
+    @error_responses(BillingOperationFailedError, BillingUnavailableError)
     @console_ns.doc(params=query_params_from_model(EducationAutocompleteQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationAutocompleteResponse.__name__])
     @console_account_admission(editions=EDUCATION_EDITIONS)
     @model_validate(EducationAutocompleteQuery)
     def get(self, args: EducationAutocompleteQuery, request_context: RequestContext):
-        return dump_response(
-            EducationAutocompleteResponse,
-            application_services().accounts.education.autocomplete(
+        try:
+            institutions = application_services().accounts.education.autocomplete(
                 request_context,
                 keywords=args.keywords,
                 page=args.page,
                 limit=args.limit,
-            ),
-        )
+            )
+        except _EDUCATION_BILLING_ERRORS as error:
+            raise _education_billing_error(error) from error
+        return dump_response(EducationAutocompleteResponse, institutions)
 
 
 @console_ns.route("/account/change-email")

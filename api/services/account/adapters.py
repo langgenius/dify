@@ -3,11 +3,11 @@
 import logging
 import secrets
 import uuid
-from collections.abc import Sequence
-from contextlib import AbstractContextManager
-from datetime import UTC, datetime, timedelta
+from collections.abc import Generator, Sequence
+from contextlib import AbstractContextManager, contextmanager
+from datetime import timedelta
 from hashlib import sha256
-from typing import override
+from typing import assert_never, override
 
 from pydantic import TypeAdapter, ValidationError
 from redis import RedisError
@@ -41,7 +41,13 @@ from services.account_change_email_ports import (
 )
 from services.account_deletion_feedback_service import AccountDeletionFeedbackGateway
 from services.account_education_service import AccountEducationGateway
-from services.account_errors import AccountDeletionRateLimitError
+from services.account_errors import (
+    AccountApplicationError,
+    AccountDeletionRateLimitError,
+    EducationActivationFailedError,
+    EducationRequestInProgressError,
+    EducationVerificationFailedError,
+)
 from services.account_ports import (
     AccountDeletionScheduler,
     AccountDeletionSyncGateway,
@@ -49,6 +55,7 @@ from services.account_ports import (
     AccountDeletionVerificationNotifier,
 )
 from services.account_security_gateway import RedisAccountEmailSecurityGateway
+from services.billing_client import billing
 from services.billing_service import BillingService
 from services.enterprise.account_deletion_sync import sync_account_deletion_memberships
 from services.enterprise.enterprise_service import try_join_default_workspace
@@ -63,6 +70,8 @@ from services.entities.account_entities import (
     AccountDeletionChallenge,
     AccountEducationActivation,
     AccountEducationAutocomplete,
+    AccountEducationEligible,
+    AccountEducationNotEligible,
     AccountEducationStatus,
     AccountEducationVerification,
 )
@@ -73,6 +82,7 @@ from services.entities.auth_entities import (
     ChangeEmailOldEmailVerifiedToken,
     ChangeEmailTokenData,
 )
+from services.errors.billing import UnknownErrorReason
 from services.system_feature_service import SystemFeatureService
 from services.telemetry_service import CommunityTelemetryService
 from tasks.delete_account_task import delete_account_task
@@ -413,11 +423,58 @@ class RBACWorkspaceMemberAccessSync(WorkspaceMemberAccessSync):
         )
 
 
+def _education_error(error: billing.BillingEducationUpstreamError) -> AccountApplicationError | None:
+    """The account error for a billing failure, or None to leave it to the generic billing errors."""
+    match error.reason:
+        case "EDUCATION_VERIFY_FAILED":
+            return EducationVerificationFailedError()
+        case "EDUCATION_CREATE_FAILED":
+            return EducationActivationFailedError()
+        case "REQUEST_IN_PROGRESS":
+            return EducationRequestInProgressError()
+        case (
+            ""
+            | "CODEC"
+            | "VALIDATOR"
+            | "UNKNOWN"
+            | "INVALID_SECRET_KEY"
+            | "MISSING_TENANT_ID"
+            | "INVALID_TENANT_ID"
+            | "MISSING_ACCOUNT_ID"
+            | "INVALID_ACCOUNT_ID"
+            | "MISSING_PREFILLED_EMAIL"
+            | "EDUCATION_STATUS_FAILED"
+        ):
+            return None
+        case UnknownErrorReason() | None:
+            return None
+        case unreachable:
+            assert_never(unreachable)
+
+
+@contextmanager
+def _education_errors() -> Generator[None]:
+    try:
+        yield
+    except billing.BillingEducationUpstreamError as error:
+        mapped = _education_error(error)
+        if mapped is None:
+            raise
+        raise mapped from error
+
+
 class BillingAccountEducationGateway(AccountEducationGateway):
     @override
     def verify(self, *, account_id: str) -> AccountEducationVerification:
-        result = BillingService.EducationIdentity.verify(account_id=account_id) or {}
-        return AccountEducationVerification(token=result.get("token"))
+        with _education_errors():
+            result = BillingService.EducationIdentity.verify(account_id=account_id)
+        match result.status:
+            case "eligible":
+                return AccountEducationEligible(token=result.token)
+            case "not_eligible":
+                return AccountEducationNotEligible()
+            case _:
+                assert_never(result.status)
 
     @override
     def activate(
@@ -429,33 +486,35 @@ class BillingAccountEducationGateway(AccountEducationGateway):
         institution: str,
         role: str,
     ) -> AccountEducationActivation:
-        result = BillingService.EducationIdentity.activate(
-            account_id=account_id,
-            tenant_id=tenant_id,
-            token=token,
-            institution=institution,
-            role=role,
-        )
-        return AccountEducationActivation(message=result["message"])
+        with _education_errors():
+            result = BillingService.EducationIdentity.activate(
+                account_id=account_id,
+                tenant_id=tenant_id,
+                token=token,
+                institution=institution,
+                role=role,
+            )
+        return AccountEducationActivation(message=result.message)
 
     @override
     def status(self, account_id: str) -> AccountEducationStatus:
-        result = BillingService.EducationIdentity.status(account_id) or {}
-        expire_at = result.get("expire_at")
+        with _education_errors():
+            result = BillingService.EducationIdentity.status(account_id)
         return AccountEducationStatus(
-            result=result.get("result"),
-            is_student=result.get("is_student"),
-            expire_at=datetime.fromisoformat(expire_at).astimezone(UTC) if isinstance(expire_at, str) else expire_at,
-            allow_refresh=result.get("allow_refresh"),
+            result=result.result,
+            is_student=result.is_student,
+            expire_at=result.expire_at,
+            allow_refresh=result.allow_refresh,
         )
 
     @override
     def autocomplete(self, *, keywords: str, page: int, limit: int) -> AccountEducationAutocomplete:
-        result = BillingService.EducationIdentity.autocomplete(keywords, page, limit) or {}
+        with _education_errors():
+            result = BillingService.EducationIdentity.autocomplete(keywords, page, limit)
         return AccountEducationAutocomplete(
-            data=tuple(result.get("data") or ()),
-            curr_page=result.get("curr_page"),
-            has_next=result.get("has_next"),
+            data=tuple(result.data or ()),
+            curr_page=result.curr_page,
+            has_next=result.has_next,
         )
 
 

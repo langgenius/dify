@@ -10,10 +10,10 @@ from unittest.mock import Mock, create_autospec
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
-from flask_restx import Api
 
 from controllers.common.errors import NotFoundError
 from controllers.common.rbac import DatasetId
+from controllers.console import api as console_api
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
 
@@ -23,8 +23,10 @@ from controllers.console.datasets.error import IndexingEstimateError
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rbac import RBACPermission
 from enums import DeploymentEdition
+from libs.external_api import ExternalApi
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.data_source.binding_application_service import (
     BindingMutationResult,
     DataSourceBindingApplicationService,
@@ -172,6 +174,7 @@ class KnowledgeDocuments:
 @dataclass
 class RecordingNotionSource:
     workspaces: tuple[NotionWorkspace, ...]
+    error: Exception | None = None
     list_calls: list[tuple[str, str, str]] = field(default_factory=list)
     preview_calls: list[tuple[str, str, str, str, str]] = field(default_factory=list)
 
@@ -183,6 +186,8 @@ class RecordingNotionSource:
         credential_id: str,
     ) -> tuple[NotionWorkspace, ...]:
         self.list_calls.append((workspace_id, actor_id, credential_id))
+        if self.error is not None:
+            raise self.error
         return self.workspaces
 
     def preview_page(
@@ -195,6 +200,8 @@ class RecordingNotionSource:
         page_type: str,
     ) -> str:
         self.preview_calls.append((workspace_id, actor_id, credential_id, page_id, page_type))
+        if self.error is not None:
+            raise self.error
         return "preview text"
 
 
@@ -259,7 +266,9 @@ def collaborators(
     )
     app = Flask(__name__)
     app.config.update(TESTING=False, PROPAGATE_EXCEPTIONS=False)
-    Api(app).add_namespace(console_ns, path="/console/api")
+    api = ExternalApi(app)
+    api.error_handlers = console_api.error_handlers.copy()
+    api.add_namespace(console_ns, path="/console/api")
 
     account = AdmittedAccount(id=ACCOUNT_ID, role="owner", status="active")
     account_with_tenant = AccountWithTenant(account=cast("Account", account), tenant_id=TENANT_ID)
@@ -600,3 +609,18 @@ def test_notion_sync_requires_dataset_edit_permission(resource):
     [check] = rbac_checks(resource.get)
     assert check.scene is RBACPermission.DATASET_EDIT
     assert isinstance(check.locator, DatasetId)
+
+
+@pytest.mark.parametrize("path", ["/notion/pre-import/pages", f"/notion/pages/{PAGE_ID}/page/preview"])
+def test_notion_refresh_unavailable_returns_retryable_response(
+    collaborators: ControllerCollaborators, path: str
+) -> None:
+    error = CredentialRefreshUnavailableError()
+    collaborators.notion_source.error = error
+    response = collaborators.client.get(f"/console/api{path}", query_string={"credential_id": "credential-1"})
+    assert response.status_code == 503
+    assert response.get_json() == {
+        "code": "service_unavailable",
+        "message": str(error),
+        "status": 503,
+    }

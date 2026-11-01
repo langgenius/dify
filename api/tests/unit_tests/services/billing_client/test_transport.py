@@ -1,12 +1,21 @@
+import inspect
 import logging
+from collections.abc import Callable
+from typing import TypeAliasType, assert_type, get_args
 
 import httpx
 import pytest
 import tenacity
 
-from services.billing_client import billing, transport
+from services.billing_client import billing, saas, transport
 from services.billing_client.transport import BillingModel, Upstream
-from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
+from services.errors.billing import (
+    BillingUpstreamError,
+    BillingUpstreamInvalidResponseError,
+    BillingUpstreamUnavailableError,
+    UnknownErrorReason,
+    UpstreamErrorBody,
+)
 from tests.unit_tests.services.billing_client.conftest import RespondWith
 
 
@@ -30,7 +39,16 @@ class _VirtualClock:
 
 
 def _get(upstream: Upstream) -> _Reply:
-    return transport.request(upstream, "GET", "/probe", response_model=_Reply, path_params={}, params={}, body=None)
+    return transport.request(
+        upstream,
+        "GET",
+        "/probe",
+        response_model=_Reply,
+        errors=saas.SAAS_NETWORK_ACCESS_POLICY_ERRORS,
+        path_params={},
+        params={},
+        body=None,
+    )
 
 
 @pytest.mark.parametrize(
@@ -43,10 +61,177 @@ def _get(upstream: Upstream) -> _Reply:
     ],
 )
 def test_non_ok_status_maps_to_upstream_errors(respond_with: RespondWith, status: int, error: type[Exception]) -> None:
-    respond_with(httpx.Response(status, json={}))
+    respond_with(
+        httpx.Response(status, json={"code": status, "reason": "NETWORK_ACCESS_VERSION_CONFLICT", "message": "over"})
+    )
 
-    with pytest.raises(error):
+    with pytest.raises(error) as exc_info:
         _get(Upstream.BILLING)
+
+    assert isinstance(exc_info.value, BillingUpstreamError)
+    assert exc_info.value.status_code == status
+    assert exc_info.value.body == UpstreamErrorBody(code=status, message="over")
+    assert isinstance(exc_info.value, saas.SaasNetworkAccessPolicyUpstreamError)
+    assert exc_info.value.reason == "NETWORK_ACCESS_VERSION_CONFLICT"
+
+
+@pytest.mark.parametrize(
+    ("content", "body", "reason"),
+    [
+        (b"upstream crashed", None, None),
+        (b"[]", None, None),
+        (
+            b'{"code": "x", "reason": "NETWORK_ACCESS_GROUP_NAME_CONFLICT", "metadata": {"k": 1}}',
+            UpstreamErrorBody(),
+            "NETWORK_ACCESS_GROUP_NAME_CONFLICT",
+        ),
+        (b'{"code": 409, "reason": 409, "message": "taken"}', UpstreamErrorBody(code=409, message="taken"), None),
+        (b'{"code": 409, "message": "taken"}', UpstreamErrorBody(code=409, message="taken"), None),
+        (b'{"reason": ""}', UpstreamErrorBody(), ""),
+    ],
+)
+def test_error_body_keeps_well_typed_fields(
+    respond_with: RespondWith, content: bytes, body: UpstreamErrorBody | None, reason: str | None
+) -> None:
+    respond_with(httpx.Response(409, content=content))
+
+    with pytest.raises(saas.SaasNetworkAccessPolicyUpstreamInvalidResponseError) as exc_info:
+        _get(Upstream.BILLING)
+
+    assert exc_info.value.body == body
+    assert exc_info.value.reason == reason
+
+
+@pytest.mark.parametrize(
+    ("status", "error"), [(409, BillingUpstreamInvalidResponseError), (503, BillingUpstreamUnavailableError)]
+)
+def test_unknown_reason_is_kept_apart_and_reported(
+    respond_with: RespondWith, caplog: pytest.LogCaptureFixture, status: int, error: type[Exception]
+) -> None:
+    respond_with(httpx.Response(status, json={"code": status, "reason": "SHIPPED_LATER", "message": "new"}))
+
+    with caplog.at_level(logging.ERROR, logger=transport.__name__), pytest.raises(error) as exc_info:
+        _get(Upstream.SAAS)
+
+    assert isinstance(exc_info.value, saas.SaasNetworkAccessPolicyUpstreamError)
+    assert exc_info.value.reason == UnknownErrorReason("SHIPPED_LATER")
+    assert exc_info.value.body == UpstreamErrorBody(code=status, message="new")
+    [record] = caplog.records
+    assert record.levelno == logging.ERROR
+    assert (
+        record.getMessage()
+        == "Unknown saas error reason SHIPPED_LATER from GET /probe: regenerate the billing client, "
+        "or the billing service returned a reason outside this service's declared set"
+    )
+
+
+def test_unknown_reason_is_logged_without_foreign_characters(
+    respond_with: RespondWith, caplog: pytest.LogCaptureFixture
+) -> None:
+    reason = "SHIPPED_LATER\nERROR forged entry <script>" + "X" * 100
+    respond_with(httpx.Response(409, json={"code": 409, "reason": reason}))
+
+    with (
+        caplog.at_level(logging.ERROR, logger=transport.__name__),
+        pytest.raises(saas.SaasNetworkAccessPolicyUpstreamError) as exc_info,
+    ):
+        _get(Upstream.SAAS)
+
+    assert exc_info.value.reason == UnknownErrorReason(reason)
+    [record] = caplog.records
+    logged = record.getMessage().removeprefix("Unknown saas error reason ").partition(" ")[0]
+    assert logged == ("SHIPPED_LATERERROR" + "X" * 100)[:64]
+
+
+@pytest.mark.parametrize(
+    ("call", "own", "others"),
+    [
+        (
+            lambda: billing.subscription_get_subscription_info(tenant_id="t", exclude_vector_space=False),
+            billing.BillingSubscriptionUpstreamUnavailableError,
+            (billing.BillingQuotaUpstreamError, saas.AccountUpstreamError),
+        ),
+        (
+            lambda: billing.quota_get_quota_info(tenant_id="t"),
+            billing.BillingQuotaUpstreamUnavailableError,
+            (billing.BillingSubscriptionUpstreamError, saas.AccountUpstreamError),
+        ),
+        (
+            lambda: saas.account_check_account_in_freeze(email="a@example.com"),
+            saas.AccountUpstreamUnavailableError,
+            (saas.SaasNetworkAccessPolicyUpstreamError, billing.BillingSubscriptionUpstreamError),
+        ),
+    ],
+)
+def test_generated_operation_raises_its_own_service_errors(
+    respond_with: RespondWith,
+    call: Callable[[], object],
+    own: type[BillingUpstreamError],
+    others: tuple[type[BillingUpstreamError], ...],
+) -> None:
+    respond_with(httpx.Response(503, json={"code": 503, "reason": ""}))
+
+    with pytest.raises(BillingUpstreamUnavailableError) as exc_info:
+        call()
+
+    assert type(exc_info.value) is own
+    assert not isinstance(exc_info.value, others)
+
+
+def test_reason_from_another_service_is_unknown(respond_with: RespondWith) -> None:
+    respond_with(httpx.Response(409, json={"code": 409, "reason": "COMPLIANCE_DOCUMENT_NOT_FOUND"}))
+
+    with pytest.raises(billing.BillingEducationUpstreamInvalidResponseError) as exc_info:
+        billing.education_get_education_identity_status(account_id="a")
+
+    assert exc_info.value.reason == UnknownErrorReason("COMPLIANCE_DOCUMENT_NOT_FOUND")
+
+
+def test_service_errors_type_their_own_reason() -> None:
+    def read(
+        network_access: saas.SaasNetworkAccessPolicyUpstreamError, education: billing.BillingEducationUpstreamError
+    ) -> None:
+        assert_type(network_access.reason, saas.SaasNetworkAccessPolicyErrorReason | UnknownErrorReason | None)
+        assert_type(education.reason, billing.BillingEducationErrorReason | UnknownErrorReason | None)
+
+    read(
+        saas.SaasNetworkAccessPolicyUpstreamUnavailableError(reason="APP_NOT_FOUND"),
+        billing.BillingEducationUpstreamInvalidResponseError(reason="EDUCATION_VERIFY_FAILED"),
+    )
+    read(
+        saas.SaasNetworkAccessPolicyUpstreamError(),
+        billing.BillingComplianceUpstreamError(),  # pyrefly: ignore[bad-argument-type]
+    )
+    billing.BillingEducationUpstreamError(reason="COMPLIANCE_DOCUMENT_NOT_FOUND")  # pyrefly: ignore[bad-argument-type]
+    assert not hasattr(BillingUpstreamError(), "reason")
+
+
+def test_transport_branches_on_no_specific_reason() -> None:
+    source = inspect.getsource(transport)
+    reason_types = [
+        value
+        for module in (billing, saas)
+        for name, value in vars(module).items()
+        if name.endswith("ErrorReason") and isinstance(value, TypeAliasType)
+    ]
+    reasons = {reason for reason_type in reason_types for reason in get_args(reason_type.__value__)}
+
+    assert len(reason_types) == 10
+    assert [reason for reason in reasons if reason and reason in source] == []
+
+
+def test_unreachable_upstream_has_no_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    monkeypatch.setattr("services.billing_client.transport._send.retry.stop", tenacity.stop_after_attempt(1))
+    monkeypatch.setattr(transport, "_http_client", httpx.Client(transport=httpx.MockTransport(handler)))
+
+    with pytest.raises(BillingUpstreamUnavailableError) as exc_info:
+        _get(Upstream.BILLING)
+
+    assert exc_info.value.status_code is None
+    assert exc_info.value.body is None
 
 
 def test_request_error_is_retried_then_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -80,12 +265,34 @@ def test_request_error_is_retried_then_unavailable(monkeypatch: pytest.MonkeyPat
     ],
 )
 def test_upstream_selects_base_url(
-    monkeypatch: pytest.MonkeyPatch, respond_with: RespondWith, upstream: Upstream, quota_url: str, expected: str
+    config_overrides: Callable[..., None],
+    respond_with: RespondWith,
+    upstream: Upstream,
+    quota_url: str,
+    expected: str,
 ) -> None:
-    monkeypatch.setenv("BILLING_QUOTA_API_URL", quota_url)
+    config_overrides(BILLING_QUOTA_API_URL=quota_url)
     requests = respond_with(httpx.Response(200, json={"ok": True}))
 
     assert _get(upstream).ok is True
+    assert str(requests[0].url) == expected
+
+
+@pytest.mark.parametrize(
+    ("configured", "expected"),
+    [
+        ("http://network-access/v1/", "http://network-access/v1/probe"),
+        ("", "http://billing/v1/probe"),
+    ],
+)
+def test_network_access_upstream_falls_back_to_billing_url(
+    respond_with: RespondWith, config_overrides: Callable[..., None], configured: str, expected: str
+) -> None:
+    config_overrides(NETWORK_ACCESS_API_URL=configured)
+    requests = respond_with(httpx.Response(200, json={"ok": True}))
+
+    _get(Upstream.NETWORK_ACCESS)
+
     assert str(requests[0].url) == expected
 
 
@@ -111,6 +318,7 @@ def test_invalid_body_is_reported_and_kept_raw_while_observed(
             "GET",
             "/probe",
             response_model=billing.GetSubscriptionInfoReply,
+            errors=billing.BILLING_SUBSCRIPTION_ERRORS,
             path_params={},
             params={},
             body=None,
@@ -148,7 +356,14 @@ def test_migrated_reads_reject_missing_required_fields(
 
     with pytest.raises(BillingUpstreamInvalidResponseError):
         transport.request(
-            Upstream.BILLING, "GET", path, response_model=response_model, path_params={}, params={}, body=None
+            Upstream.BILLING,
+            "GET",
+            path,
+            response_model=response_model,
+            errors=billing.BILLING_SUBSCRIPTION_ERRORS,
+            path_params={},
+            params={},
+            body=None,
         )
 
 
@@ -170,7 +385,14 @@ def test_quota_responses_reject_missing_required_fields(
 
     with pytest.raises(BillingUpstreamInvalidResponseError):
         transport.request(
-            Upstream.BILLING_QUOTA, method, path, response_model=response_model, path_params={}, params={}, body=None
+            Upstream.BILLING_QUOTA,
+            method,
+            path,
+            response_model=response_model,
+            errors=billing.BILLING_QUOTA_ERRORS,
+            path_params={},
+            params={},
+            body=None,
         )
 
 
@@ -190,3 +412,9 @@ def test_non_object_body_is_an_invalid_response(respond_with: RespondWith, conte
 
     with pytest.raises(BillingUpstreamInvalidResponseError):
         _get(Upstream.BILLING)
+
+
+def test_pooled_billing_client_carries_bounded_timeout() -> None:
+    """Regression for #39874: a stalled billing proxy must fail fast instead of pinning a worker."""
+    assert transport._http_client.timeout.read == 30.0
+    assert transport._http_client.timeout.connect == 5.0

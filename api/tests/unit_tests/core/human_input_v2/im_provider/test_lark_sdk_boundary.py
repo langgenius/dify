@@ -210,8 +210,9 @@ class _RecordedSDKStreamClient:
             event_handler=self._dispatcher,
             domain=self._domain,
         )
-        client._write_message = self._write
-        await client._handle_data_frame(self._frame)
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(client, "_write_message", self._write)
+            await client._handle_data_frame(self._frame)
 
     def start(self) -> None:
         asyncio.run(self._deliver())

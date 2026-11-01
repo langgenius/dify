@@ -352,7 +352,7 @@ def test_independent_binding_cleanup_task_succeeds(
 def test_independent_binding_cleanup_task_retries_with_exponential_backoff(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    upstream_error = NetworkAccessGroupUpstreamError(409, "NETWORK_ACCESS_APP_STILL_EXISTS")
+    upstream_error = NetworkAccessGroupUpstreamError(unavailable=False)
     retry_error = RuntimeError("retry scheduled")
     network_access_groups = _NetworkAccessGroups(failure=upstream_error)
     application_services = _ApplicationServices(network_access_groups=network_access_groups)

@@ -51,8 +51,11 @@ def test_billing_http_boundary_does_not_hold_a_transaction(
     billing_fails: bool,
 ) -> None:
     """Given Cloud configuration, billing success or failure leaves no open SQL transaction."""
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    monkeypatch.setenv("BILLING_API_URL", "https://billing.example.test")
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        BILLING_API_URL="https://billing.example.test",
+        BILLING_QUOTA_API_URL="",
+    )
     requested_urls: list[str] = []
 
     def request(method: str, url: str, **_kwargs: object) -> httpx.Response:

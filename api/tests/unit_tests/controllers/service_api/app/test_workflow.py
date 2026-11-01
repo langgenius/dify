@@ -602,10 +602,9 @@ class TestWorkflowRunByIdApi:
         app_generation: _AppGenerationBoundary,
     ) -> None:
         """Reject malformed Cloud billing data before the injected generation boundary is invoked."""
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, BILLING_API_URL="http://billing/v1")
         payload = builders.subscription_info().model_dump()
         del payload["subscription"]["plan"]
-        monkeypatch.setenv("BILLING_API_URL", "http://billing/v1")
 
         def unexpected_generation(**_kwargs: object) -> object:
             """Fail if invalid billing data reaches execution; otherwise this callback has no side effects."""

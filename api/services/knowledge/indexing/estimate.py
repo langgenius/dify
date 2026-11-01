@@ -5,6 +5,7 @@ from typing import Never, Protocol
 
 from core.entities.knowledge_entities import IndexingEstimate
 from machinery.context import RequestContext
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.data_source.credential_gateway import DatasourceCredentialError
 from services.data_source.entities.notion_import import NotionPageType
 from services.data_source.entities.website import WebsiteJobSelection
@@ -284,7 +285,7 @@ class IndexingEstimateApplicationService:
 
     @staticmethod
     def _translate_error(error: Exception) -> Never:
-        if isinstance(error, IndexingEstimateApplicationError):
+        if isinstance(error, (IndexingEstimateApplicationError, CredentialRefreshUnavailableError)):
             raise error
         if isinstance(error, UnsupportedStoredSourceError):
             raise UnsupportedEstimateSourceError(error.source_type) from error

@@ -6,6 +6,7 @@ import pytest
 
 from core.entities.knowledge_entities import IndexingEstimate
 from machinery.context import RequestContext
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.data_source.credential_gateway import DatasourceCredentialNotFoundError
 from services.data_source.entities.notion_import import NotionPageType
 from services.data_source.entities.website import WebsiteJobSelection
@@ -334,6 +335,7 @@ def test_estimate_rejects_missing_document(fixture: ServiceFixture) -> None:
 @pytest.mark.parametrize(
     ("source_error", "expected_error"),
     [
+        (CredentialRefreshUnavailableError(), CredentialRefreshUnavailableError),
         (DatasourceCredentialNotFoundError(), IndexingEstimateCredentialUnavailableError),
         (IndexingInputSourceError("missing source"), EstimateSourceNotFoundError),
         (UnsupportedStoredSourceError("unknown"), UnsupportedEstimateSourceError),

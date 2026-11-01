@@ -24,6 +24,7 @@ from libs.datetime_utils import naive_utc_now
 from repositories.file.upload_file_repository import UploadFileRepository
 from repositories.knowledge.dataset_read_repository import get_dataset_process_rule_by_id
 from repositories.knowledge.dataset_repository import _get_dataset
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.data_source.website_service import WebsiteService
 from services.entities.upload_file import CreatedUploadArtifact
 from services.extraction.contracts import ExtractSetting
@@ -90,6 +91,8 @@ class IndexingEstimateAdapter:
             )
         except (LLMBadRequestError, ProviderTokenNotInitError, PluginDaemonClientSideError) as error:
             raise IndexingEstimateProviderUnavailableError(error.description) from error
+        except CredentialRefreshUnavailableError:
+            raise
         except Exception as error:
             raise IndexingEstimateExecutionError(str(error)) from error
 

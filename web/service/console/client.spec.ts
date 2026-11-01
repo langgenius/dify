@@ -688,7 +688,7 @@ describe('consoleQuery education defaults', () => {
       const consoleQuery = await loadConsoleQuery()
       const queryClient = createQueryClient()
       const key = consoleQuery.account.education.get.queryKey()
-      const cached = { is_student: false, allow_refresh: false, expire_at: null }
+      const cached = { is_student: false, allow_refresh: false, expire_at: null, result: false }
       queryClient.setQueryData(key, cached)
       const unrelatedKey = ['unrelated-account-data']
       queryClient.setQueryData(unrelatedKey, { name: 'User' })

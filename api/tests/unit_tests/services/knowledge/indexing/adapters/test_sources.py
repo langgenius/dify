@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 import pytest
 
 from core.rag.extractor.notion_extractor import NotionExtractor
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.data_source.credential_gateway import (
     DatasourceCredentialNotFoundError,
     DatasourceCredentialRefreshError,
@@ -246,6 +247,7 @@ def test_stored_notion_resolution_uses_trusted_document_owner_chain() -> None:
         ("credential-1", {"integration_secret": "saved-secret"}, None, "saved-secret"),
         ("deleted-credential", {}, DatasourceCredentialNotFoundError(), None),
         ("credential-1", {}, DatasourceCredentialRefreshError("credential-1"), None),
+        ("credential-1", {}, CredentialRefreshUnavailableError(), None),
         ("credential-1", {}, ValueError("decrypt failed"), None),
         ("credential-1", {}, None, None),
         ("credential-1", {"integration_secret": ""}, None, None),
@@ -257,6 +259,7 @@ def test_stored_notion_resolution_uses_trusted_document_owner_chain() -> None:
         "saved",
         "deleted",
         "refresh-failed",
+        "refresh-unavailable",
         "decrypt-failed",
         "missing-token",
         "empty-token",
@@ -285,7 +288,10 @@ def test_stored_notion_preview_and_indexing_fall_back_only_for_legacy_sources(
         source_info["credential_id"] = credential_id
     source = _source("notion_import", source_info)
 
-    if expected_token is None or (credential_id is None and not integration_token):
+    if isinstance(error, CredentialRefreshUnavailableError):
+        with pytest.raises(CredentialRefreshUnavailableError):
+            resolver.resolve(source)
+    elif expected_token is None or (credential_id is None and not integration_token):
         with pytest.raises(SourceCredentialUnavailableError):
             resolver.resolve(source)
     else:

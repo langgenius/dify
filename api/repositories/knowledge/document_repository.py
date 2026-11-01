@@ -11,7 +11,7 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 import sqlalchemy as sa
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter
 from sqlalchemy import exists, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -144,7 +144,7 @@ def _mapping(value: object) -> Mapping[str, object] | None:
         if isinstance(value, str):
             return _MAPPING_ADAPTER.validate_json(value)
         return _MAPPING_ADAPTER.validate_python(value)
-    except (TypeError, ValueError, ValidationError):
+    except (TypeError, ValueError):
         return {}
 
 
@@ -911,8 +911,6 @@ class SQLAlchemyDocumentRepository:
     ) -> DocumentCreationDataset:
         with self._session_factory() as session:
             dataset = _require_dataset(session, ref)
-            if not dataset.indexing_technique and not indexing_technique:
-                raise ValueError("indexing_technique is required.")
             _require_actor(session, tenant_id=ref.tenant_id, actor_id=actor_id)
             _check_doc_form(dataset, doc_form, session=session)
             return DocumentCreationDataset(

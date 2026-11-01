@@ -677,6 +677,78 @@ export const zAppNamePayload = z.object({
 })
 
 /**
+ * NetworkAccessUnsupportedAppModeError
+ *
+ * Network access control is not supported for this app mode.
+ */
+export const zNetworkAccessUnsupportedAppModeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_unsupported_app_mode'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NetworkAccessForbiddenError
+ *
+ * Network access groups are not available for this workspace.
+ */
+export const zNetworkAccessForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_forbidden'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * NetworkAccessNotEntitledError
+ *
+ * Network access groups are not available for this workspace.
+ */
+export const zNetworkAccessNotEntitledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_not_entitled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * NetworkAccessRoleDeniedError
+ *
+ * Your workspace role does not allow this network access operation.
+ */
+export const zNetworkAccessRoleDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_role_denied'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * BillingOperationFailedError
+ *
+ * We couldn't complete this request. Please try again. If the problem persists, contact support.
+ */
+export const zBillingOperationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_operation_failed'),
+    status: z.literal(502),
+  }),
+)
+
+/**
+ * BillingUnavailableError
+ *
+ * This operation is temporarily unavailable. Please try again later.
+ */
+export const zBillingUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
  * AppNetworkAccessGroupUpdatePayload
  */
 export const zAppNetworkAccessGroupUpdatePayload = z.object({
@@ -685,6 +757,66 @@ export const zAppNetworkAccessGroupUpdatePayload = z.object({
   expected_version: z.int().gte(0),
   group_id: z.uuid().nullable(),
 })
+
+/**
+ * NetworkAccessInvalidInputError
+ *
+ * Invalid network access group request.
+ */
+export const zNetworkAccessInvalidInputError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_invalid_input'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NetworkAccessUnsupportedAccessPointsError
+ *
+ * Some access points are not supported for this app.
+ */
+export const zNetworkAccessUnsupportedAccessPointsError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_unsupported_access_points'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * NetworkAccessGroupNotFoundError
+ *
+ * Network access group was not found.
+ */
+export const zNetworkAccessGroupNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_group_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * NetworkAccessVersionConflictError
+ *
+ * The network access resource changed. Refresh it and try again.
+ */
+export const zNetworkAccessVersionConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('network_access_version_conflict'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * AppNetworkAccessGroupStatusResponse

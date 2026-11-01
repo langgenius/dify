@@ -1,92 +1,17 @@
-import json
 import logging
-import os
 from collections.abc import Mapping, Sequence
-from typing import Any, Literal, TypedDict
+from typing import Literal
 from warnings import deprecated
 
-import httpx
-from pydantic import TypeAdapter, ValidationError
-from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
-from werkzeug.exceptions import InternalServerError
+from pydantic import ValidationError
 
-from core.helper.http_client_pooling import get_pooled_http_client
 from extensions.ext_redis import redis_client
-from services.billing_client import billing
-from services.billing_portal_service import BillingPortalLink
-from services.compliance_download_service import ComplianceDownloadLink
-from services.errors.billing import (
-    BillingUpstreamInvalidResponseError,
-    BillingUpstreamUnavailableError,
-)
+from services.billing_client import billing, saas
+from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
 
 logger = logging.getLogger(__name__)
 
-_http_client: httpx.Client = get_pooled_http_client(
-    "billing:default",
-    lambda: httpx.Client(
-        timeout=httpx.Timeout(30.0, connect=5.0),
-        limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
-    ),
-)
-
-
 EmailFreezeType = Literal["freeze", "email_domain_suspended"]
-
-
-class _BillingHTTPStatusError(ValueError):
-    def __init__(self, message: str, status_code: int) -> None:
-        super().__init__(message)
-        self.status_code = status_code
-
-
-class MessageResponseDict(TypedDict):
-    message: str
-
-
-class EducationVerifyResponseDict(TypedDict):
-    token: str
-
-
-class EducationStatusResponseDict(TypedDict):
-    result: bool
-    is_student: bool
-    expire_at: str
-    allow_refresh: bool
-
-
-class EducationAutocompleteResponseDict(TypedDict):
-    data: list[str]
-    curr_page: int
-    has_next: bool
-
-
-_compliance_download_link_adapter = TypeAdapter(ComplianceDownloadLink)
-
-
-class LangContentDict(TypedDict):
-    lang: str
-    title: str
-    subtitle: str
-    body: str
-    title_pic_url: str
-
-
-class NotificationDict(TypedDict):
-    notification_id: str
-    contents: dict[str, LangContentDict]
-    frequency: Literal["once", "every_page_load"]
-
-
-class AccountNotificationDict(TypedDict, total=False):
-    should_show: bool
-    notification: NotificationDict
-    shouldShow: bool
-    notifications: list[dict]
-
-
-class DismissNotificationDict(TypedDict):
-    success: bool
 
 
 def _quota_meta(meta: Mapping[str, object] | None) -> dict[str, str]:
@@ -95,9 +20,6 @@ def _quota_meta(meta: Mapping[str, object] | None) -> dict[str, str]:
 
 
 class BillingService:
-    base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
-    secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
-
     # Redis key prefix for tenant plan cache
     _PLAN_CACHE_KEY_PREFIX = "tenant_plan:"
     # Cache TTL: 10 minutes
@@ -229,11 +151,10 @@ class BillingService:
     @classmethod
     def get_subscription(
         cls, plan: str, interval: str, prefilled_email: str = "", tenant_id: str = ""
-    ) -> BillingPortalLink:
-        reply = billing.subscription_get_subscription_payment_link(
+    ) -> billing.GetSubscriptionPaymentLinkReply:
+        return billing.subscription_get_subscription_payment_link(
             plan=plan, interval=interval, prefilled_email=prefilled_email, tenant_id=tenant_id
         )
-        return {"url": reply.url}
 
     @classmethod
     @deprecated("Only used by the deprecated model-provider checkout endpoint.")
@@ -245,94 +166,44 @@ class BillingService:
         )
 
     @classmethod
-    def get_invoices(cls, prefilled_email: str = "", tenant_id: str = "") -> BillingPortalLink:
-        reply = billing.invoice_get_invoices(prefilled_email=prefilled_email, tenant_id=tenant_id)
-        return {"url": reply.url}
+    def get_invoices(cls, prefilled_email: str = "", tenant_id: str = "") -> billing.GetInvoicesReply:
+        return billing.invoice_get_invoices(prefilled_email=prefilled_email, tenant_id=tenant_id)
 
     @classmethod
-    @retry(
-        wait=wait_fixed(2),
-        stop=stop_before_delay(10),
-        retry=retry_if_exception_type(httpx.RequestError),
-        reraise=True,
-    )
-    def _send_request(
-        cls,
-        method: Literal["GET", "POST", "DELETE", "PUT"],
-        endpoint: str,
-        json=None,
-        params=None,
-        base_url: str | None = None,
-    ) -> Any:
-        headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
-        url = f"{base_url or cls.base_url}{endpoint}"
-        response = _http_client.request(method, url, json=json, params=params, headers=headers, follow_redirects=True)
-        if method == "GET" and response.status_code != httpx.codes.OK:
-            raise _BillingHTTPStatusError(
-                "Unable to retrieve billing information. Please try again later or contact support.",
-                response.status_code,
-            )
-        if method == "PUT":
-            if response.status_code == httpx.codes.INTERNAL_SERVER_ERROR:
-                raise InternalServerError(
-                    "Unable to process billing request. Please try again later or contact support."
-                )
-            if response.status_code != httpx.codes.OK:
-                raise ValueError("Invalid arguments.")
-        if method == "POST" and response.status_code != httpx.codes.OK:
-            raise _BillingHTTPStatusError(
-                f"Unable to send request to {url}. Please try again later or contact support.",
-                response.status_code,
-            )
-        if method == "DELETE" and response.status_code != httpx.codes.OK:
-            logger.error("billing_service: DELETE response: %s %s", response.status_code, response.text)
-            raise ValueError(f"Unable to process delete request {url}. Please try again later or contact support.")
-        return response.json()
-
-    @classmethod
-    def delete_account(cls, account_id: str) -> MessageResponseDict:
-        """Delete account."""
-        params = {"account_id": account_id}
-        return cls._send_request("DELETE", "/account", params=params)
+    def delete_account(cls, account_id: str) -> saas.DeleteAccountReply:
+        return saas.account_delete_account(account_id=account_id)
 
     @classmethod
     def get_email_freeze_type(cls, email: str) -> EmailFreezeType | None:
-        params = {"email": email}
         try:
-            response = cls._send_request("GET", "/account/in-freeze", params=params)
-            if not response.get("data", False):
-                return None
-
-            freeze_type = response.get("freeze_type") or response.get("freezeType")
-            if freeze_type in ("freeze", "email_domain_suspended"):
-                return freeze_type
-
-            # Keep compatibility with older billing services that only return
-            # the boolean `data` field.
-            return "freeze"
+            reply = saas.account_check_account_in_freeze(email=email)
         except Exception:
             return None
+        if not reply.data:
+            return None
+        match reply.freeze_type:
+            case "freeze" | "email_domain_suspended" as freeze_type:
+                return freeze_type
+            case _:
+                # Billing versions that only return the boolean `data` send an empty freeze type.
+                return "freeze"
 
     @classmethod
     def is_email_in_freeze(cls, email: str) -> bool:
         return cls.get_email_freeze_type(email) is not None
 
     @classmethod
-    def update_account_deletion_feedback(cls, email: str, feedback: str) -> MessageResponseDict:
-        """Update account deletion feedback."""
-        json = {"email": email, "feedback": feedback}
-        return cls._send_request("POST", "/account/delete-feedback", json=json)
+    def update_account_deletion_feedback(cls, email: str, feedback: str) -> saas.AddDeleteFeedbackReply:
+        return saas.account_add_delete_feedback(body=saas.AddDeleteFeedbackRequest(email=email, feedback=feedback))
 
     class EducationIdentity:
         @classmethod
-        def verify(cls, account_id: str) -> EducationVerifyResponseDict:
-            params = {"account_id": account_id}
-            return BillingService._send_request("GET", "/education/verify", params=params)
+        def verify(cls, account_id: str) -> billing.VerifyEducationIdentityReply:
+            return billing.education_verify_education_identity(account_id=account_id)
 
         @classmethod
-        def status(cls, account_id: str) -> EducationStatusResponseDict:
-            params = {"account_id": account_id}
-            return BillingService._send_request("GET", "/education/status", params=params)
+        def status(cls, account_id: str) -> billing.GetEducationIdentityStatusReply:
+            return billing.education_get_education_identity_status(account_id=account_id)
 
         @classmethod
         def activate(
@@ -343,19 +214,18 @@ class BillingService:
             token: str,
             institution: str,
             role: str,
-        ) -> MessageResponseDict:
-            params = {"account_id": account_id, "curr_tenant_id": tenant_id}
-            json = {
-                "institution": institution,
-                "token": token,
-                "role": role,
-            }
-            return BillingService._send_request("POST", "/education/", json=json, params=params)
+        ) -> billing.CreateEducationIdentityReply:
+            return billing.education_create_education_identity(
+                body=billing.CreateEducationIdentityReq(
+                    account_id=account_id, curr_tenant_id=tenant_id, institution=institution, role=role, token=token
+                )
+            )
 
         @classmethod
-        def autocomplete(cls, keywords: str, page: int = 0, limit: int = 20) -> EducationAutocompleteResponseDict:
-            params = {"keywords": keywords, "page": page, "limit": limit}
-            return BillingService._send_request("GET", "/education/autocomplete", params=params)
+        def autocomplete(
+            cls, keywords: str, page: int = 0, limit: int = 20
+        ) -> billing.AutocompleteEducationInstitutionReply:
+            return billing.education_autocomplete_education_institution(keywords=keywords, page=page, limit=limit)
 
     @classmethod
     def get_compliance_download_link(
@@ -365,31 +235,12 @@ class BillingService:
         tenant_id: str,
         ip: str,
         device_info: str,
-    ) -> ComplianceDownloadLink:
-        payload = {
-            "doc_name": doc_name,
-            "account_id": account_id,
-            "tenant_id": tenant_id,
-            "ip_address": ip,
-            "device_info": device_info,
-        }
-        try:
-            response = cls._send_request("POST", "/compliance/download", json=payload)
-            result = _compliance_download_link_adapter.validate_python(response)
-        except _BillingHTTPStatusError as error:
-            if error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
-                error.status_code >= 500
-            ):
-                raise BillingUpstreamUnavailableError from error
-            raise BillingUpstreamInvalidResponseError from error
-        except httpx.RequestError as error:
-            raise BillingUpstreamUnavailableError from error
-        except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
-            raise BillingUpstreamInvalidResponseError from error
-        except ValueError as error:
-            raise RuntimeError("Unexpected billing service value error") from error
-
-        return result
+    ) -> billing.DownloadComplianceDocumentReply:
+        return billing.compliance_download_compliance_document(
+            body=billing.DownloadComplianceDocumentReq(
+                doc_name=doc_name, account_id=account_id, tenant_id=tenant_id, ip_address=ip, device_info=device_info
+            )
+        )
 
     @classmethod
     def clean_billing_info_cache(cls, tenant_id: str) -> None:
@@ -517,35 +368,13 @@ class BillingService:
         return [item.tenant_id for item in reply.data or []]
 
     @classmethod
-    def get_account_notification(cls, account_id: str) -> AccountNotificationDict:
-        """Return the active in-product notification for account_id, if any.
-
-        Calling this endpoint also marks the notification as seen; subsequent
-        calls will return should_show=false when frequency='once'.
-
-        Response shape (mirrors GetAccountNotificationReply):
-          {
-            "should_show": bool,
-            "notification": {          # present only when should_show=true
-              "notification_id": str,
-              "contents": {            # lang -> LangContent
-                "en": {"lang": "en", "title": ..., "subtitle": ..., "body": ..., "title_pic_url": ...},
-                ...
-              },
-              "frequency": "once" | "every_page_load"
-            }
-          }
-        """
-        return cls._send_request("GET", "/notifications/active", params={"account_id": account_id})
+    def get_account_notification(cls, account_id: str) -> saas.GetAccountNotificationReply:
+        """Return the active in-product notifications; fetching marks `once` notifications as seen."""
+        return saas.notification_get_account_notification(account_id=account_id)
 
     @classmethod
-    def dismiss_notification(cls, notification_id: str, account_id: str) -> DismissNotificationDict:
-        """Mark a notification as dismissed for an account.
-
-        Returns {"success": bool}.
-        """
-        return cls._send_request(
-            "POST",
-            f"/notifications/{notification_id}/dismiss",
-            json={"account_id": account_id},
+    def dismiss_notification(cls, notification_id: str, account_id: str) -> saas.DismissNotificationReply:
+        return saas.notification_dismiss_notification(
+            notification_id=notification_id,
+            body=saas.DismissNotificationReq(notification_id=notification_id, account_id=account_id),
         )

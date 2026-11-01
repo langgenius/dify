@@ -719,7 +719,7 @@ class _MSTeamsDynamicCardMessaging(_MSTeamsMessaging, IMDynamicCardMessaging):
     def _compatible_card_locator(self, locator: MessageLocator) -> _MSTeamsLocatorPayload | None:
         try:
             return _MSTeamsLocatorPayload.decode(str(locator))
-        except (binascii.Error, UnicodeDecodeError, ValueError, ValidationError):
+        except (binascii.Error, UnicodeDecodeError, ValueError):
             return None
 
 

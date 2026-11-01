@@ -232,8 +232,6 @@ def _normalize_process_rule(config: KnowledgeConfig) -> None:
 
     unique_pre_processing_rules = {}
     for rule in rules.pre_processing_rules:
-        if not rule.id:
-            raise ValueError("Process rule pre_processing_rules id is required")
         if not isinstance(rule.enabled, bool):
             raise ValueError("Process rule pre_processing_rules enabled is invalid")
         unique_pre_processing_rules[rule.id] = rule

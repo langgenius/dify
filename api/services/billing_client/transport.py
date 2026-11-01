@@ -1,9 +1,17 @@
 """HTTP transport shared by the generated billing and saas operations.
 
-Reuses the pooled client, auth header, and connection retry of `services.billing_service`.
-Network failures, timeouts, throttling, and 5xx raise `BillingUpstreamUnavailableError`;
-any other non-200 status or an enforced response that fails model validation raises
-`BillingUpstreamInvalidResponseError`.
+This is the only module that reads the billing URLs and secret, and only the generated modules
+call `request`; ruff's banned-api rule (TID251) rejects both anywhere else.
+Each generated operation passes the `ServiceErrors` of its proto service. Network failures,
+timeouts, throttling, and 5xx raise that service's `<Service>UpstreamUnavailableError` (a
+`BillingUpstreamUnavailableError`); any other non-200 status or an enforced response that fails
+model validation raises its `<Service>UpstreamInvalidResponseError` (a
+`BillingUpstreamInvalidResponseError`). For a non-200 status, the error carries the status code,
+the parsed Kratos error body, and its reason typed by the service's `<Service>ErrorReason`. A
+reason outside it is kept as `UnknownErrorReason` and logged with `logger.error` (reported to
+Sentry): either the billing service shipped a reason before this client was regenerated, or it
+returned a reason outside the declared set of that service. Callers map reasons to their own
+errors; this module branches on none.
 
 Response validation is observed before it is enforced. For a path not in
 `ENFORCED_RESPONSE_PATHS`, a body that fails validation is logged with `logger.exception`
@@ -16,9 +24,10 @@ each item before returning it.
 
 import json
 import logging
-import os
+import re
 import types
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from enum import StrEnum
 from functools import cache
 from typing import Any, Literal, Union, get_args, get_origin
@@ -28,8 +37,14 @@ import httpx
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 
+from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
-from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
+from services.errors.billing import (
+    BillingUpstreamInvalidResponseError,
+    BillingUpstreamUnavailableError,
+    UnknownErrorReason,
+    UpstreamErrorBody,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,12 +57,22 @@ ENFORCED_RESPONSE_PATHS: frozenset[str] = frozenset(
         "/subscription/cleanup/whitelist",
         "/model-provider/payment-link",
         "/invoices",
+        "/compliance/download",
         "/quota/info",
         "/quota/reserve",
         "/quota/commit",
         "/quota/release",
         "/quota/balance",
         "/quota/consume-capped",
+        # A salvaged `status` or `expire_at` would misreport eligibility or break the expiry timestamp.
+        "/education/verify",
+        "/education/status",
+        # Network access replies already required validation and gate access control.
+        "/tenants/{tenant_id}/network-access-groups",
+        "/tenants/{tenant_id}/network-access-groups/{group_id}",
+        "/tenants/{tenant_id}/apps/{app_id}/network-access-group",
+        "/tenants/{tenant_id}/apps/{app_id}/network-access-group/status",
+        "/tenants/{tenant_id}/apps/{app_id}/network-access-group-binding",
     }
 )
 
@@ -63,12 +88,23 @@ _http_client: httpx.Client = get_pooled_http_client(
 )
 
 _UNAVAILABLE_STATUSES = frozenset({httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS})
+_NON_REASON_CHARACTERS = re.compile(r"[^A-Z0-9_]")
 
 
 class Upstream(StrEnum):
     BILLING = "billing"
     BILLING_QUOTA = "billing_quota"
     SAAS = "saas"
+    NETWORK_ACCESS = "network_access"
+
+
+@dataclass(frozen=True)
+class ServiceErrors:
+    """The reason guard and error types of one generated service module, which raises through them."""
+
+    is_reason: Callable[[str], bool]
+    unavailable: Callable[..., BillingUpstreamUnavailableError]
+    invalid_response: Callable[..., BillingUpstreamInvalidResponseError]
 
 
 class BillingModel(BaseModel):
@@ -78,9 +114,11 @@ class BillingModel(BaseModel):
 
 
 def _base_url(upstream: Upstream) -> str:
-    billing_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
+    billing_url = dify_config.BILLING_API_URL
     if upstream == Upstream.BILLING_QUOTA:
-        return os.environ.get("BILLING_QUOTA_API_URL") or billing_url
+        return dify_config.BILLING_QUOTA_API_URL or billing_url
+    if upstream == Upstream.NETWORK_ACCESS:
+        return (dify_config.NETWORK_ACCESS_API_URL.strip() or billing_url).rstrip("/")
     return billing_url
 
 
@@ -93,7 +131,7 @@ def _base_url(upstream: Upstream) -> str:
 def _send(method: HTTPMethod, url: str, *, params: Mapping[str, QueryValue], json: object | None) -> httpx.Response:
     headers = {
         "Content-Type": "application/json",
-        "Billing-Api-Secret-Key": os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY"),
+        "Billing-Api-Secret-Key": dify_config.BILLING_API_SECRET_KEY,
     }
     return _http_client.request(method, url, params=params, json=json, headers=headers, follow_redirects=True)
 
@@ -104,6 +142,7 @@ def request[ResponseT: BillingModel](
     path: str,
     *,
     response_model: type[ResponseT],
+    errors: ServiceErrors,
     path_params: Mapping[str, str],
     params: Mapping[str, QueryValue],
     body: BillingModel | None,
@@ -114,26 +153,56 @@ def request[ResponseT: BillingModel](
     try:
         response = _send(method, url, params=params, json=request_json)
     except httpx.RequestError as error:
-        raise BillingUpstreamUnavailableError(f"{method} {path} failed") from error
+        raise errors.unavailable(f"{method} {path} failed") from error
 
     if response.status_code != httpx.codes.OK:
         message = f"{method} {path} returned {response.status_code}"
-        if response.status_code in _UNAVAILABLE_STATUSES or response.status_code >= 500:
-            raise BillingUpstreamUnavailableError(message)
-        raise BillingUpstreamInvalidResponseError(message)
+        status_code = response.status_code
+        error_body, reason = _error_details(response, errors.is_reason, upstream, method, path)
+        error_type = (
+            errors.unavailable
+            if status_code in _UNAVAILABLE_STATUSES or status_code >= 500
+            else errors.invalid_response
+        )
+        raise error_type(message, status_code=status_code, body=error_body, reason=reason)
 
     invalid_body = f"{method} {path} returned an invalid body"
     try:
         payload = json.loads(response.content)
     except ValueError as error:
-        raise BillingUpstreamInvalidResponseError(invalid_body) from error
+        raise errors.invalid_response(invalid_body) from error
     try:
         return response_model.model_validate(payload)
     except ValidationError as error:
         if path in ENFORCED_RESPONSE_PATHS or not isinstance(payload, dict):
-            raise BillingUpstreamInvalidResponseError(invalid_body) from error
+            raise errors.invalid_response(invalid_body) from error
         logger.exception("Billing response failed validation: %s %s", method, path)
         return _salvage_model(response_model, payload)
+
+
+def _error_details(
+    response: httpx.Response, is_reason: Callable[[str], bool], upstream: Upstream, method: HTTPMethod, path: str
+) -> tuple[UpstreamErrorBody | None, str | UnknownErrorReason | None]:
+    try:
+        payload = json.loads(response.content)
+    except ValueError:
+        return None, None
+    if not isinstance(payload, dict):
+        return None, None
+    body, reason = UpstreamErrorBody.model_validate(payload), payload.get("reason")
+    if not isinstance(reason, str):
+        return body, None
+    if is_reason(reason):
+        return body, reason
+    logger.error(
+        "Unknown %s error reason %s from %s %s: regenerate the billing client, "
+        "or the billing service returned a reason outside this service's declared set",
+        upstream,
+        _NON_REASON_CHARACTERS.sub("", reason)[:64],
+        method,
+        path,
+    )
+    return body, UnknownErrorReason(reason)
 
 
 def _salvage_model[ModelT: BillingModel](model: type[ModelT], payload: Mapping[str, Any]) -> ModelT:

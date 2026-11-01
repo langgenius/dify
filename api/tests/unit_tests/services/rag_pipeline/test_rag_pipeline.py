@@ -53,6 +53,7 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow.persistence import WorkflowNodeExecutionRepository
 from services.workflow_draft_variable_service import DraftVariableSaver
 from services.workflow_ref_service import WorkflowRef
+from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 
 
 def _make_service() -> RagPipelineService:
@@ -809,7 +810,7 @@ class TestRagPipelineServiceCases:
             account=_make_account(),
             datasource_type="website_crawl",
             is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            datasource_providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             ),
         )
@@ -894,7 +895,7 @@ class TestRagPipelineServiceCases:
             account=_make_account(),
             datasource_type="online_document",
             is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            datasource_providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             ),
         )
@@ -1076,9 +1077,7 @@ class TestRagPipelineServiceCases:
             "d1",
             True,
             credential_query=mock.create_autospec(CredentialQuery, instance=True),
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            ),
+            datasource_providers=mock_provider_service,
         )
 
         # 3. Assertions
@@ -1392,7 +1391,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="online_document",
                 is_published=False,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -1445,7 +1444,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -1502,7 +1501,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type=DatasourceProviderType.ONLINE_DRIVE,
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -1736,7 +1735,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="online_document",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -1795,7 +1794,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="online_document",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -1856,7 +1855,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="online_document",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -1931,7 +1930,7 @@ class TestRagPipelineServiceCases:
                 "d1",
                 True,
                 credential_query=mock.create_autospec(CredentialQuery, instance=True),
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -2035,7 +2034,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="website_crawl",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -2203,7 +2202,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="website_crawl",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -2257,7 +2256,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="online_drive",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -2312,7 +2311,7 @@ class TestRagPipelineServiceCases:
             account=_make_account(),
             datasource_type="online_document",
             is_published=False,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            datasource_providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             ),
         )
@@ -2474,7 +2473,7 @@ class TestRagPipelineServiceCases:
                 "d1",
                 True,
                 credential_query=mock.create_autospec(CredentialQuery, instance=True),
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -2511,7 +2510,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="online_document",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -2532,7 +2531,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="online_document",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -2585,7 +2584,7 @@ class TestRagPipelineServiceCases:
             account=_make_account(),
             datasource_type="online_document",
             is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            datasource_providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             ),
         )
@@ -2632,7 +2631,7 @@ class TestRagPipelineServiceCases:
             account=_make_account(),
             datasource_type="online_document",
             is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            datasource_providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             ),
         )
@@ -2674,7 +2673,7 @@ class TestRagPipelineServiceCases:
             "d1",
             False,
             credential_query=mock.create_autospec(CredentialQuery, instance=True),
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            datasource_providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             ),
         )
@@ -2723,7 +2722,7 @@ class TestRagPipelineServiceCases:
             "d1",
             True,
             credential_query=mock.create_autospec(CredentialQuery, instance=True),
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            datasource_providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             ),
         )

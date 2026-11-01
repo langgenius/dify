@@ -15,6 +15,7 @@ import { collaborationManager } from '@/app/components/workflow/collaboration/co
 import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import {
   createCatalogModelFixture,
@@ -726,6 +727,49 @@ describe('EnvPanel container', () => {
       data: { syncWorkflowDraft: true },
     })
   })
+
+  it.each([false, true])(
+    'reports a follower save failure only if the server did not commit it (committed: %s)',
+    async (committed) => {
+      const user = userEvent.setup()
+      const notifyError = vi.spyOn(toast, 'error')
+      notifyError.mockClear()
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(true)
+      vi.spyOn(collaborationManager, 'getIsLeader').mockReturnValue(false)
+      const env = oldModelEnv()
+      const savedEnv = oldModelEnv({
+        value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
+      })
+      const message = committed ? 'Response lost' : 'You do not have permission to edit this app.'
+      mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: [env] })
+      mockUpdateEnvironmentVariables.mockImplementationOnce(async (payload) => {
+        if (committed)
+          mockFetchWorkflowDraft.mockResolvedValue({
+            environment_variables: payload.environmentVariables,
+          })
+        throw new Error(message)
+      })
+      const llmNode = createLLMNode({ data: { model_selector: ['env', env.name] } })
+      const { store, getNodes } = renderPanel({
+        nodes: [llmNode],
+        initialStoreState: { environmentVariables: [env], envSecrets: {} },
+      })
+
+      await changeExistingModel(user, env.name)
+
+      await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalled())
+      await waitFor(() =>
+        expect(store.getState().environmentVariables).toMatchObject([committed ? savedEnv : env]),
+      )
+      if (committed) expect(notifyError).not.toHaveBeenCalled()
+      else {
+        await waitFor(() => expect(notifyError).toHaveBeenCalledExactlyOnceWith(message))
+        expect(getNodes()[0]?.data).toEqual(llmNode.data)
+      }
+      expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    },
+  )
 
   it('preserves the shared model and nodes when model rules cannot be fetched', async () => {
     const user = userEvent.setup()

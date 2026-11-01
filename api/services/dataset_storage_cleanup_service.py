@@ -4,7 +4,7 @@ import datetime
 import logging
 from typing import Literal
 
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
@@ -42,7 +42,7 @@ def _website_job_ref(data_source_info: str | None) -> tuple[str, str, str | None
         return None
     try:
         info = WebsiteCrawlDataSourceInfo.model_validate_json(data_source_info)
-    except (ValueError, TypeError, ValidationError):
+    except (ValueError, TypeError):
         return None
     return info.provider, info.job_id, info.provider_instance_id
 
@@ -163,7 +163,7 @@ def cleanup_expired_website_crawl_receipts(
             receipt = WebsiteCrawlReceipt.model_validate_json(storage.load_once(key))
         except FileNotFoundError:
             continue
-        except (ValueError, TypeError, ValidationError):
+        except (ValueError, TypeError):
             logger.warning("Ignoring invalid website crawl receipt key=%s", key, exc_info=True)
             continue
         job_ref = receipt.job_ref

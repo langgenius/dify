@@ -2237,3 +2237,46 @@ def test_segment_update_rechecks_queued_document_under_row_lock(
         )
     with sqlite_session_factory() as session:
         assert session.get_one(DocumentSegment, segment.id).content == "content"
+
+
+@pytest.mark.parametrize(
+    ("values", "answer"),
+    [
+        ({"answer": "new answer"}, "new answer"),
+        ({"content": "new question", "answer": "new answer"}, "new answer"),
+        ({"content": "new question"}, "answer"),
+        ({"keywords": ["keyword"]}, "answer"),
+    ],
+)
+def test_partial_qa_update_preserves_answer_and_document_word_count(
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
+    values: dict[str, object],
+    answer: str,
+) -> None:
+    application, _, _ = indexing_probe
+    with sqlite_session_factory.begin() as session:
+        session.get_one(Document, "document-1").doc_form = IndexStructureType.QA_INDEX
+    context = RequestContext("request", None, "author", "workspace-1")
+    created = application.create_segment(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        values={"content": "question", "answer": "answer"},
+    )
+    updated = application.update_segment(
+        context,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_id=created.data.id,
+        values=values,
+    )
+    assert updated.data.content == values.get("content", "question")
+    assert updated.data.answer == answer
+    with sqlite_session_factory() as session:
+        segment = session.get_one(DocumentSegment, created.data.id)
+        document = session.get_one(Document, "document-1")
+        assert segment.word_count == len(segment.content) + len(answer)
+        assert document.word_count == segment.word_count
+        if "content" in values or "answer" in values:
+            assert segment.tokens == segment.word_count

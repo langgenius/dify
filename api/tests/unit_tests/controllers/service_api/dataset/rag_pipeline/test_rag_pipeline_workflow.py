@@ -58,7 +58,6 @@ from models.account import Account
 from models.dataset import Dataset, Pipeline
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
-from services.data_source.provider_service import DatasourceProviderService
 from services.entities.upload_file import FileUploadActor, UploadFileRecord
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.errors.file import UnsupportedFileTypeError
@@ -67,6 +66,7 @@ from services.rag_pipeline.entity.pipeline_service_api_entities import (
     PipelineRunApiEntity,
 )
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 
 
 def _persist_dataset(session: Session, *, tenant_id: str, dataset_id: str) -> Dataset:
@@ -152,7 +152,7 @@ def _bind_database(sqlite_session_factory: sessionmaker[Session], monkeypatch: p
     session_proxy = scoped_session(sqlite_session_factory)
     monkeypatch.setattr(workflow_module.db, "session", session_proxy)
     query = CredentialQueryRepository(session_factory=sqlite_session_factory)
-    providers = DatasourceProviderService(
+    providers = build_datasource_provider_service(
         credentials=SQLAlchemyDatasourceCredentialRepository(session_factory=sqlite_session_factory)
     )
     monkeypatch.setattr(

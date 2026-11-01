@@ -1504,6 +1504,9 @@ export default interface Resources {
     'apps.fullTip2': 'Plan limit reached'
     'apps.fullTip2des': 'It is recommended to clean up inactive applications to free up usage, or contact us.'
     buyPermissionDeniedTip: 'Please contact your enterprise administrator to subscribe'
+    'errors.operationFailed': "We couldn't complete this request. Please try again later. If the problem persists, contact support."
+    'errors.requestInProgress': 'Your previous request is still being processed. Please try again in a moment.'
+    'errors.unavailable': 'This service is temporarily unavailable. Please try again later.'
     'plans.community.btnText': 'Get Started'
     'plans.community.description': 'For open-source enthusiasts, individual developers, and non-commercial projects'
     'plans.community.features': [
@@ -1710,9 +1713,12 @@ export default interface Resources {
     'chat.renameConversation': 'Rename Conversation'
     'chat.thinking': 'Thinking...'
     'chat.thought': 'Thought'
+    'compliance.documentNotFound': 'This document is not available right now. Please try again later or contact support.'
+    'compliance.downloadForbidden': 'Only the workspace owner can download this document, and only on a plan that includes it. Ask your workspace owner to download it.'
     'compliance.gdpr': 'GDPR DPA'
     'compliance.iso27001': 'ISO 27001:2022 Certification'
     'compliance.professionalUpgradeTooltip': 'Only available with a Team plan or above.'
+    'compliance.rateLimit': 'Too many downloads. Please try again later.'
     'compliance.sandboxUpgradeTooltip': 'Only available with a Professional or Team plan.'
     'compliance.soc2Type1': 'SOC 2 Type I Report'
     'compliance.soc2Type2': 'SOC 2 Type II Report'
@@ -3318,6 +3324,7 @@ export default interface Resources {
     tryAgain: '← Try again'
   }
   education: {
+    activateFailed: "We couldn't activate your education discount. Your current Education Verified status may still be active, or this email is no longer eligible."
     'applied.activeSubscription.description': 'You have an active subscription. You can use the education discount after your subscription expires. Confirm your subscription in <stripeLink>Stripe</stripeLink>.'
     'applied.noPaymentPermission.description': "You don't have payment permission in this workspace. Please switch to a workspace where you can manage billing to use the education discount."
     'applied.noPaymentPermission.returnHome': 'Back to Dify'
@@ -3370,7 +3377,9 @@ export default interface Resources {
     'toVerifiedTip.coupon': 'exclusive 100% coupon'
     'toVerifiedTip.end': 'for the Dify Professional Plan.'
     'toVerifiedTip.front': 'You are now eligible for Education Verified status. Please enter your education information below to complete the process and receive an'
+    tooManyAttempts: 'Too many attempts. Please try again later.'
     useEducationDiscount: 'Use education discount'
+    verifyFailed: "We couldn't verify your education status. If you verified recently, your current Education Verified status may still be active. Otherwise, please try again later."
   }
   explore: {
     'appCard.try': 'Details'
@@ -3462,6 +3471,12 @@ export default interface Resources {
     descriptionHelp: 'A clear description helps apps decide when to search this Agent Knowledge Base.'
     descriptionPlaceholder: 'e.g. Refund policy, shipping FAQs, and escalation steps — use for customer support questions'
     illustrationHeadline: 'Connect your content once — every app answers with the freshest knowledge.'
+    modelPermissionDenied: 'No permission to use this model'
+    modelSettings: 'Model settings'
+    modelSettingsDescription: 'Use the workspace defaults, or choose models for this knowledge base.'
+    modelUnavailable: 'This model is unavailable ({{reason}}). Select another model or check the provider settings.'
+    modelsLoadFailed: 'Model settings could not be loaded. Retry, or select an available model.'
+    modelsNeedAttention: 'Check the model settings before creating the knowledge base.'
     namePlaceholder: 'e.g. Customer Support Handbook'
     nameRequired: 'Enter an Agent Knowledge Base name.'
     retryRemainingFiles: 'Retry remaining files'
@@ -4149,9 +4164,9 @@ export default interface Resources {
     'upgrade.completeTitle': 'Upgrade complete'
     'upgrade.contactSupport': 'Contact Support'
     'upgrade.dialogAvailability': 'After the upgrade, <strong>both the Classic and Agent Knowledge Bases remain available</strong>'
-    'upgrade.dialogDescription': 'Upgrade this <legacy>Classic Knowledge Base</legacy> to an <new>Agent Knowledge Base</new>, carrying over all documents, settings, and app connections. You’ll be taken to the Agent Knowledge Base automatically.'
+    'upgrade.dialogDescription': 'Upgrade this <legacy>Classic Knowledge Base</legacy> to an <new>Agent Knowledge Base</new>, carrying over documents and relevant settings. You’ll be taken to the Agent Knowledge Base automatically.'
     'upgrade.dialogDuration': 'Takes a few minutes to a few hours, depending on size. Progress is shown on the knowledge base card'
-    'upgrade.dialogLinkedApps': 'Linked apps keep retrieving during the upgrade'
+    'upgrade.dialogLinkedApps': 'Existing apps continue to use the Classic Knowledge Base. To use the Agent Knowledge Base, reconfigure the apps'
     'upgrade.dialogTitle': 'Upgrade to an Agent Knowledge Base?'
     'upgrade.failedDescription': 'Upgrade failed. Nothing was changed, and your Classic Knowledge Base is still available.'
     'upgrade.failedTitle': 'Upgrade failed'

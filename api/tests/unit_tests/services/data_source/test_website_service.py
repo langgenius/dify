@@ -36,6 +36,7 @@ from services.data_source.website_service import (
     WebsiteCrawlStatusApiRequest,
     WebsiteService,
 )
+from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 
 _FIRECRAWL_INSTANCE = website_crawl_provider_instance_id(provider="firecrawl")
 
@@ -210,16 +211,10 @@ def test_website_crawl_status_api_request_from_args_requires_fields() -> None:
     assert req.job_id == "job-1"
 
 
-def test_get_credentials_and_config_selects_plugin_id_and_key_firecrawl(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_credentials_and_config_selects_plugin_id_and_key_firecrawl() -> None:
     service_instance = MagicMock(name="DatasourceProviderService-instance")
     service_instance.get_datasource_credentials.return_value = {"firecrawl_api_key": "k", "base_url": "b"}
-    monkeypatch.setattr(website_service_module, "DatasourceProviderService", MagicMock(return_value=service_instance))
-
-    api_key, config = _website_service(
-        providers=website_service_module.DatasourceProviderService(
-            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-        )
-    )._get_credentials_and_config("tenant-1", "firecrawl")
+    api_key, config = _website_service(providers=service_instance)._get_credentials_and_config("tenant-1", "firecrawl")
     assert api_key == "k"
     assert config["base_url"] == "b"
 
@@ -237,18 +232,10 @@ def test_get_credentials_and_config_selects_plugin_id_and_key_firecrawl(monkeypa
         ("jinareader", "langgenius/jina_datasource"),
     ],
 )
-def test_get_credentials_and_config_selects_plugin_id_and_key_api_key(
-    monkeypatch: pytest.MonkeyPatch, provider: str, plugin_id: str
-) -> None:
+def test_get_credentials_and_config_selects_plugin_id_and_key_api_key(provider: str, plugin_id: str) -> None:
     service_instance = MagicMock(name="DatasourceProviderService-instance")
     service_instance.get_datasource_credentials.return_value = {"api_key": "enc-key", "base_url": "b"}
-    monkeypatch.setattr(website_service_module, "DatasourceProviderService", MagicMock(return_value=service_instance))
-
-    api_key, config = _website_service(
-        providers=website_service_module.DatasourceProviderService(
-            credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-        )
-    )._get_credentials_and_config("tenant-1", provider)
+    api_key, config = _website_service(providers=service_instance)._get_credentials_and_config("tenant-1", provider)
     assert api_key == "enc-key"
     assert config["base_url"] == "b"
 
@@ -262,13 +249,13 @@ def test_get_credentials_and_config_selects_plugin_id_and_key_api_key(
 def test_get_credentials_and_config_rejects_invalid_provider() -> None:
     with pytest.raises(ValueError, match="Invalid provider"):
         _website_service(
-            providers=website_service_module.DatasourceProviderService(
+            providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             )
         )._get_credentials_and_config("tenant-1", "unknown")
 
 
-def test_get_credentials_and_config_hits_unreachable_guard_branch(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_credentials_and_config_hits_unreachable_guard_branch() -> None:
     class FlakyProvider:
         def __init__(self) -> None:
             self._eq_calls = 0
@@ -287,14 +274,11 @@ def test_get_credentials_and_config_hits_unreachable_guard_branch(monkeypatch: p
 
     service_instance = MagicMock(name="DatasourceProviderService-instance")
     service_instance.get_datasource_credentials.return_value = {"firecrawl_api_key": "k"}
-    monkeypatch.setattr(website_service_module, "DatasourceProviderService", MagicMock(return_value=service_instance))
-
     with pytest.raises(ValueError, match="Invalid provider"):
-        _website_service(
-            providers=website_service_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            )
-        )._get_credentials_and_config("tenant-1", FlakyProvider())  # type: ignore[arg-type]
+        _website_service(providers=service_instance)._get_credentials_and_config(
+            "tenant-1",
+            FlakyProvider(),  # type: ignore[arg-type]
+        )
 
 
 def test_get_decrypted_api_key_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -331,7 +315,7 @@ def test_crawl_url_dispatches_by_provider(monkeypatch: pytest.MonkeyPatch) -> No
     redis_mock = MagicMock()
     monkeypatch.setattr(website_service_module, "redis_client", redis_mock)
     result = _website_service(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     ).crawl_url(api_request)
@@ -374,7 +358,7 @@ def test_crawl_url_persists_receipt_when_redis_is_unavailable(
     monkeypatch.setattr(website_service_module, "redis_client", redis_mock)
 
     result = _website_service(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     ).crawl_url(WebsiteCrawlApiRequest(provider="firecrawl", url="https://example.com", options={"limit": 1}))
@@ -437,7 +421,7 @@ def test_crawl_url_dispatches_other_providers(
 
     assert (
         _website_service(
-            providers=website_service_module.DatasourceProviderService(
+            providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             )
         ).crawl_url(api_request)
@@ -452,7 +436,7 @@ def test_crawl_url_rejects_invalid_provider(monkeypatch: pytest.MonkeyPatch) -> 
 
     with pytest.raises(ValueError, match="Invalid provider"):
         _website_service(
-            providers=website_service_module.DatasourceProviderService(
+            providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             )
         ).crawl_url(api_request)
@@ -462,7 +446,7 @@ def test_resolve_job_ref_survives_redis_loss_with_durable_receipt(
     monkeypatch: pytest.MonkeyPatch, stub_storage: _MemoryStorage
 ) -> None:
     service = _website_service(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     )
@@ -501,7 +485,7 @@ def test_resolve_legacy_job_verifies_remotely_and_persists_receipt(
     provider: str,
 ) -> None:
     service = _website_service(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     )
@@ -541,7 +525,7 @@ def test_resolve_legacy_job_does_not_persist_failed_cross_tenant_claim(
     monkeypatch: pytest.MonkeyPatch, stub_storage: _MemoryStorage
 ) -> None:
     service = _website_service(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     )
@@ -573,7 +557,7 @@ def test_resolve_stored_legacy_job_without_instance_fails_closed(
     monkeypatch: pytest.MonkeyPatch, provider: str
 ) -> None:
     service = _website_service(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     )
@@ -592,7 +576,7 @@ def test_resolve_stored_legacy_job_without_instance_fails_closed(
 
 def test_resolve_stored_jina_single_page_uses_fixed_provider_instance(monkeypatch: pytest.MonkeyPatch) -> None:
     service = _website_service(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     )
@@ -612,7 +596,7 @@ def test_resolve_stored_jina_single_page_uses_fixed_provider_instance(monkeypatc
 
 def test_resolve_legacy_jina_job_without_receipt_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     service = _website_service(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     )
@@ -805,7 +789,7 @@ def test_get_crawl_status_dispatches(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(website_service_module, "redis_client", redis_mock)
 
     service = _website_service(
-        providers=website_service_module.DatasourceProviderService(
+        providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         )
     )
@@ -844,7 +828,7 @@ def test_get_crawl_status_typed_rejects_invalid_provider(monkeypatch: pytest.Mon
     monkeypatch.setattr(WebsiteService, "_get_credentials_and_config", MagicMock(return_value=("k", {})))
     with pytest.raises(ValueError, match="Invalid provider"):
         _website_service(
-            providers=website_service_module.DatasourceProviderService(
+            providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             )
         ).get_crawl_status_typed(WebsiteCrawlStatusApiRequest(provider="bad", job_id="j"))

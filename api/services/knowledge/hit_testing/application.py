@@ -6,7 +6,6 @@ from typing import Protocol
 
 from core.rag.index_processor.constant.query_type import QueryType
 from machinery.context import RequestContext
-from services.errors.index import IndexNotInitializedError
 from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError
 from services.knowledge.dataset_access import DatasetAccess, DatasetAccessError
 from services.knowledge.entities.external import ExternalRetrievalCandidate, ExternalRetrievalConfig
@@ -88,7 +87,7 @@ class HitTestingApplicationService:
             return result.response
         except ExternalKnowledgeRetrievalError as error:
             raise HitTestingUpstreamError(str(error)) from error
-        except (ValueError, DatasetAccessError, IndexNotInitializedError, HitTestingError):
+        except (ValueError, DatasetAccessError, HitTestingError):
             raise
         except Exception as error:
             logger.exception("Hit testing failed.")

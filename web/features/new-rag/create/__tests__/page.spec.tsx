@@ -2,12 +2,19 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
+import {
+  createCatalogModelFixture,
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
 import { consoleQueryKey } from '@/test/console/operation-hooks'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery,
   seedFeatures,
 } from '@/test/console/query-data'
+import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { CreateKnowledgePage } from '../page'
 
 const serviceMock = vi.hoisted(() => ({
@@ -21,6 +28,7 @@ const serviceMock = vi.hoisted(() => ({
   previewInitialSource: vi.fn(),
   startWebsitePreview: vi.fn(),
   getDefaultModel: vi.fn(),
+  getModels: vi.fn(),
   getSpace: vi.fn(),
   getSyncPolicy: vi.fn(),
   getWorkflow: vi.fn(),
@@ -164,9 +172,12 @@ vi.mock('@/service/console', async (importOriginal) => {
       [`${space}.sources.bySourceId.syncPolicy.get`]: serviceMock.getSyncPolicy,
       [`${space}.sources.bySourceId.syncPolicy.put`]: serviceMock.updateSyncPolicy,
       [`${space}.sources.post`]: serviceMock.createKfsSource,
-      'workspaces.current.defaultModel.get': serviceMock.getDefaultModel,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.defaultModel.get': (input) =>
+        track(() => serviceMock.getDefaultModel(input)),
+      'workspaces.current.models.modelTypes.byModelType.get': (input) =>
+        track(() => serviceMock.getModels(input)),
       'auth.plugin.datasource.list.get': datasource('auth', datasourceQueryMock.auth),
       'features.get': () =>
         track(() => ({ billing: { subscription: { plan: uploadPlanMock.plan } } })),
@@ -486,6 +497,38 @@ const createdKnowledge = {
   state: 'provisioning' as const,
 }
 
+const modelCatalogs = [
+  createModelCatalogFixture({
+    provider: 'kurokobo/fake_models/fake_models',
+    models: ['echo', 'reasoning-custom'].map((model) =>
+      createCatalogModelFixture({
+        model,
+        label: { en_US: model },
+        model_type: 'llm',
+      }),
+    ),
+  }),
+  createModelCatalogFixture({
+    provider: 'langgenius/cohere/cohere',
+    models: [
+      ...['embed', 'embedding-custom'].map((model) =>
+        createCatalogModelFixture({
+          model,
+          label: { en_US: model },
+          model_type: 'text-embedding',
+        }),
+      ),
+      ...['rerank', 'rerank-custom'].map((model) =>
+        createCatalogModelFixture({
+          model,
+          label: { en_US: model },
+          model_type: 'rerank',
+        }),
+      ),
+    ],
+  }),
+]
+
 const kfsSourceResponse = (overrides: Record<string, unknown> = {}) => ({
   connection_id: 'firecrawl-connection-1',
   created_at: '2026-08-06T10:00:00Z',
@@ -545,6 +588,19 @@ async function renderPage(
   queryClient = createConsoleQueryClient(),
   { preloadMembers = true }: { preloadMembers?: boolean } = {},
 ) {
+  seedModelProviderQueries(queryClient, modelCatalogs)
+  for (const model_type of ['llm', 'text-embedding', 'rerank'] as const) {
+    queryClient.removeQueries({
+      queryKey: consoleQuery.workspaces.current.defaultModel.get.queryKey({
+        input: { query: { model_type } },
+      }),
+    })
+    queryClient.removeQueries({
+      queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+        input: { params: { model_type } },
+      }),
+    })
+  }
   queryClient.setQueryData(
     consoleQueryKey('workspaces.current.rbac.myPermissions.get'),
     workspacePermissions(permissionStateMock.keys),
@@ -553,20 +609,26 @@ async function renderPage(
     queryClient.setQueryData(consoleQuery.workspaces.current.members.get.queryKey({ input: {} }), {
       accounts: workspaceMembers,
     })
-  const view = renderWithConsoleQuery(<CreateKnowledgePage />, {
-    accountProfile: {
-      ...workspaceMembers[0],
-      avatar: '',
-      is_password_set: false,
-      timezone: 'Asia/Shanghai',
+  const view = renderWithConsoleQuery(
+    <QueryTestingAdapter>
+      <CreateKnowledgePage />
+    </QueryTestingAdapter>,
+    {
+      accountProfile: {
+        ...workspaceMembers[0],
+        avatar: '',
+        is_password_set: false,
+        timezone: 'Asia/Shanghai',
+      },
+      knowledgeFsFeatures: { upload_enabled: systemFeaturesStateMock.uploadEnabled },
+      queryClient,
+      systemFeatures: {
+        enable_marketplace: false,
+        deployment_edition: systemFeaturesStateMock.deploymentEdition,
+        rbac_enabled: systemFeaturesStateMock.rbacEnabled,
+      },
     },
-    knowledgeFsFeatures: { upload_enabled: systemFeaturesStateMock.uploadEnabled },
-    queryClient,
-    systemFeatures: {
-      deployment_edition: systemFeaturesStateMock.deploymentEdition,
-      rbac_enabled: systemFeaturesStateMock.rbacEnabled,
-    },
-  })
+  )
   await settle()
   return view
 }
@@ -733,6 +795,16 @@ describe('CreateKnowledgePage', () => {
         },
       }),
     )
+    serviceMock.getModels.mockImplementation(({ params }: { params: { model_type: string } }) =>
+      Promise.resolve({
+        data: modelCatalogs
+          .map((provider) => ({
+            ...provider,
+            models: provider.models.filter((model) => model.model_type === params.model_type),
+          }))
+          .filter((provider) => provider.models.length),
+      }),
+    )
     serviceMock.getSpace.mockResolvedValue({
       control_space_id: createdKnowledge.control_space_id,
       created_at: '2026-08-10T09:45:02Z',
@@ -796,6 +868,121 @@ describe('CreateKnowledgePage', () => {
     )
     expect(createButton).toBeEnabled()
   })
+
+  it('keeps model settings collapsed and preselects the workspace defaults', async () => {
+    const user = userEvent.setup()
+    await renderPage()
+    const toggle = screen.getByRole('button', { name: 'knowledgeCreate.modelSettings' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.queryByRole('button', { name: /knowledgeSettings.settings.embeddingModelLabel/ }),
+    ).not.toBeInTheDocument()
+    await user.click(toggle)
+    expect(
+      screen.getByRole('button', {
+        name: /knowledgeSettings.settings.systemReasoningModelLabel.*echo/,
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /knowledgeSettings.settings.embeddingModelLabel.*embed/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /modelProvider.modelProvider.rerankModel.key.*rerank/ }),
+    ).toBeInTheDocument()
+    expect(serviceMock.create).not.toHaveBeenCalled()
+  })
+
+  it('preserves custom models across collapsing and mode changes and submits all three selections', async () => {
+    const user = userEvent.setup()
+    await renderPage()
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.modelSettings' }))
+    for (const [label, model] of [
+      [/knowledgeSettings.settings.systemReasoningModelLabel/, 'reasoning-custom'],
+      [/knowledgeSettings.settings.embeddingModelLabel/, 'embedding-custom'],
+      [/modelProvider.modelProvider.rerankModel.key/, 'rerank-custom'],
+    ] as const) {
+      await user.click(screen.getByRole('button', { name: label }))
+      await user.click(await screen.findByRole('button', { name: model }))
+    }
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.modelSettings' }))
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.uploadFiles' }))
+    await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.startEmpty' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.modelSettings' }))
+    expect(
+      screen.getByRole('button', {
+        name: /knowledgeSettings.settings.embeddingModelLabel.*embedding-custom/,
+      }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+    await waitFor(() =>
+      expect(serviceMock.create).toHaveBeenCalledWith({
+        body: expect.objectContaining({
+          embedding: {
+            model: 'embedding-custom',
+            plugin_id: 'langgenius/cohere',
+            provider: 'cohere',
+          },
+          retrieval: expect.objectContaining({
+            reasoning_model: {
+              model: 'reasoning-custom',
+              plugin_id: 'kurokobo/fake_models',
+              provider: 'fake_models',
+            },
+            rerank: {
+              enabled: true,
+              model: { model: 'rerank-custom', plugin_id: 'langgenius/cohere', provider: 'cohere' },
+            },
+          }),
+        }),
+      }),
+    )
+  })
+
+  it.each([
+    ['disabled', 'modelProvider.modelProvider.selector.disabled'],
+    ['no-permission', 'knowledgeCreate.modelPermissionDenied'],
+  ] as const)(
+    'reports a %s default before creation and lets the user replace it',
+    async (status, reason) => {
+      const user = userEvent.setup()
+      serviceMock.getModels.mockImplementation(({ params }: { params: { model_type: string } }) =>
+        Promise.resolve({
+          data: modelCatalogs
+            .map((provider) => ({
+              ...provider,
+              models: provider.models
+                .filter((model) => model.model_type === params.model_type)
+                .map((model) => ({
+                  ...model,
+                  status: model.model === 'echo' ? status : model.status,
+                })),
+            }))
+            .filter((provider) => provider.models.length),
+        }),
+      )
+      await renderPage()
+      await fillRequiredFields(user)
+      expect(screen.getByText('knowledgeCreate.modelsNeedAttention')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+      expect(serviceMock.create).not.toHaveBeenCalled()
+      expect(screen.getByRole('button', { name: 'knowledgeCreate.modelSettings' })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      )
+      const reasoning = screen.getByRole('button', {
+        name: /knowledgeSettings.settings.systemReasoningModelLabel/,
+      })
+      expect(reasoning).toHaveAccessibleDescription(
+        `knowledgeCreate.modelUnavailable:${JSON.stringify({ reason })}`,
+      )
+      await waitFor(() => expect(reasoning).toHaveFocus())
+      await user.click(reasoning)
+      await user.click(await screen.findByRole('button', { name: 'reasoning-custom' }))
+      await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
+      await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
+    },
+  )
 
   it('accepts a 40-character name and submits the exact value', async () => {
     const user = userEvent.setup()
@@ -1103,63 +1290,40 @@ describe('CreateKnowledgePage', () => {
     )
   })
 
-  it('creates an empty knowledge base when a default model is missing', async () => {
+  it('requires missing defaults to be selected before creating an empty knowledge base', async () => {
     const user = userEvent.setup()
-    serviceMock.create.mockResolvedValueOnce({
-      ...createdKnowledge,
-      model_setup_required: true,
-    })
-    vi.mocked(globalThis.crypto.randomUUID).mockReturnValueOnce(
-      '11111111-1111-4111-8111-111111111111',
-    )
-    serviceMock.getDefaultModel.mockImplementation(({ query }: { query: { model_type: string } }) =>
-      Promise.resolve(
-        query.model_type === 'llm'
-          ? {
-              data: {
-                model: 'echo',
-                provider: { provider: 'kurokobo/fake_models/fake_models' },
-              },
-            }
-          : { data: null },
-      ),
-    )
+    serviceMock.getDefaultModel.mockResolvedValue({ data: null })
     await renderPage()
     await fillRequiredFields(user)
-
+    expect(screen.getByText('knowledgeCreate.modelsNeedAttention')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
-
-    await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
-    expect(serviceMock.create).toHaveBeenCalledWith({
-      body: expect.not.objectContaining({
-        embedding: expect.anything(),
-        retrieval: expect.anything(),
-      }),
-    })
-    expect(routerMock.replace).toHaveBeenCalledWith(
-      `/datasets/new/${createdKnowledge.control_space_id}/sources`,
-    )
+    expect(serviceMock.create).not.toHaveBeenCalled()
+    expect(
+      screen.getByText('knowledgeSettings.settings.systemReasoningModelRequired'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('knowledgeSettings.settings.embeddingModelRequired'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSettings.settings.rerankModelRequired')).toBeInTheDocument()
   })
 
-  it('creates without model presets when loading default models fails', async () => {
+  it('keeps the draft when model loading fails and retries before creation', async () => {
     const user = userEvent.setup()
-    serviceMock.create.mockResolvedValueOnce({
-      ...createdKnowledge,
-      model_setup_required: true,
-    })
-    serviceMock.getDefaultModel.mockRejectedValue(new Error('model service unavailable'))
+    serviceMock.getModels.mockRejectedValueOnce(new Error('model service unavailable'))
     await renderPage()
     await fillRequiredFields(user)
-
     await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
-
+    expect(serviceMock.create).not.toHaveBeenCalled()
+    expect(screen.getByText('knowledgeCreate.modelsLoadFailed')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await waitFor(() =>
+      expect(screen.queryByText('knowledgeCreate.modelsNeedAttention')).not.toBeInTheDocument(),
+    )
+    expect(screen.getByRole('textbox', { name: 'knowledgeSpace.name' })).toHaveValue(
+      '  Product handbook  ',
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
-    expect(serviceMock.create).toHaveBeenCalledWith({
-      body: expect.not.objectContaining({
-        embedding: expect.anything(),
-        retrieval: expect.anything(),
-      }),
-    })
   })
 
   it('creates the space but prompts for model setup before uploading', async () => {
@@ -1169,7 +1333,6 @@ describe('CreateKnowledgePage', () => {
       ...createdKnowledge,
       model_setup_required: true,
     })
-    serviceMock.getDefaultModel.mockResolvedValue({ data: null })
     await renderPage()
     await fillRequiredFields(user)
     await user.upload(
@@ -1232,18 +1395,31 @@ describe('CreateKnowledgePage', () => {
     async (status) => {
       const user = userEvent.setup()
       serviceMock.create.mockRejectedValueOnce(createHttpError(new Response(null, { status })))
-      await renderPage()
+      const view = await renderPage()
       await fillRequiredFields(user)
 
       await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
       expect(await screen.findByRole('alert')).toHaveTextContent('knowledgeCreate.createFailed')
       expect(screen.getByRole('textbox', { name: 'knowledgeSpace.name' })).toBeDisabled()
       expect(screen.getByRole('button', { name: /^knowledgeSpace\.permission/ })).toBeDisabled()
+      act(() => {
+        view.queryClient.setQueryData(
+          consoleQuery.workspaces.current.defaultModel.get.queryKey({
+            input: { query: { model_type: 'llm' } },
+          }),
+          {
+            data: createDefaultModelFixture({
+              model: 'reasoning-custom',
+              provider: { provider: 'kurokobo/fake_models/fake_models' },
+            }),
+          },
+        )
+      })
       await user.click(screen.getByRole('button', { name: 'knowledgeCreate.createTitle' }))
 
       await waitFor(() => expect(serviceMock.create).toHaveBeenCalledTimes(2))
-      expect(serviceMock.create.mock.calls[0]?.[0].body.idempotency_key).toBe(
-        serviceMock.create.mock.calls[1]?.[0].body.idempotency_key,
+      expect(serviceMock.create.mock.calls[1]?.[0].body).toEqual(
+        serviceMock.create.mock.calls[0]?.[0].body,
       )
     },
   )
