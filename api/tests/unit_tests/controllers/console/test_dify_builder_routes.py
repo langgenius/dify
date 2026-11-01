@@ -7,7 +7,7 @@ without requiring a logged-in Flask request context.
 
 import json
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
 from pathlib import Path
@@ -202,6 +202,21 @@ def test_session_get_and_command_finished_schema_keep_reply_language() -> None:
 
     assert get_payload["reply_language"] == "zh-Hans"
     assert finished_payload["reply_language"] == "zh-Hans"
+
+
+@pytest.mark.parametrize("settlement", [None, "settled", "pending", "unknown"])
+def test_session_get_and_command_finished_keep_lifecycle_settlement(settlement: str | None) -> None:
+    raw = {**asdict(_session_view()), "lifecycle_settlement": settlement}
+    get_view = wiring._public_session_view(raw, include_last_command_id=True)
+    stream_view = wiring._public_session_view(raw, include_last_command_id=False)
+    assert get_view["lifecycle_settlement"] == settlement
+    assert stream_view["lifecycle_settlement"] == settlement
+    get_payload = DifyBuilderSessionViewResponse.model_validate(get_view).model_dump(mode="json")
+    finished_payload = DifyBuilderCommandFinishedEventData.model_validate(
+        {**stream_view, "command_id": "command-1"}
+    ).model_dump(mode="json")
+    assert get_payload["lifecycle_settlement"] == settlement
+    assert finished_payload["lifecycle_settlement"] == settlement
 
 
 def test_session_stream_delegates_to_reconnect_stream(mocker: pytest_mock.MockerFixture) -> None:

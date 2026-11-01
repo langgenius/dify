@@ -1718,7 +1718,11 @@ class DifyBuilderService:
         )
 
     def _build_session_view(self, s: Session, fc: DifyBuilderContext) -> SessionView:
-        from services.dify_builder.conversation_lifecycle import cleared_session_view, is_conversation_cleared
+        from services.dify_builder.conversation_lifecycle import (
+            cleared_session_view,
+            is_conversation_cleared,
+            lifecycle_settlement,
+        )
         from services.dify_builder.conversation_tasks import active_entry_mode
         from services.dify_builder.task_lifecycle import task_identity
 
@@ -1814,6 +1818,7 @@ class DifyBuilderService:
             if projection is not None:
                 actions, decision, pending_context = projection
         return SessionView(
+            lifecycle_settlement=lifecycle_settlement(fc),
             task_id=task_identity(s, fc),
             task_status="completed"
             if is_terminal(st)

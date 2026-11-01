@@ -67,6 +67,7 @@ def test_session_view_to_dict_projects_only_browser_fields() -> None:
         "task_status": "active",
         "task_summaries": [],
         "conversation_cleared": False,
+        "lifecycle_settlement": None,
         "pending_fix_context": None,
         "phase": "understand",
         "actions": [],

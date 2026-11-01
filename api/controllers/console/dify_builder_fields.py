@@ -417,6 +417,14 @@ class DifyBuilderSessionStateResponse(ResponseModel):
     task_status: Literal["active", "paused", "completed", "abandoned"] = "active"
     task_summaries: list[TaskSummary] = Field(default_factory=list, max_length=8)
     conversation_cleared: bool = False
+    lifecycle_settlement: Literal["settled", "pending", "unknown"] | None = Field(
+        default=None,
+        description=(
+            "Known execution state of the current clear/abandon control, not physical cleanup proof. "
+            "Null means no applicable control; missing applicable evidence is unknown. "
+            "Clear retains its durable acknowledgment state without inferring later cleanup."
+        ),
+    )
     pending_fix_context: RunContextCard | PreflightContextCard | None = None
 
 
