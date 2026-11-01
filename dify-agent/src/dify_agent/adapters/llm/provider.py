@@ -9,7 +9,7 @@ this provider.
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from itertools import count
 from typing import NoReturn, Protocol, cast
@@ -47,7 +47,7 @@ class DifyLLMClient(Protocol):
         tools: list[PromptMessageTool] | None,
         stop: list[str] | None,
         stream: bool,
-    ) -> AsyncIterator[LLMResultChunk]: ...
+    ) -> AsyncGenerator[LLMResultChunk, None]: ...
 
 
 class PluginDaemonBasicResponse(BaseModel):
@@ -81,7 +81,7 @@ class DifyApiLLMClient:
         tools: list[PromptMessageTool] | None,
         stop: list[str] | None,
         stream: bool,
-    ) -> AsyncIterator[LLMResultChunk]:
+    ) -> AsyncGenerator[LLMResultChunk, None]:
         call_index = next(self._call_counter)
         invocation_id = str(uuid5(NAMESPACE_URL, f"dify-agent:{self.agent_run_id}:llm:{call_index}"))
         context = self.execution_context
