@@ -26,17 +26,28 @@ class ExtractionImageFileStore(Protocol):
         file: UploadFileRecord,
     ) -> None: ...
 
-    def get_by_key_in_session(
+    def get_extracted_image_in_session(
         self,
         session: Session,
         *,
         tenant_id: str,
-        key: str,
-    ) -> UploadFileRecord | None: ...
+        name: str,
+    ) -> UploadFileRecord | None:
+        """Find a tenant's image by its source/content identity, including legacy images.
+
+        The caller owns the transaction. A match is reusable but is not a newly
+        created artifact; a miss never grants exclusive ownership of this name.
+        """
+        ...
 
 
 class ExtractionImageWriter:
-    """Publish one parser image and retain exact evidence for compensation."""
+    """Reuse image identities while giving every new upload its own storage key.
+
+    The source/content identity lives in the upload name. Legacy images already
+    store that name. Concurrent cache misses may publish separate uploads, but
+    rollback of either upload must never remove the other's blob.
+    """
 
     def __init__(
         self,
@@ -69,37 +80,43 @@ class ExtractionImageWriter:
         return tuple(self._created_upload_artifacts)
 
     def write(self, image: ExtractedImage) -> ImageReference:
+        """Publish an image in the caller's transaction or return an existing URL.
+
+        A nonempty extension and a safe stable identity are required. Newly
+        allocated keys belong exclusively to this upload; register them before
+        storage I/O so failure cleanup remains safe even after a partial write.
+        Reused uploads are never included in this writer's cleanup evidence.
+        """
         normalized_extension = image.extension.strip().lower().lstrip(".")
         if not normalized_extension:
             raise ValueError("An extracted image requires a file extension")
 
         content_hash = hashlib.sha256(image.content).hexdigest()
+        file_id = str(uuid4())
+        file_key = f"image_files/{self._tenant_id}/{file_id}.{normalized_extension}"
+        file_name = file_key
         if self._source_file_id is not None and image.stable_identity is not None:
             stable_identity = image.stable_identity.strip()
             if not re.fullmatch(r"[A-Za-z0-9_-]+", stable_identity):
                 raise ValueError("An extracted image stable identity contains unsupported characters")
-            file_key = (
+            file_name = (
                 f"image_files/{self._tenant_id}/{self._source_file_id}/"
                 f"{stable_identity}_{content_hash}.{normalized_extension}"
             )
-            existing = self._files.get_by_key_in_session(
+            existing = self._files.get_extracted_image_in_session(
                 self._session,
                 tenant_id=self._tenant_id,
-                key=file_key,
+                name=file_name,
             )
             if existing is not None:
                 return ImageReference(preview_url=f"{self._files_url}/files/{existing.id}/file-preview")
-        else:
-            file_key = f"image_files/{self._tenant_id}/{uuid4()}.{normalized_extension}"
-
-        file_id = str(uuid4())
         now = self._clock()
         file = UploadFileRecord(
             id=file_id,
             tenant_id=self._tenant_id,
             storage_type=self._storage_type,
             key=file_key,
-            name=file_key,
+            name=file_name,
             size=len(image.content),
             extension=normalized_extension,
             mime_type=image.mime_type,

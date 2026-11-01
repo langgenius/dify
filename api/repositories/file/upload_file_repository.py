@@ -120,15 +120,28 @@ class UploadFileRepository:
             return _to_upload_file_record(file) if file is not None else None
 
     @staticmethod
-    def get_by_key_in_session(
+    def get_extracted_image_in_session(
         session: Session,
         *,
         tenant_id: str,
-        key: str,
+        name: str,
     ) -> UploadFileRecord | None:
-        """Load a tenant-scoped upload by storage key in the caller's transaction."""
+        """Reuse a tenant's source/content image identity in the caller's transaction.
+
+        Extraction stores its stable identity as the upload name, including in
+        legacy rows whose name equals their storage key. New rows use independent
+        storage keys, so concurrent misses do not share rollback ownership.
+        Only extractor-owned storage keys qualify; an ordinary upload's display
+        name must never impersonate a cached image identity.
+        """
         file = session.scalar(
-            select(UploadFile).where(UploadFile.tenant_id == tenant_id, UploadFile.key == key).limit(1)
+            select(UploadFile)
+            .where(
+                UploadFile.tenant_id == tenant_id,
+                UploadFile.name == name,
+                UploadFile.key.startswith(f"image_files/{tenant_id}/", autoescape=True),
+            )
+            .limit(1)
         )
         return _to_upload_file_record(file) if file is not None else None
 

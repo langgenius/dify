@@ -257,7 +257,12 @@ class FileService:
         )
 
     def delete_uncommitted_artifact(self, *, artifact: CreatedUploadArtifact) -> None:
-        """Delete an extractor blob known not to have entered metadata commit."""
+        """Delete an exclusively owned extractor key before metadata commit starts.
+
+        The artifact must describe a newly allocated upload, never a reused
+        image. Its key is unique to that upload, so cleanup cannot delete a
+        concurrent writer's blob. Storage failures propagate to the caller.
+        """
         self._delete_blob(artifact.key)
 
     @contextmanager

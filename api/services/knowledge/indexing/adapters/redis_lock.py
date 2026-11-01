@@ -86,6 +86,9 @@ class _LockLocalState(Protocol):
 
 class RedisLockHandle(Protocol):
     @property
+    def name(self) -> str: ...
+
+    @property
     def redis(self) -> _LockRedisBackend: ...
 
     @property
@@ -217,12 +220,12 @@ class RedisKnowledgeIndexingLock:
         _validate_owner_id(owner_id)
         token = self._token_factory()
         encoded_token = f"producer:{owner_id}:{token}"
+        lock = self._new_lock(name, timeout=timeout)
         if not self._acquire_handoff(
-            keys=[name, self._handoff_owner_name(name)],
+            keys=[name, self._handoff_owner_name(lock)],
             args=[owner_id, encoded_token, timeout * 1000],
         ):
             return None
-        lock = self._new_lock(name, timeout=timeout)
         lock.local.token = lock.redis.get_encoder().encode(encoded_token)
         return self._handoff_lease(
             lock=lock,
@@ -250,13 +253,13 @@ class RedisKnowledgeIndexingLock:
         _validate_owner_id(owner_id)
         token = self._token_factory()
         encoded_token = f"worker:{owner_id}:{token}"
+        lock = self._new_lock(name, timeout=timeout)
         if not self._handoff(
-            keys=[name, self._handoff_owner_name(name)],
+            keys=[name, self._handoff_owner_name(lock)],
             args=[owner_id, encoded_token, timeout * 1000],
         ):
             return None
 
-        lock = self._new_lock(name, timeout=timeout)
         lock.local.token = lock.redis.get_encoder().encode(encoded_token)
         return self._handoff_lease(
             lock=lock,
@@ -267,15 +270,20 @@ class RedisKnowledgeIndexingLock:
         )
 
     @staticmethod
-    def _handoff_owner_name(name: str) -> str:
-        # Hashing ``{name}`` produces the same Redis Cluster slot as the
-        # established untagged lock key whose complete value is ``name``.
-        return f"{{{name}}}:handoff-owner"
+    def _handoff_owner_name(lock: RedisLockHandle) -> str:
+        """Return a marker sharing the physical lock's Redis Cluster hash slot.
 
-    def _refresh_handoff_owner(self, name: str, *, encoded_token: str, owner_id: str) -> bool:
+        The handle must come from the same client that executes the Lua scripts.
+        Its name already includes the configured deployment prefix. The script
+        wrapper may prefix this logical marker again, outside the hash tag;
+        hashing the complete physical lock name keeps both script keys together.
+        """
+        return f"{{{lock.name}}}:handoff-owner"
+
+    def _refresh_handoff_owner(self, name: str, *, owner_name: str, encoded_token: str, owner_id: str) -> bool:
         return bool(
             self._mark_handoff_owner(
-                keys=[name, self._handoff_owner_name(name)],
+                keys=[name, owner_name],
                 args=[encoded_token, owner_id],
             )
         )
@@ -289,10 +297,12 @@ class RedisKnowledgeIndexingLock:
         encoded_token: str,
         owner_id: str,
     ) -> KnowledgeIndexingLease:
+        owner_name = self._handoff_owner_name(lock)
+
         def release_handoff() -> bool:
             return bool(
                 self._clear_handoff_owner(
-                    keys=[name, self._handoff_owner_name(name)],
+                    keys=[name, owner_name],
                     args=[encoded_token, owner_id],
                 )
             )
@@ -303,6 +313,7 @@ class RedisKnowledgeIndexingLock:
             token=token,
             renew_owner=lambda: self._refresh_handoff_owner(
                 name,
+                owner_name=owner_name,
                 encoded_token=encoded_token,
                 owner_id=owner_id,
             ),

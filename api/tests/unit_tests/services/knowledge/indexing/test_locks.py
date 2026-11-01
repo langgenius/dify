@@ -32,6 +32,7 @@ class FakeRedisLock:
         self.local = FakeLocalToken()
         self._values = values
         self._name = name
+        self.name = name
 
     def acquire(self, *, blocking: bool, token: str) -> bool:
         assert not blocking
