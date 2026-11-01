@@ -267,7 +267,6 @@ def test_active_roster_agent_name_unique_constraint_allows_archived_and_workflow
     assert "scope = 'roster'" in where_clause
     assert "status = 'active'" in where_clause
 
-
     # Verify the partial unique index exists and targets the right columns.
     roster_index = next(idx for idx in agent_table.indexes if idx.name == "agents_tenant_id_active_roster_name_key")
     assert roster_index.unique is True
