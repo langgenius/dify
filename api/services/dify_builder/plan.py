@@ -1,5 +1,7 @@
 """Plan proposals and the presentation snapshot shared by Build and Edit."""
 
+import re
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 from core.dify_builder.contract import PlanCard, ResourceOption
@@ -48,10 +50,65 @@ class ResourceDiscovery(list[ResourceOption]):  # noqa: FURB189 - preserve the e
         self.knowledge_requires_clarification = knowledge_requires_clarification
 
 
+_KNOWLEDGE_CUE = re.compile(r"知识库|知识检索|knowledge[ _-]+(?:bases?|retrieval)", re.IGNORECASE)
+_SOURCE_SCOPE_BREAK = re.compile(r"[。.!?！？;；\n]|\b(?:but|however|yet|instead|then)\b|但是|不过|然而|而是|但")
+_SOURCE_EXCLUSION = re.compile(
+    r"不(?:要)?(?:使用|用|依赖|访问|查询|检索)|(?:无需|无须|不需要)(?:使用|用|依赖|访问|查询|检索)?|"
+    r"(?:禁止|禁用|排除)(?:使用|访问|查询|检索)?|"
+    r"\b(?:do not|don't|must not|should not|never)\s+(?:use|query|access|include|rely on|retrieve from)\s+|"
+    r"\b(?:without|exclude|excluding|no need for)\s+|\bno need to\s+(?:use|query|access)\s+|"
+    r"\bavoid\s+(?:using|querying|accessing)\s+"
+)
+_EXCLUDED_LIST_TAIL = re.compile(
+    r"\s*(?:[\w-]+(?:\s+[\w-]+){0,3}\s*(?:[,，、/&]|\band\b|\bor\b|和|或|以及|与)\s*)*"
+    r"(?:(?:a|an|the|any|external|existing|workspace|外部|现有|已有|任何|工作区)\s*)*"
+)
+_NEGATED_EXCLUSION = re.compile(
+    r"(?:不(?:能|要|得|可|必|应)?|无需|无须|禁止|禁用|避免|拒绝|\b(?:not|never|without|avoid))\s*$"
+)
+_SOURCE_IMPLEMENTATION = re.compile(
+    r"\s*(?:的)?(?:检索)?(?:节点|配置|参数|绑定)|"
+    r"\s+(?:retrieval\s+)?(?:nodes?|configuration|settings|parameters?|bindings?)\b"
+)
+_CONDITIONAL_SOURCE = re.compile(r"\b(?:if|unless|except)\b|除非|如果|若")
+
+
+def _requirement_texts(value: object) -> Iterator[str]:
+    # JSON keys and booleans describe shape/options, not a requested source.
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for child in value.values():
+            yield from _requirement_texts(child)
+    elif isinstance(value, (list, tuple)):
+        for child in value:
+            yield from _requirement_texts(child)
+
+
 def has_knowledge_source_cue(goal: str, requirements: object) -> bool:
-    """Source cue triggers a question, never a required/optional verdict."""
-    text = (goal + " " + str(requirements)).casefold()
-    return any(cue in text for cue in ("知识库", "知识检索", "knowledge base", "knowledge_base", "knowledge retrieval"))
+    """Ask for affirmative/uncertain sources, not an explicitly excluded resource.
+
+    Only a local use/access exclusion (including a resource list) discounts a
+    mention. Node/configuration restrictions and double negatives cannot waive
+    retrieval. Any remaining mention, including a positive requirement elsewhere,
+    still asks; this does not override offered resources or other source guards.
+    """
+    for text in (goal, *_requirement_texts(requirements)):
+        text = text.casefold()
+        for cue in _KNOWLEDGE_CUE.finditer(text):
+            if _SOURCE_IMPLEMENTATION.match(text[cue.end() :]):
+                return True
+            prefix = _SOURCE_SCOPE_BREAK.split(text[: cue.start()])[-1]
+            if _CONDITIONAL_SOURCE.search(prefix + _SOURCE_SCOPE_BREAK.split(text[cue.end() :])[0]):
+                return True
+            excluded = any(
+                _EXCLUDED_LIST_TAIL.fullmatch(prefix[exclusion.end() :])
+                and not _NEGATED_EXCLUSION.search(prefix[: exclusion.start()])
+                for exclusion in _SOURCE_EXCLUSION.finditer(prefix)
+            )
+            if not excluded:
+                return True
+    return False
 
 
 class EditPlanNotActionableError(RuntimeError):

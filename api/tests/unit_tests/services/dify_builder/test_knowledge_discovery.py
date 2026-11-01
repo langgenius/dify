@@ -16,6 +16,7 @@ from services.dify_builder.application.runner import Env, Runner
 from services.dify_builder.plan import WorkflowPlan
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
 from tests.unit_tests.services.dify_builder.test_bound_resource_plan_reconciliation import ReconciliationAgent
+from tests.unit_tests.services.dify_builder.test_knowledge_source_cue import MEETING_GOAL
 
 DATASET = "25f76fa8-db3b-499d-b7fc-2bfbddad778a"
 KNOWLEDGE = "knowledge:" + DATASET
@@ -307,6 +308,22 @@ def test_knowledge_catalogue_failure_without_selected_id_cannot_approve() -> Non
     )
     result, _, _, _ = confirm(ReconciliationAgent(PLAN), offered=[], ids=[], context=ctx)
     assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
+
+
+def test_model_only_confirmation_does_not_ask_to_waive_an_explicitly_excluded_knowledge_goal() -> None:
+    plan = WorkflowPlan(
+        "Text summary", "Supplied text", "Summary", ["Use the selected model"], used_resource_ids=[MODEL]
+    )
+    context = DifyBuilderContext(
+        goal_text=MEETING_GOAL,
+        requirements={"no_tools_http_agent_kb_files_external_accounts": True},
+        resource_selection={"knowledge_source_unavailable": False, "knowledge_requires_clarification": False},
+    )
+    result, stored, _, items = confirm(ReconciliationAgent(plan), offered=[], ids=[MODEL], context=context)
+    assert result.current_state == PcState.BUILD_PLAN_APPROVAL
+    assert stored.resource_selection["resource_ids"] == [MODEL]
+    assert "knowledge_decision_pending" not in stored.resource_selection
+    assert not any(item.kind == "form" for item in items)
 
 
 def decision_dialog() -> tuple[Runner, InMemoryRepository, str, ReconciliationAgent]:
