@@ -1000,6 +1000,13 @@ class WorkflowConfig(BaseSettings):
         default=400_000,
     )
 
+    WORKFLOW_AGENT_PREVIOUS_NODE_OUTPUT_MAX_CHARS: NonNegativeInt = Field(
+        description="Maximum number of characters from a previous node output embedded into the workflow "
+        "Agent context prompt. Longer values are truncated and marked with '...[truncated]'. "
+        "Set to 0 to disable truncation.",
+        default=2000,
+    )
+
     # Engine Worker Pool Configuration
     GRAPH_ENGINE_MAX_WORKERS: PositiveInt = Field(
         description="Number of workers per Engine instance",
