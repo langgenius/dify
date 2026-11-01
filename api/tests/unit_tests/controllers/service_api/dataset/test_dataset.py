@@ -1,16 +1,20 @@
 import uuid
+from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from typing import Literal, cast
+from typing import Literal, NoReturn, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask, request
+from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
 import services.errors.base
+from configs import DifyConfig
 from controllers.service_api.dataset.dataset import (
     DatasetCreatePayload,
     DatasetListQuery,
@@ -25,7 +29,8 @@ from controllers.service_api.dataset.error import DatasetInUseError, DatasetName
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetMetadata, DatasetPermissionEnum, Document
 from models.enums import PermissionEnum, TagType
-from models.model import App, Tag, TagBinding
+from models.model import ApiToken, App, DatasetApiTokenBinding, Tag, TagBinding
+from repositories.tag_repository import TagRepository
 
 """Unit tests for Service API dataset controller behavior.
 
@@ -523,7 +528,9 @@ class TestDatasetApisCases:
 
             with app.test_request_context("/datasets", method="POST", json={}):
                 with pytest.raises(UnprocessableEntity):
-                    DatasetListApi().post(tenant_id=tenant.id)
+                    # Admission is tested through the registered route below; retain
+                    # the billing/session/payload wrappers for this validation test.
+                    DatasetListApi.post.__wrapped__(DatasetListApi(), tenant_id=tenant.id)
 
     # ---------------------------------------------------------------------------
     # API endpoint tests — DatasetApi
@@ -1493,3 +1500,213 @@ class TestDatasetTagApisCases:
                 api = DatasetTagUnbindingApi()
                 with pytest.raises(Forbidden):
                     api.post(_=None)
+
+
+@dataclass
+class ScopedListServices:
+    tags: TagRepository
+
+
+@dataclass
+class ScopedListCase:
+    client: FlaskClient
+    datasets: list[Dataset]
+    token: ApiToken
+    config: DifyConfig
+    session: Session
+    tag_id: str
+
+    def bind(self, indices: list[int]) -> None:
+        self.session.add_all(
+            [DatasetApiTokenBinding(api_token_id=self.token.id, dataset_id=self.datasets[i].id) for i in indices]
+        )
+        self.session.commit()
+
+
+class TestScopedDatasetListRoute:
+    """Exercise the registered HTTP route, real scope admission and SQL pagination."""
+
+    @pytest.fixture
+    def scoped_list(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Iterator[ScopedListCase]:
+        from flask_login import LoginManager
+        from flask_restx import Api
+        from sqlalchemy.orm import scoped_session, sessionmaker
+
+        from configs import dify_config
+        from controllers.service_api import wraps as auth
+        from controllers.service_api.dataset import dataset as endpoint
+        from core.entities.provider_configuration import ProviderConfigurations
+        from core.provider_manager import ProviderManager
+        from models import TenantAccountJoin
+        from models.enums import ApiTokenType
+        from models.model import ApiToken
+        from services.knowledge.dataset_service import DatasetService
+
+        app = Flask(__name__)
+        app.config.update(TESTING=True, SECRET_KEY="unit-test")
+        LoginManager(app)
+        api = Api(app)
+        api.add_resource(endpoint.DatasetListApi, "/v1/datasets")
+        tenant = Tenant(name="Scope tenant")
+        other_tenant = Tenant(name="Other tenant")
+        owner = Account(name="Scope owner", email=f"{uuid.uuid4()}@example.com")
+        sqlite_session.add_all([tenant, other_tenant, owner])
+        sqlite_session.flush()
+        owner.role = TenantAccountRole.OWNER
+        owner._current_tenant = tenant
+        sqlite_session.add(
+            TenantAccountJoin(tenant_id=tenant.id, account_id=owner.id, role=TenantAccountRole.OWNER, current=True)
+        )
+        datasets = [
+            make_dataset(sqlite_session, tenant, owner, name="Allowed A", maintainer=owner.id, enable_api=True),
+            make_dataset(sqlite_session, tenant, owner, name="Allowed B", maintainer=owner.id, enable_api=True),
+            make_dataset(sqlite_session, tenant, owner, name="Hidden owned", maintainer=owner.id, enable_api=True),
+            make_dataset(sqlite_session, other_tenant, owner, name="Foreign", maintainer=owner.id, enable_api=True),
+        ]
+        token = ApiToken(tenant_id=tenant.id, type=ApiTokenType.DATASET, token="scoped-route-test")
+        sqlite_session.add(token)
+        sqlite_session.commit()
+        factory = sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+        auth_session = scoped_session(factory)
+        monkeypatch.setattr(auth.db, "session", auth_session)
+        monkeypatch.setattr(auth, "validate_and_get_api_token", lambda _: token)
+        monkeypatch.setattr(endpoint, "current_user", owner)
+        monkeypatch.setattr(DatasetService, "_can_manage_all_datasets", staticmethod(lambda *_: True))
+        monkeypatch.setattr(
+            ProviderManager, "get_configurations", lambda _self, tenant_id: ProviderConfigurations(tenant_id)
+        )
+        services = ScopedListServices(tags=TagRepository(factory))
+        monkeypatch.setattr(endpoint, "application_services", lambda: services)
+        tag = Tag(tenant_id=tenant.id, type=TagType.KNOWLEDGE, name="Scope tag", created_by=owner.id)
+        sqlite_session.add(tag)
+        sqlite_session.flush()
+        sqlite_session.add_all(
+            [
+                TagBinding(tenant_id=tenant.id, tag_id=tag.id, target_id=dataset.id, created_by=owner.id)
+                for dataset in datasets[:3]
+            ]
+        )
+        sqlite_session.commit()
+        monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
+        try:
+            yield ScopedListCase(app.test_client(), datasets, token, dify_config, sqlite_session, tag.id)
+        finally:
+            auth_session.remove()
+
+    @pytest.mark.parametrize("rbac", [False, True])
+    @pytest.mark.parametrize("include_all", [False, True])
+    def test_single_key_never_lists_owned_or_foreign_datasets(
+        self, scoped_list: ScopedListCase, monkeypatch: pytest.MonkeyPatch, rbac: bool, include_all: bool
+    ) -> None:
+        scoped_list.bind([0, 3])  # Even a malformed cross-tenant binding must not leak.
+        monkeypatch.setattr(scoped_list.config, "RBAC_ENABLED", rbac)
+        response = scoped_list.client.get(f"/v1/datasets?include_all={str(include_all).lower()}")
+        assert response.status_code == 200
+        body = response.get_json()
+        assert [row["id"] for row in body["data"]] == [scoped_list.datasets[0].id]
+        assert body["total"] == 1
+        assert body["has_more"] is False
+
+    def test_multiple_bindings_filter_before_pagination_and_search(self, scoped_list: ScopedListCase) -> None:
+        scoped_list.bind([0, 1])
+        first = scoped_list.client.get("/v1/datasets?limit=1&page=1").get_json()
+        second = scoped_list.client.get("/v1/datasets?limit=1&page=2").get_json()
+        assert first["total"] == second["total"] == 2
+        assert first["has_more"] is True
+        assert second["has_more"] is False
+        assert {first["data"][0]["id"], second["data"][0]["id"]} == {d.id for d in scoped_list.datasets[:2]}
+        for query in ("keyword=Hidden", "keyword=Foreign", "page=3&limit=1"):
+            assert scoped_list.client.get(f"/v1/datasets?{query}").get_json()["data"] == []
+        tagged = scoped_list.client.get(f"/v1/datasets?tag_ids={scoped_list.tag_id}").get_json()
+        assert {row["id"] for row in tagged["data"]} == {d.id for d in scoped_list.datasets[:2]}
+
+    @pytest.mark.parametrize("rbac", [False, True])
+    @pytest.mark.parametrize("include_all", [False, True])
+    def test_unrestricted_key_retains_workspace_results(
+        self, scoped_list: ScopedListCase, monkeypatch: pytest.MonkeyPatch, rbac: bool, include_all: bool
+    ) -> None:
+        monkeypatch.setattr(scoped_list.config, "RBAC_ENABLED", rbac)
+        response = scoped_list.client.get(f"/v1/datasets?include_all={str(include_all).lower()}")
+        assert response.status_code == 200
+        body = response.get_json()
+        assert {row["id"] for row in body["data"]} == {d.id for d in scoped_list.datasets[:3]}
+        assert body["total"] == 3
+
+    def test_knowledgefs_only_key_has_empty_legacy_list(
+        self, scoped_list: ScopedListCase, sqlite_session: Session
+    ) -> None:
+        from models.enums import ApiTokenBindingResourceType
+        from models.model import DatasetApiTokenBinding
+
+        sqlite_session.add(
+            DatasetApiTokenBinding(
+                api_token_id=scoped_list.token.id,
+                resource_type=ApiTokenBindingResourceType.KNOWLEDGE_FS_SPACE,
+                control_space_id=str(uuid.uuid4()),
+            )
+        )
+        sqlite_session.commit()
+        response = scoped_list.client.get("/v1/datasets?include_all=true")
+        assert response.status_code == 200
+        assert response.get_json()["data"] == []
+        assert response.get_json()["total"] == 0
+
+    def test_list_permission_does_not_allow_creation(self, scoped_list: ScopedListCase) -> None:
+        scoped_list.bind([0])
+        response = scoped_list.client.post("/v1/datasets", json={"name": "Must not create"})
+        assert response.status_code == 403
+        assert response.get_json()["message"] == "The API key is not authorized to access this knowledge base."
+
+    def test_head_request_still_checks_token_scope(
+        self, scoped_list: ScopedListCase, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from werkzeug.exceptions import Unauthorized
+
+        from controllers.service_api import wraps as auth
+
+        def invalid_token(_: str) -> NoReturn:
+            raise Unauthorized("invalid token")
+
+        monkeypatch.setattr(auth, "validate_and_get_api_token", invalid_token)
+        assert scoped_list.client.head("/v1/datasets").status_code == 401
+
+    def test_deleted_key_cannot_use_cached_identity_to_list(
+        self, scoped_list: ScopedListCase, sqlite_session: Session
+    ) -> None:
+        scoped_list.bind([0])
+        sqlite_session.delete(scoped_list.token)
+        sqlite_session.commit()
+        response = scoped_list.client.get("/v1/datasets")
+        assert response.status_code == 401
+        assert response.get_json()["message"] == "API key is no longer valid."
+
+    def test_scope_updates_take_effect_on_next_list_request(
+        self, scoped_list: ScopedListCase, sqlite_session: Session
+    ) -> None:
+        from sqlalchemy import update
+
+        from models.model import DatasetApiTokenBinding
+
+        scoped_list.bind([0])
+        first = scoped_list.client.get("/v1/datasets").get_json()
+        assert [row["id"] for row in first["data"]] == [scoped_list.datasets[0].id]
+        sqlite_session.execute(
+            update(DatasetApiTokenBinding)
+            .where(DatasetApiTokenBinding.api_token_id == scoped_list.token.id)
+            .values(dataset_id=scoped_list.datasets[1].id)
+        )
+        sqlite_session.commit()
+        second = scoped_list.client.get("/v1/datasets").get_json()
+        assert [row["id"] for row in second["data"]] == [scoped_list.datasets[1].id]
+
+    def test_authorized_but_missing_dataset_does_not_expand_scope(
+        self, scoped_list: ScopedListCase, sqlite_session: Session
+    ) -> None:
+        from models.model import DatasetApiTokenBinding
+
+        sqlite_session.add(DatasetApiTokenBinding(api_token_id=scoped_list.token.id, dataset_id=str(uuid.uuid4())))
+        sqlite_session.commit()
+        response = scoped_list.client.get("/v1/datasets?include_all=true")
+        assert response.status_code == 200
+        assert response.get_json()["data"] == []
+        assert response.get_json()["total"] == 0

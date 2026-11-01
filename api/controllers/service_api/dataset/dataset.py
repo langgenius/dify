@@ -32,6 +32,8 @@ from controllers.service_api.dataset.error import DatasetInUseError, DatasetName
 from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
+    validate_dataset_list_token,
+    validate_dataset_token,
 )
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -408,11 +410,18 @@ register_response_schema_models(
 
 @service_api_ns.route("/datasets")
 class DatasetListApi(DatasetApiResource):
-    """Resource for datasets."""
+    """Discover authorized datasets; creating datasets keeps ordinary token admission."""
+
+    # Declare admission per handler so GET/HEAD discovery cannot loosen POST access.
+    method_decorators = []
 
     @service_api_ns.doc(
         summary="List Knowledge Bases",
-        description="Returns a paginated list of knowledge bases. Supports filtering by keyword and tags.",
+        description=(
+            "Returns a paginated list of visible knowledge bases. A scoped knowledge API key "
+            "only lists its authorized knowledge bases; workspace-wide keys retain their existing visibility. "
+            "Supports filtering by keyword and tags within that scope."
+        ),
         tags=["Knowledge Bases"],
         responses={
             HTTPStatus.OK: "List of knowledge bases.",
@@ -432,9 +441,15 @@ class DatasetListApi(DatasetApiResource):
         "Datasets retrieved successfully",
         service_api_ns.models[DatasetListResponse.__name__],
     )
+    @validate_dataset_list_token
     @with_session(write=False)
-    def get(self, session: Session, tenant_id):
-        """Resource for getting datasets."""
+    def get(self, session: Session, tenant_id, *, resource_dataset_ids: frozenset[str] | None = None):
+        """List visible tenant datasets within the admitted key scope before pagination.
+
+        The authentication decorator supplies the scope; None preserves unrestricted
+        key behavior and an empty set yields no results. Query parameters cannot
+        expand it. This read does not alter resources or key bindings.
+        """
         query_params: dict[str, str | list[str]] = dict(request.args.to_dict())
         if "tag_ids" in request.args:
             query_params["tag_ids"] = request.args.getlist("tag_ids")
@@ -452,6 +467,7 @@ class DatasetListApi(DatasetApiResource):
             query.tag_ids,
             query.include_all,
             tags=application_services().tags,
+            resource_dataset_ids=resource_dataset_ids,
         )
         # check embedding setting
         assert isinstance(current_user, Account)
@@ -515,6 +531,7 @@ class DatasetListApi(DatasetApiResource):
         "Dataset created successfully",
         service_api_ns.models[DatasetDetailResponse.__name__],
     )
+    @validate_dataset_token
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     @with_session
     @model_validate(DatasetCreatePayload)
