@@ -3,11 +3,13 @@
 from typing import override
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_application_service import (
     APIBasedExtensionInput,
+    APIBasedExtensionNameConflictError,
     APIBasedExtensionNotFoundError,
     APIBasedExtensionRecord,
     APIBasedExtensionStore,
@@ -49,34 +51,51 @@ class APIBasedExtensionRepository(APIBasedExtensionStore):
 
     @override
     def create_extension(self, workspace_id: str, extension: APIBasedExtensionInput) -> APIBasedExtensionRecord:
-        with self._session_factory.begin() as session:
-            model = APIBasedExtension(
-                tenant_id=workspace_id,
-                name=extension.name,
-                api_endpoint=extension.api_endpoint,
-                api_key=extension.api_key,
-            )
-            session.add(model)
-            session.flush()
-            session.refresh(model)
-            return self._to_record(model)
+        try:
+            with self._session_factory.begin() as session:
+                model = APIBasedExtension(
+                    tenant_id=workspace_id,
+                    name=extension.name,
+                    api_endpoint=extension.api_endpoint,
+                    api_key=extension.api_key,
+                )
+                session.add(model)
+                session.flush()
+                session.refresh(model)
+                return self._to_record(model)
+        except IntegrityError as error:
+            self._raise_if_name_taken(workspace_id, extension.name, exclude_id=None, error=error)
+            raise
 
     @override
     def update_extension(
         self, workspace_id: str, extension_id: str, extension: APIBasedExtensionInput
     ) -> APIBasedExtensionRecord:
-        with self._session_factory.begin() as session:
-            model = self._require(session, workspace_id, extension_id)
-            model.name = extension.name
-            model.api_endpoint = extension.api_endpoint
-            model.api_key = extension.api_key
-            session.flush()
-            return self._to_record(model)
+        try:
+            with self._session_factory.begin() as session:
+                model = self._require(session, workspace_id, extension_id)
+                model.name = extension.name
+                model.api_endpoint = extension.api_endpoint
+                model.api_key = extension.api_key
+                session.flush()
+                return self._to_record(model)
+        except IntegrityError as error:
+            self._raise_if_name_taken(workspace_id, extension.name, exclude_id=extension_id, error=error)
+            raise
 
     @override
     def delete_extension(self, workspace_id: str, extension_id: str) -> None:
         with self._session_factory.begin() as session:
             session.delete(self._require(session, workspace_id, extension_id))
+
+    def _raise_if_name_taken(
+        self, workspace_id: str, name: str, *, exclude_id: str | None, error: IntegrityError
+    ) -> None:
+        # A concurrent writer can pass the service's name_exists pre-check and win the (tenant_id, name) unique
+        # constraint. Re-check in a fresh transaction so the committed winner is visible under any isolation level;
+        # other violations are not name conflicts and must stay visible as failures.
+        if self.name_exists(workspace_id, name, exclude_id=exclude_id):
+            raise APIBasedExtensionNameConflictError from error
 
     @staticmethod
     def _find(session: Session, workspace_id: str, extension_id: str) -> APIBasedExtension | None:
