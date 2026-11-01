@@ -2675,7 +2675,8 @@ a4_expected.update(
             "test_decision_is_rejected_after_goal_or_actor_changes": 1,
             "test_real_discovery_empty_or_failed_source_cannot_authorize_omission": 4,
             "test_excluded_resource_list_reaches_formal_plan_without_a_knowledge_waiver": 3,
-            "test_excluded_resource_list_never_disables_server_or_model_source_guards": 3
+            "test_excluded_resource_list_never_disables_server_or_model_source_guards": 3,
+            "test_no_extra_components_resource_list_reaches_plan_without_changing_the_original_goal": 1
         },
         "tests.unit_tests.services.dify_builder.test_knowledge_source_cue": {
             "test_explicitly_excluded_source_does_not_create_a_knowledge_goal": 11,
@@ -2685,7 +2686,12 @@ a4_expected.update(
             "test_captured_agent_only_goal_and_forbidden_resource_list_do_not_invent_knowledge_use": 3,
             "test_direct_add_exclusion_only_discounts_known_resource_categories": 5,
             "test_explicit_resource_exclusion_list_keeps_its_role_when_nested": 3,
-            "test_exclusion_lists_never_hide_positive_unknown_or_node_only_requirements": 14
+            "test_exclusion_lists_never_hide_positive_unknown_or_node_only_requirements": 14,
+            "test_captured_no_extra_components_list_does_not_invent_knowledge_use": 2,
+            "test_explicit_negative_resource_collection_role_recognizes_bounded_identifier_variants": 8,
+            "test_negative_substrings_and_node_collection_keys_never_hide_source_mentions": 14,
+            "test_general_resource_list_role_never_skips_unknown_or_positive_children": 9,
+            "test_positive_goal_dominates_a_general_negative_resource_list_role": 1
         },
         "tests.unit_tests.services.dify_builder.test_resources": {
             "test_list_tenant_resources_normalizes_all_three_kinds": 1,
