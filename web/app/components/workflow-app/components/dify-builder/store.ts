@@ -28,6 +28,7 @@ import {
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
   difyBuilderTaskControlAtom,
+  isUnknownFixControl,
 } from './session/state'
 import { shouldStartBuildSession } from './utils'
 
@@ -647,12 +648,15 @@ export const difyBuilderCanClearConversationAtom = atom((get) => {
     runtime?.enabled &&
     runtime.canEdit &&
     get(difyBuilderHasSessionAtom) &&
-    !get(difyBuilderInteractionBusyAtom) &&
-    !get(difyBuilderNativeTestUnresolvedAtom) &&
-    (view?.task_status !== 'active' ||
-      view.run_status === 'paused' ||
-      view.interrupted ||
-      view.recovery),
+    ((isUnknownFixControl(get(difyBuilderLifecycleControlAtom)) &&
+      !get(difyBuilderTaskControlAtom) &&
+      !get(difyBuilderMaterialControlAtom)) ||
+      (!get(difyBuilderInteractionBusyAtom) &&
+        !get(difyBuilderNativeTestUnresolvedAtom) &&
+        (view?.task_status !== 'active' ||
+          view.run_status === 'paused' ||
+          view.interrupted ||
+          view.recovery))),
   )
 })
 export const difyBuilderClearConversationAtom = atom(null, async (get, set) => {

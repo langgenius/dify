@@ -22,7 +22,9 @@ const mocks = vi.hoisted(() => ({
   action: vi.fn(),
   create: vi.fn(),
   clear: vi.fn(),
+  abandon: vi.fn(),
   fix: vi.fn(),
+  fixRead: vi.fn(),
   conversation: vi.fn(),
   get: vi.fn(),
   message: vi.fn(),
@@ -63,7 +65,8 @@ vi.mock('@/service/console', async (importOriginal) => {
             actions: { post: mocks.action },
             messages: { post: mocks.message },
             clear: { post: mocks.clear },
-            fixIntents: { post: mocks.fix },
+            abandon: { post: mocks.abandon },
+            fixIntents: { post: mocks.fix, get: mocks.fixRead },
           },
         },
       },
@@ -857,7 +860,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     }))
     await user.click(
       within(screen.getByRole('alertdialog')).getByRole('button', {
-        name: 'common.operation.confirm',
+        name: 'difyBuilder.reset',
       }),
     )
 
@@ -910,7 +913,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       await user.click(screen.getByRole('button', { name: 'difyBuilder.reset' }))
       await user.click(
         within(screen.getByRole('alertdialog')).getByRole('button', {
-          name: 'common.operation.confirm',
+          name: 'difyBuilder.reset',
         }),
       )
       await waitFor(() => expect(mocks.clear).toHaveBeenCalledOnce())
@@ -1600,6 +1603,228 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       { params: { session_id: 'build-session' } },
       { context: { silent: true }, signal: expect.any(AbortSignal) },
     )
+    expect(mocks.create).not.toHaveBeenCalled()
+  })
+  it.each(['fix', 'dismiss_fix', 'stop_and_switch_fix'] as const)(
+    'recovers lost %s response through authenticated GET after a real Provider remount',
+    async (operation) => {
+      const storageKey = 'dify-builder:v1:workspace-1:user-1:app-1:active-session-id'
+      window.sessionStorage.setItem(storageKey, 'session-1')
+      const payload = { fix_intent_id: 'intent-1', expected_task_id: 'task-1' }
+      const ordinary = createSessionView({
+        version: 4,
+        task_id: 'task-1',
+        run_status: 'waiting_input',
+        phase: 'understand',
+      })
+      const pending = {
+        ...ordinary,
+        pending_fix_context: {
+          run_id: 'failed-run-42',
+          title: '',
+          error_code: '',
+          message: '',
+          trace_ref: '',
+        },
+        actions: [
+          { id: 'dismiss_fix', label: 'Keep current task', kind: 'secondary' as const, payload },
+          {
+            id: 'stop_and_switch_fix',
+            label: 'Stop and fix',
+            kind: 'destructive' as const,
+            payload,
+          },
+        ],
+        decision: {
+          title: 'Switch Fix?',
+          default_option_id: 'dismiss_fix',
+          options: [
+            { id: 'dismiss_fix', label: 'Keep current task' },
+            { id: 'stop_and_switch_fix', label: 'Stop and fix' },
+          ],
+        },
+      }
+      mocks.get.mockResolvedValue(operation === 'fix' ? ordinary : pending)
+      mocks.fix.mockRejectedValue(new TypeError('Response lost'))
+      mocks.action.mockRejectedValue(new TypeError('Response lost'))
+      const user = userEvent.setup()
+      const { unmount } = renderFlow()
+      if (operation === 'fix') {
+        await waitFor(() =>
+          expect(screen.getByRole('button', { name: 'Fix failed run' })).toBeEnabled(),
+        )
+        await user.click(screen.getByRole('button', { name: 'Fix failed run' }))
+      } else {
+        await waitFor(() =>
+          expect(screen.getByRole('radio', { name: 'Keep current task' })).toBeEnabled(),
+        )
+        if (operation === 'stop_and_switch_fix')
+          await user.click(screen.getByRole('radio', { name: 'Stop and fix' }))
+        await user.click(
+          screen.getByRole('button', {
+            name: operation === 'dismiss_fix' ? 'Keep current task' : 'Stop and fix',
+          }),
+        )
+      }
+      await waitFor(() =>
+        expect(JSON.parse(window.sessionStorage.getItem(`${storageKey}:control`)!)).toMatchObject({
+          operation,
+          phase: 'unknown',
+        }),
+      )
+      const saved = JSON.parse(window.sessionStorage.getItem(`${storageKey}:control`)!)
+      expect(saved.expectedTaskId).toBe('task-1')
+      if (operation !== 'fix') expect(saved.fixIntentId).toBe('intent-1')
+      unmount()
+      mocks.get.mockResolvedValue(
+        operation === 'fix'
+          ? pending
+          : {
+              ...ordinary,
+              version: 6,
+              task_id: operation === 'stop_and_switch_fix' ? 'task-2' : 'task-1',
+            },
+      )
+      mocks.fixRead.mockImplementation(async ({ query }) => ({
+        session_id: 'session-1',
+        operation,
+        client_action_id: query.client_action_id,
+        base_version: query.base_version,
+        target_task_id: 'task-1',
+        fix_intent_id: 'intent-1',
+        acknowledged: true,
+        status:
+          operation === 'fix'
+            ? 'awaiting_confirmation'
+            : operation === 'dismiss_fix'
+              ? 'dismissed'
+              : 'activated',
+      }))
+      renderFlow()
+      await waitFor(() => expect(mocks.fixRead).toHaveBeenCalledOnce())
+      await waitFor(() => expect(window.sessionStorage.getItem(`${storageKey}:control`)).toBeNull())
+      if (operation === 'fix')
+        expect(await screen.findByRole('radio', { name: 'Keep current task' })).toBeEnabled()
+      else await waitFor(() => expect(getComposer()).toBeEnabled())
+      expect(mocks.fix).toHaveBeenCalledTimes(operation === 'fix' ? 1 : 0)
+      expect(mocks.action).toHaveBeenCalledTimes(operation === 'fix' ? 0 : 1)
+      expect(mocks.create).not.toHaveBeenCalled()
+      expect(mocks.message).not.toHaveBeenCalled()
+    },
+  )
+
+  it('keeps an uncorrelated Fix blocked after remount but permits an explicitly confirmed fresh-CAS clear', async () => {
+    const storageKey = 'dify-builder:v1:workspace-1:user-1:app-1:active-session-id'
+    window.sessionStorage.setItem(storageKey, 'session-1')
+    mocks.get.mockResolvedValue(
+      createSessionView({
+        version: 4,
+        task_id: 'task-1',
+        run_status: 'waiting_input',
+        phase: 'understand',
+      }),
+    )
+    mocks.fix.mockRejectedValue(new TypeError('Alias response lost'))
+    const user = userEvent.setup()
+    const { unmount } = renderFlow()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Fix failed run' })).toBeEnabled(),
+    )
+    await user.click(screen.getByRole('button', { name: 'Fix failed run' }))
+    await waitFor(() =>
+      expect(JSON.parse(window.sessionStorage.getItem(`${storageKey}:control`)!)).toMatchObject({
+        operation: 'fix',
+        phase: 'unknown',
+      }),
+    )
+    unmount()
+    mocks.fixRead.mockRejectedValue({ status: 404 })
+    renderFlow()
+    await waitFor(() => expect(mocks.fixRead).toHaveBeenCalledOnce())
+    expect(getComposer()).toBeDisabled()
+    expect(screen.getByText('difyBuilder.fixControl.unknown')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Fix failed run' })).toBeDisabled()
+    mocks.get.mockResolvedValue(
+      createSessionView({
+        version: 7,
+        task_id: 'task-now',
+        run_status: 'waiting_input',
+        phase: 'understand',
+      }),
+    )
+    mocks.clear.mockImplementation(async ({ body }) => ({
+      session_id: 'session-1',
+      version: 8,
+      last_command_id: body.client_action_id,
+      task_id: 'task-now',
+      task_status: 'abandoned',
+      settlement: 'settled',
+      conversation_cleared: true,
+      conversation_last_seq: -1,
+    }))
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.reset' }))
+    const dialog = screen.getByRole('alertdialog')
+    expect(dialog).toHaveAccessibleDescription('difyBuilder.clearConversation.description')
+    await user.click(within(dialog).getByRole('button', { name: 'difyBuilder.reset' }))
+    await waitFor(() => expect(mocks.clear).toHaveBeenCalledOnce())
+    expect(mocks.clear.mock.calls[0]![0].body).toMatchObject({
+      base_version: 7,
+      expected_task_id: 'task-now',
+      confirmed: true,
+    })
+    await waitFor(() => expect(window.sessionStorage.getItem(storageKey)).toBeNull())
+    expect(mocks.fix).toHaveBeenCalledOnce()
+    expect(mocks.action).not.toHaveBeenCalled()
+    expect(mocks.create).not.toHaveBeenCalled()
+  })
+
+  it('recovers a lost abandon response whose matching settled GET displays completed after Provider remount', async () => {
+    const storageKey = 'dify-builder:v1:workspace-1:user-1:app-1:active-session-id'
+    window.sessionStorage.setItem(storageKey, 'session-1')
+    mocks.get.mockResolvedValue(
+      createSessionView({
+        version: 4,
+        task_id: 'task-1',
+        task_status: 'active',
+        run_status: 'waiting_input',
+        phase: 'understand',
+      }),
+    )
+    mocks.abandon.mockRejectedValue(new TypeError('Response lost'))
+    const user = userEvent.setup()
+    const { unmount } = renderFlow()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'difyBuilder.taskControl.abandon' })).toBeEnabled(),
+    )
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.taskControl.abandon' }))
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.confirm',
+      }),
+    )
+    await waitFor(() =>
+      expect(JSON.parse(window.sessionStorage.getItem(`${storageKey}:control`)!)).toMatchObject({
+        operation: 'abandon',
+        phase: 'unknown',
+      }),
+    )
+    const clientActionId = mocks.abandon.mock.calls[0]![0].body.client_action_id
+    unmount()
+    mocks.get.mockResolvedValue(
+      createSessionView({
+        version: 5,
+        task_id: 'task-1',
+        task_status: 'completed',
+        run_status: 'complete',
+        phase: 'understand',
+        last_command_id: clientActionId,
+        lifecycle_settlement: 'settled',
+      }),
+    )
+    renderFlow()
+    await waitFor(() => expect(window.sessionStorage.getItem(`${storageKey}:control`)).toBeNull())
+    await waitFor(() => expect(getComposer()).toBeEnabled())
+    expect(mocks.abandon).toHaveBeenCalledOnce()
     expect(mocks.create).not.toHaveBeenCalled()
   })
 })

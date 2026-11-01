@@ -34,6 +34,34 @@ test('production Console exposes the Builder lifecycle operations', () => {
   }
 })
 
+test('production Builder Fix recovery is a correlated read-only GET', () => {
+  const operation = consoleRouterContract.difyBuilder.sessions.bySessionId.fixIntents.get['~orpc']
+  assert.equal(operation.route.method, 'GET')
+  assert.equal(operation.route.path, '/dify-builder/sessions/{session_id}/fix-intents')
+  const input = operation.inputSchema.parse({
+    params: { session_id: 'session-1' },
+    query: {
+      operation: 'dismiss_fix',
+      client_action_id: 'decision-1',
+      base_version: 4,
+      expected_task_id: 'task-1',
+      fix_intent_id: 'intent-1',
+    },
+  })
+  assert.equal('body' in input, false)
+  const receipt = {
+    session_id: 'session-1',
+    operation: 'dismiss_fix',
+    client_action_id: 'decision-1',
+    base_version: 4,
+    target_task_id: 'task-1',
+    fix_intent_id: 'intent-1',
+    status: 'stopping',
+    acknowledged: false,
+  }
+  assert.deepEqual(operation.outputSchema.parse(receipt), receipt)
+})
+
 test('production Builder snapshots and finished events preserve task lifecycle state', () => {
   const lifecycle = {
     task_id: 'task-1',

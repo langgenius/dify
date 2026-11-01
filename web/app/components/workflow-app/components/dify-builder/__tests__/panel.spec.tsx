@@ -290,7 +290,7 @@ describe('DifyBuilderPanel', () => {
     expect(mocks.reset).not.toHaveBeenCalled()
     expect(mocks.clearConversation).not.toHaveBeenCalled()
     const dialog = screen.getByRole('alertdialog')
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(within(dialog).getByRole('button', { name: 'difyBuilder.reset' }))
     expect(mocks.clearConversation).toHaveBeenCalledOnce()
     expect(mocks.reset).toHaveBeenCalledOnce()
   })
@@ -303,7 +303,7 @@ describe('DifyBuilderPanel', () => {
     await user.click(screen.getByRole('button', { name: 'difyBuilder.reset' }))
     await user.click(
       within(screen.getByRole('alertdialog')).getByRole('button', {
-        name: 'common.operation.confirm',
+        name: 'difyBuilder.reset',
       }),
     )
     expect(mocks.clearConversation).toHaveBeenCalledOnce()
@@ -388,7 +388,7 @@ describe('DifyBuilderPanel', () => {
       await user.click(screen.getByRole('button', { name: 'difyBuilder.reset' }))
       await user.click(
         within(screen.getByRole('alertdialog')).getByRole('button', {
-          name: 'common.operation.confirm',
+          name: 'difyBuilder.reset',
         }),
       )
       expect(mocks.reset).toHaveBeenCalledOnce()
@@ -1200,7 +1200,7 @@ describe('DifyBuilderPanel', () => {
     await user.click(reset)
     await user.click(
       within(screen.getByRole('alertdialog')).getByRole('button', {
-        name: 'common.operation.confirm',
+        name: 'difyBuilder.reset',
       }),
     )
     expect(mocks.reset).toHaveBeenCalledOnce()
@@ -1273,4 +1273,13 @@ describe('DifyBuilderPanel', () => {
     expect(store.get(difyBuilderCanvasRefreshingAtom)).toBe(true)
     expect(retry).toHaveAttribute('aria-disabled', 'true')
   })
+})
+
+it('explains the persisted conversation clear scope in its existing confirmation', async () => {
+  const user = userEvent.setup()
+  renderPanel()
+  await user.click(screen.getByRole('button', { name: 'difyBuilder.reset' }))
+  const dialog = screen.getByRole('alertdialog')
+  expect(dialog).toHaveAccessibleDescription('difyBuilder.clearConversation.description')
+  expect(within(dialog).getByRole('button', { name: 'difyBuilder.reset' })).toBeVisible()
 })
