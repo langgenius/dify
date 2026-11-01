@@ -105,7 +105,10 @@ function ParameterItem({
 
     if (
       onChange &&
-      (parameterRule.name === 'stop' || !isNullOrUndefined(value) || parameterRule.required)
+      (parameterRule.name === 'stop' ||
+        parameterRule.type === 'boolean' ||
+        !isNullOrUndefined(value) ||
+        parameterRule.required)
     )
       onChange(newValue)
   }
