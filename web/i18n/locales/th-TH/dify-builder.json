@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "เพิ่มในบริบทแล้ว",
+  "attachments.pending": "อยู่ในคิว",
+  "attachments.rejected": "ไม่ได้ใช้",
+  "attachments.superseded": "ไม่ใช้แล้ว",
+  "attachments.truncated": "เพิ่มบางส่วนแล้ว",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "ไม่สามารถรีเฟรชพื้นที่เวิร์กโฟลว์ได้ {{reason}}",
   "cardCategory.checks": "การตรวจสอบ",

@@ -1,3 +1,4 @@
+import type { DifyBuilderMaterialReceiptResponse } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type {
   ConversationItem,
   DifyBuilderLocalInteractionResponse,
@@ -99,6 +100,7 @@ const addLocalEntries = (
 
 export const DifyBuilderConversation = memo(
   ({
+    attachments = [],
     busy,
     interrupted,
     items,
@@ -106,6 +108,7 @@ export const DifyBuilderConversation = memo(
     localUserMessage,
     onStreamingContentChange,
   }: {
+    attachments?: DifyBuilderMaterialReceiptResponse[]
     busy: boolean
     interrupted: boolean
     items: ConversationItem[]
@@ -216,6 +219,26 @@ export const DifyBuilderConversation = memo(
             )
           })}
         </div>
+        {attachments.flatMap((receipt) =>
+          receipt.attachments.map((file) => (
+            <div
+              key={`${receipt.id}-${file.upload_file_id}`}
+              className="flex items-center gap-2 rounded-lg border border-components-panel-border px-3 py-2 system-xs-regular"
+            >
+              <span aria-hidden className="i-ri-attachment-2 size-4 shrink-0 text-text-tertiary" />
+              <span className="min-w-0 flex-1 truncate text-text-secondary">{file.name}</span>
+              <span className="shrink-0 text-text-tertiary">
+                {t(
+                  ($) =>
+                    $[
+                      `attachments.${receipt.status === 'superseded' ? 'superseded' : file.status}`
+                    ],
+                  { ns: 'difyBuilder' },
+                )}
+              </span>
+            </div>
+          )),
+        )}
         <StreamingAssistantTurn busy={busy} onContentChange={onStreamingContentChange} />
       </div>
     )

@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "Добавлено в контекст",
+  "attachments.pending": "В очереди",
+  "attachments.rejected": "Не использовано",
+  "attachments.superseded": "Больше не используется",
+  "attachments.truncated": "Добавлено частично",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "Не удалось обновить холст рабочего процесса. {{reason}}",
   "cardCategory.checks": "Проверки",

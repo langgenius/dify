@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "Aggiunto al contesto",
+  "attachments.pending": "In coda",
+  "attachments.rejected": "Non utilizzato",
+  "attachments.superseded": "Non più utilizzato",
+  "attachments.truncated": "Aggiunto parzialmente",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "Impossibile aggiornare l’area di lavoro del flusso. {{reason}}",
   "cardCategory.checks": "Controlli",

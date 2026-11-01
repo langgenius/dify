@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import ErrorBoundary from '@/app/components/base/error-boundary'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useStore } from '@/app/components/workflow/store'
+import { DifyBuilderAttachmentScope } from './attachments'
 import { DifyBuilderConversation } from './conversation'
 import { DifyBuilderLocaleProvider } from './interactions/locale-provider'
 import { useDifyBuilderInteractionLocale } from './interactions/use-interaction-locale'
@@ -26,6 +27,7 @@ import {
   difyBuilderConversationHasMoreAtom,
   difyBuilderConversationLoadingAtom,
   difyBuilderLocalUserMessageAtom,
+  difyBuilderSessionViewAtom,
 } from './session/state'
 import {
   difyBuilderAbandonTaskAtom,
@@ -47,6 +49,7 @@ const DifyBuilderPanelContent = () => {
   const locale = useDifyBuilderInteractionLocale()
   const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   const setShowDifyBuilderPanel = useStore((state) => state.setShowDifyBuilderPanel)
+  const view = useAtomValue(difyBuilderSessionViewAtom)
   const conversation = useAtomValue(difyBuilderConversationAtom)
   const conversationHasMore = useAtomValue(difyBuilderConversationHasMoreAtom)
   const conversationLoading = useAtomValue(difyBuilderConversationLoadingAtom)
@@ -162,6 +165,7 @@ const DifyBuilderPanelContent = () => {
                 >
                   <DifyBuilderConversation
                     items={conversation}
+                    attachments={view?.conversation_cleared ? [] : view?.attachments}
                     localInteractionResponse={
                       localInteractionResponse?.sessionId === sessionId
                         ? localInteractionResponse
@@ -214,9 +218,11 @@ const DifyBuilderPanelContent = () => {
 }
 
 const DifyBuilderPanel = () => (
-  <DifyBuilderLocaleProvider>
-    <DifyBuilderPanelContent />
-  </DifyBuilderLocaleProvider>
+  <DifyBuilderAttachmentScope>
+    <DifyBuilderLocaleProvider>
+      <DifyBuilderPanelContent />
+    </DifyBuilderLocaleProvider>
+  </DifyBuilderAttachmentScope>
 )
 
 export default DifyBuilderPanel
