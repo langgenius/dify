@@ -93,7 +93,7 @@ const InstallByDSLList = ({
               key={index}
               checked={checked}
               onCheckedChange={handleSelect(index)}
-              payload={{ ...plugin, from: d.type } as Plugin}
+              payload={plugin}
               version={
                 (d as GitHubItemAndMarketPlaceDependency).value.version! || plugin?.version || ''
               }

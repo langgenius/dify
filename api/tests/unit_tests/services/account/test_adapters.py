@@ -1,12 +1,21 @@
-from datetime import UTC, datetime
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, call, create_autospec, patch
 
+import httpx
 import pytest
+from redis import RedisError
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Unauthorized
 
 from extensions.ext_redis import RedisClientWrapper
+from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from services.account.adapters import (
+    AccountIdentityGateway,
     BillingAccountActivationEligibility,
     BillingAccountEducationGateway,
     BillingAccountEmailPolicyGateway,
@@ -19,14 +28,29 @@ from services.account.adapters import (
     TokenManagerAccountDeletionVerificationGateway,
     TokenManagerChangeEmailTokenGateway,
 )
-from services.account_errors import AccountDeletionRateLimitError
+from services.account_errors import (
+    AccountDeletionRateLimitError,
+    EducationActivationFailedError,
+    EducationRequestInProgressError,
+    EducationVerificationFailedError,
+)
+from services.billing_client import billing, transport
 from services.entities.account_activation_entities import InvitationLookup, InvitationToken
 from services.entities.account_entities import (
     AccountChangeEmailNewEmailToken,
     AccountEducationActivation,
     AccountEducationAutocomplete,
+    AccountEducationEligible,
+    AccountEducationNotEligible,
     AccountEducationStatus,
+    AccountEducationVerification,
 )
+from services.errors.billing import (
+    BillingUpstreamError,
+    BillingUpstreamInvalidResponseError,
+    UnknownErrorReason,
+)
+from tests.helpers.unit.account_domain import AccountDomain
 
 
 def test_invitation_token_store_reads_workspace_invitation_key(
@@ -182,17 +206,62 @@ def test_rbac_member_access_sync_enqueues_joined_member_sync_when_enabled() -> N
     delay.assert_called_once_with("workspace-1", "account-1", operator_account_id=None)
 
 
-def test_education_gateway_normalizes_billing_status_timestamp() -> None:
+@pytest.mark.parametrize(
+    ("reply", "expected"),
+    [
+        (
+            billing.VerifyEducationIdentityReply(token="education-token", status="eligible"),
+            AccountEducationEligible(token="education-token"),
+        ),
+        (billing.VerifyEducationIdentityReply(token="", status="not_eligible"), AccountEducationNotEligible()),
+    ],
+)
+def test_education_gateway_maps_verification_status(
+    reply: billing.VerifyEducationIdentityReply, expected: AccountEducationVerification
+) -> None:
+    gateway = BillingAccountEducationGateway()
+
+    with patch("services.account.adapters.BillingService.EducationIdentity.verify", return_value=reply):
+        result = gateway.verify(account_id="account-1")
+
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("read", "body"),
+    [
+        (lambda gateway: gateway.verify(account_id="account-1"), {"token": ""}),
+        (
+            lambda gateway: gateway.status("account-1"),
+            {"result": False, "is_student": False, "expire_at": "", "allow_refresh": False},
+        ),
+    ],
+)
+def test_education_gateway_rejects_invalid_billing_replies(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    read: Callable[[BillingAccountEducationGateway], object],
+    body: dict[str, object],
+) -> None:
+    config_overrides(BILLING_API_URL="http://billing/v1")
+    monkeypatch.setattr(
+        transport,
+        "_http_client",
+        httpx.Client(transport=httpx.MockTransport(lambda _request: httpx.Response(200, json=body))),
+    )
+
+    with pytest.raises(BillingUpstreamInvalidResponseError):
+        read(BillingAccountEducationGateway())
+
+
+def test_education_gateway_reads_billing_status_timestamp() -> None:
     gateway = BillingAccountEducationGateway()
 
     with patch(
         "services.account.adapters.BillingService.EducationIdentity.status",
-        return_value={
-            "result": True,
-            "is_student": True,
-            "expire_at": "2027-01-01T00:00:00+00:00",
-            "allow_refresh": False,
-        },
+        return_value=billing.GetEducationIdentityStatusReply(
+            result=True, is_student=True, expire_at="2027-01-01T00:00:00Z", allow_refresh=False
+        ),
     ):
         result = gateway.status("account-1")
 
@@ -209,7 +278,7 @@ def test_education_gateway_activates_with_primitive_account_context() -> None:
 
     with patch(
         "services.account.adapters.BillingService.EducationIdentity.activate",
-        return_value={"message": "success"},
+        return_value=billing.CreateEducationIdentityReply(message="success"),
     ) as activate:
         result = gateway.activate(
             account_id="account-1",
@@ -229,16 +298,30 @@ def test_education_gateway_activates_with_primitive_account_context() -> None:
     )
 
 
-def test_education_gateway_normalizes_autocomplete_defaults() -> None:
+def test_education_gateway_maps_autocomplete_reply() -> None:
     gateway = BillingAccountEducationGateway()
 
     with patch(
         "services.account.adapters.BillingService.EducationIdentity.autocomplete",
-        return_value=None,
+        return_value=billing.AutocompleteEducationInstitutionReply(
+            data=["Example University"], curr_page=0, has_next=True
+        ),
     ):
         result = gateway.autocomplete(keywords="Example", page=0, limit=20)
 
-    assert result == AccountEducationAutocomplete(data=(), curr_page=None, has_next=None)
+    assert result == AccountEducationAutocomplete(data=("Example University",), curr_page=0, has_next=True)
+
+
+def test_education_gateway_reads_no_identity_expiry() -> None:
+    gateway = BillingAccountEducationGateway()
+
+    with patch(
+        "services.account.adapters.BillingService.EducationIdentity.status",
+        return_value=billing.GetEducationIdentityStatusReply(
+            result=False, is_student=False, expire_at="1997-01-01T00:00:00Z", allow_refresh=False
+        ),
+    ):
+        assert gateway.status("account-1").expire_at == datetime(1997, 1, 1, tzinfo=UTC)
 
 
 def test_billing_email_policy_preserves_suspended_domain_reason() -> None:
@@ -388,3 +471,126 @@ def test_verification_notifier_preserves_rate_limit_before_enqueuing_email(
     assert [call.args[0] for call in commands.call_args_list] == ["ZREMRANGEBYSCORE", "ZCARD"]
     assert error.value.retry_after_minutes == 1
     mail_task.delay.assert_not_called()
+
+
+@pytest.mark.parametrize("has_normal", [True, False])
+def test_identity_resolves_normal_workspace_and_detaches_it(
+    account_domain: AccountDomain, sqlite_session_factory: sessionmaker[Session], has_normal: bool
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="User", email="u@example.com")
+        archived = Tenant(name="Archived", status=TenantStatus.ARCHIVE)
+        session.add_all(
+            [
+                account,
+                archived,
+                TenantAccountJoin(
+                    account_id=account.id, tenant_id=archived.id, role=TenantAccountRole.NORMAL, current=True
+                ),
+            ]
+        )
+        if has_normal:
+            normal = Tenant(name="Normal")
+            session.add_all(
+                [normal, TenantAccountJoin(account_id=account.id, tenant_id=normal.id, role=TenantAccountRole.EDITOR)]
+            )
+        account_id = account.id
+    loaded = account_domain.repository.load_identity(account_id, now=datetime(2026, 1, 1))
+    if has_normal:
+        assert loaded is not None
+        assert loaded.current_tenant is not None
+        assert loaded.current_tenant.name == "Normal"
+        assert loaded.role == TenantAccountRole.EDITOR
+    else:
+        assert loaded is None
+    with sqlite_session_factory() as session:
+        current = session.scalars(select(TenantAccountJoin).where(TenantAccountJoin.current.is_(True))).all()
+        assert len(current) == int(has_normal)
+
+
+@pytest.mark.parametrize("redis_claim", [True, False, RedisError("offline")])
+def test_activity_refresh_is_gated_but_fails_open(
+    account_domain: AccountDomain, sqlite_session: Session, redis_claim: bool | RedisError
+) -> None:
+    now = naive_utc_now()
+    account = Account(name="User", email="u@example.com")
+    account.last_active_at = now - timedelta(hours=1)
+    tenant = Tenant(name="Normal")
+    sqlite_session.add_all(
+        [
+            account,
+            tenant,
+            TenantAccountJoin(account_id=account.id, tenant_id=tenant.id, role=TenantAccountRole.OWNER, current=True),
+        ]
+    )
+    sqlite_session.commit()
+    account_id, old_active = account.id, account.last_active_at
+    redis = create_autospec(RedisClientWrapper, instance=True)
+    if isinstance(redis_claim, RedisError):
+        redis.set.side_effect = redis_claim
+    else:
+        redis.set.return_value = redis_claim
+    gateway = AccountIdentityGateway(accounts=account_domain.repository, redis=redis)
+    loaded = gateway.load_user(account_id)
+    assert loaded is not None
+    sqlite_session.expire_all()
+    assert (account.last_active_at > old_active) == (redis_claim is not False)
+    assert redis.set.call_args.kwargs == {"ex": 600, "nx": True}
+
+
+def test_identity_rejects_banned_and_missing_accounts(account_domain: AccountDomain, sqlite_session: Session) -> None:
+    account = Account(name="Banned", email="b@example.com", status=AccountStatus.BANNED)
+    sqlite_session.add(account)
+    sqlite_session.commit()
+    gateway = AccountIdentityGateway(
+        accounts=account_domain.repository, redis=create_autospec(RedisClientWrapper, instance=True)
+    )
+    with pytest.raises(Unauthorized, match="banned"):
+        gateway.load_user(account.id)
+    assert gateway.load_user("missing") is None
+
+
+@pytest.mark.parametrize(
+    ("reason", "expected"),
+    [
+        ("EDUCATION_VERIFY_FAILED", EducationVerificationFailedError),
+        ("EDUCATION_CREATE_FAILED", EducationActivationFailedError),
+        ("REQUEST_IN_PROGRESS", EducationRequestInProgressError),
+    ],
+)
+def test_education_gateway_maps_billing_reason(
+    reason: billing.BillingEducationErrorReason, expected: type[Exception]
+) -> None:
+    error = billing.BillingEducationUpstreamInvalidResponseError(status_code=400, reason=reason)
+
+    with (
+        patch("services.account.adapters.BillingService.EducationIdentity.verify", side_effect=error),
+        pytest.raises(expected) as exc_info,
+    ):
+        BillingAccountEducationGateway().verify(account_id="account-1")
+
+    assert exc_info.value.__cause__ is error
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        billing.BillingEducationUpstreamInvalidResponseError(status_code=400, reason="EDUCATION_STATUS_FAILED"),
+        billing.BillingEducationUpstreamUnavailableError(status_code=500, reason=""),
+        billing.BillingEducationUpstreamInvalidResponseError(
+            status_code=400, reason=UnknownErrorReason("EDUCATION_SHIPPED_LATER")
+        ),
+        billing.BillingEducationUpstreamUnavailableError(status_code=502),
+        billing.BillingEducationUpstreamUnavailableError(),
+    ],
+)
+def test_education_gateway_leaves_generic_reasons_to_billing_errors(
+    error: billing.BillingEducationUpstreamError,
+) -> None:
+    with (
+        patch("services.account.adapters.BillingService.EducationIdentity.status", side_effect=error),
+        pytest.raises(BillingUpstreamError) as exc_info,
+    ):
+        BillingAccountEducationGateway().status("account-1")
+
+    assert exc_info.value is error

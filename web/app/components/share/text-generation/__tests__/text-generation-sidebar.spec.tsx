@@ -4,48 +4,23 @@ import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useRef, useState } from 'react'
 import { AccessMode } from '@/models/access-control'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { Resolution, TransferMethod } from '@/types/app'
 import TextGenerationSidebar from '../text-generation-sidebar'
 
-const runOncePropsSpy = vi.fn()
-const runBatchPropsSpy = vi.fn()
-const savedItemsPropsSpy = vi.fn()
-
-vi.mock('@/app/components/share/text-generation/run-once', () => ({
-  default: (props: Record<string, unknown>) => {
-    runOncePropsSpy(props)
-    return <div data-testid="run-once-mock" />
-  },
-}))
-
-vi.mock('@/app/components/share/text-generation/run-batch', () => ({
-  default: (props: Record<string, unknown>) => {
-    runBatchPropsSpy(props)
-    return <div data-testid="run-batch-mock" />
-  },
-}))
-
-vi.mock('@/app/components/app/text-generate/saved-items', () => ({
-  default: (props: { onStartCreateContent: () => void; list: Array<{ id: string }> }) => {
-    savedItemsPropsSpy(props)
-    return (
-      <div data-testid="saved-items-mock">
-        <span>{props.list.length}</span>
-        <button onClick={props.onStartCreateContent}>back-to-create</button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('@/app/components/share/text-generation/menu-dropdown', () => ({
-  default: () => <div data-testid="menu-dropdown-mock" />,
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => '/',
+  useParams: () => ({}),
 }))
 
 const promptConfig: PromptConfig = {
   prompt_template: 'template',
-  prompt_variables: [{ key: 'name', name: 'Name', type: 'string', required: true }],
+  prompt_variables: [
+    { key: 'name', name: 'Name', type: 'string', required: true, default: 'Alice' },
+  ],
 }
 
 const savedMessages: SavedMessage[] = [
@@ -99,68 +74,70 @@ const baseProps: ComponentProps<typeof TextGenerationSidebar> = {
 }
 
 const renderSidebar = (overrides: Partial<typeof baseProps> = {}) => {
-  return render(<TextGenerationSidebar {...baseProps} {...overrides} />)
+  function Caller() {
+    const [currentTab, setCurrentTab] = useState(overrides.currentTab ?? baseProps.currentTab)
+    const [inputs, setInputs] = useState(baseProps.inputs)
+    const inputsRef = useRef(inputs)
+    const [savedMessages, setSavedMessages] = useState(baseProps.savedMessages)
+    return (
+      <TextGenerationSidebar
+        {...baseProps}
+        {...overrides}
+        currentTab={currentTab}
+        onTabChange={setCurrentTab}
+        inputs={inputs}
+        inputsRef={inputsRef}
+        onInputsChange={setInputs}
+        savedMessages={savedMessages}
+        onRemoveSavedMessage={async (id) =>
+          setSavedMessages((messages) => messages.filter((message) => message.id !== id))
+        }
+      />
+    )
+  }
+  return render(<Caller />)
 }
 
 describe('TextGenerationSidebar', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should render create tab content and pass orchestration props to RunOnce', () => {
+  it('renders the create form with its configured input', () => {
     renderSidebar()
 
     expect(screen.getByText('Text Generation')).toBeInTheDocument()
     expect(screen.getByText('Share description')).toBeInTheDocument()
-    expect(screen.getByTestId('run-once-mock')).toBeInTheDocument()
-    expect(runOncePropsSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        inputs: { name: 'Alice' },
-        promptConfig,
-        runControl: null,
-        visionConfig,
-      }),
-    )
-    expect(screen.queryByTestId('saved-items-mock')).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alice')
+    expect(screen.getByRole('button', { name: 'share.generation.run' })).toBeEnabled()
+    expect(screen.queryByText('Answer 1')).not.toBeInTheDocument()
   })
 
-  it('should render batch tab and hide saved tab for workflow apps', () => {
-    renderSidebar({
-      currentTab: 'batch',
-      isWorkflow: true,
-    })
+  it('renders the batch uploader and hides saved content for workflow apps', () => {
+    renderSidebar({ currentTab: 'batch', isWorkflow: true })
 
-    expect(screen.getByTestId('run-batch-mock')).toBeInTheDocument()
-    expect(runBatchPropsSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        vars: promptConfig.prompt_variables,
-        isAllFinished: true,
-      }),
-    )
+    expect(screen.getByText('share.generation.csvUploadTitle')).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'share.generation.run' })).toBeDisabled()
     expect(
       screen.queryByRole('tab', { name: /^share\.generation\.tabs\.saved/ }),
     ).not.toBeInTheDocument()
   })
 
-  it('should render saved items and allow switching back to create tab', async () => {
+  it('renders saved answers and switches back to the real create form', async () => {
     const user = userEvent.setup()
-    const onTabChange = vi.fn()
+    renderSidebar({ currentTab: 'saved' })
 
-    renderSidebar({
-      currentTab: 'saved',
-      onTabChange,
-    })
-
-    expect(screen.getByTestId('saved-items-mock')).toBeInTheDocument()
-    expect(savedItemsPropsSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        list: baseProps.savedMessages,
-        isShowTextToSpeech: true,
-      }),
+    expect(await screen.findByText('Answer 1')).toBeInTheDocument()
+    expect(screen.getByText('Answer 2')).toBeInTheDocument()
+    for (const button of screen.getAllByRole('button', { name: 'common.operation.delete' }))
+      await user.click(button)
+    expect(screen.getByText('share.generation.savedNoData.title')).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'share.generation.savedNoData.startCreateContent' }),
     )
-
-    await user.click(screen.getByRole('button', { name: 'back-to-create' }))
-    expect(onTabChange).toHaveBeenCalledWith('create')
+    expect(screen.getByRole('tab', { name: 'share.generation.tabs.create' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alice')
+    expect(screen.queryByText('Answer 1')).not.toBeInTheDocument()
   })
 
   it('should prefer workspace branding and hide powered-by block when branding is removed', () => {

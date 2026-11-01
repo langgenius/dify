@@ -2,13 +2,19 @@ import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/t
 import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { HumanInputV2NodeType } from '@/app/components/workflow/nodes/human-input-v2/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
+import type { KnowledgeRetrievalV2NodeType } from '@/app/components/workflow/nodes/knowledge-retrieval-v2/types'
 import type { ListFilterNodeType } from '@/app/components/workflow/nodes/list-operator/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { EnvironmentVariable, Node, PromptItem } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vite-plus/test'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
+import {
+  ComparisonOperator,
+  LogicalOperator,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import {
   BlockEnum,
   EditionType,
@@ -59,6 +65,43 @@ const createLLMNodeData = (promptTemplate: PromptItem[]): LLMNodeType => ({
 
 describe('variable utils', () => {
   describe('toNodeAvailableVars', () => {
+    it('exposes shared form and action outputs for Human Input v2', () => {
+      const node = createNode<HumanInputV2NodeType>({
+        type: BlockEnum.HumanInput,
+        version: '2',
+        title: 'Human Input v2',
+        desc: '',
+        recipients_spec: [{ type: 'initiator' }],
+        message_template: { subject: 'Review', body: 'Body' },
+        debug_mode: { enabled: false, channels: [] },
+        form_content: '',
+        inputs: [
+          {
+            type: InputVarType.paragraph,
+            output_variable_name: 'review_note',
+            default: { type: 'constant', selector: [], value: '' },
+          },
+        ],
+        user_actions: [],
+        timeout: 36,
+        timeout_unit: 'hour',
+      })
+
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [node],
+        isChatflow: false,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      expect(availableVars.find((item) => item.nodeId === 'node-1')?.vars).toEqual([
+        { variable: 'review_note', type: VarType.string },
+        { variable: '__action_id', type: VarType.string },
+        { variable: '__action_value', type: VarType.string },
+        { variable: '__rendered_content', type: VarType.string },
+      ])
+    })
+
     it('excludes LLM environment aliases from generic variable pickers', () => {
       const environmentVariables: EnvironmentVariable[] = [
         {
@@ -375,6 +418,45 @@ describe('variable utils', () => {
       )
     })
 
+    it('reads Human Input v2 recipient, template, form and input dependencies', () => {
+      const node = createNode<HumanInputV2NodeType>({
+        type: BlockEnum.HumanInput,
+        version: '2',
+        title: 'Human Input v2',
+        desc: '',
+        recipients_spec: [
+          { type: 'dynamic_email', selector: ['start', 'recipient_email'] },
+          { type: 'initiator' },
+        ],
+        message_template: {
+          subject: 'Review {{#conversation.topic#}}',
+          body: 'Body {{#env.TEMPLATE#}}',
+        },
+        debug_mode: { enabled: false, channels: [] },
+        form_content: 'Form {{#start.request#}}',
+        inputs: [
+          {
+            type: InputVarType.paragraph,
+            output_variable_name: 'comment',
+            default: { type: 'variable', selector: ['env', 'DEFAULT_COMMENT'], value: '' },
+          },
+        ],
+        user_actions: [],
+        timeout: 36,
+        timeout_unit: 'hour',
+      })
+
+      expect(getNodeUsedVars(node)).toEqual(
+        expect.arrayContaining([
+          ['start', 'recipient_email'],
+          ['conversation', 'topic'],
+          ['env', 'TEMPLATE'],
+          ['start', 'request'],
+          ['env', 'DEFAULT_COMMENT'],
+        ]),
+      )
+    })
+
     it('should read variables from agent task', () => {
       const node = createNode<AgentV2NodeType>({
         type: BlockEnum.Agent,
@@ -386,6 +468,58 @@ describe('variable utils', () => {
       })
 
       expect(getNodeUsedVars(node)).toContainEqual(['start', 'tender'])
+    })
+
+    it('reads both text and image selectors from a KnowledgeFS retrieval node', () => {
+      const node = createNode<KnowledgeRetrievalV2NodeType>({
+        type: BlockEnum.KnowledgeRetrievalV2,
+        title: 'Knowledge Retrieval v2',
+        desc: '',
+        control_space_ids: ['space-1'],
+        query_variable_selector: ['start', 'query'],
+        query_attachment_selector: ['start', 'images'],
+        top_n: 10,
+      })
+
+      expect(getNodeUsedVars(node)).toEqual([
+        ['start', 'query'],
+        ['start', 'images'],
+      ])
+    })
+
+    it('reads variables referenced by KnowledgeFS metadata filter values', () => {
+      const node = createNode<KnowledgeRetrievalV2NodeType>({
+        type: BlockEnum.KnowledgeRetrievalV2,
+        title: 'Knowledge Retrieval v2',
+        desc: '',
+        control_space_ids: ['space-1'],
+        query_variable_selector: ['start', 'query'],
+        query_attachment_selector: [],
+        top_n: 10,
+        metadata_filtering_conditions: {
+          logical_operator: LogicalOperator.and,
+          conditions: [
+            {
+              id: 'condition-1',
+              name: 'department',
+              comparison_operator: ComparisonOperator.is,
+              value: '{{#start.department#}}',
+            },
+            {
+              id: 'condition-2',
+              name: 'region',
+              comparison_operator: ComparisonOperator.contains,
+              value: 'emea-{{#start.department#}}',
+            },
+          ],
+        },
+      })
+
+      expect(getNodeUsedVars(node)).toContainEqual(['start', 'department'])
+      expect(getNodeUsedVarPassToServerKey(node, ['start', 'department'])).toBe(
+        '#start.department#',
+      )
+      expect(getNodeUsedVarPassToServerKey(node, ['start', 'query'])).toBe('query')
     })
   })
 
@@ -449,6 +583,103 @@ describe('variable utils', () => {
       expect((updatedNode.data as AgentV2NodeType).agent_task).toBe('Clarify {{#start.question#}}')
     })
 
+    it('renames the KnowledgeFS retrieval image selector independently', () => {
+      const node = createNode<KnowledgeRetrievalV2NodeType>({
+        type: BlockEnum.KnowledgeRetrievalV2,
+        title: 'Knowledge Retrieval v2',
+        desc: '',
+        control_space_ids: ['space-1'],
+        query_variable_selector: ['start', 'query'],
+        query_attachment_selector: ['start', 'images'],
+        top_n: 10,
+      })
+
+      const updatedNode = updateNodeVars(node, ['start', 'images'], ['start', 'screenshots'])
+
+      expect(updatedNode.data as KnowledgeRetrievalV2NodeType).toMatchObject({
+        query_variable_selector: ['start', 'query'],
+        query_attachment_selector: ['start', 'screenshots'],
+      })
+    })
+
+    it('renames KnowledgeFS metadata filter variable references', () => {
+      const node = createNode<KnowledgeRetrievalV2NodeType>({
+        type: BlockEnum.KnowledgeRetrievalV2,
+        title: 'Knowledge Retrieval v2',
+        desc: '',
+        control_space_ids: ['space-1'],
+        query_variable_selector: ['start', 'query'],
+        query_attachment_selector: [],
+        top_n: 10,
+        metadata_filtering_conditions: {
+          logical_operator: LogicalOperator.and,
+          conditions: [
+            {
+              id: 'condition-1',
+              name: 'department',
+              comparison_operator: ComparisonOperator.is,
+              value: '{{#start.department#}}',
+            },
+            {
+              id: 'condition-2',
+              name: 'region',
+              comparison_operator: ComparisonOperator.contains,
+              value: 'emea-{{#start.department#}}',
+            },
+          ],
+        },
+      })
+
+      const updatedNode = updateNodeVars(node, ['start', 'department'], ['start', 'team'])
+
+      expect(
+        (updatedNode.data as KnowledgeRetrievalV2NodeType).metadata_filtering_conditions
+          ?.conditions,
+      ).toEqual([
+        expect.objectContaining({ value: '{{#start.team#}}' }),
+        expect.objectContaining({ value: 'emea-{{#start.team#}}' }),
+      ])
+    })
+
+    it('drops KnowledgeFS metadata filter references to a removed variable', () => {
+      const node = createNode<KnowledgeRetrievalV2NodeType>({
+        type: BlockEnum.KnowledgeRetrievalV2,
+        title: 'Knowledge Retrieval v2',
+        desc: '',
+        control_space_ids: ['space-1'],
+        query_variable_selector: ['start', 'query'],
+        query_attachment_selector: [],
+        top_n: 10,
+        metadata_filtering_conditions: {
+          logical_operator: LogicalOperator.and,
+          conditions: [
+            {
+              id: 'condition-1',
+              name: 'department',
+              comparison_operator: ComparisonOperator.is,
+              value: '{{#start.department#}}',
+            },
+            {
+              id: 'condition-2',
+              name: 'region',
+              comparison_operator: ComparisonOperator.contains,
+              value: 'emea-{{#start.department#}}',
+            },
+          ],
+        },
+      })
+
+      const updatedNode = updateNodeVars(node, ['start', 'department'], [])
+
+      expect(
+        (updatedNode.data as KnowledgeRetrievalV2NodeType).metadata_filtering_conditions
+          ?.conditions,
+      ).toEqual([
+        expect.objectContaining({ value: undefined }),
+        expect.objectContaining({ value: 'emea-' }),
+      ])
+    })
+
     it('should replace human input email template references', () => {
       const node = createNode<HumanInputNodeType>({
         type: BlockEnum.HumanInput,
@@ -509,6 +740,39 @@ describe('variable utils', () => {
           selector: ['env', 'RENAMED_KEY'],
         },
       })
+    })
+
+    it('renames Human Input v2 references without adding v1 delivery methods', () => {
+      const node = createNode<HumanInputV2NodeType>({
+        type: BlockEnum.HumanInput,
+        version: '2',
+        title: 'Human Input v2',
+        desc: '',
+        recipients_spec: [{ type: 'dynamic_email', selector: ['start', 'email'] }],
+        message_template: {
+          subject: 'Subject {{#start.email#}}',
+          body: 'Body {{#start.email#}}',
+        },
+        debug_mode: { enabled: true, channels: ['email'] },
+        form_content: 'Form {{#start.email#}}',
+        inputs: [],
+        user_actions: [],
+        timeout: 36,
+        timeout_unit: 'hour',
+      })
+
+      const updatedNode = updateNodeVars(node, ['start', 'email'], ['start', 'owner_email'])
+      const data = updatedNode.data as HumanInputV2NodeType
+
+      expect(data.recipients_spec).toEqual([
+        { type: 'dynamic_email', selector: ['start', 'owner_email'] },
+      ])
+      expect(data.message_template).toEqual({
+        subject: 'Subject {{#start.owner_email#}}',
+        body: 'Body {{#start.owner_email#}}',
+      })
+      expect(data.form_content).toBe('Form {{#start.owner_email#}}')
+      expect(data).not.toHaveProperty('delivery_methods')
     })
   })
 })

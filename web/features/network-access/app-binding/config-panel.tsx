@@ -1,7 +1,7 @@
 'use client'
 
 import type { NetworkAccessGroupCurrentIpCheckResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { FormEvent } from 'react'
+import type { SubmitEvent } from 'react'
 import type { AccessControlDraft, AccessControlPolicy } from './draft'
 import type { AccessControlAppIcon } from './index'
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
@@ -80,7 +80,7 @@ export function AccessControlConfigPanel({
     hasSelectedPolicy &&
     canSaveAccessControl({ draft, baseline, availableAccessPoints })
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!canSave) return
     onSave()

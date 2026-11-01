@@ -10,6 +10,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -18,6 +19,7 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -195,12 +197,19 @@ function AgentSkillPackageUploader({
             </div>
           </div>
           <div className="flex items-center pr-3">
-            <IconButton
-              aria-label={tCommon(($) => $['operation.remove'])}
-              onClick={() => onChange(undefined)}
-            >
-              <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
-            </IconButton>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <IconButton
+                    aria-label={tCommon(($) => $['operation.remove'])}
+                    onClick={() => onChange(undefined)}
+                  >
+                    <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                  </IconButton>
+                }
+              />
+              <TooltipContent>{tCommon(($) => $['operation.remove'])}</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       )}
@@ -275,7 +284,6 @@ export function AgentSkillUploadDialog({
       ) => {
         toast.success(t(($) => $['agentDetail.configure.skills.upload.success']))
         onUploaded?.(toUploadedSkill(response, file))
-        setFile(undefined)
         onOpenChange(false)
       },
     }
@@ -317,17 +325,21 @@ export function AgentSkillUploadDialog({
     )
   }
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
-      uploadAgentSkillMutation.reset()
-      uploadWorkflowSkillMutation.reset()
-      setFile(undefined)
-    }
-    onOpenChange(nextOpen)
-  }
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && uploadSkillMutation.isPending) details.cancel()
+        else onOpenChange(nextOpen)
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) {
+          uploadSkillMutation.reset()
+          setFile(undefined)
+        }
+      }}
+      disablePointerDismissal
+    >
       <DialogContent backdropProps={{ forceRender: true, className: 'fixed' }}>
         <DialogHeader>
           <DialogTitle>{t(($) => $['agentDetail.configure.skills.upload.title'])}</DialogTitle>
@@ -344,13 +356,9 @@ export function AgentSkillUploadDialog({
           />
         </DialogBody>
         <DialogFooter>
-          <Button
-            type="button"
-            onClick={() => handleOpenChange(false)}
-            disabled={uploadSkillMutation.isPending}
-          >
+          <DialogClose render={<Button disabled={uploadSkillMutation.isPending} />}>
             {tCommon(($) => $['operation.cancel'])}
-          </Button>
+          </DialogClose>
           <Button
             type="button"
             variant="primary"

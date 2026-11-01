@@ -228,10 +228,13 @@ describe('SnippetCard', () => {
       await user.click(await screen.findByRole('menuitem', { name: 'snippet.menu.exportSnippet' }))
 
       await waitFor(() => {
-        expect(exportSnippet).toHaveBeenCalledWith({
-          params: { snippet_id: 'snippet-1' },
-          query: { include_secret: 'false', workflow_id: undefined },
-        })
+        expect(exportSnippet).toHaveBeenCalledWith(
+          {
+            params: { snippet_id: 'snippet-1' },
+            query: { include_secret: 'false', workflow_id: undefined },
+          },
+          { context: { silent: true } },
+        )
         expect(mockDownloadBlob).toHaveBeenCalledWith(
           expect.objectContaining({
             fileName: 'Tone Rewriter.yml',
@@ -255,7 +258,7 @@ describe('SnippetCard', () => {
       await user.click(await screen.findByRole('menuitem', { name: 'snippet.menu.exportSnippet' }))
 
       await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith('snippet.exportFailed')
+        expect(mockToastError).toHaveBeenCalledWith('export failed')
       })
       expect(mockDownloadBlob).not.toHaveBeenCalled()
     })
@@ -280,13 +283,16 @@ describe('SnippetCard', () => {
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
       await waitFor(() => {
-        expect(updateSnippet).toHaveBeenCalledWith({
-          params: { snippet_id: 'snippet-1' },
-          body: {
-            name: 'Updated Snippet',
-            description: 'Rewrites rough drafts.',
+        expect(updateSnippet).toHaveBeenCalledWith(
+          {
+            params: { snippet_id: 'snippet-1' },
+            body: {
+              name: 'Updated Snippet',
+              description: 'Rewrites rough drafts.',
+            },
           },
-        })
+          { context: { silent: true } },
+        )
         expect(mockOnRefresh).toHaveBeenCalled()
       })
     })
@@ -318,6 +324,7 @@ describe('SnippetCard', () => {
               description: '',
             },
           }),
+          { context: { silent: true } },
         )
         expect(mockToastError).toHaveBeenCalledWith('Update failed')
       })
@@ -339,9 +346,12 @@ describe('SnippetCard', () => {
       await user.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
 
       await waitFor(() => {
-        expect(deleteSnippet).toHaveBeenCalledWith({
-          params: { snippet_id: 'snippet-1' },
-        })
+        expect(deleteSnippet).toHaveBeenCalledWith(
+          {
+            params: { snippet_id: 'snippet-1' },
+          },
+          { context: { silent: true } },
+        )
         expect(mockOnRefresh).toHaveBeenCalled()
       })
     })
@@ -374,9 +384,12 @@ describe('SnippetCard', () => {
       await user.click(await screen.findByRole('option', { name: 'Sales' }))
       await user.keyboard('{Escape}')
       await waitFor(() =>
-        expect(bindTags).toHaveBeenCalledExactlyOnceWith({
-          body: { tag_ids: ['tag-1'], target_id: 'snippet-1', type: 'snippet' },
-        }),
+        expect(bindTags).toHaveBeenCalledExactlyOnceWith(
+          {
+            body: { tag_ids: ['tag-1'], target_id: 'snippet-1', type: 'snippet' },
+          },
+          { context: { silent: true } },
+        ),
       )
       await waitFor(() => expect(onTagsChange).toHaveBeenCalledOnce())
     })

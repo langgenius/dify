@@ -1,0 +1,56 @@
+id: no-new-constructor-bypass
+language: python
+severity: error
+message: Use the class constructor to preserve initialization and validation.
+utils:
+  allocation-in-new:
+    all:
+      - any:
+          - pattern: $OWNER.__new__($CLS)
+          - pattern: $OWNER.__new__($CLS, $$$TAIL)
+      - inside:
+          all:
+            - kind: function_definition
+            - has:
+                field: name
+                regex: '^__new__$'
+            - has:
+                field: parameters
+                has:
+                  all:
+                    - nthChild: 1
+                    - any:
+                        - all:
+                            - kind: typed_parameter
+                            - has:
+                                pattern: $CLS
+                                stopBy: neighbor
+                        - pattern: $CLS
+                  stopBy: neighbor
+            - inside:
+                kind: class_definition
+                stopBy:
+                  any:
+                    - kind: function_definition
+                    - kind: lambda
+                    - kind: class_definition
+          stopBy:
+            any:
+              - kind: function_definition
+              - kind: lambda
+              - kind: class_definition
+rule:
+  any:
+    - all:
+        - pattern: $OWNER.__new__($$$ARGS)
+        - not:
+            matches: allocation-in-new
+    - all:
+        - pattern: $OWNER.__new__
+        - not:
+            inside:
+              kind: call
+              has:
+                field: function
+                pattern: $OWNER.__new__
+              stopBy: neighbor

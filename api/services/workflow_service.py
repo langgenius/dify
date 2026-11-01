@@ -6,7 +6,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
-from sqlalchemy import exists, select
+from sqlalchemy import exists, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -38,6 +38,7 @@ from core.workflow.node_factory import (
 from core.workflow.node_runtime import (
     apply_dify_debug_email_recipient,
 )
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
@@ -46,7 +47,13 @@ from core.workflow.nodes.human_input.callback import (
 from core.workflow.nodes.human_input.entities import FormInputConfig, HumanInputNodeData
 from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
+from core.workflow.system_variables import (
+    SystemVariableKey,
+    build_bootstrap_variables,
+    build_system_variables,
+    default_system_variables,
+    system_variable_selector,
+)
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
@@ -78,7 +85,7 @@ from graphon.variable_loader import load_into_variable_pool
 from graphon.variables import VariableBase
 from graphon.variables.input_entities import VariableEntityType
 from graphon.variables.variables import Variable
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from models import Account
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.human_input import HumanInputFormRecipient, RecipientType
@@ -88,6 +95,7 @@ from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeEx
 from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.billing_service import BillingService
+from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.app import (
     IsDraftWorkflowError,
     TriggerNodeLimitExceededError,
@@ -464,13 +472,13 @@ class WorkflowService:
             workflow = Workflow(
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
-                type=WorkflowType.from_app_mode(app_model.mode).value,
+                type=WorkflowType.from_app_mode(app_model.mode),
                 version=Workflow.VERSION_DRAFT,
                 graph=json.dumps(graph),
-                features=json.dumps(features),
+                _features=json.dumps(features),
                 created_by=account.id,
-                environment_variables=initial_environment_variables,
-                conversation_variables=conversation_variables,
+                _environment_variables=initial_environment_variables,
+                _conversation_variables=conversation_variables,
             )
             session.add(workflow)
         # update draft workflow if found
@@ -709,6 +717,15 @@ class WorkflowService:
 
         # validate graph structure
         self.validate_graph_structure(graph=draft_workflow.graph_dict)
+        from services.knowledge_fs.knowledge_retrieval_v2.validation import (
+            validate_control_space_references,
+        )
+
+        validate_control_space_references(
+            session=session,
+            tenant_id=app_model.tenant_id,
+            graph=draft_workflow.graph_dict,
+        )
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
@@ -720,7 +737,7 @@ class WorkflowService:
         # billing check
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             limit_info = BillingService.get_info(app_model.tenant_id)
-            if limit_info["subscription"]["plan"] == CloudPlan.SANDBOX:
+            if limit_info.subscription.plan == CloudPlan.SANDBOX:
                 # Check trigger node count limit for SANDBOX plan
                 trigger_node_count = sum(
                     1
@@ -758,7 +775,11 @@ class WorkflowService:
         )
 
         # trigger app workflow events
-        app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
+        app_published_workflow_was_updated.send(
+            app_model,
+            published_workflow=workflow,
+            session=session,
+        )
 
         # return new workflow
         return workflow
@@ -1158,14 +1179,19 @@ class WorkflowService:
         Run draft workflow node
         """
         files = files or []
+        node_config = draft_workflow.get_node_config_by_id(node_id)
+        node_type = Workflow.get_node_type_from_node_config(node_config)
+        node_data = node_config["data"]
+        is_agent_preview = is_dify_agent_node_data(node_data)
+        if is_agent_preview and (
+            draft_workflow.tenant_id != app_model.tenant_id or draft_workflow.app_id != app_model.id
+        ):
+            raise ValueError("Workflow does not belong to the application")
 
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
             draft_var_srv = WorkflowDraftVariableService(session)
             draft_var_srv.prefill_conversation_variable_default_values(draft_workflow, user_id=account.id)
 
-        node_config = draft_workflow.get_node_config_by_id(node_id)
-        node_type = Workflow.get_node_type_from_node_config(node_config)
-        node_data = node_config["data"]
         if is_start_node_type(node_type):
             with Session(bind=db.engine) as session, session.begin():
                 draft_var_srv = WorkflowDraftVariableService(session)
@@ -1234,37 +1260,59 @@ class WorkflowService:
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
         node, node_events = run
+        if is_agent_preview:
+            # Standalone previews have no WorkflowRun. The general debug bootstrap
+            # inserts a synthetic run ID; do not use it as this caller's owner.
+            variable_pool.remove(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID))
+
         started_event: NodeRunStartedEvent | None = None
+        started_execution: WorkflowNodeExecution | None = None
 
         def persist_node_start() -> Generator[NodeEvent | ContainerAwaitRequest]:
-            nonlocal started_event
+            nonlocal started_event, started_execution
             for event in node_events:
                 if isinstance(event, NodeRunStartedEvent) and event.node_id == node_id:
                     started_event = event
                     # Agent workspace allocation requires this caller row before the node body runs.
-                    repository.save_synchronously(
-                        WorkflowNodeExecution(
-                            id=event.id,
-                            node_execution_id=event.id,
-                            workflow_id=draft_workflow.id,
-                            index=1,
-                            predecessor_node_id=event.predecessor_node_id,
-                            node_id=event.node_id,
-                            node_type=event.node_type,
-                            title=event.node_title,
-                            process_data=event.node_run_result.process_data or None,
-                            metadata=event.node_run_result.metadata,
-                            created_at=event.start_at,
-                        )
+                    started_execution = WorkflowNodeExecution(
+                        id=event.id,
+                        node_execution_id=event.id,
+                        workflow_id=draft_workflow.id,
+                        index=1,
+                        predecessor_node_id=event.predecessor_node_id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        title=event.node_title,
+                        process_data=event.node_run_result.process_data or None,
+                        metadata=event.node_run_result.metadata,
+                        created_at=event.start_at,
                     )
+                    repository.save_synchronously(started_execution)
                 yield event
 
         start_at = time.perf_counter()
-        node_execution = self._handle_single_step_result(
-            invoke_node_fn=lambda: (node, persist_node_start()),
-            start_at=start_at,
-            node_id=node_id,
-        )
+        try:
+            node_execution = self._handle_single_step_result(
+                invoke_node_fn=lambda: (node, persist_node_start()),
+                start_at=start_at,
+                node_id=node_id,
+            )
+        except BaseException:
+            if is_agent_preview and started_execution is not None:
+                started_execution.status = WorkflowNodeExecutionStatus.FAILED
+                started_execution.error = "Agent preview execution interrupted"
+                started_execution.elapsed_time = time.perf_counter() - start_at
+                started_execution.finished_at = naive_utc_now()
+                try:
+                    repository.save_synchronously(started_execution)
+                    # Keep the terminal append for LogStore and other async repositories.
+                    repository.save(started_execution)
+                except Exception as persistence_error:
+                    logging.getLogger(__name__).warning(
+                        "Agent preview terminal persistence failed (%s)", type(persistence_error).__name__
+                    )
+            raise
+
         node_execution.workflow_id = draft_workflow.id
         if started_event is not None:
             node_execution.id = started_event.id
@@ -1706,7 +1754,6 @@ class WorkflowService:
             created_at=naive_utc_now(),
             finished_at=naive_utc_now(),
         )
-
         # Populate execution result data
         self._populate_execution_result(node_execution, node_run_result, run_succeeded, error)
 
@@ -1820,6 +1867,7 @@ class WorkflowService:
         if app_model.mode not in {AppMode.CHAT, AppMode.COMPLETION}:
             raise ValueError(f"Current App mode: {app_model.mode} is not supported convert to workflow.")
 
+        source_app_id = app_model.id
         # convert to workflow
         new_app: App = workflow_converter.convert_to_workflow(
             app_model=app_model,
@@ -1830,6 +1878,13 @@ class WorkflowService:
             icon_background=args.get("icon_background", "#FFEAD5"),
             session=session,
         )
+
+        if SystemFeatureService.is_webapp_auth_enabled():
+            # The converter committed and expired the App. Read its identity without
+            # opening another database transaction before calling Enterprise.
+            identity = inspect(new_app).identity
+            assert identity is not None
+            EnterpriseService.WebAppAuth.inherit_app_access_mode(source_app_id, str(identity[0]))
 
         return new_app
 
@@ -2024,7 +2079,7 @@ def _setup_variable_pool(
         system_variable_values: dict[str, Any] = {
             "user_id": user_id,
             "app_id": workflow.app_id,
-            "timestamp": int(naive_utc_now().timestamp()),
+            "timestamp": to_utc_timestamp(naive_utc_now()),
             "workflow_id": workflow.id,
             "files": files or [],
             "workflow_execution_id": str(uuid.uuid4()),

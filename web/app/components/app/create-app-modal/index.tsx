@@ -90,7 +90,9 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
-  const { mutateAsync: createApp } = useMutation(consoleQuery.apps.post.mutationOptions())
+  const { mutateAsync: createApp } = useMutation(
+    consoleQuery.apps.post.mutationOptions({ context: { silent: true } }),
+  )
   const creatingRef = useRef(false)
   const [isCreating, setIsCreating] = useState(false)
 

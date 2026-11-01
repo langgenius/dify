@@ -4,6 +4,7 @@ import type { IOtherOptions } from '@/service/base'
 import type { VisionSettings } from '@/types/app'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import { AppSourceType } from '@/service/share'
 import { Resolution, TransferMethod } from '@/types/app'
 import Result from '../index'
@@ -12,16 +13,12 @@ const {
   notifyMock,
   sendCompletionMessageMock,
   sendWorkflowMessageMock,
-  sleepMock,
   stopChatMessageRespondingMock,
-  textGenerationResPropsSpy,
 } = vi.hoisted(() => ({
   notifyMock: vi.fn(),
   sendCompletionMessageMock: vi.fn(),
   sendWorkflowMessageMock: vi.fn(),
-  sleepMock: vi.fn(),
   stopChatMessageRespondingMock: vi.fn(),
-  textGenerationResPropsSpy: vi.fn(),
 }))
 
 vi.mock('i18next', async (importOriginal) => {
@@ -50,14 +47,6 @@ vi.mock('@/app/notifications', () => ({
   toast: (...args: unknown[]) => notifyMock(...args),
 }))
 
-vi.mock('@/utils', async () => {
-  const actual = await vi.importActual<typeof import('@/utils')>('@/utils')
-  return {
-    ...actual,
-    sleep: (...args: Parameters<typeof actual.sleep>) => sleepMock(...args),
-  }
-})
-
 vi.mock('@/service/share', async () => {
   const actual = await vi.importActual<typeof import('@/service/share')>('@/service/share')
   return {
@@ -71,19 +60,9 @@ vi.mock('@/service/share', async () => {
   }
 })
 
-vi.mock('@/app/components/app/text-generate/item', () => ({
-  default: (props: Record<string, unknown>) => {
-    textGenerationResPropsSpy(props)
-    return (
-      <div data-testid="text-generation-res">
-        {typeof props.content === 'string' ? props.content : JSON.stringify(props.content ?? null)}
-      </div>
-    )
-  },
-}))
-
-vi.mock('@/app/components/share/text-generation/no-data', () => ({
-  default: () => <div data-testid="no-data">No data</div>,
+vi.mock('@/next/navigation', () => ({
+  useParams: () => ({ token: 'app-123' }),
+  usePathname: () => '/completion/app-123',
 }))
 
 const promptConfig: PromptConfig = {
@@ -131,17 +110,12 @@ const baseProps = {
 }
 
 describe('Result', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    sleepMock.mockImplementation(() => new Promise<void>(() => {}))
-    stopChatMessageRespondingMock.mockResolvedValue(undefined)
-  })
+  afterEach(() => vi.useRealTimers())
 
   it('should render no data before the first execution', () => {
     render(<Result {...baseProps} />)
 
-    expect(screen.getByTestId('no-data')).toBeTruthy()
-    expect(screen.queryByTestId('text-generation-res')).toBeNull()
+    expect(screen.getByText('share.generation.noData')).toBeVisible()
   })
 
   it('should stream completion results and stop the current task', async () => {
@@ -186,7 +160,7 @@ describe('Result', () => {
       })
     })
 
-    expect(screen.getByTestId('text-generation-res').textContent).toContain('Hello')
+    expect(await screen.findByText('Hello')).toBeVisible()
 
     await waitFor(() => {
       expect(onRunControlChange).toHaveBeenLastCalledWith(
@@ -203,6 +177,7 @@ describe('Result', () => {
         'task-1',
         AppSourceType.webApp,
         'app-1',
+        { silent: true },
       )
     })
 
@@ -211,11 +186,9 @@ describe('Result', () => {
     })
 
     expect(onCompleted).toHaveBeenCalledWith('Hello', undefined, true)
-    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        messageId: 'message-1',
-      }),
-    )
+    expect(
+      screen.queryByRole('button', { name: 'operation.stopResponding' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should render workflow results after workflow completion', async () => {
@@ -274,27 +247,13 @@ describe('Result', () => {
       })
     })
 
-    expect(screen.getByTestId('text-generation-res').textContent).toContain('{"answer":"Hello"}')
-    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        workflowProcessData: expect.objectContaining({
-          resultText: 'Hello',
-          status: 'succeeded',
-        }),
-      }),
-    )
+    expect(await screen.findByText('Hello')).toBeVisible()
     expect(onCompleted).toHaveBeenCalledWith('{"answer":"Hello"}', undefined, true)
   })
 
   it('should finish a timed-out workflow and show a translated warning', async () => {
-    let resolveTimeout!: () => void
+    vi.useFakeTimers()
     let workflowHandlers: IOtherOptions | null = null
-    sleepMock.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveTimeout = resolve
-        }),
-    )
     sendWorkflowMessageMock.mockImplementation(async (_data, handlers) => {
       workflowHandlers = handlers
     })
@@ -315,8 +274,7 @@ describe('Result', () => {
           created_at: 0,
         },
       })
-      resolveTimeout()
-      await Promise.resolve()
+      await vi.advanceTimersByTimeAsync(TEXT_GENERATION_TIMEOUT_MS)
     })
 
     await act(async () => {
@@ -344,14 +302,10 @@ describe('Result', () => {
       })
     })
 
-    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        workflowProcessData: expect.objectContaining({
-          resultText: '',
-          status: 'succeeded',
-        }),
-      }),
-    )
+    expect(screen.queryByText('Late result')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'operation.stopResponding' }),
+    ).not.toBeInTheDocument()
     expect(notifyMock).toHaveBeenCalledWith('Translated timeout warning', { type: 'warning' })
     expect(onCompleted).toHaveBeenCalledWith('', undefined, false)
     expect(onCompleted).toHaveBeenCalledTimes(1)
@@ -360,18 +314,9 @@ describe('Result', () => {
   it('should render batch task ids for both short and long indexes', () => {
     const { rerender } = render(<Result {...baseProps} isCallBatchAPI taskId={3} />)
 
-    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        taskId: '03',
-      }),
-    )
-
+    expect(screen.getByText('03')).toBeVisible()
     rerender(<Result {...baseProps} isCallBatchAPI taskId={12} />)
-
-    expect(textGenerationResPropsSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        taskId: '12',
-      }),
-    )
+    expect(screen.getByText('12')).toBeVisible()
+    expect(screen.queryByText('03')).not.toBeInTheDocument()
   })
 })

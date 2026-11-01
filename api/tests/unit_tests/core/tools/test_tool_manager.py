@@ -30,6 +30,7 @@ from core.tools.entities.tool_entities import (
     ToolInvokeFrom,
     ToolParameter,
     ToolProviderEntity,
+    ToolProviderEntityWithPlugin,
     ToolProviderIdentity,
     ToolProviderType,
 )
@@ -41,6 +42,7 @@ from core.tools.workflow_as_tool.tool import WorkflowTool
 from graphon.runtime import VariablePool
 from models.base import TypeBase
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 
 
 class _CallableSessionProxy:
@@ -244,15 +246,23 @@ def _setup_list_providers_from_api_mocks(
 
 @pytest.fixture(autouse=True)
 def _reset_tool_manager_state():
+    from extensions.application_services.tools import resolve_tool_credentials
+
+    old_credential_resolver = ToolManager._credential_resolver
+    ToolManager.configure_credential_resolver(resolve_tool_credentials)
     old_hardcoded = ToolManager._hardcoded_providers.copy()
     old_loaded = ToolManager._builtin_providers_loaded
     old_labels = ToolManager._builtin_tools_labels.copy()
+    old_external = ToolManager._external_hardcoded_provider_classes
+    ToolManager._external_hardcoded_provider_classes = []
     try:
         yield
     finally:
+        ToolManager._credential_resolver = old_credential_resolver
         ToolManager._hardcoded_providers = old_hardcoded
         ToolManager._builtin_providers_loaded = old_loaded
         ToolManager._builtin_tools_labels = old_labels
+        ToolManager._external_hardcoded_provider_classes = old_external
 
 
 def test_get_hardcoded_provider_loads_cache_when_empty():
@@ -400,7 +410,9 @@ def test_get_tool_runtime_builtin_with_credentials_decrypts_and_forks(
             encrypter = Mock()
             encrypter.decrypt.return_value = {"api_key": "secret"}
             cache = Mock()
-            with patch("core.tools.tool_manager.create_provider_encrypter", return_value=(encrypter, cache)):
+            with patch(
+                "services.credentials.tool_runtime_adapters.create_provider_encrypter", return_value=(encrypter, cache)
+            ):
                 result = ToolManager.get_tool_runtime(
                     provider_type=ToolProviderType.BUILT_IN,
                     provider_id="time",
@@ -414,14 +426,16 @@ def test_get_tool_runtime_builtin_with_credentials_decrypts_and_forks(
     assert runtime.credential_type == CredentialType.API_KEY
 
 
-@patch("core.tools.tool_manager.create_provider_encrypter")
-@patch("core.plugin.impl.oauth.OAuthHandler")
+@patch("services.credentials.tool_runtime_adapters.create_provider_encrypter")
+@patch("services.credentials.tool_runtime_adapters.OAuthHandler")
 @patch(
     "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
-    return_value={"client_id": "id"},
+    return_value=PluginOAuthClientConfig("langgenius/time:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "id"}),
 )
-@patch("core.tools.tool_manager.time.time", return_value=1000)
+@patch("services.credentials.tool_runtime.time.time", return_value=1000)
 @patch("core.helper.credential_utils.check_credential_policy_compliance")
+@pytest.mark.parametrize("client_credentials", [None, {}, {"client_id": "id"}])
+@pytest.mark.parametrize("credential_selection", ["builtin", "plugin-explicit", "plugin-default"])
 def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
     mock_check,
     mock_time,
@@ -430,6 +444,8 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
     mock_create_provider_encrypter,
     monkeypatch: pytest.MonkeyPatch,
     tool_database: _ToolDatabase,
+    client_credentials: dict[str, str] | None,
+    credential_selection: str,
 ):
     tool = Mock()
     tool.fork_tool_runtime.return_value = "runtime-tool"
@@ -439,6 +455,30 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
         get_credentials_schema_by_type=Mock(return_value=[]),
     )
     tenant_id = "00000000-0000-0000-0000-000000000001"
+    identifier = "langgenius/time:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    mock_get_oauth_client.return_value = (
+        PluginOAuthClientConfig(identifier, client_credentials) if client_credentials is not None else None
+    )
+    plugin_provider = credential_selection != "builtin"
+    if plugin_provider:
+        controller = PluginToolProviderController(
+            entity=ToolProviderEntityWithPlugin.model_validate(
+                {
+                    "identity": {
+                        "author": "langgenius",
+                        "name": "time",
+                        "description": {"en_US": "Time"},
+                        "icon": "icon.svg",
+                        "label": {"en_US": "Time"},
+                    },
+                    "credentials_schema": [{"name": "api_key", "type": "secret-input", "label": {"en_US": "API key"}}],
+                }
+            ),
+            plugin_id="langgenius/time",
+            plugin_unique_identifier=identifier,
+            tenant_id=tenant_id,
+        )
+        monkeypatch.setattr(controller, "get_tool", lambda _tool_name: tool)
     provider_id = "00000000-0000-0000-0000-000000000002"
     builtin_provider = _builtin_provider(
         provider_id=provider_id,
@@ -464,17 +504,21 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
             provider_id="time",
             tool_name="weekday",
             tenant_id=tenant_id,
+            credential_id=provider_id if credential_selection == "plugin-explicit" else None,
         )
 
     assert result == "runtime-tool"
-    assert builtin_provider.expires_at == refreshed.expires_at
-    assert builtin_provider.encrypted_credentials == json.dumps({"token": "encrypted"})
     tool_database.session.expire_all()
     persisted = tool_database.session.get(BuiltinToolProvider, provider_id)
     assert persisted is not None
     assert persisted.expires_at == refreshed.expires_at
     assert persisted.encrypted_credentials == json.dumps({"token": "encrypted"})
-    cache.delete.assert_called_once()
+    refresh = mock_oauth_handler_cls.return_value.refresh_credentials
+    refresh.assert_called_once()
+    assert refresh.call_args.kwargs["user_id"] == builtin_provider.user_id
+    assert refresh.call_args.kwargs["system_credentials"] == (client_credentials or {})
+    expected_identifier = identifier if plugin_provider or client_credentials is not None else None
+    assert refresh.call_args.kwargs["plugin_unique_identifier"] == expected_identifier
 
 
 def test_get_tool_runtime_builtin_maps_oauth_refresh_failure_to_credential_error(
@@ -501,13 +545,15 @@ def test_get_tool_runtime_builtin_maps_oauth_refresh_failure_to_credential_error
     encrypter.decrypt.return_value = {"token": "expired"}
     with (
         patch.object(ToolManager, "get_builtin_provider", return_value=controller),
-        patch("core.tools.tool_manager.create_provider_encrypter", return_value=(encrypter, Mock())),
-        patch("core.tools.tool_manager.time.time", return_value=1000),
+        patch("services.credentials.tool_runtime_adapters.create_provider_encrypter", return_value=(encrypter, Mock())),
+        patch("services.credentials.tool_runtime.time.time", return_value=1000),
         patch(
             "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
-            return_value={"client_id": "id"},
+            return_value=PluginOAuthClientConfig(
+                "langgenius/time:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {"client_id": "id"}
+            ),
         ),
-        patch("core.plugin.impl.oauth.OAuthHandler") as oauth_handler_cls,
+        patch("services.credentials.tool_runtime_adapters.OAuthHandler") as oauth_handler_cls,
     ):
         oauth_handler_cls.return_value.refresh_credentials.side_effect = ValueError("refresh token revoked")
         with pytest.raises(ToolProviderCredentialValidationError, match="could not be refreshed"):
@@ -609,7 +655,7 @@ def test_get_tool_runtime_workflow_path(monkeypatch: pytest.MonkeyPatch, tool_da
         workflow_app_id=workflow_provider.app_id,
         workflow_as_tool_id=provider_id,
         version=workflow_provider.version,
-        workflow_entities={},
+        workflow_id="00000000-0000-0000-0000-000000000003",
         workflow_call_depth=0,
         entity=ToolEntity(
             identity=ToolIdentity(author="test", name="wf", label=I18nObject(en_US="Workflow"), provider=provider_id),
@@ -857,6 +903,7 @@ def test_get_tool_runtime_from_plugin_only_uses_form_parameters():
 
 def test_hardcoded_provider_icon_success():
     provider = SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(icon="icon.svg")))
+    provider.provider_directory = "/providers/time"
     with patch.object(ToolManager, "get_hardcoded_provider", return_value=provider):
         with patch("core.tools.tool_manager.path.exists", return_value=True):
             with patch("core.tools.tool_manager.mimetypes.guess_type", return_value=("image/svg+xml", None)):
@@ -867,6 +914,7 @@ def test_hardcoded_provider_icon_success():
 
 def test_hardcoded_provider_icon_missing_raises():
     provider = SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(icon="icon.svg")))
+    provider.provider_directory = "/providers/time"
     with patch.object(ToolManager, "get_hardcoded_provider", return_value=provider):
         with patch("core.tools.tool_manager.path.exists", return_value=False):
             with pytest.raises(ToolProviderNotFoundError, match="icon not found"):
@@ -908,6 +956,51 @@ def test_list_hardcoded_providers_internal_loader():
     assert ToolManager._hardcoded_providers["good"] is good_provider
     assert ToolManager._builtin_tools_labels["tool-a"] == "A"
     assert ToolManager._builtin_providers_loaded is True
+
+
+@dataclass(frozen=True)
+class _ExternalIdentity:
+    name: str
+    label: str = ""
+
+
+@dataclass(frozen=True)
+class _ExternalEntity:
+    identity: _ExternalIdentity
+
+
+@dataclass(frozen=True)
+class _ExternalTool:
+    entity: _ExternalEntity
+
+
+class _ExternalProvider:
+    created = 0
+    entity = _ExternalEntity(_ExternalIdentity("external"))
+
+    def __init__(self) -> None:
+        type(self).created += 1
+
+    def get_tools(self) -> list[_ExternalTool]:
+        return [_ExternalTool(_ExternalEntity(_ExternalIdentity("external-tool", "External")))]
+
+
+def test_registered_external_provider_classes_join_hardcoded_providers():
+    ToolManager._builtin_providers_loaded = True
+
+    ToolManager.register_hardcoded_provider_class(_ExternalProvider)
+    ToolManager.register_hardcoded_provider_class(_ExternalProvider)
+    assert ToolManager._builtin_providers_loaded is False
+
+    with patch("core.tools.tool_manager.listdir", return_value=[]):
+        ToolManager._hardcoded_providers = {}
+        ToolManager._builtin_tools_labels = {}
+        providers = list(ToolManager._list_hardcoded_providers())
+
+    assert [type(provider) for provider in providers] == [_ExternalProvider]
+    assert _ExternalProvider.created == 1
+    assert ToolManager._hardcoded_providers["external"] is providers[0]
+    assert ToolManager._builtin_tools_labels["external-tool"] == "External"
 
 
 def test_get_tool_label_loads_cache_and_handles_missing():

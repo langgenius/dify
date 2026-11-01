@@ -6,10 +6,12 @@ import { useBoolean } from 'ahooks'
 import { useCallback } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import Partner from '@/app/components/plugins/base/badges/partner'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import {
+  getMarketplacePluginIconUrl,
+  getMarketplaceTemplateIconUrl,
+} from '@/features/marketplace/api'
 import { useRouter } from '@/next/navigation'
 import { formatNumberAbbreviated } from '@/utils/format'
-import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { useMarketplaceDetailNavigation } from '../use-detail-navigation'
 import TemplateDetailDialog from './template-detail-dialog'
 import { useOptionalTemplateDetailRoute } from './use-optional-template-detail-route'
@@ -35,9 +37,7 @@ export default function TemplateCard({ template, className, partnerText }: Templ
     0,
     (template.deps_plugins?.length ?? 0) - MAX_VISIBLE_PLUGIN_DEPENDENCIES,
   )
-  const imageUrl = template.icon_file_key
-    ? `${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`
-    : undefined
+  const imageUrl = template.icon_file_key ? getMarketplaceTemplateIconUrl(template.id) : undefined
   const openDetail = () => {
     if (templateDetailRoute) templateDetailRoute.open(template)
     else showDetail()
@@ -112,7 +112,7 @@ export default function TemplateCard({ template, className, partnerText }: Templ
             <img
               key={pluginId}
               className="size-6 rounded-md border-[0.5px] border-effects-icon-border object-cover"
-              src={getIconFromMarketPlace(pluginId)}
+              src={getMarketplacePluginIconUrl(pluginId)}
               alt=""
               title={pluginId}
             />

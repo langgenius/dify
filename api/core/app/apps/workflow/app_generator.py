@@ -25,7 +25,7 @@ from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
     WorkflowAppPausedBlockingResponse,
@@ -55,6 +55,8 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from repositories.entities.workflow_execution import WorkflowExecutionIdentity
+from services.app.file_input_defaults import grant_file_default_access
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
@@ -97,6 +99,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -108,6 +111,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Generator[Mapping[str, Any] | str]: ...
 
@@ -115,6 +119,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -126,6 +131,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any]: ...
 
@@ -133,6 +139,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -144,12 +151,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -161,6 +170,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
@@ -219,9 +229,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 file_upload_config=file_extra_config,
                 inputs=inputs,
                 files=list(system_files),
-                user_id=user.id,
+                user_id=execution_identity.user_id,
+                user_from=execution_identity.user_from,
                 stream=streaming,
                 invoke_from=invoke_from,
+                allow_human_input=allow_human_input,
                 call_depth=call_depth,
                 trace_manager=trace_manager,
                 workflow_execution_id=workflow_run_id,
@@ -355,6 +367,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             invoke_from=invoke_from,
         ):
+            grant_file_default_access(application_generate_entity.app_config.variables)
             # init queue manager
             queue_manager = WorkflowAppQueueManager(
                 task_id=application_generate_entity.task_id,
@@ -427,6 +440,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         args: Mapping[str, Any],
         streaming: bool = True,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
@@ -455,7 +469,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_config=app_config,
             inputs={},
             files=[],
-            user_id=user.id,
+            user_id=execution_identity.user_id,
+            user_from=execution_identity.user_from,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={
@@ -521,6 +536,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         args: LoopNodeRunPayload,
         streaming: bool = True,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
@@ -549,7 +565,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_config=app_config,
             inputs={},
             files=[],
-            user_id=user.id,
+            user_id=execution_identity.user_id,
+            user_from=execution_identity.user_from,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={
@@ -646,18 +663,16 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         workflow_run_id=application_generate_entity.workflow_execution_id,
                     )
 
-                # Determine system_user_id based on invocation source
-                is_external_api_call = application_generate_entity.invoke_from in {
-                    InvokeFrom.WEB_APP,
-                    InvokeFrom.SERVICE_API,
-                }
-
-                if is_external_api_call:
-                    # For external API calls, use end user's session ID
-                    end_user = session.scalar(select(EndUser).where(EndUser.id == application_generate_entity.user_id))
+                user_from = application_generate_entity.user_from
+                if user_from == UserFrom.END_USER:
+                    end_user = session.scalar(
+                        select(EndUser).where(
+                            EndUser.tenant_id == application_generate_entity.app_config.tenant_id,
+                            EndUser.id == application_generate_entity.user_id,
+                        )
+                    )
                     system_user_id = end_user.session_id if end_user else ""
                 else:
-                    # For internal calls, use the original user ID
                     system_user_id = application_generate_entity.user_id
 
             runner = WorkflowAppRunner(

@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import Form from '../Form'
+import ExternalAPIForm from '../Form'
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
@@ -11,7 +11,7 @@ vi.mock('@/context/i18n', () => ({
 
 // Mock context for i18n doc link
 
-describe('Form', () => {
+describe('ExternalAPIForm', () => {
   const defaultFormSchemas: FormSchema[] = [
     {
       variable: 'name',
@@ -59,7 +59,7 @@ describe('Form', () => {
     const Harness = () => {
       const [value, setValue] = useState(defaultValue)
       return (
-        <Form
+        <ExternalAPIForm
           {...defaultProps}
           value={value}
           onChange={(next) => {

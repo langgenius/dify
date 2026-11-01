@@ -131,8 +131,8 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_app_dataset_joins(tenant_id, app_id)
         _delete_workflow_agent_node_bindings(tenant_id, app_id)
         _delete_app_workflows(tenant_id, app_id)
-        _delete_app_workflow_runs(tenant_id, app_id)
         _delete_app_workflow_node_executions(tenant_id, app_id)
+        _delete_app_workflow_runs(tenant_id, app_id)
         _delete_app_workflow_app_logs(tenant_id, app_id)
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ARCHIVE_STORAGE_ENABLED:
             _delete_app_workflow_archive_logs(tenant_id, app_id)
@@ -612,7 +612,9 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
             """
             deleted_result = cast(
                 CursorResult[Any],
-                session.execute(sa.text(delete_sql), {"ids": tuple(draft_var_ids)}),
+                session.execute(
+                    sa.text(delete_sql).bindparams(sa.bindparam("ids", expanding=True)), {"ids": draft_var_ids}
+                ),
             )
             batch_deleted: int = int(getattr(deleted_result, "rowcount", 0) or 0)
             total_deleted += batch_deleted

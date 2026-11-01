@@ -7,7 +7,6 @@ import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console
 import { mockEmojiData } from '@/test/emoji-picker'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import AppInfoModals from '../app-info-modals'
-import { DeleteAppDialog } from '../delete-app-dialog'
 import { ExportAppDialog } from '../export-app-dialog'
 
 const service = vi.hoisted(() => ({
@@ -60,7 +59,15 @@ function MetadataEntry({ operation = 'edit' }: { operation?: 'edit' | 'duplicate
 }
 function DeleteEntry() {
   const [open, setOpen] = useState(true)
-  return <DeleteAppDialog appDetail={app} open={open} onOpenChange={setOpen} />
+  return (
+    <AppInfoModals
+      appDetail={app}
+      activeModal={open ? 'delete' : null}
+      onOpenChange={setOpen}
+      exportOpen={false}
+      onExportOpenChange={() => {}}
+    />
+  )
 }
 function ExportEntry() {
   const [open, setOpen] = useState(true)

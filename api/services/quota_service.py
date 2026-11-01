@@ -4,8 +4,11 @@ import logging
 import uuid
 from dataclasses import dataclass, field
 
+import httpx
+
 from configs import dify_config
 from enums import DeploymentEdition, QuotaType
+from services.errors.billing import BillingError
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +141,7 @@ class QuotaService:
                 amount=amount,
             )
 
-            reservation_id = reserve_resp.get("reservation_id")
+            reservation_id = reserve_resp.reservation_id
             if not reservation_id:
                 logger.warning(
                     "Reserve returned no reservation_id for %s, feature %s, response: %s",
@@ -168,6 +171,12 @@ class QuotaService:
             raise
         except ValueError:
             raise
+        except BillingError as error:
+            # Only a request that never reached billing fails open; an error answer or invalid body surfaces.
+            if not isinstance(error.__cause__, httpx.RequestError):
+                raise
+            logger.exception("Failed to reserve quota for %s, feature %s", tenant_id, quota_type.value)
+            return unlimited()
         except Exception:
             logger.exception("Failed to reserve quota for %s, feature %s", tenant_id, quota_type.value)
             return unlimited()
@@ -214,15 +223,11 @@ class QuotaService:
 
         try:
             usage_info = BillingService.get_quota_info(tenant_id)
-            if isinstance(usage_info, dict):
-                feature_info = usage_info.get(quota_type.billing_key, {})
-                if isinstance(feature_info, dict):
-                    limit = feature_info.get("limit", 0)
-                    usage = feature_info.get("usage", 0)
-                    if limit == -1:
-                        return -1
-                    return max(0, limit - usage)
-            return 0
+            features = {"trigger_event": usage_info.trigger_event, "api_rate_limit": usage_info.api_rate_limit}
+            feature_info = features[quota_type.billing_key]
+            if feature_info.limit == -1:
+                return -1
+            return max(0, feature_info.limit - feature_info.usage)
         except Exception:
             logger.exception("Failed to get remaining quota for %s, feature %s", tenant_id, quota_type.value)
             return -1

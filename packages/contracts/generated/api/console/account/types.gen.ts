@@ -18,30 +18,6 @@ export type ErrorResponse = {
   status: number
 }
 
-export type AccountAvatarPayload = {
-  avatar: string
-}
-
-export type AccountResponse = {
-  avatar?: string | null
-  readonly avatar_url: string | null
-  created_at?: number | null
-  email: string
-  id: string
-  interface_language?: string | null
-  interface_theme?: string | null
-  is_password_set: boolean
-  last_login_at?: number | null
-  last_login_ip?: string | null
-  name: string
-  timezone?: string | null
-}
-
-export type AccountNotFoundError = ErrorResponse & {
-  code: 'account_not_found'
-  status: 400
-}
-
 export type ChangeEmailSendPayload = {
   email: string
   language?: string | null
@@ -52,6 +28,11 @@ export type ChangeEmailSendPayload = {
 export type SimpleResultDataResponse = {
   data: string
   result: string
+}
+
+export type AccountNotFoundError = ErrorResponse & {
+  code: 'account_not_found'
+  status: 400
 }
 
 export type InvalidEmailError = ErrorResponse & {
@@ -102,6 +83,21 @@ export type ChangeEmailResetPayload = {
   token: string
 }
 
+export type AccountResponse = {
+  avatar?: string | null
+  readonly avatar_url: string | null
+  created_at?: number | null
+  email: string
+  id: string
+  interface_language?: string | null
+  interface_theme?: string | null
+  is_password_set: boolean
+  last_login_at?: number | null
+  last_login_ip?: string | null
+  name: string
+  timezone?: string | null
+}
+
 export type ChangeEmailValidityPayload = {
   code: string
   email: string
@@ -145,10 +141,25 @@ export type EmailCodeAccountDeletionRateLimitExceededError = ErrorResponse & {
 }
 
 export type EducationStatusResponse = {
-  allow_refresh?: boolean | null
-  expire_at?: number | null
-  is_student?: boolean | null
-  result?: boolean | null
+  allow_refresh: boolean
+  expire_at: number | null
+  is_student: boolean
+  result: boolean
+}
+
+export type BillingRequestInProgressError = ErrorResponse & {
+  code: 'billing_request_in_progress'
+  status: 429
+}
+
+export type BillingOperationFailedError = ErrorResponse & {
+  code: 'billing_operation_failed'
+  status: 502
+}
+
+export type BillingUnavailableError = ErrorResponse & {
+  code: 'billing_unavailable'
+  status: 503
 }
 
 export type EducationActivatePayload = {
@@ -161,19 +172,33 @@ export type EducationActivateResponse = {
   message: string
 }
 
+export type EducationActivateFailedError = ErrorResponse & {
+  code: 'education_activate_failed'
+  status: 400
+}
+
 export type EducationActivateLimitError = ErrorResponse & {
   code: 'education_activate_limit'
   status: 429
 }
 
 export type EducationAutocompleteResponse = {
-  curr_page?: number | null
-  data?: Array<string>
-  has_next?: boolean | null
+  curr_page: number
+  data: Array<string>
+  has_next: boolean
 }
 
-export type EducationVerifyResponse = {
-  token?: string | null
+export type EducationVerifyResponse =
+  | ({
+      status: 'eligible'
+    } & EducationVerifyEligibleResponse)
+  | ({
+      status: 'not_eligible'
+    } & EducationVerifyNotEligibleResponse)
+
+export type EducationVerifyFailedError = ErrorResponse & {
+  code: 'education_verify_failed'
+  status: 400
 }
 
 export type EducationVerifyLimitError = ErrorResponse & {
@@ -206,18 +231,6 @@ export type AccountIntegrateListResponse = {
   data: Array<AccountIntegrateResponse>
 }
 
-export type AccountInterfaceLanguagePayload = {
-  interface_language: string
-}
-
-export type AccountInterfaceThemePayload = {
-  interface_theme: 'dark' | 'light'
-}
-
-export type AccountNamePayload = {
-  name: string
-}
-
 export type AccountPasswordPayload = {
   new_password: string
   password?: string | null
@@ -242,8 +255,13 @@ export type AccountProfilePatchPayload = {
   timezone?: string
 }
 
-export type AccountTimezonePayload = {
-  timezone: string
+export type EducationVerifyEligibleResponse = {
+  status: 'eligible'
+  token: string
+}
+
+export type EducationVerifyNotEligibleResponse = {
+  status: 'not_eligible'
 }
 
 export type AccountIntegrateResponse = {
@@ -287,26 +305,6 @@ export type GetAccountAvatarResponses = {
 }
 
 export type GetAccountAvatarResponse = GetAccountAvatarResponses[keyof GetAccountAvatarResponses]
-
-export type PostAccountAvatarData = {
-  body: AccountAvatarPayload
-  path?: never
-  query?: never
-  url: '/account/avatar'
-}
-
-export type PostAccountAvatarErrors = {
-  400: AccountNotFoundError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type PostAccountAvatarError = PostAccountAvatarErrors[keyof PostAccountAvatarErrors]
-
-export type PostAccountAvatarResponses = {
-  200: AccountResponse
-}
-
-export type PostAccountAvatarResponse = PostAccountAvatarResponses[keyof PostAccountAvatarResponses]
 
 export type PostAccountChangeEmailData = {
   body: ChangeEmailSendPayload
@@ -476,6 +474,9 @@ export type GetAccountEducationData = {
 }
 
 export type GetAccountEducationErrors = {
+  429: BillingRequestInProgressError | ErrorResponse
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -496,8 +497,10 @@ export type PostAccountEducationData = {
 }
 
 export type PostAccountEducationErrors = {
-  400: AccountNotFoundError | ErrorResponse
-  429: EducationActivateLimitError | ErrorResponse
+  400: AccountNotFoundError | EducationActivateFailedError | ErrorResponse
+  429: BillingRequestInProgressError | EducationActivateLimitError | ErrorResponse
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -522,6 +525,8 @@ export type GetAccountEducationAutocompleteData = {
 }
 
 export type GetAccountEducationAutocompleteErrors = {
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -543,8 +548,10 @@ export type GetAccountEducationVerifyData = {
 }
 
 export type GetAccountEducationVerifyErrors = {
-  400: AccountNotFoundError | ErrorResponse
-  429: EducationVerifyLimitError | ErrorResponse
+  400: AccountNotFoundError | EducationVerifyFailedError | ErrorResponse
+  429: BillingRequestInProgressError | EducationVerifyLimitError | ErrorResponse
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -602,70 +609,6 @@ export type GetAccountIntegratesResponses = {
 
 export type GetAccountIntegratesResponse =
   GetAccountIntegratesResponses[keyof GetAccountIntegratesResponses]
-
-export type PostAccountInterfaceLanguageData = {
-  body: AccountInterfaceLanguagePayload
-  path?: never
-  query?: never
-  url: '/account/interface-language'
-}
-
-export type PostAccountInterfaceLanguageErrors = {
-  400: AccountNotFoundError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type PostAccountInterfaceLanguageError =
-  PostAccountInterfaceLanguageErrors[keyof PostAccountInterfaceLanguageErrors]
-
-export type PostAccountInterfaceLanguageResponses = {
-  200: AccountResponse
-}
-
-export type PostAccountInterfaceLanguageResponse =
-  PostAccountInterfaceLanguageResponses[keyof PostAccountInterfaceLanguageResponses]
-
-export type PostAccountInterfaceThemeData = {
-  body: AccountInterfaceThemePayload
-  path?: never
-  query?: never
-  url: '/account/interface-theme'
-}
-
-export type PostAccountInterfaceThemeErrors = {
-  400: AccountNotFoundError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type PostAccountInterfaceThemeError =
-  PostAccountInterfaceThemeErrors[keyof PostAccountInterfaceThemeErrors]
-
-export type PostAccountInterfaceThemeResponses = {
-  200: AccountResponse
-}
-
-export type PostAccountInterfaceThemeResponse =
-  PostAccountInterfaceThemeResponses[keyof PostAccountInterfaceThemeResponses]
-
-export type PostAccountNameData = {
-  body: AccountNamePayload
-  path?: never
-  query?: never
-  url: '/account/name'
-}
-
-export type PostAccountNameErrors = {
-  400: AccountNotFoundError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type PostAccountNameError = PostAccountNameErrors[keyof PostAccountNameErrors]
-
-export type PostAccountNameResponses = {
-  200: AccountResponse
-}
-
-export type PostAccountNameResponse = PostAccountNameResponses[keyof PostAccountNameResponses]
 
 export type PostAccountPasswordData = {
   body: AccountPasswordPayload
@@ -732,24 +675,3 @@ export type PatchAccountProfileResponses = {
 
 export type PatchAccountProfileResponse =
   PatchAccountProfileResponses[keyof PatchAccountProfileResponses]
-
-export type PostAccountTimezoneData = {
-  body: AccountTimezonePayload
-  path?: never
-  query?: never
-  url: '/account/timezone'
-}
-
-export type PostAccountTimezoneErrors = {
-  400: AccountNotFoundError | ErrorResponse
-  default: ErrorResponse
-}
-
-export type PostAccountTimezoneError = PostAccountTimezoneErrors[keyof PostAccountTimezoneErrors]
-
-export type PostAccountTimezoneResponses = {
-  200: AccountResponse
-}
-
-export type PostAccountTimezoneResponse =
-  PostAccountTimezoneResponses[keyof PostAccountTimezoneResponses]

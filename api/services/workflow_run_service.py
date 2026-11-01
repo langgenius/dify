@@ -1,9 +1,15 @@
 import threading
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TypedDict
+from typing import Literal, TypedDict
+
+from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
+from core.workflow.node_execution_process_data import (
+    WORKFLOW_TOOL_INVOCATION_ID_KEY,
+    WORKFLOW_TOOL_ROOT_APP_ID_KEY,
+)
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from extensions.ext_database import db
 from graphon.enums import WorkflowExecutionStatus
@@ -19,6 +25,7 @@ from services.workflow_node_execution_trace_service import (
     WorkflowNodeExecutionTrace,
     assemble_workflow_node_execution_traces,
 )
+from services.workflow_pause_service import load_workflow_pause_snapshot
 
 
 class WorkflowRunListArgs(TypedDict, total=False):
@@ -34,6 +41,7 @@ class WorkflowRunPausedNode:
     node_id: str
     node_title: str
     form_id: str
+    form_version: Literal["1", "2"]
     form_token: str | None
 
 
@@ -49,9 +57,11 @@ class WorkflowRunService:
         *,
         workflow_runs: DifyAPISQLAlchemyWorkflowRunRepository,
         node_executions: DifyAPIWorkflowNodeExecutionRepository,
+        session_factory: sessionmaker[Session],
     ) -> None:
         self._workflow_runs = workflow_runs
         self._node_executions = node_executions
+        self._session_factory = session_factory
 
     def get_paginate_advanced_chat_workflow_runs(
         self,
@@ -205,35 +215,84 @@ class WorkflowRunService:
         )
         return assemble_workflow_node_execution_traces(node_executions, self._node_executions, session=db.session())
 
+    def get_workflow_tool_node_executions(
+        self,
+        context: RequestContext,
+        *,
+        app_id: str,
+        run_id: str,
+        node_execution_id: str,
+    ) -> list[WorkflowNodeExecutionTrace] | None:
+        """Read nested Tool traces through the admitted root app and workflow run."""
+        if self.get_workflow_run(context, app_id=app_id, run_id=run_id) is None:
+            return None
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
+        executions = self._node_executions.get_workflow_tool_executions(
+            tenant_id=context.active_workspace_id,
+            workflow_run_id=run_id,
+            parent_node_execution_id=node_execution_id,
+        )
+        traces = assemble_workflow_node_execution_traces(executions, self._node_executions, session=db.session())
+        for trace in traces:
+            if trace.process_data is not None:
+                trace.process_data = {
+                    key: value
+                    for key, value in trace.process_data.items()
+                    if key
+                    not in (
+                        WORKFLOW_TOOL_INVOCATION_ID_KEY,
+                        WORKFLOW_TOOL_ROOT_APP_ID_KEY,
+                    )
+                }
+        return traces
+
     def get_pause_details(
         self,
         context: RequestContext,
         *,
         workflow_run_id: str,
     ) -> WorkflowRunPauseDetails | None:
-        pause_record = self._workflow_runs.get_pause_record(
-            workspace_id=context.active_workspace_id,
-            workflow_run_id=workflow_run_id,
-        )
+        with self._session_factory() as session:
+            pause_record = self._workflow_runs.get_pause_record(
+                session,
+                workspace_id=context.active_workspace_id,
+                workflow_run_id=workflow_run_id,
+            )
         if pause_record is None:
             return None
-        if pause_record.status != WorkflowExecutionStatus.PAUSED:
+        if pause_record.status != WorkflowExecutionStatus.PAUSED or pause_record.pause is None:
             return WorkflowRunPauseDetails(paused_at=None, paused_nodes=())
 
+        snapshot = load_workflow_pause_snapshot(pause_record.pause, session_factory=self._session_factory)
         human_input_reasons: list[HumanInputRequired] = []
-        for reason in pause_record.reasons:
+        for reason in snapshot.reasons:
             if not isinstance(reason, HumanInputRequired):
                 raise NotImplementedError(f"Pause details do not support {type(reason).__name__}")
             human_input_reasons.append(reason)
 
+        legacy_form_ids = [reason.form_id for reason in human_input_reasons if reason.form_version == "1"]
+        form_tokens: dict[str, str] = {}
+        if legacy_form_ids:
+            with self._session_factory() as session:
+                form_tokens = self._workflow_runs.get_legacy_form_tokens(session, form_ids=legacy_form_ids)
+        form_tokens.update(
+            {
+                form_id: prepared.form_token.get_secret_value()
+                for form_id, prepared in snapshot.v2_forms.items()
+                if prepared.form_token is not None
+            }
+        )
+
         return WorkflowRunPauseDetails(
-            paused_at=pause_record.paused_at,
+            paused_at=pause_record.pause.paused_at,
             paused_nodes=tuple(
                 WorkflowRunPausedNode(
                     node_id=reason.node_id,
                     node_title=reason.node_title,
                     form_id=reason.form_id,
-                    form_token=pause_record.form_tokens.get(reason.form_id),
+                    form_version=reason.form_version,
+                    form_token=form_tokens.get(reason.form_id),
                 )
                 for reason in human_input_reasons
             ),

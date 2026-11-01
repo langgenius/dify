@@ -16,6 +16,13 @@ remains correct when another form library owns submission and validation; do not
 Set [`Button`] submit buttons to `type="submit"` explicitly. Keep every other button inside a form
 at `type="button"`.
 
+Keep submit available while the form is incomplete; submitting is what runs validation and marks
+the fields. Once a submission starts, the submit button shows `loading` until it settles.
+
+A rejected submission reports at the field it concerns: map a documented error code to that
+field's message through `Form` `errors`, rather than showing the server message or a toast.
+Rejections that belong to no field stay inside the form as an alert.
+
 ## Value and state ownership
 
 `Form` owns the submission and validation boundary described above, not each field's draft.
@@ -39,14 +46,18 @@ standalone `Input` may use a native `<label htmlFor>` relationship, but normal f
 prefer a visible label. `FieldDescription` and `FieldError` provide the corresponding accessible
 message relationships.
 
+`FieldError` follows native constraints, `validate`, and `Form` `errors`. When application code
+owns the validity instead, set `invalid` on `Field` and `match` on `FieldError`. A `Field` describes
+one control; a composite that renders its own controls, such as a picker with controls in its popup,
+does not go inside one.
+
 Choose the label primitive by the control:
 
 - Text-like inputs, `Textarea`, input-based `Combobox` and `Autocomplete`, a single `Checkbox`,
   each `Radio` option, `Switch`, and `NumberField` use `FieldLabel`.
 - Trigger-based `Select` fields use `SelectLabel`.
 - Date/time pickers use their own `DatePickerLabel`, `TimePickerLabel` or `DateTimePickerLabel`
-  to focus the trigger without opening it. They currently support native forms, not Base UI
-  Field/Form registration; see the [picker field contract].
+  to focus the trigger without opening it. They participate in Base UI Field/Form and native forms; see the [picker field contract].
 - `Slider` fields follow the [Base UI Slider anatomy] and use `SliderLabel`; only multi-thumb
   sliders add per-thumb `aria-label` to distinguish the thumbs.
 - `SelectGroupLabel` and `AutocompleteGroupLabel` label option groups inside popup content. They

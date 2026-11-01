@@ -1,3 +1,5 @@
+from http import HTTPStatus
+
 from libs.exception import BaseHTTPException
 
 
@@ -55,6 +57,18 @@ class InvalidMemberRoleError(BaseHTTPException):
     code = 400
 
 
+class IMBindingReadOnlyError(BaseHTTPException):
+    error_code = "im_binding_read_only"
+    description = "Centrally managed IM bindings cannot be edited from a workspace."
+    code = HTTPStatus.FORBIDDEN
+
+
+class WorkspaceIMOverrideNotAllowedError(BaseHTTPException):
+    error_code = "workspace_im_override_not_allowed"
+    description = "Workspace IM overrides require centrally managed bindings."
+    code = HTTPStatus.FORBIDDEN
+
+
 class PluginOperationError(BaseHTTPException):
     error_code = "plugin_error"
     description = "Plugin operation failed."
@@ -88,4 +102,64 @@ class MemberNotFoundError(BaseHTTPException):
 class MemberRoleAlreadyAssignedError(BaseHTTPException):
     error_code = "role_already_assigned"
     description = "Role already assigned."
+    code = 400
+
+
+class NetworkAccessInvalidInputError(BaseHTTPException):
+    error_code = "network_access_invalid_input"
+    description = "Invalid network access group request."
+    code = 400
+
+
+class NetworkAccessForbiddenError(BaseHTTPException):
+    error_code = "network_access_forbidden"
+    description = "Network access groups are not available for this workspace."
+    code = 403
+
+
+class NetworkAccessNotEntitledError(BaseHTTPException):
+    error_code = "network_access_not_entitled"
+    description = "Network access groups are not available for this workspace."
+    code = 403
+
+
+class NetworkAccessGroupNotFoundError(BaseHTTPException):
+    error_code = "network_access_group_not_found"
+    description = "Network access group was not found."
+    code = 404
+
+
+class NetworkAccessVersionConflictError(BaseHTTPException):
+    error_code = "network_access_version_conflict"
+    description = "The network access resource changed. Refresh it and try again."
+    code = 409
+
+
+class NetworkAccessGroupNameConflictError(BaseHTTPException):
+    error_code = "network_access_group_name_conflict"
+    description = "An IP policy with this name already exists."
+    code = 409
+
+
+class NetworkAccessGroupBoundError(BaseHTTPException):
+    error_code = "network_access_group_bound"
+    description = "This IP policy is still used by one or more apps."
+    code = 409
+
+
+class NetworkAccessRoleDeniedError(BaseHTTPException):
+    error_code = "network_access_role_denied"
+    description = "Your workspace role does not allow this network access operation."
+    code = 403
+
+
+class NetworkAccessUnsupportedAppModeError(BaseHTTPException):
+    error_code = "network_access_unsupported_app_mode"
+    description = "Network access control is not supported for this app mode."
+    code = 400
+
+
+class NetworkAccessUnsupportedAccessPointsError(BaseHTTPException):
+    error_code = "network_access_unsupported_access_points"
+    description = "Some access points are not supported for this app."
     code = 400

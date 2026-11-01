@@ -43,11 +43,10 @@ type PublisherContentProps = AppPublisherProps & {
 export function PublisherContent({
   appDetail,
   canViewAccessPoint,
-  crossAxisOffset = 0,
+  alignOffset,
   debugWithMultipleModel = false,
   disabled = false,
   draftUpdatedAt,
-  hasHumanInputNode = false,
   hasTriggerNode = false,
   inputs,
   missingStartNode = false,
@@ -127,7 +126,6 @@ export function PublisherContent({
     appMode: appDetail.mode,
     appName: appDetail.name,
     appPublished: publish.published,
-    hasHumanInputNode,
     hasPublishedVersion: publish.hasPublishedVersion,
     hasTriggerNode,
     inputs,
@@ -213,13 +211,11 @@ export function PublisherContent({
           },
           actions: {
             appId: appDetail.id,
-            appMode: appDetail.mode,
             appURL,
             canViewAccessPoint,
             disabledFunctionButton,
             disabledFunctionTooltip,
             handleOpenRunConfig: workflowLaunch.openDialog,
-            hasHumanInputNode,
             hasTriggerNode,
             marketplaceActionDisabled: !publish.currentPublishedAt,
             publishedAt: publish.currentPublishedAt,
@@ -227,6 +223,7 @@ export function PublisherContent({
             showDeployAction: supportsMultiEnvironment,
             showMarketplaceAction: systemFeatures.enable_creators_platform,
             showRunConfig: workflowLaunch.hasHiddenVariables,
+            showWorkflowTool: workflowTool.visible,
             toolPublished: workflowTool.published,
             workflowToolAvailable: workflowTool.availableForUser,
             workflowToolIsLoading: workflowTool.configuration.isLoading,
@@ -236,7 +233,7 @@ export function PublisherContent({
             onPublishToMarketplace: marketplace.publish,
           },
         }}
-        crossAxisOffset={crossAxisOffset}
+        alignOffset={alignOffset}
         disabled={disabled}
         environmentPublisher={{
           appId: appDetail.id,

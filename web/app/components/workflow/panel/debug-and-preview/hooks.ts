@@ -697,7 +697,10 @@ export const useChat = (
     formToken: string,
     formData: HumanInputFormSubmitData,
   ) => {
-    await submitHumanInputForm(formToken, formData)
+    const form = threadMessages
+      .flatMap((item) => item.humanInputFormDataList ?? [])
+      .find((item) => item.form_token === formToken)
+    await submitHumanInputForm(formToken, formData, form?.form_version)
   }
 
   const getHumanInputNodeData = (nodeID: string) => {
@@ -885,8 +888,12 @@ export const useChat = (
                   nodeFinishedData.execution_metadata?.parallel_id
               )
             })
-            if (currentIndex > -1)
-              responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData
+            if (currentIndex > -1) {
+              responseItem.workflowProcess.tracing[currentIndex] = {
+                ...responseItem.workflowProcess.tracing[currentIndex],
+                ...nodeFinishedData,
+              }
+            }
           })
         },
         onLoopStart: ({ data: loopStartedData }) => {
