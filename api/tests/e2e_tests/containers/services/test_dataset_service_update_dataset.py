@@ -372,6 +372,8 @@ class TestDatasetServiceUpdateDataset:
 
         with patch("services.knowledge.dataset_service.deal_dataset_vector_index_task") as mock_task:
             result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+            # The re-index task is dispatched from the session's after_commit event.
+            db_session_with_containers.commit()
             mock_task.delay.assert_called_once_with(dataset.id, "remove")
 
         db_session_with_containers.refresh(dataset)
@@ -419,6 +421,9 @@ class TestDatasetServiceUpdateDataset:
             mock_get_binding.return_value = binding
 
             result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+
+            # The re-index task is dispatched from the session's after_commit event.
+            db_session_with_containers.commit()
 
             mock_model_manager.return_value.get_model_instance.assert_called_once_with(
                 tenant_id=tenant.id,
@@ -515,6 +520,9 @@ class TestDatasetServiceUpdateDataset:
             mock_get_binding.return_value = binding
 
             result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+
+            # The re-index tasks are dispatched from the session's after_commit event.
+            db_session_with_containers.commit()
 
             mock_model_manager.return_value.get_model_instance.assert_called_once_with(
                 tenant_id=tenant.id,
