@@ -114,3 +114,10 @@ def test_fix_control_get_uses_owner_and_returns_only_correlated_receipt(monkeypa
     ):
         with pytest.raises(ValidationError):
             schemas.DifyBuilderFixControlQuery.model_validate(invalid)
+
+
+@pytest.mark.parametrize("status", [400, 404, 409])
+def test_fix_control_get_declares_its_existing_builder_error_body(status: int) -> None:
+    assert (
+        routes.DifyBuilderFixIntentsApi.get.__apidoc__["responses"][str(status)][1].name == "DifyBuilderErrorResponse"
+    )
