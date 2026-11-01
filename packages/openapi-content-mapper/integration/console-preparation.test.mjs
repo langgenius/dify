@@ -55,6 +55,17 @@ test('production Builder snapshots and finished events preserve task lifecycle s
   }
 })
 
+test('production Builder GET snapshots and finished SSE events preserve lifecycle settlement', () => {
+  for (const schema of [zDifyBuilderSessionViewResponse, zDifyBuilderCommandFinishedEventData]) {
+    for (const settlement of ['settled', 'pending', 'unknown', null]) {
+      const parsed = schema.partial().parse({ lifecycle_settlement: settlement })
+      assert.equal(parsed.lifecycle_settlement, settlement, 'Lifecycle settlement was discarded')
+    }
+    assert.equal(schema.partial().parse({}).lifecycle_settlement, undefined)
+    assert.equal(schema.partial().safeParse({ lifecycle_settlement: 'cleaned' }).success, false)
+  }
+})
+
 test('every existing Console member retains its name, HTTP method and route', (t) => {
   const before = files.map((file) => existsSync(file))
   const document = loadConsoleDocument()
