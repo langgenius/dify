@@ -74,3 +74,43 @@ def test_fix_intake_payload_requires_exactly_one_failure_source() -> None:
     for invalid in (base, {**base, "failed_run_id": ""}, {**base, "origin_task_id": "forged"}):
         with pytest.raises(ValidationError):
             payload_type.model_validate(invalid)
+
+
+def test_fix_control_get_uses_owner_and_returns_only_correlated_receipt(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _route_service()
+    calls = []
+    receipt = {
+        "session_id": "s1",
+        "operation": "dismiss_fix",
+        "client_action_id": "decision-1",
+        "base_version": 3,
+        "fix_intent_id": "intent-1",
+        "target_task_id": "s1:0",
+        "status": "dismissed",
+        "acknowledged": True,
+    }
+
+    def read(session_id, actor, **query):
+        calls.append((session_id, actor, query))
+        return receipt
+
+    monkeypatch.setattr(service, "get_fix_control_receipt", read, raising=False)
+    monkeypatch.setattr(routes, "build_service", lambda: service)
+    query = {
+        "operation": "dismiss_fix",
+        "client_action_id": "decision-1",
+        "base_version": "3",
+        "fix_intent_id": "intent-1",
+        "expected_task_id": "s1:0",
+    }
+    with Flask(__name__).test_request_context(query_string=query):
+        result = unwrap(routes.DifyBuilderFixIntentsApi.get)(object(), "ten-1", _account(), "s1")
+    assert result == receipt
+    assert calls == [("s1", Actor(account_id="acc-1", tenant_id="ten-1"), {**query, "base_version": 3})]
+    assert all(param["in"] == "query" for param in routes.DifyBuilderFixIntentsApi.get.__apidoc__["params"].values())
+    for invalid in (
+        {"operation": "dismiss_fix", "client_action_id": "x", "base_version": "1"},
+        {**query, "source": "forged"},
+    ):
+        with pytest.raises(ValidationError):
+            schemas.DifyBuilderFixControlQuery.model_validate(invalid)
