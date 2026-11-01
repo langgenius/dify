@@ -3,9 +3,10 @@ import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
+import { Alert, AlertClose, AlertTitle } from '@langgenius/dify-ui/alert'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { RiCloseLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
@@ -226,28 +227,22 @@ export const RetrievalChangeTip: FC<RetrievalChangeTipProps> = ({
   message,
   onDismiss,
 }) => {
+  const { t } = useTranslation(['common'])
+
   if (!visible) return null
 
   return (
-    <div className="absolute right-7.5 bottom-19 left-7.5 z-10 flex h-10 items-center justify-between rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 shadow-lg">
-      <div className="flex items-center">
-        <span
-          aria-hidden
-          className="mr-1 i-custom-vender-solid-alertsAndFeedback-alert-triangle h-3 w-3 text-[#F79009]"
+    <div className="absolute right-7.5 bottom-19 left-7.5 z-10">
+      <Alert type="warning">
+        <AlertTitle>{message}</AlertTitle>
+        <AlertClose
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          onClick={(event) => {
+            onDismiss()
+            event.stopPropagation()
+          }}
         />
-        <div className="text-xs leading-4.5 font-medium text-gray-700">{message}</div>
-      </div>
-      <button
-        type="button"
-        className="cursor-pointer p-1"
-        onClick={(event) => {
-          onDismiss()
-          event.stopPropagation()
-        }}
-        aria-label="close-retrieval-change-tip"
-      >
-        <RiCloseLine className="size-4 text-gray-500" />
-      </button>
+      </Alert>
     </div>
   )
 }
