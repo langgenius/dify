@@ -2946,6 +2946,7 @@ export const zContactOption = z.object({
   avatar_url: z.string().nullish(),
   email: z.string().nullish(),
   id: z.string(),
+  im_providers: z.array(zImProvider),
   name: z.string(),
   type: zHumanInputContactType,
 })

@@ -14928,7 +14928,7 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/contact-options
-List editor-safe Contact options for static recipient selection. The projection omits IM bindings and management metadata; unavailable Contacts are omitted.
+List editor-safe Contact options for static recipient selection. The projection includes effective IM providers and omits binding details and management metadata; unavailable Contacts are omitted.
 
 #### Parameters
 
@@ -14946,7 +14946,7 @@ List editor-safe Contact options for static recipient selection. The projection 
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/contact-options/batch
-Resolve Contact IDs persisted in workflow recipient configuration. Contacts unavailable in the current workspace are omitted.
+Resolve Contact IDs persisted in workflow recipient configuration. Include effective IM providers for each Contact. Contacts unavailable in the current workspace are omitted.
 
 #### Parameters
 
@@ -23641,6 +23641,7 @@ Least-privilege contact projection returned to workflow editors.
 | avatar_url | string | Signed avatar URL if one is available. | No |
 | email | string | Current deliverable Email, when available. | No |
 | id | string | Unique contact identifier persisted in workflow recipient configuration. | Yes |
+| im_providers | [ [IMProvider](#improvider) ] | Distinct providers of effective IM bindings in the current workspace; not a delivery health check. | Yes |
 | name | string | Display name shown in the contact picker. | Yes |
 | type | [HumanInputContactType](#humaninputcontacttype) | Resolved contact type in the current workspace scope. | Yes |
 

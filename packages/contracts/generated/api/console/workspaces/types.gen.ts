@@ -1916,6 +1916,7 @@ export type ContactOption = {
   avatar_url?: string | null
   email?: string | null
   id: string
+  im_providers: Array<ImProvider>
   name: string
   type: HumanInputContactType
 }
