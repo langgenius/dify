@@ -1,106 +1,46 @@
 import type { HumanInputV2FormTransport } from '../types'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useFileUploadContext } from '@/app/components/base/file-uploader/upload-context'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import HumanInputV2Form from '../form'
-import { createMockHumanInputV2FormTransport, HUMAN_INPUT_V2_MOCK_OTP } from '../mock-transport'
+import {
+  createHumanInputV2MockScenario,
+  createMockHumanInputV2FormTransport,
+  HUMAN_INPUT_V2_MOCK_OTP,
+} from '../mock-transport'
 
-const mockPresentation = vi.hoisted(() => ({
-  lastDefinition: undefined as unknown,
-}))
+vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
 
-vi.mock('@/features/human-input/form/loaded-form-content', () => ({
-  default: function MockLoadedFormContent({
-    definition,
-    isSubmitting,
-    actionsDisabled,
-    verificationContent,
-    onSubmit,
-  }: {
-    definition: unknown
-    isSubmitting: boolean
-    actionsDisabled: boolean
-    verificationContent: React.ReactNode
-    onSubmit: (inputs: Record<string, unknown>, action: string) => void
-  }) {
-    const { uploadStrategy } = useFileUploadContext()
-    mockPresentation.lastDefinition = definition
-    return (
-      <div>
-        {verificationContent}
-        <button
-          type="button"
-          onClick={() =>
-            uploadStrategy?.uploadLocal({
-              file: new File(['review'], 'review.txt', { type: 'text/plain' }),
-              onProgressCallback: vi.fn(),
-              onSuccessCallback: vi.fn(),
-              onErrorCallback: vi.fn(),
-            })
-          }
-        >
-          Upload local attachment
-        </button>
-        <button
-          type="button"
-          onClick={() => uploadStrategy?.uploadRemote('https://example.com/review.txt')}
-        >
-          Upload linked attachment
-        </button>
-        <button
-          type="button"
-          disabled={isSubmitting || actionsDisabled}
-          onClick={() => onSubmit({ response: 'approved' }, 'approve')}
-        >
-          Approve
-        </button>
-        <button
-          type="button"
-          disabled={isSubmitting || actionsDisabled}
-          onClick={() => onSubmit({ response: 'rejected' }, 'reject')}
-        >
-          Reject
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('@/features/human-input/form/form-status-card', () => ({
-  default: ({
-    title,
-    subtitle,
-    submissionID,
-  }: {
-    title: React.ReactNode
-    subtitle?: React.ReactNode
-    submissionID?: string
-  }) => (
-    <div>
-      <div>{title}</div>
-      <div>{subtitle}</div>
-      {submissionID && <div>{submissionID}</div>}
-    </div>
-  ),
-}))
+// OTP scenarios use a supported text-only definition; the upload/navigation
+// scenario below retains the attachment definition.
+const createTextFormTransport = () => {
+  const { definition } = createHumanInputV2MockScenario()
+  return createMockHumanInputV2FormTransport({
+    scenario: {
+      definition: {
+        ...definition,
+        formContent: '{{#$output.response#}}',
+        inputs: definition.inputs.filter((input) => input.output_variable_name === 'response'),
+      },
+    },
+  })
+}
 
 describe('HumanInputV2Form', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockPresentation.lastDefinition = undefined
-  })
-
   it('loads the definition, requests one OTP, validates its shape, and submits one atomic payload', async () => {
     const user = userEvent.setup()
-    const transport = createMockHumanInputV2FormTransport()
+    const transport = createTextFormTransport()
     const getForm = vi.spyOn(transport, 'getForm')
     const requestAccess = vi.spyOn(transport, 'requestAccess')
     const submit = vi.spyOn(transport, 'submit')
 
     render(<HumanInputV2Form token="form-token" transport={transport} />)
 
-    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
+    expect(screen.getByLabelText('common.loading')).toBeInTheDocument()
     const otpInput = await screen.findByLabelText('share.humanInputV2.otpLabel')
+    const response = screen.getByRole('textbox', { name: 'response' })
+    await user.clear(response)
+    await user.type(response, 'approved')
     const approve = screen.getByRole('button', { name: 'Approve' })
     expect(getForm).toHaveBeenCalledWith('form-token')
     expect(requestAccess).toHaveBeenCalledTimes(1)
@@ -122,13 +62,15 @@ describe('HumanInputV2Form', () => {
       }),
     )
     expect(await screen.findByText('share.humanInput.thanks')).toBeInTheDocument()
-    expect(screen.getByText('form-token')).toBeInTheDocument()
+    expect(
+      screen.getByText('share.humanInput.submissionID:{"id":"form-token"}'),
+    ).toBeInTheDocument()
     expect(screen.queryByLabelText('share.humanInputV2.otpLabel')).not.toBeInTheDocument()
   })
 
   it('allows invalid OTP correction while preserving the current challenge', async () => {
     const user = userEvent.setup()
-    const transport = createMockHumanInputV2FormTransport()
+    const transport = createTextFormTransport()
     const requestAccess = vi.spyOn(transport, 'requestAccess')
 
     render(<HumanInputV2Form token="form-token" transport={transport} />)
@@ -152,7 +94,7 @@ describe('HumanInputV2Form', () => {
     const submitPromise = new Promise<void>((resolve) => {
       resolveSubmit = resolve
     })
-    const baseTransport = createMockHumanInputV2FormTransport()
+    const baseTransport = createTextFormTransport()
     const submit = vi.fn<HumanInputV2FormTransport['submit']>().mockReturnValue(submitPromise)
     const transport = { ...baseTransport, submit }
 
@@ -187,7 +129,9 @@ describe('HumanInputV2Form', () => {
       expect(await screen.findByText(copy)).toBeInTheDocument()
       if (formState === 'expired' || formState === 'submitted') {
         expect(screen.getByText('share.humanInput.sorry')).toBeInTheDocument()
-        expect(screen.getByText('form-token')).toBeInTheDocument()
+        expect(
+          screen.getByText('share.humanInput.submissionID:{"id":"form-token"}'),
+        ).toBeInTheDocument()
       }
       expect(requestAccess).not.toHaveBeenCalled()
       expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
@@ -217,21 +161,46 @@ describe('HumanInputV2Form', () => {
     render(<HumanInputV2Form token="form-token" transport={transport} />)
     await screen.findByLabelText('share.humanInputV2.otpLabel')
 
-    expect(mockPresentation.lastDefinition).not.toHaveProperty('branding')
+    expect(screen.getByRole('textbox', { name: 'response' })).toHaveValue('Looks good')
+    expect(screen.getByText('share.chat.poweredBy')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Dify' })).toBeInTheDocument()
   })
 
   it('scopes attachment uploads to the displayed token and injected transport after navigation', async () => {
     const user = userEvent.setup()
     const transport = createMockHumanInputV2FormTransport()
     const uploadLocalFile = vi.spyOn(transport, 'uploadLocalFile')
-    const uploadRemoteFile = vi.spyOn(transport, 'uploadRemoteFile')
+    const uploadRemoteFile = vi.spyOn(transport, 'uploadRemoteFile').mockResolvedValue({
+      id: 'remote-2',
+      name: 'review.txt',
+      mimeType: 'text/plain',
+      size: 6,
+      url: 'https://example.com/review.txt',
+    })
     const { rerender } = render(<HumanInputV2Form token="first-form" transport={transport} />)
 
-    await user.click(await screen.findByRole('button', { name: 'Upload local attachment' }))
+    await screen.findByRole('textbox', { name: 'response' })
+    // The native chooser has no accessible label in the current uploader.
+    await user.upload(
+      document.querySelector<HTMLInputElement>('input[type="file"]')!,
+      new File(['review'], 'review.txt', { type: 'text/plain' }),
+    )
+    await screen.findByText('review.txt')
+    await waitFor(() => expect(uploadLocalFile).toHaveBeenCalledOnce())
     expect(uploadLocalFile).toHaveBeenCalledWith('first-form', expect.any(File))
 
     rerender(<HumanInputV2Form token="second-form" transport={transport} />)
-    await user.click(await screen.findByRole('button', { name: 'Upload linked attachment' }))
+    await waitFor(() => expect(screen.queryByText('review.txt')).not.toBeInTheDocument())
+    await user.click(
+      await screen.findByRole('button', { name: 'common.fileUploader.pasteFileLink' }),
+    )
+    await user.type(
+      screen.getByPlaceholderText('common.fileUploader.pasteFileLinkInputPlaceholder'),
+      'https://example.com/review.txt',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
+    await screen.findByText('https://example.com/review.txt')
+    await waitFor(() => expect(uploadRemoteFile).toHaveBeenCalledOnce())
     expect(uploadRemoteFile).toHaveBeenCalledWith('second-form', 'https://example.com/review.txt')
   })
 })
