@@ -54,6 +54,20 @@ export const zDifyBuilderClearConversationPayload = z.object({
 })
 
 /**
+ * DifyBuilderFixControlResponse
+ */
+export const zDifyBuilderFixControlResponse = z.object({
+  acknowledged: z.boolean(),
+  base_version: z.int(),
+  client_action_id: z.string(),
+  fix_intent_id: z.string(),
+  operation: z.enum(['dismiss_fix', 'fix', 'stop_and_switch_fix']),
+  session_id: z.string(),
+  status: z.string(),
+  target_task_id: z.string(),
+})
+
+/**
  * NativeTestStartPayload
  */
 export const zNativeTestStartPayload = z.object({
@@ -2675,6 +2689,23 @@ export const zGetDifyBuilderSessionsBySessionIdConversationQuery = z.object({
  */
 export const zGetDifyBuilderSessionsBySessionIdConversationResponse =
   zDifyBuilderConversationPageResponse
+
+export const zGetDifyBuilderSessionsBySessionIdFixIntentsPath = z.object({
+  session_id: z.string(),
+})
+
+export const zGetDifyBuilderSessionsBySessionIdFixIntentsQuery = z.object({
+  base_version: z.int().gte(1),
+  client_action_id: z.string().min(1).max(128),
+  expected_task_id: z.string().min(1).optional(),
+  fix_intent_id: z.string().min(1).optional(),
+  operation: z.enum(['dismiss_fix', 'fix', 'stop_and_switch_fix']),
+})
+
+/**
+ * Correlated durable Fix control receipt
+ */
+export const zGetDifyBuilderSessionsBySessionIdFixIntentsResponse = zDifyBuilderFixControlResponse
 
 export const zPostDifyBuilderSessionsBySessionIdFixIntentsBody = zDifyBuilderFixIntentPayload
 
