@@ -26190,12 +26190,7 @@ Request body for creating or updating one external contact.
 
 #### ExternalDatasetCreatePayload
 
-Validated fields required to create an external dataset binding.
-
-The console controller owns HTTP concerns, but the service also needs this
-contract when creating the tenant-scoped dataset and external knowledge
-binding. Keep it outside controllers so service imports do not depend on
-Flask blueprint initialization.
+Apply the deployment's description limit at the HTTP boundary.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
