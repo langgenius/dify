@@ -585,3 +585,101 @@ def test_snapshot_drift_requires_explicit_rediscovery_and_new_snapshot_confirmat
         assert len(agent.requests) == 2
         assert repo.get_session(session.id)[1].resource_selection == {"resource_ids": [fresh_id]}
         assert service.get_session_view(session.id, actor).phase == "plan"
+
+
+@pytest.mark.parametrize("correct_on_retry", [True, False])
+def test_missing_resource_id_correction_is_actionable_and_bounded(
+    monkeypatch: pytest.MonkeyPatch, correct_on_retry: bool
+) -> None:
+    import json
+
+    from services.dify_builder import trace_diagnostics as diagnostics
+    from services.dify_builder.agent import build
+
+    missing = [step.replace(SELECTED, "Published ticket classifier") for step in BOUND.items]
+    calls: list[str] = []
+
+    def invoke(_model: object, *, user: str, **_kwargs: object) -> str:
+        calls.append(user)
+        actionable = (
+            "exact confirmed resource_id" in user.split("SCHEMA CORRECTION:")[-1]
+            and "referenced plan step" in user.split("SCHEMA CORRECTION:")[-1]
+        )
+        return json.dumps(
+            {
+                "title": BOUND.title,
+                "input_summary": BOUND.input_summary,
+                "output_summary": BOUND.output_summary,
+                "plan": BOUND.items if len(calls) == 2 and actionable and correct_on_retry else missing,
+                "resource_resolution": {
+                    "preserves_requirements": True,
+                    "bindings": [
+                        {
+                            "resource_id": SELECTED,
+                            "status": "used",
+                            "step_index": 1,
+                            "step_kind": "resource_action",
+                            "action": "Classify ticket_text",
+                        }
+                    ],
+                },
+            }
+        )
+
+    monkeypatch.setattr(build.llm, "invoke_text", invoke)
+    records = []
+    with diagnostics.scope(records.append, "reconcile-resource-plan"):
+        result = build.propose_plan_v1(
+            object(), REQUIREMENTS, goal_text=GOAL, previous_plan=ABSTRACT, selected_resource_ids=[SELECTED]
+        )
+    assert result == (replace(BOUND, used_resource_ids=[SELECTED]) if correct_on_retry else None)
+    assert len(calls) == 2
+    assert all(record["code"] == "response_schema_invalid" for record in records)
+    assert [record["validation_codes"] for record in records] == [["RESOURCE_PLAN_ID_MISSING"]] * (
+        1 if correct_on_retry else 2
+    )
+    assert SELECTED not in json.dumps(records)
+    assert "Published ticket classifier" not in json.dumps(records)
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    ["unknown", "duplicate", "bad_index", "bool_index", "bad_status", "bad_kind", "blank_action", "unused"],
+)
+def test_missing_id_diagnostic_does_not_mask_other_binding_guards(invalid: str) -> None:
+    from services.dify_builder.agent import build
+
+    binding: dict[str, object] = {
+        "resource_id": SELECTED,
+        "status": "used",
+        "step_index": 1,
+        "step_kind": "resource_action",
+        "action": "Classify ticket_text",
+    }
+    selected = [SELECTED]
+    bindings = [binding]
+    if invalid == "unknown":
+        binding["resource_id"] = "unknown"
+    elif invalid == "duplicate":
+        selected.append("another-selection")
+        bindings.append(dict(binding))
+    elif invalid == "bad_index":
+        binding["step_index"] = 99
+    elif invalid == "bool_index":
+        binding["step_index"] = True
+    elif invalid == "bad_status":
+        binding["status"] = "unknown"
+    elif invalid == "bad_kind":
+        binding["step_kind"] = "unknown"
+    elif invalid == "blank_action":
+        binding["action"] = " "
+    else:
+        binding.update(status="unused", reason="Not needed")
+    plan = replace(BOUND, items=[step.replace(SELECTED, "friendly name") for step in BOUND.items])
+    if invalid == "duplicate":
+        plan = BOUND
+    with pytest.raises(ValueError, match="unknown or duplicate|concrete resource action|unused selection") as error:
+        build._resolved_plan_resources(
+            {"resource_resolution": {"preserves_requirements": True, "bindings": bindings}}, plan, selected
+        )
+    assert "exact confirmed resource_id" not in str(error.value)

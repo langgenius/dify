@@ -156,6 +156,7 @@ def project(record: Mapping[str, Any]) -> dict[str, Any]:
         "INVALID_GRAPH",
         "UNSUPPORTED_NODE_TYPE",
         "RESOURCE_SELECTION_REQUIRED",
+        "RESOURCE_PLAN_ID_MISSING",
         "RESOURCE_CATALOGUE_UNAVAILABLE",
         "RESOURCE_CATALOGUE_CHANGED",
         "RESOURCE_NOT_IN_CATALOGUE",
