@@ -40,6 +40,7 @@ from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
 from graphon.model_runtime.entities import LLMUsage, PromptMessageTool
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
@@ -771,7 +772,9 @@ def test_init_uses_real_session_for_count_and_dependencies(
 
 
 def test_init_filters_files_by_type_not_vision(
-    sqlite_session: Session, mocker: MockerFixture, queue_manager: MessageBasedAppQueueManager
+    database_session: Session,
+    mocker: MockerFixture,
+    queue_manager: MessageBasedAppQueueManager,
 ) -> None:
     """Regression test for https://github.com/langgenius/dify/issues/39431
 
@@ -781,23 +784,26 @@ def test_init_filters_files_by_type_not_vision(
     from graphon.file.enums import FileTransferMethod, FileType
     from graphon.file.models import File
 
-    caller_session = mocker.MagicMock()
-    caller_session.scalar.return_value = 0
-    global_session = mocker.MagicMock()
-    mocker.patch.object(module.db, "session", global_session)
     mocker.patch.object(BaseAgentRunner, "organize_agent_history", return_value=[])
     mocker.patch.object(module.DatasetRetrieverTool, "get_dataset_tools", return_value=[])
 
-    llm = mocker.MagicMock()
-    # Model supports DOCUMENT but NOT VISION
-    llm.get_model_schema.return_value = mocker.MagicMock(features=[module.ModelFeature.DOCUMENT])
-    model_instance = mocker.MagicMock(model_type_instance=llm, model="m", credentials="c")
-
-    app_config = mocker.MagicMock()
-    app_config.app_id = "app1"
-    app_config.agent = None
-    app_config.dataset = mocker.MagicMock(dataset_ids=[], retrieve_config={"k": "v"})
-    app_config.additional_features = mocker.MagicMock(show_retrieve_source=False)
+    app_config = _app_config()
+    model_config = make_model_config(provider="provider", model="model", mode="chat")
+    model_instance = ModelInstance(
+        provider_model_bundle=model_config.provider_model_bundle,
+        model=model_config.model,
+        credentials=model_config.credentials,
+    )
+    # Real schema object: the model supports DOCUMENT but NOT VISION.
+    model_schema = AIModelEntity(
+        model=model_config.model,
+        label=model_config.model_schema.label,
+        model_type=ModelType.LLM,
+        fetch_from=model_config.model_schema.fetch_from,
+        model_properties={},
+        features=[ModelFeature.DOCUMENT],
+    )
+    mocker.patch.object(model_instance.model_type_instance, "get_model_schema", return_value=model_schema)
 
     doc_file = File(
         file_type=FileType.DOCUMENT,
@@ -811,16 +817,23 @@ def test_init_filters_files_by_type_not_vision(
         upload_file_id="img1",
         url="http://y",
     )
-
-    app_generate = mocker.MagicMock(invoke_from="test", inputs={}, files=[doc_file, image_file])
+    app_generate = AgentChatAppGenerateEntity.model_construct(
+        task_id="task",
+        app_config=app_config,
+        inputs={},
+        files=[doc_file, image_file],
+        user_id="user",
+        stream=False,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
 
     runner = BaseAgentRunner(
-        session=sqlite_session,
+        session=database_session,
         tenant_id="tenant",
         application_generate_entity=app_generate,
-        conversation=mocker.MagicMock(),
+        conversation=_conversation(),
         app_config=app_config,
-        model_config=ModelConfigWithCredentialsEntity.model_construct(),
+        model_config=model_config,
         config=_agent(),
         queue_manager=queue_manager,
         message=_message(message_id="msg1"),
