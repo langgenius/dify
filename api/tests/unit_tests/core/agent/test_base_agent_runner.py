@@ -40,6 +40,7 @@ from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMUsage, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ModelType
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 from services.workflow_run_agg import WorkflowRunAgg
@@ -767,3 +768,80 @@ def test_init_uses_real_session_for_count_and_dependencies(
     assert initialized.agent_thought_count == 2
     assert initialized.history_prompt_messages == []
     assert get_dataset_tools.call_args.kwargs["session"] is sqlite_session
+
+
+def test_init_filters_files_by_type_not_vision(
+    database_session: Session,
+    mocker: MockerFixture,
+    queue_manager: MessageBasedAppQueueManager,
+) -> None:
+    """Regression test for https://github.com/langgenius/dify/issues/39431
+
+    Documents should be kept when the model supports DOCUMENT, even if it
+    does not support VISION. The old code gated all files on VISION alone.
+    """
+    from graphon.file.enums import FileTransferMethod, FileType
+    from graphon.file.models import File
+
+    mocker.patch.object(BaseAgentRunner, "organize_agent_history", return_value=[])
+    mocker.patch.object(module.DatasetRetrieverTool, "get_dataset_tools", return_value=[])
+
+    app_config = _app_config()
+    model_config = make_model_config(provider="provider", model="model", mode="chat")
+    model_instance = ModelInstance(
+        provider_model_bundle=model_config.provider_model_bundle,
+        model=model_config.model,
+        credentials=model_config.credentials,
+    )
+    # Real schema object: the model supports DOCUMENT but NOT VISION.
+    model_schema = AIModelEntity(
+        model=model_config.model,
+        label=model_config.model_schema.label,
+        model_type=ModelType.LLM,
+        fetch_from=model_config.model_schema.fetch_from,
+        model_properties={},
+        features=[ModelFeature.DOCUMENT],
+    )
+    mocker.patch.object(model_instance.model_type_instance, "get_model_schema", return_value=model_schema)
+
+    doc_file = File(
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        upload_file_id="doc1",
+        url="http://x",
+    )
+    image_file = File(
+        file_type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        upload_file_id="img1",
+        url="http://y",
+    )
+    app_generate = AgentChatAppGenerateEntity.model_construct(
+        task_id="task",
+        app_config=app_config,
+        inputs={},
+        files=[doc_file, image_file],
+        user_id="user",
+        stream=False,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+    runner = BaseAgentRunner(
+        session=database_session,
+        tenant_id="tenant",
+        application_generate_entity=app_generate,
+        conversation=_conversation(),
+        app_config=app_config,
+        model_config=model_config,
+        config=_agent(),
+        queue_manager=queue_manager,
+        message=_message(message_id="msg1"),
+        user_id="user",
+        model_instance=model_instance,
+        execution_driver=WorkflowRunAgg.run,
+    )
+
+    # Document file should be kept; image file should be filtered out
+    assert doc_file in runner.files
+    assert image_file not in runner.files
+    assert len(runner.files) == 1
