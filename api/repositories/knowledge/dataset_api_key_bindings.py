@@ -15,7 +15,10 @@ Scope semantics:
               only honours bindings of its own kind: the legacy dataset endpoints check
               ``dataset_id`` bindings and the KnowledgeFS endpoints check
               ``control_space_id`` bindings, so a key bound solely to one kind is
-              rejected by the other.
+              rejected by the other. Legacy collection reads may list the authorized
+              dataset subset of a legacy or mixed key; KnowledgeFS-only keys remain
+              forbidden. A search with no matching authorized datasets may return an
+              empty list without changing the key's scope.
 
 Shared by key management, dataset deletion, and service-API authentication.
 The caller owns the transaction boundary (commit/flush).
