@@ -194,6 +194,7 @@ FILES += [
     "api/tests/unit_tests/services/dify_builder/test_knowledge_inventory.py",
     "api/tests/unit_tests/services/dify_builder/test_knowledge_discovery.py",
     "api/tests/unit_tests/services/dify_builder/test_knowledge_source_cue.py",
+    "api/tests/unit_tests/services/dify_builder/test_requirement_provenance.py",
 ]
 SELECTED_GUARDS = [
     "api/tests/unit_tests/core/dify_builder/test_handlers_edit.py::test_sufficient_goal_reaches_plan_gate_or_actionable_retry_with_monotonic_progress",
@@ -2702,6 +2703,23 @@ a4_expected.update(
             "test_captured_meeting_model_only_confirmation_preserves_goal_without_a_knowledge_waiver": 1,
             "test_nonbare_knowledge_item_keeps_handler_clarification_with_false_model_hint": 6,
             "test_shared_source_predicate_keeps_handler_clarification_with_false_model_hint": 5
+        },
+        "tests.unit_tests.services.dify_builder.test_requirement_provenance": {
+            "test_actual_fresh_analysis_ignores_only_unconfirmed_derived_source_summary": 1,
+            "test_explicitly_submitted_source_values_and_defaults_remain_guarded": 4,
+            "test_only_present_offered_payload_keys_are_confirmed_and_current_values_are_used": 1,
+            "test_raw_goal_without_complete_explicit_exclusion_keeps_full_requirements_guard": 4,
+            "test_unknown_malformed_or_missing_key_provenance_never_drops_the_source_guard": 6,
+            "test_missing_confirmed_key_fails_closed_even_without_another_source_value": 1,
+            "test_fresh_provenance_never_waives_other_server_source_guards": 4,
+            "test_confirmation_provenance_roundtrips_without_aliasing": 3,
+            "test_malformed_serialized_provenance_decodes_as_legacy_unknown": 6,
+            "test_missing_serialized_provenance_stays_unknown_after_a_later_submission": 1,
+            "test_reanalysis_replaces_stale_confirmation_provenance": 1,
+            "test_new_task_reset_cannot_reuse_old_confirmation_provenance": 4,
+            "test_adjustment_history_retains_confirmed_source_after_request_is_cleared": 1,
+            "test_clear_discards_confirmation_provenance_at_the_durable_owner": 1,
+            "test_fix_activation_clears_provenance_with_replaced_requirements": 1,
         },
         "tests.unit_tests.services.dify_builder.test_knowledge_source_cue": {
             "test_explicitly_excluded_source_does_not_create_a_knowledge_goal": 11,
