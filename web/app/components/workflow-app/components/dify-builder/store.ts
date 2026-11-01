@@ -186,7 +186,7 @@ export const difyBuilderRunActiveAtom = atom((get) => isActiveStatus(get(difyBui
 export const difyBuilderTestExecutionAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.test_execution,
 )
-export const difyBuilderNativeTestUnresolvedAtom = atom((get) =>
+const difyBuilderNativeTestUnresolvedAtom = atom((get) =>
   hasUnresolvedNativeTest(get(difyBuilderSessionViewAtom)),
 )
 export const difyBuilderNativeCancelAtom = atom((get) => {
