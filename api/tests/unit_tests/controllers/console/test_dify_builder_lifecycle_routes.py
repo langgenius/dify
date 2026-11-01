@@ -99,7 +99,7 @@ def test_fix_control_get_uses_owner_and_returns_only_correlated_receipt(
 ) -> None:
     service = _route_service()
     calls = []
-    receipt = {
+    receipt: dict[str, object] = {
         "session_id": "s1",
         "operation": operation,
         "client_action_id": "decision-1",
@@ -110,7 +110,7 @@ def test_fix_control_get_uses_owner_and_returns_only_correlated_receipt(
         "acknowledged": True,
     }
 
-    def read(session_id, actor, **query):
+    def read(session_id: str, actor: Actor, **query: object) -> dict[str, object]:
         calls.append((session_id, actor, query))
         return receipt
 
@@ -175,7 +175,9 @@ def test_real_http_action_and_fix_receipt_share_decision_namespace(request_sql_w
     )
     assert prepared.status_code == 200, prepared.get_data(as_text=True)
     intent_id = prepared.get_json()["fix_intent_id"]
-    assert intents.find(actor, _SESSION_ID, raw_intake).id == intent_id
+    stored_intent = intents.find(actor, _SESSION_ID, raw_intake)
+    assert stored_intent is not None
+    assert stored_intent.id == intent_id
     intake_read = world.client.get(
         url + "/fix-intents",
         query_string={

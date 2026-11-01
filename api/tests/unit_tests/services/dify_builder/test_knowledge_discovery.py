@@ -16,7 +16,11 @@ from services.dify_builder.application.runner import Env, Runner
 from services.dify_builder.plan import WorkflowPlan
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository
 from tests.unit_tests.services.dify_builder.test_bound_resource_plan_reconciliation import ReconciliationAgent
-from tests.unit_tests.services.dify_builder.test_knowledge_source_cue import MEETING_GOAL
+from tests.unit_tests.services.dify_builder.test_knowledge_source_cue import (
+    CAPTURED_AGENT_GOAL,
+    CAPTURED_FORBIDDEN_ADDITIONS,
+    MEETING_GOAL,
+)
 
 DATASET = "25f76fa8-db3b-499d-b7fc-2bfbddad778a"
 KNOWLEDGE = "knowledge:" + DATASET
@@ -572,3 +576,45 @@ def test_real_discovery_empty_or_failed_source_cannot_authorize_omission(
     assert result.current_state == expected
     if expected == PcState.BUILD_GOAL_ANALYSIS:
         assert not repo.get_session(session.id)[1].checkpoint_id
+
+
+@pytest.mark.parametrize(
+    ("goal", "requirements"),
+    [
+        (CAPTURED_AGENT_GOAL, {}),
+        ("", CAPTURED_FORBIDDEN_ADDITIONS),
+        (CAPTURED_AGENT_GOAL, CAPTURED_FORBIDDEN_ADDITIONS),
+    ],
+    ids=["goal", "requirements", "both"],
+)
+def test_excluded_resource_list_reaches_formal_plan_without_a_knowledge_waiver(
+    goal: str, requirements: dict[str, object]
+) -> None:
+    plan = WorkflowPlan("Selected resource", "Input", "Output", ["Use selected resource"], used_resource_ids=[MODEL])
+    context = DifyBuilderContext(
+        goal_text=goal,
+        requirements=requirements,
+        resource_selection={"knowledge_source_unavailable": False, "knowledge_requires_clarification": False},
+    )
+    result, stored, _, items = confirm(ReconciliationAgent(plan), offered=[], ids=[MODEL], context=context)
+    assert result.current_state == PcState.BUILD_PLAN_APPROVAL
+    assert stored.resource_selection["resource_ids"] == [MODEL]
+    assert "knowledge_decision_pending" not in stored.resource_selection
+    assert any(item.kind == "plan" for item in items)
+    assert not any(item.kind == "form" for item in items)
+
+
+@pytest.mark.parametrize("guard", ["offered", "knowledge_source_unavailable", "knowledge_requires_clarification"])
+def test_excluded_resource_list_never_disables_server_or_model_source_guards(guard: str) -> None:
+    plan = WorkflowPlan("Selected resource", "Input", "Output", ["Use selected resource"], used_resource_ids=[MODEL])
+    context = DifyBuilderContext(
+        goal_text=CAPTURED_AGENT_GOAL,
+        requirements=CAPTURED_FORBIDDEN_ADDITIONS,
+        resource_selection={guard: True} if guard != "offered" else {"offered_knowledge_ids": [KNOWLEDGE]},
+    )
+    result, stored, _, _ = confirm(
+        ReconciliationAgent(plan), offered=[KNOWLEDGE] if guard == "offered" else [], ids=[MODEL], context=context
+    )
+    assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert "knowledge_decision_pending" in stored.resource_selection
+    assert not stored.checkpoint_id
