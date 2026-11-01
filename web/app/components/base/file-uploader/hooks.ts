@@ -19,11 +19,11 @@ import {
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { isAppAccessError } from '@/features/app-access-error/state'
-import { useParams, usePathname } from '@/next/navigation'
+import { useParams } from '@/next/navigation'
 import { uploadPublicRemoteFileInfo } from '@/service/common'
 import { consoleQuery } from '@/service/console'
-import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } from '@/service/share'
 import { TransferMethod } from '@/types/app'
+import { getErrorMessage } from '@/utils/error-message'
 import { formatFileSize } from '@/utils/format'
 import { isAbortError } from '@/utils/is-abort-error'
 import { useFileStore } from './store'
@@ -62,19 +62,18 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const { t } = useTranslation(['common'])
   const fileStore = useFileStore()
   const params = useParams()
-  const pathname = usePathname()
-  const { localUploadUrl, trialAppId } = useFileUploadContext()
+  const { localUploadUrl, trialAppId, uploadStrategy } = useFileUploadContext()
   const { mutateAsync: uploadConsoleRemoteFile } = useMutation(
-    consoleQuery.remoteFiles.upload.post.mutationOptions(),
+    consoleQuery.remoteFiles.upload.post.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: uploadTrialRemoteFile } = useMutation(
-    consoleQuery.trialApps.byAppId.remoteFiles.upload.post.mutationOptions(),
+    consoleQuery.trialApps.byAppId.remoteFiles.upload.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = getFileSizeLimit(
     fileConfig.fileUploadConfig,
   )
-  const formToken = typeof params.token === 'string' ? params.token : undefined
-  const isHumanInputFormPage = !!formToken && /(?:^|\/)form\/[^/]+$/.test(pathname)
 
   const checkSizeLimit = useCallback(
     (fileType: string, fileSize: number) => {
@@ -207,17 +206,14 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           },
         }
 
-        if (isHumanInputFormPage) {
-          uploadHumanInputFormLocalFile({
-            formToken: formToken!,
-            ...uploadParams,
-          })
+        if (uploadStrategy) {
+          uploadStrategy.uploadLocal(uploadParams)
         } else {
           fileUpload(uploadParams, !!params.token, localUploadUrl)
         }
       }
     },
-    [fileStore, t, handleUpdateFile, isHumanInputFormPage, formToken, params.token, localUploadUrl],
+    [fileStore, t, handleUpdateFile, uploadStrategy, params.token, localUploadUrl],
   )
 
   const startProgressTimer = useCallback(
@@ -256,10 +252,10 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       startProgressTimer(uploadingFile.id)
 
       let remoteUpload
-      if (isHumanInputFormPage) remoteUpload = uploadHumanInputFormRemoteFileInfo(formToken!, url)
+      if (uploadStrategy) remoteUpload = uploadStrategy.uploadRemote(url)
       else if (trialAppId)
         remoteUpload = uploadTrialRemoteFile({ params: { app_id: trialAppId }, body: { url } })
-      else if (params.token) remoteUpload = uploadPublicRemoteFileInfo(url)
+      else if (params.token) remoteUpload = uploadPublicRemoteFileInfo(url, { silent: true })
       else remoteUpload = uploadConsoleRemoteFile({ body: { url } })
 
       remoteUpload
@@ -298,7 +294,14 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         .catch((error: unknown) => {
           if (!fileStore.getState().isActive) return
           if (!isAppAccessError(error) && !isAbortError(error))
-            toast.error(t(($) => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }))
+            toast.error(
+              getFileUploadErrorMessage(
+                error,
+                getErrorMessage(error) ??
+                  t(($) => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }),
+                t,
+              ),
+            )
           handleRemoveFile(uploadingFile.id)
         })
     },
@@ -311,8 +314,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       fileConfig?.allowed_file_types,
       fileConfig.allowed_file_extensions,
       startProgressTimer,
-      isHumanInputFormPage,
-      formToken,
+      uploadStrategy,
       params.token,
       trialAppId,
       uploadConsoleRemoteFile,
@@ -401,11 +403,8 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             },
           }
 
-          if (isHumanInputFormPage) {
-            uploadHumanInputFormLocalFile({
-              formToken: formToken!,
-              ...uploadParams,
-            })
+          if (uploadStrategy) {
+            uploadStrategy.uploadLocal(uploadParams)
           } else {
             fileUpload(uploadParams, !!params.token, localUploadUrl)
           }
@@ -428,8 +427,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       t,
       handleAddFile,
       handleUpdateFile,
-      isHumanInputFormPage,
-      formToken,
+      uploadStrategy,
       params.token,
       localUploadUrl,
       fileConfig?.allowed_file_types,

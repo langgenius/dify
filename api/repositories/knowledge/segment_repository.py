@@ -291,6 +291,7 @@ class SQLAlchemySegmentRepository:
                 keywords=tuple(keywords)
                 if isinstance(keywords, list) and all(isinstance(keyword, str) for keyword in keywords)
                 else None,
+                answer=segment.answer,
             )
 
     def get_segments(self, document_ref: DocumentRef, segment_ids: Sequence[str]) -> tuple[SegmentIndexTarget, ...]:

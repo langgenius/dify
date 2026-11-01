@@ -7,7 +7,6 @@ from collections import defaultdict
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from enum import StrEnum
-from json import JSONDecodeError
 from typing import TYPE_CHECKING, Any, Protocol, Self
 
 from pydantic import TypeAdapter, ValidationError
@@ -1472,7 +1471,7 @@ class ProviderManager:
 
         try:
             credentials = _credentials_adapter.validate_json(encrypted_config)
-        except (ValueError, JSONDecodeError):
+        except ValueError:
             return {}
 
         # Decrypt secret variables
@@ -1772,7 +1771,7 @@ class ProviderManager:
                                 provider_model_credentials = _credentials_adapter.validate_json(
                                     load_balancing_model_config.encrypted_config
                                 )
-                            except (ValueError, JSONDecodeError):
+                            except ValueError:
                                 continue
 
                             # Get decoding context for decrypting credentials

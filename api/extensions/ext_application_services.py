@@ -588,7 +588,10 @@ def build_application_services(
     conversation_commands = ConversationCommandService(
         conversations=conversations, enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup
     )
-    conversation_queries = ConversationQueryService(conversations=conversations, restore_inputs=restore_input_files)
+    message_files = MessageFileResolver()
+    conversation_queries = ConversationQueryService(
+        conversations=conversations, restore_inputs=restore_input_files, files=message_files
+    )
     conversation_variables = ConversationVariableRepository(session_factory=database_client)
     annotations = AnnotationRepository(session_factory=database_client)
     messages = MessageRepository(session_factory=database_client)
@@ -750,9 +753,10 @@ def build_application_services(
         message_feedbacks=MessageFeedbackService(repository=messages),
         message_queries=MessageQueryService(
             messages=messages,
-            files=MessageFileResolver(),
+            files=message_files,
             extra_contents=ExecutionExtraContentReader(
-                repository=SQLAlchemyExecutionExtraContentRepository(session_maker=database_client)
+                repository=SQLAlchemyExecutionExtraContentRepository(session_maker=database_client),
+                session_factory=database_client,
             ),
         ),
         message_file_previews=MessageFilePreviewService(
@@ -792,11 +796,7 @@ def build_application_services(
             notifications=BillingNotificationGateway(),
         ),
         network_access_groups=NetworkAccessGroupService(
-            control_plane=NetworkAccessGroupGateway(
-                base_url=dify_config.NETWORK_ACCESS_API_URL,
-                fallback_base_url=BillingService.base_url,
-                secret_key=BillingService.secret_key,
-            ),
+            control_plane=NetworkAccessGroupGateway(),
             apps=SQLAlchemyNetworkAccessGroupAppRepository(session_factory=database_client),
             memberships=workspace_repository,
             entitlement=BillingNetworkAccessGroupEntitlementGateway(),
@@ -826,6 +826,7 @@ def build_application_services(
         workflow_runs=WorkflowRunService(
             workflow_runs=workflow_run_repository,
             node_executions=workflow_node_execution_repository,
+            session_factory=database_client,
         ),
         workspaces=workspace_services,
         workflow_app_logs=WorkflowAppLogQueryService(
@@ -865,10 +866,12 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
+    from extensions.application_services.tools import resolve_tool_credentials
     from extensions.ext_login import bind_account_loader
 
     app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
     ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
+    ToolManager.configure_credential_resolver(resolve_tool_credentials)
     services = build_application_services(
         database_client=get_session_maker(),
         deployment_edition=dify_config.DEPLOYMENT_EDITION,

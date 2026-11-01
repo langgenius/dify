@@ -1,11 +1,11 @@
-"""Final Flask response contracts; all database/token/execution boundaries are isolated."""
+"""Final Flask response contracts; token/execution boundaries are isolated, MCP identities are SQLite rows."""
 
 import io
 import json
 import logging
-from collections.abc import Buffer, Iterator
-from dataclasses import dataclass
-from typing import Literal, Never, cast, override
+from collections.abc import Buffer, Generator, Iterator
+from contextlib import contextmanager
+from typing import Literal, Never, override
 from unittest.mock import MagicMock
 
 import pytest
@@ -13,8 +13,9 @@ from flask import Blueprint, Flask, Response, jsonify, request
 from flask.testing import FlaskClient
 from flask_restx import Namespace, Resource
 from pytest_mock import MockerFixture
-from sqlalchemy import Table
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, object_session, sessionmaker
 from werkzeug.exceptions import NotFound, Unauthorized
 
 import controllers.service_api.wraps as token_wraps
@@ -32,52 +33,66 @@ from extensions import ext_request_logging
 from extensions.ext_redis import RedisClientWrapper
 from libs.external_api import ExternalApi
 from models.engine import db
-from models.model import ApiToken, App, AppMCPServer
+from models.model import ApiToken, App, AppMCPServer, AppMode
 from services.app.mcp_server_service import AppMCPServerStatus
 from tests.helpers.unit.config_override import apply_config_overrides
 
 type TokenClient = tuple[FlaskClient, MagicMock, MagicMock, MagicMock]
 
 
-@dataclass
-class SessionCalls:
-    session: Session
-    scalar: MagicMock
-    add: MagicMock
-    execute: MagicMock
-
-
-def _session_calls(mocker: MockerFixture) -> SessionCalls:
-    session = Session()
-    return SessionCalls(
-        session=session,
-        scalar=mocker.patch.object(session, "scalar"),
-        add=mocker.patch.object(session, "add"),
-        execute=mocker.patch.object(session, "execute"),
-    )
-
-
-def _mcp_server(app_id: str) -> AppMCPServer:
+def _mcp_server(app_id: str, server_code: str) -> AppMCPServer:
     server = AppMCPServer(
         app_id=app_id,
         tenant_id="tenant",
         status=AppMCPServerStatus.ACTIVE,
         name="Fixture",
         description="",
-        server_code="fixture",
+        server_code=server_code,
         parameters="{}",
     )
     server.id = "server"
     return server
 
 
-type MCPClient = tuple[FlaskClient, SessionCalls, MagicMock, MagicMock]
+def _app(app_id: str, tenant_id: str) -> App:
+    return App(id=app_id, tenant_id=tenant_id, name="Fixture", mode=AppMode.CHAT, enable_site=False, enable_api=True)
+
+
+def _persist(session: Session, *rows: App | AppMCPServer) -> None:
+    session.add_all(rows)
+    session.commit()
+
+
+@contextmanager
+def _sqlite_writes(engine: Engine) -> Generator[list[str]]:
+    """Collect the INSERT/UPDATE/DELETE statements issued while the block runs."""
+    writes: list[str] = []
+
+    def record_write(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
+        if statement.lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE")):
+            writes.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record_write)
+    try:
+        yield writes
+    finally:
+        event.remove(engine, "before_cursor_execute", record_write)
+
+
+type MCPClient = tuple[FlaskClient, MagicMock, MagicMock]
 
 
 @pytest.fixture
-def http_app() -> Flask:
+def http_app(sqlite_engine: Engine) -> Flask:
     app = Flask(__name__)
-    app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI="sqlite:///:memory:")
+    app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=sqlite_engine.url)
     db.init_app(app)
     return app
 
@@ -163,7 +178,6 @@ def test_invalid_token_database_path_does_not_record_usage(http_app: Flask, mock
     usage = mocker.patch.object(token_service, "record_token_usage")
     mocker.patch.object(token_service.ApiTokenCache, "set")
     with http_app.app_context():
-        cast(Table, ApiToken.__table__).create(db.engine)
         with pytest.raises(token_service.ApiTokenInvalidError, match="Access token is invalid"):
             token_service.query_token_from_db("missing-token", "app")
     usage.assert_not_called()
@@ -200,8 +214,6 @@ def uncached_token_client(
     api.add_resource(DatasetTokenResource, "/dataset")
     http_app.register_blueprint(bp)
     try:
-        with http_app.app_context():
-            cast(Table, ApiToken.__table__).create(db.engine)
         yield http_app.test_client(), commands
     finally:
         token_service.redis_client = previous_redis
@@ -259,17 +271,14 @@ def mcp_client(http_app: Flask, monkeypatch: pytest.MonkeyPatch, mocker: MockerF
     api.add_namespace(namespace)
     http_app.register_blueprint(bp)
     monkeypatch.setattr(mcp, "mcp_ns", namespace)
-    calls = _session_calls(mocker)
-    maker = sessionmaker()
-    mocker.patch.object(maker, "class_", return_value=calls.session)
-    monkeypatch.setattr(mcp.session_factory, "get_session_maker", lambda: maker)
+    # Identity lookups run through the autouse per-test SQLite session factory.
     execute = mocker.patch.object(mcp, "handle_mcp_request")
     end_user = mocker.patch.object(mcp.MCPAppApi, "_retrieve_end_user")
-    return http_app.test_client(), calls, execute, end_user
+    return http_app.test_client(), execute, end_user
 
 
 @pytest.mark.parametrize("cached", [False, True])
-@pytest.mark.parametrize("identity", ["missing-server", "missing-app", "inactive"])
+@pytest.mark.parametrize("identity", ["missing-server", "missing-app", "foreign-tenant-app", "inactive"])
 @pytest.mark.parametrize(
     ("body", "expected_id"),
     [
@@ -306,27 +315,31 @@ def mcp_client(http_app: Flask, monkeypatch: pytest.MonkeyPatch, mocker: MockerF
 )
 def test_mcp_missing_identity_final_response_is_bounded_and_opaque(
     mcp_client: MCPClient,
-    identity: Literal["missing-server", "missing-app", "inactive"],
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+    identity: Literal["missing-server", "missing-app", "foreign-tenant-app", "inactive"],
     cached: bool,
     body: bytes,
     expected_id: bytes,
 ) -> None:
-    client, session, execute, end_user = mcp_client
-    server = _mcp_server("private-app")
+    client, execute, end_user = mcp_client
+    server = _mcp_server("private-app", "missing-fixture")
     if cached:
 
         @client.application.before_request
         def cache_body() -> None:
             request.get_data()
 
-    if identity == "missing-server":
-        session.scalar.side_effect = [None]
-    elif identity == "missing-app":
-        session.scalar.side_effect = [server, None]
-    else:
+    if identity == "missing-app":
+        _persist(sqlite_session, server)
+    elif identity == "foreign-tenant-app":
+        # The App exists, but outside the server's tenant.
+        _persist(sqlite_session, server, _app("private-app", "other-tenant"))
+    elif identity == "inactive":
         server.status = "inactive"
-        session.scalar.side_effect = [server, App(id="private-app")]
-    response = client.post("/mcp/server/missing-fixture/mcp", data=body, content_type="application/json")
+        _persist(sqlite_session, server, _app("private-app", "tenant"))
+    with _sqlite_writes(sqlite_engine) as writes:
+        response = client.post("/mcp/server/missing-fixture/mcp", data=body, content_type="application/json")
     assert response.status_code == 404
     assert (
         response.data
@@ -336,8 +349,7 @@ def test_mcp_missing_identity_final_response_is_bounded_and_opaque(
     assert response.headers["Cache-Control"] == "no-store"
     execute.assert_not_called()
     end_user.assert_not_called()
-    session.add.assert_not_called()
-    session.execute.assert_not_called()
+    assert writes == []
 
 
 @pytest.mark.parametrize("cached", [False, True])
@@ -366,8 +378,7 @@ def test_mcp_unknown_length_stream_read_is_capped(http_app: Flask, cached: bool,
 def test_mcp_debug_request_logging_preserves_raw_error_id(
     mcp_client: MCPClient, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    client, session, execute, end_user = mcp_client
-    session.scalar.return_value = None
+    client, execute, end_user = mcp_client
     caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
     # Exercise the real existing request-started logger, including request.data caching.
     apply_config_overrides(monkeypatch, ENABLE_REQUEST_LOGGING=True)
@@ -380,11 +391,11 @@ def test_mcp_debug_request_logging_preserves_raw_error_id(
     end_user.assert_not_called()
 
 
-def test_existing_mcp_keeps_normal_large_payload_and_response(mcp_client: MCPClient, mocker: MockerFixture) -> None:
-    client, session, _execute, _end_user = mcp_client
-    server = _mcp_server("existing-app")
-    app = App(id="existing-app", tenant_id="tenant")
-    session.scalar.side_effect = [server, app, server, app]
+def test_existing_mcp_keeps_normal_large_payload_and_response(
+    mcp_client: MCPClient, sqlite_session: Session, mocker: MockerFixture
+) -> None:
+    client, _execute, _end_user = mcp_client
+    _persist(sqlite_session, _mcp_server("existing-app", "existing-fixture"), _app("existing-app", "tenant"))
     mocker.patch.object(mcp.MCPAppApi, "_get_user_input_form", return_value=[])
     expected_body = b'{"id":2,"jsonrpc":"2.0","result":{}}'
     process = mocker.patch.object(
@@ -409,12 +420,9 @@ def test_existing_mcp_keeps_normal_large_payload_and_response(mcp_client: MCPCli
     process.assert_called_once()
 
 
-def test_existing_mcp_still_validates_malformed_payload(mcp_client: MCPClient) -> None:
-    client, session, execute, end_user = mcp_client
-    session.scalar.side_effect = [
-        _mcp_server("existing-app"),
-        App(id="existing-app", tenant_id="tenant"),
-    ]
+def test_existing_mcp_still_validates_malformed_payload(mcp_client: MCPClient, sqlite_session: Session) -> None:
+    client, execute, end_user = mcp_client
+    _persist(sqlite_session, _mcp_server("existing-app", "existing-fixture"), _app("existing-app", "tenant"))
     response = client.post("/mcp/server/existing-fixture/mcp", data=b"{", content_type="application/json")
     assert response.status_code == 400
     execute.assert_not_called()
@@ -435,36 +443,47 @@ def test_existing_mcp_still_validates_malformed_payload(mcp_client: MCPClient) -
     ],
 )
 def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
-    mcp_client: MCPClient, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, change: str
+    mcp_client: MCPClient,
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    change: str,
 ) -> None:
-    client, _session, execute, end_user = mcp_client
+    client, execute, end_user = mcp_client
     active_sessions: list[Session] = []
     opened: list[Session] = []
     read_sessions: list[bool] = []
-    initial_server = _mcp_server("app")
-    initial_app = App(id="app", tenant_id="tenant")
-    fresh_server = _mcp_server("app")
-    fresh_app = App(id="app", tenant_id="tenant")
-    if change == "inactive":
-        fresh_server.status = "inactive"
-    elif change == "server-replaced":
-        fresh_server.id = "other-server"
-    elif change == "app-rebound":
-        fresh_server.app_id = fresh_app.id = "other-app"
-    elif change == "tenant-changed":
-        fresh_server.tenant_id = fresh_app.tenant_id = "other-tenant"
-    initial_calls = _session_calls(mocker)
-    initial = initial_calls.session
-    initial_calls.scalar.side_effect = [None] if change == "initial-missing" else [initial_server, initial_app]
-    execution_calls = _session_calls(mocker)
-    execution = execution_calls.session
-    execution_calls.scalar.side_effect = (
-        [None] if change == "missing-server" else [fresh_server, None if change == "missing-app" else fresh_app]
-    )
-    remaining = iter((initial, execution))
+    server = _mcp_server("app", "fixture")
+    app = _app("app", "tenant")
+    if change != "initial-missing":
+        _persist(sqlite_session, server, app)
+
+    def change_identity() -> None:
+        """Commit the change the execution session must observe after the body read."""
+        if change == "missing-server":
+            sqlite_session.delete(server)
+        elif change == "missing-app":
+            sqlite_session.delete(app)
+        elif change == "inactive":
+            server.status = "inactive"
+        elif change == "server-replaced":
+            server.id = "other-server"
+        elif change == "app-rebound":
+            sqlite_session.add(_app("other-app", "tenant"))
+            server.app_id = "other-app"
+        elif change == "tenant-changed":
+            server.tenant_id = app.tenant_id = "other-tenant"
+        sqlite_session.commit()
 
     def create_session(**_kwargs: object) -> Session:
-        session = next(remaining)
+        if opened:
+            # The identity change is the test's own write, not the request's.
+            request_writes = len(writes)
+            change_identity()
+            del writes[request_writes:]
+        session = sqlite_session_factory()
         opened.append(session)
         active_sessions.append(session)
         close = session.close
@@ -482,7 +501,13 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
     mocker.patch.object(maker, "class_", side_effect=create_session)
     monkeypatch.setattr(mcp.session_factory, "get_session_maker", lambda: maker)
     form = mocker.patch.object(mcp.MCPAppApi, "_get_user_input_form", return_value=[])
-    process = mocker.patch.object(mcp.MCPAppApi, "_process_mcp_message", return_value=Response("ok", status=200))
+    attached_to: list[Session | None] = []
+
+    def process_message(*args: object) -> Response:
+        attached_to.extend(object_session(record) for record in args[2:4])
+        return Response("ok", status=200)
+
+    process = mocker.patch.object(mcp.MCPAppApi, "_process_mcp_message", side_effect=process_message)
     original_error = mcp.mcp_server_not_found_response
 
     def error_response() -> Response:
@@ -503,19 +528,22 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
             return super().readinto(buffer)
 
     payload = b'{"jsonrpc":"2.0","method":"ping","id":900719925474099312345678901234567890}'
-    response = client.post(
-        "/mcp/server/fixture/mcp", input_stream=RecordingStream(payload), content_type="application/json"
-    )
+    with _sqlite_writes(sqlite_engine) as writes:
+        response = client.post(
+            "/mcp/server/fixture/mcp", input_stream=RecordingStream(payload), content_type="application/json"
+        )
     assert read_sessions
     assert not any(read_sessions)
     assert not active_sessions
-    assert opened == ([initial] if change == "initial-missing" else [initial, execution])
+    assert len(opened) == (1 if change == "initial-missing" else 2)
     if change == "unchanged":
         assert response.status_code == 200
+        execution = opened[1]
+        fresh_app = process.call_args.args[2]
         form.assert_called_once_with(fresh_app, session=execution)
-        assert process.call_args.args[2] is fresh_app
-        assert process.call_args.args[3] is fresh_server
+        assert (fresh_app.id, process.call_args.args[3].id) == ("app", "server")
         assert process.call_args.args[5] is execution
+        assert attached_to == [execution, execution]
     else:
         assert response.status_code == 404
         assert b'"id":900719925474099312345678901234567890,' in response.data
@@ -523,8 +551,7 @@ def test_mcp_reads_body_outside_sessions_and_rechecks_identity_before_execution(
         process.assert_not_called()
     execute.assert_not_called()
     end_user.assert_not_called()
-    initial_calls.add.assert_not_called()
-    execution_calls.add.assert_not_called()
+    assert writes == []
 
 
 @pytest.mark.parametrize("route", ["webhook", "webhook-debug"])

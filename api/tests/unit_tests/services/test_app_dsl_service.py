@@ -1219,11 +1219,15 @@ def test_export_dsl_preserves_envelope_and_mode_specific_content(
         (AppMode.ADVANCED_CHAT, "trigger-plugin"),
     ],
 )
-def test_overwrite_rejects_incompatible_nodes_before_mutation(mode: AppMode, node_type: str) -> None:
-    session = Mock()
-    target = App(id="target", tenant_id="tenant", mode=mode, name="Original")
-    service = AppDslService(session)
-    service._load_app_for_overwrite = Mock(return_value=target)
+def test_overwrite_rejects_incompatible_nodes_before_mutation(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, mode: AppMode, node_type: str
+) -> None:
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
+    target = _app(tenant_id="tenant-1", mode=mode)
+    target.name = "Original"
+    sqlite_session.add(target)
+    sqlite_session.commit()
+    service = AppDslService(sqlite_session)
     result = service.import_app(
         account=_account(),
         import_mode="yaml-content",
@@ -1240,8 +1244,10 @@ def test_overwrite_rejects_incompatible_nodes_before_mutation(mode: AppMode, nod
     assert result.status == ImportStatus.FAILED
     assert result.error is not None
     assert "incompatible" in result.error
+    sqlite_session.refresh(target)
     assert target.name == "Original"
-    session.add.assert_not_called()
+    assert not sqlite_session.new
+    assert not sqlite_session.deleted
 
 
 @pytest.mark.parametrize(

@@ -241,6 +241,34 @@ def test_openapi_json_endpoints_render():
     assert app.config["RESTX_INCLUDE_ALL_MODELS"] is True
 
 
+def test_console_node_data_migration_documents_canonical_delivery_method_union(
+    openapi_json: OpenAPIJSONLoader,
+) -> None:
+    from controllers.console import bp as console_bp
+
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
+    schemas = payload["components"]["schemas"]
+    operation = payload["paths"]["/workspaces/current/human-input/v2/node-data-migration"]["post"]
+    request_schema = operation["requestBody"]["content"]["application/json"]["schema"]
+
+    assert request_schema == {"$ref": "#/components/schemas/NodeDataMigrationPayload"}
+    payload_schema = schemas["NodeDataMigrationPayload"]
+    node_input_ref = payload_schema["properties"]["nodes"]["items"]["$ref"]
+    node_input_schema = schemas[node_input_ref.removeprefix("#/components/schemas/")]
+    node_data_ref = node_input_schema["properties"]["node_data"]["$ref"]
+    node_data_schema = schemas[node_data_ref.removeprefix("#/components/schemas/")]
+    method_items = node_data_schema["properties"]["delivery_methods"]["items"]
+
+    assert set(method_items["discriminator"]["mapping"]) == {"webapp", "email", "im"}
+    input_ref = node_data_schema["properties"]["inputs"]["items"]["$ref"]
+    input_schema = schemas[input_ref.removeprefix("#/components/schemas/")]
+    input_variants = input_schema["discriminator"]["mapping"]
+    assert set(input_variants) == {"paragraph", "select", "file", "file-list"}
+    action_ref = node_data_schema["properties"]["user_actions"]["items"]["$ref"]
+    action_schema = schemas[action_ref.removeprefix("#/components/schemas/")]
+    assert action_schema["properties"]["title"]["maxLength"] == 100
+
+
 def test_agent_tts_routes_document_voice_queries_and_binary_audio(openapi_json: OpenAPIJSONLoader):
     from controllers.console import bp as console_bp
     from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES
@@ -797,6 +825,99 @@ def test_console_member_invite_documents_bad_request_response(openapi_json: Open
         "title": "MemberInviteErrorResponse",
         "type": "object",
     }
+
+
+def test_console_billing_reason_errors_are_documented(openapi_json: OpenAPIJSONLoader) -> None:
+    from controllers.console import bp as console_bp
+
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
+    control_plane = {
+        "403": {"NetworkAccessForbiddenError", "NetworkAccessNotEntitledError", "NetworkAccessRoleDeniedError"},
+        "502": {"BillingOperationFailedError"},
+        "503": {"BillingUnavailableError"},
+    }
+    expected = {
+        ("/compliance/download", "get"): {
+            "403": {"ComplianceDownloadForbiddenError"},
+            "404": {"ComplianceDocumentNotFoundError"},
+            "429": {"BillingRequestInProgressError"},
+        },
+        ("/account/education/verify", "get"): {
+            "400": {"EducationVerifyFailedError"},
+            "429": {"BillingRequestInProgressError"},
+            "502": {"BillingOperationFailedError"},
+            "503": {"BillingUnavailableError"},
+        },
+        ("/account/education", "post"): {
+            "400": {"EducationActivateFailedError"},
+            "429": {"BillingRequestInProgressError"},
+            "502": {"BillingOperationFailedError"},
+            "503": {"BillingUnavailableError"},
+        },
+        ("/account/education", "get"): {
+            "429": {"BillingRequestInProgressError"},
+            "502": {"BillingOperationFailedError"},
+            "503": {"BillingUnavailableError"},
+        },
+        ("/workspaces/current/network-access-groups", "get"): control_plane,
+        ("/workspaces/current/network-access-groups", "post"): {
+            **control_plane,
+            "403": {*control_plane["403"], "PaidPlanRequiredError"},
+            "400": {"NetworkAccessInvalidInputError"},
+            "409": {"NetworkAccessGroupNameConflictError"},
+        },
+        ("/workspaces/current/network-access-groups/{group_id}", "put"): {
+            **control_plane,
+            "400": {"NetworkAccessInvalidInputError"},
+            "404": {"NetworkAccessGroupNotFoundError"},
+            "409": {"NetworkAccessGroupNameConflictError", "NetworkAccessVersionConflictError"},
+        },
+        ("/workspaces/current/network-access-groups/{group_id}", "delete"): {
+            **control_plane,
+            "404": {"NetworkAccessGroupNotFoundError"},
+            "409": {"NetworkAccessGroupBoundError", "NetworkAccessVersionConflictError"},
+        },
+        ("/apps/{app_id}/network-access-group", "put"): {
+            **control_plane,
+            "400": {
+                "NetworkAccessInvalidInputError",
+                "NetworkAccessUnsupportedAccessPointsError",
+                "NetworkAccessUnsupportedAppModeError",
+            },
+            "404": {"AppNotFoundError", "NetworkAccessGroupNotFoundError"},
+            "409": {"NetworkAccessVersionConflictError"},
+        },
+    }
+
+    for (path, method), responses in expected.items():
+        operation = payload["paths"][path][method]
+        for status, components in responses.items():
+            schema = operation["responses"][status]["content"]["application/json"]["schema"]
+            documented = {option["$ref"].rpartition("/")[2] for option in schema["anyOf"]}
+            assert components <= documented, (path, method, status)
+
+    expected_codes = {
+        "BillingRequestInProgressError": ("billing_request_in_progress", 429),
+        "ComplianceDocumentNotFoundError": ("compliance_document_not_found", 404),
+        "ComplianceDownloadForbiddenError": ("compliance_download_forbidden", 403),
+        "EducationVerifyFailedError": ("education_verify_failed", 400),
+        "EducationActivateFailedError": ("education_activate_failed", 400),
+        "NetworkAccessInvalidInputError": ("network_access_invalid_input", 400),
+        "NetworkAccessForbiddenError": ("network_access_forbidden", 403),
+        "NetworkAccessNotEntitledError": ("network_access_not_entitled", 403),
+        "NetworkAccessGroupNotFoundError": ("network_access_group_not_found", 404),
+        "NetworkAccessVersionConflictError": ("network_access_version_conflict", 409),
+        "NetworkAccessGroupNameConflictError": ("network_access_group_name_conflict", 409),
+        "NetworkAccessGroupBoundError": ("network_access_group_bound", 409),
+        "NetworkAccessRoleDeniedError": ("network_access_role_denied", 403),
+        "NetworkAccessUnsupportedAppModeError": ("network_access_unsupported_app_mode", 400),
+        "NetworkAccessUnsupportedAccessPointsError": ("network_access_unsupported_access_points", 400),
+        "PaidPlanRequiredError": ("paid_plan_required", 403),
+    }
+    for component, (code, status) in expected_codes.items():
+        properties = payload["components"]["schemas"][component]["allOf"][1]["properties"]
+        assert properties["code"]["const"] == code
+        assert properties["status"]["const"] == status
 
 
 def test_console_billing_routes_document_error_responses(openapi_json: OpenAPIJSONLoader):

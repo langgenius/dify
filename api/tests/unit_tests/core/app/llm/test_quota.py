@@ -5,7 +5,7 @@ from unittest.mock import ANY, MagicMock, patch
 from uuid import UUID
 
 import pytest
-from sqlalchemy import create_engine, select
+from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -482,7 +482,7 @@ def test_deduct_llm_quota_for_model_uses_identity_based_trial_billing() -> None:
     )
 
 
-def test_deduct_llm_quota_for_model_caps_trial_pool_when_usage_exceeds_remaining() -> None:
+def test_deduct_llm_quota_for_model_caps_trial_pool_when_usage_exceeds_remaining(sqlite_engine: Engine) -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 3
     provider_configuration = _provider_configuration(
@@ -502,8 +502,7 @@ def test_deduct_llm_quota_for_model_caps_trial_pool_when_usage_exceeds_remaining
         ),
     )
     provider_manager = _provider_manager(provider_configuration)
-    engine = create_engine("sqlite:///:memory:")
-    TenantCreditPool.__table__.create(engine)
+    engine = sqlite_engine
     with engine.begin() as connection:
         connection.execute(
             TenantCreditPool.__table__.insert(),
@@ -707,7 +706,7 @@ def test_deduct_llm_quota_for_model_uses_paid_billing_pool() -> None:
     )
 
 
-def test_deduct_llm_quota_for_model_updates_free_quota_usage() -> None:
+def test_deduct_llm_quota_for_model_updates_free_quota_usage(sqlite_engine: Engine) -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 3
     provider_configuration = _provider_configuration(
@@ -727,8 +726,7 @@ def test_deduct_llm_quota_for_model_updates_free_quota_usage() -> None:
         ),
     )
     provider_manager = _provider_manager(provider_configuration)
-    engine = create_engine("sqlite:///:memory:")
-    Provider.__table__.create(engine)
+    engine = sqlite_engine
     with engine.begin() as connection:
         connection.execute(
             Provider.__table__.insert(),
@@ -820,7 +818,9 @@ def test_deduct_llm_quota_for_model_updates_free_quota_usage() -> None:
     assert exhausted_quota_used == 13
 
 
-def test_deduct_llm_quota_for_model_caps_free_quota_and_raises_when_usage_exceeds_remaining() -> None:
+def test_deduct_llm_quota_for_model_caps_free_quota_and_raises_when_usage_exceeds_remaining(
+    sqlite_engine: Engine,
+) -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 3
     provider_configuration = _provider_configuration(
@@ -840,8 +840,7 @@ def test_deduct_llm_quota_for_model_caps_free_quota_and_raises_when_usage_exceed
         ),
     )
     provider_manager = _provider_manager(provider_configuration)
-    engine = create_engine("sqlite:///:memory:")
-    Provider.__table__.create(engine)
+    engine = sqlite_engine
     with engine.begin() as connection:
         connection.execute(
             Provider.__table__.insert(),
