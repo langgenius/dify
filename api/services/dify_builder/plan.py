@@ -64,12 +64,25 @@ _RESOURCE_CLASS = (
     r"(?:工具|插件|模型|文件|代码|知识库|知识检索|code|tools?|https?|agents?|plugins?|models?|files?|"
     r"knowledge[ _-]+(?:bases?|retrieval))"
 )
-# Only native resource classes prove a list. Free-form objects may contain a
-# new affirmative predicate; an unknown list item must retain clarification.
+_RESOURCE_LIST_SEPARATOR = r"(?:[,，、/&]|\band\b|\bor\b|和|或|以及|与)"
+# Keep independent post-comma clauses only for the original bounded grammar.
+# Expanded prefixes require a complete suffix list, never shared predicate prose.
+_LEGACY_EXCLUDED_LIST_TAIL = re.compile(
+    rf"\s*(?:{_RESOURCE_MODIFIER}{_RESOURCE_CLASS}\s*{_RESOURCE_LIST_SEPARATOR}\s*)*{_RESOURCE_MODIFIER}"
+)
 _EXCLUDED_LIST_TAIL = re.compile(
-    rf"\s*(?:{_RESOURCE_MODIFIER}{_RESOURCE_CLASS}\s*(?:[,，、/&]|\band\b|\bor\b|和|或|以及|与)\s*)*"
+    rf"\s*(?:{_RESOURCE_MODIFIER}(?:new\s+|新)?(?:资源|resources?|{_RESOURCE_CLASS})"
+    rf"\s*{_RESOURCE_LIST_SEPARATOR}\s*)*"
     rf"{_RESOURCE_MODIFIER}"
 )
+_SUFFIX_RESOURCE_ITEM = (
+    rf"{_RESOURCE_MODIFIER}(?:new\s+|新)?"
+    rf"(?:资源|resources?|凭据|credentials?|(?:业务)?(?:账户|账号)|(?:business\s+)?accounts?|{_RESOURCE_CLASS})"
+)
+_EXCLUDED_LIST_SUFFIX = re.compile(
+    rf"\s*(?:{_RESOURCE_LIST_SEPARATOR}\s*{_SUFFIX_RESOURCE_ITEM}\s*)*(?=$|[。.!?！？;；\n])"
+)
+_INDEPENDENT_POSTCOMMA = re.compile(rf"\s*[,，](?!\s*{_SUFFIX_RESOURCE_ITEM})")
 _NEGATED_EXCLUSION = re.compile(r"不|无需|无须|禁止|禁用|避免|拒绝|\b(?:not|never|without|avoid|cannot|no|\w+n['’]t)\b")
 _SOURCE_IMPLEMENTATION = re.compile(
     r"\s*(?:的)?(?:检索)?(?:节点|配置|参数|绑定)|"
@@ -117,11 +130,19 @@ def has_knowledge_source_cue(goal: str, requirements: object) -> bool:
         for cue in _KNOWLEDGE_CUE.finditer(text):
             if _SOURCE_IMPLEMENTATION.match(text[cue.end() :]):
                 return True
+            suffix = text[cue.end() :]
             prefix = _SOURCE_SCOPE_BREAK.split(text[: cue.start()])[-1]
             if _CONDITIONAL_SOURCE.search(prefix + _SOURCE_SCOPE_BREAK.split(text[cue.end() :])[0]):
                 return True
             excluded = any(
                 _EXCLUDED_LIST_TAIL.fullmatch(prefix[exclusion.end() :])
+                and (
+                    _EXCLUDED_LIST_SUFFIX.match(suffix)
+                    or (
+                        _LEGACY_EXCLUDED_LIST_TAIL.fullmatch(prefix[exclusion.end() :])
+                        and _INDEPENDENT_POSTCOMMA.match(suffix)
+                    )
+                )
                 # An earlier negation in the same adjoining clause makes the
                 # exclusion unproven (cannot avoid, 不可以不, 不需要禁止...).
                 and not _NEGATED_EXCLUSION.search(re.split(r"[,，、]", prefix[: exclusion.start()])[-1])

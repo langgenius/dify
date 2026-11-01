@@ -2698,7 +2698,10 @@ a4_expected.update(
             "test_excluded_resource_list_reaches_formal_plan_without_a_knowledge_waiver": 3,
             "test_excluded_resource_list_never_disables_server_or_model_source_guards": 3,
             "test_no_extra_components_resource_list_reaches_plan_without_changing_the_original_goal": 1,
-            "test_full_captured_bare_resource_exclusion_reaches_plan_without_a_knowledge_waiver": 1
+            "test_full_captured_bare_resource_exclusion_reaches_plan_without_a_knowledge_waiver": 1,
+            "test_captured_meeting_model_only_confirmation_preserves_goal_without_a_knowledge_waiver": 1,
+            "test_nonbare_knowledge_item_keeps_handler_clarification_with_false_model_hint": 6,
+            "test_shared_source_predicate_keeps_handler_clarification_with_false_model_hint": 5
         },
         "tests.unit_tests.services.dify_builder.test_knowledge_source_cue": {
             "test_explicitly_excluded_source_does_not_create_a_knowledge_goal": 11,
@@ -2718,7 +2721,18 @@ a4_expected.update(
             "test_bare_explicit_negative_roles_obtain_collection_meaning_only_from_the_list": 5,
             "test_bare_role_prefixes_still_require_a_complete_identifier": 4,
             "test_bare_negative_roles_do_not_hide_nonlist_unknown_positive_or_nested_values": 9,
-            "test_positive_goal_still_dominates_a_bare_negative_resource_role": 1
+            "test_positive_goal_still_dominates_a_bare_negative_resource_role": 1,
+            "test_captured_meeting_goal_excludes_knowledge_without_a_goal_change": 2,
+            "test_complete_preceding_resource_items_allow_bounded_new_descriptors": 8,
+            "test_excluded_knowledge_mention_requires_a_complete_bare_list_item": 12,
+            "test_english_source_suffix_prose_is_not_a_bare_excluded_item": 6,
+            "test_bare_excluded_item_accepts_end_punctuation_or_list_connector": 7,
+            "test_preceding_item_expansion_preserves_unknown_uncertain_and_affirmative_guards": 12,
+            "test_compound_source_subject_does_not_hide_a_shared_predicate": 10,
+            "test_english_compound_source_subject_requires_complete_exclusion_framing": 6,
+            "test_complete_known_suffix_lists_remain_explicit_exclusions": 8,
+            "test_new_resource_prefix_does_not_waive_ambiguous_postcomma_prose": 3,
+            "test_legacy_independent_postcomma_clause_preserves_explicit_exclusion": 2
         },
         "tests.unit_tests.services.dify_builder.test_resources": {
             "test_list_tenant_resources_normalizes_all_three_kinds": 1,
