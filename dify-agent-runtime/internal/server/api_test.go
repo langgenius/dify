@@ -172,6 +172,28 @@ func TestRunJobRejectsInvalidModeBeforeCallingService(t *testing.T) {
 	}
 }
 
+func TestRunJobRejectsNULInEnvironmentValue(t *testing.T) {
+	handler := handleRunJob(nil)
+	req := httptest.NewRequest("POST", "/v1/jobs/run", strings.NewReader("{\"script\":\"true\",\"mode\":\"pty\",\"env\":{\"BAD\":\"before\\u0000after\"}}"))
+	w := httptest.NewRecorder()
+
+	handler(w, req)
+
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422, got %d", w.Code)
+	}
+	var result ErrorResponse
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Error.Code != "validation_error" {
+		t.Errorf("expected validation_error, got %q", result.Error.Code)
+	}
+	if result.Error.Message != "env entries must not contain NUL" {
+		t.Errorf("message = %q, want NUL rejection", result.Error.Message)
+	}
+}
+
 func TestServerErrorFormat(t *testing.T) {
 	err := NewServerError(422, "validation_error", "bad input")
 	expected := "[422] validation_error: bad input"
