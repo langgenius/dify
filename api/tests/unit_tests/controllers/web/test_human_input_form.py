@@ -21,8 +21,14 @@ import controllers.web.human_input_form as human_input_module
 from controllers.common.errors import NotFoundError
 from controllers.web.error import WebFormRateLimitExceededError
 from controllers.web.human_input_file_upload import HumanInputFileUploadApi, _validate_context
-from core.workflow.nodes.human_input.entities import ParagraphInputConfig, SelectInputConfig, StringListSource
-from core.workflow.nodes.human_input.enums import ValueSourceType
+from core.repositories.human_input_repository import HumanInputFormRecord
+from core.workflow.nodes.human_input.entities import (
+    FormDefinition,
+    ParagraphInputConfig,
+    SelectInputConfig,
+    StringListSource,
+)
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from models import Tenant
 from models.account import TenantStatus
 from models.enums import CustomizeTokenStrategy
@@ -30,7 +36,7 @@ from models.human_input import RecipientType
 from models.model import App, AppMode, IconType, Site, UploadFile
 from services.entities.feature_entities import FeatureModel
 from services.human_input_file_upload_service import HumanInputUploadContext, HumanInputUploadToken
-from services.human_input_service import FormExpiredError
+from services.human_input_service import Form, FormExpiredError
 from services.remote_file_service import RemoteFileUploadResult
 from tests.helpers.unit.controllers.error_body import raised_error
 from tests.helpers.unit.model_factories import make_account
@@ -108,12 +114,40 @@ def _persist_app_site(session: Session, *, include_site: bool = True) -> tuple[T
     return tenant, app_model, site
 
 
+def _public_form(recipient_type: RecipientType, *, app_id: str = "app-id", tenant_id: str = "tenant-id") -> Form:
+    expiration = datetime(2099, 1, 1, tzinfo=UTC)
+    return Form(
+        HumanInputFormRecord(
+            form_id="form-id",
+            workflow_run_id=None,
+            node_id="node-id",
+            tenant_id=tenant_id,
+            app_id=app_id,
+            form_kind=HumanInputFormKind.DELIVERY_TEST,
+            definition=FormDefinition(form_content="Approve", rendered_content="Approve", expiration_time=expiration),
+            rendered_content="Approve",
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+            expiration_time=expiration,
+            status=HumanInputFormStatus.WAITING,
+            selected_action_id=None,
+            submitted_data=None,
+            submitted_at=None,
+            submission_user_id=None,
+            submission_end_user_id=None,
+            completed_by_recipient_id=None,
+            recipient_id="recipient-id",
+            recipient_type=recipient_type,
+            access_token="token-1",
+        )
+    )
+
+
 @pytest.mark.parametrize(
     "recipient_type", [RecipientType.STANDALONE_WEB_APP, RecipientType.EMAIL_MEMBER, RecipientType.EMAIL_EXTERNAL]
 )
 def test_get_form_includes_site(
     monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session, recipient_type: RecipientType
-):
+) -> None:
     """GET returns form definition merged with site payload."""
 
     expiration_time = datetime(2099, 1, 1, tzinfo=UTC)
@@ -292,12 +326,10 @@ def test_create_upload_token_returns_token_and_form_expiration(
 ) -> None:
     """POST returns a HITL upload token for an active form token."""
 
-    expiration_time = datetime(2099, 1, 1, tzinfo=UTC)
     _, app_model, _ = _persist_app_site(database_session)
-    form_service = _FormService(
-        _FormRef(app_id=app_model.id, tenant_id=app_model.tenant_id, recipient_type=recipient_type)
-    )
-    monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: form_service)
+    form = _public_form(recipient_type, app_id=app_model.id, tenant_id=app_model.tenant_id)
+    monkeypatch.setattr(human_input_module.HumanInputService, "get_form_by_token", lambda self, token: form)
+    expiration_time = datetime(2099, 1, 1, tzinfo=UTC)
     service_mock = MagicMock()
     service_mock.issue_upload_token.return_value = SimpleNamespace(
         upload_token="hitl_upload_token-1",
@@ -326,6 +358,59 @@ def test_create_upload_token_returns_token_and_form_expiration(
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 
 
+@pytest.mark.parametrize("recipient_type", [RecipientType.CONSOLE, RecipientType.BACKSTAGE])
+def test_get_form_rejects_internal_tokens(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session, recipient_type: RecipientType
+) -> None:
+    """Internal approval tokens cannot disclose a form through the public Web API."""
+
+    expiration_time = datetime(2099, 1, 2, tzinfo=UTC)
+    _, app_model, _ = _persist_app_site(database_session)
+
+    class _FakeDefinition:
+        def model_dump(self, mode: str | None = None):
+            return {
+                "form_content": "Raw content",
+                "rendered_content": "Rendered",
+                "inputs": [],
+                "default_values": {},
+                "user_actions": [],
+            }
+
+    class _FakeForm:
+        def __init__(self, expiration: datetime):
+            self.workflow_run_id = None
+            self.app_id = app_model.id
+            self.tenant_id = app_model.tenant_id
+            self.expiration_time = expiration
+            self.recipient_type = recipient_type
+
+        def get_definition(self):
+            return _FakeDefinition()
+
+    form = _FakeForm(expiration_time)
+    limiter_mock = MagicMock()
+    limiter_mock.is_rate_limited.return_value = False
+    monkeypatch.setattr(human_input_module, "_FORM_ACCESS_RATE_LIMITER", limiter_mock)
+    monkeypatch.setattr(human_input_module, "extract_remote_ip", lambda req: "203.0.113.10")
+    service_mock = MagicMock()
+    service_mock.get_form_by_token.return_value = form
+    service_mock.resolve_form_inputs.return_value = []
+    monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
+
+    monkeypatch.setattr(
+        human_input_module.FeatureService,
+        "get_features",
+        lambda tenant_id, **_kwargs: FeatureModel(can_replace_logo=True, webapp_copyright_enabled=True),
+    )
+
+    with app.test_request_context("/api/form/human_input/token-1", method="GET"):
+        with pytest.raises(NotFoundError):
+            HumanInputFormApi().get("token-1")
+    service_mock.ensure_form_active.assert_not_called()
+    service_mock.resolve_form_inputs.assert_not_called()
+
+
 def test_get_form_raises_forbidden_when_site_missing(
     monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session
 ):
@@ -345,11 +430,12 @@ def test_get_form_raises_forbidden_when_site_missing(
             }
 
     class _FakeForm:
+        recipient_type = RecipientType.STANDALONE_WEB_APP
+
         def __init__(self, expiration: datetime):
             self.workflow_run_id = None
             self.app_id = app_model.id
             self.tenant_id = app_model.tenant_id
-            self.recipient_type = RecipientType.STANDALONE_WEB_APP
             self.expiration_time = expiration
 
         def get_definition(self):
@@ -392,11 +478,12 @@ def test_get_form_raises_forbidden_when_tenant_archived(
             }
 
     class _FakeForm:
+        recipient_type = RecipientType.STANDALONE_WEB_APP
+
         def __init__(self, expiration: datetime) -> None:
             self.workflow_run_id: str | None = None
             self.app_id: str = app_model.id
             self.tenant_id: str = app_model.tenant_id
-            self.recipient_type = RecipientType.STANDALONE_WEB_APP
             self.expiration_time: datetime = expiration
 
         def get_definition(self) -> _FakeDefinition:
@@ -419,13 +506,13 @@ def test_get_form_raises_forbidden_when_tenant_archived(
 @pytest.mark.parametrize(
     "recipient_type", [RecipientType.STANDALONE_WEB_APP, RecipientType.EMAIL_MEMBER, RecipientType.EMAIL_EXTERNAL]
 )
-def test_submit_form_accepts_public_token(
+def test_submit_form_accepts_public_tokens(
     monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session, recipient_type: RecipientType
-):
-    """POST forwards public submissions to the service."""
+) -> None:
+    """Web and email approval links can still submit through the public API."""
 
     _, app_model, _ = _persist_app_site(database_session)
-    form = _FormRef(app_id=app_model.id, tenant_id=app_model.tenant_id, recipient_type=recipient_type)
+    form = _public_form(recipient_type, app_id=app_model.id, tenant_id=app_model.tenant_id)
     limiter_mock = MagicMock()
     limiter_mock.is_rate_limited.return_value = False
     monkeypatch.setattr(human_input_module, "_FORM_SUBMIT_RATE_LIMITER", limiter_mock)
@@ -443,7 +530,6 @@ def test_submit_form_accepts_public_token(
 
     assert status == 200
     assert response == {}
-    service_mock.ensure_form_active.assert_called_once_with(form)
     service_mock.submit_form_by_token.assert_called_once_with(
         recipient_type=recipient_type,
         form_token="token-1",
@@ -503,10 +589,10 @@ def test_get_form_rate_limited(monkeypatch: pytest.MonkeyPatch, app: Flask):
 
 def test_get_form_raises_expired(monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine):
     class _FakeForm:
+        recipient_type = RecipientType.STANDALONE_WEB_APP
         pass
 
     form = _FakeForm()
-    form.recipient_type = RecipientType.STANDALONE_WEB_APP
     limiter_mock = MagicMock()
     limiter_mock.is_rate_limited.return_value = False
     monkeypatch.setattr(human_input_module, "_FORM_ACCESS_RATE_LIMITER", limiter_mock)
@@ -524,6 +610,41 @@ def test_get_form_raises_expired(monkeypatch: pytest.MonkeyPatch, app: Flask, sq
     service_mock.ensure_form_active.assert_called_once_with(form)
     limiter_mock.is_rate_limited.assert_called_once_with("203.0.113.10")
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
+
+
+@pytest.mark.parametrize("recipient_type", [RecipientType.CONSOLE, RecipientType.BACKSTAGE])
+@pytest.mark.parametrize("endpoint", ["submit", "upload-token"])
+def test_public_mutations_reject_internal_tokens(
+    monkeypatch: pytest.MonkeyPatch,
+    app: Flask,
+    database_session: Session,
+    recipient_type: RecipientType,
+    endpoint: str,
+) -> None:
+    _, app_model, _ = _persist_app_site(database_session)
+    form = _public_form(recipient_type, app_id=app_model.id, tenant_id=app_model.tenant_id)
+    monkeypatch.setattr(human_input_module.HumanInputService, "get_form_by_token", lambda self, token: form)
+    monkeypatch.setattr(
+        human_input_module.HumanInputService,
+        "submit_form_by_token",
+        lambda *args, **kwargs: pytest.fail("Internal tokens must not reach form submission"),
+    )
+    monkeypatch.setattr(
+        human_input_module,
+        "application_services",
+        lambda: pytest.fail("Internal tokens must not reach upload-token issuance"),
+    )
+    for limiter in [human_input_module._FORM_SUBMIT_RATE_LIMITER, human_input_module._FORM_UPLOAD_TOKEN_RATE_LIMITER]:
+        monkeypatch.setattr(limiter, "is_rate_limited", lambda address: False)
+        monkeypatch.setattr(limiter, "increment_rate_limit", lambda address: None)
+    monkeypatch.setattr(human_input_module, "extract_remote_ip", lambda req: "203.0.113.10")
+
+    with app.test_request_context(
+        "/api/form/human_input/token-1", method="POST", json={"inputs": {}, "action": "approve"}
+    ):
+        api = HumanInputFormApi() if endpoint == "submit" else HumanInputFormUploadTokenApi()
+        with pytest.raises(NotFoundError):
+            api.post("token-1")
 
 
 # The form page (GET), the submit (POST), and the upload-token endpoint must give
@@ -544,7 +665,7 @@ class _FormRef:
         *,
         app_id: str,
         tenant_id: str,
-        recipient_type: RecipientType | None = RecipientType.STANDALONE_WEB_APP,
+        recipient_type: RecipientType = RecipientType.STANDALONE_WEB_APP,
     ) -> None:
         self.id = "form-1"
         self.app_id = app_id
@@ -648,28 +769,6 @@ def _get(app: Flask) -> None:
 def _issue_upload_token(app: Flask) -> None:
     with app.test_request_context("/api/form/human_input/token-1/upload-token", method="POST"):
         HumanInputFormUploadTokenApi().post("token-1")
-
-
-@pytest.mark.parametrize("recipient_type", [RecipientType.CONSOLE, RecipientType.BACKSTAGE, None])
-@pytest.mark.parametrize("call", [_get, _submit, _issue_upload_token], ids=["get", "submit", "upload-token"])
-def test_public_endpoints_reject_internal_tokens(
-    monkeypatch: pytest.MonkeyPatch,
-    app: Flask,
-    database_session: Session,
-    recipient_type: RecipientType | None,
-    call: Callable[[Flask], None],
-) -> None:
-    _allow_requests(monkeypatch)
-    form = _FormRef(app_id="app-1", tenant_id="tenant-1", recipient_type=recipient_type)
-    service = _patch_form_service(monkeypatch, _FormService(form))
-    uploads = _patch_upload_tokens(monkeypatch)
-
-    with pytest.raises(NotFoundError):
-        call(app)
-
-    assert service.resolved_inputs == 0
-    assert service.submissions == []
-    assert uploads.issued == []
 
 
 class _ArchiveCheckUploads:
