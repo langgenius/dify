@@ -3,7 +3,10 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import { test } from 'node:test'
 import { consoleRouterContract } from '../../contracts/console.ts'
-import { contract as builderLifecycleContract } from '../../contracts/fixtures/builder-lifecycle/orpc.gen.ts'
+import {
+  zDifyBuilderCommandFinishedEventData,
+  zDifyBuilderSessionViewResponse,
+} from '../../contracts/generated/api/console/dify-builder/zod.gen.ts'
 import {
   composeConsoleDocuments,
   loadConsoleDocument,
@@ -17,6 +20,40 @@ const files = [
   'fastopenapi-console-openapi.json',
   'console-client-openapi.json',
 ].map((name) => new URL(`../../contracts/openapi/${name}`, import.meta.url))
+
+test('production Console exposes the Builder lifecycle operations', () => {
+  const session = consoleRouterContract.difyBuilder.sessions.bySessionId
+  for (const route of ['abandon', 'clear', 'fixIntents']) {
+    const operation = session[route]?.post?.['~orpc']
+    assert(operation, `Missing production Builder operation: ${route}`)
+    assert.equal(operation.route.method, 'POST')
+    assert.equal(
+      operation.route.path,
+      `/dify-builder/sessions/{session_id}/${route === 'fixIntents' ? 'fix-intents' : route}`,
+    )
+  }
+})
+
+test('production Builder snapshots and finished events preserve task lifecycle state', () => {
+  const lifecycle = {
+    task_id: 'task-1',
+    task_status: 'abandoned',
+    task_summaries: [],
+    conversation_cleared: true,
+    pending_fix_context: {
+      run_id: 'run-1',
+      title: 'Failed run',
+      error_code: 'node_failed',
+      message: 'The node failed',
+      trace_ref: '',
+    },
+  }
+  for (const schema of [zDifyBuilderSessionViewResponse, zDifyBuilderCommandFinishedEventData]) {
+    const parsed = schema.partial().parse(lifecycle)
+    for (const [field, value] of Object.entries(lifecycle))
+      assert.deepEqual(parsed[field], value, `Production response discarded ${field}`)
+  }
+})
 
 test('every existing Console member retains its name, HTTP method and route', (t) => {
   const before = files.map((file) => existsSync(file))
@@ -46,7 +83,6 @@ test('every existing Console member retains its name, HTTP method and route', (t
     visited.add(operation)
   }
   walk(consoleRouterContract)
-  walk(builderLifecycleContract)
   assert.equal(
     visited.size,
     operations.size,
