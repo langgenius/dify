@@ -108,8 +108,17 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 RUN git --version \
     && python -c "from ragas.metrics.collections import AnswerCorrectness"
 
+# Download NLTK data with curl instead of `python -m nltk.downloader`:
+# nltk>=3.10 bundles pathsec, which aborts on builds whose DNS returns
+# reserved-range (fake-IP proxy, 198.18.0.0/15) addresses.
 RUN mkdir -p /usr/local/share/nltk_data \
-    && NLTK_DATA=/usr/local/share/nltk_data python -m nltk.downloader punkt_tab averaged_perceptron_tagger_eng stopwords \
+    && cd /tmp \
+    && for spec in "tokenizers:punkt_tab" "taggers:averaged_perceptron_tagger_eng" "corpora:stopwords"; do \
+        cat="${spec%%:*}"; pkg="${spec#*:}"; \
+        curl -fsSL "https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/${cat}/${pkg}.zip" -o "/tmp/${pkg}.zip" \
+        && python -m zipfile -e "/tmp/${pkg}.zip" "/usr/local/share/nltk_data/${cat}/" \
+        && rm -f "/tmp/${pkg}.zip"; \
+    done \
     && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.data.find('tokenizers/punkt_tab'); nltk.data.find('taggers/averaged_perceptron_tagger_eng'); nltk.data.find('corpora/stopwords')" \
     && chmod -R 755 /usr/local/share/nltk_data
 
