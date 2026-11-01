@@ -224,6 +224,21 @@ class TestParentChildIndexProcessor:
         assert len(result[0].children or []) == 2
         assert result[0].attachments is not None
 
+    def test_transform_full_doc_mode_returns_empty_for_no_documents(self, processor: ParentChildIndexProcessor) -> None:
+        with patch(
+            "core.rag.index_processor.processor.parent_child_index_processor.Rule.model_validate",
+            return_value=self._full_doc_rules(),
+        ):
+            result = processor.transform(
+                [],
+                process_rule={"mode": "hierarchical", "rules": {"enabled": True}},
+                preview=True,
+                tenant_id="tenant-1",
+                session=self.session,
+            )
+
+        assert result == []
+
     def test_load_creates_vectors_for_child_docs(self, processor: ParentChildIndexProcessor, dataset: Dataset) -> None:
         parent_doc = Document(
             page_content="parent",
