@@ -71,6 +71,10 @@ def handle_webhook(webhook_id: str):
         if error:
             return jsonify({"error": "Bad Request", "message": error}), 400
 
+        # Reject unsigned calls only when the owner configured a secret.
+        if not WebhookService.verify_webhook_signature(node_config, request.headers, request.get_data()):
+            return jsonify({"error": "Unauthorized", "message": "Invalid webhook signature."}), 401
+
         # Process webhook call (send to Celery)
         WebhookService.trigger_workflow_execution(
             webhook_trigger,

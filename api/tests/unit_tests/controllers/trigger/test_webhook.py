@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 from dataclasses import dataclass
 from unittest.mock import patch
 
@@ -15,6 +17,34 @@ class _RequestStub:
     method = "POST"
     headers = {"x-test": "1"}
     args = {"a": "b"}
+
+    def get_data(self):
+        return b""
+
+
+class _SigningRequestStub:
+    method = "POST"
+    args = {}
+
+    def __init__(self, body, signature):
+        self._body = body
+        self.headers = {"X-Dify-Signature": signature}
+
+    def get_data(self):
+        return self._body
+
+
+def _node_config(secret=None):
+    data = {
+        "method": "post",
+        "content_type": "application/json",
+        "headers": [],
+        "params": [],
+        "body": [],
+    }
+    if secret is not None:
+        data["signature_secret"] = secret
+    return {"data": data}
 
 
 @dataclass(eq=False, repr=False)
@@ -97,7 +127,7 @@ class TestHandleWebhook:
         mock_get,
         end_user_commands,
     ):
-        mock_get.return_value = (_webhook_trigger(), _workflow(), "node_config")
+        mock_get.return_value = (_webhook_trigger(), _workflow(), _node_config())
         mock_extract.return_value = {"input": "x"}
         mock_generate.return_value = ({"ok": True}, 200)
 
@@ -111,7 +141,7 @@ class TestHandleWebhook:
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow")
     @patch.object(module.WebhookService, "extract_and_validate_webhook_data", side_effect=ValueError("bad"))
     def test_bad_request(self, mock_extract, mock_get):
-        mock_get.return_value = (_webhook_trigger(), _workflow(), "node_config")
+        mock_get.return_value = (_webhook_trigger(), _workflow(), _node_config())
 
         response, status = module.handle_webhook("wh-1")
 
@@ -126,7 +156,7 @@ class TestHandleWebhook:
         side_effect=QuotaExceededError(feature="trigger", tenant_id="tenant-1", required=1),
     )
     def test_quota_exceeded(self, mock_trigger, mock_extract, mock_get):
-        mock_get.return_value = (_webhook_trigger(), _workflow(), "node_config")
+        mock_get.return_value = (_webhook_trigger(), _workflow(), _node_config())
         mock_extract.return_value = {"input": "x"}
 
         response, status = module.handle_webhook("wh-1")
@@ -145,7 +175,7 @@ class TestHandleWebhook:
         side_effect=QuotaExceededError(feature="workflow", tenant_id="tenant-1", required=1),
     )
     def test_workflow_quota_exceeded(self, mock_trigger, mock_extract, mock_get):
-        mock_get.return_value = (_webhook_trigger(), _workflow(), "node_config")
+        mock_get.return_value = (_webhook_trigger(), _workflow(), _node_config())
         mock_extract.return_value = {"input": "x"}
 
         response, status = module.handle_webhook("wh-1")
@@ -266,3 +296,45 @@ class TestHandleWebhookDebug:
 
         assert status == 500
         assert response["error"] == "Internal server error"
+
+
+class TestHandleWebhookSignature:
+    @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow")
+    @patch.object(module.WebhookService, "extract_and_validate_webhook_data")
+    @patch.object(module.WebhookService, "trigger_workflow_execution")
+    @patch.object(module.WebhookService, "generate_webhook_response")
+    def test_valid_signature_executes(
+        self,
+        mock_generate,
+        mock_trigger,
+        mock_extract,
+        mock_get,
+        end_user_commands,
+        monkeypatch,
+    ):
+        body = b'{"hello": "world"}'
+        signature = "sha256=" + hmac.new(b"s3cr3t", body, hashlib.sha256).hexdigest()
+        mock_get.return_value = (_webhook_trigger(), _workflow(), _node_config("s3cr3t"))
+        mock_extract.return_value = {"input": "x"}
+        mock_generate.return_value = ({"ok": True}, 200)
+        monkeypatch.setattr(module, "request", _SigningRequestStub(body, signature))
+
+        response, status = module.handle_webhook("wh-1")
+
+        assert status == 200
+        mock_trigger.assert_called_once()
+
+    @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow")
+    @patch.object(module.WebhookService, "extract_and_validate_webhook_data")
+    @patch.object(module.WebhookService, "trigger_workflow_execution")
+    def test_invalid_signature_rejected(self, mock_trigger, mock_extract, mock_get, monkeypatch):
+        body = b'{"hello": "world"}'
+        mock_get.return_value = (_webhook_trigger(), _workflow(), _node_config("s3cr3t"))
+        mock_extract.return_value = {"input": "x"}
+        monkeypatch.setattr(module, "request", _SigningRequestStub(body, "sha256=deadbeef"))
+
+        response, status = module.handle_webhook("wh-1")
+
+        assert status == 401
+        assert response["error"] == "Unauthorized"
+        mock_trigger.assert_not_called()

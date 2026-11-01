@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import json
 import logging
 import math
@@ -209,6 +211,34 @@ class WebhookService:
         processed_data = cls._process_and_validate_data(raw_data, node_data)
 
         return processed_data
+
+    # Header carrying the HMAC-SHA256 signature of the raw request body.
+    WEBHOOK_SIGNATURE_HEADER = "X-Dify-Signature"
+
+    @classmethod
+    def verify_webhook_signature(cls, node_config: NodeConfigDict, headers: Mapping[str, str], raw_body: bytes) -> bool:
+        """Check the optional shared-secret signature of a webhook call.
+
+        Preconditions: node_config is the published node config mapping whose
+        "data" entry validates as WebhookData; headers maps header names to
+        values; raw_body is the raw request body bytes.
+        Postconditions: returns True when no secret is configured (legacy
+        behavior is preserved) or when the signature matches; returns False
+        when a configured secret has a missing, malformed, or wrong
+        signature. No side effects; comparison is constant-time.
+        """
+        node_data = WebhookData.model_validate(node_config["data"], from_attributes=True)
+        secret = node_data.signature_secret
+        if not secret:
+            return True
+        provided = next(
+            (value for key, value in headers.items() if key.lower() == cls.WEBHOOK_SIGNATURE_HEADER.lower()),
+            "",
+        )
+        if not provided.startswith("sha256="):
+            return False
+        expected = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(f"sha256={expected}", provided)
 
     @classmethod
     def extract_webhook_data(cls, webhook_trigger: WorkflowWebhookTrigger) -> RawWebhookDataDict:
