@@ -76,6 +76,7 @@ export type DifyBuilderSessionViewResponse = {
   }>
   interrupted: boolean
   last_command_id?: string
+  lifecycle_settlement?: 'pending' | 'settled' | 'unknown' | null
   model?: SessionModel | null
   pending_fix_context?: RunContextCard | PreflightContextCard | null
   phase: Phase
@@ -920,6 +921,7 @@ export type DifyBuilderCommandFinishedEventData = {
     [key: string]: unknown
   }>
   interrupted: boolean
+  lifecycle_settlement?: 'pending' | 'settled' | 'unknown' | null
   model?: SessionModel | null
   pending_fix_context?: RunContextCard | PreflightContextCard | null
   phase: Phase
