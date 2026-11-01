@@ -1485,12 +1485,12 @@ export const channels = {
 }
 
 /**
- * Resolve Contact IDs persisted in workflow recipient configuration. Contacts unavailable in the current workspace are omitted.
+ * Resolve Contact IDs persisted in workflow recipient configuration. Include effective IM providers for each Contact. Contacts unavailable in the current workspace are omitted.
  */
 export const get16 = oc
   .route({
     description:
-      'Resolve Contact IDs persisted in workflow recipient configuration. Contacts unavailable in the current workspace are omitted.',
+      'Resolve Contact IDs persisted in workflow recipient configuration. Include effective IM providers for each Contact. Contacts unavailable in the current workspace are omitted.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentHumanInputV2ContactOptionsBatch',
@@ -1505,12 +1505,12 @@ export const batch = {
 }
 
 /**
- * List editor-safe Contact options for static recipient selection. The projection omits IM bindings and management metadata; unavailable Contacts are omitted.
+ * List editor-safe Contact options for static recipient selection. The projection includes effective IM providers and omits binding details and management metadata; unavailable Contacts are omitted.
  */
 export const get17 = oc
   .route({
     description:
-      'List editor-safe Contact options for static recipient selection. The projection omits IM bindings and management metadata; unavailable Contacts are omitted.',
+      'List editor-safe Contact options for static recipient selection. The projection includes effective IM providers and omits binding details and management metadata; unavailable Contacts are omitted.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentHumanInputV2ContactOptions',
