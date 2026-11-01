@@ -395,6 +395,11 @@ class TestFileApiPost:
                 unwrap(api.post)(api, app_model=mock_app_model, end_user=mock_end_user)
 
         assert raised.value.__cause__ is service_error
+        assert raised.value.data == {
+            "code": "file_too_large",
+            "message": service_error.description,
+            "status": 413,
+        }
 
     @patch("controllers.service_api.app.file.application_services")
     def test_upload_unsupported_file_type(
