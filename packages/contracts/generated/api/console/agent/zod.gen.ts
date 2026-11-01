@@ -1815,6 +1815,7 @@ export const zAgentLogFeedbackResponse = z.object({
  * AgentLogMessageItemResponse
  */
 export const zAgentLogMessageItemResponse = z.object({
+  agent_thoughts: z.array(zAgentThought).optional(),
   answer: z.string(),
   answer_tokens: z.int(),
   conversation_id: z.string(),

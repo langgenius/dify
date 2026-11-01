@@ -165,18 +165,18 @@ def _agent_observability_service_node_execution(
         elapsed_time=59.93,
         execution_metadata=json.dumps(
             {
+                "total_tokens": 454_064,
+                "total_price": "2.323470",
+                "currency": "USD",
                 "agent_log": {
                     "agent_backend": {
                         "usage": {
                             "prompt_tokens": 451_938,
                             "completion_tokens": 2_126,
-                            "total_tokens": 454_064,
-                            "total_price": "2.323470",
-                            "currency": "USD",
                             "latency": 59.93,
                         }
                     }
-                }
+                },
             }
         ),
         created_by_role=CreatorUserRole.END_USER,
@@ -856,7 +856,127 @@ class TestAgentObservabilityServiceCases:
             "latency": 1.25,
             "created_at": int(created_at.timestamp()),
             "updated_at": int(finished_at.timestamp()),
+            "agent_thoughts": [],
         }
+
+    @staticmethod
+    def test_serialize_workflow_node_message_reads_official_usage_keys() -> None:
+        """The node keeps the official metadata keys; usage is read from there."""
+        node_execution = _agent_observability_service_node_execution()
+        node_execution.execution_metadata = (
+            '{"total_tokens":15,"total_price":"0.0015","currency":"USD","agent_log":[]}'
+        )
+
+        payload = AgentObservabilityService.serialize_workflow_node_message(node_execution)
+
+        assert payload["total_tokens"] == 15
+        assert payload["total_price"] == "0.0015"
+        assert payload["currency"] == "USD"
+        assert payload["agent_thoughts"] == []
+
+    @staticmethod
+    def test_serialize_workflow_node_message_reads_legacy_usage_keys() -> None:
+        """Rows written before the array contract keep their nested usage detail."""
+        node_execution = _agent_observability_service_node_execution()
+        node_execution.execution_metadata = (
+            '{"agent_log":{"agent_backend":{"usage":{"prompt_tokens":10,"completion_tokens":5,'
+            '"total_tokens":15,"total_price":"0.0015","currency":"USD","latency":1.25}}}}'
+        )
+
+        payload = AgentObservabilityService.serialize_workflow_node_message(node_execution)
+
+        assert payload["message_tokens"] == 10
+        assert payload["answer_tokens"] == 5
+        assert payload["total_tokens"] == 15
+        assert payload["total_price"] == "0.0015"
+        assert payload["latency"] == 1.25
+        assert payload["agent_thoughts"] == []
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "execution_metadata",
+        [
+            None,
+            "not-json",
+            # Agent V2 shipped a statistics object under this key; treat it as no process.
+            json.dumps({"agent_log": {"agent_backend": {"run_id": "run-1"}}}),
+        ],
+        ids=["missing", "unparsable", "legacy_agent_log_object"],
+    )
+    def test_serialize_workflow_node_message_degrades_without_process_entries(
+        execution_metadata: str | None,
+    ) -> None:
+        node_execution = _agent_observability_service_node_execution(execution_id="node-execution-3")
+        node_execution.execution_metadata = execution_metadata
+
+        payload = AgentObservabilityService.serialize_workflow_node_message(node_execution)
+
+        assert payload["agent_thoughts"] == []
+        # The fixture carries no outputs, so there is nothing to render as an answer.
+        assert payload["answer"] == ""
+
+    @staticmethod
+    def test_serialize_workflow_node_message_maps_recorded_process_entries() -> None:
+        node_execution = _agent_observability_service_node_execution(execution_id="node-execution-4")
+        node_execution.execution_metadata = json.dumps(
+            {
+                "total_tokens": 9,
+                "agent_log": [
+                    {
+                        "message_id": "node-execution-4-1",
+                        "node_execution_id": "node-execution-4",
+                        "node_id": "agent-node",
+                        "parent_id": None,
+                        "label": "Thinking",
+                        "status": "succeeded",
+                        "error": None,
+                        "data": {"thought": "Pulling the skill"},
+                        "metadata": {},
+                    },
+                    {
+                        "message_id": "node-execution-4-2",
+                        "node_execution_id": "node-execution-4",
+                        "node_id": "agent-node",
+                        "parent_id": None,
+                        "label": "shell_run",
+                        "status": "succeeded",
+                        "error": None,
+                        "data": {
+                            "thought": "",
+                            "tool": "shell_run",
+                            "tool_input": '{"cmd": "pwd"}',
+                            "observation": '{"output": "/app"}',
+                        },
+                        "metadata": {},
+                    },
+                    {
+                        "message_id": "node-execution-4-3",
+                        "node_execution_id": "node-execution-4",
+                        "node_id": "agent-node",
+                        "parent_id": None,
+                        "label": "Message",
+                        "status": "succeeded",
+                        "error": None,
+                        "data": {"answer": "Done."},
+                        "metadata": {},
+                    },
+                ],
+            }
+        )
+
+        payload = AgentObservabilityService.serialize_workflow_node_message(node_execution)
+
+        assert payload["total_tokens"] == 9
+        assert [thought["thought"] for thought in payload["agent_thoughts"]] == ["Pulling the skill", "", None]
+        assert payload["agent_thoughts"][0]["message_id"] == "node-execution-4"
+        assert payload["agent_thoughts"][1]["tool"] == "shell_run"
+        assert payload["agent_thoughts"][1]["tool_labels"] == {
+            "shell_run": {"en_US": "shell_run", "zh_Hans": "shell_run"}
+        }
+        assert payload["agent_thoughts"][1]["observation"] == '{"output": "/app"}'
+        assert payload["agent_thoughts"][2]["tool"] is None
+        assert payload["agent_thoughts"][2]["answer"] == "Done."
+        assert payload["agent_thoughts"][2]["position"] == 3
 
     @staticmethod
     def test_serialize_workflow_node_message_handles_sparse_runtime_data() -> None:
