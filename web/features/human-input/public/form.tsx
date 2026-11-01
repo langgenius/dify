@@ -83,6 +83,13 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
     }
   }
 
+  const invalidOtp = state.error === 'invalid-otp'
+  const otpErrors = useMemo(
+    () =>
+      invalidOtp ? { otp: t(($) => $['humanInputV2.invalidOtp'], { ns: 'share' }) } : undefined,
+    [invalidOtp, t],
+  )
+
   if (state.phase === 'loading-form') return <LoadingPlaceholder className="h-full" />
 
   if (state.phase === 'success') {
@@ -139,12 +146,12 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
         isSubmitting={state.phase === 'submitting'}
         actionsDisabled={!session.canSubmit}
         onSubmit={session.submit}
+        errors={otpErrors}
         verificationContent={
           <OtpVerification
             otpCode={state.otpCode}
             requesting={state.phase === 'requesting-otp'}
-            error={state.error === 'invalid-otp' ? undefined : verificationError}
-            otpError={state.error === 'invalid-otp' ? verificationError : undefined}
+            error={invalidOtp ? undefined : verificationError}
             secondsUntilResend={session.secondsUntilResend}
             secondsUntilExpiry={session.secondsUntilExpiry}
             hasChallenge={Boolean(state.challenge)}
