@@ -90,12 +90,15 @@ def test_an_option_carries_the_state_map_hints_its_action_had(verified: bool) ->
     assert option.canvas_event == ("publish_workflow" if verified else None)
 
 
-def test_a_single_action_gate_still_becomes_an_option() -> None:
+def test_build_plan_can_be_adjusted_before_approval() -> None:
     decision = _decision(PcState.BUILD_PLAN_APPROVAL)
 
     assert decision is not None
-    assert [o.id for o in decision.options] == ["approve_plan"]
+    assert [o.id for o in decision.options] == ["approve_plan", "continue_adjusting"]
     assert decision.options[0].is_default is True
+    assert decision.default_option_id == "approve_plan"
+    assert decision.options[1].next_state == "build.goal_analysis"
+    assert decision.options[1].tone == "neutral"
 
 
 def test_a_gate_offering_nothing_has_no_decision() -> None:
