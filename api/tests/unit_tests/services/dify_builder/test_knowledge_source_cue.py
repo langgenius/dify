@@ -33,6 +33,32 @@ CAPTURED_AGENT_GOAL = (
 )
 CAPTURED_FORBIDDEN_ADDITIONS = {"forbidden_additions": ["其他 Agent", "工具", "HTTP", "Code", "文件", "知识库"]}
 CAPTURED_NO_EXTRA_COMPONENTS = {"no_extra_components": ["其他 Agent", "工具", "HTTP", "Code", "文件", "知识库"]}
+CAPTURED_BARE_ROLE_REQUIREMENTS = {
+    "agent": {
+        "name": "ENG1376 Contract Risk Reviewer a1 20261030",
+        "task": "识别高风险条款",
+        "agent_id": "01a18ce5-e037-77b9-bf99-c20a39d49024",
+        "max_tokens": "<redacted>",
+        "constraints": [
+            "仅使用现有已发布 Agent",
+            "不创建新 Agent",
+            "不使用旧版 Agent 节点",
+            "必须核对真实可用性、版本和权限",
+            "若精确资源不可用则停住说明，不替换/创建/升级",
+        ],
+        "immutable_snapshot": "01a19641-cdb3-7981-b257-5a12dce30849",
+        "published_display_version": 4,
+    },
+    "disallowed": ["其他 Agent", "工具", "HTTP", "Code", "文件", "知识库"],
+    "end_outputs": ["risks", "summary"],
+    "start_inputs": [
+        {"name": "contract_text", "type": "text", "label": "合同正文", "required": True},
+        {"name": "jurisdiction", "type": "text", "label": "适用地区", "required": False},
+    ],
+    "workflow_structure": "Start → 已发布 Agent → End",
+    "no_run_or_publish_this_phase": True,
+    "require_plan_approval_before_build": True,
+}
 
 
 @pytest.mark.parametrize(
@@ -246,3 +272,40 @@ def test_general_resource_list_role_never_skips_unknown_or_positive_children(req
 
 def test_positive_goal_dominates_a_general_negative_resource_list_role() -> None:
     assert has_knowledge_source_cue("必须使用知识库回答", CAPTURED_NO_EXTRA_COMPONENTS)
+
+
+@pytest.mark.parametrize("goal", ["", CAPTURED_AGENT_GOAL], ids=["requirements", "combined"])
+def test_full_captured_bare_disallowed_role_does_not_invent_knowledge_use(goal: str) -> None:
+    assert not has_knowledge_source_cue(goal, CAPTURED_BARE_ROLE_REQUIREMENTS)
+
+
+@pytest.mark.parametrize("role", ["forbidden", "excluded", "disallowed", "no", "without"])
+def test_bare_explicit_negative_roles_obtain_collection_meaning_only_from_the_list(role: str) -> None:
+    assert not has_knowledge_source_cue("Format supplied text", {role: ["知识库", "knowledge base"]})
+
+
+@pytest.mark.parametrize("key", ["not_disallowed", "disallowed_nodes", "otherwise_disallowed", "disallowed_"])
+def test_bare_role_prefixes_still_require_a_complete_identifier(key: str) -> None:
+    assert has_knowledge_source_cue("Format supplied text", {key: ["知识库"]})
+
+
+@pytest.mark.parametrize(
+    "requirements",
+    [
+        {"disallowed": "知识库"},
+        {"disallowed": {"source": "知识库"}},
+        {"disallowed": ("知识库",)},
+        {"disallowed": ["知识库节点"]},
+        {"disallowed": ["知识库", {"required": ["知识库"]}]},
+        {"disallowed": ["知识库", "必须查询知识库"]},
+        {"disallowed": ["知识库", "如果需要就检索知识库"]},
+        {"disallowed": ["知识库A"]},
+        {"disallowed": ["知识库", ["知识库"]]},
+    ],
+)
+def test_bare_negative_roles_do_not_hide_nonlist_unknown_positive_or_nested_values(requirements: object) -> None:
+    assert has_knowledge_source_cue("Format supplied text", requirements)
+
+
+def test_positive_goal_still_dominates_a_bare_negative_resource_role() -> None:
+    assert has_knowledge_source_cue("必须使用知识库回答", {"without": ["知识库"]})
