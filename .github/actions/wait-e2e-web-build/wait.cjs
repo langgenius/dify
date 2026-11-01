@@ -34,18 +34,23 @@ module.exports = async function waitForBuild({
       const upload = producer.steps?.find((step) => step.name === 'Upload Web build')
       const artifact = artifacts.find((item) => {
         if (item.expired || !/^core-e2e-web-build-[1-9]\d*$/.test(item.name)) return false
+        if (item.workflow_run && String(item.workflow_run.id) !== String(context.runId))
+          return false
+        const artifactAttempt = Number(item.name.slice('core-e2e-web-build-'.length))
+        if (artifactAttempt > runAttempt) return false
         if (producer.status === 'in_progress') {
           // A rebuilding producer must publish this attempt's immutable artifact.
           return item.name === `core-e2e-web-build-${runAttempt}`
         }
+        if (upload?.conclusion !== 'success') return false
+        // This run/attempt's immutable name remains authoritative when artifact
+        // and job-step timestamps differ. Older consumer-rerun artifacts still
+        // require the successful upload window below.
+        if (artifactAttempt === runAttempt) return true
         // GitHub relabels reused successful jobs with the current run_attempt.
         // Their upload step keeps its original timestamps, identifying the artifact
         // to reuse when only consumers are rerun (including across several attempts).
-        return (
-          upload?.conclusion === 'success' &&
-          item.created_at >= upload.started_at &&
-          item.created_at <= upload.completed_at
-        )
+        return item.created_at >= upload.started_at && item.created_at <= upload.completed_at
       })
       if (artifact) {
         const seconds = Math.round((now() - started) / 1000)

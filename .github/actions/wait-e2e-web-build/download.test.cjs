@@ -3,7 +3,11 @@ const { access } = require('node:fs/promises')
 const { test } = require('node:test')
 const downloadWebBuild = require('./download.cjs')
 
-function fixture({ downloadFails = false, producerFails = false } = {}) {
+function fixture({
+  downloadFails = false,
+  producerFails = false,
+  currentAttemptArtifact = false,
+} = {}) {
   const calls = []
   const env = {
     GITHUB_REPOSITORY: 'owner/repo',
@@ -49,8 +53,11 @@ function fixture({ downloadFails = false, producerFails = false } = {}) {
             artifacts: [
               {
                 id: 42,
-                name: 'core-e2e-web-build-2',
-                created_at: '2026-09-22T04:08:11Z',
+                name: currentAttemptArtifact ? 'core-e2e-web-build-4' : 'core-e2e-web-build-2',
+                created_at: currentAttemptArtifact
+                  ? '2026-09-22T05:08:11Z'
+                  : '2026-09-22T04:08:11Z',
+                workflow_run: { id: 123 },
                 expired: false,
               },
             ],
@@ -59,7 +66,11 @@ function fixture({ downloadFails = false, producerFails = false } = {}) {
       }
     }
     assert.equal(args[1], 'repos/owner/repo/actions/artifacts/42')
-    return { stdout: JSON.stringify({ name: 'core-e2e-web-build-2' }) }
+    return {
+      stdout: JSON.stringify({
+        name: currentAttemptArtifact ? 'core-e2e-web-build-4' : 'core-e2e-web-build-2',
+      }),
+    }
   }
   return { calls, options: { env, execute, webDir: '/test/web' } }
 }
@@ -155,4 +166,20 @@ test('limits retries and does not retry authorization failures', async () => {
     assert.equal(delays.length, waits)
     assert.equal(calls.length, 0)
   }
+})
+
+test('downloads a completed current-attempt artifact despite differing upload timestamps', async () => {
+  const { calls, options } = fixture({ currentAttemptArtifact: true })
+  await downloadWebBuild(options)
+  const download = calls.find(({ args }) => args[0] === 'run')
+  assert.deepEqual(download.args.slice(0, 7), [
+    'run',
+    'download',
+    '123',
+    '--repo',
+    'owner/repo',
+    '--name',
+    'core-e2e-web-build-4',
+  ])
+  assert.equal(calls.at(-1).command, 'tar')
 })
