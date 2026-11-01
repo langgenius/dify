@@ -2,6 +2,7 @@
 
 import type { RetrievalSettingsDraft } from './model'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -29,7 +30,6 @@ import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { consoleQuery } from '@/service/console'
-import { KnowledgeModelReadinessNotice } from '../components/knowledge-model-readiness-notice'
 import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segmented-control'
 import {
   modelFingerprint,
@@ -112,22 +112,23 @@ export function RetrievalSettingsSection() {
     <>
       {settings.configuration_state !== 'pending-validation' &&
         settings.configuration_state !== 'active' && (
-          <KnowledgeModelReadinessNotice
+          <Alert
+            type={settings.configuration_state === 'validation-failed' ? 'error' : 'warning'}
             className="mb-3"
-            description={
-              settings.issues.length > 0
-                ? settings.issues.map(({ field }) => readinessFieldLabel(field)).join(' · ')
-                : settings.active_profile_available
-                  ? t(($) => $['overview.attention.modelReadiness.description'])
-                  : undefined
-            }
-            title={
-              settings.configuration_state === 'validation-failed'
+          >
+            <AlertTitle>
+              {settings.configuration_state === 'validation-failed'
                 ? tCommon(($) => $['api.actionFailed'])
-                : tCommon(($) => $['modelProvider.toBeConfigured'], { ns: 'modelProvider' })
-            }
-            tone={settings.configuration_state === 'validation-failed' ? 'destructive' : 'warning'}
-          />
+                : tCommon(($) => $['modelProvider.toBeConfigured'], { ns: 'modelProvider' })}
+            </AlertTitle>
+            {(settings.issues.length > 0 || settings.active_profile_available) && (
+              <AlertDescription>
+                {settings.issues.length > 0
+                  ? settings.issues.map(({ field }) => readinessFieldLabel(field)).join(' · ')
+                  : t(($) => $['overview.attention.modelReadiness.description'])}
+              </AlertDescription>
+            )}
+          </Alert>
         )}
 
       <div className="h-px bg-divider-subtle" />
