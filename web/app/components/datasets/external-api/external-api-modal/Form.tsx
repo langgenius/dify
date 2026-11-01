@@ -2,14 +2,14 @@ import type { FC, SubmitEventHandler } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldError } from '@langgenius/dify-ui/field'
-import { Form as FormRoot } from '@langgenius/dify-ui/form'
+import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 
-type FormProps = {
+type ExternalAPIFormProps = {
   id: string
   onSubmit: SubmitEventHandler<HTMLFormElement>
   className?: string
@@ -22,7 +22,7 @@ type FormProps = {
   errors?: Partial<Record<'api_key' | 'endpoint' | 'name', string>>
 }
 
-const Form: FC<FormProps> = React.memo(
+const ExternalAPIForm: FC<ExternalAPIFormProps> = React.memo(
   ({
     id,
     onSubmit,
@@ -103,18 +103,18 @@ const Form: FC<FormProps> = React.memo(
     }
 
     return (
-      <FormRoot
+      <Form
         id={id}
         errors={errors}
         onSubmit={onSubmit}
         className={cn('flex flex-col items-start justify-center gap-4 self-stretch', className)}
       >
         {formSchemas.map((formSchema) => renderField(formSchema))}
-      </FormRoot>
+      </Form>
     )
   },
 )
 
-Form.displayName = 'Form'
+ExternalAPIForm.displayName = 'ExternalAPIForm'
 
-export default Form
+export default ExternalAPIForm

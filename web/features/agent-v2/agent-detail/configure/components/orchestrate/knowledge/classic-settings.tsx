@@ -12,12 +12,7 @@ import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-comp
 import type { KnowledgeValidationResult } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-  Field as FormField,
-} from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -27,7 +22,7 @@ import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
+import WorkflowField from '@/app/components/workflow/nodes/_base/components/field'
 import AddKnowledge from '@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset'
 import {
   comparisonOperatorNotRequireValue,
@@ -246,7 +241,7 @@ function ClassicSettingsFields({
         </RadioGroup>
         {queryMode === 'custom' ? (
           <>
-            <FormField className="pt-1" invalid={Boolean(queryError)}>
+            <Field className="pt-1" invalid={Boolean(queryError)}>
               <FieldLabel>
                 {t(
                   ($) =>
@@ -273,7 +268,7 @@ function ClassicSettingsFields({
                 )}
               </FieldDescription>
               <FieldError match={Boolean(queryError)}>{queryError}</FieldError>
-            </FormField>
+            </Field>
           </>
         ) : (
           <p className="pt-1 system-xs-regular text-text-tertiary">
@@ -283,7 +278,7 @@ function ClassicSettingsFields({
       </div>
 
       <div className="py-2">
-        <Field
+        <WorkflowField
           title={t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label'])}
           required
           operations={
@@ -371,7 +366,7 @@ function ClassicSettingsFields({
               </div>
             )}
           </>
-        </Field>
+        </WorkflowField>
       </div>
 
       {/* The shared workflow filter brings its own px-4 gutter; cancel it to line up with the fields above. */}
