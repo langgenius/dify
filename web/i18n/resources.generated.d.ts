@@ -4219,7 +4219,6 @@ export default interface Resources {
     forgotPasswordDesc: 'Please enter your email address to reset your password. We will send you an email with instructions on how to reset your password.'
     go: 'Go to Dify'
     goToInit: 'If you have not initialized the account, please go to the initialization page'
-    hidePassword: 'Hide password'
     installBtn: 'Set up'
     interfaceLanguage: 'Interface Language'
     invalid: 'The link has expired'
