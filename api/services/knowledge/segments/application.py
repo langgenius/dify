@@ -378,22 +378,34 @@ class DatasetSegmentApplicationService:
             raise SegmentDocumentIndexingError("Document is being indexed, please try again later")
         try:
             segments = self._store.get_segments(scope.document.ref, segment_ids)
-            ids = []
+            changed_ids = []
+            matching_ids = []
             for segment in segments:
-                if segment.enabled == (action == "enable") or self._indexing_state.is_segment_indexing(segment.id):
+                if self._indexing_state.is_segment_indexing(segment.id):
                     continue
-                ids.append(segment.id)
-            if ids:
+                if segment.enabled != (action == "enable"):
+                    changed_ids.append(segment.id)
+                else:
+                    matching_ids.append(segment.id)
+            if changed_ids:
                 self._store.set_segments(
                     scope.document.ref,
-                    ids,
+                    changed_ids,
                     {
                         "enabled": action == "enable",
                         "disabled_at": naive_utc_now() if action == "disable" else None,
                         "disabled_by": context.account_id if action == "disable" else None,
                     },
                 )
-                self._index.change_status(scope.document.ref, ids, action)
+            if changed_ids or matching_ids:
+                # A persisted status that already matches the request does not prove that a
+                # previous dispatch succeeded: when the DB write commits and the task
+                # publication then fails, the state is stored while the segment is still
+                # present in (or missing from) the retrieval index. Explicit retries therefore
+                # dispatch again for every non-indexing segment instead of being skipped as a
+                # no-op; the enable/disable tasks select segments by id and are idempotent, so
+                # repeated dispatches are safe.
+                self._index.change_status(scope.document.ref, changed_ids + matching_ids, action)
         except Exception as error:
             raise SegmentStatusUpdateError(str(error)) from error
 

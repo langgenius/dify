@@ -32,6 +32,7 @@ from services.knowledge.segments.application import (
     SegmentEmbeddingModelUnavailableError,
     SegmentIndex,
     SegmentIndexingState,
+    SegmentIndexTarget,
     SegmentInvalidFileTypeError,
     SegmentListFilter,
     SegmentModelGuard,
@@ -132,6 +133,32 @@ def _service(scope: SegmentScope | None = None, *, uploads: SegmentUploadCatalog
         job_id_factory=lambda: "job-1",
     )
     return service, dataset_access, store, scopes, model_guard, indexing_state, dispatcher
+
+
+def _service_with_index() -> tuple[DatasetSegmentApplicationService, Mock, Mock]:
+    dataset_access = create_autospec(DatasetAccess, instance=True, spec_set=True)
+    dataset_access.check_access.return_value = AccessibleDataset(id="dataset-1", workspace_id="workspace-1")
+    store = create_autospec(SegmentStore, instance=True, spec_set=True)
+    scopes = create_autospec(SegmentScopeReader, instance=True, spec_set=True)
+    scopes.get_segment_scope.return_value = _scope()
+    indexing_state = create_autospec(SegmentIndexingState, instance=True, spec_set=True)
+    indexing_state.is_document_indexing.return_value = False
+    indexing_state.is_segment_indexing.return_value = False
+    index = create_autospec(SegmentIndex, instance=True, spec_set=True)
+    service = DatasetSegmentApplicationService(
+        dataset_access=dataset_access,
+        store=store,
+        limits=SegmentLimitsStub(),
+        text_hash=generate_text_hash,
+        index=index,
+        uploads=create_autospec(SegmentUploadCatalog, instance=True, spec_set=True),
+        scopes=scopes,
+        model_guard=create_autospec(SegmentModelGuard, instance=True, spec_set=True),
+        indexing_state=indexing_state,
+        batch_dispatcher=create_autospec(SegmentBatchImportDispatcher, instance=True, spec_set=True),
+        job_id_factory=lambda: "job-1",
+    )
+    return service, store, index
 
 
 def test_list_segments_uses_complete_owner_scope() -> None:
@@ -275,6 +302,88 @@ def test_status_change_translates_operation_failure() -> None:
             segment_ids=["segment-1"],
             action="enable",
         )
+
+
+def test_status_change_persists_state_before_dispatching() -> None:
+    service, store, index = _service_with_index()
+    store.get_segments.return_value = (SegmentIndexTarget(id="segment-1", index_node_id="node-1", enabled=True),)
+    calls: list[str] = []
+    index.change_status.side_effect = lambda *args, **kwargs: calls.append("dispatch")
+    store.set_segments.side_effect = lambda *args, **kwargs: calls.append("persist")
+
+    service.change_segment_status(
+        _context(),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_ids=["segment-1"],
+        action="disable",
+    )
+
+    assert calls == ["persist", "dispatch"]
+    store.set_segments.assert_called_once()
+    persisted_ids, persisted_values = store.set_segments.call_args[0][1:3]
+    assert persisted_ids == ["segment-1"]
+    assert persisted_values["enabled"] is False
+    index.change_status.assert_called_once()
+
+
+def test_status_change_persists_state_when_dispatch_fails() -> None:
+    """With the restored persist-then-schedule order the remaining failure window is a
+    dispatch failure after the state was committed: the desired status stays persisted
+    and the error is translated for the caller, so an explicit retry can reconcile."""
+    service, store, index = _service_with_index()
+    store.get_segments.return_value = (SegmentIndexTarget(id="segment-1", index_node_id="node-1", enabled=False),)
+    index.change_status.side_effect = RuntimeError("broker unavailable")
+
+    with pytest.raises(SegmentStatusUpdateError, match="broker unavailable"):
+        service.change_segment_status(
+            _context(),
+            dataset_id="dataset-1",
+            document_id="document-1",
+            segment_ids=["segment-1"],
+            action="enable",
+        )
+
+    store.set_segments.assert_called_once()
+    persisted_ids, persisted_values = store.set_segments.call_args[0][1:3]
+    assert persisted_ids == ["segment-1"]
+    assert persisted_values["enabled"] is True
+    index.change_status.assert_called_once()
+
+
+def test_status_change_retry_after_dispatch_failure_reconciles_index() -> None:
+    """A retry whose persisted status already matches still re-dispatches the index
+    change so a previous failed dispatch cannot leave DB state and the retrieval
+    index permanently out of sync."""
+    service, store, index = _service_with_index()
+    store.get_segments.return_value = (SegmentIndexTarget(id="segment-1", index_node_id="node-1", enabled=False),)
+    index.change_status.side_effect = RuntimeError("broker unavailable")
+
+    with pytest.raises(SegmentStatusUpdateError):
+        service.change_segment_status(
+            _context(),
+            dataset_id="dataset-1",
+            document_id="document-1",
+            segment_ids=["segment-1"],
+            action="enable",
+        )
+    assert store.set_segments.called
+    assert index.change_status.call_count == 1
+
+    index.change_status.side_effect = None
+    store.get_segments.return_value = (SegmentIndexTarget(id="segment-1", index_node_id="node-1", enabled=True),)
+    service.change_segment_status(
+        _context(),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_ids=["segment-1"],
+        action="enable",
+    )
+
+    assert index.change_status.call_count == 2
+    assert index.change_status.call_args[0][1] == ["segment-1"]
+    assert index.change_status.call_args[0][2] == "enable"
+    assert store.set_segments.call_count == 1
 
 
 def test_update_and_delete_segment_map_missing_segment() -> None:
