@@ -291,3 +291,76 @@ class TestCotAgentOutputParser:
         if content.lower() in {"action:", "thought:"}:
             assert "action:" not in joined.lower()
             assert "thought:" not in joined.lower()
+
+    # --------------------------------------------------------
+    # Malformed action payloads (issue #45200)
+    # --------------------------------------------------------
+
+    def test_multi_item_json_list_is_not_an_action(self, make_chunk, usage_dict) -> None:
+        # A JSON list with more than one item is not a single action. The
+        # direct answer it carries must reach the user as text instead of
+        # raising AttributeError ('list' object has no attribute 'items').
+        content = '```json\n[{"name": "a"}, {"name": "b"}]\n```'
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert all(isinstance(item, str) for item in result)
+        assert json.loads("".join(result)) == [{"name": "a"}, {"name": "b"}]
+
+    @pytest.mark.parametrize("payload", ["[]", "[1]"])
+    def test_non_object_json_list_is_not_an_action(self, make_chunk, usage_dict, payload) -> None:
+        # An empty or non-object list used to raise AttributeError
+        # ('int' object has no attribute 'items'); it is plain text now.
+        content = f"```json\n{payload}\n```"
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert all(isinstance(item, str) for item in result)
+        assert json.loads("".join(result)) == json.loads(payload)
+
+    def test_multi_action_list_runs_first_action(self, make_chunk, usage_dict) -> None:
+        # The prompt allows exactly one action per turn: a list of actions
+        # runs the first one instead of crashing or running all of them.
+        content = '```json\n[{"action": "search", "input": "q1"}, {"action": "lookup", "input": "q2"}]\n```'
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert [item for item in result if isinstance(item, AgentScratchpadUnit.Action)] == [
+            AgentScratchpadUnit.Action(action_name="search", action_input="q1")
+        ]
+
+    def test_non_string_action_name_is_text(self, make_chunk, usage_dict) -> None:
+        # A non-string action name used to raise a pydantic ValidationError
+        # from AgentScratchpadUnit.Action; it is treated as text now.
+        content = '{"action": ["search"], "action_input": {"q": "x"}}'
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert all(isinstance(item, str) for item in result)
+        assert json.loads("".join(result)) == {"action": ["search"], "action_input": {"q": "x"}}
+
+    def test_extra_field_after_action_does_not_override_tool(self, make_chunk, usage_dict) -> None:
+        # Extra fields after the action used to override the tool name (the
+        # last non-input key won, so a trailing "reason" became the action).
+        content = '{"action": "search", "action_input": {"q": "x"}, "reason": "need data"}'
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert result == [AgentScratchpadUnit.Action(action_name="search", action_input={"q": "x"})]
+
+    def test_non_action_json_preserves_non_ascii(self, make_chunk, usage_dict) -> None:
+        # json.dumps defaults escaped non-ASCII to \uXXXX sequences; keep the
+        # model's text as-is when a payload is not an action.
+        content = '{"foo": "中文"}'
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert result == ['{"foo": "中文"}']
+
+    @pytest.mark.parametrize(
+        "action_input",
+        [[1, 2], 5],
+    )
+    def test_wrong_typed_action_input_is_text(self, make_chunk, usage_dict, action_input) -> None:
+        # A non-dict/str action input used to raise a pydantic ValidationError
+        # from AgentScratchpadUnit.Action; it is treated as text now.
+        payload = {"action": "search", "action_input": action_input}
+        content = json.dumps(payload)
+        chunks = [make_chunk(content)]
+        result = list(CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict))
+        assert all(isinstance(item, str) for item in result)
+        assert json.loads("".join(result)) == payload
