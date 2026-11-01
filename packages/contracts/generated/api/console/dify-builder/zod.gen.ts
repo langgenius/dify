@@ -19,6 +19,41 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * DifyBuilderConversationLifecyclePayload
+ *
+ * Lifecycle control uses Session CAS, never a graph revision.
+ */
+export const zDifyBuilderConversationLifecyclePayload = z.object({
+  base_version: z.int().gte(1),
+  client_action_id: z.string().min(1).max(128),
+  expected_task_id: z.string().max(255).optional().default(''),
+})
+
+/**
+ * DifyBuilderConversationLifecycleResponse
+ */
+export const zDifyBuilderConversationLifecycleResponse = z.object({
+  conversation_cleared: z.boolean(),
+  conversation_last_seq: z.int(),
+  last_command_id: z.string(),
+  session_id: z.string(),
+  settlement: z.enum(['pending', 'settled', 'unknown']),
+  task_id: z.string(),
+  task_status: z.literal('abandoned'),
+  version: z.int(),
+})
+
+/**
+ * DifyBuilderClearConversationPayload
+ */
+export const zDifyBuilderClearConversationPayload = z.object({
+  base_version: z.int().gte(1),
+  client_action_id: z.string().min(1).max(128),
+  confirmed: z.boolean(),
+  expected_task_id: z.string().max(255).optional().default(''),
+})
+
+/**
  * NativeTestStartPayload
  */
 export const zNativeTestStartPayload = z.object({
@@ -221,6 +256,17 @@ export const zSessionModel = z.object({
 })
 
 /**
+ * RunContextCard
+ */
+export const zRunContextCard = z.object({
+  error_code: z.string(),
+  message: z.string(),
+  run_id: z.string(),
+  title: z.string(),
+  trace_ref: z.string().optional().default(''),
+})
+
+/**
  * Phase
  *
  * Coarse UX phase shown in the panel header (spec §2).
@@ -263,6 +309,39 @@ export const zRunStatus = z.enum([
   'waiting_confirmation',
   'waiting_input',
 ])
+
+/**
+ * DifyBuilderRunContextConversationItemResponse
+ */
+export const zDifyBuilderRunContextConversationItemResponse = z.object({
+  at_version: z.int(),
+  kind: z.literal('run_context'),
+  payload: zRunContextCard,
+  seq: z.int(),
+})
+
+/**
+ * DifyBuilderChecklistErrorPayload
+ */
+export const zDifyBuilderChecklistErrorPayload = z.object({
+  messages: z.array(z.string()),
+  node_id: z.string(),
+  node_type: z.string(),
+  plugin_missing: z.boolean(),
+  title: z.string(),
+  unconnected: z.boolean(),
+})
+
+/**
+ * DifyBuilderFixIntentPayload
+ */
+export const zDifyBuilderFixIntentPayload = z.object({
+  base_version: z.int().gte(1),
+  checklist_errors: z.array(zDifyBuilderChecklistErrorPayload).max(100).optional(),
+  client_action_id: z.string().min(1).max(128),
+  failed_run_id: z.string().min(1).nullish(),
+  model_config: zSessionModel.nullish(),
+})
 
 /**
  * DifyBuilderAttachmentPayload
@@ -312,10 +391,38 @@ export const zDifyBuilderCreateEditSessionPayload = z.object({
 export const zDifyBuilderCreateFixSessionPayload = z.object({
   app_id: z.string().min(1),
   attachments: z.array(zDifyBuilderAttachmentPayload).max(5).optional(),
+  client_action_id: z.string().min(1).max(128).nullish(),
   failed_run_id: z.string().min(1),
   model_config: zSessionModel.nullish(),
   scenario: z.literal('fix'),
+  session_id: z.string().min(1).nullish(),
 })
+
+/**
+ * DifyBuilderCreateChecklistFixSessionPayload
+ */
+export const zDifyBuilderCreateChecklistFixSessionPayload = z.object({
+  app_id: z.string().min(1),
+  attachments: z.array(zDifyBuilderAttachmentPayload).max(5).optional(),
+  checklist_errors: z.array(zDifyBuilderChecklistErrorPayload).min(1),
+  client_action_id: z.string().min(1).max(128).nullish(),
+  failed_run_id: z.string().min(1).nullish(),
+  model_config: zSessionModel.nullish(),
+  scenario: z.literal('fix'),
+  session_id: z.string().min(1).nullish(),
+})
+
+/**
+ * DifyBuilderCreateSessionPayload
+ *
+ * Create a Build, Edit, failed-run Fix, or checklist Fix session.
+ */
+export const zDifyBuilderCreateSessionPayload = z.union([
+  zDifyBuilderCreateBuildSessionPayload,
+  zDifyBuilderCreateEditSessionPayload,
+  zDifyBuilderCreateFixSessionPayload,
+  zDifyBuilderCreateChecklistFixSessionPayload,
+])
 
 /**
  * NativeTestInputBinding
@@ -450,42 +557,6 @@ export const zDifyBuilderRealCallForbiddenResponse = z.discriminatedUnion('code'
   zDifyBuilderRealCallPermissionRefusalResponse,
   zDifyBuilderFeatureUnavailableResponse,
   zDifyBuilderConsoleForbiddenResponse,
-])
-
-/**
- * DifyBuilderChecklistErrorPayload
- */
-export const zDifyBuilderChecklistErrorPayload = z.object({
-  messages: z.array(z.string()),
-  node_id: z.string(),
-  node_type: z.string(),
-  plugin_missing: z.boolean(),
-  title: z.string(),
-  unconnected: z.boolean(),
-})
-
-/**
- * DifyBuilderCreateChecklistFixSessionPayload
- */
-export const zDifyBuilderCreateChecklistFixSessionPayload = z.object({
-  app_id: z.string().min(1),
-  attachments: z.array(zDifyBuilderAttachmentPayload).max(5).optional(),
-  checklist_errors: z.array(zDifyBuilderChecklistErrorPayload).min(1),
-  failed_run_id: z.string().min(1).nullish(),
-  model_config: zSessionModel.nullish(),
-  scenario: z.literal('fix'),
-})
-
-/**
- * DifyBuilderCreateSessionPayload
- *
- * Create a Build, Edit, failed-run Fix, or checklist Fix session.
- */
-export const zDifyBuilderCreateSessionPayload = z.union([
-  zDifyBuilderCreateBuildSessionPayload,
-  zDifyBuilderCreateEditSessionPayload,
-  zDifyBuilderCreateFixSessionPayload,
-  zDifyBuilderCreateChecklistFixSessionPayload,
 ])
 
 /**
@@ -638,6 +709,83 @@ export const zDifyBuilderMaterialReceiptResponse = z.object({
 })
 
 /**
+ * PreflightIssue
+ */
+export const zPreflightIssue = z.object({
+  messages: z.array(z.string()).optional(),
+  node_id: z.string(),
+  node_type: z.string(),
+  plugin_missing: z.boolean().optional().default(false),
+  title: z.string(),
+  unconnected: z.boolean().optional().default(false),
+})
+
+/**
+ * PreflightContextCard
+ */
+export const zPreflightContextCard = z.object({
+  issue_count: z.int(),
+  issues: z.array(zPreflightIssue).optional(),
+  node_count: z.int(),
+})
+
+/**
+ * DifyBuilderPreflightContextConversationItemResponse
+ */
+export const zDifyBuilderPreflightContextConversationItemResponse = z.object({
+  at_version: z.int(),
+  kind: z.literal('preflight_context'),
+  payload: zPreflightContextCard,
+  seq: z.int(),
+})
+
+/**
+ * EntryMode
+ */
+export const zEntryMode = z.enum(['build', 'edit', 'fix', 'fix_checklist'])
+
+/**
+ * TaskTestEvidence
+ */
+export const zTaskTestEvidence = z.object({
+  business_acceptance_case_id: z.string().optional().default(''),
+  business_acceptance_state: z
+    .enum(['failed', 'passed', 'unverified'])
+    .optional()
+    .default('unverified'),
+  execution_revision: z.string().optional().default(''),
+  graph_revision: z.string().optional().default(''),
+  mode: z.string().optional().default(''),
+  native_run_id: z.string().optional().default(''),
+  run_id: z.string().optional().default(''),
+  safety_outcome: z.string().optional().default(''),
+  sealed: z.boolean().optional().default(false),
+  status: z
+    .enum(['failed', 'not_run', 'running', 'stopped', 'succeeded', 'unknown'])
+    .optional()
+    .default('not_run'),
+})
+
+/**
+ * TaskSummary
+ */
+export const zTaskSummary = z.object({
+  change_summary: z.string().optional().default(''),
+  changed_node_ids: z.array(z.string()).optional(),
+  completion_version: z.int().optional().default(0),
+  constraints: z.record(z.string(), z.string()).optional(),
+  entry_mode: zEntryMode.optional().default('build'),
+  goal: z.string().optional().default(''),
+  outcome: z.enum(['kept_draft', 'published']).optional().default('kept_draft'),
+  output_contract: z.string().optional().default(''),
+  resource_ids: z.array(z.string()).optional(),
+  schema_version: z.literal(1).optional().default(1),
+  task_id: z.string().optional().default(''),
+  test_evidence: zTaskTestEvidence.optional(),
+  unresolved_risks: z.array(z.string()).optional(),
+})
+
+/**
  * CancellationReceipt
  */
 export const zCancellationReceipt = z.object({
@@ -699,27 +847,6 @@ export const zDifyBuilderUserConversationItemResponse = z.object({
   at_version: z.int(),
   kind: z.literal('user'),
   payload: zUserItem,
-  seq: z.int(),
-})
-
-/**
- * RunContextCard
- */
-export const zRunContextCard = z.object({
-  error_code: z.string(),
-  message: z.string(),
-  run_id: z.string(),
-  title: z.string(),
-  trace_ref: z.string().optional().default(''),
-})
-
-/**
- * DifyBuilderRunContextConversationItemResponse
- */
-export const zDifyBuilderRunContextConversationItemResponse = z.object({
-  at_version: z.int(),
-  kind: z.literal('run_context'),
-  payload: zRunContextCard,
   seq: z.int(),
 })
 
@@ -1397,19 +1524,33 @@ export const zDifyBuilderSessionViewResponse = z.object({
   app_revision: zDifyBuilderAppRevisionResponse.nullish(),
   attachments: z.array(zDifyBuilderMaterialReceiptResponse).max(100).optional(),
   canvas_read_only: z.boolean(),
+  conversation_cleared: z.boolean().optional().default(false),
   conversation_last_seq: z.int(),
   decision: zDecision.nullish(),
   diagnostics: z.array(z.record(z.string(), z.unknown())).max(33).optional(),
   interrupted: z.boolean(),
   last_command_id: z.string().optional().default(''),
   model: zSessionModel.nullish(),
+  pending_fix_context: z.union([zRunContextCard, zPreflightContextCard]).nullish(),
   phase: zPhase,
   recovery: zRecoveryRef.nullish(),
   reply_language: z.string(),
   run_status: zRunStatus,
   session_id: z.string(),
+  task_id: z.string().optional().default(''),
+  task_status: z.enum(['abandoned', 'active', 'completed', 'paused']).optional().default('active'),
+  task_summaries: z.array(zTaskSummary).max(8).optional(),
   test_execution: zNativeTestPublicReceipt.nullish(),
   version: z.int(),
+})
+
+/**
+ * DifyBuilderFixIntentResponse
+ */
+export const zDifyBuilderFixIntentResponse = z.object({
+  fix_intent_id: z.string(),
+  session: zDifyBuilderSessionViewResponse,
+  status: z.string(),
 })
 
 /**
@@ -1431,17 +1572,22 @@ export const zDifyBuilderCommandFinishedEventData = z.object({
   attachments: z.array(zDifyBuilderMaterialReceiptResponse).max(100).optional(),
   canvas_read_only: z.boolean(),
   command_id: z.string(),
+  conversation_cleared: z.boolean().optional().default(false),
   conversation_last_seq: z.int(),
   decision: zDecision.nullish(),
   diagnostics: z.array(z.record(z.string(), z.unknown())).max(33).optional(),
   interrupted: z.boolean(),
   model: zSessionModel.nullish(),
+  pending_fix_context: z.union([zRunContextCard, zPreflightContextCard]).nullish(),
   phase: zPhase,
   post_canvas_action_id: z.string().nullish(),
   recovery: zRecoveryRef.nullish(),
   reply_language: z.string(),
   run_status: zRunStatus,
   session_id: z.string(),
+  task_id: z.string().optional().default(''),
+  task_status: z.enum(['abandoned', 'active', 'completed', 'paused']).optional().default('active'),
+  task_summaries: z.array(zTaskSummary).max(8).optional(),
   test_execution: zNativeTestPublicReceipt.nullish(),
   version: z.int(),
 })
@@ -1500,37 +1646,6 @@ export const zDifyBuilderInteractionResponseConversationItemResponse = z.object(
   at_version: z.int(),
   kind: z.literal('interaction_response'),
   payload: zInteractionResponseItem,
-  seq: z.int(),
-})
-
-/**
- * PreflightIssue
- */
-export const zPreflightIssue = z.object({
-  messages: z.array(z.string()).optional(),
-  node_id: z.string(),
-  node_type: z.string(),
-  plugin_missing: z.boolean().optional().default(false),
-  title: z.string(),
-  unconnected: z.boolean().optional().default(false),
-})
-
-/**
- * PreflightContextCard
- */
-export const zPreflightContextCard = z.object({
-  issue_count: z.int(),
-  issues: z.array(zPreflightIssue).optional(),
-  node_count: z.int(),
-})
-
-/**
- * DifyBuilderPreflightContextConversationItemResponse
- */
-export const zDifyBuilderPreflightContextConversationItemResponse = z.object({
-  at_version: z.int(),
-  kind: z.literal('preflight_context'),
-  payload: zPreflightContextCard,
   seq: z.int(),
 })
 
@@ -2507,6 +2622,19 @@ export const zGetDifyBuilderSessionsBySessionIdPath = z.object({
  */
 export const zGetDifyBuilderSessionsBySessionIdResponse = zDifyBuilderSessionViewResponse
 
+export const zPostDifyBuilderSessionsBySessionIdAbandonBody =
+  zDifyBuilderConversationLifecyclePayload
+
+export const zPostDifyBuilderSessionsBySessionIdAbandonPath = z.object({
+  session_id: z.string(),
+})
+
+/**
+ * Task abandoned
+ */
+export const zPostDifyBuilderSessionsBySessionIdAbandonResponse =
+  zDifyBuilderConversationLifecycleResponse
+
 export const zPostDifyBuilderSessionsBySessionIdActionsBody = zDifyBuilderSubmitActionPayload
 
 export const zPostDifyBuilderSessionsBySessionIdActionsPath = z.object({
@@ -2517,6 +2645,18 @@ export const zPostDifyBuilderSessionsBySessionIdActionsPath = z.object({
  * Dify Builder event stream
  */
 export const zPostDifyBuilderSessionsBySessionIdActionsResponse = zDifyBuilderStreamEventResponse
+
+export const zPostDifyBuilderSessionsBySessionIdClearBody = zDifyBuilderClearConversationPayload
+
+export const zPostDifyBuilderSessionsBySessionIdClearPath = z.object({
+  session_id: z.string(),
+})
+
+/**
+ * Conversation cleared
+ */
+export const zPostDifyBuilderSessionsBySessionIdClearResponse =
+  zDifyBuilderConversationLifecycleResponse
 
 export const zGetDifyBuilderSessionsBySessionIdConversationPath = z.object({
   session_id: z.string(),
@@ -2533,6 +2673,17 @@ export const zGetDifyBuilderSessionsBySessionIdConversationQuery = z.object({
  */
 export const zGetDifyBuilderSessionsBySessionIdConversationResponse =
   zDifyBuilderConversationPageResponse
+
+export const zPostDifyBuilderSessionsBySessionIdFixIntentsBody = zDifyBuilderFixIntentPayload
+
+export const zPostDifyBuilderSessionsBySessionIdFixIntentsPath = z.object({
+  session_id: z.string(),
+})
+
+/**
+ * Validated Fix intent
+ */
+export const zPostDifyBuilderSessionsBySessionIdFixIntentsResponse = zDifyBuilderFixIntentResponse
 
 export const zPostDifyBuilderSessionsBySessionIdMessagesBody = zDifyBuilderSubmitMessagePayload
 
