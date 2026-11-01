@@ -5,6 +5,7 @@ from datetime import datetime
 from uuid import uuid4
 
 import pytest
+from typing_extensions import TypedDict
 
 from core.dify_builder.contract import RunContextCard
 from core.dify_builder.errors import ConflictError, NotFoundError
@@ -22,6 +23,14 @@ from tests.unit_tests.services.dify_builder.test_service import ACCOUNT_ID, APP_
 pytest_plugins = ["tests.unit_tests.services.dify_builder.test_service"]
 
 ACTOR = Actor(account_id=ACCOUNT_ID, tenant_id=TENANT_ID)
+
+
+class _FixControlQuery(TypedDict, closed=True):
+    operation: str
+    client_action_id: str
+    base_version: int
+    fix_intent_id: str
+    expected_task_id: str
 
 
 def seed(repo: SqlDifyBuilderRepository, state: PcState = PcState.BUILD_PLAN_APPROVAL) -> Session:
@@ -619,7 +628,7 @@ def test_control_receipt_reads_exact_intake_and_decision_without_dispatch(
         kind="dismiss_fix",
         client_action_id="lost-dismiss",
     )
-    decision = {
+    decision: _FixControlQuery = {
         "operation": "dismiss_fix",
         "client_action_id": "lost-dismiss",
         "base_version": 1,
@@ -627,13 +636,15 @@ def test_control_receipt_reads_exact_intake_and_decision_without_dispatch(
         "expected_task_id": f"{session.id}:0",
     }
     assert service.get_fix_control_receipt(session.id, ACTOR, **decision)["acknowledged"] is True
-    for forged in (
-        {"client_action_id": "other"},
-        {"expected_task_id": "other-task"},
-        {"operation": "stop_and_switch_fix"},
-    ):
+    forged_action = decision.copy()
+    forged_action["client_action_id"] = "other"
+    forged_task = decision.copy()
+    forged_task["expected_task_id"] = "other-task"
+    forged_operation = decision.copy()
+    forged_operation["operation"] = "stop_and_switch_fix"
+    for forged in (forged_action, forged_task, forged_operation):
         with pytest.raises((ConflictError, NotFoundError)):
-            service.get_fix_control_receipt(session.id, ACTOR, **{**decision, **forged})
+            service.get_fix_control_receipt(session.id, ACTOR, **forged)
     with pytest.raises(NotFoundError):
         service.get_fix_control_receipt(session.id, replace(ACTOR, account_id=str(uuid4())), **decision)
     with pytest.raises(NotFoundError):
@@ -661,7 +672,7 @@ def test_switch_control_receipt_remains_unacknowledged_until_activation(
         kind="stop_and_switch_fix",
         client_action_id="lost-switch",
     )
-    query = {
+    query: _FixControlQuery = {
         "operation": "stop_and_switch_fix",
         "client_action_id": "lost-switch",
         "base_version": 1,
