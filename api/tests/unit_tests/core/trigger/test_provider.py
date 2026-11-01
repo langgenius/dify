@@ -348,7 +348,7 @@ class TestRefreshTrigger:
         mock_client.return_value.refresh.return_value.subscription = {
             "expires_at": 456,
             "endpoint": "https://e",
-            "properties": {},
+            "properties": dict[str, object](),
             "parameters": parameters,
         }
 
@@ -366,7 +366,7 @@ class TestRefreshTrigger:
         mock_client.return_value.refresh.return_value.subscription = {
             "expires_at": 456,
             "endpoint": "https://e",
-            "properties": {},
+            "properties": dict[str, object](),
             "parameters": "invalid",
         }
 
