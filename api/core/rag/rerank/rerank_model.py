@@ -122,7 +122,12 @@ class RerankModelRunner(BaseRerankRunner):
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> tuple[RerankResult, list[Document]]:
         """
-        Fetch multimodal rerank
+        Fetch rerank results using a vision-capable model.
+
+        Text queries with image candidates use the multimodal invocation so those
+        candidates can be scored. Text-only candidates retain the text invocation.
+        Image candidates and queries require stored uploads; storage and model
+        errors propagate to the caller.
         :param query: search query
         :param documents: documents for reranking
         :param score_threshold: score threshold
@@ -171,6 +176,14 @@ class RerankModelRunner(BaseRerankRunner):
 
         documents = unique_documents
         if query_type == QueryType.TEXT_QUERY:
+            if any(doc["content_type"] == DocType.IMAGE for doc in docs):
+                rerank_result = self.rerank_model_instance.invoke_multimodal_rerank(
+                    query=MultimodalRerankInput(content=query, content_type=DocType.TEXT),
+                    docs=docs,
+                    score_threshold=score_threshold,
+                    top_n=top_n,
+                )
+                return rerank_result, unique_documents
             rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n)
             return rerank_result, unique_documents
         elif query_type == QueryType.IMAGE_QUERY:
