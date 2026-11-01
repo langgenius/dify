@@ -192,6 +192,7 @@ FILES += [
 FILES += [
     "api/tests/unit_tests/services/dify_builder/test_knowledge_inventory.py",
     "api/tests/unit_tests/services/dify_builder/test_knowledge_discovery.py",
+    "api/tests/unit_tests/services/dify_builder/test_knowledge_source_cue.py",
 ]
 SELECTED_GUARDS = [
     "api/tests/unit_tests/core/dify_builder/test_handlers_edit.py::test_sufficient_goal_reaches_plan_gate_or_actionable_retry_with_monotonic_progress",
@@ -2664,13 +2665,27 @@ a4_expected.update(
             "test_reconfirmation_rechecks_permission_even_after_preference_was_recorded": 1,
             "test_first_decline_asks_explicit_goal_change_instead_of_approving": 2,
             "test_knowledge_catalogue_failure_without_selected_id_cannot_approve": 1,
+            "test_model_only_confirmation_does_not_ask_to_waive_an_explicitly_excluded_knowledge_goal": 1,
+            "test_mixed_or_uncertain_source_cannot_bypass_handler_with_false_model_hint": 8,
             "test_refusing_goal_change_keeps_knowledge_wait_and_never_replans": 1,
             "test_explicit_goal_change_is_traceable_and_allows_no_knowledge_plan": 1,
             "test_forged_or_old_decision_field_does_not_modify_goal": 1,
             "test_public_description_is_bounded_escaped_data_in_same_discovery_call": 1,
             "test_replaying_resolved_scope_card_does_not_reauthorize_or_replan": 1,
             "test_decision_is_rejected_after_goal_or_actor_changes": 1,
-            "test_real_discovery_empty_or_failed_source_cannot_authorize_omission": 4
+            "test_real_discovery_empty_or_failed_source_cannot_authorize_omission": 4,
+            "test_excluded_resource_list_reaches_formal_plan_without_a_knowledge_waiver": 3,
+            "test_excluded_resource_list_never_disables_server_or_model_source_guards": 3
+        },
+        "tests.unit_tests.services.dify_builder.test_knowledge_source_cue": {
+            "test_explicitly_excluded_source_does_not_create_a_knowledge_goal": 11,
+            "test_affirmative_mixed_or_uncertain_source_still_requires_clarification": 29,
+            "test_requirement_keys_and_nontext_values_do_not_invent_source_use": 6,
+            "test_affirmative_requirement_overrides_goal_exclusion": 5,
+            "test_captured_agent_only_goal_and_forbidden_resource_list_do_not_invent_knowledge_use": 3,
+            "test_direct_add_exclusion_only_discounts_known_resource_categories": 5,
+            "test_explicit_resource_exclusion_list_keeps_its_role_when_nested": 3,
+            "test_exclusion_lists_never_hide_positive_unknown_or_node_only_requirements": 14
         },
         "tests.unit_tests.services.dify_builder.test_resources": {
             "test_list_tenant_resources_normalizes_all_three_kinds": 1,
