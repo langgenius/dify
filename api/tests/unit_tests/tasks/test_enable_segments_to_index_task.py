@@ -234,3 +234,40 @@ def test_enable_segments_rolls_back_before_error_compensation(
     assert persisted_segment.disabled_at is not None
     assert phase_events == ["load", "rollback", "commit"]
     enable_summaries.assert_not_called()
+
+
+def test_repeated_batch_enable_dispatches_stay_idempotent(
+    sqlite_session: Session,
+    indexed_segment: tuple[Dataset, Document, DocumentSegment],
+) -> None:
+    """Reconciliation retries re-dispatch the same batch: repeated task runs keep an
+    already enabled completed segment stable instead of corrupting its state."""
+    dataset, document, segment = indexed_segment
+    loads: list[list[str]] = []
+    index_processor = MagicMock()
+    index_processor.load.side_effect = lambda _dataset, documents, **_kwargs: loads.append(
+        [item.metadata["doc_id"] for item in documents]
+    )
+
+    with (
+        patch("tasks.enable_segments_to_index_task.IndexProcessorFactory") as processor_factory,
+        patch(
+            "services.knowledge.summaries.adapters.SummaryIndexAdapter.enable_summaries_for_segments"
+        ) as enable_summaries,
+        patch("tasks.enable_segments_to_index_task.redis_client.delete"),
+    ):
+        processor_factory.return_value.init_index_processor.return_value = index_processor
+        enable_segments_to_index_task.run([segment.id], dataset.id, document.id)
+        enable_segments_to_index_task.run([segment.id], dataset.id, document.id)
+
+    assert loads == [["node-1"], ["node-1"]]
+    assert enable_summaries.call_count == 2
+
+    sqlite_session.expire_all()
+    persisted_segment = sqlite_session.get(DocumentSegment, segment.id)
+    assert persisted_segment is not None
+    assert persisted_segment.status == SegmentStatus.COMPLETED
+    assert persisted_segment.enabled is True
+    assert persisted_segment.index_node_id == "node-1"
+    assert persisted_segment.error is None
+    assert persisted_segment.disabled_at is None

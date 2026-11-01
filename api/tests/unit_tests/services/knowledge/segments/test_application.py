@@ -4,9 +4,13 @@ from typing import Literal
 from unittest.mock import Mock, create_autospec
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from libs.helper import generate_text_hash
 from machinery.context import RequestContext
+from models.dataset import DocumentSegment
+from models.enums import SegmentStatus
+from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from services.knowledge.dataset_access import (
     AccessibleDataset,
     DatasetAccess,
@@ -32,6 +36,7 @@ from services.knowledge.segments.application import (
     SegmentEmbeddingModelUnavailableError,
     SegmentIndex,
     SegmentIndexingState,
+    SegmentIndexTarget,
     SegmentInvalidFileTypeError,
     SegmentListFilter,
     SegmentModelGuard,
@@ -132,6 +137,32 @@ def _service(scope: SegmentScope | None = None, *, uploads: SegmentUploadCatalog
         job_id_factory=lambda: "job-1",
     )
     return service, dataset_access, store, scopes, model_guard, indexing_state, dispatcher
+
+
+def _service_with_index() -> tuple[DatasetSegmentApplicationService, Mock, Mock]:
+    dataset_access = create_autospec(DatasetAccess, instance=True, spec_set=True)
+    dataset_access.check_access.return_value = AccessibleDataset(id="dataset-1", workspace_id="workspace-1")
+    store = create_autospec(SegmentStore, instance=True, spec_set=True)
+    scopes = create_autospec(SegmentScopeReader, instance=True, spec_set=True)
+    scopes.get_segment_scope.return_value = _scope()
+    indexing_state = create_autospec(SegmentIndexingState, instance=True, spec_set=True)
+    indexing_state.is_document_indexing.return_value = False
+    indexing_state.is_segment_indexing.return_value = False
+    index = create_autospec(SegmentIndex, instance=True, spec_set=True)
+    service = DatasetSegmentApplicationService(
+        dataset_access=dataset_access,
+        store=store,
+        limits=SegmentLimitsStub(),
+        text_hash=generate_text_hash,
+        index=index,
+        uploads=create_autospec(SegmentUploadCatalog, instance=True, spec_set=True),
+        scopes=scopes,
+        model_guard=create_autospec(SegmentModelGuard, instance=True, spec_set=True),
+        indexing_state=indexing_state,
+        batch_dispatcher=create_autospec(SegmentBatchImportDispatcher, instance=True, spec_set=True),
+        job_id_factory=lambda: "job-1",
+    )
+    return service, store, index
 
 
 def test_list_segments_uses_complete_owner_scope() -> None:
@@ -247,6 +278,63 @@ def test_model_failures_are_translated_per_use_case(
         invoke()
 
 
+def _service_with_real_store(
+    sqlite_session_factory: sessionmaker[Session],
+) -> tuple[DatasetSegmentApplicationService, Mock]:
+    """Wire the application service to the real SQLAlchemy store over a SQLite session."""
+    dataset_access = create_autospec(DatasetAccess, instance=True, spec_set=True)
+    dataset_access.check_access.return_value = AccessibleDataset(id="dataset-1", workspace_id="workspace-1")
+    store = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    scopes = create_autospec(SegmentScopeReader, instance=True, spec_set=True)
+    scopes.get_segment_scope.return_value = _scope()
+    indexing_state = create_autospec(SegmentIndexingState, instance=True, spec_set=True)
+    indexing_state.is_document_indexing.return_value = False
+    indexing_state.is_segment_indexing.return_value = False
+    index = create_autospec(SegmentIndex, instance=True, spec_set=True)
+    service = DatasetSegmentApplicationService(
+        dataset_access=dataset_access,
+        store=store,
+        limits=SegmentLimitsStub(),
+        text_hash=generate_text_hash,
+        index=index,
+        uploads=create_autospec(SegmentUploadCatalog, instance=True, spec_set=True),
+        scopes=scopes,
+        model_guard=create_autospec(SegmentModelGuard, instance=True, spec_set=True),
+        indexing_state=indexing_state,
+        batch_dispatcher=create_autospec(SegmentBatchImportDispatcher, instance=True, spec_set=True),
+        job_id_factory=lambda: "job-1",
+    )
+    return service, index
+
+
+def _sqlite_segment(
+    segment_id: str,
+    *,
+    workspace_id: str = "workspace-1",
+    enabled: bool = True,
+    disabled_at: datetime | None = None,
+    disabled_by: str | None = None,
+) -> DocumentSegment:
+    segment = DocumentSegment(
+        tenant_id=workspace_id,
+        dataset_id="dataset-1",
+        document_id="document-1",
+        position=1,
+        content="content",
+        word_count=7,
+        tokens=2,
+        created_by="account-1",
+        index_node_id="node-1",
+        index_node_hash="hash-1",
+        status=SegmentStatus.COMPLETED,
+        enabled=enabled,
+        disabled_at=disabled_at,
+        disabled_by=disabled_by,
+    )
+    segment.id = segment_id
+    return segment
+
+
 def test_status_change_is_fenced_by_document_indexing_state() -> None:
     service, _, store, scopes, _, state, _ = _service()
     state.is_document_indexing.return_value = True
@@ -275,6 +363,237 @@ def test_status_change_translates_operation_failure() -> None:
             segment_ids=["segment-1"],
             action="enable",
         )
+
+
+def test_status_change_persists_state_before_dispatching() -> None:
+    service, store, index = _service_with_index()
+    store.get_segments.return_value = (SegmentIndexTarget(id="segment-1", index_node_id="node-1", enabled=True),)
+    calls: list[str] = []
+    index.change_status.side_effect = lambda *args, **kwargs: calls.append("dispatch")
+    store.set_segments.side_effect = lambda *args, **kwargs: calls.append("persist")
+
+    service.change_segment_status(
+        _context(),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_ids=["segment-1"],
+        action="disable",
+    )
+
+    assert calls == ["persist", "dispatch"]
+    store.set_segments.assert_called_once()
+    persisted_ids, persisted_values = store.set_segments.call_args[0][1:3]
+    assert persisted_ids == ["segment-1"]
+    assert persisted_values["enabled"] is False
+    index.change_status.assert_called_once()
+
+
+def test_status_change_persists_state_when_dispatch_fails() -> None:
+    """With the restored persist-then-schedule order the remaining failure window is a
+    dispatch failure after the state was committed: the desired status stays persisted
+    and the error is translated for the caller, so an explicit retry can reconcile."""
+    service, store, index = _service_with_index()
+    store.get_segments.return_value = (SegmentIndexTarget(id="segment-1", index_node_id="node-1", enabled=False),)
+    index.change_status.side_effect = RuntimeError("broker unavailable")
+
+    with pytest.raises(SegmentStatusUpdateError, match="broker unavailable"):
+        service.change_segment_status(
+            _context(),
+            dataset_id="dataset-1",
+            document_id="document-1",
+            segment_ids=["segment-1"],
+            action="enable",
+        )
+
+    store.set_segments.assert_called_once()
+    persisted_ids, persisted_values = store.set_segments.call_args[0][1:3]
+    assert persisted_ids == ["segment-1"]
+    assert persisted_values["enabled"] is True
+    index.change_status.assert_called_once()
+
+
+def test_status_change_retry_after_dispatch_failure_reconciles_index() -> None:
+    """A retry whose persisted status already matches still re-dispatches the index
+    change so a previous failed dispatch cannot leave DB state and the retrieval
+    index permanently out of sync."""
+    service, store, index = _service_with_index()
+    store.get_segments.return_value = (SegmentIndexTarget(id="segment-1", index_node_id="node-1", enabled=False),)
+    index.change_status.side_effect = RuntimeError("broker unavailable")
+
+    with pytest.raises(SegmentStatusUpdateError):
+        service.change_segment_status(
+            _context(),
+            dataset_id="dataset-1",
+            document_id="document-1",
+            segment_ids=["segment-1"],
+            action="enable",
+        )
+    assert store.set_segments.called
+    assert index.change_status.call_count == 1
+
+    index.change_status.side_effect = None
+    store.get_segments.return_value = (SegmentIndexTarget(id="segment-1", index_node_id="node-1", enabled=True),)
+    service.change_segment_status(
+        _context(),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_ids=["segment-1"],
+        action="enable",
+    )
+
+    assert index.change_status.call_count == 2
+    assert index.change_status.call_args[0][1] == ["segment-1"]
+    assert index.change_status.call_args[0][2] == "enable"
+    assert store.set_segments.call_count == 1
+
+
+def test_status_change_broker_failure_for_matching_batch_is_translated() -> None:
+    """A dispatch failure is surfaced even when every requested segment already matches
+    the requested status,     instead of being swallowed as a no-op."""
+    service, store, index = _service_with_index()
+    store.get_segments.return_value = (SegmentIndexTarget(id="segment-1", index_node_id="node-1", enabled=True),)
+    index.change_status.side_effect = RuntimeError("broker unavailable")
+
+    with pytest.raises(SegmentStatusUpdateError, match="broker unavailable"):
+        service.change_segment_status(
+            _context(),
+            dataset_id="dataset-1",
+            document_id="document-1",
+            segment_ids=["segment-1"],
+            action="enable",
+        )
+
+    store.set_segments.assert_not_called()
+    index.change_status.assert_called_once_with(_document().ref, ["segment-1"], "enable")
+
+
+@pytest.mark.parametrize("action", ["enable", "disable"])
+@pytest.mark.parametrize("batch", ["single", "mixed"], ids=["single", "mixed-batch"])
+def test_status_change_persists_changes_and_dispatches_full_scope(
+    action: Literal["enable", "disable"],
+    batch: Literal["single", "mixed"],
+) -> None:
+    """Persistence covers only actual status changes while the dispatch covers every
+    non-indexing segment in scope; foreign ids never reach either call."""
+    service, store, index = _service_with_index()
+    targets = [
+        SegmentIndexTarget(id="segment-1", index_node_id="node-1", enabled=action != "enable"),
+        SegmentIndexTarget(id="already-target", index_node_id="node-2", enabled=action == "enable"),
+    ]
+    store.get_segments.return_value = tuple(targets) if batch == "mixed" else tuple(targets[:1])
+    requested_ids = ["segment-1", "already-target", "foreign"] if batch == "mixed" else ["segment-1", "foreign"]
+
+    service.change_segment_status(
+        _context(),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_ids=requested_ids,
+        action=action,
+    )
+
+    store.set_segments.assert_called_once()
+    persisted_ids, persisted_values = store.set_segments.call_args[0][1:3]
+    assert persisted_ids == ["segment-1"]
+    assert persisted_values["enabled"] == (action == "enable")
+    if action == "disable":
+        assert persisted_values["disabled_by"] == "account-1"
+        assert persisted_values["disabled_at"] is not None
+    else:
+        assert persisted_values["disabled_at"] is None
+        assert persisted_values["disabled_by"] is None
+
+    index.change_status.assert_called_once()
+    dispatched_ref, dispatched_ids, dispatched_action = index.change_status.call_args[0]
+    assert dispatched_ref == _document().ref
+    assert dispatched_action == action
+    assert set(dispatched_ids) == {"segment-1"} | ({"already-target"} if batch == "mixed" else set())
+    assert "foreign" not in dispatched_ids
+
+
+@pytest.mark.parametrize("action", ["enable", "disable"])
+@pytest.mark.parametrize("batch", ["single", "mixed"], ids=["single", "mixed-batch"])
+def test_status_retry_reconciles_index_with_sqlite_persistence(
+    sqlite_session_factory: sessionmaker[Session],
+    action: Literal["enable", "disable"],
+    batch: Literal["single", "mixed"],
+) -> None:
+    """End-to-end retry over a real SQLite session: a failed dispatch leaves the desired
+    status persisted, the retry re-enqueues the index task for every non-indexing
+    segment in scope (skipping out-of-scope ids) and never rewrites audit metadata."""
+    service, index = _service_with_real_store(sqlite_session_factory)
+    previous_disabled_at = datetime(2025, 1, 1)
+    previous_disabled_by = "previous-editor"
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            _sqlite_segment(
+                "segment-1",
+                enabled=action != "enable",
+                disabled_at=previous_disabled_at,
+                disabled_by=previous_disabled_by,
+            )
+        )
+        session.add(_sqlite_segment("foreign", workspace_id="workspace-2", enabled=action != "enable"))
+        if batch == "mixed":
+            session.add(
+                _sqlite_segment(
+                    "already-target",
+                    enabled=action == "enable",
+                    disabled_at=previous_disabled_at,
+                    disabled_by=previous_disabled_by,
+                )
+            )
+
+    requested_ids = ["segment-1", "foreign"] + (["already-target"] if batch == "mixed" else [])
+    expected_ids = {"segment-1"} | ({"already-target"} if batch == "mixed" else set())
+    index.change_status.side_effect = RuntimeError("broker unavailable")
+
+    with pytest.raises(SegmentStatusUpdateError, match="broker unavailable"):
+        service.change_segment_status(
+            _context(),
+            dataset_id="dataset-1",
+            document_id="document-1",
+            segment_ids=requested_ids,
+            action=action,
+        )
+
+    assert index.change_status.call_count == 1
+    assert set(index.change_status.call_args[0][1]) == expected_ids
+    with sqlite_session_factory() as session:
+        target = session.get(DocumentSegment, "segment-1")
+        assert target is not None
+        assert target.enabled == (action == "enable")
+        if action == "disable":
+            assert target.disabled_by == "account-1"
+            assert target.disabled_at is not None
+        else:
+            assert (target.disabled_at, target.disabled_by) == (None, None)
+        target_audit = (target.disabled_at, target.disabled_by)
+
+    index.change_status.side_effect = None
+    service.change_segment_status(
+        _context(),
+        dataset_id="dataset-1",
+        document_id="document-1",
+        segment_ids=requested_ids,
+        action=action,
+    )
+
+    assert index.change_status.call_count == 2
+    assert index.change_status.call_args[0][0] == _document().ref
+    assert set(index.change_status.call_args[0][1]) == expected_ids
+    assert index.change_status.call_args[0][2] == action
+    with sqlite_session_factory() as session:
+        target = session.get(DocumentSegment, "segment-1")
+        assert target is not None
+        assert (target.disabled_at, target.disabled_by) == target_audit
+        foreign = session.get(DocumentSegment, "foreign")
+        assert foreign is not None
+        assert foreign.enabled == (action != "enable")
+        if batch == "mixed":
+            matched = session.get(DocumentSegment, "already-target")
+            assert matched is not None
+            assert matched.enabled == (action == "enable")
+            assert (matched.disabled_at, matched.disabled_by) == (previous_disabled_at, previous_disabled_by)
 
 
 def test_update_and_delete_segment_map_missing_segment() -> None:
