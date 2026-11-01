@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "Dodano v kontekst",
+  "attachments.pending": "V čakalni vrsti",
+  "attachments.rejected": "Ni uporabljeno",
+  "attachments.superseded": "Ni več uporabljeno",
+  "attachments.truncated": "Delno dodano",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "Platna poteka dela ni bilo mogoče osvežiti. {{reason}}",
   "cardCategory.checks": "Preverjanja",

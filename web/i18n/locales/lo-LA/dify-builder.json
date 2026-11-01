@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "ເພີ່ມໃນບໍລິບົດແລ້ວ",
+  "attachments.pending": "ກຳລັງລໍຖ້າ",
+  "attachments.rejected": "ບໍ່ໄດ້ໃຊ້",
+  "attachments.superseded": "ບໍ່ໃຊ້ອີກແລ້ວ",
+  "attachments.truncated": "ເພີ່ມບາງສ່ວນແລ້ວ",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "ບໍ່ສາມາດໂຫຼດພື້ນທີ່ເຮັດວຽກຂອງເວີກໂຟລໃໝ່ໄດ້. {{reason}}",
   "cardCategory.checks": "ການກວດສອບ",

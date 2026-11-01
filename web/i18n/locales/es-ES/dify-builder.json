@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "Añadido al contexto",
+  "attachments.pending": "En cola",
+  "attachments.rejected": "No utilizado",
+  "attachments.superseded": "Ya no se utiliza",
+  "attachments.truncated": "Añadido parcialmente",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "No se pudo actualizar el lienzo del flujo de trabajo. {{reason}}",
   "cardCategory.checks": "Comprobaciones",

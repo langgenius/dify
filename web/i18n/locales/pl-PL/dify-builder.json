@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "Dodano do kontekstu",
+  "attachments.pending": "W kolejce",
+  "attachments.rejected": "Niewykorzystane",
+  "attachments.superseded": "Już nieużywane",
+  "attachments.truncated": "Dodano częściowo",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "Nie udało się odświeżyć obszaru przepływu pracy. {{reason}}",
   "cardCategory.checks": "Kontrole",
