@@ -326,6 +326,34 @@ def test_model_only_confirmation_does_not_ask_to_waive_an_explicitly_excluded_kn
     assert not any(item.kind == "form" for item in items)
 
 
+@pytest.mark.parametrize(
+    ("goal", "requirements"),
+    [
+        ("不使用工具，必须查询文档和知识库", {}),
+        ("Do not use tools, retrieve answers from documents and knowledge bases.", {}),
+        ("不可以不使用知识库", {}),
+        ("You cannot avoid using the knowledge base.", {}),
+        ("整理用户文本", {"rules": [{"source": "不使用工具，必须查询文档和知识库"}]}),
+        ("不使用知识库A，需要知识库B回答。", {}),
+        ("不要生成知识库节点但仍需检索", {}),
+        ("Do not use a knowledge base unless retrieval is necessary.", {}),
+    ],
+)
+def test_mixed_or_uncertain_source_cannot_bypass_handler_with_false_model_hint(
+    goal: str, requirements: dict[str, object]
+) -> None:
+    plan = WorkflowPlan("Text summary", "Input", "Summary", ["Use the selected model"], used_resource_ids=[MODEL])
+    context = DifyBuilderContext(
+        goal_text=goal,
+        requirements=requirements,
+        resource_selection={"knowledge_source_unavailable": False, "knowledge_requires_clarification": False},
+    )
+    result, stored, _, _ = confirm(ReconciliationAgent(plan), offered=[], ids=[MODEL], context=context)
+    assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert stored.resource_selection["knowledge_decision_pending"]["original_goal"] == goal
+    assert not stored.checkpoint_id
+
+
 def decision_dialog() -> tuple[Runner, InMemoryRepository, str, ReconciliationAgent]:
     native = WorkflowPlan(
         "Question formatter",
