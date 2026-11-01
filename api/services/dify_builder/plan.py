@@ -59,13 +59,18 @@ _SOURCE_EXCLUSION = re.compile(
     r"\b(?:without|exclude|excluding|no need for)\s+|\bno need to\s+(?:use|query|access)\s+|"
     r"\bavoid\s+(?:using|querying|accessing)\s+"
 )
+_RESOURCE_MODIFIER = r"(?:(?:a|an|the|any|external|existing|workspace|外部|现有|已有|任何|工作区)\s*)*"
+_RESOURCE_CLASS = (
+    r"(?:工具|插件|模型|文件|知识库|知识检索|tools?|https?|agents?|plugins?|models?|files?|"
+    r"knowledge[ _-]+(?:bases?|retrieval))"
+)
+# Only native resource classes prove a list. Free-form objects may contain a
+# new affirmative predicate; an unknown list item must retain clarification.
 _EXCLUDED_LIST_TAIL = re.compile(
-    r"\s*(?:[\w-]+(?:\s+[\w-]+){0,3}\s*(?:[,，、/&]|\band\b|\bor\b|和|或|以及|与)\s*)*"
-    r"(?:(?:a|an|the|any|external|existing|workspace|外部|现有|已有|任何|工作区)\s*)*"
+    rf"\s*(?:{_RESOURCE_MODIFIER}{_RESOURCE_CLASS}\s*(?:[,，、/&]|\band\b|\bor\b|和|或|以及|与)\s*)*"
+    rf"{_RESOURCE_MODIFIER}"
 )
-_NEGATED_EXCLUSION = re.compile(
-    r"(?:不(?:能|要|得|可|必|应)?|无需|无须|禁止|禁用|避免|拒绝|\b(?:not|never|without|avoid))\s*$"
-)
+_NEGATED_EXCLUSION = re.compile(r"不|无需|无须|禁止|禁用|避免|拒绝|\b(?:not|never|without|avoid|cannot|no|\w+n['’]t)\b")
 _SOURCE_IMPLEMENTATION = re.compile(
     r"\s*(?:的)?(?:检索)?(?:节点|配置|参数|绑定)|"
     r"\s+(?:retrieval\s+)?(?:nodes?|configuration|settings|parameters?|bindings?)\b"
@@ -103,7 +108,9 @@ def has_knowledge_source_cue(goal: str, requirements: object) -> bool:
                 return True
             excluded = any(
                 _EXCLUDED_LIST_TAIL.fullmatch(prefix[exclusion.end() :])
-                and not _NEGATED_EXCLUSION.search(prefix[: exclusion.start()])
+                # An earlier negation in the same adjoining clause makes the
+                # exclusion unproven (cannot avoid, 不可以不, 不需要禁止...).
+                and not _NEGATED_EXCLUSION.search(re.split(r"[,，、]", prefix[: exclusion.start()])[-1])
                 for exclusion in _SOURCE_EXCLUSION.finditer(prefix)
             )
             if not excluded:
