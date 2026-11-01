@@ -32,6 +32,18 @@ export type EnvVariable = {
   masked?: boolean
 }
 
+export type AppVariableType = 'text-input' | 'paragraph' | 'select' | 'number' | 'json'
+
+export type AppVariable = {
+  id: string
+  name: string
+  type: AppVariableType
+  required: boolean
+  default: string
+  hide: boolean
+  options?: string[]
+}
+
 export type AgentSkill = {
   description?: string
   fileId?: string
@@ -129,6 +141,7 @@ export type AgentSoulConfigFormState = {
   tools: AgentTool[]
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[]
   envVariables: EnvVariable[]
+  appVariables: AppVariable[]
   toolSettings: Record<string, Record<string, unknown>>
 }
 
@@ -140,5 +153,6 @@ export const defaultAgentSoulConfigFormState: AgentSoulConfigFormState = {
   tools: [],
   knowledgeRetrievals: [],
   envVariables: [],
+  appVariables: [],
   toolSettings: {},
 }
