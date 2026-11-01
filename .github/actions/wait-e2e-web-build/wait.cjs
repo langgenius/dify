@@ -34,23 +34,30 @@ module.exports = async function waitForBuild({
       const upload = producer.steps?.find((step) => step.name === 'Upload Web build')
       const artifact = artifacts.find((item) => {
         if (item.expired || !/^core-e2e-web-build-[1-9]\d*$/.test(item.name)) return false
+        if (item.workflow_run && String(item.workflow_run.id) !== String(context.runId))
+          return false
+        const artifactAttempt = Number(item.name.slice('core-e2e-web-build-'.length))
+        if (artifactAttempt > runAttempt) return false
         if (producer.status === 'in_progress') {
           // A rebuilding producer must publish this attempt's immutable artifact.
           return item.name === `core-e2e-web-build-${runAttempt}`
         }
+        if (upload?.conclusion !== 'success') return false
+        // This run/attempt's immutable name remains authoritative when artifact
+        // and job-step timestamps differ. Older consumer-rerun artifacts still
+        // require the successful upload window below.
+        if (artifactAttempt === runAttempt) return true
         // GitHub relabels reused successful jobs with the current run_attempt.
         // Their upload step keeps its original timestamps, identifying the artifact
         // to reuse when only consumers are rerun (including across several attempts).
-        if (upload?.conclusion !== 'success') return false
-        // Compare against the job's own window as well as the upload step's. GitHub
-        // has been observed reporting `steps[].started_at/completed_at` one hour off
-        // (2026-11-01, the US DST fall-back), which put every artifact outside the
-        // step window and made consumers wait the full 30 minutes before failing.
-        // Job-level timestamps agreed with `artifacts[].created_at` in those runs.
-        return [
-          [producer.started_at, producer.completed_at],
-          [upload.started_at, upload.completed_at],
-        ].some(([start, end]) => start && end && item.created_at >= start && item.created_at <= end)
+        const { started_at: uploadStart, completed_at: uploadEnd } = upload
+        if (!uploadStart || !uploadEnd) return false
+        if (item.created_at >= uploadStart && item.created_at <= uploadEnd) return true
+        const { started_at: jobStart, completed_at: jobEnd } = producer
+        // GitHub has reported step timestamps an hour off the job clock. Use
+        // the job window only when the step window is entirely outside it.
+        if (!jobStart || !jobEnd || !(uploadEnd < jobStart || uploadStart > jobEnd)) return false
+        return item.created_at >= jobStart && item.created_at <= jobEnd
       })
       if (artifact) {
         const seconds = Math.round((now() - started) / 1000)
