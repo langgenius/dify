@@ -415,7 +415,43 @@ class BuiltinToolManageService:
         """
         get builtin tool provider credential info
         """
-        provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
+        try:
+            provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
+        except (ToolProviderNotFoundError, ValueError) as exc:
+            # Check if this provider is a valid MCP provider (e.g. queried from Agent configuration)
+            from services.tools.mcp_tools_manage_service import MCPToolManageService
+
+            try:
+                with sessionmaker(bind=db.engine).begin() as session:
+                    mcp_service = MCPToolManageService(session=session)
+                    mcp_provider = mcp_service.get_provider_by_persisted_reference(
+                        id_or_server_identifier=provider,
+                        tenant_id=tenant_id,
+                    )
+            except Exception:
+                # Not an MCP provider either: re-raise ToolProviderNotFoundError to preserve 404/not-found behavior
+                raise ToolProviderNotFoundError(f"Tool provider {provider} not found") from exc
+
+            # The provider is a valid MCP provider. Reflect its authorization state for legacy/fallback clients.
+            credentials = []
+            if mcp_provider.authed:
+                credentials.append(
+                    ToolProviderCredentialApiEntity(
+                        id=mcp_provider.id,
+                        name=mcp_provider.name,
+                        provider=provider,
+                        credential_type=CredentialType.API_KEY,
+                        is_default=True,
+                        credentials={},
+                    )
+                )
+
+            return ToolProviderCredentialInfoApiEntity(
+                supported_credential_types=[],
+                is_oauth_custom_client_enabled=False,
+                credentials=credentials,
+            )
+
         supported_credential_types = provider_controller.get_supported_credential_types()
         credentials = BuiltinToolManageService.get_builtin_tool_provider_credentials(
             tenant_id,
