@@ -129,12 +129,12 @@ export const TagFilter = ({
                   />
                 </span>
               )}
-              <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-tertiary">
+              <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-secondary">
                 {!value.length && placeholderLabel}
                 {!!value.length && (currentTagName ?? selectedCountLabel)}
               </span>
               {currentTagName && value.length > 1 && (
-                <span className="shrink-0 text-xs/4.5 font-medium text-text-tertiary">{`+${value.length - 1}`}</span>
+                <span className="shrink-0 text-xs/4.5 font-medium text-text-secondary">{`+${value.length - 1}`}</span>
               )}
               {!value.length && (
                 <span className="shrink-0 p-px">

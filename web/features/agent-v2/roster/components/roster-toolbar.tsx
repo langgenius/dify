@@ -103,7 +103,7 @@ function RosterCreatedByMeFilter() {
           void setCreatedByMe(checked === true)
         }}
       />
-      <span className="p-1 system-sm-regular text-text-tertiary">
+      <span className="p-1 system-sm-regular text-text-secondary">
         {t(($) => $['roster.filters.createdByMe'], { ns: 'agentRoster' })}
       </span>
     </label>
