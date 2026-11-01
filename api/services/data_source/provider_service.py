@@ -111,8 +111,8 @@ class DatasourceProviderService:
             tenant_id=tenant_id, provider_id=str(datasource_provider_id)
         )
         plugin_unique_identifier = provider_declaration.plugin_unique_identifier
-        credential_id = getattr(datasource_provider, "id", None)
-        credential_name = getattr(datasource_provider, "name", None)
+        credential_id = datasource_provider.id
+        credential_name = datasource_provider.name
         logger.info(
             "Refreshing datasource credentials for provider %s",
             provider_name,
