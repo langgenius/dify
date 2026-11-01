@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "Ajouté au contexte",
+  "attachments.pending": "En attente",
+  "attachments.rejected": "Non utilisé",
+  "attachments.superseded": "Plus utilisé",
+  "attachments.truncated": "Ajouté partiellement",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "Impossible d’actualiser le canevas du workflow. {{reason}}",
   "cardCategory.checks": "Vérifications",

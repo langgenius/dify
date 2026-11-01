@@ -1598,3 +1598,48 @@ describe('DifyBuilderConversation test data form', () => {
     ).not.toBeInTheDocument()
   })
 })
+
+it('shows server material receipts even for file-only turns without treating them as test input', () => {
+  render(
+    <DifyBuilderConversation
+      busy={false}
+      interrupted={false}
+      items={[]}
+      attachments={[
+        {
+          id: 'material-1',
+          app_id: 'app-1',
+          session_id: 'session-1',
+          task_id: 'task-1',
+          generation: 1,
+          seq: 1,
+          client_turn_id: 'file-only-turn',
+          consumed_version: null,
+          status: 'pending',
+          test_input_candidate: true,
+          attachments: [
+            {
+              upload_file_id: 'upload-1',
+              name: 'rules.txt',
+              extension: 'txt',
+              size: 20,
+              status: 'pending',
+            },
+            {
+              upload_file_id: 'upload-2',
+              name: 'bad.pdf',
+              extension: 'pdf',
+              size: 20,
+              status: 'rejected',
+            },
+          ],
+        },
+      ]}
+    />,
+  )
+  expect(screen.getByText('rules.txt')).toBeInTheDocument()
+  expect(screen.getByText('difyBuilder.attachments.pending')).toBeInTheDocument()
+  expect(screen.getByText('bad.pdf')).toBeInTheDocument()
+  expect(screen.getByText('difyBuilder.attachments.rejected')).toBeInTheDocument()
+  expect(screen.queryByRole('button')).not.toBeInTheDocument()
+})

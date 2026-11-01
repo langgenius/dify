@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "Đã thêm vào ngữ cảnh",
+  "attachments.pending": "Đang chờ",
+  "attachments.rejected": "Không được dùng",
+  "attachments.superseded": "Không còn được dùng",
+  "attachments.truncated": "Đã thêm một phần",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "Không thể làm mới vùng làm việc của quy trình. {{reason}}",
   "cardCategory.checks": "Kiểm tra",

@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "به زمینه اضافه شد",
+  "attachments.pending": "در صف",
+  "attachments.rejected": "استفاده نشد",
+  "attachments.superseded": "دیگر استفاده نمی‌شود",
+  "attachments.truncated": "بخشی اضافه شد",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "بازآوری بوم گردش کار انجام نشد. {{reason}}",
   "cardCategory.checks": "بررسی‌ها",
