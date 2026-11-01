@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "Kontekstə əlavə edildi",
+  "attachments.pending": "Növbədə",
+  "attachments.rejected": "İstifadə edilmədi",
+  "attachments.superseded": "Artıq istifadə edilmir",
+  "attachments.truncated": "Qismən əlavə edildi",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "İş axını kətanını yeniləmək mümkün olmadı. {{reason}}",
   "cardCategory.checks": "Yoxlamalar",

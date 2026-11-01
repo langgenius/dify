@@ -1,6 +1,7 @@
 'use client'
 
 import type {
+  DifyBuilderAttachmentPayload,
   DifyBuilderFixIntentPayload,
   DifyBuilderReceiptSnapshot,
   DifyBuilderStreamEventResponse,
@@ -59,6 +60,7 @@ import {
   difyBuilderConversationLoadingAtom,
   difyBuilderLifecycleControlAtom,
   difyBuilderLocalUserMessageAtom,
+  difyBuilderMaterialControlAtom,
   difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionErrorCodeAtom,
@@ -176,6 +178,7 @@ export function useDifyBuilderSessionController(
   const streamingTurnBuffer = useDifyBuilderStreamingTurnBuffer()
   const abortRef = useRef<AbortController | null>(null)
   const lifecycleAbortRef = useRef<AbortController | null>(null)
+  const materialAbortRef = useRef<AbortController | null>(null)
   const pendingTaskControlRef = useRef<PendingTaskControl | null>(null)
   const canvasCursorRef = useRef<
     Pick<CanvasEventData, 'at_version' | 'operation_id' | 'revision' | 'session_id'> | undefined
@@ -198,6 +201,8 @@ export function useDifyBuilderSessionController(
       abortRef.current = null
       lifecycleAbortRef.current?.abort()
       lifecycleAbortRef.current = null
+      materialAbortRef.current?.abort()
+      materialAbortRef.current = null
       pendingRetestRef.current = null
       pendingTaskControlRef.current = null
       // Clearing the request ref prevents its finally block from releasing loading state.
@@ -498,6 +503,12 @@ export function useDifyBuilderSessionController(
       // durable conversation rows have their own paginated owner.
       if (observedAtStart === 'native' && !preserveReceipt) nativeObservationRef.current += 1
       setView(projected)
+      const material = store.get(difyBuilderMaterialControlAtom)
+      if (
+        material?.phase === 'unknown' &&
+        projected.attachments?.some((receipt) => receipt.client_turn_id === material.clientTurnId)
+      )
+        store.set(difyBuilderMaterialControlAtom, { ...material, phase: 'accepted' })
       if (projectLifecycleSettlement(projected, reading)) return true
       onSessionStateChanged?.(projected)
       const canvasCursor = canvasCursorRef.current
@@ -1370,12 +1381,18 @@ export function useDifyBuilderSessionController(
   )
 
   const startBuild = useCallback(
-    async (appId: string, goalText: string, modelConfig?: SessionModel, deriveAppName = false) => {
+    async (
+      appId: string,
+      goalText: string,
+      modelConfig?: SessionModel,
+      deriveAppName = false,
+      attachments?: DifyBuilderAttachmentPayload[],
+    ) => {
       const started = await runCommand({
         startsSession: true,
         expectTerminalEvent: true,
         openStream: (signal) =>
-          createBuildSession(appId, goalText, modelConfig, signal, deriveAppName),
+          createBuildSession(appId, goalText, modelConfig, signal, deriveAppName, attachments),
         trace: {
           kind: 'session_start',
           payload: {
@@ -1399,11 +1416,17 @@ export function useDifyBuilderSessionController(
   )
 
   const startEdit = useCallback(
-    (appId: string, goalText: string, modelConfig?: SessionModel) =>
+    (
+      appId: string,
+      goalText: string,
+      modelConfig?: SessionModel,
+      attachments?: DifyBuilderAttachmentPayload[],
+    ) =>
       runCommand({
         startsSession: true,
         expectTerminalEvent: true,
-        openStream: (signal) => createEditSession(appId, goalText, modelConfig, signal),
+        openStream: (signal) =>
+          createEditSession(appId, goalText, modelConfig, signal, attachments),
         trace: {
           kind: 'session_start',
           payload: { scenario: 'edit', app_id: appId, goal_text: goalText },
@@ -1945,7 +1968,8 @@ export function useDifyBuilderSessionController(
       if (
         !view ||
         store.get(difyBuilderSessionBusyAtom) ||
-        store.get(difyBuilderLifecycleControlAtom)
+        store.get(difyBuilderLifecycleControlAtom) ||
+        store.get(difyBuilderMaterialControlAtom)
       )
         return false
       const nativeControl =
@@ -2054,13 +2078,114 @@ export function useDifyBuilderSessionController(
     [applySessionView, continueRetest, runCommand, store, submitFixDecision, t],
   )
 
-  const sendMessage = useCallback(
-    async (text: string, requestedTurnId?: string) => {
+  const sendMaterial = useCallback(
+    async (text: string, attachments: DifyBuilderAttachmentPayload[]) => {
       const view = store.get(difyBuilderSessionViewAtom)
+      const command = store.get(difyBuilderActiveCommandAtom)
+      const sessionId = view?.session_id ?? store.get(difyBuilderActiveSessionIdAtom)
+      const version = view?.version ?? command?.version
+      if (
+        !sessionId ||
+        !version ||
+        attachments.length > 5 ||
+        (!text.trim() && !attachments.length) ||
+        view?.conversation_cleared ||
+        store.get(difyBuilderMaterialControlAtom) ||
+        store.get(difyBuilderLifecycleControlAtom) ||
+        store.get(difyBuilderTaskControlAtom)
+      )
+        return false
+      const controller = new AbortController()
+      materialAbortRef.current = controller
+      const clientTurnId = globalThis.crypto.randomUUID()
+      const material = { phase: 'pending' as const, clientTurnId, text, attachments }
+      store.set(difyBuilderMaterialControlAtom, material)
+      setLastError('')
+      traceRef.current.append({
+        dir: 'out',
+        kind: 'material_message',
+        payload: {
+          text,
+          attachments,
+          base_version: version,
+          client_turn_id: clientTurnId,
+        },
+      })
+      try {
+        const response = await sendSessionMessage(
+          sessionId,
+          text,
+          version,
+          clientTurnId,
+          controller.signal,
+          attachments,
+        )
+        const iterator = response[Symbol.asyncIterator]()
+        const first = await iterator.next()
+        const events = (async function* () {
+          try {
+            if (!first.done) yield first.value
+            while (true) {
+              const next = await iterator.next()
+              if (next.done) return
+              yield next.value
+            }
+          } finally {
+            await iterator.return?.()
+          }
+        })()
+        if (!first.done && first.value.event === 'command_started' && first.value.data.command_id) {
+          // A newly admitted consume-material turn has its own stream; it never
+          // aborts an earlier response or runs the draft-save barrier.
+          await consumeStream(events, controller, sessionId)
+        } else {
+          for await (const event of events) {
+            if (controller.signal.aborted) return false
+            traceRef.current.append({ dir: 'in', kind: event.event, payload: event.data })
+            if (event.event === 'error') throw new Error(streamErrorMessage(event.data))
+            if (event.event === 'command_finished') {
+              const current = store.get(difyBuilderSessionViewAtom)
+              applySessionView({ ...event.data, last_command_id: current?.last_command_id ?? '' })
+              break
+            }
+          }
+        }
+        if (controller.signal.aborted) return false
+        const admitted = store
+          .get(difyBuilderSessionViewAtom)
+          ?.attachments?.some((receipt) => receipt.client_turn_id === clientTurnId)
+        if (!admitted) throw new Error(UNEXPECTED_EOF_ERROR)
+        store.set(difyBuilderMaterialControlAtom, { ...material, phase: 'accepted' })
+        return true
+      } catch (error) {
+        if (controller.signal.aborted) return false
+        const status = requestErrorStatus(error)
+        setLastError(await requestErrorMessage(error))
+        store.set(
+          difyBuilderMaterialControlAtom,
+          status && status >= 400 && status < 500 ? null : { ...material, phase: 'unknown' },
+        )
+        return false
+      } finally {
+        if (materialAbortRef.current === controller) materialAbortRef.current = null
+      }
+    },
+    [applySessionView, consumeStream, setLastError, store],
+  )
+
+  const sendMessage = useCallback(
+    async (
+      text: string,
+      requestedTurnId?: string,
+      attachments?: DifyBuilderAttachmentPayload[],
+    ) => {
+      const view = store.get(difyBuilderSessionViewAtom)
+      if (attachments?.length) return sendMaterial(text, attachments)
       if (
         !view ||
         store.get(difyBuilderSessionBusyAtom) ||
-        store.get(difyBuilderLifecycleControlAtom)
+        store.get(difyBuilderLifecycleControlAtom) ||
+        store.get(difyBuilderMaterialControlAtom)
       )
         return false
       const normalizedText = text.trim()
@@ -2124,7 +2249,7 @@ export function useDifyBuilderSessionController(
       }
       return sent
     },
-    [runCommand, setLocalUserMessage, setRetryableMessage, store],
+    [runCommand, sendMaterial, setLocalUserMessage, setRetryableMessage, store],
   )
 
   const updateModel = useCallback(
@@ -2133,6 +2258,9 @@ export function useDifyBuilderSessionController(
   )
 
   const reset = useCallback(() => {
+    materialAbortRef.current?.abort()
+    materialAbortRef.current = null
+    store.set(difyBuilderMaterialControlAtom, null)
     lifecycleAbortRef.current?.abort()
     lifecycleAbortRef.current = null
     store.set(difyBuilderLifecycleControlAtom, null)

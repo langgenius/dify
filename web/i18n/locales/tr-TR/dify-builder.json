@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "Bağlama eklendi",
+  "attachments.pending": "Sırada",
+  "attachments.rejected": "Kullanılmadı",
+  "attachments.superseded": "Artık kullanılmıyor",
+  "attachments.truncated": "Kısmen eklendi",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "İş akışı tuvali yenilenemedi. {{reason}}",
   "cardCategory.checks": "Kontroller",

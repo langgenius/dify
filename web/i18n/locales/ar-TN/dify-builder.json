@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "تمت الإضافة إلى السياق",
+  "attachments.pending": "في الانتظار",
+  "attachments.rejected": "غير مستخدم",
+  "attachments.superseded": "لم يعد مستخدمًا",
+  "attachments.truncated": "تمت الإضافة جزئيًا",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "تعذّر تحديث لوحة سير العمل. {{reason}}",
   "cardCategory.checks": "الفحوصات",

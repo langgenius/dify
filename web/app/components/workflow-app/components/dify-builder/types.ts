@@ -2,6 +2,7 @@
 // from the backend OpenAPI document. This file only derives short feature-local
 // aliases and owns client-only values.
 import type {
+  DifyBuilderAttachmentPayload,
   DifyBuilderCanvasEventResponse,
   DifyBuilderChecklistErrorPayload,
   DifyBuilderCommandStartedEventData,
@@ -92,8 +93,14 @@ export type DifyBuilderSessionController = {
     goalText: string,
     modelConfig?: SessionModel,
     deriveAppName?: boolean,
+    attachments?: DifyBuilderAttachmentPayload[],
   ) => Promise<boolean>
-  startEdit: (appId: string, goalText: string, modelConfig?: SessionModel) => Promise<boolean>
+  startEdit: (
+    appId: string,
+    goalText: string,
+    modelConfig?: SessionModel,
+    attachments?: DifyBuilderAttachmentPayload[],
+  ) => Promise<boolean>
   loadOlderConversation: () => Promise<boolean>
   refresh: () => Promise<boolean>
   restore: (sessionId: string) => Promise<boolean>
@@ -104,7 +111,11 @@ export type DifyBuilderSessionController = {
     payload?: Record<string, unknown>,
     receiptSnapshot?: DifyBuilderReceiptSnapshot,
   ) => Promise<boolean>
-  sendMessage: (text: string, clientTurnId?: string) => Promise<boolean>
+  sendMessage: (
+    text: string,
+    clientTurnId?: string,
+    attachments?: DifyBuilderAttachmentPayload[],
+  ) => Promise<boolean>
   updateModel: (modelConfig: SessionModel) => Promise<boolean>
   reset: () => void
   clearConversation: () => Promise<boolean>

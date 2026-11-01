@@ -9,6 +9,7 @@ import {
   difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
   difyBuilderLocalUserMessageAtom,
+  difyBuilderMaterialControlAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionViewAtom,
 } from '../session/state'
@@ -20,6 +21,7 @@ import {
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshGenerationAtom,
   difyBuilderCanvasRefreshingAtom,
+  difyBuilderCheckMaterialAtom,
   difyBuilderDraftAtom,
   difyBuilderHasSessionAtom,
   difyBuilderInteractionBusyAtom,
@@ -1029,4 +1031,59 @@ describe('Dify Builder store', () => {
     )
     expect(runAction).toHaveBeenCalledOnce()
   })
+})
+
+it('sends at most five uploaded material refs while busy, restores failed drafts, and checks unknown without resending', async () => {
+  const store = createStore()
+  const runtime = createRuntime(vi.fn(async () => true))
+  store.set(difyBuilderRuntimeAtom, runtime)
+  store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'processing' }))
+  store.set(difyBuilderSessionBusyAtom, true)
+  store.set(difyBuilderDraftAtom, 'Material context')
+  const attachments = [{ upload_file_id: 'upload-1' }]
+  runtime.session.sendMessage.mockResolvedValueOnce(false)
+  expect(await store.set(difyBuilderSendDraftAtom, builderModel, { attachments })).toBe(false)
+  expect(store.get(difyBuilderDraftAtom)).toBe('Material context')
+  expect(runtime.session.sendMessage).toHaveBeenCalledExactlyOnceWith(
+    'Material context',
+    undefined,
+    attachments,
+  )
+  expect(runtime.session.startBuild).not.toHaveBeenCalled()
+  expect(
+    await store.set(difyBuilderSendDraftAtom, builderModel, {
+      attachments: Array.from({ length: 6 }, (_, index) => ({ upload_file_id: `upload-${index}` })),
+    }),
+  ).toBe(false)
+  expect(runtime.session.sendMessage).toHaveBeenCalledOnce()
+  store.set(difyBuilderMaterialControlAtom, {
+    phase: 'unknown',
+    clientTurnId: 'material-turn',
+    text: 'Material context',
+    attachments,
+  })
+  expect(await store.set(difyBuilderSendDraftAtom, builderModel, { attachments })).toBe(false)
+  store.set(difyBuilderSessionBusyAtom, false)
+  expect(await store.set(difyBuilderCheckMaterialAtom)).toBe(true)
+  expect(runtime.session.refresh).toHaveBeenCalledOnce()
+  expect(runtime.session.sendMessage).toHaveBeenCalledOnce()
+})
+
+it('creates a file-only Build with uploaded refs and restores its text on rejection', async () => {
+  const store = createStore()
+  const runtime = createRuntime(vi.fn(async () => true))
+  store.set(difyBuilderRuntimeAtom, runtime)
+  const attachments = [{ upload_file_id: 'upload-1' }]
+  expect(await store.set(difyBuilderSendDraftAtom, builderModel, { attachments })).toBe(true)
+  expect(runtime.session.startBuild).toHaveBeenCalledExactlyOnceWith(
+    'app-1',
+    '',
+    builderModel,
+    false,
+    attachments,
+  )
+  runtime.session.startBuild.mockResolvedValueOnce(false)
+  store.set(difyBuilderDraftAtom, 'Use the rules')
+  expect(await store.set(difyBuilderSendDraftAtom, builderModel, { attachments })).toBe(false)
+  expect(store.get(difyBuilderDraftAtom)).toBe('Use the rules')
 })

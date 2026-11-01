@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "컨텍스트에 추가됨",
+  "attachments.pending": "대기 중",
+  "attachments.rejected": "사용되지 않음",
+  "attachments.superseded": "더 이상 사용되지 않음",
+  "attachments.truncated": "일부 추가됨",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "워크플로 캔버스를 새로 고치지 못했습니다. {{reason}}",
   "cardCategory.checks": "검사",

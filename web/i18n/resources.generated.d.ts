@@ -2974,6 +2974,11 @@ export default interface Resources {
     tryAgain: '← Try again'
   }
   difyBuilder: {
+    'attachments.consumed': 'Added to context'
+    'attachments.pending': 'Queued'
+    'attachments.rejected': 'Not used'
+    'attachments.superseded': 'No longer used'
+    'attachments.truncated': 'Partially added'
     buttonTooltip: 'App Builder'
     canvasRefreshFailed: "Couldn't refresh the workflow canvas. {{reason}}"
     'cardCategory.checks': 'Checks'

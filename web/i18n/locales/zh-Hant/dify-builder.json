@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "已加入上下文",
+  "attachments.pending": "排隊中",
+  "attachments.rejected": "未使用",
+  "attachments.superseded": "不再使用",
+  "attachments.truncated": "已部分加入",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "重新整理工作流程畫布失敗。{{reason}}",
   "cardCategory.checks": "檢查",
