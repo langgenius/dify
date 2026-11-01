@@ -1,4 +1,7 @@
-import type { BuilderErrorCode } from '@dify/contracts/api/console/dify-builder/types.gen'
+import type {
+  BuilderErrorCode,
+  DifyBuilderAttachmentPayload,
+} from '@dify/contracts/api/console/dify-builder/types.gen'
 import type {
   ConversationItem,
   DifyBuilderActiveCommand,
@@ -36,6 +39,32 @@ export const difyBuilderConversationHasMoreAtom = atom(false)
 export const difyBuilderConversationLoadingAtom = atom(false)
 export const difyBuilderSessionBusyAtom = atom(false)
 export const difyBuilderTaskControlAtom = atom<DifyBuilderTaskControl | null>(null)
+export type DifyBuilderLifecycleControl = {
+  operation: 'clear' | 'abandon' | 'fix' | 'dismiss_fix' | 'stop_and_switch_fix'
+  phase: 'pending' | 'unknown'
+  sessionId: string
+  clientActionId: string
+  baseVersion: number
+  expectedTaskId?: string
+  fixIntentId?: string
+}
+export const isUnknownFixControl = (
+  control: DifyBuilderLifecycleControl | null,
+): control is DifyBuilderLifecycleControl & {
+  operation: 'fix' | 'dismiss_fix' | 'stop_and_switch_fix'
+} =>
+  control?.phase === 'unknown' &&
+  (control.operation === 'fix' ||
+    control.operation === 'dismiss_fix' ||
+    control.operation === 'stop_and_switch_fix')
+
+export const difyBuilderLifecycleControlAtom = atom<DifyBuilderLifecycleControl | null>(null)
+export const difyBuilderMaterialControlAtom = atom<{
+  phase: 'pending' | 'unknown' | 'accepted'
+  clientTurnId: string
+  attachments: DifyBuilderAttachmentPayload[]
+  text: string
+} | null>(null)
 export const difyBuilderSessionLastErrorAtom = atom('')
 export const difyBuilderSessionErrorCodeAtom = atom<BuilderErrorCode | null>(null)
 export const difyBuilderRetryableMessageAtom = atom<DifyBuilderRetryableMessage | null>(null)
@@ -53,6 +82,8 @@ export const difyBuilderSessionScopedAtoms = [
   difyBuilderConversationLoadingAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderTaskControlAtom,
+  difyBuilderLifecycleControlAtom,
+  difyBuilderMaterialControlAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionErrorCodeAtom,
   difyBuilderRetryableMessageAtom,

@@ -1,3 +1,4 @@
+import type { RunContextCard as RunContextPayload } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ConversationItem, FormField } from '../types'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +12,33 @@ import { ReadOnlyFormResponse } from './read-only-form-response'
 import arrivalStyles from './reply-arrival.module.css'
 import { TestResultCard } from './test-result-card'
 import { Thinking } from './thinking'
+
+export const RunContextCard = ({
+  payload,
+  invalidated,
+}: {
+  payload: RunContextPayload
+  invalidated: boolean
+}) => {
+  const { locale } = useBuilderText()
+  const { t } = useTranslation(['difyBuilder'], { lng: locale })
+  return (
+    <DifyBuilderCard
+      category={t(($) => $['cardCategory.run'], { ns: 'difyBuilder' })}
+      headline={payload.title || t(($) => $.failedRun, { ns: 'difyBuilder' })}
+      invalidated={invalidated}
+      meta={payload.error_code}
+      status={{ state: 'failed' }}
+    >
+      <div className="flex flex-col gap-1">
+        {!!payload.message && (
+          <div className="system-xs-regular text-text-secondary">{payload.message}</div>
+        )}
+        <div className="truncate font-mono text-[11px] text-text-tertiary">{payload.run_id}</div>
+      </div>
+    </DifyBuilderCard>
+  )
+}
 
 export const AssistantReply = ({
   text,
@@ -122,24 +150,7 @@ export const ConversationCard = memo(
     if (item.kind === 'form' || item.kind === 'resource_select') return null
 
     if (item.kind === 'run_context') {
-      return (
-        <DifyBuilderCard
-          category={t(($) => $['cardCategory.run'], { ns: 'difyBuilder' })}
-          headline={item.payload.title || t(($) => $.failedRun, { ns: 'difyBuilder' })}
-          invalidated={invalidated}
-          meta={item.payload.error_code}
-          status={{ state: 'failed' }}
-        >
-          <div className="flex flex-col gap-1">
-            {!!item.payload.message && (
-              <div className="system-xs-regular text-text-secondary">{item.payload.message}</div>
-            )}
-            <div className="truncate font-mono text-[11px] text-text-tertiary">
-              {item.payload.run_id}
-            </div>
-          </div>
-        </DifyBuilderCard>
-      )
+      return <RunContextCard payload={item.payload} invalidated={invalidated} />
     }
 
     if (item.kind === 'preflight_context') {

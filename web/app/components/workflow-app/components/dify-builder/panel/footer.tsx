@@ -9,12 +9,20 @@ import DifyBuilderComposer from '../composer'
 import { useBuilderText } from '../copy/use-builder-text'
 import { DifyBuilderInteractionDock } from '../interactions/interaction-dock'
 import { useDifyBuilderInteractionLocale } from '../interactions/use-interaction-locale'
-import { difyBuilderSessionBusyAtom, difyBuilderTaskControlAtom } from '../session/state'
+import {
+  difyBuilderLifecycleControlAtom,
+  difyBuilderMaterialControlAtom,
+  difyBuilderSessionBusyAtom,
+  difyBuilderTaskControlAtom,
+  isUnknownFixControl,
+} from '../session/state'
 import {
   difyBuilderActiveInteractionAtom,
   difyBuilderCanvasReadyAtom,
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshingAtom,
+  difyBuilderCheckLifecycleControlAtom,
+  difyBuilderCheckMaterialAtom,
   difyBuilderDecisionAtom,
   difyBuilderErrorAtom,
   difyBuilderInteractionBusyAtom,
@@ -22,6 +30,7 @@ import {
   difyBuilderInterruptedAtom,
   difyBuilderLocalInteractionResponseAtom,
   difyBuilderNativeCancelAtom,
+  difyBuilderPendingFixAtom,
   difyBuilderRecheckReadyAtom,
   difyBuilderRetryCanvasRefreshAtom,
   difyBuilderRunActiveAtom,
@@ -121,9 +130,14 @@ export const DifyBuilderPanelFooter = ({
   const localInteractionResponse = useAtomValue(difyBuilderLocalInteractionResponseAtom)
   const recheckReady = useAtomValue(difyBuilderRecheckReadyAtom)
   const runActive = useAtomValue(difyBuilderRunActiveAtom)
+  const pendingFix = useAtomValue(difyBuilderPendingFixAtom)
+  const lifecycleControl = useAtomValue(difyBuilderLifecycleControlAtom)
+  const materialControl = useAtomValue(difyBuilderMaterialControlAtom)
   const sessionId = useAtomValue(difyBuilderSessionIdAtom)
   const viewVersion = useAtomValue(difyBuilderViewVersionAtom)
   const submitInteraction = useSetAtom(difyBuilderSubmitActionAtom)
+  const checkLifecycleControl = useSetAtom(difyBuilderCheckLifecycleControlAtom)
+  const checkMaterial = useSetAtom(difyBuilderCheckMaterialAtom)
   const interactionPending = Boolean(interactionRef || decision)
   const interactionSubmitted = Boolean(
     localInteractionResponse?.sessionId === sessionId &&
@@ -132,8 +146,7 @@ export const DifyBuilderPanelFooter = ({
   const interactionVisible =
     interactionPending &&
     !interactionSubmitted &&
-    (!runActive || interrupted) &&
-    taskControlOperation === null
+    (pendingFix || ((!runActive || interrupted) && taskControlOperation === null))
   const interactionKey = interactionRef
     ? `${sessionId}:${interactionRef.action_id}:${interactionRef.card_seq}`
     : decision
@@ -152,6 +165,35 @@ export const DifyBuilderPanelFooter = ({
           className="mx-4 mb-2 rounded-lg bg-state-destructive-hover px-2 py-1.5 system-xs-regular text-text-destructive"
         >
           {error}
+        </div>
+      )}
+      {isUnknownFixControl(lifecycleControl) && (
+        <p className="mx-4 mb-2 system-xs-regular text-text-warning">
+          {t(($) => $['fixControl.unknown'], { ns: 'difyBuilder' })}
+        </p>
+      )}
+      {lifecycleControl?.phase === 'unknown' && (
+        <div className="mx-4 mb-2 flex justify-end">
+          <Button
+            size="small"
+            variant="secondary"
+            loading={commandBusy}
+            onClick={() => void checkLifecycleControl()}
+          >
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </div>
+      )}
+      {materialControl?.phase === 'unknown' && (
+        <div className="mx-4 mb-2 flex justify-end">
+          <Button
+            size="small"
+            variant="secondary"
+            loading={commandBusy}
+            onClick={() => void checkMaterial()}
+          >
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
         </div>
       )}
       {testExecution?.outcome === 'unknown' && (
@@ -226,7 +268,11 @@ export const DifyBuilderPanelFooter = ({
             >
               <DifyBuilderInteractionDock
                 activeInteraction={activeInteraction}
-                busy={interactionBusy || !canvasReady}
+                busy={
+                  pendingFix
+                    ? lifecycleControl !== null || taskControl !== null
+                    : interactionBusy || !canvasReady
+                }
                 decision={decision}
                 interactionPending={Boolean(interactionRef)}
                 recheckReady={recheckReady}
@@ -234,7 +280,7 @@ export const DifyBuilderPanelFooter = ({
               />
             </AnimatedInteractionDock>
           )}
-          {!interactionVisible && <DifyBuilderComposer />}
+          <DifyBuilderComposer attachmentsOnly={interactionVisible} />
         </Suspense>
       </div>
     </footer>
