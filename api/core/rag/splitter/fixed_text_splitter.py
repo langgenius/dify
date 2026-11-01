@@ -8,7 +8,7 @@ from collections.abc import Set as AbstractSet
 from typing import Any, Literal, override
 
 from core.model_manager import ModelInstance
-from core.rag.splitter.text_splitter import RecursiveCharacterTextSplitter
+from core.rag.splitter.text_splitter import RecursiveCharacterTextSplitter, _split_text_with_regex
 
 
 class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
@@ -71,9 +71,15 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
 
         # Now that we have the separator, split the text
         if separator:
-            splits = re.split(r" +", text) if separator == " " else text.split(separator)
-            if self._keep_separator:
-                splits = [s + separator for s in splits[:-1]] + splits[-1:]
+            if separator == " " and self._keep_separator:
+                # Preserve the exact run of separator characters attached to each split
+                # so concatenating the splits reconstructs the original text and runs of
+                # consecutive spaces survive into the merged chunks.
+                splits = _split_text_with_regex(text, separator, self._keep_separator)
+            else:
+                splits = re.split(r" +", text) if separator == " " else text.split(separator)
+                if self._keep_separator:
+                    splits = [s + separator for s in splits[:-1]] + splits[-1:]
         else:
             splits = list(text)
         splits = (
