@@ -77,7 +77,11 @@ _SOURCE_IMPLEMENTATION = re.compile(
 )
 _CONDITIONAL_SOURCE = re.compile(r"\b(?:if|unless|except)\b|除非|如果|若")
 
-_EXCLUDED_RESOURCE_LIST_KEYS = frozenset({"forbidden_additions", "forbidden_resources", "excluded_resources"})
+# A complete identifier role, not an arbitrary negative substring or node list.
+_EXCLUDED_RESOURCE_LIST_ROLE = re.compile(
+    r"(?:forbidden|excluded|disallowed|no|without)"
+    r"(?:_(?:(?:extra|additional|other)_)?(?:resources|components|additions))?"
+)
 
 
 def _requirement_texts(value: object) -> Iterator[str]:
@@ -86,7 +90,7 @@ def _requirement_texts(value: object) -> Iterator[str]:
         yield value
     elif isinstance(value, dict):
         for key, child in value.items():
-            if key in _EXCLUDED_RESOURCE_LIST_KEYS and isinstance(child, list):
+            if isinstance(key, str) and _EXCLUDED_RESOURCE_LIST_ROLE.fullmatch(key) and isinstance(child, list):
                 # Only exact native categories inherit this explicit list role.
                 # Unknown prose and nested children may still request retrieval.
                 for member in child:

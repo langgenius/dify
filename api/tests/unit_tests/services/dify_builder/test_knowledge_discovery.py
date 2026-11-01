@@ -18,7 +18,9 @@ from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepos
 from tests.unit_tests.services.dify_builder.test_bound_resource_plan_reconciliation import ReconciliationAgent
 from tests.unit_tests.services.dify_builder.test_knowledge_source_cue import (
     CAPTURED_AGENT_GOAL,
+    CAPTURED_BARE_ROLE_REQUIREMENTS,
     CAPTURED_FORBIDDEN_ADDITIONS,
+    CAPTURED_NO_EXTRA_COMPONENTS,
     MEETING_GOAL,
 )
 
@@ -618,3 +620,35 @@ def test_excluded_resource_list_never_disables_server_or_model_source_guards(gua
     assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
     assert "knowledge_decision_pending" in stored.resource_selection
     assert not stored.checkpoint_id
+
+
+def test_no_extra_components_resource_list_reaches_plan_without_changing_the_original_goal() -> None:
+    plan = WorkflowPlan("Selected resource", "Input", "Output", ["Use selected resource"], used_resource_ids=[MODEL])
+    context = DifyBuilderContext(
+        goal_text=CAPTURED_AGENT_GOAL,
+        requirements=CAPTURED_NO_EXTRA_COMPONENTS,
+        resource_selection={"knowledge_source_unavailable": False, "knowledge_requires_clarification": False},
+    )
+    result, stored, _, items = confirm(ReconciliationAgent(plan), offered=[], ids=[MODEL], context=context)
+    assert result.current_state == PcState.BUILD_PLAN_APPROVAL
+    assert stored.goal_text == CAPTURED_AGENT_GOAL
+    assert stored.resource_selection["resource_ids"] == [MODEL]
+    assert "knowledge_decision_pending" not in stored.resource_selection
+    assert any(item.kind == "plan" for item in items)
+    assert not any(item.kind == "form" for item in items)
+
+
+def test_full_captured_bare_resource_exclusion_reaches_plan_without_a_knowledge_waiver() -> None:
+    plan = WorkflowPlan("Selected resource", "Input", "Output", ["Use selected resource"], used_resource_ids=[MODEL])
+    context = DifyBuilderContext(
+        goal_text=CAPTURED_AGENT_GOAL,
+        requirements=CAPTURED_BARE_ROLE_REQUIREMENTS,
+        resource_selection={"knowledge_source_unavailable": False, "knowledge_requires_clarification": False},
+    )
+    result, stored, _, items = confirm(ReconciliationAgent(plan), offered=[], ids=[MODEL], context=context)
+    assert result.current_state == PcState.BUILD_PLAN_APPROVAL
+    assert stored.goal_text == CAPTURED_AGENT_GOAL
+    assert stored.resource_selection["resource_ids"] == [MODEL]
+    assert "knowledge_decision_pending" not in stored.resource_selection
+    assert any(item.kind == "plan" for item in items)
+    assert not any(item.kind == "form" for item in items)
