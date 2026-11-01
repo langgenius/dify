@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Protocol, cast
+from typing import Protocol, cast, runtime_checkable
 
 import pytest
 from flask import Flask
@@ -75,8 +75,15 @@ def test_extra_param_forbidden() -> None:
 """Transport mappings over stable admitted contexts."""
 
 
+@runtime_checkable
 class Endpoint[T](Protocol):
     __handler__: Callable[..., T]
+
+
+def _describe_handler() -> Callable[..., AppDescribeResponse]:
+    view: object = AppDescribeApi.get
+    assert isinstance(view, Endpoint)
+    return view.__handler__
 
 
 @pytest.mark.parametrize("api", [AppDescribeApi(), PermittedExternalAppDescribeApi()])
@@ -105,6 +112,60 @@ def test_describe_passes_admitted_scope_and_projects_response(
     assert result.info.id == "app-id"
     assert result.parameters is None
     assert result.input_schema is None
+
+
+@pytest.mark.parametrize(
+    ("mode", "query", "expected"),
+    [
+        (AppMode.WORKFLOW, {"fields": "info"}, "token"),
+        (AppMode.ADVANCED_CHAT, {"fields": "info"}, "token"),
+        (AppMode.CHAT, {"fields": "info"}, None),
+        (AppMode.WORKFLOW, {}, "token"),
+    ],
+    ids=["workflow", "advanced_chat", "chat", "workflow_all_fields"],
+)
+def test_describe_returns_the_draft_hash_of_a_graph_app(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: AppMode,
+    query: dict[str, str],
+    expected: str | None,
+) -> None:
+    summary = AppSummary("app-id", "workspace-id", "App", "", mode, "normal", None, None)
+    monkeypatch.setattr(app_query_services.apps.discovery, "describe", lambda *_: AppDescription(summary, True, None))
+    monkeypatch.setattr("controllers.openapi.apps.current_draft_token", lambda *_: "token")
+    context = AppRequestContext(tenant_id="workspace-id", app_id="app-id")
+    with app.test_request_context():
+        result = _describe_handler()(
+            AppDescribeApi(),
+            context,
+            "app-id",
+            query=_app_discovery_AppDescribeQuery.model_validate(query),
+        )
+    assert result.info is not None
+    assert result.info.draft_hash == expected
+
+
+def test_describe_skips_the_draft_read_without_info(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    summary = AppSummary("app-id", "workspace-id", "App", "", AppMode.WORKFLOW, "normal", None, None)
+    monkeypatch.setattr(app_query_services.apps.discovery, "describe", lambda *_: AppDescription(summary, True, None))
+
+    def forbidden(*_args: object) -> str:
+        raise AssertionError("draft read without info")
+
+    monkeypatch.setattr("controllers.openapi.apps.current_draft_token", forbidden)
+    context = AppRequestContext(tenant_id="workspace-id", app_id="app-id")
+    with app.test_request_context():
+        result = _describe_handler()(
+            AppDescribeApi(),
+            context,
+            "app-id",
+            query=_app_discovery_AppDescribeQuery.model_validate({"fields": "parameters"}),
+        )
+    assert result.info is None
 
 
 @pytest.mark.parametrize("api", [AppDescribeApi(), PermittedExternalAppDescribeApi()])

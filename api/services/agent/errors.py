@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+from enum import StrEnum
+
 from werkzeug.exceptions import BadRequest, Conflict, NotFound
 
 from libs.exception import BaseHTTPException
@@ -57,6 +62,47 @@ class InvalidRosterAgentPackageError(BaseHTTPException):
     error_code = "invalid_roster_agent_package"
     description = "The Roster Agent package is invalid."
     code = 400
+
+
+class WorkspaceSkillProblem(StrEnum):
+    """Why a workspace Skill a package links to cannot be bound, with what to do about it."""
+
+    remedy: str
+
+    NOT_FOUND = ("workspace_skill_not_found", "is not in this workspace. Import it into the Skill Hub first.")
+    NOT_PUBLISHED = (
+        "workspace_skill_not_published",
+        "has no published version. Publish it in the Skill Hub first.",
+    )
+
+    def __new__(cls, value: str, remedy: str) -> WorkspaceSkillProblem:
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member.remedy = remedy
+        return member
+
+    def describe(self, name: str) -> str:
+        return f'Workspace Skill "{name}" {self.remedy}'
+
+
+class WorkspaceSkillUnavailableError(InvalidRosterAgentPackageError):
+    """A package links its Agents to workspace Skills by name, and these cannot be bound in the workspace."""
+
+    error_code = "workspace_skill_unavailable"
+
+    def __init__(self, problems: Mapping[str, WorkspaceSkillProblem]) -> None:
+        self.problems = dict(sorted(problems.items()))
+        super().__init__(f"Workspace Skills cannot be linked in this workspace: {', '.join(self.problems)}.")
+
+
+class RosterReferenceNotAcceptedError(InvalidRosterAgentPackageError):
+    """A package links Agent nodes to roster Agents, and the import was not asked to keep such links."""
+
+    error_code = "roster_reference_not_accepted"
+
+    def __init__(self, node_ids: Sequence[str]) -> None:
+        self.node_ids = list(node_ids)
+        super().__init__(f"App package links these Agent nodes to roster Agents: {', '.join(self.node_ids)}.")
 
 
 class RosterAgentPackageTooLargeError(BaseHTTPException):
