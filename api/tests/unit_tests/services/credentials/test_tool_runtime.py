@@ -101,7 +101,10 @@ def test_concurrent_and_sequential_calls_refresh_once() -> None:
     assert lock.keys == [("tool", "workspace", "credential")] * 4
 
 
-@pytest.mark.parametrize("expires_at", [-1, int(time.time()) + 3600])
+# ids are explicit: the wall-clock value would otherwise leak into the test id,
+# and under pytest-xdist each worker computes a different one, which aborts the
+# run with "Different tests were collected between gw0 and gw1".
+@pytest.mark.parametrize("expires_at", [-1, int(time.time()) + 3600], ids=["expired", "valid"])
 def test_valid_credentials_do_not_acquire_a_lock(expires_at: int) -> None:
     store, runtime, lock = (
         CredentialStore(_record(expires_at=expires_at)),
