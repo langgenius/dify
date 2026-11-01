@@ -156,6 +156,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       appId,
       generation: workflowDraftGeneration,
       localRevision: workflowDraftLocalRevision,
+      initialPlaceholder:
+        appMode === 'workflow' &&
+        allNodes.length === 1 &&
+        allNodes[0]?.data?.type === BlockEnum.StartPlaceholder &&
+        edges.length === 0,
       url: `/apps/${appId}/workflows/draft`,
       params: {
         graph: {
@@ -442,8 +447,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       }
 
       const emptyGraph = isEmptyGraph(baseParams.params.graph)
+      // The initial Start selector is local UI for an already-empty draft.
+      // Save it without asking: real clears still need consent.
+      const requiresClearConfirmation = emptyGraph && !baseParams.initialPlaceholder
       if (
-        emptyGraph &&
+        requiresClearConfirmation &&
         (!isMountedRef.current ||
           emptySyncPendingRef.current ||
           workflowStore.getState().showConfirm)
