@@ -592,3 +592,131 @@ def test_same_source_can_be_offered_again_after_another_logical_task(repo: SqlDi
     pending = repository.pending(ACTOR, session.id)
     assert pending is not None
     assert pending.id == second.id
+
+
+def test_control_receipt_reads_exact_intake_and_decision_without_dispatch(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, enqueued: list[Enqueued]
+) -> None:
+    from services.dify_builder.fix_intent_repository import SqlFixIntentRepository
+
+    configure(service, repo)
+    session = seed(repo)
+    intent = queue(repo, session, native_run(repo), key="lost-offer")
+    before = repo.get_session(session.id)[0].version
+    receipt = service.get_fix_control_receipt(
+        session.id, ACTOR, operation="fix", client_action_id="lost-offer", base_version=1
+    )
+    assert receipt["acknowledged"] is True
+    assert receipt["target_task_id"] == f"{session.id}:0"
+    assert receipt["fix_intent_id"] == intent.id
+    assert not ({"source", "payload", "model_config", "response"} & receipt.keys())
+    adapter = SqlFixIntentRepository(repo)
+    adapter.decide(
+        ACTOR,
+        session.id,
+        intent.id,
+        expected_task_id=f"{session.id}:0",
+        kind="dismiss_fix",
+        client_action_id="lost-dismiss",
+    )
+    decision = {
+        "operation": "dismiss_fix",
+        "client_action_id": "lost-dismiss",
+        "base_version": 1,
+        "fix_intent_id": intent.id,
+        "expected_task_id": f"{session.id}:0",
+    }
+    assert service.get_fix_control_receipt(session.id, ACTOR, **decision)["acknowledged"] is True
+    for forged in (
+        {"client_action_id": "other"},
+        {"expected_task_id": "other-task"},
+        {"operation": "stop_and_switch_fix"},
+    ):
+        with pytest.raises((ConflictError, NotFoundError)):
+            service.get_fix_control_receipt(session.id, ACTOR, **{**decision, **forged})
+    with pytest.raises(NotFoundError):
+        service.get_fix_control_receipt(session.id, replace(ACTOR, account_id=str(uuid4())), **decision)
+    with pytest.raises(NotFoundError):
+        service.get_fix_control_receipt(session.id, replace(ACTOR, tenant_id=str(uuid4())), **decision)
+    with pytest.raises(NotFoundError):
+        service.get_fix_control_receipt(session.id, ACTOR, operation="fix", client_action_id="missing", base_version=1)
+    assert repo.get_session(session.id)[0].version == before
+    assert enqueued == []
+
+
+def test_switch_control_receipt_remains_unacknowledged_until_activation(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, enqueued: list[Enqueued]
+) -> None:
+    from services.dify_builder.fix_intent_repository import SqlFixIntentRepository
+
+    configure(service, repo)
+    session = seed(repo)
+    intent = queue(repo, session, native_run(repo))
+    adapter = SqlFixIntentRepository(repo)
+    adapter.decide(
+        ACTOR,
+        session.id,
+        intent.id,
+        expected_task_id=f"{session.id}:0",
+        kind="stop_and_switch_fix",
+        client_action_id="lost-switch",
+    )
+    query = {
+        "operation": "stop_and_switch_fix",
+        "client_action_id": "lost-switch",
+        "base_version": 1,
+        "fix_intent_id": intent.id,
+        "expected_task_id": f"{session.id}:0",
+    }
+    assert service.get_fix_control_receipt(session.id, ACTOR, **query)["acknowledged"] is False
+    repo.stop_task_for_switch(session.id, ACTOR, expected_task_id=f"{session.id}:0", client_action_id="settled-stop")
+    adapter.activate(ACTOR, session.id, intent.id, dsl={}, revision="draft")
+    assert service.get_fix_control_receipt(session.id, ACTOR, **query)["acknowledged"] is True
+    assert enqueued == []
+
+
+def test_clear_fences_source_dedup_alias_and_late_intake_activation(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, enqueued: list[Enqueued]
+) -> None:
+    from services.dify_builder.fix_intent_repository import SqlFixIntentRepository
+
+    configure(service, repo)
+    session = seed(repo)
+    source = native_run(repo)
+    intent = queue(repo, session, source, key="known-offer")
+    assert queue(repo, session, source, key="lost-alias").id == intent.id
+    with pytest.raises(NotFoundError):
+        service.get_fix_control_receipt(
+            session.id, ACTOR, operation="fix", client_action_id="lost-alias", base_version=1
+        )
+    for foreign in (replace(ACTOR, account_id=str(uuid4())), replace(ACTOR, tenant_id=str(uuid4()))):
+        with pytest.raises(NotFoundError):
+            repo.conversation_lifecycle(
+                session.id,
+                foreign,
+                operation="clear",
+                base_version=1,
+                client_action_id="escape-clear",
+                expected_task_id=f"{session.id}:0",
+            )
+    repo.conversation_lifecycle(
+        session.id,
+        ACTOR,
+        operation="clear",
+        base_version=1,
+        client_action_id="escape-clear",
+        expected_task_id=f"{session.id}:0",
+    )
+    adapter = SqlFixIntentRepository(repo)
+    with pytest.raises(ConflictError):
+        queue(repo, session, source, key="lost-alias")
+    with pytest.raises(ConflictError):
+        service.prepare_fix_intent(
+            session.id, ACTOR, base_version=1, client_action_id="lost-alias", failed_run_id=source
+        )
+    with pytest.raises(ConflictError):
+        adapter.activate(ACTOR, session.id, intent.id, dsl={}, revision="draft")
+    with pytest.raises(ConflictError):
+        adapter.reserve_dispatch(ACTOR, session.id, intent.id)
+    assert repo.get_session(session.id)[0].version == 2
+    assert enqueued == []

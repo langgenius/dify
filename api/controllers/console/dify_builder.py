@@ -97,6 +97,8 @@ from .dify_builder_fields import (
     DifyBuilderCreateSessionPayload,
     DifyBuilderErrorResponse,
     DifyBuilderExecuteRealCallPayload,
+    DifyBuilderFixControlQuery,
+    DifyBuilderFixControlResponse,
     DifyBuilderFixIntentPayload,
     DifyBuilderFixIntentResponse,
     DifyBuilderNativeTestInputResponse,
@@ -128,6 +130,7 @@ register_schema_models(
     DifyBuilderTaskControlPayload,
     DifyBuilderConversationLifecyclePayload,
     DifyBuilderClearConversationPayload,
+    DifyBuilderFixControlQuery,
     DifyBuilderFixIntentPayload,
     DifyBuilderPrepareRealCallPayload,
     DifyBuilderConfirmRealCallPayload,
@@ -145,6 +148,7 @@ register_response_schema_models(
     DifyBuilderRealCallRefusalResponse,
     DifyBuilderRealCallForbiddenResponse,
     DifyBuilderConversationLifecycleResponse,
+    DifyBuilderFixControlResponse,
     DifyBuilderFixIntentResponse,
 )
 
@@ -382,6 +386,21 @@ def _conversation_control(session_id: str, body, actor: Actor, *, operation: Lit
             raise
         return mapped
     return dump_response(DifyBuilderConversationLifecycleResponse, receipt)
+
+
+def _fix_control_receipt(session_id: str, query, actor: Actor):
+    try:
+        payload = DifyBuilderFixControlQuery.model_validate(query)
+    except ValidationError:
+        raise BadRequest("Invalid Fix control receipt query.") from None
+    try:
+        receipt = build_service().get_fix_control_receipt(session_id, actor, **payload.model_dump())
+    except Exception as error:
+        mapped = dify_builder_error_response(error)
+        if mapped is None:
+            raise
+        return mapped
+    return dump_response(DifyBuilderFixControlResponse, receipt)
 
 
 def _fix_intent(session_id: str, body, actor: Actor):
@@ -831,6 +850,22 @@ class DifyBuilderTaskAbandonApi(Resource):
 
 @console_ns.route("/dify-builder/sessions/<string:session_id>/fix-intents")
 class DifyBuilderFixIntentsApi(Resource):
+    @console_ns.doc(params=query_params_from_model(DifyBuilderFixControlQuery))
+    @console_ns.response(
+        200, "Correlated durable Fix control receipt", console_ns.models[DifyBuilderFixControlResponse.__name__]
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def get(self, current_tenant_id, current_user, session_id):
+        return _fix_control_receipt(
+            session_id, request.args.to_dict(flat=True), _actor(current_user, current_tenant_id)
+        )
+
     @console_ns.expect(console_ns.models[DifyBuilderFixIntentPayload.__name__])
     @console_ns.response(200, "Validated Fix intent", console_ns.models[DifyBuilderFixIntentResponse.__name__])
     @setup_required

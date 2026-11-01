@@ -20,7 +20,7 @@ from core.dify_builder.contract import (
     RunContextCard,
     SessionView,
 )
-from core.dify_builder.errors import BadRequestError, ConflictError
+from core.dify_builder.errors import BadRequestError, ConflictError, NotFoundError
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, Session
 from core.dify_builder.state import is_terminal
 
@@ -158,6 +158,63 @@ def prepare_fix_intent(
             client_turn_id="fix:" + intent.id,
         )
     return FixIntentReceipt(intent.id, intent.status, service.get_session_view(session_id, actor))
+
+
+def get_fix_control_receipt(
+    service: "DifyBuilderService",
+    session_id: str,
+    actor: Actor,
+    *,
+    operation: str,
+    client_action_id: str,
+    base_version: int,
+    fix_intent_id: str | None,
+    expected_task_id: str | None,
+) -> dict:
+    """Correlate a read to immutable intake/decision identity and its original task.
+
+    Absence is not rejection or permission to retry. A stopping decision remains
+    unacknowledged until its recorded activation; this read never activates or
+    claims an enqueue reservation. The returned acknowledgement is not cleanup.
+    """
+    from services.dify_builder.task_lifecycle import task_identity
+
+    service._get_authorized_session(session_id, actor)
+    if operation not in {"fix", "dismiss_fix", "stop_and_switch_fix"} or not client_action_id:
+        raise BadRequestError("Fix control identity is required")
+    if type(base_version) is not int or base_version < 1:
+        raise BadRequestError("base_version must be a positive integer")
+    repository = service._fix_intent_repo
+    if repository is None:
+        raise BadRequestError("Fix intake is unavailable")
+    observed, context = service._repo.get_session_at_version(session_id, base_version)
+    target = task_identity(observed, context)
+    if operation == "fix":
+        intent = repository.find(actor, session_id, client_action_id)
+        if intent is None:
+            raise NotFoundError("Fix control receipt not found")
+        acknowledged = True
+    else:
+        if not fix_intent_id or not expected_task_id:
+            raise BadRequestError("Fix decision identity is required")
+        intent = repository.get(actor, session_id, fix_intent_id)
+        if intent.decision_id != client_action_id or intent.decision_kind != operation:
+            raise NotFoundError("Fix control receipt not found")
+        if intent.target_task_id != expected_task_id:
+            raise ConflictError("Fix control targets a different task")
+        acknowledged = intent.status == ("dismissed" if operation == "dismiss_fix" else "activated")
+    if intent.target_task_id != target:
+        raise ConflictError("Fix control base targets a different task")
+    return {
+        "session_id": session_id,
+        "operation": operation,
+        "client_action_id": client_action_id,
+        "base_version": base_version,
+        "fix_intent_id": intent.id,
+        "target_task_id": intent.target_task_id,
+        "status": intent.status,
+        "acknowledged": acknowledged,
+    }
 
 
 def _activate(service: "DifyBuilderService", actor: Actor, intent: FixIntent) -> None:

@@ -1641,6 +1641,31 @@ class DifyBuilderService:
             raise ConflictError("Fix intent targets a superseded task")
         return prepare_fix_intent(self, session_id, actor, **payload)
 
+    def get_fix_control_receipt(
+        self,
+        session_id: str,
+        actor: Actor,
+        *,
+        operation: str,
+        client_action_id: str,
+        base_version: int,
+        fix_intent_id: str | None = None,
+        expected_task_id: str | None = None,
+    ) -> dict:
+        """Read an exact durable Fix admission/decision; never replay its effects."""
+        from services.dify_builder.fix_intents import get_fix_control_receipt
+
+        return get_fix_control_receipt(
+            self,
+            session_id,
+            actor,
+            operation=operation,
+            client_action_id=client_action_id,
+            base_version=base_version,
+            fix_intent_id=fix_intent_id,
+            expected_task_id=expected_task_id,
+        )
+
     def is_conversation_cleared(self, session_id: str, actor: Actor) -> bool:
         from services.dify_builder.conversation_lifecycle import is_conversation_cleared
 
