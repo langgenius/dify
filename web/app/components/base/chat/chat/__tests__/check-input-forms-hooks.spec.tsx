@@ -57,6 +57,22 @@ describe('useCheckInputsForms', () => {
     })
   })
 
+  it('accepts 0 for a required number input', () => {
+    const { result } = renderHook(() => useCheckInputsForms())
+    const fields = [
+      {
+        variable: 'n',
+        label: 'n',
+        required: true,
+        hide: false,
+        type: InputVarType.number,
+      },
+    ]
+
+    expect(result.current.checkInputsForm({ n: 0 }, fields)).toBe(true)
+    expect(mockNotify).not.toHaveBeenCalled()
+  })
+
   it('should notify and return undefined when a file is still uploading (multiFiles)', () => {
     const { result } = renderHook(() => useCheckInputsForms())
     const inputsForm = [
