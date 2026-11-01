@@ -986,16 +986,33 @@ def test_child_query_escapes_wildcards_and_enforces_complete_scope(
 
 
 @pytest.mark.parametrize("action", ["enable", "disable"])
+@pytest.mark.parametrize("mixed_batch", [False, True], ids=["single", "mixed-batch"])
 def test_status_retry_after_dispatch_failure_reaches_index(
-    indexing_probe: IndexingProbe, sqlite_session_factory: sessionmaker[Session], action: Literal["enable", "disable"]
+    indexing_probe: IndexingProbe,
+    sqlite_session_factory: sessionmaker[Session],
+    action: Literal["enable", "disable"],
+    mixed_batch: bool,
 ) -> None:
+    """Retry the same scoped batch after failed dispatch without rewriting existing audit metadata."""
     app, _, probe = indexing_probe
     context = RequestContext("request", None, "author", "workspace-1")
+    requested_ids = ["segment-1", "foreign"]
+    expected_ids = {"segment-1"}
+    previous_disabled_at = datetime(2025, 1, 1) if action == "disable" else None
+    previous_disabled_by = "previous-editor" if action == "disable" else None
     with sqlite_session_factory.begin() as session:
         segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
         segment.enabled = action != "enable"
         session.add(segment)
         session.add(_segment("foreign", "workspace-2", "dataset-1", "document-1"))
+        if mixed_batch:
+            already_target = _segment("already-target", "workspace-1", "dataset-1", "document-1")
+            already_target.enabled = action == "enable"
+            already_target.disabled_at = previous_disabled_at
+            already_target.disabled_by = previous_disabled_by
+            session.add(already_target)
+            requested_ids.append(already_target.id)
+            expected_ids.add(already_target.id)
 
     probe.dispatch_unavailable = True
     with pytest.raises(SegmentStatusUpdateError, match="broker unavailable"):
@@ -1003,7 +1020,7 @@ def test_status_retry_after_dispatch_failure_reaches_index(
             context,
             dataset_id="dataset-1",
             document_id="document-1",
-            segment_ids=["segment-1", "foreign"],
+            segment_ids=requested_ids,
             action=action,
         )
     with sqlite_session_factory() as session:
@@ -1016,13 +1033,28 @@ def test_status_retry_after_dispatch_failure_reaches_index(
 
     probe.dispatch_unavailable = False
     app.change_segment_status(
-        context, dataset_id="dataset-1", document_id="document-1", segment_ids=["segment-1", "foreign"], action=action
+        context, dataset_id="dataset-1", document_id="document-1", segment_ids=requested_ids, action=action
     )
-    assert probe.tasks == [(action, (["segment-1"], "dataset-1", "document-1"))]
+    assert len(probe.tasks) == 1
+    kind, task_args = probe.tasks[0]
+    assert kind == action
+    assert isinstance(task_args[0], list)
+    assert len(task_args[0]) == len(expected_ids)
+    assert set(task_args[0]) == expected_ids
+    assert task_args[1:] == ("dataset-1", "document-1")
     with sqlite_session_factory() as session:
         segment = session.get(DocumentSegment, "segment-1")
         assert segment is not None
         assert (segment.disabled_at, segment.disabled_by) == (disabled_at, disabled_by)
+
+        if mixed_batch:
+            already_target = session.get(DocumentSegment, "already-target")
+            assert already_target is not None
+            assert already_target.enabled == (action == "enable")
+            assert (already_target.disabled_at, already_target.disabled_by) == (
+                previous_disabled_at,
+                previous_disabled_by,
+            )
 
 
 def test_batch_status_and_delete_only_modify_scoped_segments(
