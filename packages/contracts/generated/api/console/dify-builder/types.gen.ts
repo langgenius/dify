@@ -58,6 +58,7 @@ export type DifyBuilderSessionViewResponse = {
   app_revision?: DifyBuilderAppRevisionResponse | null
   attachments?: Array<DifyBuilderMaterialReceiptResponse>
   canvas_read_only: boolean
+  conversation_cleared?: boolean
   conversation_last_seq: number
   decision?: Decision | null
   diagnostics?: Array<{
@@ -66,12 +67,33 @@ export type DifyBuilderSessionViewResponse = {
   interrupted: boolean
   last_command_id?: string
   model?: SessionModel | null
+  pending_fix_context?: RunContextCard | PreflightContextCard | null
   phase: Phase
   recovery?: RecoveryRef | null
   reply_language: string
   run_status: RunStatus
   session_id: string
+  task_id?: string
+  task_status?: 'abandoned' | 'active' | 'completed' | 'paused'
+  task_summaries?: Array<TaskSummary>
   test_execution?: NativeTestPublicReceipt | null
+  version: number
+}
+
+export type DifyBuilderConversationLifecyclePayload = {
+  base_version: number
+  client_action_id: string
+  expected_task_id?: string
+}
+
+export type DifyBuilderConversationLifecycleResponse = {
+  conversation_cleared: boolean
+  conversation_last_seq: number
+  last_command_id: string
+  session_id: string
+  settlement: 'pending' | 'settled' | 'unknown'
+  task_id: string
+  task_status: 'abandoned'
   version: number
 }
 
@@ -84,6 +106,13 @@ export type DifyBuilderSubmitActionPayload = {
     [key: string]: unknown
   }
   receipt_snapshot?: DifyBuilderReceiptSnapshot | null
+}
+
+export type DifyBuilderClearConversationPayload = {
+  base_version: number
+  client_action_id: string
+  confirmed: boolean
+  expected_task_id?: string
 }
 
 export type DifyBuilderConversationPageResponse = {
@@ -103,6 +132,20 @@ export type DifyBuilderConversationPageResponse = {
   first_seq: number | null
   has_more: boolean
   last_seq: number | null
+}
+
+export type DifyBuilderFixIntentPayload = {
+  base_version: number
+  checklist_errors?: Array<DifyBuilderChecklistErrorPayload>
+  client_action_id: string
+  failed_run_id?: string | null
+  model_config?: SessionModel | null
+}
+
+export type DifyBuilderFixIntentResponse = {
+  fix_intent_id: string
+  session: DifyBuilderSessionViewResponse
+  status: string
 }
 
 export type DifyBuilderSubmitMessagePayload = {
@@ -292,18 +335,22 @@ export type DifyBuilderCreateEditSessionPayload = {
 export type DifyBuilderCreateFixSessionPayload = {
   app_id: string
   attachments?: Array<DifyBuilderAttachmentPayload>
+  client_action_id?: string | null
   failed_run_id: string
   model_config?: SessionModel | null
   scenario: 'fix'
+  session_id?: string | null
 }
 
 export type DifyBuilderCreateChecklistFixSessionPayload = {
   app_id: string
   attachments?: Array<DifyBuilderAttachmentPayload>
   checklist_errors: Array<DifyBuilderChecklistErrorPayload>
+  client_action_id?: string | null
   failed_run_id?: string | null
   model_config?: SessionModel | null
   scenario: 'fix'
+  session_id?: string | null
 }
 
 export type DifyBuilderCommandStartedEventResponse = {
@@ -429,6 +476,20 @@ export type SessionModel = {
   provider: string
 }
 
+export type RunContextCard = {
+  error_code: string
+  message: string
+  run_id: string
+  title: string
+  trace_ref?: string
+}
+
+export type PreflightContextCard = {
+  issue_count: number
+  issues?: Array<PreflightIssue>
+  node_count: number
+}
+
 export type Phase =
   | 'clarify'
   | 'complete'
@@ -453,6 +514,24 @@ export type RunStatus =
   | 'processing'
   | 'waiting_confirmation'
   | 'waiting_input'
+
+export type TaskSummary = {
+  change_summary?: string
+  changed_node_ids?: Array<string>
+  completion_version?: number
+  constraints?: {
+    [key: string]: string
+  }
+  entry_mode?: EntryMode
+  goal?: string
+  outcome?: 'kept_draft' | 'published'
+  output_contract?: string
+  resource_ids?: Array<string>
+  schema_version?: 1
+  task_id?: string
+  test_evidence?: TaskTestEvidence
+  unresolved_risks?: Array<string>
+}
 
 export type NativeTestPublicReceipt = {
   can_resume?: boolean
@@ -563,6 +642,15 @@ export type DifyBuilderTestResultConversationItemResponse = {
   seq: number
 }
 
+export type DifyBuilderChecklistErrorPayload = {
+  messages: Array<string>
+  node_id: string
+  node_type: string
+  plugin_missing: boolean
+  title: string
+  unconnected: boolean
+}
+
 export type DifyBuilderAttachmentPayload = {
   upload_file_id: string
 }
@@ -617,15 +705,6 @@ export type DifyBuilderConsoleForbiddenResponse = {
   code: 'forbidden'
   message: string
   status: 403
-}
-
-export type DifyBuilderChecklistErrorPayload = {
-  messages: Array<string>
-  node_id: string
-  node_type: string
-  plugin_missing: boolean
-  title: string
-  unconnected: boolean
 }
 
 export type DifyBuilderCommandStartedEventData = {
@@ -824,6 +903,7 @@ export type DifyBuilderCommandFinishedEventData = {
   attachments?: Array<DifyBuilderMaterialReceiptResponse>
   canvas_read_only: boolean
   command_id: string
+  conversation_cleared?: boolean
   conversation_last_seq: number
   decision?: Decision | null
   diagnostics?: Array<{
@@ -831,12 +911,16 @@ export type DifyBuilderCommandFinishedEventData = {
   }>
   interrupted: boolean
   model?: SessionModel | null
+  pending_fix_context?: RunContextCard | PreflightContextCard | null
   phase: Phase
   post_canvas_action_id?: string | null
   recovery?: RecoveryRef | null
   reply_language: string
   run_status: RunStatus
   session_id: string
+  task_id?: string
+  task_status?: 'abandoned' | 'active' | 'completed' | 'paused'
+  task_summaries?: Array<TaskSummary>
   test_execution?: NativeTestPublicReceipt | null
   version: number
 }
@@ -903,6 +987,30 @@ export type Action = {
   }
 }
 
+export type PreflightIssue = {
+  messages?: Array<string>
+  node_id: string
+  node_type: string
+  plugin_missing?: boolean
+  title: string
+  unconnected?: boolean
+}
+
+export type EntryMode = 'build' | 'edit' | 'fix' | 'fix_checklist'
+
+export type TaskTestEvidence = {
+  business_acceptance_case_id?: string
+  business_acceptance_state?: 'failed' | 'passed' | 'unverified'
+  execution_revision?: string
+  graph_revision?: string
+  mode?: string
+  native_run_id?: string
+  run_id?: string
+  safety_outcome?: string
+  sealed?: boolean
+  status?: 'failed' | 'not_run' | 'running' | 'stopped' | 'succeeded' | 'unknown'
+}
+
 export type CancellationReceipt = {
   generation: number
   operation_states: {
@@ -961,20 +1069,6 @@ export type NoticeItem = {
   reply_language?: string
   text: string | BuilderCopy | BuilderTextParts
   tone?: string
-}
-
-export type RunContextCard = {
-  error_code: string
-  message: string
-  run_id: string
-  title: string
-  trace_ref?: string
-}
-
-export type PreflightContextCard = {
-  issue_count: number
-  issues?: Array<PreflightIssue>
-  node_count: number
 }
 
 export type AssistantTurnItem = {
@@ -1533,15 +1627,6 @@ export type InteractionResponseField = {
   value: unknown
 }
 
-export type PreflightIssue = {
-  messages?: Array<string>
-  node_id: string
-  node_type: string
-  plugin_missing?: boolean
-  title: string
-  unconnected?: boolean
-}
-
 export type ExecutionProgress = {
   activities?: Array<ExecutionActivity>
   status: 'completed' | 'error' | 'running' | 'stopped'
@@ -2089,6 +2174,29 @@ export type GetDifyBuilderSessionsBySessionIdResponses = {
 export type GetDifyBuilderSessionsBySessionIdResponse =
   GetDifyBuilderSessionsBySessionIdResponses[keyof GetDifyBuilderSessionsBySessionIdResponses]
 
+export type PostDifyBuilderSessionsBySessionIdAbandonData = {
+  body: DifyBuilderConversationLifecyclePayload
+  path: {
+    session_id: string
+  }
+  query?: never
+  url: '/dify-builder/sessions/{session_id}/abandon'
+}
+
+export type PostDifyBuilderSessionsBySessionIdAbandonErrors = {
+  default: ErrorResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdAbandonError =
+  PostDifyBuilderSessionsBySessionIdAbandonErrors[keyof PostDifyBuilderSessionsBySessionIdAbandonErrors]
+
+export type PostDifyBuilderSessionsBySessionIdAbandonResponses = {
+  200: DifyBuilderConversationLifecycleResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdAbandonResponse =
+  PostDifyBuilderSessionsBySessionIdAbandonResponses[keyof PostDifyBuilderSessionsBySessionIdAbandonResponses]
+
 export type PostDifyBuilderSessionsBySessionIdActionsData = {
   body: DifyBuilderSubmitActionPayload
   path: {
@@ -2113,6 +2221,29 @@ export type PostDifyBuilderSessionsBySessionIdActionsResponses = {
 
 export type PostDifyBuilderSessionsBySessionIdActionsResponse =
   PostDifyBuilderSessionsBySessionIdActionsResponses[keyof PostDifyBuilderSessionsBySessionIdActionsResponses]
+
+export type PostDifyBuilderSessionsBySessionIdClearData = {
+  body: DifyBuilderClearConversationPayload
+  path: {
+    session_id: string
+  }
+  query?: never
+  url: '/dify-builder/sessions/{session_id}/clear'
+}
+
+export type PostDifyBuilderSessionsBySessionIdClearErrors = {
+  default: ErrorResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdClearError =
+  PostDifyBuilderSessionsBySessionIdClearErrors[keyof PostDifyBuilderSessionsBySessionIdClearErrors]
+
+export type PostDifyBuilderSessionsBySessionIdClearResponses = {
+  200: DifyBuilderConversationLifecycleResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdClearResponse =
+  PostDifyBuilderSessionsBySessionIdClearResponses[keyof PostDifyBuilderSessionsBySessionIdClearResponses]
 
 export type GetDifyBuilderSessionsBySessionIdConversationData = {
   body?: never
@@ -2141,6 +2272,29 @@ export type GetDifyBuilderSessionsBySessionIdConversationResponses = {
 
 export type GetDifyBuilderSessionsBySessionIdConversationResponse =
   GetDifyBuilderSessionsBySessionIdConversationResponses[keyof GetDifyBuilderSessionsBySessionIdConversationResponses]
+
+export type PostDifyBuilderSessionsBySessionIdFixIntentsData = {
+  body: DifyBuilderFixIntentPayload
+  path: {
+    session_id: string
+  }
+  query?: never
+  url: '/dify-builder/sessions/{session_id}/fix-intents'
+}
+
+export type PostDifyBuilderSessionsBySessionIdFixIntentsErrors = {
+  default: ErrorResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdFixIntentsError =
+  PostDifyBuilderSessionsBySessionIdFixIntentsErrors[keyof PostDifyBuilderSessionsBySessionIdFixIntentsErrors]
+
+export type PostDifyBuilderSessionsBySessionIdFixIntentsResponses = {
+  200: DifyBuilderFixIntentResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdFixIntentsResponse =
+  PostDifyBuilderSessionsBySessionIdFixIntentsResponses[keyof PostDifyBuilderSessionsBySessionIdFixIntentsResponses]
 
 export type PostDifyBuilderSessionsBySessionIdMessagesData = {
   body: DifyBuilderSubmitMessagePayload
