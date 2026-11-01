@@ -1,7 +1,11 @@
 import { useAtomValue, useSetAtom, useStore } from 'jotai'
 import { useEffect, useEffectEvent, useRef } from 'react'
-import { difyBuilderActiveSessionIdAtom } from '../session/state'
-import { getSessionStorageKey } from './session-storage'
+import { difyBuilderActiveSessionIdAtom, difyBuilderLifecycleControlAtom } from '../session/state'
+import {
+  getLifecycleStorageKey,
+  getSessionStorageKey,
+  parseStoredLifecycleControl,
+} from './session-storage'
 
 export const DifyBuilderSessionPersistence = ({
   appId,
@@ -26,12 +30,37 @@ export const DifyBuilderSessionPersistence = ({
   const restoreSession = useEffectEvent(restore)
 
   useEffect(() => {
+    if (!enabled || !storageKey) return
+    // Persist admission identities synchronously before the request can leave.
+    // A pending operation becomes unknown on reload and is never replayed here.
+    return jotaiStore.sub(difyBuilderLifecycleControlAtom, () => {
+      const control = jotaiStore.get(difyBuilderLifecycleControlAtom)
+      try {
+        const key = getLifecycleStorageKey(storageKey)
+        if (control) {
+          window.sessionStorage.setItem(key, JSON.stringify(control))
+          window.sessionStorage.setItem(storageKey, control.sessionId)
+        } else window.sessionStorage.removeItem(key)
+      } catch {
+        // Retain the in-memory block when browser storage is unavailable.
+      }
+    })
+  }, [enabled, jotaiStore, storageKey])
+
+  useEffect(() => {
     if (!enabled || !storageKey || attemptedStorageKeyRef.current === storageKey) return
     attemptedStorageKeyRef.current = storageKey
 
     let storedSessionId: string | null = null
     try {
       storedSessionId = window.sessionStorage.getItem(storageKey)?.trim() || null
+      const control = parseStoredLifecycleControl(
+        window.sessionStorage.getItem(getLifecycleStorageKey(storageKey)),
+      )
+      if (control && (!storedSessionId || control.sessionId === storedSessionId)) {
+        storedSessionId = control.sessionId
+        jotaiStore.set(difyBuilderLifecycleControlAtom, control)
+      }
     } catch {
       return
     }

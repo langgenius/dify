@@ -317,6 +317,7 @@
   "resourceReady": "設定就緒 · 執行狀態未驗證",
   "runTest": "執行測試",
   "running": "運行中",
+  "taskControl.abandon": "退出任務",
   "taskControl.conflict": "任務狀態已變更，請檢查最新狀態後重試。",
   "taskControl.paused": "已暫停，可編輯畫布後繼續任務。",
   "taskControl.resume": "繼續任務",

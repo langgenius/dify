@@ -317,6 +317,7 @@
   "resourceReady": "설정 완료 · 실행 상태 미확인",
   "runTest": "테스트 실행",
   "running": "실행 중",
+  "taskControl.abandon": "작업 종료",
   "taskControl.conflict": "작업 상태가 변경되었습니다. 최신 상태를 확인하고 다시 시도하세요.",
   "taskControl.paused": "일시 중지되었습니다. 캔버스를 편집한 후 작업을 계속하세요.",
   "taskControl.resume": "작업 계속",

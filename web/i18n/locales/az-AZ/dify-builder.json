@@ -317,6 +317,7 @@
   "resourceReady": "Konfiqurasiya edilib · işləmə vəziyyəti yoxlanılmayıb",
   "runTest": "Testi işə sal",
   "running": "İcra olunur",
+  "taskControl.abandon": "Tapşırıqdan çıx",
   "taskControl.conflict": "Tapşırığın vəziyyəti dəyişdi. Cari vəziyyəti yoxlayın və yenidən cəhd edin.",
   "taskControl.paused": "Fasilə verildi. İş sahəsini redaktə edin, sonra tapşırığa davam edin.",
   "taskControl.resume": "Tapşırığa davam et",

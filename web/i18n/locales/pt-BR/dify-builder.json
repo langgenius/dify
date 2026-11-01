@@ -321,6 +321,7 @@
   "resourceReady": "Configurado · execução não verificada",
   "runTest": "Executar o teste",
   "running": "Executando",
+  "taskControl.abandon": "Sair da tarefa",
   "taskControl.conflict": "O estado da tarefa mudou. Confira o estado atual e tente novamente.",
   "taskControl.paused": "Em pausa. Edite a tela e depois retome a tarefa.",
   "taskControl.resume": "Retomar tarefa",

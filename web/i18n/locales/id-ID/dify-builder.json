@@ -317,6 +317,7 @@
   "resourceReady": "Terkonfigurasi · operasi belum diverifikasi",
   "runTest": "Jalankan pengujian",
   "running": "Menjalankan",
+  "taskControl.abandon": "Keluar dari tugas",
   "taskControl.conflict": "Status tugas berubah. Periksa status terbaru dan coba lagi.",
   "taskControl.paused": "Dijeda. Edit kanvas, lalu lanjutkan tugas.",
   "taskControl.resume": "Lanjutkan tugas",

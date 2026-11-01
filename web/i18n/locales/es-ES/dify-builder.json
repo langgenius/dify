@@ -321,6 +321,7 @@
   "resourceReady": "Configurado · ejecución sin verificar",
   "runTest": "Ejecutar la prueba",
   "running": "Ejecutando",
+  "taskControl.abandon": "Salir de la tarea",
   "taskControl.conflict": "El estado de la tarea cambió. Revisa el estado actual e inténtalo de nuevo.",
   "taskControl.paused": "En pausa. Edita el lienzo y después reanuda la tarea.",
   "taskControl.resume": "Reanudar tarea",

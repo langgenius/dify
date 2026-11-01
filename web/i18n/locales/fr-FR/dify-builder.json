@@ -321,6 +321,7 @@
   "resourceReady": "Configuré · exécution non vérifiée",
   "runTest": "Lancer le test",
   "running": "En cours d'exécution",
+  "taskControl.abandon": "Quitter la tâche",
   "taskControl.conflict": "L’état de la tâche a changé. Vérifiez son état actuel et réessayez.",
   "taskControl.paused": "En pause. Modifiez le canevas, puis reprenez la tâche.",
   "taskControl.resume": "Reprendre la tâche",

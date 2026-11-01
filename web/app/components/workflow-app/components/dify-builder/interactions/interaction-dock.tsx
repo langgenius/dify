@@ -13,12 +13,14 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useAtomValue } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RunContextCard } from '../conversation/conversation-card'
 import { FormCard } from '../conversation/form-card'
 import {
   getFormActionPayload,
   initialFormValues,
   prepareFormValues,
 } from '../conversation/form-values'
+import { PreflightContextCard } from '../conversation/preflight-context-card'
 import { ResourceCard } from '../conversation/resource-card'
 import { useBuilderText } from '../copy/use-builder-text'
 import { difyBuilderSessionViewAtom } from '../session/state'
@@ -63,12 +65,14 @@ const ChoiceInteraction = ({
   actions,
   busy,
   decision,
+  context,
   recheckReady,
   submitInteraction,
 }: {
   actions: SessionView['actions']
   busy: boolean
   decision: DifyBuilderDecision
+  context: SessionView['pending_fix_context']
   recheckReady: boolean
   submitInteraction: SubmitInteraction
 }) => {
@@ -129,6 +133,12 @@ const ChoiceInteraction = ({
         </Button>
       }
     >
+      {context &&
+        ('run_id' in context ? (
+          <RunContextCard payload={context} invalidated={false} />
+        ) : (
+          <PreflightContextCard payload={context} invalidated={false} />
+        ))}
       <form
         className="-mx-1"
         id={formId}
@@ -409,6 +419,7 @@ export const DifyBuilderInteractionDock = ({
         actions={view?.actions}
         busy={busy}
         decision={decision}
+        context={view?.pending_fix_context}
         recheckReady={recheckReady}
         submitInteraction={submitWithResponseCopy}
       />

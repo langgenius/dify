@@ -1,6 +1,7 @@
 'use client'
 
 import type {
+  DifyBuilderFixIntentPayload,
   DifyBuilderReceiptSnapshot,
   DifyBuilderStreamEventResponse,
   DifyBuilderTaskControlPayload,
@@ -13,6 +14,7 @@ import type {
   SessionModel,
   SessionView,
 } from '../types'
+import type { DifyBuilderLifecycleControl } from './state'
 import type { SessionCommandOptions, SessionRunEvents, SessionStreamOutcome } from './types'
 import { isEqual } from 'es-toolkit/predicate'
 import { useAtomValue, useSetAtom, useStore } from 'jotai'
@@ -24,9 +26,11 @@ import { consoleQuery } from '@/service/console'
 import {
   difyBuilderCanvasAppliedViewAtom,
   difyBuilderCanvasReadyAtom,
+  difyBuilderDraftAtom,
   difyBuilderLocalInteractionResponseAtom,
 } from '../store'
 import {
+  controlSessionConversation,
   controlSessionTask,
   createBuildSession,
   createChecklistFixSession,
@@ -35,6 +39,7 @@ import {
   getSession,
   getSessionConversation,
   getSessionStream,
+  prepareSessionFix,
   runSessionAction,
   sendSessionMessage,
 } from './client'
@@ -52,6 +57,7 @@ import {
   difyBuilderConversationAtom,
   difyBuilderConversationHasMoreAtom,
   difyBuilderConversationLoadingAtom,
+  difyBuilderLifecycleControlAtom,
   difyBuilderLocalUserMessageAtom,
   difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
@@ -169,6 +175,7 @@ export function useDifyBuilderSessionController(
   const reasoningBuffer = useDifyBuilderReasoningBuffer()
   const streamingTurnBuffer = useDifyBuilderStreamingTurnBuffer()
   const abortRef = useRef<AbortController | null>(null)
+  const lifecycleAbortRef = useRef<AbortController | null>(null)
   const pendingTaskControlRef = useRef<PendingTaskControl | null>(null)
   const canvasCursorRef = useRef<
     Pick<CanvasEventData, 'at_version' | 'operation_id' | 'revision' | 'session_id'> | undefined
@@ -189,6 +196,8 @@ export function useDifyBuilderSessionController(
     return () => {
       abortRef.current?.abort()
       abortRef.current = null
+      lifecycleAbortRef.current?.abort()
+      lifecycleAbortRef.current = null
       pendingRetestRef.current = null
       pendingTaskControlRef.current = null
       // Clearing the request ref prevents its finally block from releasing loading state.
@@ -198,50 +207,6 @@ export function useDifyBuilderSessionController(
       resetRunOnUnmount()
     }
   }, [setConversationLoading, setIsBusy, setTaskControl])
-
-  const applySessionView = useCallback(
-    (nextView: SessionView, observedAtStart: number | 'native' = nativeObservationRef.current) => {
-      const activeSessionId = store.get(difyBuilderActiveSessionIdAtom)
-      if (activeSessionId && activeSessionId !== nextView.session_id) return false
-
-      const current = store.get(difyBuilderSessionViewAtom)
-      // Ordinary command projections do not opt into native metadata. Their
-      // omission must not end an independently observed native continuation.
-      // A snapshot request already in flight when native SSE advances cannot
-      // order equal-counter receipts. A fresh recovery GET can still advance.
-      const preserveObservedReceipt =
-        observedAtStart !== 'native' &&
-        observedAtStart < nativeObservationRef.current &&
-        sameNativeReceiptOrder(current?.test_execution, nextView.test_execution)
-      const preserveReceipt =
-        current?.session_id === nextView.session_id &&
-        (nextView.test_execution === undefined ||
-          olderNativeReceipt(current.test_execution, nextView.test_execution) ||
-          preserveObservedReceipt)
-      const incoming = preserveReceipt
-        ? { ...nextView, test_execution: current.test_execution }
-        : nextView
-      const projected = projectSessionView(current, incoming)
-      if (!projected) return false
-
-      // Bounded JSON/SSE session projections replace metadata atomically;
-      // durable conversation rows have their own paginated owner.
-      if (observedAtStart === 'native' && !preserveReceipt) nativeObservationRef.current += 1
-      setView(projected)
-      onSessionStateChanged?.(projected)
-      const canvasCursor = canvasCursorRef.current
-      if (
-        canvasCursor &&
-        (canvasCursor.session_id !== projected.session_id ||
-          canvasCursor.at_version <= projected.version)
-      )
-        canvasCursorRef.current = undefined
-      // A finished task is still the current, recoverable conversation.
-      setActiveSessionId(projected.session_id)
-      return true
-    },
-    [onSessionStateChanged, setActiveSessionId, setView, store],
-  )
 
   const confirmLocalUserMessage = useCallback(
     (sessionId: string, items: ConversationItem[]) => {
@@ -268,6 +233,7 @@ export function useDifyBuilderSessionController(
       controller: AbortController,
       replaceWithLatest = false,
     ) => {
+      if (store.get(difyBuilderSessionViewAtom)?.conversation_cleared) return true
       let items =
         replaceWithLatest || store.get(difyBuilderSessionViewAtom)?.session_id !== sessionId
           ? []
@@ -279,7 +245,11 @@ export function useDifyBuilderSessionController(
           { before_seq: targetLastSeq + 1, limit: 20 },
           controller.signal,
         )
-        if (controller.signal.aborted || store.get(difyBuilderActiveSessionIdAtom) !== sessionId)
+        if (
+          controller.signal.aborted ||
+          store.get(difyBuilderActiveSessionIdAtom) !== sessionId ||
+          store.get(difyBuilderSessionViewAtom)?.conversation_cleared
+        )
           return false
         const pageItems = page.data.filter((item) => item.seq <= targetLastSeq)
         items = mergeConversationPage(store.get(difyBuilderConversationAtom), pageItems)
@@ -295,7 +265,11 @@ export function useDifyBuilderSessionController(
           { after_seq: lastSeq, limit: 100 },
           controller.signal,
         )
-        if (controller.signal.aborted || store.get(difyBuilderActiveSessionIdAtom) !== sessionId)
+        if (
+          controller.signal.aborted ||
+          store.get(difyBuilderActiveSessionIdAtom) !== sessionId ||
+          store.get(difyBuilderSessionViewAtom)?.conversation_cleared
+        )
           return false
         const boundedPage = page.data.filter((item) => item.seq <= targetLastSeq)
         const merged = mergeConversationPage(store.get(difyBuilderConversationAtom), boundedPage)
@@ -333,7 +307,11 @@ export function useDifyBuilderSessionController(
           { after_seq: cursor, limit: 100 },
           controller.signal,
         )
-        if (controller.signal.aborted || store.get(difyBuilderActiveSessionIdAtom) !== sessionId)
+        if (
+          controller.signal.aborted ||
+          store.get(difyBuilderActiveSessionIdAtom) !== sessionId ||
+          store.get(difyBuilderSessionViewAtom)?.conversation_cleared
+        )
           return false
         const boundedPage = page.data.filter((item) => item.seq <= targetLastSeq)
         const merged = mergeConversationPage(store.get(difyBuilderConversationAtom), boundedPage)
@@ -383,6 +361,159 @@ export function useDifyBuilderSessionController(
     ],
   )
 
+  const isolateClearedConversation = useCallback(
+    (reading?: AbortController) => {
+      if (abortRef.current !== reading) {
+        abortRef.current?.abort()
+        abortRef.current = null
+        setIsBusy(false)
+      }
+      setActiveCommand(null)
+      pendingMessageRef.current = null
+      pendingRetestRef.current = null
+      setConversation([])
+      setConversationHasMore(false)
+      setLocalUserMessage(null)
+      setRetryableMessage(null)
+      store.set(difyBuilderDraftAtom, '')
+      store.set(difyBuilderLocalInteractionResponseAtom, null)
+      setView((current) =>
+        current
+          ? {
+              ...current,
+              conversation_cleared: true,
+              conversation_last_seq: -1,
+              actions: [],
+              decision: null,
+              active_interaction: null,
+              task_summaries: [],
+              test_execution: undefined,
+            }
+          : null,
+      )
+      executionProgress.clear()
+      reasoningBuffer.clear()
+      streamingTurnBuffer.clear()
+      runEvents?.reset()
+    },
+    [
+      executionProgress,
+      reasoningBuffer,
+      runEvents,
+      setActiveCommand,
+      setConversation,
+      setConversationHasMore,
+      setIsBusy,
+      setLocalUserMessage,
+      setRetryableMessage,
+      setView,
+      store,
+      streamingTurnBuffer,
+    ],
+  )
+
+  const projectLifecycleSettlement = useCallback(
+    (view: SessionView, reading?: AbortController) => {
+      const control = store.get(difyBuilderLifecycleControlAtom)
+      const matches =
+        control?.sessionId === view.session_id && control.clientActionId === view.last_command_id
+      if (view.conversation_cleared) {
+        isolateClearedConversation(reading)
+        if (
+          view.lifecycle_settlement === 'settled' &&
+          (!control || (matches && control.operation === 'clear'))
+        ) {
+          store.set(difyBuilderLifecycleControlAtom, null)
+          clearSession(view.session_id)
+          setLastError('')
+        } else {
+          store.set(
+            difyBuilderLifecycleControlAtom,
+            control
+              ? { ...control, phase: 'unknown' }
+              : {
+                  operation: 'clear',
+                  phase: 'unknown',
+                  sessionId: view.session_id,
+                  clientActionId: view.last_command_id ?? '',
+                  baseVersion: view.version,
+                },
+          )
+          setLastError(t(($) => $['taskControl.unknown']))
+        }
+        return true
+      }
+      if (
+        matches &&
+        control?.operation === 'abandon' &&
+        view.task_status === 'abandoned' &&
+        view.lifecycle_settlement === 'settled'
+      ) {
+        store.set(difyBuilderLifecycleControlAtom, null)
+        setLastError('')
+      }
+      return false
+    },
+    [clearSession, isolateClearedConversation, setLastError, store, t],
+  )
+
+  const applySessionView = useCallback(
+    (
+      nextView: SessionView,
+      observedAtStart: number | 'native' = nativeObservationRef.current,
+      reading?: AbortController,
+    ) => {
+      const activeSessionId = store.get(difyBuilderActiveSessionIdAtom)
+      if (activeSessionId && activeSessionId !== nextView.session_id) return false
+
+      const current = store.get(difyBuilderSessionViewAtom)
+      // Clearing is irreversible within this session, including against an
+      // older response that was already in flight when Clear was acknowledged.
+      if (
+        current?.session_id === nextView.session_id &&
+        current.conversation_cleared &&
+        !nextView.conversation_cleared
+      )
+        return false
+      // Ordinary command projections do not opt into native metadata. Their
+      // omission must not end an independently observed native continuation.
+      // A snapshot request already in flight when native SSE advances cannot
+      // order equal-counter receipts. A fresh recovery GET can still advance.
+      const preserveObservedReceipt =
+        observedAtStart !== 'native' &&
+        observedAtStart < nativeObservationRef.current &&
+        sameNativeReceiptOrder(current?.test_execution, nextView.test_execution)
+      const preserveReceipt =
+        current?.session_id === nextView.session_id &&
+        (nextView.test_execution === undefined ||
+          olderNativeReceipt(current.test_execution, nextView.test_execution) ||
+          preserveObservedReceipt)
+      const incoming = preserveReceipt
+        ? { ...nextView, test_execution: current.test_execution }
+        : nextView
+      const projected = projectSessionView(current, incoming)
+      if (!projected) return false
+
+      // Bounded JSON/SSE session projections replace metadata atomically;
+      // durable conversation rows have their own paginated owner.
+      if (observedAtStart === 'native' && !preserveReceipt) nativeObservationRef.current += 1
+      setView(projected)
+      if (projectLifecycleSettlement(projected, reading)) return true
+      onSessionStateChanged?.(projected)
+      const canvasCursor = canvasCursorRef.current
+      if (
+        canvasCursor &&
+        (canvasCursor.session_id !== projected.session_id ||
+          canvasCursor.at_version <= projected.version)
+      )
+        canvasCursorRef.current = undefined
+      // A finished task is still the current, recoverable conversation.
+      setActiveSessionId(projected.session_id)
+      return true
+    },
+    [onSessionStateChanged, projectLifecycleSettlement, setActiveSessionId, setView, store],
+  )
+
   const consumeStream = useCallback(
     async (
       events: AsyncIterable<DifyBuilderStreamEventResponse>,
@@ -401,6 +532,11 @@ export function useDifyBuilderSessionController(
             : -1,
       }
       const handleEvent = async (event: DifyBuilderStreamEventResponse): Promise<boolean> => {
+        if (
+          store.get(difyBuilderSessionViewAtom)?.conversation_cleared &&
+          event.event !== 'command_finished'
+        )
+          return false
         // payload is captured shallow-by-reference here; it is only
         // serialized (deep-cloned/stringified) later, at export time.
         traceRef.current.append({
@@ -648,7 +784,17 @@ export function useDifyBuilderSessionController(
             payload: snapshot,
             version: snapshot.version,
           })
-          applySessionView(snapshot, observedAtStart)
+          const applied = applySessionView(snapshot, observedAtStart, controller)
+          if (applied && snapshot.conversation_cleared) {
+            return {
+              sessionId,
+              sawCommandStarted: false,
+              terminalEvent: 'command_finished' as const,
+              terminalRunStatus: 'complete' as const,
+              observedVersion: snapshot.version,
+              stateApplied: true,
+            }
+          }
           // A slower GET cannot restore a command already superseded by a
           // newer projection from the independently observed execution.
           const view = store.get(difyBuilderSessionViewAtom)!
@@ -790,7 +936,11 @@ export function useDifyBuilderSessionController(
           const observedAtStart = nativeObservationRef.current
           const events = await getSessionStream(observedSessionId, controller.signal, cursor)
           for await (const event of events) {
-            if (controller.signal.aborted) return
+            if (
+              controller.signal.aborted ||
+              store.get(difyBuilderSessionViewAtom)?.conversation_cleared
+            )
+              return
             if (event.event === 'native_execution') {
               if (
                 event.data.session_id !== observedSessionId ||
@@ -869,6 +1019,7 @@ export function useDifyBuilderSessionController(
     }: SessionCommandOptions & {
       prepareDispatch?: (signal: AbortSignal) => Promise<SessionCommandOptions['trace']>
     }) => {
+      if (store.get(difyBuilderLifecycleControlAtom)) return false
       const startingView = store.get(difyBuilderSessionViewAtom)
       const startingVersion = startsSession
         ? 0
@@ -1081,33 +1232,141 @@ export function useDifyBuilderSessionController(
     ],
   )
 
+  const lifecycleError = useCallback(
+    async (
+      operation: 'clear' | 'abandon' | 'fix' | 'dismiss_fix' | 'stop_and_switch_fix',
+      error: unknown,
+      controller: AbortController,
+    ) => {
+      const status = requestErrorStatus(error)
+      const message = await requestErrorMessage(error)
+      if (controller.signal.aborted || lifecycleAbortRef.current !== controller) return
+      const rejected = status !== undefined && status >= 400 && status < 500
+      const control = store.get(difyBuilderLifecycleControlAtom)
+      if (!control) return
+      store.set(
+        difyBuilderLifecycleControlAtom,
+        rejected ? null : { ...control, operation, phase: 'unknown' },
+      )
+      setLastError(status === 409 ? t(($) => $['taskControl.conflict']) : message)
+    },
+    [setLastError, store, t],
+  )
+
+  const watchFix = useCallback(
+    async (sessionId: string, controller: AbortController) => {
+      if (abortRef.current) return true
+      abortRef.current = controller
+      setIsBusy(true)
+      try {
+        const outcome = await reconcileSession(sessionId, controller)
+        return !controller.signal.aborted && outcome?.stateApplied === true
+      } finally {
+        if (abortRef.current === controller) {
+          abortRef.current = null
+          setIsBusy(false)
+          runEvents?.finishCommand()
+        }
+      }
+    },
+    [reconcileSession, runEvents, setIsBusy],
+  )
+
+  const prepareExistingFix = useCallback(
+    async (
+      source: Pick<
+        DifyBuilderFixIntentPayload,
+        'failed_run_id' | 'checklist_errors' | 'model_config'
+      >,
+    ) => {
+      const view = store.get(difyBuilderSessionViewAtom)
+      const command = store.get(difyBuilderActiveCommandAtom)
+      const sessionId = view?.session_id ?? store.get(difyBuilderActiveSessionIdAtom)
+      const version = view?.version ?? command?.version
+      if (
+        !sessionId ||
+        !version ||
+        store.get(difyBuilderLifecycleControlAtom) ||
+        store.get(difyBuilderTaskControlAtom)
+      )
+        return false
+      const controller = new AbortController()
+      lifecycleAbortRef.current = controller
+      setLastError('')
+      const body: DifyBuilderFixIntentPayload = {
+        ...source,
+        base_version: version,
+        client_action_id: globalThis.crypto.randomUUID(),
+      }
+      store.set(difyBuilderLifecycleControlAtom, {
+        operation: 'fix',
+        phase: 'pending',
+        sessionId,
+        clientActionId: body.client_action_id,
+        baseVersion: body.base_version,
+      })
+      traceRef.current.append({ dir: 'out', kind: 'fix_intent', payload: body })
+      try {
+        const receipt = await prepareSessionFix(sessionId, body, controller.signal)
+        if (
+          controller.signal.aborted ||
+          store.get(difyBuilderActiveSessionIdAtom) !== sessionId ||
+          store.get(difyBuilderSessionViewAtom)?.conversation_cleared
+        )
+          return false
+        traceRef.current.append({ dir: 'in', kind: 'fix_intent_ack', payload: receipt })
+        applySessionView(receipt.session)
+        store.set(difyBuilderLifecycleControlAtom, null)
+        if (receipt.status === 'activated' && isActiveView(receipt.session))
+          return await watchFix(sessionId, controller)
+        return true
+      } catch (error) {
+        await lifecycleError('fix', error, controller)
+        return false
+      } finally {
+        if (lifecycleAbortRef.current === controller) lifecycleAbortRef.current = null
+      }
+    },
+    [applySessionView, lifecycleError, setLastError, store, watchFix],
+  )
+
   const startFix = useCallback(
     (appId: string, failedRunId: string, modelConfig?: SessionModel) =>
-      runCommand({
-        startsSession: true,
-        expectTerminalEvent: true,
-        openStream: (signal) => createFixSession(appId, failedRunId, modelConfig, signal),
-        trace: {
-          kind: 'session_start',
-          payload: { scenario: 'fix', app_id: appId, failed_run_id: failedRunId },
-        },
-      }),
-    [runCommand],
+      store.get(difyBuilderActiveSessionIdAtom) || store.get(difyBuilderSessionViewAtom)
+        ? prepareExistingFix({
+            failed_run_id: failedRunId,
+            ...(modelConfig ? { model_config: modelConfig } : {}),
+          })
+        : runCommand({
+            startsSession: true,
+            expectTerminalEvent: true,
+            openStream: (signal) => createFixSession(appId, failedRunId, modelConfig, signal),
+            trace: {
+              kind: 'session_start',
+              payload: { scenario: 'fix', app_id: appId, failed_run_id: failedRunId },
+            },
+          }),
+    [prepareExistingFix, runCommand, store],
   )
 
   const startChecklistFix = useCallback(
     (appId: string, checklistErrors: ChecklistErrorPayload[], modelConfig?: SessionModel) =>
-      runCommand({
-        startsSession: true,
-        expectTerminalEvent: true,
-        openStream: (signal) =>
-          createChecklistFixSession(appId, checklistErrors, modelConfig, signal),
-        trace: {
-          kind: 'session_start',
-          payload: { scenario: 'fix', app_id: appId, checklist_errors: checklistErrors },
-        },
-      }),
-    [runCommand],
+      store.get(difyBuilderActiveSessionIdAtom) || store.get(difyBuilderSessionViewAtom)
+        ? prepareExistingFix({
+            checklist_errors: checklistErrors,
+            ...(modelConfig ? { model_config: modelConfig } : {}),
+          })
+        : runCommand({
+            startsSession: true,
+            expectTerminalEvent: true,
+            openStream: (signal) =>
+              createChecklistFixSession(appId, checklistErrors, modelConfig, signal),
+            trace: {
+              kind: 'session_start',
+              payload: { scenario: 'fix', app_id: appId, checklist_errors: checklistErrors },
+            },
+          }),
+    [prepareExistingFix, runCommand, store],
   )
 
   const startBuild = useCallback(
@@ -1237,6 +1496,7 @@ export function useDifyBuilderSessionController(
 
   const controlTask = useCallback(
     async (operation: 'stop' | 'resume') => {
+      if (store.get(difyBuilderLifecycleControlAtom)) return false
       const view = store.get(difyBuilderSessionViewAtom)
       const command = store.get(difyBuilderActiveCommandAtom)
       const sessionId = store.get(difyBuilderActiveSessionIdAtom) ?? view?.session_id
@@ -1564,6 +1824,114 @@ export function useDifyBuilderSessionController(
     continueRetest()
   }, [continueRetest, runEvents])
 
+  const submitFixDecision = useCallback(
+    async (
+      actionId: string,
+      payload: Record<string, unknown>,
+      receiptSnapshot?: DifyBuilderReceiptSnapshot,
+    ) => {
+      const view = store.get(difyBuilderSessionViewAtom)
+      const selected = actionId === 'confirm' ? payload.option_id : actionId
+      if (
+        !view?.pending_fix_context ||
+        (selected !== 'dismiss_fix' && selected !== 'stop_and_switch_fix') ||
+        store.get(difyBuilderLifecycleControlAtom) ||
+        store.get(difyBuilderTaskControlAtom)
+      )
+        return false
+      const action = view.actions?.find((candidate) => candidate.id === selected)
+      if (
+        !action ||
+        typeof action.payload?.fix_intent_id !== 'string' ||
+        typeof action.payload.expected_task_id !== 'string'
+      )
+        return false
+      const controller = new AbortController()
+      lifecycleAbortRef.current = controller
+      setLastError('')
+      const actionPayload = { ...action.payload, ...payload }
+      const clientActionId = globalThis.crypto.randomUUID()
+      const control: DifyBuilderLifecycleControl = {
+        operation: selected,
+        phase: 'pending',
+        sessionId: view.session_id,
+        clientActionId,
+        baseVersion: view.version,
+        expectedTaskId: action.payload.expected_task_id,
+      }
+      store.set(difyBuilderLifecycleControlAtom, control)
+      traceRef.current.append({
+        dir: 'out',
+        kind: 'fix_decision',
+        payload: {
+          action_id: actionId,
+          payload: actionPayload,
+          base_version: view.version,
+          client_action_id: clientActionId,
+        },
+      })
+      try {
+        const stream = await runSessionAction(
+          view.session_id,
+          actionId,
+          actionPayload,
+          view.version,
+          view.app_revision?.current ?? '',
+          controller.signal,
+          receiptSnapshot,
+          clientActionId,
+        )
+        let settled: SessionView | null = null
+        for await (const event of stream) {
+          if (
+            controller.signal.aborted ||
+            store.get(difyBuilderSessionViewAtom)?.session_id !== view.session_id
+          )
+            return false
+          traceRef.current.append({ dir: 'in', kind: event.event, payload: event.data })
+          if (event.event === 'error') throw new Error(streamErrorMessage(event.data))
+          if (event.event === 'command_finished' && event.data.session_id === view.session_id) {
+            settled = { ...event.data, last_command_id: event.data.command_id }
+            applySessionView(settled)
+            break
+          }
+        }
+        if (!settled) throw new Error(UNEXPECTED_EOF_ERROR)
+        if (selected === 'stop_and_switch_fix') {
+          // Only an explicitly acknowledged switch retires the original response.
+          abortRef.current?.abort()
+          abortRef.current = null
+          setIsBusy(false)
+          setActiveCommand(null)
+          if (settled.pending_fix_context) {
+            store.set(difyBuilderLifecycleControlAtom, { ...control, phase: 'unknown' })
+            setLastError(t(($) => $['taskControl.unknown']))
+            return false
+          }
+        }
+        store.set(difyBuilderLifecycleControlAtom, null)
+        if (selected === 'stop_and_switch_fix' && isActiveView(settled))
+          return await watchFix(view.session_id, controller)
+        return true
+      } catch (error) {
+        await lifecycleError(selected, error, controller)
+        return false
+      } finally {
+        if (lifecycleAbortRef.current === controller) lifecycleAbortRef.current = null
+      }
+    },
+    [
+      applySessionView,
+      lifecycleError,
+      setActiveCommand,
+      setIsBusy,
+      setLastError,
+      store,
+      t,
+      watchFix,
+    ],
+  )
+
   const runAction = useCallback(
     async (
       actionId: string,
@@ -1571,8 +1939,15 @@ export function useDifyBuilderSessionController(
       receiptSnapshot?: DifyBuilderReceiptSnapshot,
     ) => {
       const view = store.get(difyBuilderSessionViewAtom)
-      if (!view || store.get(difyBuilderSessionBusyAtom)) return false
       const selectedId = actionId === 'confirm' ? payload.option_id : actionId
+      if (selectedId === 'dismiss_fix' || selectedId === 'stop_and_switch_fix')
+        return submitFixDecision(actionId, payload, receiptSnapshot)
+      if (
+        !view ||
+        store.get(difyBuilderSessionBusyAtom) ||
+        store.get(difyBuilderLifecycleControlAtom)
+      )
+        return false
       const nativeControl =
         typeof selectedId === 'string' &&
         ['confirm_test_operation', 'deny_test_operation', 'resume_test', 'cancel_test'].includes(
@@ -1676,13 +2051,18 @@ export function useDifyBuilderSessionController(
       if (succeeded && pendingRetestRef.current) continueRetest()
       return succeeded
     },
-    [applySessionView, continueRetest, runCommand, store, t],
+    [applySessionView, continueRetest, runCommand, store, submitFixDecision, t],
   )
 
   const sendMessage = useCallback(
     async (text: string, requestedTurnId?: string) => {
       const view = store.get(difyBuilderSessionViewAtom)
-      if (!view || store.get(difyBuilderSessionBusyAtom)) return false
+      if (
+        !view ||
+        store.get(difyBuilderSessionBusyAtom) ||
+        store.get(difyBuilderLifecycleControlAtom)
+      )
+        return false
       const normalizedText = text.trim()
       if (!normalizedText) return false
       const pending = pendingMessageRef.current
@@ -1753,6 +2133,9 @@ export function useDifyBuilderSessionController(
   )
 
   const reset = useCallback(() => {
+    lifecycleAbortRef.current?.abort()
+    lifecycleAbortRef.current = null
+    store.set(difyBuilderLifecycleControlAtom, null)
     abortRef.current?.abort()
     abortRef.current = null
     pendingRetestRef.current = null
@@ -1795,6 +2178,126 @@ export function useDifyBuilderSessionController(
     streamingTurnBuffer,
   ])
 
+  const controlConversation = useCallback(
+    async (operation: 'clear' | 'abandon') => {
+      const view = store.get(difyBuilderSessionViewAtom)
+      if (
+        !view ||
+        (operation === 'clear' && store.get(difyBuilderSessionBusyAtom)) ||
+        store.get(difyBuilderTaskControlAtom) ||
+        store.get(difyBuilderLifecycleControlAtom)
+      )
+        return false
+      const controller = new AbortController()
+      lifecycleAbortRef.current = controller
+      setLastError('')
+      const body = {
+        base_version: view.version,
+        expected_task_id: view.task_id ?? '',
+        client_action_id: globalThis.crypto.randomUUID(),
+      }
+      const control = {
+        operation,
+        phase: 'pending' as const,
+        sessionId: view.session_id,
+        clientActionId: body.client_action_id,
+        baseVersion: body.base_version,
+        expectedTaskId: body.expected_task_id,
+      }
+      store.set(difyBuilderLifecycleControlAtom, control)
+      traceRef.current.append({ dir: 'out', kind: `conversation_${operation}`, payload: body })
+      try {
+        const receipt = await controlSessionConversation(
+          view.session_id,
+          operation,
+          body,
+          controller.signal,
+        )
+        if (
+          controller.signal.aborted ||
+          store.get(difyBuilderSessionViewAtom)?.session_id !== view.session_id
+        )
+          return false
+        traceRef.current.append({
+          dir: 'in',
+          kind: `conversation_${operation}_ack`,
+          payload: receipt,
+        })
+        if (
+          receipt.session_id !== view.session_id ||
+          receipt.last_command_id !== body.client_action_id ||
+          (body.expected_task_id && receipt.task_id !== body.expected_task_id) ||
+          receipt.conversation_cleared !== (operation === 'clear')
+        ) {
+          store.set(difyBuilderLifecycleControlAtom, { ...control, phase: 'unknown' })
+          setLastError(t(($) => $['taskControl.unknown']))
+          return false
+        }
+        if (receipt.conversation_cleared) {
+          setView((current) =>
+            current
+              ? {
+                  ...current,
+                  version: receipt.version,
+                  last_command_id: receipt.last_command_id,
+                  conversation_cleared: true,
+                  lifecycle_settlement: receipt.settlement,
+                  task_status: receipt.task_status,
+                }
+              : null,
+          )
+          isolateClearedConversation()
+        }
+        if (operation === 'abandon') {
+          abortRef.current?.abort()
+          abortRef.current = null
+          setIsBusy(false)
+          setActiveCommand(null)
+        }
+        if (receipt.settlement !== 'settled') {
+          store.set(difyBuilderLifecycleControlAtom, { ...control, phase: 'unknown' })
+          setLastError(t(($) => $['taskControl.unknown']))
+          return false
+        }
+        if (operation === 'abandon') {
+          const snapshot = await getSession(view.session_id, controller.signal)
+          if (controller.signal.aborted) return false
+          applySessionView(snapshot)
+          if (
+            !(await syncConversation(
+              view.session_id,
+              snapshot.conversation_last_seq,
+              controller,
+              true,
+            ))
+          )
+            throw new Error(UNEXPECTED_EOF_ERROR)
+        }
+        store.set(difyBuilderLifecycleControlAtom, null)
+        return true
+      } catch (error) {
+        await lifecycleError(operation, error, controller)
+        return false
+      } finally {
+        if (lifecycleAbortRef.current === controller) lifecycleAbortRef.current = null
+      }
+    },
+    [
+      applySessionView,
+      isolateClearedConversation,
+      lifecycleError,
+      setActiveCommand,
+      setIsBusy,
+      setLastError,
+      setView,
+      store,
+      syncConversation,
+      t,
+    ],
+  )
+  const clearConversation = useCallback(() => controlConversation('clear'), [controlConversation])
+  const abandonTask = useCallback(() => controlConversation('abandon'), [controlConversation])
+
   const getTrace = useCallback(() => traceRef.current.snapshot(), [])
 
   return useMemo(
@@ -1812,6 +2315,8 @@ export function useDifyBuilderSessionController(
       sendMessage,
       updateModel,
       reset,
+      clearConversation,
+      abandonTask,
       getTrace,
       onCanvasRefreshed,
     }),
@@ -1819,6 +2324,8 @@ export function useDifyBuilderSessionController(
       refresh,
       loadOlderConversation,
       reset,
+      clearConversation,
+      abandonTask,
       restore,
       stopTask,
       resumeTask,

@@ -321,6 +321,7 @@
   "resourceReady": "Configurat · execuție neverificată",
   "runTest": "Rulează testul",
   "running": "Rulând",
+  "taskControl.abandon": "Ieși din sarcină",
   "taskControl.conflict": "Starea sarcinii s-a schimbat. Verifică starea actuală și încearcă din nou.",
   "taskControl.paused": "În pauză. Editează pânza, apoi reia sarcina.",
   "taskControl.resume": "Reia sarcina",
