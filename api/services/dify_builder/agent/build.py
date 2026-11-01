@@ -748,11 +748,22 @@ def propose_plan_v1(
             return None
         except ValueError as exc:
             if isinstance(data, dict):
-                trace_diagnostics.report("response_schema_invalid", error=exc, attempt=attempt + 1)
+                trace_diagnostics.report(
+                    "response_schema_invalid",
+                    error=exc,
+                    attempt=attempt + 1,
+                    validation_code="RESOURCE_PLAN_ID_MISSING"
+                    if isinstance(exc, _ResourcePlanIdMissingError)
+                    else None,
+                )
             issue = str(exc)
         if attempt == 0:
             user = f"{source}\n\nSCHEMA CORRECTION:\n{issue} Reply with ONLY the complete corrected JSON object."
     return None
+
+
+class _ResourcePlanIdMissingError(ValueError):
+    """A valid used binding omits its exact identity from the referenced step."""
 
 
 class _ResourcePlanUnresolvedError(ValueError):
@@ -799,11 +810,14 @@ def _resolved_plan_resources(data: object, plan: WorkflowPlan, selected_resource
             or binding.get("step_kind") != "resource_action"
             or type(step) is not int
             or not 0 <= step < len(plan.items)
-            or rid not in plan.items[step]
             or not isinstance(action, str)
             or not action.strip()
         ):
             raise ValueError("A used selection needs a concrete resource action; fallback or unresolved is not usable.")
+        if rid not in plan.items[step]:
+            raise _ResourcePlanIdMissingError(
+                "Include the exact confirmed resource_id in its referenced plan step; friendly names may remain."
+            )
         used.append(rid)
     return used
 

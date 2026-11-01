@@ -54,6 +54,7 @@ FILES = [
     "api/tests/unit_tests/services/dify_builder/test_llm_agent.py",
     "api/tests/unit_tests/services/dify_builder/test_mock_inputs.py",
     "api/tests/unit_tests/services/dify_builder/test_trace_diagnostics.py",
+    "api/tests/unit_tests/services/dify_builder/test_bound_resource_plan_reconciliation.py",
     "api/tests/unit_tests/services/dify_builder/test_build_nodes.py",
     "api/tests/unit_tests/services/dify_builder/test_build_plan_language.py",
     "api/tests/unit_tests/services/dify_builder/test_reply_language_prompts.py",
@@ -910,6 +911,19 @@ a4_expected["tests.unit_tests.core.dify_builder.test_ports"] = {
     "test_mutation_intent_defaults_and_args_not_shared": 1,
 }
 # Exact collected Code failure-policy regression inventories (Local JUnit/AST checked).
+a4_expected["tests.unit_tests.services.dify_builder.test_bound_resource_plan_reconciliation"] = {
+    "test_confirmed_resource_reconciles_fallback_and_overview_before_approval": 1,
+    "test_unusable_reconciliation_keeps_resource_gate_and_does_not_offer_approval": 3,
+    "test_reconciliation_rereads_selected_facts_and_uses_one_model_reply": 1,
+    "test_reconciliation_never_invents_an_available_selected_agent": 3,
+    "test_discovery_gap_receives_candidate_facts_and_does_not_treat_abstract_absence_as_fact": 1,
+    "test_real_id_suffix_does_not_turn_a_fallback_into_a_bound_action": 4,
+    "test_an_unused_extra_selection_does_not_force_an_invented_action": 1,
+    "test_failed_reconciliation_keeps_live_resource_card_and_accepts_a_new_selection": 1,
+    "test_snapshot_drift_requires_explicit_rediscovery_and_new_snapshot_confirmation": 2,
+    "test_missing_resource_id_correction_is_actionable_and_bounded": 2,
+    "test_missing_id_diagnostic_does_not_mask_other_binding_guards": 8
+}
 a4_expected["tests.unit_tests.services.dify_builder.test_trace_diagnostics"] = {
     "test_provider_failure_is_scoped_safe_and_recoverable": 1,
     "test_resolution_failure_and_callback_failure_do_not_crash": 1,
@@ -930,6 +944,13 @@ a4_expected["tests.unit_tests.services.dify_builder.test_trace_diagnostics"] = {
     "test_language_detection_failure_is_scoped_and_keeps_existing_fallback": 1,
     "test_snapshot_history_preserves_identity_and_previous_failure_after_success": 1,
     "test_existing_sse_dto_keeps_diagnostic_payload": 1,
+    "test_native_preparation_diagnostic_is_persisted_with_handler_reply": 1,
+    "test_resource_binding_refusal_retains_safe_code_and_target_without_private_message": 1,
+    "test_native_model_projection_is_fixed_and_does_not_copy_exception_metadata": 1,
+    "test_current_native_diagnostic_merge_is_bounded_and_deduplicated": 1,
+    "test_native_model_projection_keeps_allowlisted_stage_and_category": 10,
+    "test_native_model_projection_rejects_malformed_classification": 4,
+    "test_resource_plan_missing_id_code_survives_projection_report_and_history": 1
 }
 a4_expected["tests.unit_tests.services.workflow_generation.test_runner"] = {
     "test_a_dotted_reference_to_a_scalar_start_variable_is_repaired_to_its_root": 1,
