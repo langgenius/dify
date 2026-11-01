@@ -274,6 +274,7 @@ jobs:
               "test_late_worker_session_cas_cannot_overwrite_durable_stop": 1,
               "test_control_receipt_replay_survives_resume_without_new_commit": 1,
               "test_simultaneous_same_stop_identity_commits_one_durable_projection": 1,
+              "test_delayed_same_stop_receipt_reuses_concurrently_saved_projection": 1,
           }
 
           class ImmediateFailureReport:
