@@ -3,6 +3,7 @@ import {
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -201,13 +202,20 @@ const DifyBuilderPanelContent = () => {
                   ? t(($) => $['taskControl.abandon'], { ns: 'difyBuilder' })
                   : t(($) => $.reset, { ns: 'difyBuilder' })}
               </AlertDialogTitle>
+              {confirmation === 'clear' && (
+                <AlertDialogDescription>
+                  {t(($) => $['clearConversation.description'], { ns: 'difyBuilder' })}
+                </AlertDialogDescription>
+              )}
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={() => void handleReset()}>
-                {t(($) => $['operation.confirm'], { ns: 'common' })}
+                {confirmation === 'clear'
+                  ? t(($) => $.reset, { ns: 'difyBuilder' })
+                  : t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
             </AlertDialogFooter>
           </AlertDialogContent>
