@@ -3,7 +3,10 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import { test } from 'node:test'
 import { consoleRouterContract } from '../../contracts/console.ts'
-import { contract as builderLifecycleContract } from '../../contracts/fixtures/builder-lifecycle/orpc.gen.ts'
+import {
+  zDifyBuilderCommandFinishedEventData,
+  zDifyBuilderSessionViewResponse,
+} from '../../contracts/generated/api/console/dify-builder/zod.gen.ts'
 import {
   composeConsoleDocuments,
   loadConsoleDocument,
@@ -17,6 +20,79 @@ const files = [
   'fastopenapi-console-openapi.json',
   'console-client-openapi.json',
 ].map((name) => new URL(`../../contracts/openapi/${name}`, import.meta.url))
+
+test('production Console exposes the Builder lifecycle operations', () => {
+  const session = consoleRouterContract.difyBuilder.sessions.bySessionId
+  for (const route of ['abandon', 'clear', 'fixIntents']) {
+    const operation = session[route]?.post?.['~orpc']
+    assert(operation, `Missing production Builder operation: ${route}`)
+    assert.equal(operation.route.method, 'POST')
+    assert.equal(
+      operation.route.path,
+      `/dify-builder/sessions/{session_id}/${route === 'fixIntents' ? 'fix-intents' : route}`,
+    )
+  }
+})
+
+test('production Builder Fix recovery is a correlated read-only GET', () => {
+  const operation = consoleRouterContract.difyBuilder.sessions.bySessionId.fixIntents.get['~orpc']
+  assert.equal(operation.route.method, 'GET')
+  assert.equal(operation.route.path, '/dify-builder/sessions/{session_id}/fix-intents')
+  const input = operation.inputSchema.parse({
+    params: { session_id: 'session-1' },
+    query: {
+      operation: 'dismiss_fix',
+      client_action_id: 'decision-1',
+      base_version: 4,
+      expected_task_id: 'task-1',
+      fix_intent_id: 'intent-1',
+    },
+  })
+  assert.equal('body' in input, false)
+  const receipt = {
+    session_id: 'session-1',
+    operation: 'dismiss_fix',
+    client_action_id: 'decision-1',
+    base_version: 4,
+    target_task_id: 'task-1',
+    fix_intent_id: 'intent-1',
+    status: 'stopping',
+    acknowledged: false,
+  }
+  assert.deepEqual(operation.outputSchema.parse(receipt), receipt)
+})
+
+test('production Builder snapshots and finished events preserve task lifecycle state', () => {
+  const lifecycle = {
+    task_id: 'task-1',
+    task_status: 'abandoned',
+    task_summaries: [],
+    conversation_cleared: true,
+    pending_fix_context: {
+      run_id: 'run-1',
+      title: 'Failed run',
+      error_code: 'node_failed',
+      message: 'The node failed',
+      trace_ref: '',
+    },
+  }
+  for (const schema of [zDifyBuilderSessionViewResponse, zDifyBuilderCommandFinishedEventData]) {
+    const parsed = schema.partial().parse(lifecycle)
+    for (const [field, value] of Object.entries(lifecycle))
+      assert.deepEqual(parsed[field], value, `Production response discarded ${field}`)
+  }
+})
+
+test('production Builder GET snapshots and finished SSE events preserve lifecycle settlement', () => {
+  for (const schema of [zDifyBuilderSessionViewResponse, zDifyBuilderCommandFinishedEventData]) {
+    for (const settlement of ['settled', 'pending', 'unknown', null]) {
+      const parsed = schema.partial().parse({ lifecycle_settlement: settlement })
+      assert.equal(parsed.lifecycle_settlement, settlement, 'Lifecycle settlement was discarded')
+    }
+    assert.equal(schema.partial().parse({}).lifecycle_settlement, undefined)
+    assert.equal(schema.partial().safeParse({ lifecycle_settlement: 'cleaned' }).success, false)
+  }
+})
 
 test('every existing Console member retains its name, HTTP method and route', (t) => {
   const before = files.map((file) => existsSync(file))
@@ -46,7 +122,6 @@ test('every existing Console member retains its name, HTTP method and route', (t
     visited.add(operation)
   }
   walk(consoleRouterContract)
-  walk(builderLifecycleContract)
   assert.equal(
     visited.size,
     operations.size,

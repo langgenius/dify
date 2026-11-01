@@ -6,6 +6,9 @@ import {
   zGetDifyBuilderSessionsBySessionIdConversationPath,
   zGetDifyBuilderSessionsBySessionIdConversationQuery,
   zGetDifyBuilderSessionsBySessionIdConversationResponse,
+  zGetDifyBuilderSessionsBySessionIdFixIntentsPath,
+  zGetDifyBuilderSessionsBySessionIdFixIntentsQuery,
+  zGetDifyBuilderSessionsBySessionIdFixIntentsResponse,
   zGetDifyBuilderSessionsBySessionIdNativeTestInputPath,
   zGetDifyBuilderSessionsBySessionIdNativeTestInputResponse,
   zGetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdPath,
@@ -20,9 +23,18 @@ import {
   zGetDifyBuilderSessionsBySessionIdStreamResponse,
   zPostDifyBuilderAgentPingResponse,
   zPostDifyBuilderSessionsBody,
+  zPostDifyBuilderSessionsBySessionIdAbandonBody,
+  zPostDifyBuilderSessionsBySessionIdAbandonPath,
+  zPostDifyBuilderSessionsBySessionIdAbandonResponse,
   zPostDifyBuilderSessionsBySessionIdActionsBody,
   zPostDifyBuilderSessionsBySessionIdActionsPath,
   zPostDifyBuilderSessionsBySessionIdActionsResponse,
+  zPostDifyBuilderSessionsBySessionIdClearBody,
+  zPostDifyBuilderSessionsBySessionIdClearPath,
+  zPostDifyBuilderSessionsBySessionIdClearResponse,
+  zPostDifyBuilderSessionsBySessionIdFixIntentsBody,
+  zPostDifyBuilderSessionsBySessionIdFixIntentsPath,
+  zPostDifyBuilderSessionsBySessionIdFixIntentsResponse,
   zPostDifyBuilderSessionsBySessionIdMessagesBody,
   zPostDifyBuilderSessionsBySessionIdMessagesPath,
   zPostDifyBuilderSessionsBySessionIdMessagesResponse,
@@ -78,6 +90,26 @@ export const post2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
+    operationId: 'postDifyBuilderSessionsBySessionIdAbandon',
+    path: '/dify-builder/sessions/{session_id}/abandon',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDifyBuilderSessionsBySessionIdAbandonBody,
+      params: zPostDifyBuilderSessionsBySessionIdAbandonPath,
+    }),
+  )
+  .output(zPostDifyBuilderSessionsBySessionIdAbandonResponse)
+
+export const abandon = {
+  post: post2,
+}
+
+export const post3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
     operationId: 'postDifyBuilderSessionsBySessionIdActions',
     path: '/dify-builder/sessions/{session_id}/actions',
     tags: ['console'],
@@ -91,7 +123,27 @@ export const post2 = oc
   .output(eventIterator(zPostDifyBuilderSessionsBySessionIdActionsResponse))
 
 export const actions = {
-  post: post2,
+  post: post3,
+}
+
+export const post4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDifyBuilderSessionsBySessionIdClear',
+    path: '/dify-builder/sessions/{session_id}/clear',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDifyBuilderSessionsBySessionIdClearBody,
+      params: zPostDifyBuilderSessionsBySessionIdClearPath,
+    }),
+  )
+  .output(zPostDifyBuilderSessionsBySessionIdClearResponse)
+
+export const clear = {
+  post: post4,
 }
 
 export const get = oc
@@ -114,7 +166,44 @@ export const conversation = {
   get,
 }
 
-export const post3 = oc
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDifyBuilderSessionsBySessionIdFixIntents',
+    path: '/dify-builder/sessions/{session_id}/fix-intents',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetDifyBuilderSessionsBySessionIdFixIntentsPath,
+      query: zGetDifyBuilderSessionsBySessionIdFixIntentsQuery,
+    }),
+  )
+  .output(zGetDifyBuilderSessionsBySessionIdFixIntentsResponse)
+
+export const post5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDifyBuilderSessionsBySessionIdFixIntents',
+    path: '/dify-builder/sessions/{session_id}/fix-intents',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDifyBuilderSessionsBySessionIdFixIntentsBody,
+      params: zPostDifyBuilderSessionsBySessionIdFixIntentsPath,
+    }),
+  )
+  .output(zPostDifyBuilderSessionsBySessionIdFixIntentsResponse)
+
+export const fixIntents = {
+  get: get2,
+  post: post5,
+}
+
+export const post6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -131,7 +220,7 @@ export const post3 = oc
   .output(eventIterator(zPostDifyBuilderSessionsBySessionIdMessagesResponse))
 
 export const messages = {
-  post: post3,
+  post: post6,
 }
 
 /**
@@ -139,7 +228,7 @@ export const messages = {
  *
  * @deprecated
  */
-export const get2 = oc
+export const get3 = oc
   .route({
     deprecated: true,
     description:
@@ -154,7 +243,7 @@ export const get2 = oc
   .output(zGetDifyBuilderSessionsBySessionIdNativeTestInputResponse)
 
 export const nativeTestInput = {
-  get: get2,
+  get: get3,
 }
 
 /**
@@ -162,7 +251,7 @@ export const nativeTestInput = {
  *
  * @deprecated
  */
-export const post4 = oc
+export const post7 = oc
   .route({
     deprecated: true,
     description:
@@ -182,7 +271,7 @@ export const post4 = oc
   .output(zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelResponse)
 
 export const cancel = {
-  post: post4,
+  post: post7,
 }
 
 /**
@@ -190,7 +279,7 @@ export const cancel = {
  *
  * @deprecated
  */
-export const post5 = oc
+export const post8 = oc
   .route({
     deprecated: true,
     description:
@@ -210,7 +299,7 @@ export const post5 = oc
   .output(zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsResponse)
 
 export const decisions = {
-  post: post5,
+  post: post8,
 }
 
 /**
@@ -218,7 +307,7 @@ export const decisions = {
  *
  * @deprecated
  */
-export const post6 = oc
+export const post9 = oc
   .route({
     deprecated: true,
     description:
@@ -238,7 +327,7 @@ export const post6 = oc
   .output(zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeResponse)
 
 export const resume = {
-  post: post6,
+  post: post9,
 }
 
 /**
@@ -246,7 +335,7 @@ export const resume = {
  *
  * @deprecated
  */
-export const get3 = oc
+export const get4 = oc
   .route({
     deprecated: true,
     description:
@@ -261,7 +350,7 @@ export const get3 = oc
   .output(zGetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResponse)
 
 export const byRequestId = {
-  get: get3,
+  get: get4,
   cancel,
   decisions,
   resume,
@@ -272,7 +361,7 @@ export const byRequestId = {
  *
  * @deprecated
  */
-export const post7 = oc
+export const post10 = oc
   .route({
     deprecated: true,
     description:
@@ -292,11 +381,11 @@ export const post7 = oc
   .output(zPostDifyBuilderSessionsBySessionIdNativeTestsResponse)
 
 export const nativeTests = {
-  post: post7,
+  post: post10,
   byRequestId,
 }
 
-export const post8 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -313,10 +402,10 @@ export const post8 = oc
   .output(zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmResponse)
 
 export const confirm = {
-  post: post8,
+  post: post11,
 }
 
-export const post9 = oc
+export const post12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -334,10 +423,10 @@ export const post9 = oc
   .output(zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponse)
 
 export const execute = {
-  post: post9,
+  post: post12,
 }
 
-export const get4 = oc
+export const get5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -349,12 +438,12 @@ export const get4 = oc
   .output(zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdResponse)
 
 export const byConsentId = {
-  get: get4,
+  get: get5,
   confirm,
   execute,
 }
 
-export const post10 = oc
+export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -372,11 +461,11 @@ export const post10 = oc
   .output(zPostDifyBuilderSessionsBySessionIdRealCallConsentsResponse)
 
 export const realCallConsents = {
-  post: post10,
+  post: post13,
   byConsentId,
 }
 
-export const post11 = oc
+export const post14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -393,10 +482,10 @@ export const post11 = oc
   .output(zPostDifyBuilderSessionsBySessionIdResumeResponse)
 
 export const resume2 = {
-  post: post11,
+  post: post14,
 }
 
-export const post12 = oc
+export const post15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -413,10 +502,10 @@ export const post12 = oc
   .output(zPostDifyBuilderSessionsBySessionIdStopResponse)
 
 export const stop = {
-  post: post12,
+  post: post15,
 }
 
-export const get5 = oc
+export const get6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -434,10 +523,10 @@ export const get5 = oc
   .output(eventIterator(zGetDifyBuilderSessionsBySessionIdStreamResponse))
 
 export const stream = {
-  get: get5,
+  get: get6,
 }
 
-export const get6 = oc
+export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -449,9 +538,12 @@ export const get6 = oc
   .output(zGetDifyBuilderSessionsBySessionIdResponse)
 
 export const bySessionId = {
-  get: get6,
+  get: get7,
+  abandon,
   actions,
+  clear,
   conversation,
+  fixIntents,
   messages,
   nativeTestInput,
   nativeTests,
@@ -461,7 +553,7 @@ export const bySessionId = {
   stream,
 }
 
-export const post13 = oc
+export const post16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -473,7 +565,7 @@ export const post13 = oc
   .output(eventIterator(zPostDifyBuilderSessionsResponse))
 
 export const sessions = {
-  post: post13,
+  post: post16,
   bySessionId,
 }
 
