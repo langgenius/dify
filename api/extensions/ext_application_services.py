@@ -47,6 +47,7 @@ from extensions.application_services.workspace import (
 )
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
+from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
 from libs.passport import PassportService
 from models.model import EndUser
@@ -595,6 +596,7 @@ def build_application_services(
     conversation_variables = ConversationVariableRepository(session_factory=database_client)
     annotations = AnnotationRepository(session_factory=database_client)
     messages = MessageRepository(session_factory=database_client)
+    workflow_comment_repository = WorkflowCommentRepository(session_factory=database_client)
     suggested_questions = SuggestedQuestionsQuery(
         session_factory=database_client,
         repository=messages,
@@ -833,9 +835,11 @@ def build_application_services(
             logs=WorkflowAppLogQueryRepository(session_factory=database_client),
         ),
         workflow_comments=WorkflowCommentService(
-            comments=WorkflowCommentRepository(session_factory=database_client),
+            threads=workflow_comment_repository,
+            queries=workflow_comment_repository,
             notifier=CeleryWorkflowCommentMentionNotifier(),
             console_web_url=dify_config.CONSOLE_WEB_URL,
+            now=naive_utc_now,
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
         web_passport=WebPassportService(

@@ -1,42 +1,41 @@
-"""SQLAlchemy persistence adapter for Console workflow comments."""
+"""SQLAlchemy persistence adapter for Console workflow comments.
 
-from collections.abc import Collection, Iterable, Mapping, Sequence
+Reads map rows straight to records. The thread repository rebuilds and saves whole `WorkflowCommentAgg` threads and
+makes no business decisions. A change runs in one transaction: it locks the comment row, reads the thread, lets the
+caller apply the aggregate's behavior, and then writes only the columns and rows that differ from what it read, so
+the aggregate decides on current state and never tracks its changes for persistence.
+"""
+
+from collections.abc import Generator, Iterable, Mapping, Sequence
+from contextlib import contextmanager
 from typing import override
 
-from sqlalchemy import delete, desc, select
+from sqlalchemy import Select, delete, desc, insert, select, update
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
-from libs.datetime_utils import naive_utc_now
 from models.account import Account, TenantAccountJoin
-from models.comment import WorkflowComment, WorkflowCommentMention, WorkflowCommentReply
+from models.base import gen_uuidv7_string
+from models.comment import WorkflowComment, WorkflowCommentMention
+from models.comment import WorkflowCommentReply as WorkflowCommentReplyModel
 from models.enums import AppStatus
 from models.model import App
 from repositories.app.console_visibility import console_visible_condition
+from services.app.workflow_comment_agg import WorkflowCommentAgg, WorkflowCommentReply
+from services.app.workflow_comment_errors import WorkflowCommentNotFoundError
 from services.app.workflow_comment_service import (
     MentionContext,
     MentionRecipient,
     WorkflowCommentAccount,
-    WorkflowCommentCreated,
     WorkflowCommentDetail,
-    WorkflowCommentDraft,
-    WorkflowCommentEdit,
     WorkflowCommentMentionRecord,
-    WorkflowCommentNotFoundError,
-    WorkflowCommentPermissionError,
-    WorkflowCommentReplyDraft,
-    WorkflowCommentReplyNotFoundError,
+    WorkflowCommentQueries,
     WorkflowCommentReplyRecord,
-    WorkflowCommentResolved,
-    WorkflowCommentStore,
     WorkflowCommentSummary,
-    WorkflowCommentUpdated,
-    WorkflowCommentWrite,
+    WorkflowCommentThreads,
 )
 
-_NO_MENTIONS = MentionContext(app_name=None, commenter_name=None, recipients=())
 
-
-class WorkflowCommentRepository(WorkflowCommentStore):
+class WorkflowCommentRepository(WorkflowCommentQueries, WorkflowCommentThreads):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
@@ -70,206 +69,100 @@ class WorkflowCommentRepository(WorkflowCommentStore):
     @override
     def get_comment(self, *, workspace_id: str, app_id: str, comment_id: str) -> WorkflowCommentDetail:
         with self._session_factory() as session:
-            comment = session.scalar(
-                select(WorkflowComment)
-                .options(selectinload(WorkflowComment.replies), selectinload(WorkflowComment.mentions))
-                .where(
-                    WorkflowComment.id == comment_id,
-                    WorkflowComment.tenant_id == workspace_id,
-                    WorkflowComment.app_id == app_id,
-                )
-                .limit(1)
-            )
+            comment = session.scalar(self._thread(workspace_id, app_id, comment_id))
             if comment is None:
                 raise WorkflowCommentNotFoundError
             accounts = self._load_accounts(session, [comment])
             return self._detail(comment, accounts)
 
     @override
-    def insert_comment(
-        self, *, workspace_id: str, app_id: str, actor_id: str, draft: WorkflowCommentDraft
-    ) -> WorkflowCommentWrite[WorkflowCommentCreated]:
-        with self._session_factory.begin() as session:
-            comment = WorkflowComment(
-                tenant_id=workspace_id,
-                app_id=app_id,
-                position_x=draft.position_x,
-                position_y=draft.position_y,
-                content=draft.content,
-                created_by=actor_id,
-            )
-            session.add(comment)
-            session.flush()
-
-            mentioned_user_ids = self._workspace_member_ids(session, workspace_id, draft.mentioned_user_ids)
-            session.add_all(
-                WorkflowCommentMention(comment_id=comment.id, reply_id=None, mentioned_user_id=user_id)
-                for user_id in mentioned_user_ids
-            )
-            mentions = self._mention_context(session, workspace_id, app_id, actor_id, mentioned_user_ids)
-            session.flush()
-            session.refresh(comment, ["created_at"])
-            return WorkflowCommentWrite(
-                result=WorkflowCommentCreated(id=comment.id, created_at=comment.created_at),
-                mentions=mentions,
-            )
-
-    @override
-    def update_comment(
-        self, *, workspace_id: str, app_id: str, comment_id: str, actor_id: str, edit: WorkflowCommentEdit
-    ) -> WorkflowCommentWrite[WorkflowCommentUpdated]:
-        with self._session_factory.begin() as session:
-            comment = self._require_comment(session, workspace_id, app_id, comment_id)
-            if comment.created_by != actor_id:
-                raise WorkflowCommentPermissionError("Only the comment creator can update it")
-
-            comment.content = edit.content
-            if edit.position_x is not None:
-                comment.position_x = edit.position_x
-            if edit.position_y is not None:
-                comment.position_y = edit.position_y
-
-            mentions = _NO_MENTIONS
-            if edit.mentioned_user_ids is not None:
-                # Replace the comment's own mentions only when the client sends a mention list.
-                existing_mentions = session.scalars(
-                    select(WorkflowCommentMention).where(
-                        WorkflowCommentMention.comment_id == comment.id,
-                        WorkflowCommentMention.reply_id.is_(None),
+    def workspace_member_ids(self, *, workspace_id: str, user_ids: Sequence[str]) -> frozenset[str]:
+        with self._session_factory() as session:
+            return frozenset(
+                str(account_id)
+                for account_id in session.scalars(
+                    select(TenantAccountJoin.account_id).where(
+                        TenantAccountJoin.tenant_id == workspace_id,
+                        TenantAccountJoin.account_id.in_(user_ids),
                     )
                 ).all()
-                previously_mentioned = {mention.mentioned_user_id for mention in existing_mentions}
-                for mention in existing_mentions:
-                    session.delete(mention)
-
-                mentioned_user_ids = self._workspace_member_ids(session, workspace_id, edit.mentioned_user_ids)
-                session.add_all(
-                    WorkflowCommentMention(comment_id=comment.id, reply_id=None, mentioned_user_id=user_id)
-                    for user_id in mentioned_user_ids
-                )
-                mentions = self._mention_context(
-                    session,
-                    workspace_id,
-                    app_id,
-                    actor_id,
-                    [user_id for user_id in mentioned_user_ids if user_id not in previously_mentioned],
-                )
-
-            session.flush()
-            session.refresh(comment, ["updated_at"])
-            return WorkflowCommentWrite(
-                result=WorkflowCommentUpdated(id=comment.id, updated_at=comment.updated_at),
-                mentions=mentions,
             )
 
     @override
-    def delete_comment(self, *, workspace_id: str, app_id: str, comment_id: str, actor_id: str) -> None:
-        with self._session_factory.begin() as session:
-            comment = self._require_comment(session, workspace_id, app_id, comment_id)
-            if comment.created_by != actor_id:
-                raise WorkflowCommentPermissionError("Only the comment creator can delete it")
-
-            session.execute(delete(WorkflowCommentMention).where(WorkflowCommentMention.comment_id == comment.id))
-            session.execute(delete(WorkflowCommentReply).where(WorkflowCommentReply.comment_id == comment.id))
-            session.delete(comment)
-
-    @override
-    def resolve_comment(
-        self, *, workspace_id: str, app_id: str, comment_id: str, actor_id: str
-    ) -> WorkflowCommentResolved:
-        with self._session_factory.begin() as session:
-            comment = self._require_comment(session, workspace_id, app_id, comment_id)
-            if not comment.resolved:
-                comment.resolved = True
-                comment.resolved_at = naive_utc_now()
-                comment.resolved_by = actor_id
-            return WorkflowCommentResolved(
-                id=comment.id,
-                resolved=comment.resolved,
-                resolved_at=comment.resolved_at,
-                resolved_by=comment.resolved_by,
-            )
-
-    @override
-    def insert_reply(
-        self, *, workspace_id: str, app_id: str, comment_id: str, actor_id: str, draft: WorkflowCommentReplyDraft
-    ) -> WorkflowCommentWrite[WorkflowCommentCreated]:
-        with self._session_factory.begin() as session:
-            comment = self._require_comment(session, workspace_id, app_id, comment_id)
-            reply = WorkflowCommentReply(comment_id=comment.id, content=draft.content, created_by=actor_id)
-            session.add(reply)
-            session.flush()
-
-            mentioned_user_ids = self._workspace_member_ids(session, workspace_id, draft.mentioned_user_ids)
-            session.add_all(
-                WorkflowCommentMention(comment_id=comment.id, reply_id=reply.id, mentioned_user_id=user_id)
-                for user_id in mentioned_user_ids
-            )
-            mentions = self._mention_context(session, workspace_id, app_id, actor_id, mentioned_user_ids)
-            session.flush()
-            session.refresh(reply, ["created_at"])
-            return WorkflowCommentWrite(
-                result=WorkflowCommentCreated(id=reply.id, created_at=reply.created_at),
-                mentions=mentions,
-            )
-
-    @override
-    def update_reply(
-        self,
-        *,
-        workspace_id: str,
-        app_id: str,
-        comment_id: str,
-        reply_id: str,
-        actor_id: str,
-        draft: WorkflowCommentReplyDraft,
-    ) -> WorkflowCommentWrite[WorkflowCommentUpdated]:
-        with self._session_factory.begin() as session:
-            reply = self._require_reply(session, workspace_id, app_id, comment_id, reply_id)
-            if reply.created_by != actor_id:
-                raise WorkflowCommentPermissionError("Only the reply creator can update it")
-
-            reply.content = draft.content
-            existing_mentions = session.scalars(
-                select(WorkflowCommentMention).where(WorkflowCommentMention.reply_id == reply.id)
+    def mention_context(
+        self, *, workspace_id: str, app_id: str, actor_id: str, user_ids: Sequence[str]
+    ) -> MentionContext:
+        with self._session_factory() as session:
+            accounts = session.scalars(
+                select(Account)
+                .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                .where(TenantAccountJoin.tenant_id == workspace_id, Account.id.in_(user_ids))
             ).all()
-            previously_mentioned = {mention.mentioned_user_id for mention in existing_mentions}
-            for mention in existing_mentions:
-                session.delete(mention)
-
-            mentioned_user_ids = self._workspace_member_ids(session, workspace_id, draft.mentioned_user_ids)
-            session.add_all(
-                WorkflowCommentMention(comment_id=reply.comment_id, reply_id=reply.id, mentioned_user_id=user_id)
-                for user_id in mentioned_user_ids
-            )
-            mentions = self._mention_context(
-                session,
-                workspace_id,
-                app_id,
-                actor_id,
-                [user_id for user_id in mentioned_user_ids if user_id not in previously_mentioned],
-            )
-            session.flush()
-            session.refresh(reply, ["updated_at"])
-            return WorkflowCommentWrite(
-                result=WorkflowCommentUpdated(id=reply.id, updated_at=reply.updated_at),
-                mentions=mentions,
+            return MentionContext(
+                app_name=session.scalar(select(App.name).where(App.id == app_id, App.tenant_id == workspace_id)),
+                commenter_name=session.scalar(select(Account.name).where(Account.id == actor_id)),
+                recipients=tuple(
+                    MentionRecipient(
+                        email=account.email,
+                        name=account.name,
+                        interface_language=account.interface_language,
+                    )
+                    for account in accounts
+                    if account.email
+                ),
             )
 
     @override
-    def delete_reply(self, *, workspace_id: str, app_id: str, comment_id: str, reply_id: str, actor_id: str) -> None:
-        with self._session_factory.begin() as session:
-            reply = self._require_reply(session, workspace_id, app_id, comment_id, reply_id)
-            if reply.created_by != actor_id:
-                raise WorkflowCommentPermissionError("Only the reply creator can delete it")
+    def load_comment(self, *, workspace_id: str, app_id: str, comment_id: str) -> WorkflowCommentAgg:
+        with self._session_factory() as session:
+            comment = session.scalar(self._thread(workspace_id, app_id, comment_id))
+            if comment is None:
+                raise WorkflowCommentNotFoundError
+            return self._aggregate(comment)
 
-            session.execute(delete(WorkflowCommentMention).where(WorkflowCommentMention.reply_id == reply.id))
-            session.delete(reply)
+    @override
+    def add_comment(self, *, comment: WorkflowCommentAgg) -> None:
+        with self._session_factory.begin() as session:
+            session.execute(
+                insert(WorkflowComment).values(
+                    id=comment.id,
+                    tenant_id=comment.workspace_id,
+                    app_id=comment.app_id,
+                    created_by=comment.created_by,
+                    created_at=comment.created_at,
+                    **_comment_values(comment),
+                )
+            )
+            self._insert_mentions(session, comment, None, comment.mentioned_user_ids)
+            for reply in comment.replies:
+                self._insert_reply(session, comment, reply)
+
+    @override
+    @contextmanager
+    def change_comment(self, *, workspace_id: str, app_id: str, comment_id: str) -> Generator[WorkflowCommentAgg]:
+        with self._session_factory.begin() as session:
+            # A locking read waits for any change in progress and then sees its commit, at any isolation level.
+            stored = session.scalar(self._thread(workspace_id, app_id, comment_id).with_for_update())
+            if stored is None:
+                raise WorkflowCommentNotFoundError
+            loaded = self._aggregate(stored)
+            comment = self._aggregate(stored)
+            yield comment
+            self._save_changes(session, loaded, comment)
+
+    @override
+    def delete_comment(self, *, comment: WorkflowCommentAgg) -> None:
+        with self._session_factory.begin() as session:
+            self._lock(session, comment)
+            session.execute(delete(WorkflowCommentMention).where(WorkflowCommentMention.comment_id == comment.id))
+            session.execute(delete(WorkflowCommentReplyModel).where(WorkflowCommentReplyModel.comment_id == comment.id))
+            session.execute(delete(WorkflowComment).where(WorkflowComment.id == comment.id))
 
     @staticmethod
-    def _require_comment(session: Session, workspace_id: str, app_id: str, comment_id: str) -> WorkflowComment:
-        comment = session.scalar(
+    def _thread(workspace_id: str, app_id: str, comment_id: str) -> Select[tuple[WorkflowComment]]:
+        return (
             select(WorkflowComment)
+            .options(selectinload(WorkflowComment.replies), selectinload(WorkflowComment.mentions))
             .where(
                 WorkflowComment.id == comment_id,
                 WorkflowComment.tenant_id == workspace_id,
@@ -277,66 +170,164 @@ class WorkflowCommentRepository(WorkflowCommentStore):
             )
             .limit(1)
         )
-        if comment is None:
-            raise WorkflowCommentNotFoundError
-        return comment
 
     @classmethod
-    def _require_reply(
-        cls, session: Session, workspace_id: str, app_id: str, comment_id: str, reply_id: str
-    ) -> WorkflowCommentReply:
-        """Require the reply inside its comment's scope; a missing comment is reported before a missing reply."""
-        cls._require_comment(session, workspace_id, app_id, comment_id)
-        reply = session.scalar(
-            select(WorkflowCommentReply)
-            .where(WorkflowCommentReply.id == reply_id, WorkflowCommentReply.comment_id == comment_id)
-            .limit(1)
-        )
-        if reply is None:
-            raise WorkflowCommentReplyNotFoundError
-        return reply
-
-    @staticmethod
-    def _workspace_member_ids(session: Session, workspace_id: str, user_ids: Sequence[str]) -> list[str]:
-        """Keep only IDs of workspace members, preserving the caller's order."""
-        if not user_ids:
-            return []
-        member_ids = {
-            str(account_id)
-            for account_id in session.scalars(
-                select(TenantAccountJoin.account_id).where(
-                    TenantAccountJoin.tenant_id == workspace_id,
-                    TenantAccountJoin.account_id.in_(user_ids),
-                )
-            ).all()
+    def _save_changes(cls, session: Session, loaded: WorkflowCommentAgg, comment: WorkflowCommentAgg) -> None:
+        """Write what differs between the thread as read under the lock and after the change."""
+        loaded_values = _comment_values(loaded)
+        changed_values = {
+            column: value for column, value in _comment_values(comment).items() if value != loaded_values[column]
         }
-        return [user_id for user_id in user_ids if user_id in member_ids]
+        if changed_values:
+            session.execute(
+                update(WorkflowComment)
+                .where(
+                    WorkflowComment.id == comment.id,
+                    WorkflowComment.tenant_id == comment.workspace_id,
+                    WorkflowComment.app_id == comment.app_id,
+                )
+                .values(changed_values)
+            )
+        if comment.mentioned_user_ids != loaded.mentioned_user_ids:
+            cls._replace_mentions(session, comment, None, comment.mentioned_user_ids)
+
+        loaded_replies = {reply.id: reply for reply in loaded.replies}
+        for reply_id in loaded_replies.keys() - {reply.id for reply in comment.replies}:
+            cls._delete_reply(session, comment, reply_id)
+        for reply in comment.replies:
+            previous = loaded_replies.get(reply.id)
+            if previous is None:
+                cls._insert_reply(session, comment, reply)
+            else:
+                cls._update_reply(session, comment, previous, reply)
 
     @staticmethod
-    def _mention_context(
-        session: Session, workspace_id: str, app_id: str, actor_id: str, mentioned_user_ids: Collection[str]
-    ) -> MentionContext:
-        recipient_ids = [user_id for user_id in mentioned_user_ids if user_id != actor_id]
-        if not recipient_ids:
-            return _NO_MENTIONS
+    def _lock(session: Session, comment: WorkflowCommentAgg) -> None:
+        """Lock the comment row so writes to one thread serialize; a comment deleted since the load is not found."""
+        locked_id = session.scalar(
+            select(WorkflowComment.id)
+            .where(
+                WorkflowComment.id == comment.id,
+                WorkflowComment.tenant_id == comment.workspace_id,
+                WorkflowComment.app_id == comment.app_id,
+            )
+            .with_for_update()
+        )
+        if locked_id is None:
+            raise WorkflowCommentNotFoundError
 
-        accounts = session.scalars(
-            select(Account)
-            .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
-            .where(TenantAccountJoin.tenant_id == workspace_id, Account.id.in_(recipient_ids))
-        ).all()
-        return MentionContext(
-            app_name=session.scalar(select(App.name).where(App.id == app_id, App.tenant_id == workspace_id)),
-            commenter_name=session.scalar(select(Account.name).where(Account.id == actor_id)),
-            recipients=tuple(
-                MentionRecipient(
-                    email=account.email,
-                    name=account.name,
-                    interface_language=account.interface_language,
+    @classmethod
+    def _insert_reply(cls, session: Session, comment: WorkflowCommentAgg, reply: WorkflowCommentReply) -> None:
+        session.execute(
+            insert(WorkflowCommentReplyModel).values(
+                id=reply.id,
+                comment_id=comment.id,
+                content=reply.content,
+                created_by=reply.created_by,
+                created_at=reply.created_at,
+                updated_at=reply.updated_at,
+            )
+        )
+        cls._insert_mentions(session, comment, reply.id, reply.mentioned_user_ids)
+
+    @classmethod
+    def _update_reply(
+        cls,
+        session: Session,
+        comment: WorkflowCommentAgg,
+        previous: WorkflowCommentReply,
+        reply: WorkflowCommentReply,
+    ) -> None:
+        if (reply.content, reply.updated_at) != (previous.content, previous.updated_at):
+            session.execute(
+                update(WorkflowCommentReplyModel)
+                .where(WorkflowCommentReplyModel.id == reply.id, WorkflowCommentReplyModel.comment_id == comment.id)
+                .values(content=reply.content, updated_at=reply.updated_at)
+            )
+        if reply.mentioned_user_ids != previous.mentioned_user_ids:
+            cls._replace_mentions(session, comment, reply.id, reply.mentioned_user_ids)
+
+    @staticmethod
+    def _delete_reply(session: Session, comment: WorkflowCommentAgg, reply_id: str) -> None:
+        session.execute(
+            delete(WorkflowCommentMention).where(
+                WorkflowCommentMention.comment_id == comment.id, WorkflowCommentMention.reply_id == reply_id
+            )
+        )
+        session.execute(
+            delete(WorkflowCommentReplyModel).where(
+                WorkflowCommentReplyModel.id == reply_id, WorkflowCommentReplyModel.comment_id == comment.id
+            )
+        )
+
+    @classmethod
+    def _replace_mentions(
+        cls, session: Session, comment: WorkflowCommentAgg, reply_id: str | None, user_ids: Sequence[str]
+    ) -> None:
+        """Replace the mentions of the comment itself (`reply_id` None) or of one reply."""
+        session.execute(
+            delete(WorkflowCommentMention).where(
+                WorkflowCommentMention.comment_id == comment.id,
+                WorkflowCommentMention.reply_id.is_(None)
+                if reply_id is None
+                else WorkflowCommentMention.reply_id == reply_id,
+            )
+        )
+        cls._insert_mentions(session, comment, reply_id, user_ids)
+
+    @staticmethod
+    def _insert_mentions(
+        session: Session, comment: WorkflowCommentAgg, reply_id: str | None, user_ids: Sequence[str]
+    ) -> None:
+        if not user_ids:
+            return
+        session.execute(
+            insert(WorkflowCommentMention),
+            [
+                {
+                    "id": gen_uuidv7_string(),
+                    "comment_id": comment.id,
+                    "reply_id": reply_id,
+                    "mentioned_user_id": user_id,
+                }
+                for user_id in user_ids
+            ],
+        )
+
+    @staticmethod
+    def _aggregate(comment: WorkflowComment) -> WorkflowCommentAgg:
+        comment_mentions: list[str] = []
+        reply_mentions: dict[str, list[str]] = {}
+        for mention in comment.mentions:
+            if mention.reply_id is None:
+                comment_mentions.append(mention.mentioned_user_id)
+            else:
+                reply_mentions.setdefault(mention.reply_id, []).append(mention.mentioned_user_id)
+        return WorkflowCommentAgg(
+            id=comment.id,
+            workspace_id=comment.tenant_id,
+            app_id=comment.app_id,
+            content=comment.content,
+            position_x=comment.position_x,
+            position_y=comment.position_y,
+            created_by=comment.created_by,
+            created_at=comment.created_at,
+            updated_at=comment.updated_at,
+            resolved=comment.resolved,
+            resolved_at=comment.resolved_at,
+            resolved_by=comment.resolved_by,
+            mentioned_user_ids=tuple(comment_mentions),
+            replies=[
+                WorkflowCommentReply(
+                    id=reply.id,
+                    content=reply.content,
+                    created_by=reply.created_by,
+                    created_at=reply.created_at,
+                    updated_at=reply.updated_at,
+                    mentioned_user_ids=tuple(reply_mentions.get(reply.id, ())),
                 )
-                for account in accounts
-                if account.email
-            ),
+                for reply in comment.replies
+            ],
         )
 
     @staticmethod
@@ -432,3 +423,16 @@ class WorkflowCommentRepository(WorkflowCommentStore):
             ]
         )
         return tuple(accounts[user_id] for user_id in participant_ids if user_id in accounts)
+
+
+def _comment_values(comment: WorkflowCommentAgg) -> dict[str, object]:
+    """Columns of the comment row that behaviors can change."""
+    return {
+        "content": comment.content,
+        "position_x": comment.position_x,
+        "position_y": comment.position_y,
+        "updated_at": comment.updated_at,
+        "resolved": comment.resolved,
+        "resolved_at": comment.resolved_at,
+        "resolved_by": comment.resolved_by,
+    }

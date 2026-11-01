@@ -1209,9 +1209,11 @@ forbidden_modules =
 allow_indirect_imports = True
 
 [importlinter:contract:workflow-comment-service-boundary]
-name = Workflow comment application service is framework and persistence neutral
+name = Workflow comment application service and aggregate are framework and persistence neutral
 type = forbidden
 source_modules =
+    services.app.workflow_comment_agg
+    services.app.workflow_comment_errors
     services.app.workflow_comment_service
 forbidden_modules =
     configs
@@ -1223,6 +1225,14 @@ forbidden_modules =
     sqlalchemy
     tasks
     werkzeug
+
+[importlinter:contract:workflow-comment-aggregate-boundary]
+name = Workflow comment aggregate does not depend on the application service
+type = forbidden
+source_modules =
+    services.app.workflow_comment_agg
+forbidden_modules =
+    services.app.workflow_comment_service
 
 [importlinter:contract:console-workflow-comment-controller-boundary]
 name = Console workflow comment controller reaches persistence only through the composition root
