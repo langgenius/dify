@@ -1,7 +1,6 @@
 'use client'
 import type { Ref } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DialogBody,
   DialogClose,
@@ -10,6 +9,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { Field, FieldError } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValue } from 'jotai'
 import { useId, useMemo, useState } from 'react'
@@ -29,7 +29,6 @@ const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) => {
   const [name, setName] = useState<string>(currentWorkspace.name)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const inputId = useId()
-  const errorId = useId()
   const saveButtonLabelId = useId()
   const normalizedName = name.trim()
   const hasChanges = normalizedName !== currentWorkspace.name
@@ -79,33 +78,25 @@ const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) => {
       </DialogHeader>
 
       <DialogBody className="space-y-2">
-        <label htmlFor={inputId} className="block text-sm font-medium text-text-primary">
-          {t(($) => $['account.workspaceName'], { ns: 'accountSettings' })}
-        </label>
-        <Input
-          ref={inputRef}
-          id={inputId}
-          value={name}
+        <Field invalid={hasError} className="block space-y-2">
+          <label htmlFor={inputId} className="block text-sm font-medium text-text-primary">
+            {t(($) => $['account.workspaceName'], { ns: 'accountSettings' })}
+          </label>
+          <Input
+            ref={inputRef}
+            id={inputId}
+            value={name}
           placeholder={t(($) => $['account.workspaceNamePlaceholder'], {
             ns: 'accountSettings',
           })}
           onChange={(e) => {
             setName(e.target.value)
           }}
-          aria-invalid={hasError}
-          aria-describedby={hasError ? errorId : undefined}
-          className={cn(
-            hasError &&
-              'border-components-input-border-destructive bg-components-input-bg-destructive hover:border-components-input-border-destructive hover:bg-components-input-bg-destructive focus:border-components-input-border-destructive focus:bg-components-input-bg-destructive',
-          )}
-        />
-        <div className="min-h-6">
-          {hasError && (
-            <p id={errorId} className="system-xs-regular text-text-destructive" role="alert">
-              {nameErrorMessage}
-            </p>
-          )}
-        </div>
+          />
+          <div className="min-h-6">
+            <FieldError match={hasError}>{nameErrorMessage}</FieldError>
+          </div>
+        </Field>
       </DialogBody>
 
       <DialogFooter>
