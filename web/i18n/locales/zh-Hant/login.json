@@ -37,7 +37,6 @@
   "forgotPasswordDesc": "請輸入您的電子郵件地址以重設密碼。我們將向您發送一封電子郵件，說明如何重設密碼。",
   "go": "跳轉至 Dify",
   "goToInit": "如果您還沒有初始化賬戶，請前往初始化頁面",
-  "hidePassword": "隱藏密碼",
   "installBtn": "設定",
   "interfaceLanguage": "介面語言",
   "invalid": "連結已失效",

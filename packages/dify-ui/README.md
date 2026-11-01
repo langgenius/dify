@@ -34,18 +34,18 @@ Import `styles.css` once from the consumer's root stylesheet or entrypoint.
 
 ## Primitives
 
-| Category         | Public subpaths                                                                                                                                                                      |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Actions          | `./button`, `./icon-button`, `./toggle`                                                                                                                                              |
-| Controls         | `./segmented-control`                                                                                                                                                                |
-| Display          | `./collapsible`, `./kbd`                                                                                                                                                             |
-| Feedback         | `./meter`, `./progress`, `./spinner`, `./status-dot`, `./toast`                                                                                                                      |
-| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./input-group`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` |
-| Layout           | `./scroll-area`, `./separator`                                                                                                                                                       |
-| Media            | `./avatar`                                                                                                                                                                           |
-| Navigation       | `./breadcrumb`, `./file-tree`, `./pagination`, `./tabs`                                                                                                                              |
-| Overlay and menu | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./menu`, `./infotip`, `./popover`, `./preview-card`, `./tooltip`                                                        |
-| Search and pick  | `./autocomplete`, `./combobox`, `./select`, `./date-picker`, `./time-picker`, `./date-time-picker`                                                                                   |
+| Category         | Public subpaths                                                                                                                                                                                          |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Actions          | `./button`, `./icon-button`, `./toggle`                                                                                                                                                                  |
+| Controls         | `./segmented-control`                                                                                                                                                                                    |
+| Display          | `./collapsible`, `./kbd`                                                                                                                                                                                 |
+| Feedback         | `./meter`, `./progress`, `./spinner`, `./status-dot`, `./toast`                                                                                                                                          |
+| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./input-group`, `./password-field`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` |
+| Layout           | `./scroll-area`, `./separator`                                                                                                                                                                           |
+| Media            | `./avatar`                                                                                                                                                                                               |
+| Navigation       | `./breadcrumb`, `./file-tree`, `./pagination`, `./tabs`                                                                                                                                                  |
+| Overlay and menu | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./menu`, `./infotip`, `./popover`, `./preview-card`, `./tooltip`                                                                            |
+| Search and pick  | `./autocomplete`, `./combobox`, `./select`, `./date-picker`, `./time-picker`, `./date-time-picker`                                                                                                       |
 
 Utilities:
 
@@ -72,6 +72,7 @@ Upstream behavior remains owned by the [Base UI documentation].
 | [Icon Button]           | Accessible names, decorative glyphs, appearance ownership, and primitive composition.       |
 | [Infotip]               | Explanation triggers, concise dialog names, and hint surface ownership.                     |
 | [Input Group]           | Compound input anatomy, shared-surface ownership, DOM order, focus, and interactive addons. |
+| [Password Field]        | Password and secret inputs, required autocomplete, and the optional reveal toggle.          |
 
 ### Cross-component guides
 
@@ -100,6 +101,7 @@ For a known contract, go directly to its guide above.
 [Infotip]: ./src/infotip/README.md
 [Input Group]: ./src/input-group/README.md
 [Overlays]: ./docs/overlays.md
+[Password Field]: ./src/password-field/README.md
 [Public API authoring]: ./docs/authoring.md
 [Selection]: ./docs/selection.md
 [Styling]: ./docs/styling.md

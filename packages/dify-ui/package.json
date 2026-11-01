@@ -141,6 +141,10 @@
       "types": "./src/radio-group/index.tsx",
       "import": "./src/radio-group/index.tsx"
     },
+    "./password-field": {
+      "types": "./src/password-field/index.tsx",
+      "import": "./src/password-field/index.tsx"
+    },
     "./popover": {
       "types": "./src/popover/index.tsx",
       "import": "./src/popover/index.tsx"

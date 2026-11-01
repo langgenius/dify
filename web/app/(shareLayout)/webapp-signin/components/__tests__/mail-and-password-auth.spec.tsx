@@ -157,7 +157,7 @@ describe('MailAndPasswordAuth', () => {
     await waitFor(() => expect(submit).not.toHaveAttribute('aria-disabled', 'true'))
   })
 
-  it('names the password visibility action for its current state', async () => {
+  it('toggles password visibility with a constant action name', async () => {
     const user = userEvent.setup()
     render(<MailAndPasswordAuth isEmailSetup />)
 
@@ -167,7 +167,7 @@ describe('MailAndPasswordAuth', () => {
     await user.click(screen.getByRole('button', { name: 'login.showPassword' }))
     expect(passwordInput).toHaveAttribute('type', 'text')
 
-    await user.click(screen.getByRole('button', { name: 'login.hidePassword' }))
+    await user.click(screen.getByRole('button', { name: 'login.showPassword' }))
     expect(passwordInput).toHaveAttribute('type', 'password')
   })
 })
