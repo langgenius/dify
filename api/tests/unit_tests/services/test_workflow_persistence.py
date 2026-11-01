@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from queue import Queue
+from threading import Event, Lock
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, override
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,7 +15,11 @@ from sqlalchemy import event as sqlalchemy_event
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    DIFY_RUN_CONTEXT_KEY,
+    AdvancedChatAppGenerateEntity,
+    WorkflowAppGenerateEntity,
+)
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
@@ -23,6 +30,8 @@ from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
     WORKFLOW_TOOL_ROOT_APP_ID_KEY,
 )
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
 from enums import WorkflowKind
 from graphon.engine.event.node_failure import NodeFailureHandler
@@ -31,6 +40,7 @@ from graphon.engine.event.stream import EventStream
 from graphon.engine.frame import ExecutionFrame, FrameRegistry
 from graphon.engine.scheduler import Scheduler
 from graphon.engine.worker import NodeEventTask
+from graphon.engine.worker.worker import DispatchTask, Worker
 from graphon.engine_events import (
     EngineEvent,
     GraphRunAbortedEvent,
@@ -63,6 +73,7 @@ from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from graphon.runtime.execution import ROOT_FRAME_ID
+from graphon.runtime.ready_queue import InMemoryReadyQueue
 from models import Account, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
@@ -73,6 +84,7 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
 from services import workflow_persistence as persistence_mod
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from services.workflow_run_index import WorkflowRunIndex
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.workflow_test_utils import build_test_graph_init_params
 
@@ -1156,9 +1168,21 @@ class TestPersistenceLayerCases:
             layer.on_event(retry_event)
             assert node_repo.saved_exec_data
 
-        def test_agent_v2_caller_row_is_saved_synchronously_before_node_run(self):
-            layer, _, node_repo, _ = _make_layer(node_run_indices={"agent-exec": 1})
+        def test_agent_v2_caller_row_is_saved_synchronously_before_node_run(
+            self, config_overrides: Callable[..., None]
+        ) -> None:
+            config_overrides(AGENT_BACKEND_USE_FAKE=True)
+            layer, _, node_repo, state = _make_layer(node_run_indices={"agent-exec": 1})
             layer.on_event(GraphRunStartedEvent())
+            node = _make_caller_agent(state)
+            layer.on_node_run_start(node)
+            layer.on_node_run_start(node)
+            assert len(node_repo.synchronously_saved) == 1
+            caller = node_repo.synchronously_saved[0]
+            assert isinstance(caller, WorkflowNodeExecution)
+            assert caller.id == "agent-exec"
+            assert node_repo.saved == []
+            assert node._caller_persistence_error is None
 
             layer.on_event(
                 NodeRunStartedEvent(
@@ -1171,8 +1195,11 @@ class TestPersistenceLayerCases:
                 )
             )
 
-            assert [execution.id for execution in node_repo.synchronously_saved] == ["agent-exec"]
-            assert node_repo.saved == []
+            assert node_repo.synchronously_saved == [caller]
+            assert len(node_repo.saved) == 1
+            saved_caller = node_repo.saved[0]
+            assert isinstance(saved_caller, WorkflowNodeExecution)
+            assert saved_caller.id == "agent-exec"
 
         def test_retry_history_is_preserved_after_node_succeeds(self):
             layer, _, node_repo, _ = _make_layer(node_run_indices={"exec": 1})
@@ -1407,3 +1434,225 @@ class TestPersistenceLayerCases:
 
             with pytest.raises(ValueError, match="workflow execution not initialized"):
                 layer._get_workflow_execution()
+
+
+def _make_caller_agent(
+    state: RuntimeState,
+    *,
+    workflow_id: str = "workflow-id",
+    app_id: str = "app",
+    workflow_tool: bool = False,
+) -> DifyAgentNode:
+    params = build_test_graph_init_params(workflow_id=workflow_id, app_id=app_id)
+    if workflow_tool:
+        params.run_context[DIFY_RUN_CONTEXT_KEY].workflow_tool_invocation_id = "tool-invocation"
+    node = DifyNodeFactory(params, state).create_node(
+        {
+            "id": "agent-node",
+            "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent", "title": "Agent"},
+        }
+    )
+    assert isinstance(node, DifyAgentNode)
+    node.bind_execution_id("agent-exec")
+    return node
+
+
+@pytest.mark.parametrize(
+    ("kind", "node_version"),
+    [(BuiltinNodeTypes.START, "1"), (BuiltinNodeTypes.AGENT, "1"), (BuiltinNodeTypes.AGENT, "2")],
+)
+def test_node_start_requires_persistence_coordination_only_for_agent_v2(kind: str, node_version: str) -> None:
+    layer, _, repo, state = _make_layer()
+
+    class UncoordinatedNode(StartNode):
+        node_type = kind
+
+        @classmethod
+        @override
+        def version(cls) -> str:
+            return node_version
+
+    node = UncoordinatedNode(
+        node_id="node",
+        data=StartNodeData(title="Node", type=kind),
+        init_params=build_test_graph_init_params(workflow_id="workflow-id"),
+        runtime_state=state,
+    )
+    node.bind_execution_id("exec")
+
+    if kind == BuiltinNodeTypes.AGENT and node_version == "2":
+        with pytest.raises(TypeError, match="Agent v2 node must support caller persistence coordination"):
+            layer.on_node_run_start(node)
+    else:
+        layer.on_node_run_start(node)
+
+    assert repo.synchronously_saved == []
+    assert repo.saved == []
+    assert layer._node_execution_cache == {}
+
+
+@pytest.mark.parametrize("dispatch_immediately", [False, True])
+@pytest.mark.parametrize("fail_commit", [False, True])
+def test_worker_commits_caller_before_agent_body(dispatch_immediately: bool, fail_commit: bool) -> None:
+    """Exercise Graphon's real worker with both dispatcher schedules and hook failure."""
+    layer, _, repo, state = _make_layer()
+    index = WorkflowRunIndex(())
+    layer.set_node_run_indices(index.indices)
+    layer.on_event(GraphRunStartedEvent())
+    entered = []
+
+    class ProbeAgent(StartNode):
+        node_type = BuiltinNodeTypes.AGENT
+        persistence_error: Exception | None = None
+
+        @classmethod
+        @override
+        def version(cls) -> str:
+            return "2"
+
+        def record_caller_persistence_result(self, *, error: Exception | None = None) -> None:
+            self.persistence_error = error
+
+        @override
+        def _run(self) -> NodeRunResult:
+            if self.persistence_error is not None:
+                raise self.persistence_error
+            assert len(repo.synchronously_saved) == 1
+            row = repo.synchronously_saved[0]
+            assert isinstance(row, WorkflowNodeExecution)
+            assert row.node_execution_id == self.execution_id
+            entered.append(True)
+            return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, outputs={})
+
+    node = ProbeAgent(
+        node_id="agent-node",
+        data=StartNodeData(title="Agent", type=BuiltinNodeTypes.AGENT),
+        init_params=build_test_graph_init_params(workflow_id="workflow-id"),
+        runtime_state=state,
+    )
+    node.bind_execution_id("agent-exec")
+    if fail_commit:
+
+        def fail(entity: object) -> None:
+            raise RuntimeError("caller commit failed")
+
+        repo.save_synchronously = fail
+
+    class DispatchQueue(Queue[DispatchTask]):
+        @override
+        def put(self, item: DispatchTask, block: bool = True, timeout: float | None = None) -> None:
+            super().put(item, block, timeout)
+            if dispatch_immediately:
+                # Like EventStream, an observer error must not stop the worker.
+                assert isinstance(item, NodeEventTask)
+                EventStream([layer]).notify_layers(item.event)
+
+    queue = DispatchQueue()
+    worker = Worker(
+        ready_queue=InMemoryReadyQueue(),
+        dispatch_queue=queue,
+        frame_registry=FrameRegistry(),
+        layers=[index, layer],
+        task_acquisition_lock=Lock(),
+        task_acquisition_enabled=Event(),
+    )
+    worker._run_node_events(invocation_id=None, node=node, node_events=node.run())
+    assert entered == ([] if fail_commit else [True])
+    events = []
+    while not queue.empty():
+        task = queue.get_nowait()
+        assert isinstance(task, NodeEventTask)
+        events.append(task.event)
+    if fail_commit:
+        assert isinstance(events[-1], NodeRunFailedEvent)
+        assert "caller commit failed" in events[-1].error
+    else:
+        assert isinstance(events[-1], NodeRunSucceededEvent)
+        if not dispatch_immediately:
+            for event in events:
+                layer.on_event(event)
+        assert layer._node_execution_cache["agent-exec"].index == index.index_for("agent-exec")
+
+
+@pytest.mark.parametrize("source_workflow_id", ["source-workflow", "workflow-id"])
+@pytest.mark.parametrize("source_app_id", ["source-app", "caller-app"])
+def test_worker_caller_uses_workflow_tool_source_owner(
+    sqlite_session_factory: sessionmaker[Session],
+    source_workflow_id: str,
+    source_app_id: str,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(AGENT_BACKEND_USE_FAKE=True)
+    source = replace(_tool_source(), app_id=source_app_id, workflow_id=source_workflow_id)
+    layer = _make_sql_layer(sqlite_session_factory, node_run_indices={"agent-exec": 1})
+    listen = layer.create_workflow_tool_event_listener(source, "workflow-id", "caller-exec")
+    layer.on_event(GraphRunStartedEvent())
+    node = _make_caller_agent(
+        RuntimeState(workflow_id=source_workflow_id, variable_pool=VariablePool(), start_at=0.0),
+        workflow_id=source_workflow_id,
+        app_id=source_app_id,
+        workflow_tool=True,
+    )
+    layer.on_node_run_start(node)
+    # An independent session sees the committed row before any start-event delivery.
+    with sqlite_session_factory() as session:
+        row = session.scalars(select(WorkflowNodeExecutionModel)).one()
+        assert (row.tenant_id, row.app_id, row.workflow_id, row.workflow_run_id) == (
+            "tenant",
+            source_app_id,
+            source_workflow_id,
+            "run-id",
+        )
+        assert row.process_data_dict is not None
+        assert row.process_data_dict[WORKFLOW_TOOL_ROOT_APP_ID_KEY] == "caller-app"
+    listen(
+        NodeRunStartedEvent(
+            id="agent-exec",
+            node_id="agent-node",
+            node_type=BuiltinNodeTypes.AGENT,
+            node_version="2",
+            node_title="Agent",
+            start_at=_naive_utc_now(),
+        )
+    )
+    with sqlite_session_factory() as session:
+        row = session.scalars(select(WorkflowNodeExecutionModel)).one()
+        assert row.triggered_from_node_execution_id == "caller-exec"
+    assert node._caller_persistence_error is None
+    assert "agent-exec" not in layer._node_execution_cache
+
+
+def test_caller_persistence_retries_failed_commit_and_reuses_restored_identity(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(AGENT_BACKEND_USE_FAKE=True)
+    layer, _, repo, state = _make_layer(node_run_indices={"agent-exec": 7})
+    layer.on_event(GraphRunStartedEvent())
+    node = _make_caller_agent(state)
+    save = repo.save_synchronously
+    failure = RuntimeError("commit failed")
+
+    def fail(entity: object) -> None:
+        raise failure
+
+    repo.save_synchronously = fail
+    with pytest.raises(RuntimeError, match="commit failed"):
+        layer.on_node_run_start(node)
+    assert "agent-exec" not in layer._node_execution_cache
+    assert node._caller_persistence_error is failure
+    repo.save_synchronously = save
+    layer.on_node_run_start(node)
+    assert node._caller_persistence_error is None
+    assert len(repo.synchronously_saved) == 1
+    previous = repo.synchronously_saved[0]
+    assert isinstance(previous, WorkflowNodeExecution)
+    previous.id = "durable-row-id"
+    previous.process_data = {"workflow_agent_binding_id": "binding-id"}
+
+    resumed, _, resumed_repo, _ = _make_layer(node_run_indices={"agent-exec": 7})
+    resumed.set_node_execution_history([previous])
+    resumed.on_event(GraphRunStartedEvent(reason=WorkflowStartReason.RESUMPTION))
+    resumed.on_node_run_start(node)
+    assert resumed_repo.synchronously_saved == []
+    assert resumed._node_execution_cache["agent-exec"].id == "durable-row-id"
+    assert resumed._node_execution_cache["agent-exec"].process_data == previous.process_data
