@@ -44,6 +44,7 @@ from repositories.knowledge.keyword_table_repository import persist_keyword_tabl
 from repositories.knowledge.segment_read_adapter import (
     format_segment_attachments,
     sign_segment_content,
+    sign_segment_contents,
 )
 from services.knowledge.entities.segments import ChildChunkRecord, SegmentRecord
 from services.knowledge.indexing.execution import IndexingDocument
@@ -229,13 +230,14 @@ class SQLAlchemySegmentRepository:
                 else {}
             )
             batch = load_segment_read_batch(items, session=session)
+            signed_contents = sign_segment_contents(items, session=session)
             return SegmentPage(
                 items=tuple(
                     _segment_data(
                         segment,
                         summaries[segment.id].summary_content if segment.id in summaries else None,
                         batch,
-                        session,
+                        signed_contents[segment.id],
                     )
                     for segment in items
                 ),
@@ -635,7 +637,12 @@ def _detail(session: Session, segment: DocumentSegment, document: Document) -> S
     summary = _summary(session, segment)
     batch = load_segment_read_batch([segment], session=session)
     return SegmentDetail(
-        data=_segment_data(segment, summary.summary_content if summary else None, batch, session),
+        data=_segment_data(
+            segment,
+            summary.summary_content if summary else None,
+            batch,
+            sign_segment_content(segment, session=session),
+        ),
         doc_form=str(document.doc_form),
     )
 
@@ -676,7 +683,7 @@ def _get_child_chunk(session: Session, segment_ref: SegmentRef, child_chunk_id: 
 
 
 def _segment_data(
-    segment: DocumentSegment, summary: str | None, batch: SegmentReadBatch, session: Session
+    segment: DocumentSegment, summary: str | None, batch: SegmentReadBatch, sign_content: str
 ) -> SegmentRecord:
     return SegmentRecord.model_validate(
         {
@@ -703,7 +710,7 @@ def _segment_data(
             "completed_at": segment.completed_at,
             "error": segment.error,
             "stopped_at": segment.stopped_at,
-            "sign_content": sign_segment_content(segment, session=session),
+            "sign_content": sign_content,
             "summary": summary,
             "child_chunks": batch.child_chunks.get(segment.id, []),
             "attachments": format_segment_attachments(batch.attachments.get(segment.id, [])),
