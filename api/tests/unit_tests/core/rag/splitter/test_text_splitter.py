@@ -141,6 +141,7 @@ from core.rag.splitter.fixed_text_splitter import (
 )
 from core.rag.splitter.text_splitter import (
     RecursiveCharacterTextSplitter,
+    TextSplitter,
     Tokenizer,
     TokenTextSplitter,
     _split_text_with_regex,
@@ -2090,3 +2091,117 @@ class TestPerformanceCharacteristics:
 
         # Small chunk size should produce more chunks
         assert len(result_small) > len(result_large)
+
+
+# ============================================================================
+# Additional regression tests (added by PR, kept alongside the original suite)
+# ============================================================================
+
+
+class TestSplitTextWithRegexParametrized:
+    @pytest.mark.parametrize(
+        ("text", "separator", "keep_separator", "expected"),
+        [
+            pytest.param("a,,b", ",", True, ["a,", ",", "b"], id="keeps-delimiters"),
+            pytest.param("a,,b", ",", False, ["a", "b"], id="drops-delimiters"),
+            pytest.param("abc", ",", True, ["abc"], id="separator-absent"),
+            pytest.param("", ",", True, [], id="empty-text"),
+            pytest.param("a\nb", "", True, ["a", "\n", "b"], id="empty-separator-splits-chars"),
+            pytest.param("a\nb", "", False, ["a", "\n", "b"], id="empty-separator-keeps-newlines"),
+        ],
+    )
+    def test_split_text_with_regex(self, text: str, separator: str, keep_separator: bool, expected: list[str]):
+        assert _split_text_with_regex(text, separator, keep_separator) == expected
+
+
+def test_text_splitter_rejects_overlap_larger_than_chunk_size():
+    with pytest.raises(ValueError, match="larger chunk overlap"):
+        RecursiveCharacterTextSplitter(chunk_size=10, chunk_overlap=20)
+
+
+class TestRecursiveCharacterTextSplitterCoreCases:
+    def test_split_text_keeps_short_text_intact(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=10, chunk_overlap=0)
+        assert splitter.split_text("aaa\n\nbbb") == ["aaa\n\nbbb"]
+
+    def test_split_text_at_paragraph_separator(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=8, chunk_overlap=0)
+        assert splitter.split_text("alpha\n\nbeta") == ["alpha", "beta"]
+
+    def test_split_text_recurses_to_word_level(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=8, chunk_overlap=0)
+        assert splitter.split_text("short text with several words inside") == [
+            "short",
+            "text",
+            "with",
+            "several",
+            "words",
+            "inside",
+        ]
+
+    def test_split_text_word_separator_with_explicit_separators(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=4, chunk_overlap=0, separators=[" "])
+        assert splitter.split_text("aaaa bbbb cccc dddd") == ["aaaa ", "bbbb ", "cccc ", "dddd"]
+
+    def test_split_text_chunk_overlap_produces_shared_words(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=5, chunk_overlap=3, separators=[" "])
+        assert splitter.split_text("a b c d e f") == ["a b", "b c", "c d", "d e f"]
+
+    def test_oversized_chunk_without_separator_is_kept_whole(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=6, chunk_overlap=0, separators=[" "])
+        chunks = splitter.split_text("toolongword short")
+        assert chunks == ["toolongword ", "short"]
+
+    def test_split_documents_preserves_metadata(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=8, chunk_overlap=0)
+        documents = [
+            Document(page_content="alpha\n\nbeta", metadata={"source": "a"}),
+            Document(page_content="gamma", metadata={"source": "b"}),
+        ]
+        result = splitter.split_documents(documents)
+        assert [(doc.page_content, doc.metadata) for doc in result] == [
+            ("alpha", {"source": "a"}),
+            ("beta", {"source": "a"}),
+            ("gamma", {"source": "b"}),
+        ]
+
+
+class TestCreateDocuments:
+    def test_metadata_is_mapped_per_text(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=8, chunk_overlap=0)
+        docs = splitter.create_documents(["p1 p2", "p3"], [{"source": "x"}, {"source": "y"}])
+        assert [(doc.page_content, doc.metadata) for doc in docs] == [
+            ("p1 p2", {"source": "x"}),
+            ("p3", {"source": "y"}),
+        ]
+
+    def test_add_start_index_records_chunk_offsets(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=6, chunk_overlap=0, add_start_index=True)
+        docs = splitter.create_documents(["alpha beta gamma"])
+        assert [(doc.page_content, doc.metadata["start_index"]) for doc in docs] == [
+            ("alpha", 0),
+            ("beta", 6),
+            ("gamma", 11),
+        ]
+
+    def test_metadata_is_deep_copied_between_chunks(self):
+        splitter = RecursiveCharacterTextSplitter(chunk_size=6, chunk_overlap=0)
+        docs = splitter.create_documents(["alpha beta gamma"], [{"k": "v"}])
+        assert len(docs) == 3
+        docs[0].metadata["k"] = "changed"
+        assert [doc.metadata["k"] for doc in docs] == ["changed", "v", "v"]
+
+
+def test_split_text_on_tokens_windows_with_overlap():
+    tokenizer = Tokenizer(
+        chunk_overlap=2,
+        tokens_per_chunk=4,
+        decode="".join,
+        encode=lambda text: list(text),
+    )
+    assert split_text_on_tokens(text="abcdefgh", tokenizer=tokenizer) == ["abcd", "cdef", "efgh", "gh"]
+
+
+def test_text_splitter_is_abstract():
+    with pytest.raises(TypeError):
+        TextSplitter()  # type: ignore[abstract]
