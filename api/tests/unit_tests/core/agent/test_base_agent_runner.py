@@ -22,7 +22,6 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     InvokeFrom,
-    ModelConfigWithCredentialsEntity,
 )
 from core.model_manager import ModelInstance
 from core.tools.__base.tool import Tool
@@ -40,8 +39,8 @@ from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
-from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
 from graphon.model_runtime.entities import LLMUsage, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelFeature, ModelType
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import AppMode, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 from services.workflow_run_agg import WorkflowRunAgg
