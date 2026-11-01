@@ -27,10 +27,13 @@ from models import Tenant
 from models.account import TenantStatus
 from models.enums import CustomizeTokenStrategy
 from models.human_input import RecipientType
-from models.model import App, AppMode, IconType, Site
+from models.model import App, AppMode, IconType, Site, UploadFile
 from services.entities.feature_entities import FeatureModel
+from services.human_input_file_upload_service import HumanInputUploadContext, HumanInputUploadToken
 from services.human_input_service import FormExpiredError
+from services.remote_file_service import RemoteFileUploadResult
 from tests.helpers.unit.controllers.error_body import raised_error
+from tests.helpers.unit.model_factories import make_account
 
 HumanInputFormApi = human_input_module.HumanInputFormApi
 HumanInputFormUploadTokenApi = human_input_module.HumanInputFormUploadTokenApi
@@ -669,23 +672,54 @@ def test_public_endpoints_reject_internal_tokens(
     assert uploads.issued == []
 
 
+class _ArchiveCheckUploads:
+    """An upload service that issues and accepts one token, and counts the uploads that reach it."""
+
+    def __init__(self, context: HumanInputUploadContext) -> None:
+        self.context = context
+        self.issued: list[str] = []
+        self.validations = 0
+        self.uploads = 0
+
+    def issue_upload_token(self, form_token: str) -> HumanInputUploadToken:
+        self.issued.append(form_token)
+        return HumanInputUploadToken(upload_token="hitl_upload_token-1", expires_at=datetime(2099, 1, 1, tzinfo=UTC))
+
+    def validate_upload_token(self, _upload_token: str) -> HumanInputUploadContext:
+        self.validations += 1
+        return self.context
+
+    def upload_local_file(self, **_: object) -> UploadFile:
+        self.uploads += 1
+        raise AssertionError("upload must not run after the form app check failed")
+
+    def upload_remote_file(self, **_: object) -> RemoteFileUploadResult:
+        self.uploads += 1
+        raise AssertionError("upload must not run after the form app check failed")
+
+
+@dataclass
+class _ArchiveCheckApplicationServices:
+    human_input_file_uploads: _ArchiveCheckUploads
+
+
 def test_upload_token_issued_before_archive_is_rejected_after(
     monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session
 ) -> None:
     tenant, app_model, _ = _persist_app_site(database_session)
-    token = "hitl_upload_token-1"
-    context = SimpleNamespace(app_id=app_model.id, tenant_id=tenant.id)
-    upload_service = MagicMock()
-    upload_service.issue_upload_token.return_value = SimpleNamespace(
-        upload_token=token, expires_at=datetime(2099, 1, 1, tzinfo=UTC)
+    uploads = _ArchiveCheckUploads(
+        HumanInputUploadContext(
+            tenant_id=tenant.id,
+            app_id=app_model.id,
+            form_id="form-1",
+            recipient_id="recipient-1",
+            upload_token_id="token-row-1",
+            owner=make_account(account_id="owner-1"),
+        )
     )
-    upload_service.validate_upload_token.return_value = context
-
-    def app_services() -> SimpleNamespace:
-        return SimpleNamespace(human_input_file_uploads=upload_service)
-
-    monkeypatch.setattr(human_input_module, "application_services", app_services)
-    monkeypatch.setattr(upload_module, "application_services", app_services)
+    services = _ArchiveCheckApplicationServices(uploads)
+    monkeypatch.setattr(human_input_module, "application_services", lambda: services)
+    monkeypatch.setattr(upload_module, "application_services", lambda: services)
     _allow_requests(monkeypatch)
     _patch_form_service(monkeypatch, _FormService(_FormRef(app_id=app_model.id, tenant_id=tenant.id)))
 
@@ -693,8 +727,10 @@ def test_upload_token_issued_before_archive_is_rejected_after(
         issued, status = HumanInputFormUploadTokenApi().post("form-token-1")
 
     assert status == 200
-    assert issued["upload_token"] == token
-    assert _validate_context(upload_service, token) is context
+    assert issued["upload_token"] == "hitl_upload_token-1"
+    assert uploads.issued == ["form-token-1"]
+    with app.test_request_context("/api/human-input-forms/files", method="POST"):
+        assert _validate_context(uploads, issued["upload_token"]) is uploads.context
 
     tenant.status = TenantStatus.ARCHIVE
     database_session.commit()
@@ -710,10 +746,8 @@ def test_upload_token_issued_before_archive_is_rejected_after(
 
     assert status == 403
     assert body["code"] == "invalid_upload_token"
-    upload_service.issue_upload_token.assert_called_once_with("form-token-1")
-    assert upload_service.validate_upload_token.call_count == 2
-    upload_service.upload_local_file.assert_not_called()
-    upload_service.upload_remote_file.assert_not_called()
+    assert uploads.validations == 2
+    assert uploads.uploads == 0
 
 
 @pytest.mark.parametrize(("case", "expected_error"), _UNAVAILABLE_APP_CASES)
