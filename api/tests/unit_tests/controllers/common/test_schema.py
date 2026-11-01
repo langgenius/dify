@@ -272,29 +272,6 @@ class TestSchemaCases:
         assert called_names == ["UserModel", "ProductModel"]
 
     @staticmethod
-    def test_register_schema_models_calls_register_schema_model(monkeypatch: pytest.MonkeyPatch):
-        from controllers.common.schema import register_schema_models
-
-        namespace = Namespace("test")
-
-        calls = []
-
-        def fake_register(ns, model):
-            calls.append((ns, model))
-
-        monkeypatch.setattr(
-            "controllers.common.schema.register_schema_model",
-            fake_register,
-        )
-
-        register_schema_models(namespace, UserModel, ProductModel)
-
-        assert calls == [
-            (namespace, UserModel),
-            (namespace, ProductModel),
-        ]
-
-    @staticmethod
     def test_register_response_schema_model_uses_serialized_field_names():
         from controllers.common.schema import register_response_schema_model
 
@@ -357,7 +334,7 @@ class TestSchemaCases:
         assert len(console_ns.models) == 1
 
     @staticmethod
-    def test_register_enum_models_registers_single_enum():
+    def test_register_enum_models_registers_single_enum_schema():
         from controllers.common.schema import register_enum_models
 
         namespace = Namespace("test")
@@ -366,31 +343,20 @@ class TestSchemaCases:
 
         assert list(namespace.models) == ["StatusEnum"]
         schema = namespace.models["StatusEnum"].__schema__
-        assert isinstance(schema, dict)
+        assert schema["type"] == "string"
+        assert schema["enum"] == ["active", "inactive"]
 
     @staticmethod
-    def test_register_enum_models_registers_multiple_enums():
+    def test_register_enum_models_registers_multiple_enum_schemas():
         from controllers.common.schema import register_enum_models
 
         namespace = Namespace("test")
 
         register_enum_models(namespace, StatusEnum, PriorityEnum)
 
-        called_names = list(namespace.models)
-        assert called_names == ["StatusEnum", "PriorityEnum"]
-
-    @staticmethod
-    def test_register_enum_models_uses_correct_ref_template():
-        from controllers.common.schema import register_enum_models
-
-        namespace = Namespace("test")
-
-        register_enum_models(namespace, StatusEnum)
-
-        schema = namespace.models["StatusEnum"].__schema__
-
-        # Verify the schema contains enum values
-        assert "enum" in schema or "anyOf" in schema
+        assert list(namespace.models) == ["StatusEnum", "PriorityEnum"]
+        assert namespace.models["StatusEnum"].__schema__["enum"] == ["active", "inactive"]
+        assert namespace.models["PriorityEnum"].__schema__["enum"] == ["high", "low"]
 
     @staticmethod
     def test_query_params_from_model_builds_flask_restx_doc_params():
