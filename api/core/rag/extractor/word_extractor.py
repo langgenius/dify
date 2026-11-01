@@ -231,11 +231,19 @@ class WordExtractor(BaseExtractor):
         return row_cells
 
     def _parse_cell(self, cell, image_map):
+        # Walk paragraphs and nested tables in document order. cell.paragraphs only
+        # yields direct w:p children, so images/text inside nested w:tbl were dropped.
         cell_content = []
-        for paragraph in cell.paragraphs:
-            parsed_paragraph = self._parse_cell_paragraph(paragraph, image_map)
-            if parsed_paragraph:
-                cell_content.append(parsed_paragraph)
+        for block in cell.iter_inner_content():
+            match block:
+                case Paragraph():
+                    parsed_paragraph = self._parse_cell_paragraph(block, image_map)
+                    if parsed_paragraph:
+                        cell_content.append(parsed_paragraph)
+                case Table():
+                    nested_markdown = self._table_to_markdown(block, image_map)
+                    if nested_markdown:
+                        cell_content.append(nested_markdown)
         unique_content = list(dict.fromkeys(cell_content))
         return " ".join(unique_content)
 
