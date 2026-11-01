@@ -242,9 +242,7 @@ class TestMCPClient:
         """Test initialization with unknown method tries streamable-http first."""
         session = RealSessionContext()
         mock_client_session.return_value.__enter__.return_value = session
-        mock_streamable_client.return_value = RealTransportContext(
-            streams=(object(), object(), object())
-        )
+        mock_streamable_client.return_value = RealTransportContext(streams=(object(), object(), object()))
 
         client = MCPClient(server_url="http://test.example.com/unknown")
         client._initialize()
