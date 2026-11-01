@@ -5,9 +5,9 @@ import type { HumanInputV2MessageTemplate } from '../types'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Field, FieldError } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
-import { Field, FieldError } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,

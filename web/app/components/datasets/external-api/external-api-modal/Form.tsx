@@ -60,11 +60,7 @@ const ExternalAPIForm: FC<ExternalAPIFormProps> = React.memo(
           : value.settings[variable as keyof typeof value.settings] || ''
 
       return (
-        <Field
-          key={variable}
-          name={variable}
-          className={cn(itemClassName, 'self-stretch')}
-        >
+        <Field key={variable} name={variable} className={cn(itemClassName, 'self-stretch')}>
           <div className="flex w-full items-center justify-between">
             <label
               className={cn(fieldLabelClassName, 'system-sm-semibold text-text-secondary')}

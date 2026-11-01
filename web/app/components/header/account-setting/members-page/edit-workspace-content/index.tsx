@@ -86,12 +86,12 @@ const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) => {
             ref={inputRef}
             id={inputId}
             value={name}
-          placeholder={t(($) => $['account.workspaceNamePlaceholder'], {
-            ns: 'accountSettings',
-          })}
-          onChange={(e) => {
-            setName(e.target.value)
-          }}
+            placeholder={t(($) => $['account.workspaceNamePlaceholder'], {
+              ns: 'accountSettings',
+            })}
+            onChange={(e) => {
+              setName(e.target.value)
+            }}
           />
           <div className="min-h-6">
             <FieldError match={hasError}>{nameErrorMessage}</FieldError>

@@ -237,9 +237,9 @@ describe('Human Input v2 Message Template', () => {
     await setBody('')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')).toHaveAccessibleDescription(
-      'workflow.nodes.humanInputV2.error.subjectRequired',
-    )
+    expect(
+      screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'),
+    ).toHaveAccessibleDescription('workflow.nodes.humanInputV2.error.subjectRequired')
     expect(screen.getByText('workflow.nodes.humanInputV2.error.bodyRequired')).toBeInTheDocument()
     expect(props.onChange).not.toHaveBeenCalled()
 

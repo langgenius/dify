@@ -203,7 +203,9 @@ export const EnvironmentVariableField = memo(
             tabIndex={-1}
             role="group"
             aria-labelledby={labelId}
-            aria-describedby={[slot.description && descriptionId, errorId].filter(Boolean).join(' ')}
+            aria-describedby={[slot.description && descriptionId, errorId]
+              .filter(Boolean)
+              .join(' ')}
             className="flex w-full min-w-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           >
             <LLMEnvironmentVariableValueField
@@ -224,17 +226,17 @@ export const EnvironmentVariableField = memo(
             <Input
               id={inputId}
               step={inputType === 'number' ? 'any' : undefined}
-            type={inputType}
-            value={editable && typeof customValue === 'string' ? customValue : ''}
-            placeholder={placeholder}
-            disabled={!editable}
-            autoComplete="off"
-            onChange={(event) =>
-              updateSelection({
-                ...selection,
-                customValue: event.target.value,
-              })
-            }
+              type={inputType}
+              value={editable && typeof customValue === 'string' ? customValue : ''}
+              placeholder={placeholder}
+              disabled={!editable}
+              autoComplete="off"
+              onChange={(event) =>
+                updateSelection({
+                  ...selection,
+                  customValue: event.target.value,
+                })
+              }
             />
           )}
           {slot.description && (

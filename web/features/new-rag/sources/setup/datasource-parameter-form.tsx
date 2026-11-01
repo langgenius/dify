@@ -135,17 +135,11 @@ function DatasourceParameterField({
               <ParameterLabel label={label} required={parameter.required} />
             </span>
             {description && (
-              <span className="mt-0.5 block body-xs-regular text-text-tertiary">
-                {description}
-              </span>
+              <span className="mt-0.5 block body-xs-regular text-text-tertiary">{description}</span>
             )}
           </span>
         </FieldLabel>
-        {error && (
-          <FieldError match>
-            {error}
-          </FieldError>
-        )}
+        {error && <FieldError match>{error}</FieldError>}
       </Field>
     )
 
@@ -178,11 +172,7 @@ function DatasourceParameterField({
             }}
           />
         </div>
-        {error && (
-          <FieldError match>
-            {error}
-          </FieldError>
-        )}
+        {error && <FieldError match>{error}</FieldError>}
       </Field>
     )
 
@@ -230,11 +220,7 @@ function DatasourceParameterField({
           </SelectContent>
         </Select>
         {description && <FieldDescription>{description}</FieldDescription>}
-        {error && (
-          <FieldError match>
-            {error}
-          </FieldError>
-        )}
+        {error && <FieldError match>{error}</FieldError>}
       </Field>
     )
   }
@@ -284,11 +270,7 @@ function DatasourceParameterField({
         }}
       />
       {description && <FieldDescription>{description}</FieldDescription>}
-      {error && (
-        <FieldError match>
-          {error}
-        </FieldError>
-      )}
+      {error && <FieldError match>{error}</FieldError>}
     </Field>
   )
 }
