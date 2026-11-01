@@ -20,6 +20,8 @@ from tests.unit_tests.services.dify_builder.test_knowledge_source_cue import (
     CAPTURED_AGENT_GOAL,
     CAPTURED_BARE_ROLE_REQUIREMENTS,
     CAPTURED_FORBIDDEN_ADDITIONS,
+    CAPTURED_MEETING_GOAL,
+    CAPTURED_MEETING_REQUIREMENTS,
     CAPTURED_NO_EXTRA_COMPONENTS,
     MEETING_GOAL,
 )
@@ -652,3 +654,60 @@ def test_full_captured_bare_resource_exclusion_reaches_plan_without_a_knowledge_
     assert "knowledge_decision_pending" not in stored.resource_selection
     assert any(item.kind == "plan" for item in items)
     assert not any(item.kind == "form" for item in items)
+
+
+def test_captured_meeting_model_only_confirmation_preserves_goal_without_a_knowledge_waiver() -> None:
+    plan = WorkflowPlan("Meeting minutes", "Input", "Output", ["Use the selected model"], used_resource_ids=[MODEL])
+    context = DifyBuilderContext(
+        goal_text=CAPTURED_MEETING_GOAL,
+        requirements=CAPTURED_MEETING_REQUIREMENTS,
+        resource_selection={"knowledge_source_unavailable": False, "knowledge_requires_clarification": False},
+    )
+    result, stored, _, items = confirm(ReconciliationAgent(plan), offered=[], ids=[MODEL], context=context)
+    assert result.current_state == PcState.BUILD_PLAN_APPROVAL
+    assert stored.goal_text == CAPTURED_MEETING_GOAL
+    assert stored.requirements == CAPTURED_MEETING_REQUIREMENTS
+    assert stored.resource_selection["resource_ids"] == [MODEL]
+    assert "knowledge_decision_pending" not in stored.resource_selection
+    assert "knowledge_scope_decision" not in stored.resource_selection
+    assert any(item.kind == "plan" for item in items)
+    assert not any(item.kind == "form" for item in items)
+
+
+@pytest.mark.parametrize("prefix", ["不使用工具、", "不需要任何新资源、工具、"])
+@pytest.mark.parametrize("suffix", ["仍需检索", "访问尚未决定", "不一定不用"])
+def test_nonbare_knowledge_item_keeps_handler_clarification_with_false_model_hint(prefix: str, suffix: str) -> None:
+    goal = prefix + "知识库" + suffix
+    plan = WorkflowPlan("Text summary", "Input", "Summary", ["Use the selected model"], used_resource_ids=[MODEL])
+    context = DifyBuilderContext(
+        goal_text=goal,
+        requirements=CAPTURED_MEETING_REQUIREMENTS,
+        resource_selection={"knowledge_source_unavailable": False, "knowledge_requires_clarification": False},
+    )
+    result, stored, _, _ = confirm(ReconciliationAgent(plan), offered=[], ids=[MODEL], context=context)
+    assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert stored.resource_selection["knowledge_decision_pending"]["original_goal"] == goal
+    assert not stored.checkpoint_id
+
+
+@pytest.mark.parametrize(
+    "goal",
+    [
+        "不需要新资源，知识库和文件仍需检索。",
+        "不需要新资源，知识库、文件仍需检索。",
+        "不需要新资源，知识库，文件仍需检索。",
+        "Do not use new resources, knowledge bases and files are still required.",
+        "不需要新资源，知识库和财务系统是否使用待确认。",
+    ],
+)
+def test_shared_source_predicate_keeps_handler_clarification_with_false_model_hint(goal: str) -> None:
+    plan = WorkflowPlan("Text summary", "Input", "Summary", ["Use the selected model"], used_resource_ids=[MODEL])
+    context = DifyBuilderContext(
+        goal_text=goal,
+        requirements=CAPTURED_MEETING_REQUIREMENTS,
+        resource_selection={"knowledge_source_unavailable": False, "knowledge_requires_clarification": False},
+    )
+    result, stored, _, _ = confirm(ReconciliationAgent(plan), offered=[], ids=[MODEL], context=context)
+    assert result.current_state == PcState.BUILD_GOAL_ANALYSIS
+    assert stored.resource_selection["knowledge_decision_pending"]["original_goal"] == goal
+    assert not stored.checkpoint_id
