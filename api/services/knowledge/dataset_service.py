@@ -3323,6 +3323,19 @@ class DocumentService:
             # propagation_error is used to capture any errors for submitting async task execution
             propagation_error = None
             for update_info in documents_to_update:
+                document = update_info["document"]
+                indexing_cache_key = f"document_{document.id}_indexing"
+                # Set the guard before dispatch: a fast worker can finish and delete it
+                # before the task submission returns.
+                cache_set = False
+                if update_info["set_cache"]:
+                    try:
+                        # Set Redis cache if needed after successful commit
+                        redis_client.setex(indexing_cache_key, 600, 1)
+                        cache_set = True
+                    except Exception:
+                        # Log the error but do not rollback the transaction
+                        logger.exception("Error setting cache for document %s", document.id)
                 try:
                     # Execute async tasks after successful commit
                     if update_info["async_task"]:
@@ -3332,18 +3345,15 @@ class DocumentService:
                         task_func.delay(*task_args)
                 except Exception as e:
                     # Log the error but do not rollback the transaction
-                    logger.exception("Error executing async task for document %s", update_info["document"].id)
+                    logger.exception("Error executing async task for document %s", document.id)
+                    if cache_set:
+                        try:
+                            # No worker will clear the guard when submission fails
+                            redis_client.delete(indexing_cache_key)
+                        except Exception:
+                            logger.exception("Error clearing cache for document %s", document.id)
                     # don't raise the error immediately, but capture it for later
                     propagation_error = e
-                try:
-                    # Set Redis cache if needed after successful commit
-                    if update_info["set_cache"]:
-                        document = update_info["document"]
-                        indexing_cache_key = f"document_{document.id}_indexing"
-                        redis_client.setex(indexing_cache_key, 600, 1)
-                except Exception:
-                    # Log the error but do not rollback the transaction
-                    logger.exception("Error setting cache for document %s", update_info["document"].id)
             # Raise any propagation error after all updates
             if propagation_error:
                 raise propagation_error
