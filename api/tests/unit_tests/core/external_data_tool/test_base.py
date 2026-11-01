@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from typing import Any, override
 
 import pytest
+from sqlalchemy.orm import Session, scoped_session
 
 from core.extension.extensible import ExtensionModule
 from core.external_data_tool.base import ExternalDataTool
@@ -16,12 +17,19 @@ class TestExternalDataTool:
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
-            def validate_config(cls, tenant_id: str, config: dict[str, Any]) -> None:
-                return super().validate_config(tenant_id, config)
+            def validate_config(
+                cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session[Session]
+            ) -> None:
+                return super().validate_config(tenant_id, config, session)
 
             @override
-            def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
-                return super().query(inputs, query)
+            def query(
+                self,
+                inputs: Mapping[str, Any],
+                session: Session | scoped_session[Session],
+                query: str | None = None,
+            ) -> str:
+                return super().query(inputs, session, query)
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1", config={"key": "value"})
         assert tool.tenant_id == "tenant_1"
@@ -34,11 +42,18 @@ class TestExternalDataTool:
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
-            def validate_config(cls, tenant_id: str, config: dict[str, Any]) -> None:
+            def validate_config(
+                cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session[Session]
+            ) -> None:
                 pass
 
             @override
-            def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
+            def query(
+                self,
+                inputs: Mapping[str, Any],
+                session: Session | scoped_session[Session],
+                query: str | None = None,
+            ) -> str:
                 return ""
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1")
@@ -47,31 +62,45 @@ class TestExternalDataTool:
         assert tool.variable == "var_1"
         assert tool.config is None
 
-    def test_validate_config_raises_not_implemented(self) -> None:
+    def test_validate_config_raises_not_implemented(self, sqlite_session: Session) -> None:
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
-            def validate_config(cls, tenant_id: str, config: dict[str, Any]) -> None:
-                return super().validate_config(tenant_id, config)
+            def validate_config(
+                cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session[Session]
+            ) -> None:
+                return super().validate_config(tenant_id, config, session)
 
             @override
-            def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
+            def query(
+                self,
+                inputs: Mapping[str, Any],
+                session: Session | scoped_session[Session],
+                query: str | None = None,
+            ) -> str:
                 return ""
 
         with pytest.raises(NotImplementedError):
-            ConcreteTool.validate_config("tenant_1", {})
+            ConcreteTool.validate_config("tenant_1", {}, sqlite_session)
 
-    def test_query_raises_not_implemented(self) -> None:
+    def test_query_raises_not_implemented(self, sqlite_session: Session) -> None:
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
-            def validate_config(cls, tenant_id: str, config: dict[str, Any]) -> None:
+            def validate_config(
+                cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session[Session]
+            ) -> None:
                 pass
 
             @override
-            def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
-                return super().query(inputs, query)
+            def query(
+                self,
+                inputs: Mapping[str, Any],
+                session: Session | scoped_session[Session],
+                query: str | None = None,
+            ) -> str:
+                return super().query(inputs, session, query)
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1")
         with pytest.raises(NotImplementedError):
-            tool.query({})
+            tool.query({}, sqlite_session)
