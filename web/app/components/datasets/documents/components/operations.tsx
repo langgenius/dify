@@ -18,6 +18,7 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
 import { downloadUrl } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import { RenameDocumentForm } from './rename-document-form'
 
 type OperationsProps = {
@@ -66,25 +67,25 @@ const Operations = ({
   const router = useRouter()
   const documents = consoleQuery.datasets.byDatasetId.documents
   const { mutateAsync: changeDocumentStatus } = useMutation(
-    documents.status.byAction.batch.patch.mutationOptions(),
+    documents.status.byAction.batch.patch.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: downloadDocument, isPending: isDownloading } = useMutation(
-    documents.byDocumentId.download.get.mutationOptions(),
+    documents.byDocumentId.download.get.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: syncNotionDocument } = useMutation(
-    documents.byDocumentId.notion.sync.get.mutationOptions(),
+    documents.byDocumentId.notion.sync.get.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: syncWebsiteDocument } = useMutation(
-    documents.byDocumentId.websiteSync.get.mutationOptions(),
+    documents.byDocumentId.websiteSync.get.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: generateSummary } = useMutation(
-    documents.generateSummary.post.mutationOptions(),
+    documents.generateSummary.post.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: pauseDocument } = useMutation(
-    documents.byDocumentId.processing.pause.patch.mutationOptions(),
+    documents.byDocumentId.processing.pause.patch.mutationOptions({ context: { silent: true } }),
   )
   const { mutateAsync: resumeDocument } = useMutation(
-    documents.byDocumentId.processing.resume.patch.mutationOptions(),
+    documents.byDocumentId.processing.resume.patch.mutationOptions({ context: { silent: true } }),
   )
   const isListScene = scene === 'list'
   const canShowRenameAction = canEdit && !archived
@@ -147,7 +148,9 @@ const Operations = ({
           toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         onUpdate(operationName)
       } else {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+        toast.error(
+          getErrorMessage(e) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
       }
     },
     [
@@ -190,7 +193,9 @@ const Operations = ({
       downloadDocument({ params: { dataset_id: datasetId, document_id: id } }),
     )
     if (e || !res?.url) {
-      toast.error(t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }))
+      toast.error(
+        getErrorMessage(e) ?? t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }),
+      )
       return
     }
     // Trigger download without navigating away (helps avoid duplicate downloads in some browsers).

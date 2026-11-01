@@ -776,6 +776,7 @@ describe('HITL contact recipient availability', () => {
     name: 'Existing contact',
     email: 'existing@example.com',
     type: 'external' as const,
+    im_providers: [],
   }
 
   function graphWithRecipients(recipients: HumanInputV2Recipient[], version: '1' | '2' = '2') {

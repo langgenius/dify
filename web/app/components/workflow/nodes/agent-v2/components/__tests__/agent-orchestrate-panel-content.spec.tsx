@@ -10,6 +10,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { renderEditor } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { toast } from '@/app/notifications'
 import { AgentScope } from '@/features/agent-v2/analytics'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
@@ -291,6 +292,10 @@ beforeEach(() => {
     has_more: false,
     limit: 20,
   }))
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 describe('Inline Agent configure workspace', () => {
@@ -592,6 +597,65 @@ describe('Inline Agent configure workspace', () => {
     )
   })
 
+  it('reports a failed composer save once and keeps the build draft for retry', async () => {
+    const user = userEvent.setup()
+    const errorToast = vi.spyOn(toast, 'error')
+    api.loadBuildDraft.mockResolvedValue(createBuildDraft())
+    api.saveComposer.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 503 }), {
+        message: 'Could not save the Agent configuration',
+      }),
+    )
+    renderWorkspace()
+    await screen.findByRole('button', { name: 'custom.apply' })
+
+    await user.click(applyButton())
+
+    await waitFor(() =>
+      expect(errorToast).toHaveBeenCalledExactlyOnceWith('Could not save the Agent configuration'),
+    )
+    expect(api.deleteBuildDraft).not.toHaveBeenCalled()
+    expect(screen.getByRole('group', { name: `${prefix}.buildDraft.title` })).toBeVisible()
+    expect(applyButton()).toBeEnabled()
+  })
+
+  it('keeps the build draft available for retry when applying it cannot clear the server draft', async () => {
+    const user = userEvent.setup()
+    const errorToast = vi.spyOn(toast, 'error')
+    const successToast = vi.spyOn(toast, 'success')
+    api.loadBuildDraft.mockResolvedValue(createBuildDraft())
+    api.deleteBuildDraft.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 503 }), {
+        message: 'Could not clear the build draft',
+      }),
+    )
+    renderWorkspace()
+    await screen.findByRole('button', { name: 'custom.apply' })
+
+    await user.click(applyButton())
+
+    await waitFor(() =>
+      expect(errorToast).toHaveBeenCalledExactlyOnceWith('Could not clear the build draft'),
+    )
+    expect(successToast).not.toHaveBeenCalled()
+    expect(api.saveComposer).toHaveBeenCalledOnce()
+    expect(api.refreshConversation).not.toHaveBeenCalled()
+    expect(screen.getByRole('group', { name: `${prefix}.buildDraft.title` })).toBeVisible()
+    expect(applyButton()).toBeEnabled()
+
+    await user.click(applyButton())
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('group', { name: `${prefix}.buildDraft.title` }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(successToast).toHaveBeenCalledOnce()
+    expect(errorToast).toHaveBeenCalledOnce()
+    expect(promptEditor()).toHaveAttribute('contenteditable', 'true')
+    expect(promptEditor()).toHaveTextContent('Built instructions')
+  })
+
   it('does not apply a cached build draft when refreshing it fails', async () => {
     const user = userEvent.setup()
     api.loadBuildDraft.mockResolvedValue(createBuildDraft())
@@ -662,7 +726,11 @@ describe('Inline Agent configure workspace', () => {
         debug_conversation_message_count: 0,
       }),
     })
-    await screen.findByRole('textbox', { name: `${prefix}.build.inputPlaceholder` })
+    await screen.findByRole(
+      'textbox',
+      { name: `${prefix}.build.inputPlaceholder` },
+      { timeout: 5000 },
+    )
     expect(restartButton()).toBeDisabled()
   })
 

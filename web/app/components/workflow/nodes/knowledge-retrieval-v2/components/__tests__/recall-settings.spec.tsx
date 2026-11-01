@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { consoleQuery } from '@/service/console'
 import {
   createCatalogModelFixture,
@@ -9,29 +10,31 @@ import {
   seedModelProviderQueries,
 } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import RecallSettings from '../recall-settings'
-
-// The model selector has its own suite; this one only needs the selected value and a choice.
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: (props: {
-    onValueChange: (value: { model: string; provider: string }) => void
-    value?: { model: string; provider: string }
-  }) => (
-    <button
-      type="button"
-      onClick={() => props.onValueChange({ provider: 'custom/provider', model: 'custom-rerank' })}
-    >
-      reranker {props.value ? `${props.value.provider}/${props.value.model}` : 'none'}
-    </button>
-  ),
-}))
 
 function renderSettings(props: Partial<ComponentProps<typeof RecallSettings>> = {}) {
   const queryClient = createConsoleQueryClient()
   seedModelProviderQueries(queryClient, [
     createModelCatalogFixture({
       provider: 'system/provider',
-      models: [createCatalogModelFixture({ model: 'system-rerank', model_type: 'rerank' })],
+      models: [
+        createCatalogModelFixture({
+          model: 'system-rerank',
+          label: { en_US: 'system-rerank' },
+          model_type: 'rerank',
+        }),
+      ],
+    }),
+    createModelCatalogFixture({
+      provider: 'custom/provider',
+      models: [
+        createCatalogModelFixture({
+          model: 'custom-rerank',
+          label: { en_US: 'custom-rerank' },
+          model_type: 'rerank',
+        }),
+      ],
     }),
   ])
   queryClient.setQueryData(
@@ -46,15 +49,37 @@ function renderSettings(props: Partial<ComponentProps<typeof RecallSettings>> = 
       }),
     },
   )
+  const { wrapper: UrlProvider } = createNuqsTestWrapper()
+  function Settings() {
+    const [rerankingModel, setRerankingModel] = useState(props.rerankingModel)
+    const [topK, setTopK] = useState(10)
+    const [scoreThreshold, setScoreThreshold] = useState(props.scoreThreshold)
+    return (
+      <RecallSettings
+        onModeChange={vi.fn()}
+        {...props}
+        topK={topK}
+        scoreThreshold={scoreThreshold}
+        rerankingModel={rerankingModel}
+        onRerankingModelChange={(value) => {
+          setRerankingModel(value)
+          props.onRerankingModelChange?.(value)
+        }}
+        onScoreThresholdChange={(value) => {
+          setScoreThreshold(value)
+          props.onScoreThresholdChange?.(value)
+        }}
+        onTopKChange={(value) => {
+          setTopK(value)
+          props.onTopKChange?.(value)
+        }}
+      />
+    )
+  }
   return renderWithConsoleQuery(
-    <RecallSettings
-      topK={10}
-      onModeChange={vi.fn()}
-      onRerankingModelChange={vi.fn()}
-      onScoreThresholdChange={vi.fn()}
-      onTopKChange={vi.fn()}
-      {...props}
-    />,
+    <UrlProvider>
+      <Settings />
+    </UrlProvider>,
     { queryClient },
   )
 }
@@ -67,7 +92,9 @@ describe('RecallSettings', () => {
 
     await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
     expect(screen.getByText('modelProvider.modelProvider.defaultConfig')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'reranker system/provider/system-rerank' }))
+    await user.click(screen.getByRole('button', { name: /system-rerank/ }))
+    await user.click(await screen.findByRole('button', { name: /custom-rerank/ }))
+    expect(screen.getByRole('button', { name: /custom-rerank/ })).toBeInTheDocument()
     expect(onRerankingModelChange).toHaveBeenCalledWith({
       provider: 'custom/provider',
       model: 'custom-rerank',
@@ -85,6 +112,7 @@ describe('RecallSettings', () => {
     })
     slider.focus()
     await user.keyboard('{End}')
+    expect(slider).toHaveValue('100')
     expect(onTopKChange).toHaveBeenLastCalledWith(100)
   })
 
@@ -95,6 +123,7 @@ describe('RecallSettings', () => {
 
     await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
     await user.click(screen.getByRole('switch'))
+    expect(screen.getByRole('switch')).toBeChecked()
     expect(onScoreThresholdChange).toHaveBeenLastCalledWith(0.5)
   })
 
@@ -120,10 +149,10 @@ describe('RecallSettings', () => {
     })
 
     await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
-    expect(
-      screen.getByRole('button', { name: 'reranker custom/provider/custom-rerank' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /custom-rerank/ })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.reset' }))
+    expect(screen.getByRole('button', { name: /system-rerank/ })).toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.defaultConfig')).toBeInTheDocument()
     expect(onRerankingModelChange).toHaveBeenCalledWith(undefined)
   })
 })

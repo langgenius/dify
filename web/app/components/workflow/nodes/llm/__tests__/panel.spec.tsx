@@ -305,7 +305,7 @@ describe('LLM Panel', () => {
     getParameterRules.mockRejectedValueOnce(new Error('network error'))
     const { getNodeData } = renderPanel()
     await chooseDirectModel(user)
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('common.error'))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledExactlyOnceWith('network error'))
     expect(screen.getByRole('button', { name: /^GPT-4o/ })).toBeEnabled()
     expect(getNodeData().model).toEqual(createData().model)
   })

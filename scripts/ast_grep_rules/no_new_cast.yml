@@ -1,0 +1,84 @@
+id: no-new-cast
+language: python
+severity: error
+message: Use type narrowing or validate values instead of typing.cast().
+utils:
+  typing-import:
+    kind: import_from_statement
+    has:
+      field: module_name
+      regex: '^(typing|typing_extensions)$'
+  cast-reference:
+    any:
+      - pattern: typing.cast
+      - pattern: typing_extensions.cast
+      - all:
+          - pattern: $MODULE.cast
+          - inside:
+              kind: module
+              stopBy: end
+              has:
+                stopBy: end
+                all:
+                  - any:
+                      - pattern:
+                          context: import typing as $MODULE
+                          selector: aliased_import
+                      - pattern:
+                          context: import typing_extensions as $MODULE
+                          selector: aliased_import
+                  - has:
+                      field: name
+                      regex: '^(typing|typing_extensions)$'
+      - all:
+          - kind: identifier
+          - pattern: cast
+          - inside:
+              kind: module
+              stopBy: end
+              has:
+                stopBy: end
+                all:
+                  - matches: typing-import
+                  - has:
+                      stopBy: neighbor
+                      all:
+                        - kind: dotted_name
+                        - regex: '^cast$'
+      - all:
+          - kind: identifier
+          - pattern: $IMPORTED
+          - inside:
+              kind: module
+              stopBy: end
+              has:
+                stopBy: end
+                all:
+                  - pattern:
+                      context: from typing import cast as $IMPORTED
+                      selector: aliased_import
+                  - inside:
+                      matches: typing-import
+                      stopBy: neighbor
+rule:
+  all:
+    - kind: call
+    - any:
+        - has:
+            field: function
+            matches: cast-reference
+        - all:
+            - has:
+                field: function
+                kind: identifier
+                pattern: $ALIAS
+            - inside:
+                kind: module
+                stopBy: end
+                has:
+                  stopBy: end
+                  all:
+                    - pattern: $ALIAS = $ORIGINAL
+                    - has:
+                        field: right
+                        matches: cast-reference

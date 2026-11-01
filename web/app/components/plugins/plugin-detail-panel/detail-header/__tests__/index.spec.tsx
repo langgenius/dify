@@ -183,9 +183,12 @@ it('updates the selected GitHub package, refreshes model catalogs, and keeps the
   )
   await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce())
   expect(api.releases).toHaveBeenCalledExactlyOnceWith('https://ungh.cc/repos/owner/repo/releases')
-  expect(api.upload).toHaveBeenCalledWith({
-    body: { repo: 'owner/repo', version: 'v2.0.0', package: 'plugin.difypkg' },
-  })
+  expect(api.upload).toHaveBeenCalledWith(
+    {
+      body: { repo: 'owner/repo', version: 'v2.0.0', package: 'plugin.difypkg' },
+    },
+    { context: { silent: true } },
+  )
   expect(api.upgrade).toHaveBeenCalledWith({
     body: {
       repo: 'owner/repo',
