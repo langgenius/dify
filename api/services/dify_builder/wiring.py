@@ -283,7 +283,14 @@ def _public_session_view(view: dict[str, Any], *, include_last_command_id: bool)
         "phase": view.get("phase", "understand"),
         "actions": _public_actions(view.get("actions")),
     }
-    for key in ("task_id", "task_status", "task_summaries", "conversation_cleared", "pending_fix_context"):
+    for key in (
+        "task_id",
+        "task_status",
+        "task_summaries",
+        "conversation_cleared",
+        "lifecycle_settlement",
+        "pending_fix_context",
+    ):
         if key in view:
             projected[key] = view[key]
     if view.get("diagnostics"):
