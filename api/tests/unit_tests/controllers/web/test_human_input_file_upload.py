@@ -10,12 +10,14 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask
 from pytest_mock import MockerFixture
+from werkzeug.exceptions import Forbidden
 
 import controllers.web.human_input_file_upload as upload_module
 from controllers.common.errors import (
     BlockedFileExtensionError,
     FileTooLargeError,
     NoFileUploadedError,
+    NotFoundError,
     RemoteFileAccessDeniedError,
     RemoteFileInvalidResponseError,
     RemoteFileInvalidUrlError,
@@ -62,6 +64,21 @@ def app() -> Flask:
     app = Flask(__name__)
     app.config["TESTING"] = True
     return app
+
+
+@pytest.fixture(autouse=True)
+def form_app_checks(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, str]]:
+    """Treat the token's form app as available; record each check.
+
+    Tests for an unavailable app replace this with a check that raises.
+    """
+    calls: list[dict[str, str]] = []
+
+    def _record(**kwargs: str) -> None:
+        calls.append(kwargs)
+
+    monkeypatch.setattr(upload_module, "resolve_form_app_site", _record)
+    return calls
 
 
 def _account() -> Account:
@@ -116,6 +133,25 @@ class _FormStateRejectingUploads:
     def upload_local_file(self, **_: object) -> UploadFile:
         self.uploads += 1
         raise AssertionError("upload must not run after the token check failed")
+
+
+class _ValidTokenUploads:
+    """An upload service that accepts the token and counts each upload."""
+
+    def __init__(self) -> None:
+        self.local_uploads = 0
+        self.remote_uploads = 0
+
+    def validate_upload_token(self, _upload_token: str) -> HumanInputUploadContext:
+        return _upload_context()
+
+    def upload_local_file(self, **_: object) -> UploadFile:
+        self.local_uploads += 1
+        return _upload_file()
+
+    def upload_remote_file(self, **_: object) -> RemoteFileUploadResult:
+        self.remote_uploads += 1
+        return _remote_upload_file()
 
 
 def _patch_upload_service(monkeypatch: pytest.MonkeyPatch, service: object) -> None:
@@ -241,6 +277,65 @@ def test_local_upload_missing_file_raises_after_valid_token(monkeypatch: pytest.
             HumanInputFileUploadApi().post()
 
     service.validate_upload_token.assert_called_once_with("hitl_upload_token-1")
+
+
+def test_upload_checks_the_form_app_of_the_token(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, form_app_checks: list[dict[str, str]]
+) -> None:
+    service = _ValidTokenUploads()
+    _patch_upload_service(monkeypatch, service)
+
+    with app.test_request_context(
+        "/api/human-input-forms/files",
+        method="POST",
+        headers={"Authorization": "Bearer hitl_upload_token-1"},
+        data={"file": (BytesIO(b"content"), "sample.txt")},
+        content_type="multipart/form-data",
+    ):
+        _, status = HumanInputFileUploadApi().post()
+
+    assert status == 201
+    assert service.local_uploads == 1
+    assert form_app_checks == [{"app_id": "app-1", "tenant_id": "tenant-1"}]
+
+
+@pytest.mark.parametrize(
+    "check_error",
+    [
+        pytest.param(Forbidden(), id="archived-workspace-or-no-site"),
+        pytest.param(NotFoundError("Form not found"), id="app-deleted"),
+    ],
+)
+@pytest.mark.parametrize("source", ["local", "remote"])
+def test_upload_rejects_token_when_form_app_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch, app: Flask, check_error: Exception, source: str
+) -> None:
+    # The form page refuses these forms, so their upload tokens must stop working
+    # before any file is read, fetched, or stored.
+    service = _ValidTokenUploads()
+    _patch_upload_service(monkeypatch, service)
+
+    def _reject(**_: str) -> None:
+        raise check_error
+
+    monkeypatch.setattr(upload_module, "resolve_form_app_site", _reject)
+    data: dict[str, object] = (
+        {"file": (BytesIO(b"content"), "sample.txt")} if source == "local" else {"url": "https://example.com/file.txt"}
+    )
+
+    with app.test_request_context(
+        "/api/human-input-forms/files",
+        method="POST",
+        headers={"Authorization": "Bearer hitl_upload_token-1"},
+        data=data,
+        content_type="multipart/form-data",
+    ):
+        body, status = raised_error(HumanInputFileUploadApi().post)
+
+    assert status == 403
+    assert body["code"] == "invalid_upload_token"
+    assert service.local_uploads == 0
+    assert service.remote_uploads == 0
 
 
 def test_remote_upload_validates_token_before_fetching_remote_url(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:

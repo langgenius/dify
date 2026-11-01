@@ -117,6 +117,7 @@ class HumanInputFormUploadTokenApi(Resource):
     @web_ns.doc(
         responses={
             200: "Upload token issued successfully",
+            403: "Forbidden",
             404: "Form not found",
             412: "Form already submitted or expired",
             429: "Too many requests",
@@ -138,7 +139,12 @@ class HumanInputFormUploadTokenApi(Resource):
             raise WebFormRateLimitExceededError()
         _FORM_UPLOAD_TOKEN_RATE_LIMITER.increment_rate_limit(ip_address)
 
-        _get_public_form_by_token(HumanInputService(db.engine), form_token)
+        # Check the form's app before the upload token row is created.
+        service = HumanInputService(db.engine)
+        form = _get_public_form_by_token(service, form_token)
+        service.ensure_form_active(form)
+        resolve_form_app_site(app_id=form.app_id, tenant_id=form.tenant_id)
+
         try:
             token = application_services().human_input_file_uploads.issue_upload_token(form_token)
         except FormNotFoundError as caught_error:
@@ -188,7 +194,7 @@ class HumanInputFormApi(Resource):
         form = _get_public_form_by_token(service, form_token)
 
         service.ensure_form_active(form)
-        app_model, site = _get_app_site_from_form(form)
+        app_model, site = resolve_form_app_site(app_id=form.app_id, tenant_id=form.tenant_id)
         tenant = app_model.tenant(db.session)
         if tenant is None:
             raise Forbidden()
@@ -221,6 +227,7 @@ class HumanInputFormApi(Resource):
         responses={
             200: "Form submitted successfully",
             400: "Bad request - invalid submission data",
+            403: "Forbidden",
             404: "Form not found",
             412: "Form already submitted or expired",
             429: "Too many requests",
@@ -258,6 +265,10 @@ class HumanInputFormApi(Resource):
             logger.warning("Recipient type is None for form, form_id=%s", form.id)
             raise AssertionError("Recipient type is None")
 
+        # Same order as GET, so one token gets the same answer from both methods.
+        service.ensure_form_active(form)
+        resolve_form_app_site(app_id=form.app_id, tenant_id=form.tenant_id)
+
         try:
             service.submit_form_by_token(
                 recipient_type=recipient_type,
@@ -288,10 +299,14 @@ def _get_public_form_by_token(service: HumanInputService, form_token: str) -> Fo
     return form
 
 
-def _get_app_site_from_form(form: Form) -> tuple[App, Site]:
-    """Resolve App/Site for the form's app and validate tenant status."""
-    app_model = db.session.get(App, form.app_id)
-    if app_model is None or app_model.tenant_id != form.tenant_id:
+def resolve_form_app_site(*, app_id: str, tenant_id: str) -> tuple[App, Site]:
+    """Resolve App/Site for a form's app and validate tenant status.
+
+    Every web endpoint that reads or acts on a form token must call this, so a
+    token that cannot load the form cannot submit it or upload files for it.
+    """
+    app_model = db.session.get(App, app_id)
+    if app_model is None or app_model.tenant_id != tenant_id:
         raise NotFoundError("Form not found")
 
     site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
