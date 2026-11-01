@@ -12,7 +12,12 @@ import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-comp
 import type { KnowledgeValidationResult } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { FieldLabel, Field as FormField } from '@langgenius/dify-ui/field'
+import {
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Field as FormField,
+} from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -241,7 +246,7 @@ function ClassicSettingsFields({
         </RadioGroup>
         {queryMode === 'custom' ? (
           <>
-            <FormField className="pt-1">
+            <FormField className="pt-1" invalid={Boolean(queryError)}>
               <FieldLabel>
                 {t(
                   ($) =>
@@ -253,7 +258,6 @@ function ClassicSettingsFields({
                   ($) =>
                     $['agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel'],
                 )}
-                aria-invalid={queryError ? true : undefined}
                 className="h-20 resize-none rounded-lg px-3 py-2 system-sm-regular"
                 placeholder={t(
                   ($) =>
@@ -262,17 +266,14 @@ function ClassicSettingsFields({
                 value={customQuery}
                 onValueChange={(nextQuery) => onChange({ customQuery: nextQuery })}
               />
+              <FieldDescription>
+                {t(
+                  ($) =>
+                    $['agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription'],
+                )}
+              </FieldDescription>
+              <FieldError match={Boolean(queryError)}>{queryError}</FieldError>
             </FormField>
-            <p className="system-xs-regular text-text-tertiary">
-              {t(
-                ($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription'],
-              )}
-            </p>
-            {queryError && (
-              <p role="alert" className="system-xs-regular text-text-destructive">
-                {queryError}
-              </p>
-            )}
           </>
         ) : (
           <p className="pt-1 system-xs-regular text-text-tertiary">

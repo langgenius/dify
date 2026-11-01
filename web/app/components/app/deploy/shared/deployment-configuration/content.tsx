@@ -60,7 +60,7 @@ export function DeploymentConfigurationContent({
     precheckError,
   } = queryState
   const {
-    credentials,
+    getCredential,
     getEnvironmentVariableSelection,
     setCredential,
     setEnvironmentVariableSelection,
@@ -131,7 +131,7 @@ export function DeploymentConfigurationContent({
           <>
             <CredentialsSection
               credentialSlots={deploymentOptions?.credential_slots ?? []}
-              credentials={credentials}
+              getCredential={getCredential}
               horizontalPaddingClassName={horizontalPaddingClassName}
               onChange={(key, value) => {
                 setCredential(key, value)

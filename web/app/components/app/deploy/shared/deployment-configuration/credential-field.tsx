@@ -10,6 +10,7 @@ import {
   SelectItemText,
   SelectLabel,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useTranslation } from 'react-i18next'
@@ -23,19 +24,18 @@ import { WorkflowDependencyPreview } from './workflow-source-popover'
 export function CredentialField({
   slot,
   paths = [],
-  value,
+  defaultValue,
   onChange,
 }: {
   slot: CredentialSlot
   paths?: WorkflowPath[]
-  value?: string
+  defaultValue?: string
   onChange: (value: string) => void
 }) {
   const { t } = useTranslation(['deployments'])
   const { t: tPlugin } = useTranslation(['plugin'])
   const { getIconUrl } = useGetIcon()
   const { theme } = useTheme()
-  const selectedOption = slot.candidates.find((candidate) => candidate.credential_id === value)
   const inputId = credentialFieldId(slot)
   const name = credentialProviderName(slot.provider_id)
   const iconFileName =
@@ -49,9 +49,9 @@ export function CredentialField({
         : ''
 
   return (
-    <Field name={inputId} className="flex min-w-0 flex-col gap-1">
+    <Field name={inputId}>
       <Select
-        value={value ?? null}
+        defaultValue={defaultValue ?? null}
         onValueChange={(nextValue) => {
           if (nextValue) onChange(nextValue)
         }}
@@ -77,18 +77,18 @@ export function CredentialField({
           </div>
           <WorkflowDependencyPreview subjectName={name} paths={paths} />
         </div>
-        <SelectTrigger
-          id={inputId}
-          className="ps-2"
-        >
+        <SelectTrigger id={inputId} className="ps-2">
           <span className="flex min-w-0 items-center gap-1.5">
             <StatusDot />
-            <span className="truncate text-text-secondary">
-              {selectedOption?.display_name ??
+            <SelectValue<string> className="truncate text-text-secondary">
+              {(value) =>
+                slot.candidates.find((candidate) => candidate.credential_id === value)
+                  ?.display_name ??
                 (slot.candidates.length === 0
                   ? t(($) => $['deployDrawer.noCredentialCandidates'])
-                  : t(($) => $['deployDrawer.selectCredential']))}
-            </span>
+                  : t(($) => $['deployDrawer.selectCredential']))
+              }
+            </SelectValue>
           </span>
         </SelectTrigger>
         <SelectContent className="w-(--anchor-width) bg-components-panel-bg-blur backdrop-blur-[5px]">

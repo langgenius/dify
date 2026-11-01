@@ -77,8 +77,8 @@ const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) => {
         <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
       </DialogHeader>
 
-      <DialogBody className="space-y-2">
-        <Field invalid={hasError} className="block space-y-2">
+      <DialogBody>
+        <Field invalid={hasError} className="gap-2">
           <label htmlFor={inputId} className="block text-sm font-medium text-text-primary">
             {t(($) => $['account.workspaceName'], { ns: 'accountSettings' })}
           </label>

@@ -7,6 +7,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Field, FieldError } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
@@ -345,10 +346,10 @@ const MessageTemplate = ({
               </IconButton>
             </header>
             <div className="max-h-[60vh] min-h-[260px] space-y-5 overflow-y-auto px-6 py-3">
-              <div>
+              <Field invalid={errors.subject}>
                 <label
                   htmlFor={`${nodeId}-message-subject`}
-                  className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+                  className="flex h-6 items-center system-sm-medium text-text-secondary"
                 >
                   {t(($) => $['nodes.humanInputV2.template.subject'], { ns: 'workflow' })}
                 </label>
@@ -356,8 +357,6 @@ const MessageTemplate = ({
                   id={`${nodeId}-message-subject`}
                   value={draft.subject}
                   disabled={readonly || pending}
-                  aria-invalid={errors.subject}
-                  aria-describedby={errors.subject ? `${nodeId}-message-subject-error` : undefined}
                   onChange={(event) => {
                     resetTestResult()
                     setDraft((current) => ({ ...current, subject: event.target.value }))
@@ -366,16 +365,10 @@ const MessageTemplate = ({
                     ns: 'workflow',
                   })}
                 />
-                {errors.subject && (
-                  <div
-                    id={`${nodeId}-message-subject-error`}
-                    role="alert"
-                    className="mt-1 system-xs-regular text-text-destructive"
-                  >
-                    {t(($) => $['nodes.humanInputV2.error.subjectRequired'], { ns: 'workflow' })}
-                  </div>
-                )}
-              </div>
+                <FieldError match={errors.subject}>
+                  {t(($) => $['nodes.humanInputV2.error.subjectRequired'], { ns: 'workflow' })}
+                </FieldError>
+              </Field>
               <MessageTemplateBody
                 nodeId={nodeId}
                 readOnly={readonly || pending}

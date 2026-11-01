@@ -63,7 +63,7 @@ const Form: FC<FormProps> = React.memo(
         <Field
           key={variable}
           name={variable}
-          className={cn(itemClassName, 'flex flex-col items-start gap-1 self-stretch')}
+          className={cn(itemClassName, 'self-stretch')}
         >
           <div className="flex w-full items-center justify-between">
             <label

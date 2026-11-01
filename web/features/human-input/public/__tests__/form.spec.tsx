@@ -78,7 +78,10 @@ describe('HumanInputV2Form', () => {
     await user.type(otpInput, '000000')
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('share.humanInputV2.invalidOtp')
+    await waitFor(() =>
+      expect(otpInput).toHaveAccessibleDescription('share.humanInputV2.invalidOtp'),
+    )
+    expect(otpInput).toHaveAttribute('aria-invalid', 'true')
     expect(requestAccess).toHaveBeenCalledTimes(1)
     expect(otpInput).toHaveValue('000000')
 

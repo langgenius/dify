@@ -6,6 +6,7 @@ import type { ConfigModalValidationError } from './utils'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { FieldError, Field as FormField } from '@langgenius/dify-ui/field'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
@@ -112,37 +113,41 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         />
       </div>
 
-      <Field
-        htmlFor={`${fieldId}-variable`}
-        title={t(($) => $['variableConfig.varName'], { ns: 'appDebug' })}
-        errorMessage={getError('variable')}
-        errorId={errorId}
-      >
+      <FormField name="variable" invalid={!!getError('variable')} className="block">
+        <label
+          htmlFor={`${fieldId}-variable`}
+          className="block system-sm-semibold leading-8! text-text-secondary"
+        >
+          {t(($) => $['variableConfig.varName'], { ns: 'appDebug' })}
+        </label>
         <Input
           id={`${fieldId}-variable`}
-          name="variable"
-          {...getErrorProps('variable')}
           value={variable}
           onChange={onVarNameChange}
           onBlur={onVarKeyBlur}
           placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
         />
-      </Field>
-      <Field
-        htmlFor={`${fieldId}-label`}
-        title={t(($) => $['variableConfig.labelName'], { ns: 'appDebug' })}
-        errorMessage={getError('label')}
-        errorId={errorId}
-      >
+        <FieldError match={!!getError('variable')} className="mt-1">
+          {getError('variable')}
+        </FieldError>
+      </FormField>
+      <FormField name="label" invalid={!!getError('label')} className="block">
+        <label
+          htmlFor={`${fieldId}-label`}
+          className="block system-sm-semibold leading-8! text-text-secondary"
+        >
+          {t(($) => $['variableConfig.labelName'], { ns: 'appDebug' })}
+        </label>
         <Input
           id={`${fieldId}-label`}
-          name="label"
-          {...getErrorProps('label')}
           value={label as string}
           onValueChange={(value) => onPayloadChange('label')(value)}
           placeholder={t(($) => $['variableConfig.inputPlaceholder'], { ns: 'appDebug' })}
         />
-      </Field>
+        <FieldError match={!!getError('label')} className="mt-1">
+          {getError('label')}
+        </FieldError>
+      </FormField>
 
       {isStringInput && (
         <Field

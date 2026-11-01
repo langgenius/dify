@@ -65,8 +65,6 @@ function DatasourceParameterField({
   const description = showDescription
     ? localizedDatasourceText(parameter.description, i18n.language, '')
     : ''
-  const descriptionId = description ? `${generatedId}-description` : undefined
-  const errorId = `${generatedId}-error`
   const label =
     parameter.labelTranslationKey === 'rootUrl'
       ? t(($) => $.rootUrl, { ns: 'knowledgeSources' })
@@ -94,8 +92,6 @@ function DatasourceParameterField({
         ? `${label}: ${parameter.min}–${parameter.max}`
         : t(($) => $.invalidDatasourceParameter, { ns: 'knowledgeSources', parameter: label })
     : undefined
-  const describedBy =
-    [descriptionId, error ? errorId : undefined].filter(Boolean).join(' ') || undefined
   const numberStep = parameter.integer
     ? 1
     : parameter.precision === undefined
@@ -129,7 +125,6 @@ function DatasourceParameterField({
             className="mt-0.5"
             checked={value === true}
             disabled={disabled}
-            aria-describedby={describedBy}
             onCheckedChange={(checked) => {
               setTouched(true)
               onChange(checked)
@@ -140,14 +135,14 @@ function DatasourceParameterField({
               <ParameterLabel label={label} required={parameter.required} />
             </span>
             {description && (
-              <span id={descriptionId} className="mt-0.5 block body-xs-regular text-text-tertiary">
+              <span className="mt-0.5 block body-xs-regular text-text-tertiary">
                 {description}
               </span>
             )}
           </span>
         </FieldLabel>
         {error && (
-          <FieldError id={errorId} match>
+          <FieldError match>
             {error}
           </FieldError>
         )}
@@ -167,7 +162,7 @@ function DatasourceParameterField({
               <ParameterLabel label={label} required={parameter.required} />
             </FieldLabel>
             {description && (
-              <FieldDescription id={descriptionId} className="mt-0.5 py-0 wrap-break-word">
+              <FieldDescription className="mt-0.5 py-0 wrap-break-word">
                 {description}
               </FieldDescription>
             )}
@@ -177,7 +172,6 @@ function DatasourceParameterField({
             className="mt-0.5"
             checked={value === true}
             disabled={disabled}
-            aria-describedby={describedBy}
             onCheckedChange={(checked) => {
               setTouched(true)
               onChange(checked)
@@ -185,7 +179,7 @@ function DatasourceParameterField({
           />
         </div>
         {error && (
-          <FieldError id={errorId} match>
+          <FieldError match>
             {error}
           </FieldError>
         )}
@@ -209,7 +203,7 @@ function DatasourceParameterField({
           <SelectLabel>
             <ParameterLabel label={label} required={parameter.required} />
           </SelectLabel>
-          <SelectTrigger aria-describedby={describedBy} size="large">
+          <SelectTrigger size="large">
             {parameter.options.find((option) => option.value === selectedValue)
               ? localizedDatasourceText(
                   parameter.options.find((option) => option.value === selectedValue)?.label,
@@ -235,9 +229,9 @@ function DatasourceParameterField({
             ))}
           </SelectContent>
         </Select>
-        {description && <FieldDescription id={descriptionId}>{description}</FieldDescription>}
+        {description && <FieldDescription>{description}</FieldDescription>}
         {error && (
-          <FieldError id={errorId} match>
+          <FieldError match>
             {error}
           </FieldError>
         )}
@@ -251,7 +245,6 @@ function DatasourceParameterField({
         <ParameterLabel label={label} required={parameter.required} />
       </FieldLabel>
       <Input
-        aria-describedby={describedBy}
         autoComplete="off"
         disabled={disabled}
         inputMode={
@@ -290,9 +283,9 @@ function DatasourceParameterField({
           if (parameter.type === 'number' && numberDraft !== undefined) setNumberDraft(undefined)
         }}
       />
-      {description && <FieldDescription id={descriptionId}>{description}</FieldDescription>}
+      {description && <FieldDescription>{description}</FieldDescription>}
       {error && (
-        <FieldError id={errorId} match>
+        <FieldError match>
           {error}
         </FieldError>
       )}

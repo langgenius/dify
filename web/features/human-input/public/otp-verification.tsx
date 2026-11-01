@@ -1,11 +1,14 @@
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldError } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type OtpVerificationProps = {
   otpCode: string
   requesting: boolean
   error?: string
+  otpError?: string
   secondsUntilResend: number
   secondsUntilExpiry: number
   hasChallenge: boolean
@@ -18,6 +21,7 @@ const OtpVerification = ({
   otpCode,
   requesting,
   error,
+  otpError,
   secondsUntilResend,
   secondsUntilExpiry,
   hasChallenge,
@@ -26,6 +30,10 @@ const OtpVerification = ({
   onResend,
 }: OtpVerificationProps) => {
   const { t } = useTranslation(['share'])
+  const inputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (otpError) inputRef.current?.select()
+  }, [otpError])
 
   return (
     <div className="my-3 rounded-xl border border-divider-subtle bg-background-section p-3">
@@ -39,19 +47,24 @@ const OtpVerification = ({
             ? t(($) => $['humanInputV2.codeSent'], { ns: 'share' })
             : t(($) => $['humanInputV2.codeRequired'], { ns: 'share' })}
       </div>
-      {hasChallenge && (
-        <Input
+      <Field invalid={Boolean(otpError)} className="contents">
+        {hasChallenge && (
+          <Input
+          ref={inputRef}
           id="human-input-v2-otp"
           className="mt-3"
           value={otpCode}
           inputMode="numeric"
           autoComplete="one-time-code"
           maxLength={6}
-          aria-invalid={Boolean(error)}
           placeholder={t(($) => $['humanInputV2.otpPlaceholder'], { ns: 'share' })}
           onChange={(event) => onOtpChange(event.target.value)}
-        />
-      )}
+          />
+        )}
+        <FieldError match={Boolean(otpError)} className="mt-2">
+          {otpError}
+        </FieldError>
+      </Field>
       {error && (
         <div role="alert" className="mt-2 system-xs-regular text-text-destructive">
           {error}

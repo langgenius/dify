@@ -143,7 +143,8 @@ const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInp
           <OtpVerification
             otpCode={state.otpCode}
             requesting={state.phase === 'requesting-otp'}
-            error={verificationError}
+            error={state.error === 'invalid-otp' ? undefined : verificationError}
+            otpError={state.error === 'invalid-otp' ? verificationError : undefined}
             secondsUntilResend={session.secondsUntilResend}
             secondsUntilExpiry={session.secondsUntilExpiry}
             hasChallenge={Boolean(state.challenge)}
