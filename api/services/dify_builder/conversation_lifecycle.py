@@ -16,6 +16,22 @@ def is_conversation_cleared(context: DifyBuilderContext) -> bool:
     return bool(context.task_control.get("conversation_clear"))
 
 
+def lifecycle_settlement(context: DifyBuilderContext) -> Literal["settled", "pending", "unknown"] | None:
+    """Project only the current clear/abandon's known execution state.
+
+    This is not physical cleanup proof. Clear retains its durable acknowledgment
+    state; no missing execution references or later Run can upgrade it.
+    """
+    if not is_conversation_cleared(context) and context.task_status != "abandoned":
+        return None
+    controls = context.task_control
+    receipt = controls.get("lifecycle_receipt")
+    if not isinstance(receipt, dict) or not context.last_command_id or receipt.get("id") != context.last_command_id:
+        return "unknown"
+    settlement = controls.get("settlement")
+    return settlement if isinstance(settlement, str) and settlement in {"settled", "pending", "unknown"} else "unknown"
+
+
 def cleared_session_view(session: Session, context: DifyBuilderContext) -> SessionView:
     """Empty projection: deliberately no repository, workflow or Run lookup."""
     return SessionView(
@@ -32,6 +48,7 @@ def cleared_session_view(session: Session, context: DifyBuilderContext) -> Sessi
         last_command_id=context.last_command_id,
         task_status="abandoned",
         conversation_cleared=True,
+        lifecycle_settlement=lifecycle_settlement(context),
     )
 
 
