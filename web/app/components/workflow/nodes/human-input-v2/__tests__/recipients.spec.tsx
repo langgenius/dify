@@ -69,6 +69,52 @@ const field = () => screen.getByRole('combobox')
 beforeEach(resetContactApi)
 
 describe('recipient selection through generated queries', () => {
+  it('uses batch channel metadata after selecting a contact from search', async () => {
+    contactApi.batch.mockResolvedValue({ data: [{ ...contact, im_providers: ['feishu'] }] })
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    renderContactOwner(<Harness observe={observe} />, 'editor')
+    await openPicker(user)
+    await user.click(await screen.findByRole('option', { name: /Evan Zhang/ }))
+    await user.click(
+      await screen.findByRole('button', { name: /recipients.contactInfo.*Evan Zhang/ }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: contact.name })
+    expect(await within(dialog).findByRole('img', { name: 'Feishu' })).toBeVisible()
+    expect(observe).toHaveBeenLastCalledWith([{ type: 'contact', contact_id: contact.id }])
+    expect(contactApi.contacts).not.toHaveBeenCalled()
+  })
+
+  it('restores selected contact channels through the editor-safe batch when details and the node reopen', async () => {
+    contactApi.batch.mockResolvedValue({ data: [{ ...contact, im_providers: ['feishu'] }] })
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    const selected: HumanInputV2Recipient[] = [{ type: 'contact', contact_id: contact.id }]
+    const first = renderContactOwner(<Harness initial={selected} observe={observe} />, 'editor')
+    const info = await screen.findByRole('button', { name: /recipients.contactInfo.*Evan Zhang/ })
+    await user.click(info)
+    let dialog = await screen.findByRole('dialog', { name: contact.name })
+    expect(within(dialog).getByRole('img', { name: 'Feishu' })).toBeVisible()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(info)
+    dialog = await screen.findByRole('dialog', { name: contact.name })
+    expect(within(dialog).getByRole('img', { name: 'Feishu' })).toBeVisible()
+    first.unmount()
+    first.client.clear()
+
+    renderContactOwner(<Harness initial={selected} observe={observe} />, 'editor')
+    await user.click(
+      await screen.findByRole('button', { name: /recipients.contactInfo.*Evan Zhang/ }),
+    )
+    dialog = await screen.findByRole('dialog', { name: contact.name })
+    expect(within(dialog).getByRole('img', { name: 'Feishu' })).toBeVisible()
+    expect(contactApi.batch).toHaveBeenCalledTimes(2)
+    expect(contactApi.options).not.toHaveBeenCalled()
+    expect(contactApi.contacts).not.toHaveBeenCalled()
+    expect(observe).not.toHaveBeenCalled()
+  })
+
   it('adds a contact from a keyboard navigable listbox and removes the selected chip', async () => {
     const user = userEvent.setup(),
       observe = vi.fn()

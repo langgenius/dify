@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgeni
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ContactChannelIcon } from '@/features/contacts/management/channel-icon'
+import { getContactChannelLabel } from '@/features/contacts/management/channel-utils'
 import { RecipientAvatar } from './recipient-avatar'
 
 type RecipientContactPreviewProps = {
@@ -24,6 +25,7 @@ export function RecipientContactPreview({
 }: RecipientContactPreviewProps) {
   const { t } = useTranslation(['workflow', 'contacts'])
   const [open, setOpen] = useState(false)
+  const providers = [...(contact?.email ? ['email'] : []), ...new Set(contact?.im_providers ?? [])]
   const sourceLabel = (source: ContactOption['type']) =>
     source === 'platform'
       ? t(($) => $['type.platform'], { ns: 'contacts' })
@@ -72,9 +74,26 @@ export function RecipientContactPreview({
               </div>
             )}
           </div>
-          {contact.email && (
-            <div className="flex size-5 items-center justify-center rounded-[5px] border border-divider-regular bg-components-panel-on-panel-item-bg">
-              <ContactChannelIcon provider="email" className="size-3.5" />
+          {providers.length > 0 && (
+            <div
+              role="group"
+              aria-label={t(($) => $['details.channels'], { ns: 'contacts' })}
+              className="flex flex-wrap gap-1"
+            >
+              {providers.map((provider) => (
+                <span
+                  key={provider}
+                  role="img"
+                  aria-label={
+                    provider === 'email'
+                      ? t(($) => $['directory.channel.email'], { ns: 'contacts' })
+                      : getContactChannelLabel(provider)
+                  }
+                  className="flex size-5 items-center justify-center rounded-[5px] border border-divider-regular bg-components-panel-on-panel-item-bg"
+                >
+                  <ContactChannelIcon provider={provider} className="size-3.5" />
+                </span>
+              ))}
             </div>
           )}
           {conflictingContact && (
