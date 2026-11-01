@@ -397,6 +397,9 @@ class DifyBuilderContext:
     attachment_material: list[dict[str, Any]] = field(default_factory=list)
     reply_language: str = ""  # detected user-input language (BCP-47); drives reply/localization
     requirements: dict[str, Any] = field(default_factory=dict)
+    # Server-owned submitted form keys. None means legacy/unknown provenance;
+    # [] means fresh analysis with no user-confirmed requirement values.
+    confirmed_requirement_keys: list[str] | None = None
     plan_items: list[str] = field(default_factory=list)
     plan_title: str = ""
     plan_input_summary: str = ""

@@ -153,6 +153,34 @@ def has_knowledge_source_cue(goal: str, requirements: object) -> bool:
     return False
 
 
+def validated_confirmed_requirement_keys(value: object) -> list[str] | None:
+    """Copy server provenance; malformed or absent data retains legacy scanning."""
+    if (
+        not isinstance(value, list)
+        or any(not isinstance(key, str) or not key for key in value)
+        or len(set(value)) != len(value)
+    ):
+        return None
+    return list(value)
+
+
+def has_confirmed_knowledge_source_cue(
+    goal: str, requirements: dict[str, object], confirmed_keys: list[str] | None
+) -> bool:
+    """Discount derived summaries only for an already recognized raw exclusion.
+
+    Keep all requirements for unknown provenance or goals without an explicit
+    excluded source. Confirmed keys refer to current values, including defaults;
+    a missing current key is unproven and must keep the source gate closed.
+    """
+    keys = validated_confirmed_requirement_keys(confirmed_keys)
+    if keys is None or not _KNOWLEDGE_CUE.search(goal) or has_knowledge_source_cue(goal, {}):
+        return has_knowledge_source_cue(goal, requirements)
+    if any(key not in requirements for key in keys):
+        return True
+    return has_knowledge_source_cue(goal, {key: requirements[key] for key in keys})
+
+
 class EditPlanNotActionableError(RuntimeError):
     """An Edit goal has no approvable change; never a stored/public plan."""
 
