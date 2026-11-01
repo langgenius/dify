@@ -5,6 +5,7 @@ from qcloud_cos import CosConfig, CosS3Client
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
+from libs.stream import close_stream
 
 
 class TencentCosStorage(BaseStorage):
@@ -36,13 +37,22 @@ class TencentCosStorage(BaseStorage):
 
     @override
     def load_once(self, filename: str) -> bytes:
-        data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].get_raw_stream().read()
+        body = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"]
+        raw_stream = body.get_raw_stream()
+        try:
+            data: bytes = raw_stream.read()
+        finally:
+            close_stream(raw_stream)
         return data
 
     @override
     def load_stream(self, filename: str) -> Generator:
         response = self.client.get_object(Bucket=self.bucket_name, Key=filename)
-        yield from response["Body"].get_stream(chunk_size=4096)
+        body = response["Body"]
+        try:
+            yield from body.get_stream(chunk_size=4096)
+        finally:
+            close_stream(body.get_raw_stream())
 
     @override
     def download(self, filename, target_filepath):
