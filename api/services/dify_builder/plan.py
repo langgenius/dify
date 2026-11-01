@@ -79,8 +79,8 @@ _CONDITIONAL_SOURCE = re.compile(r"\b(?:if|unless|except)\b|除非|如果|若")
 
 # A complete identifier role, not an arbitrary negative substring or node list.
 _EXCLUDED_RESOURCE_LIST_ROLE = re.compile(
-    r"(?:forbidden|excluded|disallowed|no|without)_"
-    r"(?:(?:extra|additional|other)_)?(?:resources|components|additions)"
+    r"(?:forbidden|excluded|disallowed|no|without)"
+    r"(?:_(?:(?:extra|additional|other)_)?(?:resources|components|additions))?"
 )
 
 
