@@ -21,6 +21,7 @@ type DatasetCardField =
   | 'permission_keys'
   | 'pipeline_id'
   | 'provider'
+  | 'reranking_available'
   | 'retrieval_model_dict'
   | 'runtime_mode'
   | 'tags'

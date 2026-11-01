@@ -2844,11 +2844,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/list/dataset-card/components/dataset-card-header.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/metadata/edit-metadata-batch/input-combined.tsx": {
     "typescript/no-explicit-any": {
       "count": 2

@@ -17,6 +17,7 @@ import {
   hasPermission,
 } from '@/utils/permission'
 import RenameDatasetModal from '../../rename-modal'
+import { isDatasetAvailable } from './availability'
 import CornerLabels from './components/corner-labels'
 import DatasetCardFooter from './components/dataset-card-footer'
 import DatasetCardHeader from './components/dataset-card-header'
@@ -132,7 +133,7 @@ const DatasetCard = ({
       )}
       <DatasetCardTags
         datasetId={dataset.id}
-        embeddingAvailable={!!dataset.embedding_available}
+        available={isDatasetAvailable(dataset)}
         tags={dataset.tags}
         onOpenTagManagement={onOpenTagManagement}
         onTagsChange={onSuccess}
