@@ -53,15 +53,15 @@ class ResourceDiscovery(list[ResourceOption]):  # noqa: FURB189 - preserve the e
 _KNOWLEDGE_CUE = re.compile(r"知识库|知识检索|knowledge[ _-]+(?:bases?|retrieval)", re.IGNORECASE)
 _SOURCE_SCOPE_BREAK = re.compile(r"[。.!?！？;；\n]|\b(?:but|however|yet|instead|then)\b|但是|不过|然而|而是|但")
 _SOURCE_EXCLUSION = re.compile(
-    r"不(?:要)?(?:使用|用|依赖|访问|查询|检索)|(?:无需|无须|不需要)(?:使用|用|依赖|访问|查询|检索)?|"
-    r"(?:禁止|禁用|排除)(?:使用|访问|查询|检索)?|"
-    r"\b(?:do not|don't|must not|should not|never)\s+(?:use|query|access|include|rely on|retrieve from)\s+|"
+    r"不(?:要)?(?:使用|用|依赖|访问|查询|检索|增加|添加)|(?:无需|无须|不需要)(?:使用|用|依赖|访问|查询|检索|增加|添加)?|"
+    r"(?:禁止|禁用|排除)(?:使用|访问|查询|检索|增加|添加)?|"
+    r"\b(?:do not|don't|must not|should not|never)\s+(?:use|query|access|include|add|rely on|retrieve from)\s+|"
     r"\b(?:without|exclude|excluding|no need for)\s+|\bno need to\s+(?:use|query|access)\s+|"
     r"\bavoid\s+(?:using|querying|accessing)\s+"
 )
-_RESOURCE_MODIFIER = r"(?:(?:a|an|the|any|external|existing|workspace|外部|现有|已有|任何|工作区)\s*)*"
+_RESOURCE_MODIFIER = r"(?:(?:a|an|the|any|external|existing|workspace|other|外部|现有|已有|任何|工作区|其他)\s*)*"
 _RESOURCE_CLASS = (
-    r"(?:工具|插件|模型|文件|知识库|知识检索|tools?|https?|agents?|plugins?|models?|files?|"
+    r"(?:工具|插件|模型|文件|代码|知识库|知识检索|code|tools?|https?|agents?|plugins?|models?|files?|"
     r"knowledge[ _-]+(?:bases?|retrieval))"
 )
 # Only native resource classes prove a list. Free-form objects may contain a
@@ -77,14 +77,24 @@ _SOURCE_IMPLEMENTATION = re.compile(
 )
 _CONDITIONAL_SOURCE = re.compile(r"\b(?:if|unless|except)\b|除非|如果|若")
 
+_EXCLUDED_RESOURCE_LIST_KEYS = frozenset({"forbidden_additions", "forbidden_resources", "excluded_resources"})
+
 
 def _requirement_texts(value: object) -> Iterator[str]:
-    # JSON keys and booleans describe shape/options, not a requested source.
+    # Ordinary JSON keys and booleans do not request a source.
     if isinstance(value, str):
         yield value
     elif isinstance(value, dict):
-        for child in value.values():
-            yield from _requirement_texts(child)
+        for key, child in value.items():
+            if key in _EXCLUDED_RESOURCE_LIST_KEYS and isinstance(child, list):
+                # Only exact native categories inherit this explicit list role.
+                # Unknown prose and nested children may still request retrieval.
+                for member in child:
+                    if isinstance(member, str) and re.fullmatch(_RESOURCE_CLASS, member.strip(), re.IGNORECASE):
+                        continue
+                    yield from _requirement_texts(member)
+            else:
+                yield from _requirement_texts(child)
     elif isinstance(value, (list, tuple)):
         for child in value:
             yield from _requirement_texts(child)
