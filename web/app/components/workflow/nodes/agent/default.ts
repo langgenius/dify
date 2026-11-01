@@ -70,10 +70,6 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
         }
         // check form of tools
         else {
-          const validState = {
-            isValid: true,
-            errorMessage: '',
-          }
           for (const tool of tools) {
             const schemas = tool.schemas || []
             const userSettings = tool.settings
@@ -107,7 +103,7 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
               }
             })
           }
-          return validState
+          continue
         }
       }
       // common params
