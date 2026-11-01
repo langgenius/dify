@@ -197,6 +197,7 @@
   "operation.openInNewTab": "Mở trong tab mới",
   "operation.params": "Tham số",
   "operation.pause": "Tạm dừng",
+  "operation.pdfLoadFailed": "Không tải được tệp PDF. Vui lòng thử lại.",
   "operation.play": "Phát",
   "operation.refresh": "Làm mới",
   "operation.regenerate": "Tái tạo",

@@ -197,6 +197,7 @@
   "operation.openInNewTab": "ເປີດໃນແທັບໃໝ່",
   "operation.params": "ພານາມິເຕີ",
   "operation.pause": "ຢຸດຊົ່ວຄາວ",
+  "operation.pdfLoadFailed": "ບໍ່ສາມາດໂຫຼດ PDF ໄດ້. ກະລຸນາລອງໃໝ່.",
   "operation.play": "ຫຼິ້ນ",
   "operation.refresh": "ເລີ່ມໃໝ່",
   "operation.regenerate": "ສ້າງໃໝ່",

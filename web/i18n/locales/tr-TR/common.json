@@ -197,6 +197,7 @@
   "operation.openInNewTab": "Yeni sekmede aç",
   "operation.params": "Parametreler",
   "operation.pause": "Duraklat",
+  "operation.pdfLoadFailed": "PDF yüklenemedi. Lütfen tekrar deneyin.",
   "operation.play": "Oynat",
   "operation.refresh": "Yeniden Başlat",
   "operation.regenerate": "Yeniden Oluştur",
