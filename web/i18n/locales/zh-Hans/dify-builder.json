@@ -317,6 +317,7 @@
   "resourceReady": "配置就绪 · 运行状态未验证",
   "runTest": "运行测试",
   "running": "运行中",
+  "taskControl.abandon": "退出任务",
   "taskControl.conflict": "任务状态已变化，请检查最新状态后重试。",
   "taskControl.paused": "已暂停，可编辑画布后继续任务。",
   "taskControl.resume": "继续任务",

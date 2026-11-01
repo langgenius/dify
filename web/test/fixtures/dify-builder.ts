@@ -22,6 +22,8 @@ export const createDifyBuilderRuntime = (overrides: RuntimeOverrides = {}): Dify
     stopTask: vi.fn(async () => true),
     resumeTask: vi.fn(async () => true),
     reset: vi.fn(),
+    clearConversation: vi.fn(async () => true),
+    abandonTask: vi.fn(async () => true),
     runAction: vi.fn(async () => true),
     sendMessage: vi.fn(async () => true),
     startBuild: vi.fn(async () => true),
