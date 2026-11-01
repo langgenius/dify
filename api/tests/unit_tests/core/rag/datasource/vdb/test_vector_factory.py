@@ -272,7 +272,9 @@ def test_lazy_embeddings_query_cache_hit_skips_model_resolution(vector_factory_m
     result = proxy.embed_query("hello")
 
     assert result == cached_vector
-    cache_lookup.assert_called_once_with("openai", "text-embedding-3-small", "hello")
+    cache_lookup.assert_called_once_with(
+        "openai", "text-embedding-3-small", "hello", tenant_id=proxy._dataset.tenant_id
+    )
     for_tenant.assert_not_called()
     assert proxy._real is None
 

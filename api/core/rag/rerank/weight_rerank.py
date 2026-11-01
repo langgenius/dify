@@ -175,7 +175,10 @@ class WeightRerankRunner(BaseRerankRunner):
             else:
                 if query_vector is None:
                     query_vector = CacheEmbedding.get_cached_query_embedding(
-                        vector_setting.embedding_provider_name, vector_setting.embedding_model_name, query
+                        vector_setting.embedding_provider_name,
+                        vector_setting.embedding_model_name,
+                        query,
+                        tenant_id=tenant_id,
                     )
                     if query_vector is None:
                         model_manager = ModelManager.for_tenant(tenant_id=tenant_id)

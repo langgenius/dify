@@ -1,4 +1,5 @@
 import base64
+import json
 import logging
 import pickle
 from typing import Any, cast, override
@@ -26,16 +27,26 @@ class CacheEmbedding(Embeddings):
 
     def __init__(self, model_instance: ModelInstance):
         self._model_instance = model_instance
+        self._tenant_id = model_instance.provider_model_bundle.configuration.tenant_id
 
     @staticmethod
-    def _query_cache_key(provider: str, model_name: str, query_hash: str) -> str:
-        return f"{provider}_{model_name}_{query_hash}"
+    def _document_cache_hash(tenant_id: str, value: str, *, image: bool = False) -> str:
+        # Keep the existing fixed-width DB key, but never adopt unscoped legacy rows.
+        identity = ["embedding-cache:v2", tenant_id, "image" if image else "text", value]
+        return helper.generate_text_hash(json.dumps(identity, separators=(",", ":")))
+
+    @staticmethod
+    def _query_cache_key(provider: str, model_name: str, query_hash: str, *, tenant_id: str) -> str:
+        identity = json.dumps([provider, model_name, query_hash], separators=(",", ":"))
+        return f"embedding-query:v2:{tenant_id}:{helper.generate_text_hash(identity)}"
 
     @classmethod
-    def get_cached_query_embedding(cls, provider: str, model_name: str, text: str) -> list[float] | None:
-        """Return a cached query vector without requiring a model instance."""
+    def get_cached_query_embedding(
+        cls, provider: str, model_name: str, text: str, *, tenant_id: str
+    ) -> list[float] | None:
+        """Read only this workspace's query cache, without resolving a model instance."""
         query_hash = helper.generate_text_hash(text)
-        embedding_cache_key = cls._query_cache_key(provider, model_name, query_hash)
+        embedding_cache_key = cls._query_cache_key(provider, model_name, query_hash, tenant_id=tenant_id)
         embedding = redis_client.get(embedding_cache_key)
         if not embedding:
             return None
@@ -51,7 +62,7 @@ class CacheEmbedding(Embeddings):
         text_embeddings: list[Any] = [None for _ in range(len(texts))]
         embedding_queue_indices = []
         for i, text in enumerate(texts):
-            hash = helper.generate_text_hash(text)
+            hash = self._document_cache_hash(self._tenant_id, text)
             embedding = db.session.scalar(
                 select(Embedding)
                 .where(
@@ -106,7 +117,7 @@ class CacheEmbedding(Embeddings):
                 try:
                     for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings, strict=False):
                         text_embeddings[i] = n_embedding
-                        hash = helper.generate_text_hash(texts[i])
+                        hash = self._document_cache_hash(self._tenant_id, texts[i])
                         if hash not in cache_embeddings:
                             embedding_cache = Embedding(
                                 model_name=self._model_instance.model_name,
@@ -134,11 +145,12 @@ class CacheEmbedding(Embeddings):
         embedding_queue_indices = []
         for i, multimodel_document in enumerate(multimodel_documents):
             file_id = multimodel_document["file_id"]
+            cache_hash = self._document_cache_hash(self._tenant_id, file_id, image=True)
             embedding = db.session.scalar(
                 select(Embedding)
                 .where(
                     Embedding.model_name == self._model_instance.model_name,
-                    Embedding.hash == file_id,
+                    Embedding.hash == cache_hash,
                     Embedding.provider_name == self._model_instance.provider,
                 )
                 .limit(1)
@@ -193,7 +205,7 @@ class CacheEmbedding(Embeddings):
                         if file_id not in cache_embeddings:
                             embedding_cache = Embedding(
                                 model_name=self._model_instance.model_name,
-                                hash=file_id,
+                                hash=self._document_cache_hash(self._tenant_id, file_id, image=True),
                                 provider_name=self._model_instance.provider,
                                 embedding=pickle.dumps(n_embedding, protocol=pickle.HIGHEST_PROTOCOL),
                             )
@@ -216,10 +228,10 @@ class CacheEmbedding(Embeddings):
         # use doc embedding cache or store if not exists
         hash = helper.generate_text_hash(text)
         embedding_cache_key = self._query_cache_key(
-            self._model_instance.provider, self._model_instance.model_name, hash
+            self._model_instance.provider, self._model_instance.model_name, hash, tenant_id=self._tenant_id
         )
         cached_embedding = self.get_cached_query_embedding(
-            self._model_instance.provider, self._model_instance.model_name, text
+            self._model_instance.provider, self._model_instance.model_name, text, tenant_id=self._tenant_id
         )
         if cached_embedding is not None:
             return cached_embedding
@@ -261,7 +273,9 @@ class CacheEmbedding(Embeddings):
         """Embed multimodal documents."""
         # use doc embedding cache or store if not exists
         file_id = multimodel_document["file_id"]
-        embedding_cache_key = f"{self._model_instance.provider}_{self._model_instance.model_name}_{file_id}"
+        embedding_cache_key = self._query_cache_key(
+            self._model_instance.provider, self._model_instance.model_name, file_id, tenant_id=self._tenant_id
+        )
         embedding = redis_client.get(embedding_cache_key)
         if embedding:
             redis_client.expire(embedding_cache_key, 600)

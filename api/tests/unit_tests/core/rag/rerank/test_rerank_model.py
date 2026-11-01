@@ -703,7 +703,7 @@ class TestWeightRerankRunner:
 
         assert result == pytest.approx([0.25, 0.0, 1.0])
         mock_cache_embedding.get_cached_query_embedding.assert_called_once_with(
-            "openai", "text-embedding-ada-002", "query"
+            "openai", "text-embedding-ada-002", "query", tenant_id="tenant123"
         )
         if cache_hit:
             mock_model_manager.assert_not_called()

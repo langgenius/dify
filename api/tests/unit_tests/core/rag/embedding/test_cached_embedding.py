@@ -50,7 +50,7 @@ def _cached_embedding_persist_embedding(
 ) -> Embedding:
     embedding = Embedding(
         model_name=model_name,
-        hash=cache_key,
+        hash=CacheEmbedding._document_cache_hash("tenant-id", cache_key, image=True),
         provider_name=provider_name,
         embedding=b"placeholder",
     )
@@ -76,6 +76,7 @@ class TestCachedEmbeddingCases:
         def mock_model_instance(self) -> Mock:
             """Create a mock ModelInstance for testing."""
             model_instance = Mock()
+            model_instance.provider_model_bundle.configuration.tenant_id = "tenant-id"
             model_instance.model = "vision-embedding-model"
             model_instance.model_name = "vision-embedding-model"
             model_instance.provider = "openai"
@@ -131,7 +132,11 @@ class TestCachedEmbeddingCases:
             assert len(result[0]) == 1536
 
             mock_model_instance.invoke_multimodal_embedding.assert_called_once()
-            persisted = embedding_session.scalar(select(Embedding).where(Embedding.hash == "file123"))
+            persisted = embedding_session.scalar(
+                select(Embedding).where(
+                    Embedding.hash == CacheEmbedding._document_cache_hash("tenant-id", "file123", image=True)
+                )
+            )
             assert persisted is not None
             assert persisted.get_embedding() == result[0]
 
@@ -381,6 +386,7 @@ class TestCachedEmbeddingCases:
         def mock_model_instance(self) -> Mock:
             """Create a mock ModelInstance for testing."""
             model_instance = Mock()
+            model_instance.provider_model_bundle.configuration.tenant_id = "tenant-id"
             model_instance.model = "vision-embedding-model"
             model_instance.model_name = "vision-embedding-model"
             model_instance.provider = "openai"
@@ -532,6 +538,7 @@ class TestCachedEmbeddingCases:
         def mock_model_instance(self) -> Mock:
             """Create a mock ModelInstance for testing."""
             model_instance = Mock()
+            model_instance.provider_model_bundle.configuration.tenant_id = "tenant-id"
             model_instance.model = "text-embedding-ada-002"
             model_instance.model_name = "text-embedding-ada-002"
             model_instance.provider = "openai"
@@ -601,6 +608,7 @@ class TestCachedEmbeddingCases:
         def test_initialization_sets_model_instance(self) -> None:
             """Test CacheEmbedding initialization stores the provided model instance."""
             model_instance = Mock()
+            model_instance.provider_model_bundle.configuration.tenant_id = "tenant-id"
             model_instance.model = "test-model"
             model_instance.model_name = "test-model"
             model_instance.provider = "test-provider"
@@ -655,7 +663,7 @@ def _embedding_service_persist_embedding(
 ) -> Embedding:
     row = Embedding(
         model_name=model_name,
-        hash=helper.generate_text_hash(text),
+        hash=CacheEmbedding._document_cache_hash("tenant-id", text),
         provider_name=provider_name,
         embedding=pickle.dumps(vector, protocol=pickle.HIGHEST_PROTOCOL),
     )
@@ -677,6 +685,7 @@ class TestEmbeddingServiceCases:
     @pytest.fixture
     def model_instance() -> Mock:
         instance = Mock()
+        instance.provider_model_bundle.configuration.tenant_id = "tenant-id"
         instance.model_name = "text-embedding-ada-002"
         instance.provider = "openai"
         instance.credentials = {"api_key": "test-key"}
@@ -805,11 +814,13 @@ class TestEmbeddingServiceCases:
 
         def test_provider_and_model_are_part_of_cache_identity(self, sqlite_embedding_session: Session) -> None:
             first = Mock(model_name="shared-model", provider="provider-a", credentials={})
+            first.provider_model_bundle.configuration.tenant_id = "tenant-id"
             first.model_type_instance.get_model_schema.return_value = Mock(
                 model_properties={ModelPropertyKey.MAX_CHUNKS: 10}
             )
             first.invoke_text_embedding.return_value = _result(_vector())
             second = Mock(model_name="shared-model", provider="provider-b", credentials={})
+            second.provider_model_bundle.configuration.tenant_id = "tenant-id"
             second.model_type_instance.get_model_schema.return_value = Mock(
                 model_properties={ModelPropertyKey.MAX_CHUNKS: 10}
             )
@@ -840,7 +851,14 @@ class TestEmbeddingServiceCases:
             model_instance.invoke_multimodal_embedding.assert_called_once_with(
                 multimodel_documents=[document], input_type=EmbeddingInputType.DOCUMENT
             )
-            assert sqlite_embedding_session.scalar(select(Embedding).where(Embedding.hash == "file-1")) is not None
+            assert (
+                sqlite_embedding_session.scalar(
+                    select(Embedding).where(
+                        Embedding.hash == CacheEmbedding._document_cache_hash("tenant-id", "file-1", image=True)
+                    )
+                )
+                is not None
+            )
 
     class TestQueryCache:
         @patch("core.rag.embedding.cached_embedding.redis_client")
@@ -848,12 +866,21 @@ class TestEmbeddingServiceCases:
             vector = np.array([0.25, 0.75], dtype=float)
             redis.get.return_value = base64.b64encode(vector.tobytes())
 
-            result = CacheEmbedding.get_cached_query_embedding("openai", "text-embedding-ada-002", "query")
+            result = CacheEmbedding.get_cached_query_embedding(
+                "openai", "text-embedding-ada-002", "query", tenant_id="tenant-id"
+            )
 
             assert result == vector.tolist()
-            redis.get.assert_called_once_with(f"openai_text-embedding-ada-002_{helper.generate_text_hash('query')}")
+            redis.get.assert_called_once_with(
+                CacheEmbedding._query_cache_key(
+                    "openai", "text-embedding-ada-002", helper.generate_text_hash("query"), tenant_id="tenant-id"
+                )
+            )
             redis.expire.assert_called_once_with(
-                f"openai_text-embedding-ada-002_{helper.generate_text_hash('query')}", 600
+                CacheEmbedding._query_cache_key(
+                    "openai", "text-embedding-ada-002", helper.generate_text_hash("query"), tenant_id="tenant-id"
+                ),
+                600,
             )
 
         @patch("core.rag.embedding.cached_embedding.redis_client")
@@ -878,7 +905,10 @@ class TestEmbeddingServiceCases:
 
             assert result == vector.tolist()
             redis.expire.assert_called_once_with(
-                f"openai_text-embedding-ada-002_{helper.generate_text_hash('query')}", 600
+                CacheEmbedding._query_cache_key(
+                    "openai", "text-embedding-ada-002", helper.generate_text_hash("query"), tenant_id="tenant-id"
+                ),
+                600,
             )
             model_instance.invoke_text_embedding.assert_not_called()
 
@@ -909,4 +939,7 @@ class TestEmbeddingServiceCases:
             result = CacheEmbedding(model_instance).embed_multimodal_query({"file_id": "file-1"})
 
             assert np.linalg.norm(result) == pytest.approx(1.0)
-            assert redis.setex.call_args.args[:2] == ("openai_text-embedding-ada-002_file-1", 600)
+            assert redis.setex.call_args.args[:2] == (
+                CacheEmbedding._query_cache_key("openai", "text-embedding-ada-002", "file-1", tenant_id="tenant-id"),
+                600,
+            )
