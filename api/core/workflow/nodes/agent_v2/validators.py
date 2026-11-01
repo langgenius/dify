@@ -11,8 +11,8 @@ from core.agent.workflow_references import (
     extract_workflow_node_output_selectors,
     workflow_previous_node_output_refs_from_selectors,
 )
-from core.workflow.graph_topology import WorkflowGraphTopology
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy
+from libs.graph_topology import GraphTopology
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
@@ -657,4 +657,4 @@ class WorkflowAgentNodeValidator:
 
 # Extracted to core/workflow/graph_topology.py (shared with the agent-composer
 # candidates endpoint, ENG-615); kept as a private alias for existing call sites.
-_WorkflowGraphTopology = WorkflowGraphTopology
+_WorkflowGraphTopology = GraphTopology
