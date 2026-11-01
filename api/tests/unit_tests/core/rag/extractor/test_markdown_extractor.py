@@ -159,3 +159,15 @@ after
         docs = extractor.extract()
 
         assert [doc.page_content for doc in docs] == ["plain", "\n\nHeader\nvalue"]
+
+
+@pytest.mark.parametrize("remove_links", [False, True])
+def test_extract_preserves_images_when_image_removal_disabled(tmp_path: Path, remove_links: bool):
+    markdown_file = tmp_path / "links.md"
+    image = "![diagram](diagram.png)"
+    markdown_file.write_text(f"{image} and [guide](guide.html)", encoding="utf-8")
+    documents = MarkdownExtractor(
+        str(markdown_file), remove_images=False, remove_hyperlinks=remove_links, encoding="utf-8"
+    ).extract()
+    expected_link = "guide" if remove_links else "[guide](guide.html)"
+    assert [document.page_content for document in documents] == [f"{image} and {expected_link}"]
