@@ -854,6 +854,9 @@ class DifyBuilderFixIntentsApi(Resource):
     @console_ns.response(
         200, "Correlated durable Fix control receipt", console_ns.models[DifyBuilderFixControlResponse.__name__]
     )
+    @console_ns.response(400, "Invalid receipt query", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(404, "Owned receipt not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(409, "Receipt task changed", console_ns.models[DifyBuilderErrorResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
