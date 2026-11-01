@@ -3,6 +3,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from unittest.mock import patch
 
+import httpx
 import pytest
 from pydantic import BaseModel
 
@@ -50,7 +51,7 @@ from graphon.model_runtime.model_providers.base.tts_model import TTSModel
 from graphon.model_runtime.protocols.tts_runtime import TTSChunk
 from models.account import Tenant
 from models.provider import ProviderType
-from services.billing_service import BillingService
+from services.billing_client import transport
 from tests.helpers.unit.knowledge_fs_core_fakes import Marker
 
 
@@ -657,13 +658,14 @@ def test_model_invocation_preserves_billing_origin(
     )
     requests: list[tuple[str, dict[str, object]]] = []
 
-    def billing_transport(method: str, endpoint: str, *, json: dict[str, object]) -> dict[str, object]:
+    def billing_transport(method: str, url: str, *, json: dict[str, object], **_: object) -> httpx.Response:
         assert method == "POST"
+        endpoint = url.removeprefix(transport._base_url(transport.Upstream.BILLING_QUOTA))
         requests.append((endpoint, json))
         if endpoint == "/quota/reserve":
-            return {"reservation_id": "reservation-1", "available": 197, "reserved": 3}
+            return httpx.Response(200, json={"reservation_id": "reservation-1", "available": 197, "reserved": 3})
         assert endpoint == "/quota/commit"
-        return {"available": 197, "reserved": 0, "refunded": 0}
+        return httpx.Response(200, json={"available": 197, "reserved": 0, "refunded": 0})
 
     chunk = LLMResultChunk(
         model="selected-model",
@@ -680,7 +682,7 @@ def test_model_invocation_preserves_billing_origin(
         patch.object(ProviderConfiguration, "get_current_credentials", return_value={"api_key": "local-test-only"}),
         patch.object(ProviderConfiguration, "get_provider_model", return_value=None),
         patch.object(ModelInstance, provider_method, return_value=provider_result),
-        patch.object(BillingService, "_send_quota_request", side_effect=billing_transport),
+        patch.object(transport, "_send", side_effect=billing_transport),
     ):
         response = invoke_method("synthetic-end-user", _model_billing_attribution_tenant(), payload)
         assert get_credit_usage_metadata() is None

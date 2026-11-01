@@ -619,7 +619,7 @@ def test_export_skill_maps_service_error(app: Flask, request_context: RequestCon
 
 def test_inner_api_pulls_published_skill_archive(app: Flask) -> None:
     api = PublishedSkillPullApi()
-    method = unwrap(api.get)
+    method = unwrap(PublishedSkillPullApi.get)
     service, pull_published_archive = _recording_service(
         "pull_published_archive",
         result=PublishedSkillArchive(
@@ -646,7 +646,7 @@ def test_inner_api_pulls_published_skill_archive(app: Flask) -> None:
 
 def test_inner_api_pull_maps_missing_tenant_to_invalid_request(app: Flask) -> None:
     api = PublishedSkillPullApi()
-    method = unwrap(api.get)
+    method = unwrap(PublishedSkillPullApi.get)
 
     with app.test_request_context("/", method="GET"):
         payload, status = method(api, "skill-1")
@@ -1494,3 +1494,19 @@ def test_agent_skill_bindings_rejects_invalid_payload(app: Flask, request_contex
 
     assert status == 400
     assert payload["code"] == "invalid_request"
+
+
+def test_skill_import_documents_required_multipart_file() -> None:
+    from flask_restx.swagger import Swagger
+
+    from controllers.console import api
+
+    resource = Swagger(api).serialize_resource(console_ns, WorkspaceSkillImportApi, "/workspaces/current/skills/import")
+    assert resource is not None
+    operation = resource["post"]
+    body = operation["requestBody"]
+    assert body["required"] is True
+    schema = body["content"]["multipart/form-data"]["schema"]
+    assert schema["required"] == ["file"]
+    assert schema["properties"]["file"]["type"] == "string"
+    assert schema["properties"]["file"]["format"] == "binary"

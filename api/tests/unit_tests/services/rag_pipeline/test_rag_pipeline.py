@@ -37,6 +37,7 @@ from models.dataset import (
 )
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.workflow import Workflow, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
 from services.credentials.query import CredentialQuery
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
@@ -45,6 +46,7 @@ from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline import rag_pipeline as rag_pipeline_module
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_ref_service import WorkflowRef
+from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 
 
 def _make_service() -> RagPipelineService:
@@ -141,20 +143,20 @@ def _make_workflow(
         id=workflow_id,
         tenant_id=tenant_id,
         app_id=app_id,
-        type="workflow",
+        type=ModelWorkflowType.WORKFLOW,
         version=version,
         marked_name="",
         marked_comment="",
         graph=json.dumps(graph or {"nodes": []}),
-        features=json.dumps(features or {}),
+        _features=json.dumps(features or {}),
         created_by=created_by,
-        created_at=datetime(2024, 1, 1),
         updated_by=None,
-        updated_at=datetime(2024, 1, 1),
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=rag_pipeline_variables or [],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=rag_pipeline_variables or [],
     )
+    workflow.updated_at = datetime(2024, 1, 1)
+    workflow.created_at = datetime(2024, 1, 1)
     return workflow
 
 
@@ -775,7 +777,7 @@ class TestRagPipelineServiceCases:
             account=_make_account(),
             datasource_type="website_crawl",
             is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            datasource_providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             ),
         )
@@ -860,7 +862,7 @@ class TestRagPipelineServiceCases:
             account=_make_account(),
             datasource_type="online_document",
             is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            datasource_providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             ),
         )
@@ -1042,9 +1044,7 @@ class TestRagPipelineServiceCases:
             "d1",
             True,
             credential_query=mock.create_autospec(CredentialQuery, instance=True),
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
-                credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
-            ),
+            datasource_providers=mock_provider_service,
         )
 
         # 3. Assertions
@@ -1351,7 +1351,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="online_document",
                 is_published=False,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -1404,7 +1404,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -1461,7 +1461,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type=DatasourceProviderType.ONLINE_DRIVE,
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -1695,7 +1695,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="online_document",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -1754,7 +1754,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="online_document",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -1815,7 +1815,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="online_document",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -1890,7 +1890,7 @@ class TestRagPipelineServiceCases:
                 "d1",
                 True,
                 credential_query=mock.create_autospec(CredentialQuery, instance=True),
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -1994,7 +1994,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="website_crawl",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -2180,7 +2180,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="website_crawl",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -2234,7 +2234,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="online_drive",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -2289,7 +2289,7 @@ class TestRagPipelineServiceCases:
             account=_make_account(),
             datasource_type="online_document",
             is_published=False,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            datasource_providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             ),
         )
@@ -2451,7 +2451,7 @@ class TestRagPipelineServiceCases:
                 "d1",
                 True,
                 credential_query=mock.create_autospec(CredentialQuery, instance=True),
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -2488,7 +2488,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="online_document",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -2509,7 +2509,7 @@ class TestRagPipelineServiceCases:
                 account=_make_account(),
                 datasource_type="online_document",
                 is_published=True,
-                datasource_providers=rag_pipeline_module.DatasourceProviderService(
+                datasource_providers=build_datasource_provider_service(
                     credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
                 ),
             )
@@ -2562,7 +2562,7 @@ class TestRagPipelineServiceCases:
             account=_make_account(),
             datasource_type="online_document",
             is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            datasource_providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             ),
         )
@@ -2609,7 +2609,7 @@ class TestRagPipelineServiceCases:
             account=_make_account(),
             datasource_type="online_document",
             is_published=True,
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            datasource_providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             ),
         )
@@ -2651,7 +2651,7 @@ class TestRagPipelineServiceCases:
             "d1",
             False,
             credential_query=mock.create_autospec(CredentialQuery, instance=True),
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            datasource_providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             ),
         )
@@ -2700,7 +2700,7 @@ class TestRagPipelineServiceCases:
             "d1",
             True,
             credential_query=mock.create_autospec(CredentialQuery, instance=True),
-            datasource_providers=rag_pipeline_module.DatasourceProviderService(
+            datasource_providers=build_datasource_provider_service(
                 credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
             ),
         )

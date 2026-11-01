@@ -14,34 +14,31 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuGroupLabel,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuItem,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
-import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { OperationMenu } from '@/app/components/plugins/plugin-detail-panel/operation-menu'
 import PluginInfoContent from '@/app/components/plugins/plugin-page/plugin-info'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import { checkGitHubPluginUpdate } from '@/app/components/plugins/update-plugin/check-github-update'
 import MarketplaceUpdateDialog from '@/app/components/plugins/update-plugin/from-market-place'
 import { useModalContext } from '@/context/modal-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import useTheme from '@/hooks/use-theme'
+import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
-import { marketplaceQuery } from '@/service/marketplace'
 import { normalizeInstalledPluginDetail, usePluginAutoUpgradeSettings } from '@/service/use-plugins'
 import { isEarlierThanVersion } from '@/utils/semver'
-import { getMarketplaceUrl } from '@/utils/var'
 
 type Props =
   | Readonly<{
@@ -81,7 +78,6 @@ function ProviderCardActions(props: Props) {
   const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()
   const { setShowUpdatePluginModal } = useModalContext()
   const locale = useLocale()
-  const { theme } = useTheme()
   const { onUpdate } = props
   const pluginID = props.detail ? props.detail.plugin_id : props.summary.plugin_id
   const source = props.detail ? props.detail.source : pluginSourceMap[props.summary.source]
@@ -91,17 +87,14 @@ function ProviderCardActions(props: Props) {
     props.detail?.latest_unique_identifier ?? props.summary?.latestUniqueIdentifier
   const isFromMarketplace = source === PluginSource.marketplace
   const isFromGitHub = source === PluginSource.github
-  const canChangeVersion = canUpdatePlugin && isFromMarketplace
   const hasNewVersion = isFromMarketplace && !!latestVersion && latestVersion !== version
   const category = props.detail?.declaration.category ?? PluginCategoryEnum.model
   const autoUpgradeSettings = usePluginAutoUpgradeSettings(category)
-  const { data: enableMarketplace } = useQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (value) => value.enable_marketplace,
-  })
+  const marketplace = useMarketplace()
+  const canChangeVersion = canUpdatePlugin && isFromMarketplace && marketplace !== null
   const policy = autoUpgradeSettings.data?.auto_upgrade
   const autoUpgradeEnabled =
-    enableMarketplace &&
+    marketplace !== null &&
     policy &&
     policy.strategy_setting !== 'disabled' &&
     (policy.upgrade_mode === 'all' ||
@@ -123,18 +116,9 @@ function ProviderCardActions(props: Props) {
         response.plugins[0] ? normalizeInstalledPluginDetail(response.plugins[0]) : undefined,
     }),
   )
-  const versionsQuery = useQuery(
-    marketplaceQuery.pluginVersions.queryOptions({
-      input:
-        organization && pluginName
-          ? {
-              params: { organization, pluginName },
-              query: { page: 1, page_size: 100 },
-            }
-          : skipToken,
-      enabled: versionMenuRequested && canChangeVersion,
-      retry: false,
-    }),
+  const versionsQuery = useMarketplacePluginVersions(
+    pluginID,
+    versionMenuRequested && canChangeVersion,
   )
   const detail = props.detail ?? detailQuery.data
   const loadingVersions =
@@ -144,15 +128,6 @@ function ProviderCardActions(props: Props) {
       (!props.detail && detailQuery.isPending) ||
       autoUpgradeSettings.isPending)
   const versionMenuOpen = versionMenuRequested && canChangeVersion && !loadingVersions
-  const detailUrl =
-    isFromMarketplace && organization && pluginName
-      ? getMarketplaceUrl(
-          `/plugins/${props.detail?.declaration.author ?? organization}/${props.detail?.declaration.name ?? pluginName}`,
-          { language: locale, theme },
-        )
-      : isFromGitHub && detail?.meta?.repo
-        ? `https://github.com/${detail.meta.repo}`
-        : ''
 
   const handlePluginChanged = async () => {
     await Promise.all([
@@ -228,10 +203,10 @@ function ProviderCardActions(props: Props) {
 
   return (
     <>
-      <DropdownMenu open={!!version && versionMenuOpen} onOpenChange={setVersionMenuRequested}>
+      <Menu open={!!version && versionMenuOpen} onOpenChange={setVersionMenuRequested}>
         {!!version &&
           (canChangeVersion ? (
-            <DropdownMenuTrigger
+            <MenuTrigger
               render={
                 <Button
                   variant="ghost"
@@ -240,7 +215,7 @@ function ProviderCardActions(props: Props) {
                   className="relative h-5 overflow-visible rounded-[5px] border border-divider-deep px-1.25 system-xs-medium text-text-tertiary"
                 >
                   {hasNewVersion && (
-                    <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm" />
+                    <span className="absolute -inset-e-0.5 -top-0.5 size-1.5 rounded-xs border border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg shadow-sm" />
                   )}
                   <span>{version}</span>
                   {!loadingVersions && (
@@ -252,18 +227,18 @@ function ProviderCardActions(props: Props) {
           ) : (
             <Badge uppercase={false} text={version} hasRedCornerMark={hasNewVersion} />
           ))}
-        <DropdownMenuContent
+        <MenuContent
           className="max-h-[min(16rem,var(--available-height))]"
           align="start"
           aria-labelledby={versionMenuLabelId}
         >
-          <DropdownMenuGroup>
-            <DropdownMenuGroupLabel id={versionMenuLabelId}>
+          <MenuGroup>
+            <MenuGroupLabel id={versionMenuLabelId}>
               {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}
-            </DropdownMenuGroupLabel>
+            </MenuGroupLabel>
             {version && versionsQuery.data && detail && autoUpgradeSettings.data ? (
               versionsQuery.data.data.versions.map((item) => (
-                <DropdownMenuItem
+                <MenuItem
                   key={item.unique_identifier}
                   disabled={version === item.version}
                   onClick={() => {
@@ -286,10 +261,10 @@ function ProviderCardActions(props: Props) {
                   <span className="ms-auto text-text-tertiary">
                     {formatDate(item.created_at, dateFormat)}
                   </span>
-                </DropdownMenuItem>
+                </MenuItem>
               ))
             ) : (
-              <DropdownMenuItem
+              <MenuItem
                 closeOnClick={false}
                 onClick={() => {
                   if (versionsQuery.isError) void versionsQuery.refetch()
@@ -298,11 +273,11 @@ function ProviderCardActions(props: Props) {
                 }}
               >
                 {t(($) => $['operation.retry'], { ns: 'common' })}
-              </DropdownMenuItem>
+              </MenuItem>
             )}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </MenuGroup>
+        </MenuContent>
+      </Menu>
       {source === PluginSource.debugging && (
         <Badge
           className="border-state-warning-active bg-state-warning-hover text-text-warning"
@@ -332,12 +307,20 @@ function ProviderCardActions(props: Props) {
           </TooltipContent>
         </Tooltip>
       )}
-      <OperationDropdown
+      <OperationMenu
         source={source}
         onInfo={handleInfo}
         onCheckVersion={handleUpdate}
         onRemove={() => setShowDeleteConfirm(true)}
-        detailUrl={detailUrl}
+        marketplacePlugin={
+          organization && pluginName
+            ? {
+                org: props.detail?.declaration.author ?? organization,
+                name: props.detail?.declaration.name ?? pluginName,
+              }
+            : undefined
+        }
+        repo={detail?.meta?.repo}
         align="start"
         destructiveRemove
         showCheckVersion={canUpdatePlugin}

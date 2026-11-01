@@ -33,6 +33,7 @@ import { usePickerValue } from '../internal/use-picker-value'
 
 type TimePickerLabels = TimePanelLabels & {
   title: string
+  close: string
   now: string
   apply: string
   unavailable: string
@@ -55,8 +56,9 @@ type TimePickerProps = PickerFieldProps &
   }
 type ContextValue = Omit<
   TimePickerProps,
-  'value' | 'defaultValue' | 'onValueChange' | 'children'
+  'value' | 'defaultValue' | 'onValueChange' | 'children' | 'labels'
 > & {
+  labels: TimePickerLabels
   value: Exclude<TimePickerProps['value'], undefined>
   commit: (value: string | null, details: TimePickerChangeEventDetails) => boolean
 }
@@ -68,6 +70,7 @@ function useContext() {
 }
 const defaultLabels: TimePickerLabels = {
   title: 'Pick Time',
+  close: 'Close',
   hour: 'Hour',
   minute: 'Minute',
   period: 'Period',
@@ -99,16 +102,14 @@ function TimePicker({
     (props.isTimeUnavailable?.(value) || Number(value.slice(3)) % (props.minuteStep ?? 1) !== 0),
   )
 
+  const labels = { ...defaultLabels, ...props.labels }
+
   return (
-    <Context.Provider value={{ ...props, value, commit }}>
+    <Context.Provider value={{ ...props, value, commit, labels }}>
       <PickerRoot
         {...props}
         invalid={props.invalid || unavailable}
-        validationMessage={
-          unavailable
-            ? (props.labels?.unavailable ?? defaultLabels.unavailable)
-            : props.validationMessage
-        }
+        validationMessage={unavailable ? labels.unavailable : props.validationMessage}
         placeholder={props.placeholder ?? 'Select time'}
         displayValue={
           value
@@ -154,9 +155,9 @@ const TimePickerClear = PickerClear
 const TimePickerLabel = PickerLabel
 const TimePickerValue = PickerValue
 function TimePickerContent(props: TimePickerContentProps) {
-  const { value, timeZone } = useContext()
+  const { value, timeZone, labels } = useContext()
   return (
-    <PickerContent {...props}>
+    <PickerContent {...props} closeLabel={labels.close}>
       <Session key={`${value ?? ''}-${timeZone ?? ''}`} />
     </PickerContent>
   )
@@ -181,7 +182,6 @@ function Session() {
   } = useContext()
   const { close, canEdit } = usePickerContext()
   const [draft, setDraft] = React.useState(() => value ?? currentTime(timeZone, minuteStep))
-  const text = { ...defaultLabels, ...labels }
   const unavailable = Boolean(
     isTimeUnavailable?.(draft) || Number(draft.slice(3)) % minuteStep !== 0,
   )
@@ -189,11 +189,11 @@ function Session() {
   const errorId = React.useId()
   return (
     <PickerPanel
-      header={<PickerPanelHeader>{text.title}</PickerPanelHeader>}
+      header={<PickerPanelHeader>{labels.title}</PickerPanelHeader>}
       message={
         unavailable && (
           <p id={errorId} role="status" className="px-2 system-xs-regular text-text-destructive">
-            {text.unavailable}
+            {labels.unavailable}
           </p>
         )
       }
@@ -207,7 +207,7 @@ function Session() {
               requestScroll()
             }}
           >
-            {text.now}
+            {labels.now}
           </Button>
           <Button
             variant="primary"
@@ -226,7 +226,7 @@ function Session() {
                 close()
             }}
           >
-            {text.apply}
+            {labels.apply}
           </Button>
         </React.Fragment>
       }
@@ -236,7 +236,7 @@ function Session() {
         scrollRequest={scrollRequest}
         value={draft}
         onValueChange={setDraft}
-        labels={text}
+        labels={labels}
         locale={locale}
         hourCycle={hourCycle}
       />

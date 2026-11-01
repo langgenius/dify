@@ -98,7 +98,7 @@ export function AllowlistField({
         </FieldDescription>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
+      <div className="-m-0.5 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-0.5">
         {entries.map((entry) => {
           const result = validateIpEntry(entry.value)
           const invalid = result.kind === 'invalid'
@@ -115,7 +115,7 @@ export function AllowlistField({
                     value={entry.value}
                     placeholder="10.0.0.0/8"
                     aria-label={t(($) => $['settings.ipPolicyAllowlist'], { ns: 'common' })}
-                    className={invalid ? 'pr-8' : undefined}
+                    className={invalid ? 'pe-8' : undefined}
                     onChange={(event) => updateEntry(entry.id, event.currentTarget.value)}
                   />
                   {invalid && (

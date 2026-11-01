@@ -1207,12 +1207,16 @@ class DatasetRetrieval:
                         all_documents.extend(documents)
                 else:
                     if top_k > 0:
+                        # top_k=0 is a legal explicit value (the SINGLE-retrieval
+                        # tool path reads the stored top_k as-is); only a missing
+                        # entry falls back to the default.
+                        dataset_top_k = retrieval_model.get("top_k")
                         # retrieval source
                         documents = RetrievalService.retrieve(
                             retrieval_method=retrieval_model["search_method"],
                             dataset_id=dataset.id,
                             query=query,
-                            top_k=retrieval_model.get("top_k") or 4,
+                            top_k=dataset_top_k if dataset_top_k is not None else 4,
                             score_threshold=retrieval_model.get("score_threshold", 0.0)
                             if retrieval_model["score_threshold_enabled"]
                             else 0.0,
@@ -1397,7 +1401,9 @@ class DatasetRetrieval:
             tool = DatasetMultiRetrieverTool.from_dataset(
                 dataset_ids=[dataset.id for dataset in available_datasets],
                 tenant_id=tenant_id,
-                top_k=retrieve_config.top_k or 4,
+                # top_k=0 is a legal explicit value (the non-tool MULTIPLE path
+                # honors it); only None falls back to the default.
+                top_k=retrieve_config.top_k if retrieve_config.top_k is not None else 4,
                 score_threshold=retrieve_config.score_threshold,
                 hit_callbacks=[hit_callback],
                 return_resource=return_resource,
@@ -1690,7 +1696,12 @@ class DatasetRetrieval:
 
             case "not contains":
                 escaped_value = escape_like_pattern(str(value))
-                filters.append(json_field.notlike(f"%{escaped_value}%", escape="\\"))
+                filters.append(
+                    or_(
+                        json_field.is_(None),
+                        json_field.notlike(f"%{escaped_value}%", escape="\\"),
+                    )
+                )
 
             case "start with":
                 escaped_value = escape_like_pattern(str(value))
@@ -1710,9 +1721,11 @@ class DatasetRetrieval:
             case "is not" | "≠":
                 match value:
                     case str():
-                        filters.append(json_field != value)
+                        filters.append(or_(json_field.is_(None), json_field != value))
                     case int() | float():
-                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+                        filters.append(
+                            or_(json_field.is_(None), DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+                        )
 
             case "empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
@@ -1743,9 +1756,10 @@ class DatasetRetrieval:
                 if not value_list:
                     # `field in []` is False, `field not in []` is True
                     filters.append(literal(condition == "not in"))
+                elif condition == "in":
+                    filters.append(json_field.in_(value_list))
                 else:
-                    op = json_field.in_ if condition == "in" else json_field.notin_
-                    filters.append(op(value_list))
+                    filters.append(or_(json_field.is_(None), json_field.notin_(value_list)))
             case _:
                 pass
 

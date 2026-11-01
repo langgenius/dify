@@ -27,16 +27,10 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -61,6 +55,7 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import { formatFileSize } from '@/utils/format'
 import { fetchSkillArchiveBlob } from './client'
 import { SkillReferencesList, SkillReferencesListSkeleton } from './detail/skill-metadata'
@@ -273,7 +268,9 @@ function DeleteSkillDialog({
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const queryClient = useQueryClient()
   const deleteMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const referencesQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
@@ -313,8 +310,8 @@ function DeleteSkillDialog({
           invalidateSkillListQueries(queryClient)
           onOpenChange(false)
         },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.deleteFailed']))
+        onError: (error) => {
+          toast.error(getErrorMessage(error) ?? t(($) => $['skillManagement.deleteFailed']))
         },
       },
     )
@@ -431,15 +428,17 @@ function SkillCard({
   const draftStatusId = useId()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const duplicateMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const exportMutation = useMutation({
     mutationFn: () => fetchSkillArchiveBlob(skill.id),
     onSuccess: (blob) => {
       downloadBlob({ data: blob, fileName: `${skill.name}.zip` })
     },
-    onError: () => {
-      toast.error(tCommon(($) => $['operation.downloadFailed']))
+    onError: (error) => {
+      toast.error(getErrorMessage(error) ?? tCommon(($) => $['operation.downloadFailed']))
     },
   })
   const isDraft = !skill.latest_published_version_id
@@ -463,8 +462,12 @@ function SkillCard({
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${copiedSkill.id}?rename=true`)
         },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.duplicateFailed']))
+        onError: (error) => {
+          toast.error(
+            getSkillErrorCode(error) === 'skill_limit_exceeded'
+              ? t(($) => $['skillManagement.errors.workspaceLimit'])
+              : (getErrorMessage(error) ?? t(($) => $['skillManagement.duplicateFailed'])),
+          )
         },
       },
     )
@@ -506,7 +509,7 @@ function SkillCard({
           </div>
         </div>
         <div className="h-6.5 shrink-0" />
-        <div className="flex min-w-0 shrink-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
+        <div className="flex min-w-0 shrink-0 items-center ps-4 pe-3 pt-2 pb-3 system-xs-regular text-text-tertiary">
           <div className="flex min-w-0 flex-1 items-center gap-1">
             <span className="shrink-0">
               {t(($) => $['skillManagement.referenceCount'], { count: skill.reference_count ?? 0 })}
@@ -525,18 +528,18 @@ function SkillCard({
       {isDraft && (
         <div
           id={draftStatusId}
-          className="pointer-events-none absolute top-[-0.5px] right-0 flex h-5 items-start overflow-hidden"
+          className="pointer-events-none absolute inset-e-0 top-[-0.5px] flex h-5 items-start overflow-hidden"
         >
-          <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
-          <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
+          <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)] rtl:-scale-x-100" />
+          <div className="flex h-5 items-center bg-background-section-burn ps-0.5 pe-2 system-2xs-medium-uppercase text-text-tertiary">
             {t(($) => $['skillManagement.draft'])}
           </div>
         </div>
       )}
-      <div className="pointer-events-none absolute top-[-0.5px] right-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
+      <div className="pointer-events-none absolute inset-e-[-0.5px] top-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 rtl:bg-[linear-gradient(293deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] [@media(hover:none)]:opacity-100">
         <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger
+          <Menu modal={false}>
+            <MenuTrigger
               render={
                 <IconButton
                   aria-label={t(($) => $['skillManagement.moreActions'], {
@@ -549,17 +552,17 @@ function SkillCard({
                 </IconButton>
               }
             />
-            <DropdownMenuContent className="w-40">
+            <MenuContent align="end" className="w-40">
               {canEdit && (
-                <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
+                <MenuItem className="gap-2" onClick={handleDuplicate}>
                   <span
                     aria-hidden
                     className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
                   />
                   <span>{tCommon(($) => $['operation.duplicate'])}</span>
-                </DropdownMenuItem>
+                </MenuItem>
               )}
-              <DropdownMenuItem
+              <MenuItem
                 className="gap-2"
                 disabled={exportMutation.isPending}
                 onClick={handleExport}
@@ -569,22 +572,22 @@ function SkillCard({
                   className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
                 />
                 <span>{tCommon(($) => $['operation.export'])}</span>
-              </DropdownMenuItem>
+              </MenuItem>
               {canDelete && (
                 <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
+                  <MenuSeparator />
+                  <MenuItem
                     variant="destructive"
                     className="gap-2"
                     onClick={() => setIsDeleteOpen(true)}
                   >
                     <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
                     <span>{tCommon(($) => $['operation.delete'])}</span>
-                  </DropdownMenuItem>
+                  </MenuItem>
                 </>
               )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </MenuContent>
+          </Menu>
         </div>
       </div>
       <div className="pointer-events-none absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">
@@ -692,7 +695,7 @@ function SkillsToolbar({
           void setKeyword(value)
         }}
       />
-      <div className="ml-auto flex shrink-0 items-center gap-2">
+      <div className="ms-auto flex shrink-0 items-center gap-2">
         {canEdit && (
           <Button
             className="h-8 gap-1 px-3"

@@ -753,6 +753,9 @@ export function ProviderConfigModal({
                 onOpenChange={(open, details) => {
                   if (!open && removeConfig.isPending) details.cancel()
                 }}
+                onOpenChangeComplete={(open) => {
+                  if (!open) removeConfig.reset()
+                }}
               >
                 <AlertDialogTrigger render={<Button tone="destructive" disabled={pending} />}>
                   {t(($) => $['operation.remove'], { ns: 'common' })}

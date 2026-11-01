@@ -35,7 +35,9 @@ export function GoldenQuestionImportDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <GoldenQuestionImportSession onOpenChange={onOpenChange} />
+      <DialogContent className="w-180">
+        <GoldenQuestionImportSession onOpenChange={onOpenChange} />
+      </DialogContent>
     </Dialog>
   )
 }
@@ -113,7 +115,7 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
   }
 
   return (
-    <DialogContent className="w-180">
+    <>
       <DialogHeader>
         <DialogTitle>
           {t(($) => $['qualityPage.importTitle'], { ns: 'knowledgeQuality' })}
@@ -233,6 +235,6 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
           </DialogFooter>
         </>
       )}
-    </DialogContent>
+    </>
   )
 }

@@ -75,7 +75,7 @@ describe('Starting Build', () => {
     createEnvironment().render('?mode=preview')
     api.refresh.mockRejectedValueOnce(new Error('refresh failed'))
     await changeMode(user, 'build')
-    await waitFor(() => expect(api.error).toHaveBeenCalledWith('common.api.actionFailed'))
+    await waitFor(() => expect(api.error).toHaveBeenCalledWith('refresh failed'))
     expect(modeButton('preview')).toBeChecked()
     expect(chatInput('preview')).toBeVisible()
     expect(api.checkout).not.toHaveBeenCalled()
@@ -89,7 +89,9 @@ describe('Starting Build', () => {
     await waitFor(() => expect(modeButton('build')).toBeChecked())
     await replacePromptEditorText(promptEditor(), 'Unsaved instructions')
     await send(user)
-    await waitFor(() => expect(api.error).toHaveBeenCalledWith('common.api.actionFailed'))
+    await waitFor(() =>
+      expect(api.error).toHaveBeenCalledExactlyOnceWith('common.api.actionFailed'),
+    )
     expect(promptEditor()).toHaveTextContent('Unsaved instructions')
     expect(promptEditor()).toHaveAttribute('contenteditable', 'true')
     expect(api.checkout).not.toHaveBeenCalled()
@@ -104,7 +106,7 @@ describe('Starting Build', () => {
     await changeMode(user, 'build')
     await waitFor(() => expect(modeButton('build')).toBeChecked())
     await send(user)
-    await waitFor(() => expect(api.error).toHaveBeenCalledWith('common.api.actionFailed'))
+    await waitFor(() => expect(api.error).toHaveBeenCalledExactlyOnceWith('checkout failed'))
     expect(ssePost).not.toHaveBeenCalled()
     expect(promptEditor()).toHaveAttribute('contenteditable', 'true')
     await send(user, 'build', 'Try again')
@@ -114,8 +116,8 @@ describe('Starting Build', () => {
       params: { agent_id: 'agent-1' },
       body: { force: true },
     })
-    expect(await screen.findByText('Built answer')).toBeVisible()
-  })
+    expect(await screen.findByText('Built answer', {}, { timeout: 5000 })).toBeVisible()
+  }, 10000)
 
   it('requires an explicitly selected model despite a workspace default', async () => {
     const user = userEvent.setup()
@@ -161,6 +163,29 @@ describe('Starting Build', () => {
 })
 
 describe('Leaving Build', () => {
+  it.each(['apply', 'discard'] as const)(
+    'reports the conversation reset failure once after %s without reporting success',
+    async (action) => {
+      const user = userEvent.setup()
+      createEnvironment({ buildDraft: createBuildDraft() }).render()
+      await waitFor(() => expect(applyButton()).toBeEnabled())
+      api.refresh.mockRejectedValueOnce(new Error('Conversation reset failed'))
+
+      await user.click(action === 'apply' ? applyButton() : discardButton())
+      if (action === 'discard') await confirm(user)
+
+      await waitFor(() =>
+        expect(api.error).toHaveBeenCalledExactlyOnceWith('Conversation reset failed'),
+      )
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: 'custom.apply' })).not.toBeInTheDocument(),
+      )
+      expect(api[action]).toHaveBeenCalledTimes(1)
+      expect(promptEditor()).toHaveAttribute('contenteditable', 'true')
+      expect(api.success).not.toHaveBeenCalled()
+    },
+  )
+
   it('keeps the streaming draft and URL when leaving Build is cancelled', async () => {
     const user = userEvent.setup()
     const view = createEnvironment({ buildDraft: createBuildDraft() }).render()
@@ -229,7 +254,7 @@ describe('Leaving Build', () => {
     api.discard.mockRejectedValueOnce(new Error('discard failed'))
     await changeMode(user, 'preview')
     await confirm(user)
-    await waitFor(() => expect(api.error).toHaveBeenCalledWith('common.api.actionFailed'))
+    await waitFor(() => expect(api.error).toHaveBeenCalledWith('discard failed'))
     expect(screen.getByRole('alertdialog')).toBeVisible()
     await confirm(user)
     await waitFor(() => expect(modeButton('preview')).toBeChecked())

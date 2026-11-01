@@ -10,17 +10,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { StudioListLink } from '@/app/components/apps/list-navigation'
 import { CreateSnippetDialog } from '@/app/components/snippets/create-snippet-dialog'
 import {
   canCreateAndModifySnippets,
@@ -28,7 +23,6 @@ import {
 } from '@/app/components/snippets/utils/permission'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { StudioListLink } from '@/features/studio-list-navigation/navigation'
 import { TagSelector } from '@/features/tag-management/components/tag-selector'
 import { consoleQuery } from '@/service/console'
 import {
@@ -37,6 +31,7 @@ import {
   useUpdateSnippetMutation,
 } from '@/service/use-snippets'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import { formatTime } from '@/utils/time'
 
 type Props = Readonly<{
@@ -60,9 +55,9 @@ const SnippetCard = ({
   )
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const updateSnippetMutation = useUpdateSnippetMutation()
-  const exportSnippetMutation = useExportSnippetMutation()
-  const deleteSnippetMutation = useDeleteSnippetMutation()
+  const updateSnippetMutation = useUpdateSnippetMutation({ silent: true })
+  const exportSnippetMutation = useExportSnippetMutation({ silent: true })
+  const deleteSnippetMutation = useDeleteSnippetMutation({ silent: true })
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const canManageSnippet = canManageSnippets(workspacePermissionKeys)
   const canShowOperations = canCreateAndModifySnippet || canManageSnippet
@@ -100,8 +95,8 @@ const SnippetCard = ({
       const data = await exportSnippetMutation.mutateAsync({ snippetId: snippet.id })
       const file = new Blob([data], { type: 'application/yaml' })
       downloadBlob({ data: file, fileName: `${snippet.name}.yml` })
-    } catch {
-      toast.error(t(($) => $.exportFailed))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $.exportFailed))
     }
   }
 
@@ -190,8 +185,8 @@ const SnippetCard = ({
           {canShowOperations && (
             <div className="pointer-events-none absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100">
               <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular" />
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger
+              <Menu modal={false}>
+                <MenuTrigger
                   aria-label={tCommon(($) => $['operation.moreActionsFor'], {
                     ns: 'common',
                     name: snippet.name,
@@ -205,26 +200,26 @@ const SnippetCard = ({
                   <div className="flex size-8 cursor-pointer items-center justify-center rounded-md">
                     <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
                   </div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-54">
+                </MenuTrigger>
+                <MenuContent align="end" className="w-54">
                   {canCreateAndModifySnippet && (
                     <>
-                      <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenEditDialog}>
+                      <MenuItem className="gap-2 px-3" onClick={handleOpenEditDialog}>
                         <span className="system-sm-regular text-text-secondary">
                           {t(($) => $['menu.editInfo'])}
                         </span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2 px-3" onClick={handleExportSnippet}>
+                      </MenuItem>
+                      <MenuItem className="gap-2 px-3" onClick={handleExportSnippet}>
                         <span className="system-sm-regular text-text-secondary">
                           {t(($) => $['menu.exportSnippet'])}
                         </span>
-                      </DropdownMenuItem>
+                      </MenuItem>
                     </>
                   )}
                   {canManageSnippet && (
                     <>
-                      {canCreateAndModifySnippet && <DropdownMenuSeparator />}
-                      <DropdownMenuItem
+                      {canCreateAndModifySnippet && <MenuSeparator />}
+                      <MenuItem
                         variant="destructive"
                         className="gap-2 px-3"
                         onClick={() => setIsDeleteDialogOpen(true)}
@@ -232,11 +227,11 @@ const SnippetCard = ({
                         <span className="system-sm-regular">
                           {t(($) => $['menu.deleteSnippet'])}
                         </span>
-                      </DropdownMenuItem>
+                      </MenuItem>
                     </>
                   )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </MenuContent>
+              </Menu>
             </div>
           )}
         </div>

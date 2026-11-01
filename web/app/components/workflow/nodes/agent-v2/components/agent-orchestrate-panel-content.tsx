@@ -11,12 +11,8 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { AgentPreviewChatController } from '@/features/agent-v2/agent-detail/configure/components/preview/chat-conversation'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
@@ -67,6 +63,7 @@ import { useAgentBuildDraftRefresh } from '@/features/agent-v2/build-draft-refre
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 import { InlineAgentLoading } from './inline-agent-loading'
 
@@ -446,7 +443,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     consoleQuery.agent.byAgentId.buildDraft.put.mutationOptions(),
   )
   const { mutateAsync: discardBuildDraft, isPending: isDiscardingBuildDraft } = useMutation(
-    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions(),
+    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions({ context: { silent: true } }),
   )
   const getInlineAgentSoulDraft = useCallback(
     () =>
@@ -494,25 +491,25 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     cancelBuildDraftRefresh()
     setIsApplyingInlineBuildDraft(true)
     try {
-      if (!buildDraft.agentSoulConfig) return
+      const latestBuildDraft = await buildDraft.refetch()
+      const agentSoulConfig = latestBuildDraft.data?.agent_soul
+      if (latestBuildDraft.isError || !agentSoulConfig) return
 
-      const savedComposerState = await saveAgentSoulConfig(buildDraft.agentSoulConfig)
+      const savedComposerState = await saveAgentSoulConfig(agentSoulConfig)
       await discardBuildDraft({
         params: {
           agent_id: agentId,
         },
-      }).catch(() => undefined)
+      })
       await resetBuildSession().catch(() => undefined)
       setBuildDraftSoulSourceOverride('draft')
       queryClient.removeQueries({
         queryKey: buildDraftQueryOptions.queryKey,
       })
-      rebaseComposerDraftFromSoulConfig(
-        savedComposerState?.agent_soul ?? buildDraft.agentSoulConfig,
-      )
+      rebaseComposerDraftFromSoulConfig(savedComposerState?.agent_soul ?? agentSoulConfig)
       toast.success(t(($) => $['api.actionSuccess']))
-    } catch {
-      toast.error(t(($) => $['api.actionFailed']))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $['api.actionFailed']))
     } finally {
       setIsApplyingInlineBuildDraft(false)
     }
@@ -533,8 +530,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
       rebaseComposerDraftFromSoulConfig(agentSoulConfig)
       toast.success(t(($) => $['api.actionSuccess']))
       return true
-    } catch {
-      toast.error(t(($) => $['api.actionFailed']))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $['api.actionFailed']))
       return false
     }
   }, [
@@ -734,28 +731,24 @@ function WorkflowInlineAgentConfigureMoreAction({
   if (!canCreateAgents) return null
 
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger
+    <Menu modal={false}>
+      <MenuTrigger
         render={
-          <button
-            type="button"
-            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-            aria-label={t(($) => $['operation.more'])}
-          >
+          <IconButton aria-label={t(($) => $['operation.more'])}>
             <span aria-hidden className="i-ri-more-fill size-4" />
-          </button>
+          </IconButton>
         }
       />
-      <DropdownMenuContent className="w-max min-w-44">
-        <DropdownMenuItem className="gap-2 whitespace-nowrap" onClick={onSaveInlineToRoster}>
+      <MenuContent align="end" className="w-max min-w-44">
+        <MenuItem className="gap-2 whitespace-nowrap" onClick={onSaveInlineToRoster}>
           <span
             aria-hidden
             className="i-ri-inbox-archive-line size-4 shrink-0 text-text-tertiary"
           />
           <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentRoster' })}</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuItem>
+      </MenuContent>
+    </Menu>
   )
 }
 
