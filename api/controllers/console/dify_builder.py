@@ -280,23 +280,25 @@ def _create(body, actor: Actor) -> Response | tuple[dict, int]:
     raise AssertionError(f"Unsupported Dify Builder create payload: {type(payload)}")
 
 
+def _action_command_id(session_id: str, actor: Actor, client_action_id: str | None) -> str:
+    """Use the existing action namespace at both command admission and receipt reads."""
+    from uuid import NAMESPACE_URL, uuid5
+
+    return (
+        str(
+            uuid5(NAMESPACE_URL, f"builder-action:{actor.tenant_id}:{actor.account_id}:{session_id}:{client_action_id}")
+        )
+        if client_action_id
+        else ""
+    )
+
+
 def _action(session_id: str, body, actor: Actor) -> Response | tuple[dict, int]:
     try:
         payload = DifyBuilderSubmitActionPayload.model_validate(body)
     except ValidationError:
         return {"code": "bad_request"}, 400
-    from uuid import NAMESPACE_URL, uuid5
-
-    command_id = (
-        str(
-            uuid5(
-                NAMESPACE_URL,
-                f"builder-action:{actor.tenant_id}:{actor.account_id}:{session_id}:{payload.client_action_id}",
-            )
-        )
-        if payload.client_action_id
-        else ""
-    )
+    command_id = _action_command_id(session_id, actor, payload.client_action_id)
     action = Action(
         command_id=command_id,
         kind=resolve_submitted_action(payload.action_id, payload.payload),
@@ -394,13 +396,16 @@ def _fix_control_receipt(session_id: str, query, actor: Actor):
     except ValidationError:
         raise BadRequest("Invalid Fix control receipt query.") from None
     try:
-        receipt = build_service().get_fix_control_receipt(session_id, actor, **payload.model_dump())
+        arguments = payload.model_dump()
+        if payload.operation != "fix":
+            arguments["client_action_id"] = _action_command_id(session_id, actor, payload.client_action_id)
+        receipt = build_service().get_fix_control_receipt(session_id, actor, **arguments)
     except Exception as error:
         mapped = dify_builder_error_response(error)
         if mapped is None:
             raise
         return mapped
-    return dump_response(DifyBuilderFixControlResponse, receipt)
+    return dump_response(DifyBuilderFixControlResponse, {**receipt, "client_action_id": payload.client_action_id})
 
 
 def _fix_intent(session_id: str, body, actor: Actor):
