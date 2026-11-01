@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "Ditambahkan ke konteks",
+  "attachments.pending": "Dalam antrean",
+  "attachments.rejected": "Tidak digunakan",
+  "attachments.superseded": "Tidak lagi digunakan",
+  "attachments.truncated": "Ditambahkan sebagian",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "Tidak dapat memuat ulang kanvas alur kerja. {{reason}}",
   "cardCategory.checks": "Pemeriksaan",

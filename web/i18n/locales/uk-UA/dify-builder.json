@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "Додано до контексту",
+  "attachments.pending": "У черзі",
+  "attachments.rejected": "Не використано",
+  "attachments.superseded": "Більше не використовується",
+  "attachments.truncated": "Додано частково",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "Не вдалося оновити полотно робочого процесу. {{reason}}",
   "cardCategory.checks": "Перевірки",

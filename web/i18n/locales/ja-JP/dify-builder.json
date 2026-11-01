@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "コンテキストに追加済み",
+  "attachments.pending": "待機中",
+  "attachments.rejected": "未使用",
+  "attachments.superseded": "使用終了",
+  "attachments.truncated": "一部追加済み",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "ワークフローのキャンバスを更新できませんでした。{{reason}}",
   "cardCategory.checks": "チェック",

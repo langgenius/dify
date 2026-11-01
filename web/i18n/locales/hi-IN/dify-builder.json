@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "संदर्भ में जोड़ा गया",
+  "attachments.pending": "कतार में",
+  "attachments.rejected": "उपयोग नहीं हुआ",
+  "attachments.superseded": "अब उपयोग नहीं होता",
+  "attachments.truncated": "आंशिक रूप से जोड़ा गया",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "वर्कफ़्लो कैनवास रीफ़्रेश नहीं हो सका। {{reason}}",
   "cardCategory.checks": "जाँच",

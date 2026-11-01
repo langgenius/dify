@@ -1,4 +1,7 @@
-import type { BuilderErrorCode } from '@dify/contracts/api/console/dify-builder/types.gen'
+import type {
+  BuilderErrorCode,
+  DifyBuilderAttachmentPayload,
+} from '@dify/contracts/api/console/dify-builder/types.gen'
 import type {
   ConversationItem,
   DifyBuilderActiveCommand,
@@ -45,6 +48,12 @@ export type DifyBuilderLifecycleControl = {
   expectedTaskId?: string
 }
 export const difyBuilderLifecycleControlAtom = atom<DifyBuilderLifecycleControl | null>(null)
+export const difyBuilderMaterialControlAtom = atom<{
+  phase: 'pending' | 'unknown' | 'accepted'
+  clientTurnId: string
+  attachments: DifyBuilderAttachmentPayload[]
+  text: string
+} | null>(null)
 export const difyBuilderSessionLastErrorAtom = atom('')
 export const difyBuilderSessionErrorCodeAtom = atom<BuilderErrorCode | null>(null)
 export const difyBuilderRetryableMessageAtom = atom<DifyBuilderRetryableMessage | null>(null)
@@ -63,6 +72,7 @@ export const difyBuilderSessionScopedAtoms = [
   difyBuilderSessionBusyAtom,
   difyBuilderTaskControlAtom,
   difyBuilderLifecycleControlAtom,
+  difyBuilderMaterialControlAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionErrorCodeAtom,
   difyBuilderRetryableMessageAtom,

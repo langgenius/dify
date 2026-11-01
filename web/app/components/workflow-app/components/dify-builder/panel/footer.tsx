@@ -11,6 +11,7 @@ import { DifyBuilderInteractionDock } from '../interactions/interaction-dock'
 import { useDifyBuilderInteractionLocale } from '../interactions/use-interaction-locale'
 import {
   difyBuilderLifecycleControlAtom,
+  difyBuilderMaterialControlAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderTaskControlAtom,
 } from '../session/state'
@@ -20,6 +21,7 @@ import {
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshingAtom,
   difyBuilderCheckLifecycleControlAtom,
+  difyBuilderCheckMaterialAtom,
   difyBuilderDecisionAtom,
   difyBuilderErrorAtom,
   difyBuilderInteractionBusyAtom,
@@ -129,10 +131,12 @@ export const DifyBuilderPanelFooter = ({
   const runActive = useAtomValue(difyBuilderRunActiveAtom)
   const pendingFix = useAtomValue(difyBuilderPendingFixAtom)
   const lifecycleControl = useAtomValue(difyBuilderLifecycleControlAtom)
+  const materialControl = useAtomValue(difyBuilderMaterialControlAtom)
   const sessionId = useAtomValue(difyBuilderSessionIdAtom)
   const viewVersion = useAtomValue(difyBuilderViewVersionAtom)
   const submitInteraction = useSetAtom(difyBuilderSubmitActionAtom)
   const checkLifecycleControl = useSetAtom(difyBuilderCheckLifecycleControlAtom)
+  const checkMaterial = useSetAtom(difyBuilderCheckMaterialAtom)
   const interactionPending = Boolean(interactionRef || decision)
   const interactionSubmitted = Boolean(
     localInteractionResponse?.sessionId === sessionId &&
@@ -169,6 +173,18 @@ export const DifyBuilderPanelFooter = ({
             variant="secondary"
             loading={commandBusy}
             onClick={() => void checkLifecycleControl()}
+          >
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        </div>
+      )}
+      {materialControl?.phase === 'unknown' && (
+        <div className="mx-4 mb-2 flex justify-end">
+          <Button
+            size="small"
+            variant="secondary"
+            loading={commandBusy}
+            onClick={() => void checkMaterial()}
           >
             {t(($) => $['operation.retry'], { ns: 'common' })}
           </Button>
@@ -258,7 +274,7 @@ export const DifyBuilderPanelFooter = ({
               />
             </AnimatedInteractionDock>
           )}
-          {!interactionVisible && <DifyBuilderComposer />}
+          <DifyBuilderComposer attachmentsOnly={interactionVisible} />
         </Suspense>
       </div>
     </footer>

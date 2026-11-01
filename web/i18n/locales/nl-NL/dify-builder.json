@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "Aan context toegevoegd",
+  "attachments.pending": "In wachtrij",
+  "attachments.rejected": "Niet gebruikt",
+  "attachments.superseded": "Niet meer gebruikt",
+  "attachments.truncated": "Gedeeltelijk toegevoegd",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "Het workflowcanvas kon niet worden vernieuwd. {{reason}}",
   "cardCategory.checks": "Controles",

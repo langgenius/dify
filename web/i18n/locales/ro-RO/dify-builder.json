@@ -1,4 +1,9 @@
 {
+  "attachments.consumed": "Adăugat în context",
+  "attachments.pending": "În așteptare",
+  "attachments.rejected": "Neutilizat",
+  "attachments.superseded": "Nu mai este utilizat",
+  "attachments.truncated": "Adăugat parțial",
   "buttonTooltip": "App Builder",
   "canvasRefreshFailed": "Nu s-a putut reîmprospăta zona fluxului de lucru. {{reason}}",
   "cardCategory.checks": "Verificări",

@@ -14,6 +14,7 @@ import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
+import { DifyBuilderAttachmentScope } from '../attachments'
 import { difyBuilderSessionScopedAtoms } from '../session/state'
 import { useDifyBuilderSessionController } from '../session/use-session-controller'
 import { difyBuilderRuntimeAtom, difyBuilderScopedAtoms } from '../store'
@@ -54,6 +55,7 @@ const DifyBuilderProviderContent = ({
     }),
   )
   const setShowPanel = useStore((state) => state.setShowDifyBuilderPanel)
+  const fileUploadConfig = useStore((state) => state.fileUploadConfig)
   const setPublishedAt = useStore((state) => state.setPublishedAt)
   const setLastPublishedHasUserInput = useStore((state) => state.setLastPublishedHasUserInput)
   const queryClient = useQueryClient()
@@ -138,8 +140,18 @@ const DifyBuilderProviderContent = ({
       session,
       retryCanvasRefresh: canvasRefresh.retry,
       setShowPanel,
+      fileUploadConfig,
     }),
-    [appId, canEdit, enabled, getCanvasSnapshot, session, setShowPanel, canvasRefresh.retry],
+    [
+      appId,
+      canEdit,
+      enabled,
+      getCanvasSnapshot,
+      session,
+      setShowPanel,
+      fileUploadConfig,
+      canvasRefresh.retry,
+    ],
   )
 
   useHydrateAtoms([[difyBuilderRuntimeAtom, runtime]] as const, {
@@ -147,7 +159,7 @@ const DifyBuilderProviderContent = ({
   })
 
   return (
-    <>
+    <DifyBuilderAttachmentScope>
       <DifyBuilderCanvasLockCleanup />
       {children}
       {/* Install canvas and panel handlers before restoring or starting a session. */}
@@ -164,7 +176,7 @@ const DifyBuilderProviderContent = ({
         canStartCreation={canStartCreation}
         enabled={enabled}
       />
-    </>
+    </DifyBuilderAttachmentScope>
   )
 }
 

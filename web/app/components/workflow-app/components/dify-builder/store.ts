@@ -1,3 +1,5 @@
+import type { DifyBuilderAttachmentPayload } from '@dify/contracts/api/console/dify-builder/types.gen'
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { InteractionResponseCopy } from './interactions/optimistic-response'
 import type {
   ChecklistErrorPayload,
@@ -19,6 +21,7 @@ import {
   difyBuilderConversationAtom,
   difyBuilderLifecycleControlAtom,
   difyBuilderLocalUserMessageAtom,
+  difyBuilderMaterialControlAtom,
   difyBuilderRetryableMessageAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionErrorCodeAtom,
@@ -29,6 +32,7 @@ import {
 import { shouldStartBuildSession } from './utils'
 
 export type DifyBuilderRuntime = {
+  fileUploadConfig?: UploadConfig
   appId?: string
   canEdit: boolean
   enabled: boolean
@@ -193,6 +197,8 @@ export const difyBuilderNativeCancelAtom = atom((get) => {
 })
 export const difyBuilderInteractionBusyAtom = atom(
   (get) =>
+    get(difyBuilderMaterialControlAtom)?.phase === 'pending' ||
+    get(difyBuilderMaterialControlAtom)?.phase === 'unknown' ||
     get(difyBuilderStartFixMutationAtom).isPending ||
     get(difyBuilderLifecycleControlAtom) !== null ||
     get(difyBuilderSessionBusyAtom) ||
@@ -249,6 +255,31 @@ export const difyBuilderCanComposeAtom = atom((get) => {
 export const difyBuilderCanSendDraftAtom = atom(
   (get) => get(difyBuilderCanComposeAtom) && Boolean(get(difyBuilderDraftAtom).trim()),
 )
+export const difyBuilderCanAddMaterialAtom = atom((get) => {
+  const runtime = get(difyBuilderRuntimeAtom)
+  const view = get(difyBuilderSessionViewAtom)
+  const material = get(difyBuilderMaterialControlAtom)
+  if (
+    !runtime?.enabled ||
+    !runtime.canEdit ||
+    view?.conversation_cleared ||
+    view?.recovery ||
+    view?.pending_fix_context ||
+    get(difyBuilderLifecycleControlAtom) ||
+    get(difyBuilderTaskControlAtom) ||
+    (material && material.phase !== 'accepted')
+  )
+    return false
+  return get(difyBuilderSessionIdAtom) !== null || get(difyBuilderCanComposeAtom)
+})
+export const difyBuilderCheckMaterialAtom = atom(null, (get) => {
+  const runtime = get(difyBuilderRuntimeAtom)
+  return runtime?.enabled &&
+    get(difyBuilderMaterialControlAtom)?.phase === 'unknown' &&
+    !get(difyBuilderSessionBusyAtom)
+    ? runtime.session.refresh()
+    : Promise.resolve(false)
+})
 export const difyBuilderModelReadonlyAtom = atom((get) => {
   const view = get(difyBuilderSessionViewAtom)
   return (
@@ -284,6 +315,7 @@ export const difyBuilderCanStartFixAtom = atom((get) => {
     runtime?.canEdit &&
     !get(difyBuilderLifecycleControlAtom) &&
     !get(difyBuilderTaskControlAtom) &&
+    !get(difyBuilderMaterialControlAtom) &&
     !get(difyBuilderStartFixMutationAtom).isPending &&
     (get(difyBuilderSessionIdAtom) ||
       (!get(difyBuilderInteractionBusyAtom) && get(difyBuilderCanvasReadyAtom))) &&
@@ -307,7 +339,15 @@ const prepareDifyBuilderSessionAtom = atom(null, (get, set) => {
 
 const startDifyBuilderPromptAtom = atom(
   null,
-  async (get, set, { model, text }: { model: SessionModel; text: string }) => {
+  async (
+    get,
+    set,
+    {
+      model,
+      text,
+      attachments,
+    }: { model: SessionModel; text: string; attachments?: DifyBuilderAttachmentPayload[] },
+  ) => {
     const prompt = text.trim()
     const runtime = get(difyBuilderRuntimeAtom)
     const view = get(difyBuilderSessionViewAtom)
@@ -315,7 +355,7 @@ const startDifyBuilderPromptAtom = atom(
       !runtime?.enabled ||
       !runtime.appId ||
       !runtime.canEdit ||
-      !prompt ||
+      (!prompt && !attachments?.length) ||
       get(difyBuilderSessionBusyAtom)
     )
       return false
@@ -339,11 +379,15 @@ const startDifyBuilderPromptAtom = atom(
       sessionId: null,
       text: prompt,
     })
-    const started = await (startsBuild
-      ? deriveAppName
-        ? runtime.session.startBuild(runtime.appId, prompt, model, true)
-        : runtime.session.startBuild(runtime.appId, prompt, model)
-      : runtime.session.startEdit(runtime.appId, prompt, model))
+    const started = await (attachments?.length
+      ? startsBuild
+        ? runtime.session.startBuild(runtime.appId, prompt, model, deriveAppName, attachments)
+        : runtime.session.startEdit(runtime.appId, prompt, model, attachments)
+      : startsBuild
+        ? deriveAppName
+          ? runtime.session.startBuild(runtime.appId, prompt, model, true)
+          : runtime.session.startBuild(runtime.appId, prompt, model)
+        : runtime.session.startEdit(runtime.appId, prompt, model))
     if (deriveAppName && get(difyBuilderSessionViewAtom)) set(difyBuilderDeriveAppNameAtom, false)
     if (!started) {
       set(difyBuilderLocalUserMessageAtom, (current) =>
@@ -360,18 +404,48 @@ export const difyBuilderStartPromptAtom = atom(
     set(startDifyBuilderPromptAtom, input),
 )
 
-export const difyBuilderSendDraftAtom = atom(null, async (get, set, model: SessionModel | null) => {
-  const draft = get(difyBuilderDraftAtom)
-  const prompt = draft.trim()
-  if (!model || !prompt || !get(difyBuilderCanComposeAtom)) return false
+export const difyBuilderSendDraftAtom = atom(
+  null,
+  async (
+    get,
+    set,
+    model: SessionModel | null,
+    options?: { attachments: DifyBuilderAttachmentPayload[]; text?: string },
+  ) => {
+    const draft = get(difyBuilderDraftAtom)
+    const prompt = (options?.text ?? draft).trim()
+    const attachments = options?.attachments ?? []
+    if (
+      !model ||
+      (!prompt && !attachments.length) ||
+      attachments.length > 5 ||
+      attachments.some((file) => !file.upload_file_id) ||
+      (attachments.length ? !get(difyBuilderCanAddMaterialAtom) : !get(difyBuilderCanComposeAtom))
+    )
+      return false
 
-  const view = get(difyBuilderSessionViewAtom)
-  const isNewSession = !view
-  set(difyBuilderDraftAtom, '')
-  const started = await set(startDifyBuilderPromptAtom, { model, text: prompt })
-  if (!started && isNewSession && !get(difyBuilderDraftAtom)) set(difyBuilderDraftAtom, draft)
-  return started
-})
+    const view = get(difyBuilderSessionViewAtom)
+    const isNewSession = !view
+    if (options?.text === undefined) set(difyBuilderDraftAtom, '')
+    const runtime = get(difyBuilderRuntimeAtom)
+    const started =
+      attachments.length && get(difyBuilderSessionIdAtom) && runtime
+        ? await runtime.session.sendMessage(prompt, undefined, attachments)
+        : await set(startDifyBuilderPromptAtom, {
+            model,
+            text: prompt,
+            ...(attachments.length ? { attachments } : {}),
+          })
+    if (
+      !started &&
+      (isNewSession || attachments.length) &&
+      options?.text === undefined &&
+      !get(difyBuilderDraftAtom)
+    )
+      set(difyBuilderDraftAtom, draft)
+    return started
+  },
+)
 
 const startDifyBuilderFixAtom = atom(
   null,
