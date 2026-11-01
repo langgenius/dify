@@ -77,10 +77,9 @@ def _apply_timezone(handlers: list[logging.Handler]):
     log_tz = dify_config.LOG_TZ
     if log_tz:
         from datetime import datetime
+        from zoneinfo import ZoneInfo
 
-        import pytz
-
-        timezone = pytz.timezone(log_tz)
+        timezone = ZoneInfo(log_tz)
 
         def time_converter(seconds):
             return datetime.fromtimestamp(seconds, tz=timezone).timetuple()
