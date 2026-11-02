@@ -2,8 +2,8 @@ import type { PropsWithChildren } from 'react'
 import type { HumanInputV2FormTransport } from '../types'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { StrictMode } from 'react'
-import { createHumanInputV2Error } from '../errors'
 import { useHumanInputV2FormSession } from '../use-form-session'
+import { createHumanInputV2Error } from './fixtures/errors'
 import {
   createHumanInputV2MockScenario,
   createMockHumanInputV2FormTransport,

@@ -3,8 +3,8 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { createHumanInputV2Error } from '../errors'
 import HumanInputV2Form from '../form'
+import { createHumanInputV2Error } from './fixtures/errors'
 import {
   createHumanInputV2MockScenario,
   createMockHumanInputV2FormTransport,

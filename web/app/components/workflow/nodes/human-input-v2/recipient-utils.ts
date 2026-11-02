@@ -93,13 +93,6 @@ export function updateRecipient(
   return recipients.map((item, itemIndex) => (itemIndex === index ? recipient : item))
 }
 
-export function removeRecipient(
-  recipients: HumanInputV2Recipient[],
-  index: number,
-): HumanInputV2Recipient[] {
-  return recipients.filter((_, itemIndex) => itemIndex !== index)
-}
-
 export type RecipientSummary = {
   state: 'empty' | 'configured' | 'overflow' | 'invalid'
   contactCount: number

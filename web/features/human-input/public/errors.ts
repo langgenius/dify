@@ -55,12 +55,6 @@ type ErrorLike = {
   data?: { code?: unknown; body?: { code?: unknown } }
 }
 
-export const createHumanInputV2Error = (
-  category: HumanInputV2ErrorCategory,
-  code = `human_input_${category.replaceAll('-', '_')}`,
-  status?: number,
-) => new HumanInputV2TransportError(category, code, status)
-
 export const normalizeHumanInputV2Error = (error: unknown): HumanInputV2TransportError => {
   if (error instanceof HumanInputV2TransportError) return error
 
