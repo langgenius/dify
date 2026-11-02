@@ -545,7 +545,6 @@ class DatasetKnowledgeFSUpgradeApi(Resource):
     @error_responses(KnowledgeFSUpgradeModelsUnavailableHTTPError)
     @console_ns.doc(params=_KNOWLEDGE_FS_UPGRADE_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.expect(console_ns.models[KnowledgeFSUpgradeStartPayload.__name__])
-    @console_ns.doc(params={"payload": {"required": False}})
     @console_ns.response(
         202,
         "Upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted",
