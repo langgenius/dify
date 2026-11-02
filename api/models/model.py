@@ -2650,6 +2650,7 @@ class TraceAppConfig(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tracing_app_config_pkey"),
         sa.Index("trace_app_config_app_id_idx", "app_id"),
+        sa.Index("trace_app_config_app_provider_uq", "app_id", "tracing_provider", unique=True),
     )
 
     id: Mapped[str] = mapped_column(

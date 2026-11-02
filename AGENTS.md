@@ -6,4 +6,4 @@ Dify is an open-source platform for building LLM applications, agentic workflows
 
 - Run backend commands through `uv run --project api <command>`.
 - Backend integration tests are CI-only and are not expected to run locally.
-- Keep `docker/.env.example` limited to variables required for a default Docker Compose deployment to start. Put optional and provider-specific settings in the matching `docker/envs/*.env.example` file; `docker/.env` overrides those service-specific env files.
+- Keep `docker/.env.example` limited to settings that require manual user configuration. Omit settings whose built-in defaults work unchanged. Put optional and provider-specific settings in the matching `docker/envs/*.env.example` file; `docker/.env` overrides those service-specific env files.

@@ -267,6 +267,7 @@
   "tracing.config": "設定",
   "tracing.configProvider.clientId": "OAuthクライアントID",
   "tracing.configProvider.clientSecret": "OAuthクライアントシークレット",
+  "tracing.configProvider.configuredSecretPlaceholder": "設定済みです。空欄のままにすると保存済みの値を維持します。",
   "tracing.configProvider.databricksHost": "DatabricksワークスペースのURL",
   "tracing.configProvider.experimentId": "実験 ID",
   "tracing.configProvider.password": "パスワード",

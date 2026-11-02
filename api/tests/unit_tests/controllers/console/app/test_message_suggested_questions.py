@@ -20,7 +20,7 @@ from controllers.common.rbac.checks import RBACService
 from controllers.console.app import message as controller
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_manager import ModelInstance
-from core.ops.ops_trace_manager import TraceTask
+from dify_trace_sdk.events import TraceEvent
 from extensions.application_services.app import AppServices
 from extensions.application_services.rbac import RBACServices
 from extensions.ext_database import db
@@ -102,7 +102,7 @@ class _Provider:
     tenant_id: str
     admission_sessions: list[Session]
     prompts: list[str] = field(default_factory=list)
-    traces: list[TraceTask] = field(default_factory=list)
+    traces: list[TraceEvent] = field(default_factory=list)
 
     def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> ModelInstance:
         assert tenant_id == self.tenant_id
@@ -133,7 +133,7 @@ class _Provider:
             model="test-model", message=AssistantPromptMessage(content='["Next?"]'), usage=LLMUsage.empty_usage()
         )
 
-    def add_trace_task(self, task: TraceTask) -> None:
+    def emit(self, task: TraceEvent) -> None:
         self.traces.append(task)
 
 
@@ -228,12 +228,12 @@ def harness(
         assert tenant_id == target.tenant_id
         return provider
 
-    def trace_manager(*, app_id: str) -> _Provider:
+    def trace_manager(*, tenant_id: str, app_id: str, user_id: str | None, extras: dict[str, object]) -> _Provider:
         assert app_id == target.id
         return provider
 
     monkeypatch.setattr(message_service.ModelManager, "for_tenant", manager)
-    monkeypatch.setattr(message_service, "TraceQueueManager", trace_manager)
+    monkeypatch.setattr(message_service, "create_trace_scope_for_app", trace_manager)
     monkeypatch.setattr(login, "current_user", account)
     monkeypatch.setattr(console_wraps, "_is_setup_completed", lambda: True)
     apply_config_overrides(monkeypatch, LOGIN_DISABLED=True, RBAC_ENABLED=False)

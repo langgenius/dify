@@ -90,7 +90,7 @@ def _make_chat_generate_entity(app_config: EasyUIBasedAppConfig) -> ChatAppGener
         invoke_from=InvokeFrom.WEB_APP,
         extras={},
         call_depth=0,
-        trace_manager=None,
+        trace_scope=None,
     )
 
 

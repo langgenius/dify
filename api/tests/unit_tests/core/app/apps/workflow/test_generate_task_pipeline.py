@@ -44,6 +44,7 @@ def _build_generate_entity(run_id: str) -> WorkflowAppGenerateEntity:
         stream=False,
         invoke_from=InvokeFrom.SERVICE_API,
         workflow_execution_id=run_id,
+        trace_scope=None,
     )
 
 

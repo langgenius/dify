@@ -2,7 +2,7 @@
 
 import inspect
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from uuid import UUID
 
 import pytest
@@ -20,6 +20,8 @@ from machinery.context import RequestContext
 from models.account import Account, AccountStatus, TenantAccountRole
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app_tracing_config_service import AppTraceSettings, AppTracingConfigRecord
+from services.tracing.provider_configs import TraceProviderCapabilitiesQuery
+from services.tracing.registry import EntryPointTraceProviderCatalog
 from tests.unit_tests.config_override import apply_config_overrides
 
 AGENT_ID = UUID("1fbc2f02-f7e0-4910-9032-cbe5bf6c65d5")
@@ -32,6 +34,15 @@ class ConfigCase:
     calls: list[tuple[object, ...]] = field(default_factory=list)
     record: AppTracingConfigRecord | None = None
     failure: Exception | None = None
+
+
+def _collect_agent_traces(monkeypatch: pytest.MonkeyPatch, case: ConfigCase, *, enabled: bool) -> None:
+    """Serve the case's services from a deployment that collects Agent traces or not."""
+    capabilities = TraceProviderCapabilitiesQuery(
+        providers=EntryPointTraceProviderCatalog(), api_collection_enabled=enabled
+    )
+    services = replace(case.services, tracing=replace(case.services.tracing, provider_capabilities=capabilities))
+    monkeypatch.setattr(tracing, "application_services", lambda: services)
 
 
 @pytest.fixture
@@ -84,7 +95,7 @@ def test_enable_requires_provider_even_when_field_omitted() -> None:
 def test_capabilities_reports_current_api_gate_without_claiming_runtime_delivery(
     app: Flask, service: ConfigCase, monkeypatch: pytest.MonkeyPatch, enabled: bool
 ) -> None:
-    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=enabled)
+    _collect_agent_traces(monkeypatch, service, enabled=enabled)
     with app.test_request_context("/?tracing_provider=langfuse"):
         result = inspect.unwrap(tracing.AgentTraceCapabilitiesApi.get)(
             tracing.AgentTraceCapabilitiesApi(), CONTEXT, AGENT_ID
@@ -108,7 +119,7 @@ def test_app_capabilities_reports_api_gate(
         return AppTraceSettings()
 
     monkeypatch.setattr(service.services.apps.console, "get_trace", get_trace)
-    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=enabled)
+    _collect_agent_traces(monkeypatch, service, enabled=enabled)
     with app.test_request_context("/?tracing_provider=mlflow"):
         result = inspect.unwrap(tracing.AppTraceCapabilitiesApi.get)(
             tracing.AppTraceCapabilitiesApi(), CONTEXT, AGENT_ID

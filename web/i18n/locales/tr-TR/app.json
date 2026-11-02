@@ -267,6 +267,7 @@
   "tracing.config": "Yapılandırma",
   "tracing.configProvider.clientId": "OAuth İstemci Kimliği",
   "tracing.configProvider.clientSecret": "OAuth İstemci Sırrı",
+  "tracing.configProvider.configuredSecretPlaceholder": "Yapılandırıldı. Kayıtlı değeri korumak için boş bırakın.",
   "tracing.configProvider.databricksHost": "Databricks Çalışma Alanı URL'si",
   "tracing.configProvider.experimentId": "Deney Kimliği",
   "tracing.configProvider.password": "Parola",

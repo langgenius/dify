@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import json
 import logging
+import time
+from collections.abc import Mapping
 from contextlib import contextmanager
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
@@ -21,10 +26,38 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
     WorkflowSnapshot,
 )
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
+from core.app.apps.workflow import app_generator as wf_app_gen_module
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
 from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.workflow import node_factory as node_factory_module
+from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.system_variables import build_system_variables
+from graphon.engine import Engine as _pause_resume_Engine
+from graphon.engine.command import InMemoryChannel
+from graphon.engine_events import (
+    EngineEvent,
+    GraphRunPausedEvent,
+    GraphRunStartedEvent,
+    GraphRunSucceededEvent,
+    NodeRunSucceededEvent,
+)
+from graphon.entities import WorkflowStartReason
+from graphon.entities.base_node_data import BaseNodeData, RetryConfig
+from graphon.entities.pause_reason import SchedulingPause
+from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionStatus
+from graphon.graph import Graph
+from graphon.node_events import NodeRunResult, PauseRequestedEvent
+from graphon.nodes.base.entities import OutputVariableEntity
+from graphon.nodes.base.node import Node
+from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.start.entities import StartNodeData
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables.input_entities import VariableEntity
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
@@ -36,7 +69,38 @@ from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_upload_file
 
 
-def _make_app(*, app_id: str = "app", tenant_id: str = "tenant") -> App:
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope() -> TraceScope:
+    return TraceScope(
+        emitter=_TraceRecorder(),
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user-id",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
+
+
+def _record_trace_scope_requests(monkeypatch: pytest.MonkeyPatch, trace_scope: TraceScope) -> list[dict[str, object]]:
+    requests: list[dict[str, object]] = []
+
+    def create_trace_scope(**kwargs: object) -> TraceScope:
+        requests.append(kwargs)
+        return trace_scope
+
+    monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.create_trace_scope", create_trace_scope)
+    return requests
+
+
+def _app_generator_make_app(*, app_id: str = "app", tenant_id: str = "tenant") -> App:
     return App(
         id=app_id,
         tenant_id=tenant_id,
@@ -249,17 +313,8 @@ class TestAdvancedChatAppGeneratorInternals:
             SimpleNamespace(engine=sqlite_engine, session=unbound_session),
         )
         monkeypatch.setattr(generator, "_prepare_user_inputs", lambda **kwargs: kwargs["user_inputs"])
-
-        dummy_trace_queue_manager = type(
-            "_DummyTraceQueueManager",
-            (TraceQueueManager,),
-            {
-                "__init__": lambda self, app_id=None, user_id=None: (
-                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
-                )
-            },
-        )
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.TraceQueueManager", dummy_trace_queue_manager)
+        trace_scope = _trace_scope()
+        scope_requests = _record_trace_scope_requests(monkeypatch, trace_scope)
 
         def _fake_generate(**kwargs):
             captured.update(kwargs)
@@ -272,15 +327,19 @@ class TestAdvancedChatAppGeneratorInternals:
         user = Account(name="Tester", email="tester@example.com")
         user.id = "user-id"
 
+        app_model = _app_generator_make_app()
+        app_model.tracing = '{"enabled": true, "tracing_provider": "langfuse"}'
+
         result = generator.generate(
-            app_model=_make_app(),
-            workflow=_make_workflow(),
+            app_model=app_model,
+            workflow=_app_generator_make_workflow(),
             user=user,
             args={
                 "query": "hello",
                 "inputs": {"k": "v"},
                 "conversation_id": "conversation-id",
                 "files": [{"id": "f"}],
+                "trace_session_id": "session-1",
             },
             invoke_from=InvokeFrom.WEB_APP,
             workflow_run_id="run-id",
@@ -294,10 +353,23 @@ class TestAdvancedChatAppGeneratorInternals:
         assert captured["session"] is session
         assert build_files_called["called"] is True
         assert get_conversation.call_args.kwargs["session"] is session
+        application_generate_entity = captured["application_generate_entity"]
+        assert isinstance(application_generate_entity, AdvancedChatAppGenerateEntity)
+        assert application_generate_entity.trace_scope is trace_scope
+        assert scope_requests == [
+            {
+                "tenant_id": "tenant",
+                "app_id": "app",
+                "app_tracing": '{"enabled": true, "tracing_provider": "langfuse"}',
+                "user_id": "user-id",
+                "extras": application_generate_entity.extras,
+            }
+        ]
+        assert application_generate_entity.extras["trace_session_id"] == "session-1"
 
     def test_resume_delegates_to_generate(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
-        existing_trace_manager = SimpleNamespace(app_id="existing-app", user_id="existing-user")
+        existing_trace_scope = _trace_scope()
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",
             app_config=self._build_app_config(),
@@ -308,7 +380,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=True,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=existing_trace_manager,
+            trace_scope=existing_trace_scope,
             workflow_run_id="run-id",
         )
 
@@ -339,7 +411,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
         assert result.resumed is True
         assert captured_entity is not None
-        assert captured_entity.trace_manager is existing_trace_manager
+        assert captured_entity.trace_scope is existing_trace_scope
         assert captured_graph_runtime_state is not None
 
     def test_single_iteration_generate_builds_debug_task(
@@ -485,7 +557,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=None,
+            trace_scope=None,
             workflow_run_id="run-id",
         )
 
@@ -613,7 +685,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=None,
+            trace_scope=None,
             workflow_run_id="run-id",
         )
 
@@ -724,7 +796,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=None,
+            trace_scope=None,
             workflow_run_id="run-id",
         )
 
@@ -773,7 +845,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={},
-            trace_manager=None,
+            trace_scope=None,
             workflow_run_id="run-id",
         )
 
@@ -824,7 +896,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={},
-            trace_manager=None,
+            trace_scope=None,
             workflow_run_id="run-id",
         )
 
@@ -890,7 +962,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={},
-            trace_manager=None,
+            trace_scope=None,
             workflow_run_id="run-id",
         )
 
@@ -978,7 +1050,7 @@ class TestAdvancedChatAppGeneratorInternals:
                 stream=False,
                 invoke_from=InvokeFrom.DEBUGGER,
                 extras={},
-                trace_manager=None,
+                trace_scope=None,
                 workflow_run_id="run-id",
             )
 
@@ -1034,7 +1106,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=None,
+            trace_scope=None,
             workflow_run_id="run-id",
         )
 
@@ -1084,7 +1156,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=None,
+            trace_scope=None,
             workflow_run_id="run-id",
         )
 
@@ -1142,7 +1214,7 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=False,
             invoke_from=InvokeFrom.SERVICE_API,
             extras={},
-            trace_manager=None,
+            trace_scope=None,
             workflow_run_id="run-id",
         )
 
@@ -1212,19 +1284,6 @@ class TestAdvancedChatAppGeneratorInternals:
             "core.app.apps.advanced_chat.app_generator.FileUploadConfigManager.convert",
             lambda features_dict, is_vision=False: None,
         )
-        dummy_trace_queue_manager = type(
-            "_DummyTraceQueueManager",
-            (TraceQueueManager,),
-            {
-                "__init__": lambda self, app_id=None, user_id=None: (
-                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
-                )
-            },
-        )
-        monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
-            dummy_trace_queue_manager,
-        )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(),
@@ -1287,19 +1346,6 @@ class TestAdvancedChatAppGeneratorInternals:
             "core.app.apps.advanced_chat.app_generator.FileUploadConfigManager.convert",
             lambda features_dict, is_vision=False: None,
         )
-        dummy_trace_queue_manager = type(
-            "_DummyTraceQueueManager",
-            (TraceQueueManager,),
-            {
-                "__init__": lambda self, app_id=None, user_id=None: (
-                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
-                )
-            },
-        )
-        monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
-            dummy_trace_queue_manager,
-        )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
             lambda **kwargs: SimpleNamespace(),
@@ -1351,9 +1397,9 @@ class TestAdvancedChatAppGeneratorResume:
             workflow_id="workflow-id",
         )
 
-    def test_resume_restores_trace_manager_when_missing(
+    def test_resume_recreates_trace_scope_when_missing(
         self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ):
+    ) -> None:
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",
@@ -1367,55 +1413,54 @@ class TestAdvancedChatAppGeneratorResume:
             user_id="user",
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
-            extras={},
-            trace_manager=None,
+            extras={"trace_session_id": "session-1"},
+            trace_scope=None,
             workflow_run_id="run-id",
         )
-        dummy_trace_queue_manager = type(
-            "_DummyTraceQueueManager",
-            (TraceQueueManager,),
+        trace_scope = _trace_scope()
+        scope_requests = _record_trace_scope_requests(monkeypatch, trace_scope)
+        captured_entity: AdvancedChatAppGenerateEntity | None = None
+
+        def _fake_generate(**kwargs):
+            nonlocal captured_entity
+            captured_entity = kwargs["application_generate_entity"]
+            return SimpleNamespace(ok=True)
+
+        monkeypatch.setattr(generator, "_generate", _fake_generate)
+        app_model = _app_generator_make_app(app_id="app-id")
+        app_model.tracing = '{"enabled": true, "tracing_provider": "langfuse"}'
+
+        result = generator.resume(
+            app_model=app_model,
+            workflow=_app_generator_make_workflow(),
+            user=_make_end_user(),
+            conversation=_make_conversation(),
+            message=_make_message(),
+            session=unbound_session,
+            application_generate_entity=application_generate_entity,
+            workflow_execution_repository=SimpleNamespace(),
+            workflow_node_execution_repository=SimpleNamespace(),
+            graph_runtime_state=SimpleNamespace(),
+        )
+
+        assert result.ok is True
+        assert captured_entity is not None
+        assert captured_entity.trace_scope is trace_scope
+        assert scope_requests == [
             {
-                "__init__": lambda self, app_id=None, user_id=None: (
-                    setattr(self, "app_id", app_id) or setattr(self, "user_id", user_id)
-                )
-            },
-        )
-        monkeypatch.setattr(
-            "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
-            dummy_trace_queue_manager,
-        )
-        captured_entity: AdvancedChatAppGenerateEntity | None = None
+                "tenant_id": "tenant",
+                "app_id": "app-id",
+                "app_tracing": '{"enabled": true, "tracing_provider": "langfuse"}',
+                "user_id": "session-id",
+                "extras": {"trace_session_id": "session-1"},
+            }
+        ]
 
-        def _fake_generate(**kwargs):
-            nonlocal captured_entity
-            captured_entity = kwargs["application_generate_entity"]
-            return SimpleNamespace(ok=True)
-
-        monkeypatch.setattr(generator, "_generate", _fake_generate)
-
-        result = generator.resume(
-            app_model=_make_app(app_id="app-id"),
-            workflow=_make_workflow(),
-            user=_make_end_user(),
-            conversation=_make_conversation(),
-            message=_make_message(),
-            session=unbound_session,
-            application_generate_entity=application_generate_entity,
-            workflow_execution_repository=SimpleNamespace(),
-            workflow_node_execution_repository=SimpleNamespace(),
-            graph_runtime_state=SimpleNamespace(),
-        )
-
-        assert result.ok is True
-        assert captured_entity is not None
-        trace_manager = captured_entity.trace_manager
-        assert isinstance(trace_manager, dummy_trace_queue_manager)
-        assert trace_manager.app_id == "app-id"
-        assert trace_manager.user_id == "session-id"
-
-    def test_resume_preserves_existing_trace_manager(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
+    def test_resume_preserves_existing_trace_scope(
+        self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ) -> None:
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
-        existing_trace_manager = SimpleNamespace(app_id="existing-app", user_id="existing-user")
+        existing_trace_scope = _trace_scope()
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",
             app_config=self._build_app_config(),
@@ -1429,9 +1474,10 @@ class TestAdvancedChatAppGeneratorResume:
             stream=False,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=existing_trace_manager,
+            trace_scope=existing_trace_scope,
             workflow_run_id="run-id",
         )
+        scope_requests = _record_trace_scope_requests(monkeypatch, _trace_scope())
         captured_entity: AdvancedChatAppGenerateEntity | None = None
 
         def _fake_generate(**kwargs):
@@ -1456,4 +1502,594 @@ class TestAdvancedChatAppGeneratorResume:
 
         assert result.ok is True
         assert captured_entity is not None
-        assert captured_entity.trace_manager is existing_trace_manager
+        assert captured_entity.trace_scope is existing_trace_scope
+        assert scope_requests == []
+
+
+def _make_app_config() -> WorkflowUIBasedAppConfig:
+    return WorkflowUIBasedAppConfig(
+        tenant_id="tenant-id",
+        app_id="app-id",
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_id="workflow-id",
+        additional_features=AppAdditionalFeatures(),
+        variables=[],
+    )
+
+
+def _make_generate_entity(app_config: WorkflowUIBasedAppConfig) -> AdvancedChatAppGenerateEntity:
+    return AdvancedChatAppGenerateEntity(
+        task_id="task-id",
+        app_config=app_config,
+        file_upload_config=None,
+        conversation_id=None,
+        inputs={},
+        query="hello",
+        files=[],
+        parent_message_id=None,
+        user_id="user-id",
+        stream=True,
+        invoke_from=InvokeFrom.WEB_APP,
+        extras={},
+        workflow_run_id="workflow-run-id",
+    )
+
+
+def _app() -> App:
+    return App(
+        id="app-id",
+        tenant_id="tenant-id",
+        name="Advanced chat app",
+        description="",
+        mode=AppMode.ADVANCED_CHAT,
+        enable_site=False,
+        enable_api=False,
+    )
+
+
+def _workflow() -> _advanced_chat_app_generator_Workflow:
+    return _advanced_chat_app_generator_Workflow.new(
+        tenant_id="tenant-id",
+        app_id="app-id",
+        type="chat",
+        version=_advanced_chat_app_generator_Workflow.VERSION_DRAFT,
+        graph='{"nodes": [], "edges": []}',
+        features="{}",
+        created_by="user-id",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+
+
+def _account() -> _advanced_chat_app_generator_Account:
+    account = _advanced_chat_app_generator_Account(name="User", email="user@example.com")
+    account.id = "user-id"
+    return account
+
+
+def test_init_generate_records_sets_conversation_metadata(sqlite_session: Session):
+    app_config = _make_app_config()
+    entity = _make_generate_entity(app_config)
+
+    generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+
+    conversation, _ = generator._init_generate_records(
+        entity,
+        conversation=None,
+        session=sqlite_session,
+    )
+
+    assert entity.conversation_id == conversation.id
+    assert conversation.id is not None
+    assert entity.is_new_conversation is True
+
+
+def test_init_generate_records_marks_existing_conversation(sqlite_session: Session):
+    app_config = _make_app_config()
+    entity = _make_generate_entity(app_config)
+
+    existing_conversation = Conversation(
+        app_id=app_config.app_id,
+        app_model_config_id=None,
+        model_provider=None,
+        override_model_configs=None,
+        model_id=None,
+        mode=app_config.app_mode.value,
+        name="existing",
+        _inputs={},
+        introduction="",
+        system_instruction="",
+        system_instruction_tokens=0,
+        status="normal",
+        invoke_from=InvokeFrom.WEB_APP.value,
+        from_source=ConversationFromSource.API,
+        from_end_user_id="user-id",
+        from_account_id=None,
+    )
+    existing_conversation.id = "existing-conversation-id"
+    sqlite_session.add(existing_conversation)
+    sqlite_session.flush()
+
+    generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+
+    conversation, _ = generator._init_generate_records(
+        entity,
+        conversation=existing_conversation,
+        session=sqlite_session,
+    )
+
+    assert entity.conversation_id == "existing-conversation-id"
+    assert conversation is existing_conversation
+    assert entity.is_new_conversation is False
+
+
+def test_generate_falls_back_to_new_conversation_when_conversation_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: _advanced_chat_app_generator_Engine,
+    sqlite_session: Session,
+):
+    app_config = _make_app_config()
+    workflow = _workflow()
+    app_model = _app()
+    user = _account()
+
+    def raise_conversation_not_exists(**_kwargs):
+        raise ConversationNotExistsError()
+
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.ConversationService.get_conversation",
+        raise_conversation_not_exists,
+    )
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.FileUploadConfigManager.convert",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.AdvancedChatAppConfigManager.get_app_config",
+        lambda **_kwargs: app_config,
+    )
+    monkeypatch.setattr(app_generator_module, "db", SimpleNamespace(engine=sqlite_engine))
+    trace_scope = TraceScope(
+        emitter=_TraceRecorder(),
+        tenant_id="tenant-id",
+        app_id="app-id",
+        user_id="user-id",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
+    scope_requests: list[dict[str, object]] = []
+
+    def create_trace_scope(**kwargs: object) -> TraceScope:
+        scope_requests.append(kwargs)
+        return trace_scope
+
+    monkeypatch.setattr(app_generator_module, "create_trace_scope", create_trace_scope)
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+        lambda **_kwargs: SimpleNamespace(),
+    )
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        lambda **_kwargs: SimpleNamespace(),
+    )
+
+    captured: dict[str, object] = {}
+    session = sqlite_session
+
+    def fake_generate(self, **kwargs):
+        captured.update(kwargs)
+        return {"status": "ok"}
+
+    monkeypatch.setattr(AdvancedChatAppGenerator, "_generate", fake_generate)
+
+    result = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
+        app_model=app_model,
+        workflow=workflow,
+        user=user,
+        args={"inputs": {}, "query": "hello", "conversation_id": "missing-conversation-id"},
+        invoke_from=InvokeFrom.SERVICE_API,
+        workflow_run_id="workflow-run-id",
+        streaming=False,
+        session=session,
+    )
+
+    assert result == {"status": "ok"}
+    assert captured["conversation"] is None
+    assert captured["session"] is session
+    application_generate_entity = captured["application_generate_entity"]
+    assert isinstance(application_generate_entity, AdvancedChatAppGenerateEntity)
+    assert application_generate_entity.conversation_id is None
+    assert application_generate_entity.trace_scope is trace_scope
+    assert scope_requests == [
+        {
+            "tenant_id": "tenant-id",
+            "app_id": "app-id",
+            "app_tracing": None,
+            "user_id": "user-id",
+            "extras": application_generate_entity.extras,
+        }
+    ]
+
+
+def test_message_cycle_manager_uses_new_conversation_flag(monkeypatch: pytest.MonkeyPatch):
+    app_config = _make_app_config()
+    entity = _make_generate_entity(app_config)
+    entity.conversation_id = "existing-conversation-id"
+    entity.is_new_conversation = True
+    entity.extras = {"auto_generate_conversation_name": True}
+
+    captured = {}
+
+    class DummyThread:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.started = False
+
+        def start(self):
+            self.started = True
+
+    def fake_thread[**P](*args: P.args, **kwargs: P.kwargs):
+        thread = DummyThread(**kwargs)
+        captured["thread"] = thread
+        return thread
+
+    monkeypatch.setattr(message_cycle_manager, "Timer", fake_thread)
+
+    manager = MessageCycleManager(application_generate_entity=entity, task_state=MagicMock())
+    thread = manager.generate_conversation_name(conversation_id="existing-conversation-id", query="hello")
+
+    assert thread is captured["thread"]
+    assert thread.started is True
+    assert entity.is_new_conversation is False
+
+
+class _StubToolNodeData(BaseNodeData):
+    type: NodeType = BuiltinNodeTypes.TOOL
+    pause_on: bool = False
+
+
+class _StubToolNode(Node[_StubToolNodeData]):
+    node_type = BuiltinNodeTypes.TOOL
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
+    def __init__(
+        self,
+        node_id: str,
+        data: _StubToolNodeData,
+        *,
+        init_params,
+        runtime_state,
+        **_kwargs: Any,
+    ) -> None:
+        super().__init__(
+            node_id=node_id,
+            data=data,
+            init_params=init_params,
+            runtime_state=runtime_state,
+        )
+
+    def _get_error_strategy(self):
+        return self._node_data.error_strategy
+
+    def _get_retry_config(self) -> RetryConfig:
+        return self._node_data.retry_config
+
+    def _get_title(self) -> str:
+        return self._node_data.title
+
+    def _get_description(self):
+        return self._node_data.desc
+
+    def _get_default_value_dict(self) -> dict[str, Any]:
+        return self._node_data.default_value_dict
+
+    def get_base_node_data(self) -> BaseNodeData:
+        return self._node_data
+
+    def _run(self):
+        if self.node_data.pause_on:
+            yield PauseRequestedEvent(reason=SchedulingPause(message="test pause"))
+            return
+
+        result = NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            outputs={"value": f"{self.id}-done"},
+        )
+        yield self._convert_node_run_result_to_node_event(result)
+
+
+def _patch_tool_node(mocker: MockerFixture):
+    original_resolve_node_class = node_factory_module.resolve_workflow_node_class
+
+    def _patched_resolve_node_class(
+        *,
+        node_type: NodeType,
+        node_version: str,
+        node_data: Mapping[str, Any] | BaseNodeData | None = None,
+    ) -> type[Node]:
+        if node_type == BuiltinNodeTypes.TOOL:
+            return _StubToolNode
+        return original_resolve_node_class(
+            node_type=node_type,
+            node_version=node_version,
+            node_data=node_data,
+        )
+
+    mocker.patch.object(node_factory_module, "resolve_workflow_node_class", side_effect=_patched_resolve_node_class)
+
+
+def _node_data(node_type: NodeType, data: BaseNodeData) -> dict[str, object]:
+    node_data = data.model_dump()
+    node_data["type"] = str(node_type)
+    return node_data
+
+
+def _build_graph_config(*, pause_on: str | None) -> dict[str, object]:
+    start_data = StartNodeData(title="start", variables=[])
+    tool_data_a = _StubToolNodeData(title="tool", pause_on=pause_on == "tool_a")
+    tool_data_b = _StubToolNodeData(title="tool", pause_on=pause_on == "tool_b")
+    tool_data_c = _StubToolNodeData(title="tool", pause_on=pause_on == "tool_c")
+    end_data = EndNodeData(
+        title="end",
+        outputs=[OutputVariableEntity(variable="result", value_selector=["tool_c", "value"])],
+        desc=None,
+    )
+
+    nodes = [
+        {"id": "start", "data": _node_data(BuiltinNodeTypes.START, start_data)},
+        {"id": "tool_a", "data": _node_data(BuiltinNodeTypes.TOOL, tool_data_a)},
+        {"id": "tool_b", "data": _node_data(BuiltinNodeTypes.TOOL, tool_data_b)},
+        {"id": "tool_c", "data": _node_data(BuiltinNodeTypes.TOOL, tool_data_c)},
+        {"id": "end", "data": _node_data(BuiltinNodeTypes.END, end_data)},
+    ]
+    edges = [
+        {"source": "start", "target": "tool_a"},
+        {"source": "tool_a", "target": "tool_b"},
+        {"source": "tool_b", "target": "tool_c"},
+        {"source": "tool_c", "target": "end"},
+    ]
+    return {"nodes": nodes, "edges": edges}
+
+
+def _build_graph(runtime_state: RuntimeState, *, pause_on: str | None) -> Graph:
+    graph_config = _build_graph_config(pause_on=pause_on)
+    params = build_test_graph_init_params(
+        workflow_id="workflow",
+        graph_config=graph_config,
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        user_from="account",
+        invoke_from="service-api",
+        call_depth=0,
+    )
+
+    node_factory = DifyNodeFactory(
+        init_params=params,
+        runtime_state=runtime_state,
+    )
+
+    return Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
+
+
+def _build_runtime_state(run_id: str) -> RuntimeState:
+    variable_pool = VariablePool.from_bootstrap(
+        system_variables=build_system_variables(user_id="user", app_id="app", workflow_id="workflow"),
+        user_inputs={},
+        conversation_variables=[],
+    )
+    variable_pool.add(("sys", "workflow_run_id"), run_id)
+    return RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter())
+
+
+def _pause_resume_make_app() -> App:
+    return App(
+        id="app",
+        tenant_id="tenant",
+        name="Pause Resume App",
+        mode=AppMode.WORKFLOW,
+        enable_site=False,
+        enable_api=False,
+    )
+
+
+def _pause_resume_make_workflow() -> _pause_resume_Workflow:
+    return _pause_resume_Workflow(
+        id="workflow",
+        tenant_id="tenant",
+        app_id="app",
+        type=WorkflowType.CHAT,
+        version=_pause_resume_Workflow.VERSION_DRAFT,
+        graph="{}",
+        _features="{}",
+        created_by="user",
+    )
+
+
+def _pause_resume_make_account() -> _pause_resume_Account:
+    account = _pause_resume_Account(name="Pause Resume User", email="pause@example.com")
+    account.id = "user"
+    return account
+
+
+def _pause_resume_make_conversation() -> Conversation:
+    return Conversation(
+        id="conv",
+        app_id="app",
+        mode=AppMode.ADVANCED_CHAT,
+        name="Pause Resume Conversation",
+        _inputs={},
+        from_source=ConversationFromSource.API,
+    )
+
+
+def _pause_resume_make_message() -> Message:
+    return Message(
+        id="msg",
+        app_id="app",
+        conversation_id="conv",
+        _inputs={},
+        query="query",
+        message={},
+        answer="answer",
+        message_unit_price=Decimal(0),
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+    )
+
+
+def _pause_resume_make_app_config(app_mode: AppMode) -> WorkflowUIBasedAppConfig:
+    return WorkflowUIBasedAppConfig(tenant_id="tenant", app_id="app", app_mode=app_mode, workflow_id="workflow")
+
+
+def _make_workflow_generate_entity() -> WorkflowAppGenerateEntity:
+    """A deserialized paused entity: its trace scope is not persisted."""
+    return WorkflowAppGenerateEntity(
+        task_id="task",
+        app_config=_pause_resume_make_app_config(AppMode.WORKFLOW),
+        inputs={},
+        files=[],
+        user_id="user",
+        user_from=UserFrom.END_USER,
+        stream=False,
+        invoke_from=InvokeFrom.SERVICE_API,
+        workflow_execution_id="paused-run",
+    )
+
+
+def _make_advanced_chat_generate_entity() -> AdvancedChatAppGenerateEntity:
+    """A deserialized paused entity: its trace scope is not persisted."""
+    return AdvancedChatAppGenerateEntity(
+        task_id="task",
+        app_config=_pause_resume_make_app_config(AppMode.ADVANCED_CHAT),
+        conversation_id="conv",
+        inputs={},
+        query="query",
+        files=[],
+        user_id="user",
+        stream=False,
+        invoke_from=InvokeFrom.SERVICE_API,
+        workflow_run_id="adv-paused",
+    )
+
+
+def _run_with_optional_pause(runtime_state: RuntimeState, *, pause_on: str | None) -> list[EngineEvent]:
+    command_channel = InMemoryChannel()
+    graph = _build_graph(runtime_state, pause_on=pause_on)
+    engine = _pause_resume_Engine(
+        graph=graph,
+        runtime_state=runtime_state,
+        command_channel=command_channel,
+    )
+
+    events: list[EngineEvent] = []
+    for event in engine.run():
+        events.append(event)
+    return events
+
+
+def _node_successes(events: list[EngineEvent]) -> list[str]:
+    return [evt.node_id for evt in events if isinstance(evt, NodeRunSucceededEvent)]
+
+
+def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
+    _patch_tool_node(mocker)
+
+    baseline_state = _build_runtime_state("baseline")
+    baseline_events = _run_with_optional_pause(baseline_state, pause_on=None)
+    assert isinstance(baseline_events[-1], GraphRunSucceededEvent)
+    baseline_nodes = _node_successes(baseline_events)
+    baseline_outputs = baseline_state.outputs
+
+    paused_state = _build_runtime_state("paused-run")
+    paused_events = _run_with_optional_pause(paused_state, pause_on="tool_a")
+    assert isinstance(paused_events[-1], GraphRunPausedEvent)
+    paused_nodes = _node_successes(paused_events)
+    snapshot = paused_state.dumps()
+
+    resumed_state = RuntimeState.from_snapshot(snapshot)
+
+    generator = wf_app_gen_module.WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+
+    def _fake_generate(**kwargs):
+        state: RuntimeState = kwargs["graph_runtime_state"]
+        events = _run_with_optional_pause(state, pause_on=None)
+        return _node_successes(events)
+
+    mocker.patch.object(generator, "_generate", side_effect=_fake_generate)
+
+    resumed_nodes = generator.resume(
+        app_model=_pause_resume_make_app(),
+        workflow=_pause_resume_make_workflow(),
+        user=_pause_resume_make_account(),
+        application_generate_entity=_make_workflow_generate_entity(),
+        graph_runtime_state=resumed_state,
+        workflow_execution_repository=SimpleNamespace(),
+        workflow_node_execution_repository=SimpleNamespace(),
+    )
+
+    assert paused_nodes + resumed_nodes == baseline_nodes
+    assert resumed_state.outputs == baseline_outputs
+
+
+def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture, unbound_session: Session):
+    _patch_tool_node(mocker)
+
+    baseline_state = _build_runtime_state("adv-baseline")
+    baseline_events = _run_with_optional_pause(baseline_state, pause_on=None)
+    assert isinstance(baseline_events[-1], GraphRunSucceededEvent)
+    baseline_nodes = _node_successes(baseline_events)
+    baseline_outputs = baseline_state.outputs
+
+    paused_state = _build_runtime_state("adv-paused")
+    paused_events = _run_with_optional_pause(paused_state, pause_on="tool_a")
+    assert isinstance(paused_events[-1], GraphRunPausedEvent)
+    paused_nodes = _node_successes(paused_events)
+    snapshot = paused_state.dumps()
+
+    resumed_state = RuntimeState.from_snapshot(snapshot)
+
+    generator = adv_app_gen_module.AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+
+    def _fake_generate(**kwargs):
+        state: RuntimeState = kwargs["graph_runtime_state"]
+        events = _run_with_optional_pause(state, pause_on=None)
+        return _node_successes(events)
+
+    mocker.patch.object(generator, "_generate", side_effect=_fake_generate)
+
+    resumed_nodes = generator.resume(
+        app_model=_pause_resume_make_app(),
+        workflow=_pause_resume_make_workflow(),
+        user=_pause_resume_make_account(),
+        conversation=_pause_resume_make_conversation(),
+        message=_pause_resume_make_message(),
+        session=unbound_session,
+        application_generate_entity=_make_advanced_chat_generate_entity(),
+        workflow_execution_repository=SimpleNamespace(),
+        workflow_node_execution_repository=SimpleNamespace(),
+        graph_runtime_state=resumed_state,
+    )
+
+    assert paused_nodes + resumed_nodes == baseline_nodes
+    assert resumed_state.outputs == baseline_outputs
+
+
+def test_resume_emits_resumption_start_reason(mocker: MockerFixture) -> None:
+    _patch_tool_node(mocker)
+
+    paused_state = _build_runtime_state("resume-reason")
+    paused_events = _run_with_optional_pause(paused_state, pause_on="tool_a")
+    initial_start = next(event for event in paused_events if isinstance(event, GraphRunStartedEvent))
+    assert initial_start.reason == WorkflowStartReason.INITIAL
+
+    resumed_state = RuntimeState.from_snapshot(paused_state.dumps())
+    resumed_events = _run_with_optional_pause(resumed_state, pause_on=None)
+    resume_start = next(event for event in resumed_events if isinstance(event, GraphRunStartedEvent))
+    assert resume_start.reason == WorkflowStartReason.RESUMPTION

@@ -1,9 +1,9 @@
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
 from typing import cast
 
+from dify_trace_sdk.events import SuggestedQuestionsGenerated
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -14,11 +14,10 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_context import use_credit_usage_metadata
 from core.model_manager import ModelInstance, ModelManager
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.ops.utils import measure_time
 from extensions.ext_database import db
+from extensions.tracing import create_trace_scope_for_app
 from graphon.model_runtime.entities.model_entities import ModelType
+from libs.datetime_utils import Timing, measure_time
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.agent_config_entities import AgentSoulConfig
@@ -493,15 +492,16 @@ class MessageService:
         return questions
 
     @staticmethod
-    def trace_suggested_questions(
-        *, context: SuggestedQuestionsContext, questions: list[str], timer: Mapping[str, datetime | None]
-    ) -> None:
-        trace_manager = TraceQueueManager(app_id=context.app_id)
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.SUGGESTED_QUESTION_TRACE,
-                message_id=context.message_id,
-                suggested_question=questions,
-                timer=timer,
-            )
+    def trace_suggested_questions(*, context: SuggestedQuestionsContext, questions: list[str], timer: Timing) -> None:
+        trace_scope = create_trace_scope_for_app(
+            tenant_id=context.tenant_id, app_id=context.app_id, user_id=None, extras={}
         )
+        if trace_scope is not None:
+            trace_scope.emit(
+                SuggestedQuestionsGenerated(
+                    message_id=context.message_id,
+                    questions=questions,
+                    started_at=timer.started_at,
+                    ended_at=timer.ended_at,
+                )
+            )

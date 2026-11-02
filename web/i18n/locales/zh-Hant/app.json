@@ -267,6 +267,7 @@
   "tracing.config": "配置",
   "tracing.configProvider.clientId": "OAuth 用戶端 ID",
   "tracing.configProvider.clientSecret": "OAuth 用戶端密鑰",
+  "tracing.configProvider.configuredSecretPlaceholder": "已配置。留空則保留已儲存的值。",
   "tracing.configProvider.databricksHost": "Databricks 工作區網址",
   "tracing.configProvider.experimentId": "實驗編號",
   "tracing.configProvider.password": "密碼",

@@ -267,6 +267,7 @@
   "tracing.config": "Konfiqurasiya",
   "tracing.configProvider.clientId": "OAuth müştəri ID-si",
   "tracing.configProvider.clientSecret": "OAuth müştəri sirri",
+  "tracing.configProvider.configuredSecretPlaceholder": "Konfiqurasiya edilib. Saxlanılmış dəyəri dəyişməmək üçün boş saxlayın.",
   "tracing.configProvider.databricksHost": "Databricks iş sahəsinin URL-i",
   "tracing.configProvider.experimentId": "Təcrübə ID-si",
   "tracing.configProvider.password": "Parol",

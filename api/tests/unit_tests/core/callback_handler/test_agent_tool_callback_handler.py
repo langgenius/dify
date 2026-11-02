@@ -126,27 +126,9 @@ class TestDifyAgentCallbackHandler:
 
         mock_print_text.assert_not_called()
 
-    def test_on_tool_end_debug_enabled_and_trace(
-        self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture
-    ):
-        mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
-        mock_trace_manager = MagicMock()
-
-        handler.on_tool_end(
-            tool_name="tool1",
-            tool_inputs={"a": 1},
-            tool_outputs="output",
-            message_id="msg1",
-            timer=123,
-            trace_manager=mock_trace_manager,
-        )
-
-        assert mock_print_text.call_count >= 1
-        mock_trace_manager.add_trace_task.assert_called_once()
-
-    def test_on_tool_end_without_trace_manager(
-        self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture
-    ):
+    def test_on_tool_end_debug_enabled(
+        self, handler: DifyAgentCallbackHandler, enable_debug: None, mocker: MockerFixture
+    ) -> None:
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         handler.on_tool_end(

@@ -18,7 +18,7 @@ from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.file import remote_fetcher
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
 from core.model_manager import ModelInstance
-from core.ops.ops_trace_manager import TraceTask
+from dify_trace_sdk.events import TraceEvent
 from extensions.ext_database import db
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities import AssistantPromptMessage, PromptMessage
@@ -51,7 +51,7 @@ class _Provider:
     model_requests: list[tuple[str, str]] = field(default_factory=list)
     invocation_parameters: list[Mapping[str, object]] = field(default_factory=list)
     metadata: list[Mapping[str, object] | None] = field(default_factory=list)
-    traces: list[TraceTask] = field(default_factory=list)
+    traces: list[TraceEvent] = field(default_factory=list)
     model_sessions: list[Session] = field(default_factory=list)
     io_sessions: list[tuple[str, bool]] = field(default_factory=list)
     failure: Exception | None = None
@@ -124,7 +124,7 @@ class _Provider:
             usage=LLMUsage.empty_usage(),
         )
 
-    def add_trace_task(self, task: TraceTask) -> None:
+    def emit(self, task: TraceEvent) -> None:
         self.traces.append(task)
 
 
@@ -233,12 +233,12 @@ def harness(
         assert tenant_id == target.tenant_id
         return provider
 
-    def trace_manager(*, app_id: str) -> _Provider:
+    def trace_manager(*, tenant_id: str, app_id: str, user_id: str | None, extras: dict[str, object]) -> _Provider:
         assert app_id == target.id
         return provider
 
     monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)
-    monkeypatch.setattr(message_module, "TraceQueueManager", trace_manager)
+    monkeypatch.setattr(message_module, "create_trace_scope_for_app", trace_manager)
     flask_app = Flask(__name__)
     flask_app.config.update(TESTING=True, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
     db.init_app(flask_app)
@@ -587,7 +587,7 @@ def test_runtime_keeps_its_context_state_while_releasing_sessions_and_preserving
                 assert not session.is_active
         return invoke_llm(prompt_messages=prompt_messages, model_parameters=model_parameters, stop=stop, stream=stream)
 
-    def trace(task: TraceTask) -> None:
+    def trace(task: TraceEvent) -> None:
         assert g.get("suggested_question_steps") is runtime_steps
         runtime_steps.append("trace")
         session = db.session()
@@ -602,7 +602,7 @@ def test_runtime_keeps_its_context_state_while_releasing_sessions_and_preserving
     monkeypatch.setattr(harness.provider, "_resolve_model", resolve)
     monkeypatch.setattr(harness.provider, "get_llm_num_tokens", tokens)
     monkeypatch.setattr(harness.provider, "invoke_llm", invoke)
-    monkeypatch.setattr(harness.provider, "add_trace_task", trace)
+    monkeypatch.setattr(harness.provider, "emit", trace)
     with harness.flask_app.app_context():
         caller_marker = object()
         g.caller_marker = caller_marker

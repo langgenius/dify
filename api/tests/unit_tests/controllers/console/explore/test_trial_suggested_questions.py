@@ -21,7 +21,7 @@ import services.message_service as message_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_context import get_credit_usage_metadata
 from core.model_manager import ModelInstance
-from core.ops.ops_trace_manager import TraceTask
+from dify_trace_sdk.events import TraceEvent
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
@@ -64,7 +64,7 @@ class _Provider:
     token_calls: int = 0
     tenant_ids: list[str] = field(default_factory=list)
     prompts: list[str] = field(default_factory=list)
-    traces: list[TraceTask] = field(default_factory=list)
+    traces: list[TraceEvent] = field(default_factory=list)
     questions: list[str] = field(default_factory=lambda: ["Next question?", "Another question?"])
     failure: Exception | None = None
     missing_model: bool = False
@@ -120,7 +120,7 @@ class _Provider:
             usage=LLMUsage.empty_usage(),
         )
 
-    def add_trace_task(self, task: TraceTask) -> None:
+    def emit(self, task: TraceEvent) -> None:
         self.traces.append(task)
 
 
@@ -253,12 +253,12 @@ def harness(
         assert tenant_id == target.tenant_id
         return provider
 
-    def trace_manager(*, app_id: str) -> _Provider:
+    def trace_manager(*, tenant_id: str, app_id: str, user_id: str | None, extras: dict[str, object]) -> _Provider:
         assert app_id == target.id
         return provider
 
     monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)
-    monkeypatch.setattr(message_module, "TraceQueueManager", trace_manager)
+    monkeypatch.setattr(message_module, "create_trace_scope_for_app", trace_manager)
 
     app = Flask(__name__)
     app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))

@@ -29,7 +29,7 @@ class TestMessageService:
             patch("services.message_service.WorkflowService") as mock_workflow_service,
             patch("services.message_service.AdvancedChatAppConfigManager") as mock_app_config_manager,
             patch("services.message_service.LLMGenerator") as mock_llm_generator,
-            patch("services.message_service.TraceQueueManager") as mock_trace_manager_class,
+            patch("services.message_service.create_trace_scope_for_app") as mock_trace_manager_class,
             patch("services.message_service.TokenBufferMemory") as mock_token_buffer_memory,
         ):
             # Setup default mock returns
@@ -52,7 +52,7 @@ class TestMessageService:
             # Mock LLMGenerator
             mock_llm_generator.generate_suggested_questions_after_answer.return_value = ["Question 1", "Question 2"]
 
-            # Mock TraceQueueManager
+            # Mock trace-scope creation
             mock_trace_manager_instance = mock_trace_manager_class.return_value
 
             # Mock TokenBufferMemory
@@ -754,8 +754,8 @@ class TestMessageService:
             "llm_generator"
         ].generate_suggested_questions_after_answer.assert_called_once()
 
-        # Verify TraceQueueManager was called
-        mock_external_service_dependencies["trace_manager_instance"].add_trace_task.assert_called_once()
+        # Verify the trace scope received the completed event
+        mock_external_service_dependencies["trace_manager_instance"].emit.assert_called_once()
 
     def test_get_suggested_questions_after_answer_no_user(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -880,5 +880,5 @@ class TestMessageService:
             app_model=app, session=ANY
         )
 
-        # Verify TraceQueueManager was called
-        mock_external_service_dependencies["trace_manager_instance"].add_trace_task.assert_called_once()
+        # Verify the trace scope received the completed event
+        mock_external_service_dependencies["trace_manager_instance"].emit.assert_called_once()

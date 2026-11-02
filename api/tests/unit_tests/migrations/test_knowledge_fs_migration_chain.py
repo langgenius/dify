@@ -24,14 +24,19 @@ _KNOWLEDGE_FS_CHAIN = [
     "a8c2e6f4b901",
     "b9d3f7a5c102",
 ]
+_HOTFIX_TRACING_REVISION = "1e1800070001"
 
 
 def _scripts() -> ScriptDirectory:
     return ScriptDirectory(str(_VERSIONS.parent))
 
 
-def test_knowledge_fs_chain_ends_in_the_single_head() -> None:
-    assert _scripts().get_heads() == [_KNOWLEDGE_FS_CHAIN[-1]]
+def test_knowledge_fs_chain_has_a_single_tracing_successor_head() -> None:
+    scripts = _scripts()
+    assert scripts.get_heads() == [_HOTFIX_TRACING_REVISION]
+    tracing = scripts.get_revision(_HOTFIX_TRACING_REVISION)
+    assert tracing is not None
+    assert tracing.down_revision == _KNOWLEDGE_FS_CHAIN[-1]
 
 
 def test_upgrade_from_main_head_applies_knowledge_fs_chain_linearly() -> None:
@@ -43,11 +48,16 @@ def test_upgrade_from_main_head_applies_knowledge_fs_chain_linearly() -> None:
         if revision.revision not in applied_on_main
     ]
 
-    assert pending == _KNOWLEDGE_FS_CHAIN
+    assert pending == [*_KNOWLEDGE_FS_CHAIN, _HOTFIX_TRACING_REVISION]
     for parent, revision in zip([_MAIN_HEAD, *_KNOWLEDGE_FS_CHAIN[:-1]], _KNOWLEDGE_FS_CHAIN, strict=True):
         script = scripts.get_revision(revision)
         assert script is not None
         assert script.down_revision == parent
+
+
+def test_upgrade_from_fix6_applies_only_tracing_unique_index() -> None:
+    steps = _scripts()._upgrade_revs("heads", _KNOWLEDGE_FS_CHAIN[-1])
+    assert [step.revision.revision for step in steps] == [_HOTFIX_TRACING_REVISION]
 
 
 def test_clean_legacy_agent_soul_files_keeps_main_parent() -> None:

@@ -20,7 +20,7 @@ import services.message_service as message_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_manager import ModelInstance
-from core.ops.ops_trace_manager import TraceTask
+from dify_trace_sdk.events import TraceEvent
 from extensions.ext_database import db
 from graphon.model_runtime.entities import AssistantPromptMessage, PromptMessage
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -203,7 +203,7 @@ class _QuestionProvider:
     prompts: list[str] = field(default_factory=list)
     io_sessions: list[tuple[str, bool]] = field(default_factory=list)
     token_failure: bool = False
-    traces: list[TraceTask] = field(default_factory=list)
+    traces: list[TraceEvent] = field(default_factory=list)
 
     def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> ModelInstance:
         assert tenant_id == self.messages.harness.target_app.tenant_id
@@ -254,7 +254,7 @@ class _QuestionProvider:
             usage=LLMUsage.empty_usage(),
         )
 
-    def add_trace_task(self, task: TraceTask) -> None:
+    def emit(self, task: TraceEvent) -> None:
         self.traces.append(task)
 
     def assert_closed(self) -> None:
@@ -284,12 +284,14 @@ def real_questions(
         assert tenant_id == messages.harness.target_app.tenant_id
         return provider
 
-    def trace_manager(*, app_id: str) -> _QuestionProvider:
+    def trace_manager(
+        *, tenant_id: str, app_id: str, user_id: str | None, extras: dict[str, object]
+    ) -> _QuestionProvider:
         assert app_id == messages.harness.target_app.id
         return provider
 
     monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)
-    monkeypatch.setattr(message_module, "TraceQueueManager", trace_manager)
+    monkeypatch.setattr(message_module, "create_trace_scope_for_app", trace_manager)
     messages.services = replace(
         messages.services,
         message_suggested_questions=MessageSuggestedQuestionsRuntime(session_factory=messages.factory),

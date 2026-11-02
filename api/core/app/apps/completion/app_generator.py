@@ -23,8 +23,8 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_trace_session_id_from_args
-from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
+from extensions.tracing import create_trace_scope
 from factories import file_factory
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message
@@ -153,9 +153,13 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 annotation_reply=annotation_reply,
             )
 
-            # get tracing instance
-            trace_manager = TraceQueueManager(
-                app_id=app_model.id, user_id=user.id if isinstance(user, Account) else user.session_id
+            extras = extract_trace_session_id_from_args(args)
+            trace_scope = create_trace_scope(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                app_tracing=app_model.tracing,
+                user_id=user.id if isinstance(user, Account) else user.session_id,
+                extras=extras,
             )
 
             # init application generate entity
@@ -172,10 +176,8 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 user_id=user.id,
                 stream=streaming,
                 invoke_from=invoke_from,
-                extras={
-                    **extract_trace_session_id_from_args(args),
-                },
-                trace_manager=trace_manager,
+                extras=extras,
+                trace_scope=trace_scope,
             )
 
             # init generate records

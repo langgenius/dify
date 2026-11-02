@@ -276,6 +276,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
             ),
             workflow_execution_repository=execution_repo,
             workflow_node_execution_repository=node_execution_repo,
+            trace_scope=None,
         )
         persistence.set_node_run_indices(run_index.indices)
         persistence.set_node_execution_history(history)
