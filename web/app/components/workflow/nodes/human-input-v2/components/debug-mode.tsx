@@ -3,7 +3,6 @@
 import type { HumanInputV2DebugChannel, HumanInputV2DebugMode } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -52,10 +51,8 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
       aria-describedby={missingSelection || unsupported.length ? errorId : undefined}
     >
       <div
-        className={cn(
-          'relative flex h-9 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg bg-[repeating-linear-gradient(135deg,rgba(16,24,40,0.02)_0_5px,transparent_5px_9.875px)] ps-2 pe-2.5 shadow-xs',
-          readonly && 'opacity-70',
-        )}
+        data-readonly={readonly || undefined}
+        className="relative flex h-9 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg bg-[repeating-linear-gradient(135deg,rgba(16,24,40,0.02)_0_5px,transparent_5px_9.875px)] ps-2 pe-2.5 shadow-xs data-readonly:opacity-70"
       >
         <span className="relative flex size-5 shrink-0 items-center justify-center rounded-md border border-divider-regular bg-components-icon-bg-orange-dark-solid bg-linear-to-br from-components-avatar-bg-mask-stop-0 to-components-avatar-bg-mask-stop-100 text-text-primary-on-surface">
           <span className="i-ri-bug-line size-3.5" aria-hidden />

@@ -4,7 +4,6 @@ import type { ContactOption } from '@dify/contracts/api/console/workspaces/types
 import type { HumanInputV2Recipient } from '../types'
 import type { Node, Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
   ComboboxChip,
@@ -331,9 +330,7 @@ const RecipientsContent = ({
           }
         }}
       >
-        <ComboboxInputGroup
-          className={cn('min-h-20 flex-col items-stretch py-2', readonly && 'opacity-70')}
-        >
+        <ComboboxInputGroup className="min-h-20 flex-col items-stretch py-2 data-readonly:opacity-70">
           <ComboboxValue<string, true>>
             {() => (
               <ComboboxChips

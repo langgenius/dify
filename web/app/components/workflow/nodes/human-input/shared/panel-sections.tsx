@@ -1,6 +1,5 @@
 import type { FormInputItem, HumanInputSharedNodeType, UserAction } from './types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useBoolean } from 'ahooks'
@@ -105,11 +104,8 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
   return (
     <>
       <div
-        className={cn(
-          'px-4 py-2',
-          isExpandFormContent &&
-            'fixed inset-e-1 top-61 bottom-2 z-10 flex flex-col rounded-b-2xl bg-components-panel-bg',
-        )}
+        data-expanded={isExpandFormContent || undefined}
+        className="px-4 py-2 data-expanded:fixed data-expanded:inset-e-1 data-expanded:top-61 data-expanded:bottom-2 data-expanded:z-10 data-expanded:flex data-expanded:flex-col data-expanded:rounded-b-2xl data-expanded:bg-components-panel-bg"
         style={{ width: isExpandFormContent ? nodePanelWidth : '100%' }}
       >
         <div className="mb-1 flex shrink-0 items-center justify-between">
@@ -152,10 +148,8 @@ const HumanInputSharedPanelSections = <T extends HumanInputSharedNodeType>({
                   aria-label={t(($) => $[isExpandFormContent ? 'chat.collapse' : 'chat.expand'], {
                     ns: 'share',
                   })}
-                  className={cn(
-                    'text-text-secondary',
-                    isExpandFormContent && 'bg-state-accent-active text-text-accent',
-                  )}
+                  data-expanded={isExpandFormContent || undefined}
+                  className="text-text-secondary data-expanded:bg-state-accent-active data-expanded:text-text-accent"
                   onClick={toggleExpandFormContent}
                 >
                   {isExpandFormContent ? (

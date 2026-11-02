@@ -169,7 +169,7 @@ const Blocks = ({
                       aria-describedby={describedBy || undefined}
                       aria-disabled={isHumanInputDisabled}
                       data-disabled={isHumanInputDisabled || undefined}
-                      className="group/block-row flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden data-[disabled]:cursor-not-allowed data-[disabled]:text-text-disabled data-[disabled]:hover:bg-transparent"
+                      className="group/block-row flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-start hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-disabled:hover:bg-transparent"
                       onClick={() => {
                         if (!isHumanInputDisabled) onSelect(block.metaData.type)
                       }}

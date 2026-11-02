@@ -331,7 +331,7 @@ export default function AccountSetting({
                 style={{ minWidth: 0 }}
                 className="min-h-full w-full max-w-full pb-4"
               >
-                <div className={cn('max-w-full min-w-0 px-4 sm:px-8', 'pt-6')}>
+                <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
                   {/* First-use translations and queries must not suspend the dialog shell. */}
                   <Suspense fallback={<LoadingPlaceholder className="py-10" />}>
                     {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
