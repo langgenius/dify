@@ -1,4 +1,5 @@
 import type { ChatItem, WorkflowProcess } from '../../types'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useStore as useAtomStore } from 'jotai'
 import { use, useEffect, useState } from 'react'
@@ -133,12 +134,9 @@ const WorkflowProcessItem = ({
       {!collapse && (
         <div className="mt-1.5">
           {failed && data.error && (
-            <div
-              role="alert"
-              className="mb-1.5 rounded-lg border-[0.5px] border-state-destructive-border bg-state-destructive-hover px-2 py-1.5 system-xs-regular wrap-break-word text-text-destructive"
-            >
-              {localizedError}
-            </div>
+            <Alert type="error" className="mb-1.5">
+              <AlertTitle>{localizedError}</AlertTitle>
+            </Alert>
           )}
           {data.tracing.length > 0 && (
             <TracingPanel

@@ -7,6 +7,7 @@ import type { ErrorFromErrorMap, InferContractRouterErrorMap } from '@orpc/contr
 import type { TFunction } from 'i18next'
 import type { ReactNode } from 'react'
 import type { EducationRole } from './types'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
@@ -176,12 +177,8 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
     if (appliedEducationCase === AppliedEducationCase.activeSubscription) {
       return (
         <div className="flex w-full flex-col items-start gap-3">
-          <div className="flex w-full items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
-            <span
-              className="me-2 mt-0.5 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
-              aria-hidden="true"
-            />
-            <div className="system-md-regular text-text-warning">
+          <Alert type="warning" className="w-full">
+            <AlertTitle>
               <Trans
                 i18nKey={($) => $['applied.activeSubscription.description']}
                 ns="education"
@@ -196,8 +193,8 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
                   ),
                 }}
               />
-            </div>
-          </div>
+            </AlertTitle>
+          </Alert>
           {renderBackToDifyButton()}
         </div>
       )
@@ -205,15 +202,11 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
 
     return (
       <div className="flex w-full flex-col items-start gap-3">
-        <div className="flex w-full items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
-          <span
-            className="me-2 mt-0.5 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
-            aria-hidden="true"
-          />
-          <div className="system-md-regular text-text-warning">
+        <Alert type="warning" className="w-full">
+          <AlertTitle>
             {t(($) => $['applied.noPaymentPermission.description'], { ns: 'education' })}
-          </div>
-        </div>
+          </AlertTitle>
+        </Alert>
         {renderBackToDifyButton()}
       </div>
     )

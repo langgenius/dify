@@ -122,9 +122,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           language={CodeLanguage.json}
           value={inputs}
           isJSONStringifyBeauty
-          footer={
-            inputs_truncated && <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />
-          }
+          footer={inputs_truncated && <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1" />}
         />
         {process_data && (
           <CodeEditor
@@ -138,7 +136,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
             isJSONStringifyBeauty
             footer={
               process_data_truncated && (
-                <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />
+                <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1" />
               )
             }
           />
@@ -159,7 +157,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
                 <LargeDataAlert
                   textHasNoExport
                   downloadUrl={outputs_full_content?.download_url}
-                  className="mx-1 mt-2 mb-1 h-7"
+                  className="mx-1 mt-2 mb-1"
                 />
               )
             }
