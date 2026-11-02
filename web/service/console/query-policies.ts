@@ -1501,6 +1501,10 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         // Process rules are read once to describe a running import.
         processRule: { get: { queryOptions: { refetchOnWindowFocus: false } } },
         byDatasetId: {
+          // The upgrade dialog reports start failures, including model issues, inline.
+          knowledgeFsUpgrades: {
+            post: { mutationOptions: { context: { silent: true } } },
+          },
           get: {
             queryOptions: {
               // A missing or inaccessible dataset sends the detail page back to the list.
