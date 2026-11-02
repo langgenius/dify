@@ -59,12 +59,12 @@ from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTas
 from core.base.tts import AppGeneratorTTSPublisher
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.system_variables import build_system_variables
+from enums.creator import CreatorUserRole
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import RuntimeState
 from models import Account
-from models.enums import CreatorUserRole
 from models.model import EndUser
 from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom
 

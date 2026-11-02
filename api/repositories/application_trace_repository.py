@@ -15,7 +15,7 @@ from libs.uuid_utils import uuidv7
 from models.application_trace import ApplicationTraceBatch, ApplicationTraceInvocation, ApplicationTraceRun
 from models.model import App, Message, TraceAppConfig
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
-from repositories.factory import DifyAPIRepositoryFactory
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services.tracing.normalization import safe_attributes, span_id
 
 
@@ -42,10 +42,10 @@ class ApplicationTraceRepository:
                 return session.scalar(select(Message).where(Message.id == source_id, Message.app_id == app_id))
         source: WorkflowRun | WorkflowNodeExecutionModel | None
         if kind == "workflow":
-            repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self.sessions)
+            repository = WorkflowRepositoryFactory.create_api_workflow_run_repository(self.sessions)
             source = repository.get_workflow_run_by_id(tenant_id=tenant_id, app_id=app_id, run_id=source_id)
         elif kind == "node":
-            node_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(self.sessions)
+            node_repository = WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(self.sessions)
             source = node_repository.get_execution_by_id(execution_id=source_id, tenant_id=tenant_id)
         else:
             return None

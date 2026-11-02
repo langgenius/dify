@@ -13,7 +13,7 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from repositories.agent_workspace_repository import AgentWorkspaceRepository
+from repositories.agent.workspace_repository import AgentWorkspaceRepository
 
 _SCOPE = WorkspaceOwnerScope(
     tenant_id="tenant-1",

@@ -60,7 +60,6 @@ from .dataset import (
 from .enums import (
     AppTriggerStatus,
     AppTriggerType,
-    CreatorUserRole,
     PermissionEnum,
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
@@ -282,7 +281,6 @@ __all__ = [
     "ContactSubjectType",
     "Conversation",
     "ConversationVariable",
-    "CreatorUserRole",
     "CredentialPermission",
     "CredentialPermissionType",
     "CustomizedSnippet",

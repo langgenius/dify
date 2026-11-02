@@ -63,6 +63,8 @@ from graphon.model_runtime.entities.message_entities import (
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
+from services.file_reference_parser import trusted_upload_file_ids
 
 logger = logging.getLogger(__name__)
 
@@ -475,11 +477,18 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             message.message_tokens = usage.prompt_tokens
             message.message_unit_price = usage.prompt_unit_price
             message.message_price_unit = usage.prompt_price_unit
-        message.answer = (
+        answer = (
             PromptTemplateParser.remove_template_variables(llm_result.message.get_text_content().strip())
             if llm_result.message.content
             else ""
         )
+        introduced_file_ids = trusted_upload_file_ids(answer) - trusted_upload_file_ids(message.answer)
+        lock_and_validate_owned_upload_files_in_session(
+            session,
+            tenant_id=self._app_config.tenant_id,
+            upload_file_ids=tuple(sorted(introduced_file_ids)),
+        )
+        message.answer = answer
         message.updated_at = naive_utc_now()
         if not has_persisted_usage:
             message.answer_tokens = usage.completion_tokens

@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 from typing import cast
 from unittest.mock import MagicMock, patch
 
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowNodeExecutionMetadataKey
-from models.enums import CreatorUserRole
 from models.workflow import (
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionStatus,

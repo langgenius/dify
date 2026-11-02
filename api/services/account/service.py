@@ -1,8 +1,10 @@
 """Account creation, registration and session use cases, independent of ORM and HTTP."""
 
 from collections.abc import Callable
+from contextlib import suppress
 from datetime import datetime
 from typing import Protocol
+from uuid import uuid4
 
 from constants.languages import get_valid_language, language_timezone_mapping
 from services.account.contracts import AccountCreation, SetupInput
@@ -24,7 +26,12 @@ from services.entities.account_entities import (
     AccountSnapshot,
 )
 from services.entities.account_login_entities import AccountSessionPreparation
-from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.errors.workspace import (
+    WorkSpaceNotAllowedCreateError,
+    WorkspacePostCommitNotificationError,
+    WorkspacesLimitExceededError,
+)
+from services.workspace.contracts import CreatedWorkspace
 
 
 class AccountLifecycleStore(Protocol):
@@ -64,7 +71,9 @@ class AccountLifecyclePolicy(Protocol):
 class AccountWorkspaceProvisioner(Protocol):
     def create_owner_workspace(
         self, account_id: str, *, name: str | None = None, is_setup: bool = False, if_missing: bool = False
-    ) -> None: ...
+    ) -> CreatedWorkspace | None: ...
+
+    def create_registered_account_with_owner_workspace(self, creation: AccountCreation) -> str: ...
 
 
 class AccountService:
@@ -136,6 +145,7 @@ class AccountService:
         *,
         status: str = "active",
         initialized: bool = False,
+        account_id: str | None = None,
     ) -> AccountSnapshot:
         if not self._policies.is_registration_allowed() and not is_setup:
             raise AccountNotFoundError("Account registration is disabled.")
@@ -168,6 +178,7 @@ class AccountService:
                 check_normalized_email=check_normalized_email,
                 status=status,
                 initialized_at=self._now() if initialized else None,
+                id=account_id or str(uuid4()),
             )
         )
 
@@ -181,19 +192,44 @@ class AccountService:
         ip_address: str | None = None,
         check_normalized_email: bool = False,
     ) -> AccountSnapshot:
-        account = self.create_account(
-            email=email,
-            name=name,
-            interface_language=interface_language,
-            password=password,
-            timezone=timezone,
-            ip_address=ip_address,
-            check_normalized_email=check_normalized_email,
+        if not self._policies.is_registration_allowed():
+            raise AccountNotFoundError("Account registration is disabled.")
+        if check_normalized_email and self._accounts.normalized_email_exists(email):
+            raise AccountNormalizedEmailAlreadyInUseError("An account with an equivalent email already exists.")
+        if not self._policies.has_account_capacity():
+            raise SeatsLimitExceededError("licensed seats limit exceeded")
+        if not self._policies.is_workspace_creation_allowed():
+            raise WorkSpaceNotAllowedCreateError()
+        if not self._policies.has_workspace_capacity():
+            raise WorkspacesLimitExceededError()
+        freeze_type = self._policies.get_email_freeze_type(email)
+        if freeze_type == "email_domain_suspended":
+            raise AccountEmailDomainSuspendedError()
+        if freeze_type:
+            raise AccountRegisterError(
+                "This email account has been deleted within the past "
+                "30 days and is temporarily unavailable for new account registration"
+            )
+        resolved_timezone = (
+            self._policies.validate_timezone(timezone)
+            if timezone is not None
+            else language_timezone_mapping.get(interface_language, "UTC")
         )
-        try:
-            self._workspaces.create_owner_workspace(account.id, if_missing=True)
-        finally:
-            self._policies.try_join_default_workspace(account.id)
+        account_id = self._workspaces.create_registered_account_with_owner_workspace(
+            AccountCreation(
+                email=email,
+                name=name,
+                interface_language=interface_language,
+                interface_theme="light",
+                timezone=resolved_timezone,
+                password=self._passwords.hash(password) if password else None,
+                ip_address=ip_address,
+                check_normalized_email=check_normalized_email,
+            )
+        )
+        account = self._accounts.get(account_id)
+        if account is None:
+            raise AccountNotFoundError()
         return account
 
     def register(
@@ -228,7 +264,12 @@ class AccountService:
                     and self._policies.is_workspace_creation_allowed()
                     and self._policies.has_workspace_capacity()
                 ):
-                    self._workspaces.create_owner_workspace(account.id)
+                    # Another request can consume the last slot after the
+                    # precheck. Preserve registration's existing policy of
+                    # creating the account and skipping its workspace when
+                    # capacity is exhausted.
+                    with suppress(WorkspacesLimitExceededError):
+                        self._workspaces.create_owner_workspace(account.id)
             finally:
                 self._policies.try_join_default_workspace(account.id)
             return account
@@ -250,9 +291,9 @@ class AccountService:
 
 
 class InstallationStore(Protocol):
-    def mark_setup(self) -> None: ...
+    def mark_setup(self, *, attempt_id: str) -> None: ...
 
-    def reset_setup(self, account_id: str | None) -> None: ...
+    def reset_setup(self, *, attempt_id: str, account_id: str, workspace_id: str | None) -> None: ...
 
 
 class InstallationTelemetry(Protocol):
@@ -274,7 +315,11 @@ class AccountSetupProvisioner:
         self._telemetry = telemetry
 
     def provision(self, setup: SetupInput) -> None:
-        account_id: str | None = None
+        # Persist caller-owned identities so compensation can reconcile commits
+        # whose acknowledgements were lost between the database and this process.
+        attempt_id = str(uuid4())
+        account_id = str(uuid4())
+        workspace_id: str | None = None
         try:
             account = self._accounts.create_account(
                 email=setup.email,
@@ -284,11 +329,18 @@ class AccountSetupProvisioner:
                 ip_address=setup.ip_address,
                 is_setup=True,
                 initialized=True,
+                account_id=account_id,
             )
-            account_id = account.id
-            self._workspaces.create_owner_workspace(account.id, is_setup=True, if_missing=True)
-            self._installation.mark_setup()
+            workspace = self._workspaces.create_owner_workspace(account.id, is_setup=True, if_missing=True)
+            workspace_id = workspace.id if workspace is not None else None
+            self._installation.mark_setup(attempt_id=attempt_id)
         except Exception as exc:
-            self._installation.reset_setup(account_id)
+            if isinstance(exc, WorkspacePostCommitNotificationError):
+                workspace_id = exc.workspace_id
+            self._installation.reset_setup(
+                attempt_id=attempt_id,
+                account_id=account_id,
+                workspace_id=workspace_id,
+            )
             raise ValueError(f"Setup failed: {exc}") from exc
         self._telemetry.report()

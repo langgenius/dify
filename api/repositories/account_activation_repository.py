@@ -3,11 +3,12 @@
 from typing import override
 
 from sqlalchemy import select, update
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
-from services.account_activation_service import AccountActivationRepository
+from services.account_activation_service import AccountActivationRepository, ActivationCommitOutcomeUnknownError
 from services.entities.account_activation_entities import (
     AccountInvitation,
     AccountSetup,
@@ -41,6 +42,16 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
             if account is None:
                 return None
 
+            membership_exists = (
+                session.scalar(
+                    select(TenantAccountJoin.id).where(
+                        TenantAccountJoin.tenant_id == tenant.id,
+                        TenantAccountJoin.account_id == account.id,
+                    )
+                )
+                is not None
+            )
+
             return AccountInvitation(
                 account_id=account.id,
                 account_email=account.email,
@@ -49,6 +60,7 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
                 workspace_name=tenant.name,
                 role=invitation.role,
                 requires_setup=invitation.requires_setup,
+                membership_exists=membership_exists,
             )
 
     @override
@@ -60,7 +72,7 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
         setup: AccountSetup | None,
         create_membership: bool = True,
     ) -> ActivationPersistenceResult | None:
-        with self._session_factory.begin() as session:
+        with self._session_factory() as session:
             tenant_id = session.scalar(
                 select(Tenant.id).where(
                     Tenant.id == invitation.workspace_id,
@@ -113,5 +125,20 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
             )
             membership.current = True
             membership.last_opened_at = naive_utc_now()
+
+            # Flush failures happen before COMMIT and therefore have a known
+            # rollback outcome. Only a connection loss while COMMIT is in
+            # flight is ambiguous to the caller.
+            session.flush()
+            try:
+                session.commit()
+            except DBAPIError as error:
+                if not error.connection_invalidated:
+                    session.rollback()
+                    raise
+                raise ActivationCommitOutcomeUnknownError from error
+            except Exception:
+                session.rollback()
+                raise
 
             return ActivationPersistenceResult(membership_created=membership_created)

@@ -24,6 +24,7 @@ from models.model import App, Conversation, Message
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +34,14 @@ class AgentChatAppRunner(AppRunner):
     Agent Application Runner
     """
 
-    def __init__(self, *, execution_driver: "WorkflowRunDriver") -> None:
+    def __init__(
+        self,
+        *,
+        execution_driver: "WorkflowRunDriver",
+        knowledge_retrieval: "KnowledgeRetriever",
+    ) -> None:
         self._execution_driver = execution_driver
+        self._knowledge_retrieval = knowledge_retrieval
 
     def run(
         self,
@@ -232,6 +239,7 @@ class AgentChatAppRunner(AppRunner):
 
         runner = runner_cls(
             execution_driver=self._execution_driver,
+            knowledge_retrieval=self._knowledge_retrieval,
             session=session,
             tenant_id=app_config.tenant_id,
             application_generate_entity=application_generate_entity,

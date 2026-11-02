@@ -1,23 +1,20 @@
-"""Unit tests for WaterCrawl client, provider, and extractor behavior."""
+"""Unit tests for WaterCrawl client and provider behavior."""
 
 import json
 from typing import Any
-from unittest.mock import MagicMock, create_autospec
+from unittest.mock import MagicMock
 
 import httpx
 import pytest
 
-import core.rag.extractor.watercrawl.client as client_module
-from core.rag.extractor.watercrawl.client import BaseAPIClient, WaterCrawlAPIClient
-from core.rag.extractor.watercrawl.exceptions import (
+import services.data_source.watercrawl_client as client_module
+from services.data_source.watercrawl_client import BaseAPIClient, WaterCrawlAPIClient
+from services.data_source.watercrawl_exceptions import (
     WaterCrawlAuthenticationError,
     WaterCrawlBadRequestError,
     WaterCrawlPermissionError,
 )
-from core.rag.extractor.watercrawl.extractor import WaterCrawlWebExtractor
-from core.rag.extractor.watercrawl.provider import WaterCrawlProvider
-from services.data_source.provider_service import DatasourceProviderService
-from services.data_source.website_service import WebsiteService
+from services.data_source.watercrawl_provider import WaterCrawlProvider
 
 
 def _response(
@@ -333,7 +330,7 @@ class TestWaterCrawlProvider:
             provider.client,
             "get_crawl_request",
             lambda job_id: {
-                "status": "completed",
+                "status": "finished",
                 "uuid": job_id,
                 "options": {"spider_options": {"page_limit": 2}},
                 "number_of_documents": 2,
@@ -408,70 +405,3 @@ class TestWaterCrawlProvider:
         result = provider.scrape_url("u")
 
         assert result["source_url"] == "u"
-
-
-class TestWaterCrawlWebExtractor:
-    def test_extract_crawl_and_scrape_modes(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "core.rag.extractor.watercrawl.extractor.WebsiteService.get_crawl_url_data",
-            lambda _self, job_id, provider, url, tenant_id: {
-                "markdown": "crawl",
-                "source_url": url,
-                "description": "d",
-                "title": "t",
-            },
-        )
-        monkeypatch.setattr(
-            "core.rag.extractor.watercrawl.extractor.WebsiteService.get_scrape_url_data",
-            lambda _self, provider, url, tenant_id, only_main_content: {
-                "markdown": "scrape",
-                "source_url": url,
-                "description": "d",
-                "title": "t",
-            },
-        )
-
-        crawl_extractor = WaterCrawlWebExtractor(
-            "https://example.com",
-            "job-1",
-            "tenant-1",
-            mode="crawl",
-            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
-        )
-        scrape_extractor = WaterCrawlWebExtractor(
-            "https://example.com",
-            "job-1",
-            "tenant-1",
-            mode="scrape",
-            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
-        )
-
-        assert crawl_extractor.extract()[0].page_content == "crawl"
-        assert scrape_extractor.extract()[0].page_content == "scrape"
-
-    def test_extract_crawl_returns_empty_when_service_returns_none(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "core.rag.extractor.watercrawl.extractor.WebsiteService.get_crawl_url_data",
-            lambda _self, job_id, provider, url, tenant_id: None,
-        )
-
-        extractor = WaterCrawlWebExtractor(
-            "https://example.com",
-            "job-1",
-            "tenant-1",
-            mode="crawl",
-            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
-        )
-
-        assert extractor.extract() == []
-
-    def test_extract_unknown_mode_returns_empty(self):
-        extractor = WaterCrawlWebExtractor(
-            "https://example.com",
-            "job-1",
-            "tenant-1",
-            mode="other",
-            website_service=WebsiteService(providers=create_autospec(DatasourceProviderService, instance=True)),
-        )
-
-        assert extractor.extract() == []

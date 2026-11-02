@@ -28,7 +28,6 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.exceptions import RetryableTraceDispatchError
-from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_weave.config import WeaveConfig
 from dify_trace_weave.configuration import console_url, project_url, verify_configuration
 from dify_trace_weave.entities.weave_trace_entity import WeaveTraceModel
@@ -36,6 +35,8 @@ from dify_trace_weave.transport import TraceServer, resolve_project
 from extensions.ext_database import db
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
+from repositories.workflow.factory import WorkflowRepositoryFactory
+from services.file_adapters import build_file_service
 from services.tracing.provider_common import endpoint
 from services.tracing.provider_dispatch import TraceExportUncertainError
 
@@ -177,12 +178,13 @@ class WeaveDataTrace(BaseTraceInstance):
 
         service_account = self.get_service_account_with_tenant(app_id)
 
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = WorkflowRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
             tenant_id=trace_info.tenant_id,
             user=service_account,
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=build_file_service(session_factory=session_factory),
         )
 
         # Get all executions for this workflow run

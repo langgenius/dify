@@ -35,7 +35,9 @@ from models.agent import (
     AgentWorkspaceOwnerType,
 )
 from models.workflow import WorkflowNodeExecutionModel
-from repositories.agent_workspace_repository import AgentWorkspaceRepository
+from repositories.agent.workspace_repository import AgentWorkspaceRepository
+from repositories.file.upload_file_repository import lock_and_validate_owned_upload_files_in_session
+from services.file_reference_parser import added_trusted_upload_file_ids
 
 logger = logging.getLogger(__name__)
 
@@ -194,14 +196,27 @@ class AgentWorkspaceService:
     ) -> None:
         with session_factory.create_session() as session:
             binding = session.scalar(
-                select(AgentWorkspaceBinding).where(
+                select(AgentWorkspaceBinding)
+                .where(
                     AgentWorkspaceBinding.id == binding_id,
                     AgentWorkspaceBinding.tenant_id == tenant_id,
                     AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
                 )
+                .with_for_update()
+                .execution_options(populate_existing=True)
             )
             if binding is None:
                 raise AgentWorkspaceNotFoundError("ACTIVE Binding is unavailable")
+            added_file_ids = added_trusted_upload_file_ids(
+                previous=binding.session_snapshot,
+                current=session_snapshot,
+            )
+            if added_file_ids:
+                lock_and_validate_owned_upload_files_in_session(
+                    session,
+                    tenant_id=tenant_id,
+                    upload_file_ids=tuple(added_file_ids),
+                )
             binding.session_snapshot = session_snapshot
             session.commit()
 

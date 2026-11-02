@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import AliasChoices, ConfigDict, Field, JsonValue, field_validator
+from pydantic import AliasChoices, ConfigDict, Field, JsonValue, field_validator, model_validator
 
 from fields.base import ResponseModel
 from fields.dataset_fields import MetadataValueType
@@ -17,6 +17,13 @@ def normalize_enum(value: Any) -> Any:
     if isinstance(value, str) or value is None:
         return value
     return getattr(value, "value", value)
+
+
+def public_document_source_info(value: Any) -> Any:
+    """Keep indexing cleanup bookkeeping out of document source responses."""
+    if isinstance(value, dict):
+        return {key: item for key, item in value.items() if key != "_pending_upload_cleanup_ids"}
+    return value
 
 
 class DocumentPreProcessingRuleResponse(ResponseModel):
@@ -60,6 +67,11 @@ class DocumentSourceDetailResponse(ResponseModel):
 
     upload_file: DocumentUploadFileDetailResponse | None = Field(default=None, exclude_if=lambda value: value is None)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _public_source_info(cls, value: Any) -> Any:
+        return public_document_source_info(value)
+
 
 class DocumentMetadataResponse(ResponseModel):
     id: str
@@ -94,6 +106,11 @@ class DocumentResponse(ResponseModel):
     doc_metadata: list[DocumentMetadataResponse] = Field(default_factory=list, validation_alias="doc_metadata_details")
     summary_index_status: str | None = None
     need_summary: bool | None = None
+
+    @field_validator("data_source_info", mode="before")
+    @classmethod
+    def _public_source_info(cls, value: Any) -> Any:
+        return public_document_source_info(value)
 
     @field_validator("data_source_type", "indexing_status", "display_status", "doc_form", mode="before")
     @classmethod

@@ -9,6 +9,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from repositories.knowledge.metadata_filter import query_metadata_filter_document_ids
 from repositories.knowledge.metadata_repository import SQLAlchemyMetadataRepository
 from services.errors.metadata import MetadataResourceNotFoundError
 from services.knowledge.dataset_access import DatasetAccess
@@ -18,8 +19,9 @@ from services.knowledge.entities.knowledge_entities import (
     MetadataDetail,
     MetadataOperationData,
 )
+from services.knowledge.entities.metadata import Condition
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.metadata.application import MetadataService
-from services.knowledge.resource_scope import DatasetRef
 
 
 def _metadata_service(session: Session) -> MetadataService:
@@ -521,6 +523,31 @@ class TestMetadataService:
         assert binding is not None
         assert binding.tenant_id == tenant.id
         assert binding.dataset_id == dataset.id
+
+    def test_postgresql_numeric_filter_handles_large_numbers_and_dirty_strings(
+        self, db_session_with_containers: Session
+    ) -> None:
+        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
+        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
+        document = self._create_test_document(db_session_with_containers, dataset, account)
+        document.doc_metadata = {"large": 10**400, "dirty": "not-a-number"}
+        document.enabled = True
+        document.archived = False
+        document.indexing_status = IndexingStatus.COMPLETED
+        db_session_with_containers.commit()
+
+        result = query_metadata_filter_document_ids(
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            dataset_ids=[dataset.id],
+            logical_operator="or",
+            conditions=[
+                Condition(name="large", comparison_operator=">", value=0.5),
+                Condition(name="dirty", comparison_operator=">", value=0.5),
+            ],
+        )
+
+        assert result == {dataset.id: [document.id]}
 
     @pytest.mark.parametrize("foreign_resource", ["metadata", "document"])
     def test_update_documents_metadata_rejects_foreign_owner_before_writes(

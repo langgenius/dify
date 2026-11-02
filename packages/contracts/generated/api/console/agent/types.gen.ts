@@ -1273,16 +1273,14 @@ export type RetrievalSourceMetadata = {
   dataset_id?: string | null
   dataset_name?: string | null
   doc_metadata?: {
-    [key: string]: unknown
+    [key: string]: JsonValue
   } | null
   document_asset_id?: string | null
   document_id?: string | null
   document_name?: string | null
   document_revision?: number | null
   document_version?: number | null
-  files?: Array<{
-    [key: string]: unknown
-  }> | null
+  files?: Array<AttachmentInfoDict> | null
   hit_count?: number | null
   index_node_hash?: string | null
   knowledge_fs_citation?: KnowledgeFsCitation | null
@@ -1844,6 +1842,17 @@ export type HumanInputFormSubmissionData = {
 
 export type ExecutionContentType = 'human_input'
 
+export type JsonValue = unknown
+
+export type AttachmentInfoDict = {
+  extension: string
+  id: string
+  mime_type: string | null
+  name: string
+  size: number
+  source_url: string
+}
+
 export type KnowledgeFsCitation = {
   artifact_hash: string
   control_space_id: string
@@ -2020,8 +2029,6 @@ export type AppWeightsResponse = {
   weight_type?: 'customized' | 'keyword_first' | 'semantic_first'
   [key: string]: unknown
 }
-
-export type JsonValue = unknown
 
 export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 

@@ -1,10 +1,12 @@
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from threading import Event, Lock, Thread
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, select
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.datasource.keyword.jieba import jieba as jieba_module
 from core.rag.datasource.keyword.jieba.jieba import Jieba
@@ -54,6 +56,28 @@ class KeywordLocks:
             yield
         finally:
             self.held = False
+
+
+@dataclass
+class BlockingKeywordLocks:
+    locks: dict[str, Lock] = field(default_factory=dict)
+    attempts: dict[str, int] = field(default_factory=dict)
+    guard: Lock = field(default_factory=Lock)
+    second_attempt: Event = field(default_factory=Event)
+
+    @contextmanager
+    def lock(self, name: str, *, timeout: int) -> Generator[None]:
+        assert timeout == 600
+        with self.guard:
+            lock = self.locks.setdefault(name, Lock())
+            self.attempts[name] = self.attempts.get(name, 0) + 1
+            if self.attempts[name] == 2:
+                self.second_attempt.set()
+        lock.acquire()
+        try:
+            yield
+        finally:
+            lock.release()
 
 
 @dataclass
@@ -111,6 +135,16 @@ def segment(node_id: str, *, tenant_id: str = "tenant-1") -> DocumentSegment:
         created_by="author",
         index_node_id=node_id,
     )
+
+
+def single_connection_sessions(sqlite_engine: Engine) -> tuple[Engine, sessionmaker[Session]]:
+    engine = create_engine(
+        sqlite_engine.url,
+        pool_size=1,
+        max_overflow=0,
+        pool_timeout=0.1,
+    )
+    return engine, sessionmaker(bind=engine, expire_on_commit=False)
 
 
 def test_create_extracts_keywords_and_persists_the_shared_format(runtime: KeywordRuntime) -> None:
@@ -273,3 +307,315 @@ def test_deletion_does_not_initialize_the_keyword_extractor(
     keyword.delete_by_ids(["node-1"], runtime.session)
     runtime.session.commit()
     assert runtime.table() == {}
+
+
+@pytest.mark.parametrize("storage_type", ["database", "file"])
+@pytest.mark.parametrize("consumer", ["search", "text_exists"])
+def test_read_uses_the_callers_checked_out_connection(
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    storage_type: str,
+    consumer: str,
+) -> None:
+    keyword_storage = KeywordStorage()
+    locks = KeywordLocks()
+    monkeypatch.setattr(jieba_module, "redis_client", locks)
+    monkeypatch.setattr(jieba_module, "storage", keyword_storage)
+    apply_config_overrides(monkeypatch, KEYWORD_DATA_SOURCE_TYPE=storage_type)
+    engine, sessions = single_connection_sessions(sqlite_engine)
+    try:
+        with sessions.begin() as session:
+            session.add(Dataset(id="dataset-1", tenant_id="tenant-1", name="Test", created_by="author"))
+            session.add(segment("node-1"))
+        with sessions() as seed:
+            dataset = seed.get(Dataset, "dataset-1")
+            assert dataset is not None
+            Jieba(dataset).add_texts(
+                [Document(page_content="alpha", metadata={"doc_id": "node-1"})],
+                seed,
+                keywords_list=[["alpha"]],
+            )
+            seed.commit()
+
+        with sessions() as caller:
+            dataset = caller.get(Dataset, "dataset-1")
+            assert dataset is not None
+            assert caller.in_transaction()
+            keyword = Jieba(dataset)
+            if consumer == "search":
+                assert [document.metadata["doc_id"] for document in keyword.search("alpha", session=caller)] == [
+                    "node-1"
+                ]
+            else:
+                assert keyword.text_exists("node-1", session=caller)
+            assert locks.held is False
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize("storage_type", ["database", "file"])
+def test_caller_can_refresh_latest_table_before_reusing_a_session(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    storage_type: str,
+) -> None:
+    keyword_storage = KeywordStorage()
+    locks = KeywordLocks()
+    monkeypatch.setattr(jieba_module, "redis_client", locks)
+    monkeypatch.setattr(jieba_module, "storage", keyword_storage)
+    apply_config_overrides(monkeypatch, KEYWORD_DATA_SOURCE_TYPE=storage_type)
+    with sqlite_session_factory.begin() as session:
+        session.add(Dataset(id="dataset-1", tenant_id="tenant-1", name="Test", created_by="author"))
+        session.add_all([segment("node-1"), segment("node-2"), segment("node-3")])
+
+    with sqlite_session_factory() as seed:
+        dataset = seed.get(Dataset, "dataset-1")
+        assert dataset is not None
+        Jieba(dataset).add_texts(
+            [Document(page_content="alpha", metadata={"doc_id": "node-1"})],
+            seed,
+            keywords_list=[["alpha"]],
+        )
+        seed.commit()
+
+    with sqlite_session_factory() as caller:
+        dataset = caller.get(Dataset, "dataset-1")
+        assert dataset is not None
+        stale_row = get_dataset_keyword_table(dataset, session=caller)
+        assert stale_row is not None
+        caller.commit()
+
+        with sqlite_session_factory() as concurrent_writer:
+            concurrent_dataset = concurrent_writer.get(Dataset, "dataset-1")
+            assert concurrent_dataset is not None
+            Jieba(concurrent_dataset).add_texts(
+                [Document(page_content="beta", metadata={"doc_id": "node-2"})],
+                concurrent_writer,
+                keywords_list=[["beta"]],
+            )
+            concurrent_writer.commit()
+
+        caller.expire_all()
+        keyword = Jieba(dataset)
+        assert keyword.text_exists("node-2", session=caller)
+        assert [document.metadata["doc_id"] for document in keyword.search("beta", session=caller)] == ["node-2"]
+        keyword.add_texts(
+            [Document(page_content="gamma", metadata={"doc_id": "node-3"})],
+            caller,
+            keywords_list=[["gamma"]],
+        )
+        caller.commit()
+
+    with sqlite_session_factory() as verifier:
+        dataset = verifier.get(Dataset, "dataset-1")
+        assert dataset is not None
+        row = get_dataset_keyword_table(dataset, session=verifier)
+        assert row is not None
+        payload = load_keyword_table(
+            storage=keyword_storage,
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            storage_type=row.data_source_type,
+            data=row.keyword_table,
+        )
+        assert payload is not None
+        assert payload["__data__"]["table"] == {
+            "alpha": {"node-1"},
+            "beta": {"node-2"},
+            "gamma": {"node-3"},
+        }
+
+
+@pytest.mark.parametrize("storage_type", ["database", "file"])
+def test_delete_refreshes_stale_row_and_reclaims_the_latest_file(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    storage_type: str,
+) -> None:
+    keyword_storage = KeywordStorage()
+    locks = KeywordLocks()
+    monkeypatch.setattr(jieba_module, "redis_client", locks)
+    monkeypatch.setattr(jieba_module, "storage", keyword_storage)
+    apply_config_overrides(monkeypatch, KEYWORD_DATA_SOURCE_TYPE=storage_type)
+    with sqlite_session_factory.begin() as session:
+        session.add(Dataset(id="dataset-1", tenant_id="tenant-1", name="Test", created_by="author"))
+        session.add_all([segment("node-1"), segment("node-2")])
+
+    with sqlite_session_factory() as seed:
+        dataset = seed.get(Dataset, "dataset-1")
+        assert dataset is not None
+        Jieba(dataset).add_texts(
+            [Document(page_content="alpha", metadata={"doc_id": "node-1"})],
+            seed,
+            keywords_list=[["alpha"]],
+        )
+        seed.commit()
+
+    with sqlite_session_factory() as caller:
+        dataset = caller.get(Dataset, "dataset-1")
+        assert dataset is not None
+        stale_row = get_dataset_keyword_table(dataset, session=caller)
+        assert stale_row is not None
+        stale_data = stale_row.keyword_table
+        caller.commit()
+
+        with sqlite_session_factory() as concurrent_writer:
+            concurrent_dataset = concurrent_writer.get(Dataset, "dataset-1")
+            assert concurrent_dataset is not None
+            Jieba(concurrent_dataset).add_texts(
+                [Document(page_content="beta", metadata={"doc_id": "node-2"})],
+                concurrent_writer,
+                keywords_list=[["beta"]],
+            )
+            concurrent_writer.commit()
+
+        assert stale_row.keyword_table == stale_data
+        Jieba(dataset).delete(session=caller)
+        caller.commit()
+
+    with sqlite_session_factory() as verifier:
+        assert verifier.scalar(select(DatasetKeywordTable).where(DatasetKeywordTable.dataset_id == "dataset-1")) is None
+    assert keyword_storage.files == {}
+
+
+@pytest.mark.parametrize("storage_type", ["database", "file"])
+def test_two_committed_sessions_preserve_both_keyword_updates(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    storage_type: str,
+) -> None:
+    keyword_storage = KeywordStorage()
+    locks = BlockingKeywordLocks()
+    monkeypatch.setattr(jieba_module, "redis_client", locks)
+    monkeypatch.setattr(jieba_module, "storage", keyword_storage)
+    apply_config_overrides(monkeypatch, KEYWORD_DATA_SOURCE_TYPE=storage_type)
+    with sqlite_session_factory.begin() as session:
+        session.add(Dataset(id="dataset-1", tenant_id="tenant-1", name="Test", created_by="author"))
+        session.add_all([segment("node-1"), segment("node-2")])
+
+    first_flushed = Event()
+    allow_first_commit = Event()
+    errors: list[Exception] = []
+
+    def mutate(node_id: str, keyword_value: str, *, wait_before_commit: bool) -> None:
+        try:
+            with sqlite_session_factory() as session:
+                dataset = session.get(Dataset, "dataset-1")
+                assert dataset is not None
+                Jieba(dataset).add_texts(
+                    [Document(page_content=keyword_value, metadata={"doc_id": node_id})],
+                    session,
+                    keywords_list=[[keyword_value]],
+                )
+                if wait_before_commit:
+                    first_flushed.set()
+                    assert allow_first_commit.wait(timeout=5)
+                session.commit()
+        except Exception as error:
+            errors.append(error)
+            first_flushed.set()
+            allow_first_commit.set()
+
+    first = Thread(target=mutate, args=("node-1", "alpha"), kwargs={"wait_before_commit": True})
+    second = Thread(target=mutate, args=("node-2", "beta"), kwargs={"wait_before_commit": False})
+    first.start()
+    assert first_flushed.wait(timeout=5)
+    allow_first_commit.set()
+    first.join(timeout=5)
+    second.start()
+    second.join(timeout=5)
+
+    assert not first.is_alive()
+    assert not second.is_alive()
+    assert errors == []
+    with sqlite_session_factory() as session:
+        dataset = session.get(Dataset, "dataset-1")
+        assert dataset is not None
+        row = get_dataset_keyword_table(dataset, session=session)
+        assert row is not None
+        payload = load_keyword_table(
+            storage=keyword_storage,
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            storage_type=row.data_source_type,
+            data=row.keyword_table,
+        )
+        assert payload is not None
+        assert payload["__data__"]["table"] == {"alpha": {"node-1"}, "beta": {"node-2"}}
+        segments = session.scalars(
+            select(DocumentSegment)
+            .where(DocumentSegment.dataset_id == "dataset-1")
+            .order_by(DocumentSegment.index_node_id)
+        ).all()
+        assert [segment.keywords for segment in segments] == [["alpha"], ["beta"]]
+    if storage_type == "file":
+        assert len(keyword_storage.files) == 1
+
+
+@pytest.mark.parametrize("storage_type", ["database", "file"])
+def test_write_uses_the_callers_checked_out_connection(
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+    storage_type: str,
+) -> None:
+    keyword_storage = KeywordStorage()
+    locks = KeywordLocks()
+    monkeypatch.setattr(jieba_module, "redis_client", locks)
+    monkeypatch.setattr(jieba_module, "storage", keyword_storage)
+    apply_config_overrides(monkeypatch, KEYWORD_DATA_SOURCE_TYPE=storage_type)
+    engine, sessions = single_connection_sessions(sqlite_engine)
+    try:
+        with sessions.begin() as session:
+            session.add(Dataset(id="dataset-1", tenant_id="tenant-1", name="Test", created_by="author"))
+            session.add(segment("node-1"))
+
+        with sessions() as caller:
+            dataset = caller.get(Dataset, "dataset-1")
+            assert dataset is not None
+            assert caller.in_transaction()
+            Jieba(dataset).add_texts(
+                [Document(page_content="alpha", metadata={"doc_id": "node-1"})],
+                caller,
+                keywords_list=[["alpha"]],
+            )
+            assert locks.acquired == ["keyword_indexing_lock_dataset-1"]
+            caller.commit()
+            assert locks.held is False
+
+        with sessions() as verifier:
+            dataset = verifier.get(Dataset, "dataset-1")
+            assert dataset is not None
+            row = get_dataset_keyword_table(dataset, session=verifier)
+            assert row is not None
+            payload = load_keyword_table(
+                storage=keyword_storage,
+                tenant_id=dataset.tenant_id,
+                dataset_id=dataset.id,
+                storage_type=row.data_source_type,
+                data=row.keyword_table,
+            )
+            assert payload is not None
+            assert payload["__data__"]["table"] == {"alpha": {"node-1"}}
+    finally:
+        engine.dispose()
+
+
+def test_repeated_writes_in_one_transaction_reuse_uncommitted_table(runtime: KeywordRuntime) -> None:
+    runtime.session.add_all([segment("node-1"), segment("node-2")])
+    keyword = Jieba(runtime.dataset)
+
+    keyword.add_texts(
+        [Document(page_content="alpha", metadata={"doc_id": "node-1"})],
+        runtime.session,
+        keywords_list=[["alpha"]],
+    )
+    keyword.add_texts(
+        [Document(page_content="beta", metadata={"doc_id": "node-2"})],
+        runtime.session,
+        keywords_list=[["beta"]],
+    )
+
+    assert runtime.locks.held is False
+    assert len(runtime.locks.acquired) == 2
+    runtime.session.commit()
+    assert runtime.table() == {"alpha": {"node-1"}, "beta": {"node-2"}}

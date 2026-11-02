@@ -4,10 +4,11 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from core.rag.entities import RerankingModelConfig, SupportedComparisonOperator
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import NodeType
 from graphon.nodes.llm.entities import ModelConfig
+from services.knowledge.entities.metadata import SupportedComparisonOperator
+from services.knowledge.entities.retrieval_settings import RerankingModelConfig
 from services.knowledge_fs.retrieval_contracts import KnowledgeFSRetrievalMetadataFilters
 
 KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE = "knowledge-retrieval-v2"

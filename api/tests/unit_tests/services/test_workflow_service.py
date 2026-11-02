@@ -70,11 +70,12 @@ from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import BuiltinToolProvider, WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
-from repositories.factory import DifyAPIRepositoryFactory
+from repositories.workflow.factory import WorkflowRepositoryFactory
 from services import workflow_service as workflow_service_module
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from services.file_adapters import build_file_service
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import (
     WorkflowService,
@@ -86,6 +87,7 @@ from services.workflow_service import (
 from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """
@@ -3364,7 +3366,10 @@ class TestWorkflowServiceCases:
                 patch("services.workflow_service._setup_variable_pool"),
                 patch("services.workflow_service.DraftVarLoader"),
                 patch("services.workflow_service.WorkflowEntry.single_step_run") as mock_run,
-                patch("services.workflow_service.DifyCoreRepositoryFactory") as mock_repo_factory,
+                patch.object(
+                    WorkflowRepositoryFactory,
+                    "create_workflow_node_execution_repository",
+                ) as create_node_repository,
                 patch("services.workflow_service.DraftVariableSaver") as mock_saver_cls,
                 patch("services.workflow_service.storage"),
             ):
@@ -3384,7 +3389,7 @@ class TestWorkflowServiceCases:
                 mock_run.return_value = (mock_node, [mock_event])
 
                 mock_repo = MagicMock()
-                mock_repo_factory.create_workflow_node_execution_repository.return_value = mock_repo
+                create_node_repository.return_value = mock_repo
 
                 service._node_execution_service_repo = MagicMock()
                 mock_execution_record = MagicMock()
@@ -3402,6 +3407,7 @@ class TestWorkflowServiceCases:
                     user_inputs={"key": "val"},
                     query="hi",
                     files=[],
+                    knowledge_retrieval=make_knowledge_retriever(),
                 )
 
                 # Assert
@@ -3445,7 +3451,7 @@ class TestWorkflowServiceCases:
                 patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
                 patch("services.workflow_service.DraftVarLoader"),
                 patch("services.workflow_service.WorkflowEntry.single_step_run") as mock_run,
-                patch("services.workflow_service.DifyCoreRepositoryFactory"),
+                patch.object(WorkflowRepositoryFactory, "create_workflow_node_execution_repository"),
                 patch("services.workflow_service.DraftVariableSaver"),
                 patch("services.workflow_service.storage"),
             ):
@@ -3480,6 +3486,7 @@ class TestWorkflowServiceCases:
                     user_inputs={},
                     query="",
                     files=None,
+                    knowledge_retrieval=make_knowledge_retriever(),
                 )
 
                 # Assert
@@ -3536,6 +3543,10 @@ class TestWorkflowServiceCases:
                     user_id=account.id,
                 ),
                 runtime_state=RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0),
+                knowledge_retrieval=make_knowledge_retriever(),
+                knowledge_index_files=build_file_service(
+                    session_factory=sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+                ),
             ).create_node(
                 {
                     "id": node_id,
@@ -3563,6 +3574,7 @@ class TestWorkflowServiceCases:
                     user=account,
                     app_id=app.id,
                     triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+                    files=build_file_service(session_factory=sessionmaker(bind=sqlite_engine, expire_on_commit=False)),
                 )
                 if repository_type is LogstoreWorkflowNodeExecutionRepository:
                     config_overrides(
@@ -3572,7 +3584,7 @@ class TestWorkflowServiceCases:
                         )
                     )
                     service._node_execution_service_repo = (
-                        DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+                        WorkflowRepositoryFactory.create_api_workflow_node_execution_repository(
                             session_maker=sessionmaker(sqlite_engine)
                         )
                     )
@@ -3630,8 +3642,9 @@ class TestWorkflowServiceCases:
                     "services.workflow_service.WorkflowEntry.single_step_run",
                     side_effect=lambda **kwargs: (node, node_events(kwargs["variable_pool"])),
                 ),
-                patch(
-                    "services.workflow_service.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+                patch.object(
+                    WorkflowRepositoryFactory,
+                    "create_workflow_node_execution_repository",
                     return_value=repository,
                 ),
                 patch("services.workflow_service.DraftVariableSaver"),
@@ -3641,7 +3654,12 @@ class TestWorkflowServiceCases:
                 ) as async_save,
             ):
                 result = service.run_draft_workflow_node(
-                    app_model=app, draft_workflow=workflow, node_id=node_id, user_inputs={}, account=account
+                    app_model=app,
+                    draft_workflow=workflow,
+                    node_id=node_id,
+                    user_inputs={},
+                    account=account,
+                    knowledge_retrieval=make_knowledge_retriever(),
                 )
 
             assert result.id == execution_id
@@ -3920,7 +3938,14 @@ class TestWorkflowServiceCases:
                 patch.object(service, "_handle_single_step_result", return_value=node_execution),
                 patch("services.workflow_service.WorkflowEntry.run_free_node"),
             ):
-                result = service.run_free_workflow_node({}, "tenant-1", "user-1", "node-1", {})
+                result = service.run_free_workflow_node(
+                    {},
+                    "tenant-1",
+                    "user-1",
+                    "node-1",
+                    {},
+                    knowledge_retrieval=make_knowledge_retriever(),
+                )
                 assert result == node_execution
 
         def test_validate_graph_structure_coexist_error(self, service: WorkflowService) -> None:
@@ -4281,7 +4306,12 @@ class TestWorkflowAgentPreviewIdentityCases:
         with sessions.begin() as session:
             session.add_all([app, account, workflow])
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            sessions, tenant_id, account, app_id, WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
+            sessions,
+            tenant_id,
+            account,
+            app_id,
+            WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+            files=build_file_service(session_factory=sessions),
         )
         observed_created_at = []
         execution_ids: list[str] = []
@@ -4353,8 +4383,9 @@ class TestWorkflowAgentPreviewIdentityCases:
                 "services.workflow_service.WorkflowDraftVariableService.prefill_conversation_variable_default_values"
             ),
             patch.object(DifyAgentNode, "run", events),
-            patch(
-                "services.workflow_service.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+            patch.object(
+                WorkflowRepositoryFactory,
+                "create_workflow_node_execution_repository",
                 return_value=repository,
             ),
             patch("services.workflow_service.DraftVariableSaver.save"),
@@ -4362,9 +4393,23 @@ class TestWorkflowAgentPreviewIdentityCases:
         ):
             if outcome in {"exception", "cancel"}:
                 with pytest.raises(RuntimeError if outcome == "exception" else PreviewCancelled):
-                    service.run_draft_workflow_node(app, workflow, node_id, {}, account)
+                    service.run_draft_workflow_node(
+                        app,
+                        workflow,
+                        node_id,
+                        {},
+                        account,
+                        knowledge_retrieval=make_knowledge_retriever(),
+                    )
             else:
-                response = service.run_draft_workflow_node(app, workflow, node_id, {}, account)
+                response = service.run_draft_workflow_node(
+                    app,
+                    workflow,
+                    node_id,
+                    {},
+                    account,
+                    knowledge_retrieval=make_knowledge_retriever(),
+                )
                 assert response.id == response.node_execution_id == execution_ids[0]
 
         assert len(execution_ids) == 1
@@ -4412,7 +4457,14 @@ class TestWorkflowAgentPreviewIdentityCases:
             ) as prefill,
             pytest.raises(ValueError, match="does not belong"),
         ):
-            WorkflowService(sessions).run_draft_workflow_node(app, workflow, "agent", {}, account)
+            WorkflowService(sessions).run_draft_workflow_node(
+                app,
+                workflow,
+                "agent",
+                {},
+                account,
+                knowledge_retrieval=make_knowledge_retriever(),
+            )
         prefill.assert_not_called()
         with sessions() as session:
             assert session.scalar(select(func.count()).select_from(WorkflowNodeExecutionModel)) == 0

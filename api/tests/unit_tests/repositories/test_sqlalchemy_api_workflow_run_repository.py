@@ -7,15 +7,17 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from enums.creator import CreatorUserRole
 from graphon.entities.pause_reason import HitlRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import Message
-from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
+from models.enums import ConversationFromSource, MessageStatus, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
@@ -27,7 +29,23 @@ from repositories.sqlalchemy_api_workflow_run_repository import (
     WorkflowRunPauseRecord,
     WorkflowTaskOwnerMismatchError,
     _build_human_input_required_reason,
+    _PrivateWorkflowPauseEntity,
 )
+
+
+class _PauseStateStorage:
+    def __init__(self, objects: dict[str, bytes]) -> None:
+        self.objects = objects
+        self.saved_keys: list[str] = []
+        self.deleted_keys: list[str] = []
+
+    def save(self, key: str, value: bytes) -> None:
+        self.objects[key] = value
+        self.saved_keys.append(key)
+
+    def delete(self, key: str) -> None:
+        self.objects.pop(key, None)
+        self.deleted_keys.append(key)
 
 
 @pytest.fixture
@@ -385,9 +403,10 @@ def test_get_pause_record_returns_run_bound_checkpoint(
     assert result.pause.get_state() == b"checkpoint"
 
 
-def test_delete_pause_model_deletes_record_when_state_object_delete_fails(
+def test_delete_workflow_pause_deletes_record_when_state_object_delete_fails(
     caplog: pytest.LogCaptureFixture,
     sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     pause_model = WorkflowPause(
         workflow_id="workflow-1",
@@ -395,9 +414,10 @@ def test_delete_pause_model_deletes_record_when_state_object_delete_fails(
         state_object_key="workflow-state.json",
     )
     pause_model.id = "pause-1"
-    session = sqlite_session
-    session.add(pause_model)
-    session.commit()
+    sqlite_session.add(pause_model)
+    sqlite_session.commit()
+    pause_entity = _PrivateWorkflowPauseEntity(pause_model=pause_model)
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
 
     with (
         patch(
@@ -406,15 +426,170 @@ def test_delete_pause_model_deletes_record_when_state_object_delete_fails(
         ) as delete_state_object,
         caplog.at_level(logging.ERROR, logger="repositories.sqlalchemy_api_workflow_run_repository"),
     ):
-        DifyAPISQLAlchemyWorkflowRunRepository._delete_pause_model(session, pause_model)
+        repository.delete_workflow_pause(pause_entity)
 
     delete_state_object.assert_called_once_with(pause_model.state_object_key)
-    session.commit()
-    assert session.get(WorkflowPause, "pause-1") is None
-    assert "pause_id=pause-1" in caplog.text
+    sqlite_session.expire_all()
+    assert sqlite_session.get(WorkflowPause, "pause-1") is None
     assert "workflow_run_id=run-1" in caplog.text
     assert "object_key=workflow-state.json" in caplog.text
     assert caplog.records[-1].exc_info is not None
+
+
+def test_replacing_pause_keeps_old_blob_when_commit_rolls_back(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    run = _workflow_run(run_id="run-1", tenant_id="tenant-1", status=WorkflowExecutionStatus.PAUSED)
+    old_pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="old-state")
+    sqlite_session.add_all([run, old_pause])
+    sqlite_session.commit()
+    pause_storage = _PauseStateStorage({"old-state": b"old"})
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", pause_storage.save)
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.delete", pause_storage.delete)
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
+    failed = False
+
+    def fail_before_commit(_session: Session) -> None:
+        nonlocal failed
+        if not failed:
+            failed = True
+            raise RuntimeError("commit rejected")
+
+    event.listen(sqlite_session_factory.class_, "before_commit", fail_before_commit)
+    try:
+        with pytest.raises(RuntimeError, match="commit rejected"):
+            repository.create_workflow_pause(run.id, "account-1", "{}", [])
+    finally:
+        event.remove(sqlite_session_factory.class_, "before_commit", fail_before_commit)
+
+    with sqlite_session_factory() as verifier:
+        persisted = verifier.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == run.id))
+        assert persisted is not None
+        assert persisted.state_object_key == "old-state"
+    assert pause_storage.saved_keys
+    assert pause_storage.objects == {"old-state": b"old"}
+    assert pause_storage.deleted_keys == pause_storage.saved_keys
+
+
+def test_replacing_pause_preserves_published_blob_when_commit_reports_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    run = _workflow_run(run_id="run-1", tenant_id="tenant-1", status=WorkflowExecutionStatus.PAUSED)
+    old_pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="old-state")
+    sqlite_session.add_all([run, old_pause])
+    sqlite_session.commit()
+    pause_storage = _PauseStateStorage({"old-state": b"old"})
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", pause_storage.save)
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.delete", pause_storage.delete)
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
+    failed = False
+
+    def fail_after_commit(_session: Session) -> None:
+        nonlocal failed
+        if not failed:
+            failed = True
+            raise RuntimeError("commit result lost")
+
+    event.listen(sqlite_session_factory.class_, "after_commit", fail_after_commit)
+    try:
+        with pytest.raises(RuntimeError, match="commit result lost"):
+            repository.create_workflow_pause(run.id, "account-1", "{}", [])
+    finally:
+        event.remove(sqlite_session_factory.class_, "after_commit", fail_after_commit)
+
+    with sqlite_session_factory() as verifier:
+        persisted = verifier.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == run.id))
+        assert persisted is not None
+        assert persisted.state_object_key != "old-state"
+        published_key = persisted.state_object_key
+    assert pause_storage.objects == {published_key: b"{}"}
+    assert pause_storage.deleted_keys == ["old-state"]
+
+
+def test_replacing_pause_preserves_new_blob_when_commit_result_cannot_be_verified(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    run = _workflow_run(run_id="run-1", tenant_id="tenant-1", status=WorkflowExecutionStatus.PAUSED)
+    old_pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="old-state")
+    sqlite_session.add_all([run, old_pause])
+    sqlite_session.commit()
+    pause_storage = _PauseStateStorage({"old-state": b"old"})
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", pause_storage.save)
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.delete", pause_storage.delete)
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
+    engine = sqlite_session.get_bind()
+    commit_failed = False
+
+    def fail_before_commit(_session: Session) -> None:
+        nonlocal commit_failed
+        if not commit_failed:
+            commit_failed = True
+            raise RuntimeError("commit result unknown")
+
+    def fail_verification(_connection, _cursor, statement: str, _parameters, _context, _executemany) -> None:
+        if commit_failed and "workflow_pauses" in statement.lower():
+            raise RuntimeError("database unavailable")
+
+    event.listen(sqlite_session_factory.class_, "before_commit", fail_before_commit)
+    event.listen(engine, "before_cursor_execute", fail_verification)
+    try:
+        with pytest.raises(RuntimeError, match="commit result unknown"):
+            repository.create_workflow_pause(run.id, "account-1", "{}", [])
+    finally:
+        event.remove(sqlite_session_factory.class_, "before_commit", fail_before_commit)
+        event.remove(engine, "before_cursor_execute", fail_verification)
+
+    with sqlite_session_factory() as verifier:
+        persisted = verifier.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == run.id))
+        assert persisted is not None
+        assert persisted.state_object_key == "old-state"
+    assert len(pause_storage.saved_keys) == 1
+    assert pause_storage.objects == {"old-state": b"old", pause_storage.saved_keys[0]: b"{}"}
+    assert pause_storage.deleted_keys == []
+
+
+def test_delete_pause_keeps_blob_when_commit_rolls_back(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    pause_model = WorkflowPause(
+        workflow_id="workflow-1",
+        workflow_run_id="run-1",
+        state_object_key="pause-state",
+    )
+    pause_model.id = "pause-1"
+    sqlite_session.add(pause_model)
+    sqlite_session.commit()
+    pause_entity = _PrivateWorkflowPauseEntity(pause_model=pause_model)
+    pause_storage = _PauseStateStorage({"pause-state": b"state"})
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.delete", pause_storage.delete)
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
+    failed = False
+
+    def fail_before_commit(_session: Session) -> None:
+        nonlocal failed
+        if not failed:
+            failed = True
+            raise RuntimeError("commit rejected")
+
+    event.listen(sqlite_session_factory.class_, "before_commit", fail_before_commit)
+    try:
+        with pytest.raises(RuntimeError, match="commit rejected"):
+            repository.delete_workflow_pause(pause_entity)
+    finally:
+        event.remove(sqlite_session_factory.class_, "before_commit", fail_before_commit)
+
+    with sqlite_session_factory() as verifier:
+        assert verifier.get(WorkflowPause, pause_model.id) is not None
+    assert pause_storage.objects == {"pause-state": b"state"}
+    assert pause_storage.deleted_keys == []
 
 
 def _app_run(

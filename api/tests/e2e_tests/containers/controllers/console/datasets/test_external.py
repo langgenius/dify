@@ -7,6 +7,7 @@ import json
 from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
+from constants import HIDDEN_VALUE
 from models.dataset import ExternalKnowledgeApis
 from tests.e2e_tests.containers.controllers.console.helpers import (
     authenticate_console_client,
@@ -95,7 +96,7 @@ def test_external_api_template_list_filters_paginates_and_scopes_to_authenticate
     assert first_page_item["name"] in {"Alpha Primary", "Alpha Secondary"}
     assert first_page_item["settings"] == {
         "endpoint": "https://example.com",
-        "api_key": "test-api-key",
+        "api_key": HIDDEN_VALUE,
     }
     assert first_page_item["dataset_bindings"] == []
 

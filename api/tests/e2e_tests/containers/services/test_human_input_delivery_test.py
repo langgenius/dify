@@ -272,7 +272,7 @@ def test_human_input_delivery_test_form_accepts_remote_file_upload(
     assert upload_response.get_json()["url"]
     assert request_mock.call_args_list == [
         call("HEAD", url=remote_url),
-        call("GET", url=remote_url),
+        call("GET", url=remote_url, follow_redirects=True, stream_response=True),
     ]
 
     db_session_with_containers.expire_all()

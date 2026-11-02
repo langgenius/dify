@@ -11,10 +11,11 @@ from sqlalchemy import Engine, delete, select
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 

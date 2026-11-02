@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from core.rag.entities import KeywordSetting, VectorSetting
+from services.knowledge.entities.retrieval_settings import KeywordSetting, VectorSetting
 
 
 class Weights(BaseModel):

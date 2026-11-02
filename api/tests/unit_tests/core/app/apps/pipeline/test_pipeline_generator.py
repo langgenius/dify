@@ -12,15 +12,21 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.workflow.nodes.knowledge_index.protocols import SummaryIndexServiceProtocol
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DataSourceType, EndUserType
-from models.model import EndUser
+from models.model import AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
+from services.errors.file import UploadFileReferenceNotFoundError
+from services.file_service import FileService
+from services.knowledge.documents.contracts import DocumentCreationEnvironment, DocumentCreationLimits
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 
@@ -50,6 +56,9 @@ def generator(mocker: MockerFixture, sqlite_engine: Engine):
         datasource_providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         ),
+        knowledge_retrieval=create_autospec(KnowledgeRetriever, instance=True, spec_set=True),
+        summary_index_service=create_autospec(SummaryIndexServiceProtocol, instance=True, spec_set=True),
+        files=create_autospec(FileService, instance=True, spec_set=True),
     )
 
     _patch_sqlite_engine(mocker, sqlite_engine)
@@ -196,12 +205,12 @@ def test_generate_debugger_calls_generate(generator, mocker: MockerFixture, sqli
     mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
 
     mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
+        module.WorkflowRepositoryFactory,
         "create_workflow_execution_repository",
         return_value=MagicMock(),
     )
     mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
+        module.WorkflowRepositoryFactory,
         "create_workflow_node_execution_repository",
         return_value=MagicMock(),
     )
@@ -240,18 +249,32 @@ def test_generate_published_pipeline_creates_documents_and_delay(
     )
     mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
 
-    mocker.patch("services.knowledge.dataset_service.DocumentService.get_documents_position", return_value=1)
-    features = SimpleNamespace()
-    get_features = mocker.patch("services.feature_service.FeatureService.get_features", return_value=features)
-    check_limits = mocker.patch("services.knowledge.dataset_service.DocumentService.check_document_creation_limits")
+    mocker.patch.object(generator._documents, "next_document_position", return_value=1)
+    limits = DocumentCreationLimits(
+        enabled=False,
+        sandbox=False,
+        batch_upload_limit=10,
+        upload_quota_limit=0,
+        upload_quota_size=0,
+    )
+    load_environment = mocker.patch.object(
+        module,
+        "load_document_creation_environment",
+        return_value=DocumentCreationEnvironment(
+            limits=limits,
+            priority_indexing=True,
+            initial_permission="only_me",
+        ),
+    )
+    check_limits = mocker.patch.object(module, "check_document_creation_limits")
 
     mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
+        module.WorkflowRepositoryFactory,
         "create_workflow_execution_repository",
         return_value=MagicMock(),
     )
     mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
+        module.WorkflowRepositoryFactory,
         "create_workflow_node_execution_repository",
         return_value=MagicMock(),
     )
@@ -271,7 +294,7 @@ def test_generate_published_pipeline_creates_documents_and_delay(
 
     assert result["batch"]
     assert len(result["documents"]) == 2
-    check_limits.assert_called_once_with(len(datasource_info_list), features)
+    check_limits.assert_called_once_with(len(datasource_info_list), limits)
     persisted_documents = sqlite_session.scalars(
         select(Document).where(Document.dataset_id == DATASET_ID).order_by(Document.position)
     ).all()
@@ -281,7 +304,7 @@ def test_generate_published_pipeline_creates_documents_and_delay(
     ).all()
     assert {log.document_id for log in persisted_logs} == {document.id for document in persisted_documents}
     task_proxy.delay.assert_called_once()
-    get_features.assert_called_once_with(TENANT_ID)
+    load_environment.assert_called_once_with(TENANT_ID)
 
 
 def test_generate_published_pipeline_rejects_when_document_creation_limits_exceeded(
@@ -301,10 +324,25 @@ def test_generate_published_pipeline_rejects_when_document_creation_limits_excee
         return_value=SimpleNamespace(app_id="pipe", rag_pipeline_variables=[]),
     )
 
-    features = SimpleNamespace()
-    mocker.patch("services.feature_service.FeatureService.get_features", return_value=features)
-    check_limits = mocker.patch(
-        "services.knowledge.dataset_service.DocumentService.check_document_creation_limits",
+    limits = DocumentCreationLimits(
+        enabled=False,
+        sandbox=False,
+        batch_upload_limit=10,
+        upload_quota_limit=0,
+        upload_quota_size=0,
+    )
+    mocker.patch.object(
+        module,
+        "load_document_creation_environment",
+        return_value=DocumentCreationEnvironment(
+            limits=limits,
+            priority_indexing=True,
+            initial_permission="only_me",
+        ),
+    )
+    check_limits = mocker.patch.object(
+        module,
+        "check_document_creation_limits",
         side_effect=ValueError("document limit exceeded"),
     )
 
@@ -319,11 +357,68 @@ def test_generate_published_pipeline_rejects_when_document_creation_limits_excee
             streaming=False,
         )
 
-    check_limits.assert_called_once_with(len(datasource_info_list), features)
+    check_limits.assert_called_once_with(len(datasource_info_list), limits)
     assert sqlite_session.scalars(select(Document)).all() == []
 
 
-def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture, sqlite_session: Session):
+def test_generate_published_pipeline_revalidates_local_file_before_persisting_document(
+    generator, mocker: MockerFixture, sqlite_session: Session
+) -> None:
+    pipeline, _, workflow = _persist_pipeline_scope(sqlite_session)
+    datasource_info_list = [
+        {
+            "name": "removed.txt",
+            "transfer_method": "local_file",
+            "real_file_id": "removed-upload",
+        }
+    ]
+    mocker.patch.object(generator, "_format_datasource_info_list", return_value=datasource_info_list)
+    mocker.patch.object(
+        module.PipelineConfigManager,
+        "get_pipeline_config",
+        return_value=PipelineConfig(
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            app_mode=AppMode.RAG_PIPELINE,
+            workflow_id=workflow.id,
+            rag_pipeline_variables=[],
+        ),
+    )
+    mocker.patch.object(
+        module,
+        "load_document_creation_environment",
+        return_value=DocumentCreationEnvironment(
+            limits=DocumentCreationLimits(
+                enabled=False,
+                sandbox=False,
+                batch_upload_limit=10,
+                upload_quota_limit=0,
+                upload_quota_size=0,
+            ),
+            priority_indexing=True,
+            initial_permission="only_me",
+        ),
+    )
+    mocker.patch.object(module, "check_document_creation_limits")
+
+    with pytest.raises(UploadFileReferenceNotFoundError):
+        generator.generate(
+            session=sqlite_session,
+            pipeline=pipeline,
+            workflow=workflow,
+            user=_build_user(),
+            args=_build_args(),
+            invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+            streaming=False,
+        )
+    sqlite_session.rollback()
+
+    assert sqlite_session.scalars(select(Document)).all() == []
+
+
+def test_generate_retry_preserves_original_document_for_index_replacement(
+    generator, mocker: MockerFixture, sqlite_session: Session
+):
     pipeline, _, workflow = _persist_pipeline_scope(sqlite_session)
 
     mocker.patch.object(
@@ -339,12 +434,12 @@ def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture, sqli
     mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
 
     mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
+        module.WorkflowRepositoryFactory,
         "create_workflow_execution_repository",
         return_value=MagicMock(),
     )
     mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
+        module.WorkflowRepositoryFactory,
         "create_workflow_node_execution_repository",
         return_value=MagicMock(),
     )
@@ -368,7 +463,7 @@ def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture, sqli
     assert result == {"result": "ok"}
     application_generate_entity = generate.call_args.kwargs["application_generate_entity"]
     assert application_generate_entity.document_id == "document-1"
-    assert application_generate_entity.original_document_id is None
+    assert application_generate_entity.original_document_id == "document-1"
 
 
 def test_generate_worker_handles_errors(
@@ -387,6 +482,8 @@ def test_generate_worker_handles_errors(
         app_config=SimpleNamespace(tenant_id=TENANT_ID, app_id=PIPELINE_ID, workflow_id=WORKFLOW_ID),
         invoke_from=InvokeFrom.WEB_APP,
         user_id=USER_ID,
+        dataset_id=DATASET_ID,
+        document_id="doc-1",
     )
 
     runner_instance = MagicMock()
@@ -423,6 +520,8 @@ def test_generate_worker_sets_system_user_id_for_external_call(
         app_config=SimpleNamespace(tenant_id=TENANT_ID, app_id=PIPELINE_ID, workflow_id=WORKFLOW_ID),
         invoke_from=InvokeFrom.WEB_APP,
         user_id=USER_ID,
+        dataset_id=DATASET_ID,
+        document_id="doc-1",
     )
 
     runner_instance = MagicMock()
@@ -575,12 +674,12 @@ def test_single_iteration_generate_success(
         return_value=SimpleNamespace(app_id="pipe", tenant_id="tenant"),
     )
     mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
+        module.WorkflowRepositoryFactory,
         "create_workflow_execution_repository",
         return_value=MagicMock(),
     )
     mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
+        module.WorkflowRepositoryFactory,
         "create_workflow_node_execution_repository",
         return_value=MagicMock(),
     )
@@ -615,12 +714,12 @@ def test_single_loop_generate_success(
         return_value=SimpleNamespace(app_id="pipe", tenant_id="tenant"),
     )
     mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
+        module.WorkflowRepositoryFactory,
         "create_workflow_execution_repository",
         return_value=MagicMock(),
     )
     mocker.patch.object(
-        module.DifyCoreRepositoryFactory,
+        module.WorkflowRepositoryFactory,
         "create_workflow_node_execution_repository",
         return_value=MagicMock(),
     )

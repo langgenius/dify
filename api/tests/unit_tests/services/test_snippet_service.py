@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -10,9 +11,6 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition
-from extensions.storage.storage_type import StorageType
-from graphon.variables.segments import StringSegment
-from graphon.variables.types import SegmentType
 from models.account import Account
 from models.agent import (
     Agent,
@@ -22,32 +20,45 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.enums import AppStatus, CreatorUserRole
-from models.model import App, AppMode, UploadFile
+from models.enums import AppStatus
+from models.model import App, AppMode
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import (
     Workflow,
-    WorkflowDraftVariable,
-    WorkflowDraftVariableFile,
     WorkflowKind,
     WorkflowNodeExecutionModel,
     WorkflowRun,
     WorkflowType,
 )
+from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+    DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
+)
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.file import UploadFileReferenceNotFoundError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.snippet_service import SnippetService
 from services.tag_application_service import TagApplicationService
 from tests.helpers.unit.model_factories import make_account
 
 
-def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: dict) -> Workflow:
+def _snippet_service(session_factory: sessionmaker[Session]) -> SnippetService:
+    return SnippetService(
+        session_maker=session_factory,
+        node_executions=DifyAPISQLAlchemyWorkflowNodeExecutionRepository(session_factory),
+        workflow_runs=DifyAPISQLAlchemyWorkflowRunRepository(session_factory),
+    )
+
+
+def _create_workflow(
+    *, workflow_id: str, version: str, graph: Mapping[str, object], features: Mapping[str, object]
+) -> Workflow:
     return Workflow(
         id=workflow_id,
         tenant_id="tenant-1",
         app_id="snippet-1",
-        type=WorkflowType.WORKFLOW.value,
-        kind=WorkflowKind.SNIPPET.value,
+        type=WorkflowType.WORKFLOW,
+        kind=WorkflowKind.SNIPPET,
         version=version,
         graph=json.dumps(graph),
         _features=json.dumps(features),
@@ -58,21 +69,35 @@ def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: d
     )
 
 
-def _snippet(**overrides) -> CustomizedSnippet:
-    values = {
-        "id": "snippet-1",
-        "tenant_id": "tenant-1",
-        "name": "Snippet",
-        "description": "",
-        "type": SnippetType.NODE,
-        "created_by": "account-1",
-    }
-    values.update(overrides)
-    return CustomizedSnippet(**values)
+def _snippet(*, workflow_id: str | None = None) -> CustomizedSnippet:
+    return CustomizedSnippet(
+        id="snippet-1",
+        tenant_id="tenant-1",
+        name="Snippet",
+        description="",
+        type=SnippetType.NODE,
+        created_by="account-1",
+        workflow_id=workflow_id,
+    )
 
 
 def _account(account_id: str = "account-1") -> Account:
     return make_account(account_id=account_id, name="Test User", email=f"{account_id}@example.com")
+
+
+def _graph_with_upload_reference(file_id: str) -> dict[str, object]:
+    return {
+        "nodes": [
+            {
+                "id": "llm-1",
+                "data": {
+                    "type": "llm",
+                    "files": [{"transfer_method": "local_file", "upload_file_id": file_id}],
+                },
+            }
+        ],
+        "edges": [],
+    }
 
 
 def test_create_snippet_allows_duplicate_names(
@@ -83,7 +108,7 @@ def test_create_snippet_allows_duplicate_names(
     existing.name = "shared name"
     sqlite_session.add(existing)
     sqlite_session.commit()
-    service = SnippetService(session_maker=sqlite_session_factory)
+    service = _snippet_service(sqlite_session_factory)
 
     snippet = service.create_snippet(
         tenant_id="tenant-1",
@@ -123,7 +148,7 @@ def test_validate_snippet_graph_forbidden_nodes_raises_with_node_details() -> No
 
 
 def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(
-    application_tags, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    application_tags: TagApplicationService, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     get_target_ids = Mock(return_value=[])
     monkeypatch.setattr(application_tags, "find_target_ids", get_target_ids)
@@ -138,7 +163,7 @@ def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(
 
 
 def test_get_snippets_applies_filters_and_paginates(
-    application_tags, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    application_tags: TagApplicationService, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     snippets = []
     for index in range(3):
@@ -217,7 +242,7 @@ def test_get_snippets_keyword_treats_like_wildcards_literally(
             )
         )
     sqlite_session.flush()
-    service = SnippetService(session=sqlite_session)
+    service = SnippetService.__new__(SnippetService)
 
     result, total, has_more = service.get_snippets(
         tenant_id="tenant-1", session=sqlite_session, keyword=keyword, tags=application_tags
@@ -277,8 +302,7 @@ def test_sync_draft_workflow_creates_draft_and_updates_input_fields(
     sqlite_session_factory: sessionmaker[Session],
     sqlite_session: Session,
 ) -> None:
-    service = SnippetService(session_maker=sqlite_session_factory)
-    monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=None))
+    service = _snippet_service(sqlite_session_factory)
     monkeypatch.setattr(
         "services.agent.workflow_publish_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
         Mock(return_value={"retired-agent"}),
@@ -301,6 +325,7 @@ def test_sync_draft_workflow_creates_draft_and_updates_input_fields(
 
     assert workflow.app_id == snippet.id
     assert workflow.kind == WorkflowKind.SNIPPET
+    assert snippet.input_fields is not None
     assert json.loads(snippet.input_fields) == [{"variable": "query"}]
     sqlite_session.expire_all()
     stored_workflow = sqlite_session.scalar(select(Workflow).where(Workflow.id == workflow.id))
@@ -317,16 +342,20 @@ def test_sync_draft_workflow_creates_draft_and_updates_input_fields(
 
 def test_sync_draft_workflow_raises_when_hash_mismatches(
     sqlite_session_factory: sessionmaker[Session],
+    sqlite_session: Session,
 ) -> None:
-    service = SnippetService(session_maker=sqlite_session_factory)
+    service = _snippet_service(sqlite_session_factory)
+    snippet = _snippet()
     draft_workflow = _create_workflow(
         workflow_id="workflow-1", version=Workflow.VERSION_DRAFT, graph={"nodes": []}, features={}
     )
-    service.get_draft_workflow = Mock(return_value=draft_workflow)
+    sqlite_session.add_all([snippet, draft_workflow])
+    sqlite_session.commit()
+    sqlite_session.expunge_all()
 
     with pytest.raises(WorkflowHashNotEqualError):
         service.sync_draft_workflow(
-            snippet=_snippet(),
+            snippet=snippet,
             graph={"nodes": [], "edges": []},
             unique_hash="client-hash",
             account=_account(),
@@ -338,7 +367,7 @@ def test_sync_draft_workflow_updates_existing_draft_and_clears_variables(
     sqlite_session_factory: sessionmaker[Session],
     sqlite_session: Session,
 ) -> None:
-    service = SnippetService(session_maker=sqlite_session_factory)
+    service = _snippet_service(sqlite_session_factory)
     workflow = _create_workflow(
         workflow_id="workflow-1",
         version=Workflow.VERSION_DRAFT,
@@ -348,7 +377,9 @@ def test_sync_draft_workflow_updates_existing_draft_and_clears_variables(
     unique_hash = workflow.unique_hash
     snippet = _snippet()
     account = _account()
-    monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=workflow))
+    sqlite_session.add_all([snippet, workflow])
+    sqlite_session.commit()
+    sqlite_session.expunge_all()
 
     result = service.sync_draft_workflow(
         snippet=snippet,
@@ -358,13 +389,14 @@ def test_sync_draft_workflow_updates_existing_draft_and_clears_variables(
         input_fields=[{"variable": "query"}],
     )
 
-    assert result is workflow
-    assert workflow.graph_dict["nodes"][0]["id"] == "llm-1"
-    assert workflow.type == WorkflowType.WORKFLOW
-    assert workflow.kind == WorkflowKind.SNIPPET
-    assert workflow.updated_by == account.id
-    assert workflow.environment_variables == []
-    assert workflow.conversation_variables == []
+    assert result.id == workflow.id
+    assert result.graph_dict["nodes"][0]["id"] == "llm-1"
+    assert result.type == WorkflowType.WORKFLOW
+    assert result.kind == WorkflowKind.SNIPPET
+    assert result.updated_by == account.id
+    assert result.environment_variables == []
+    assert result.conversation_variables == []
+    assert snippet.input_fields is not None
     assert json.loads(snippet.input_fields) == [{"variable": "query"}]
     sqlite_session.expire_all()
     assert sqlite_session.get(Workflow, workflow.id) is not None
@@ -523,7 +555,10 @@ def test_restore_published_snippet_workflow_to_draft_copies_source_snapshot(
 ) -> None:
     snippet = _snippet()
     account = _account("account-2")
-    source_graph = {"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []}
+    source_graph: dict[str, object] = {
+        "nodes": [{"id": "llm-1", "data": {"type": "llm"}}],
+        "edges": [],
+    }
     source_features = {"opening_statement": "hello"}
     source_workflow = _create_workflow(
         workflow_id="published-workflow",
@@ -537,10 +572,11 @@ def test_restore_published_snippet_workflow_to_draft_copies_source_snapshot(
         graph={"nodes": [], "edges": []},
         features={},
     )
-    service = SnippetService(session_maker=sqlite_session_factory)
+    service = _snippet_service(sqlite_session_factory)
 
-    monkeypatch.setattr(service, "get_published_workflow_by_id", Mock(return_value=source_workflow))
-    monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=draft_workflow))
+    sqlite_session.add_all([snippet, source_workflow, draft_workflow])
+    sqlite_session.commit()
+    sqlite_session.expunge_all()
     monkeypatch.setattr(
         "services.agent.workflow_publish_service.WorkflowAgentPublishService.restore_agent_node_bindings_to_draft",
         Mock(return_value={"retired-agent"}),
@@ -557,10 +593,10 @@ def test_restore_published_snippet_workflow_to_draft_copies_source_snapshot(
         account=account,
     )
 
-    assert result is draft_workflow
-    assert draft_workflow.graph_dict == source_graph
-    assert draft_workflow.features_dict == source_features
-    assert draft_workflow.updated_by == account.id
+    assert result.id == draft_workflow.id
+    assert result.graph_dict == source_graph
+    assert result.features_dict == source_features
+    assert result.updated_by == account.id
     sqlite_session.expire_all()
     stored = sqlite_session.get(Workflow, draft_workflow.id)
     assert stored is not None
@@ -572,13 +608,49 @@ def test_restore_published_snippet_workflow_to_draft_copies_source_snapshot(
     )
 
 
+def test_restore_published_snippet_workflow_rejects_missing_new_file_without_changing_draft(
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_session: Session,
+) -> None:
+    old_graph: dict[str, object] = {"nodes": [], "edges": [], "marker": "old"}
+    snippet = _snippet()
+    source_workflow = _create_workflow(
+        workflow_id="published-workflow",
+        version="2026-04-28 00:00:00",
+        graph=_graph_with_upload_reference("missing-file"),
+        features={},
+    )
+    draft_workflow = _create_workflow(
+        workflow_id="draft-workflow",
+        version=Workflow.VERSION_DRAFT,
+        graph=old_graph,
+        features={},
+    )
+    sqlite_session.add_all([snippet, source_workflow, draft_workflow])
+    sqlite_session.commit()
+    sqlite_session.expunge_all()
+    service = _snippet_service(sqlite_session_factory)
+
+    with pytest.raises(UploadFileReferenceNotFoundError):
+        service.restore_published_workflow_to_draft(
+            snippet=snippet,
+            workflow_id=source_workflow.id,
+            account=_account("account-2"),
+        )
+    sqlite_session.rollback()
+
+    persisted_draft = sqlite_session.get(Workflow, draft_workflow.id)
+    assert persisted_draft is not None
+    assert persisted_draft.graph_dict == old_graph
+
+
 def test_restore_published_snippet_workflow_to_draft_raises_when_source_missing(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     snippet = _snippet()
     account = _account("account-2")
-    service = SnippetService(session_maker=sqlite_session_factory)
+    service = _snippet_service(sqlite_session_factory)
 
     monkeypatch.setattr(service, "get_published_workflow_by_id", Mock(return_value=None))
 
@@ -609,10 +681,9 @@ def test_restore_published_snippet_workflow_to_draft_adds_new_draft(
         graph={"nodes": [], "edges": []},
         features={},
     )
-    service = SnippetService(session_maker=sqlite_session_factory)
+    service = _snippet_service(sqlite_session_factory)
 
     monkeypatch.setattr(service, "get_published_workflow_by_id", Mock(return_value=source_workflow))
-    monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=None))
     monkeypatch.setattr(
         "services.snippet_service.apply_published_workflow_snapshot_to_draft",
         Mock(return_value=(new_draft_workflow, True)),
@@ -645,7 +716,7 @@ def test_get_published_workflow_by_id_raises_for_draft(
     )
     sqlite_session.add(draft_workflow)
     sqlite_session.commit()
-    service = SnippetService(session_maker=sqlite_session_factory)
+    service = _snippet_service(sqlite_session_factory)
 
     with pytest.raises(IsDraftWorkflowError):
         service.get_published_workflow_by_id(
@@ -939,59 +1010,6 @@ def test_delete_snippet_keeps_agent_with_persisted_external_owner(
     cleanup_delay.assert_not_called()
 
 
-def test_delete_draft_variable_files_removes_storage_objects(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    from extensions.ext_storage import storage
-
-    snippet = _snippet()
-    storage_delete = Mock()
-    monkeypatch.setattr(storage, "delete", storage_delete)
-    upload_file = UploadFile(
-        tenant_id=snippet.tenant_id,
-        storage_type=StorageType.LOCAL,
-        key="storage-key",
-        name="value.txt",
-        size=10,
-        extension=".txt",
-        mime_type="text/plain",
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="account-1",
-        created_at=datetime(2025, 1, 1),
-        used=True,
-    )
-    variable_file = WorkflowDraftVariableFile(
-        tenant_id=snippet.tenant_id,
-        app_id=snippet.id,
-        user_id="account-1",
-        upload_file_id=upload_file.id,
-        size=10,
-        length=None,
-        value_type=SegmentType.STRING,
-    )
-    variable = WorkflowDraftVariable.new_node_variable(
-        app_id=snippet.id,
-        user_id="account-1",
-        node_id="node-1",
-        name="value",
-        value=StringSegment(value="truncated"),
-        node_execution_id="execution-1",
-        file_id=variable_file.id,
-    )
-    sqlite_session.add_all([snippet, upload_file, variable_file, variable])
-    sqlite_session.flush()
-
-    SnippetService._delete_draft_variable_files(session=sqlite_session, snippet=snippet)
-
-    storage_delete.assert_called_once_with("storage-key")
-    sqlite_session.commit()
-    with sqlite_session_factory() as observer:
-        assert observer.get(UploadFile, upload_file.id) is None
-        assert observer.get(WorkflowDraftVariableFile, variable_file.id) is None
-
-
 def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch: pytest.MonkeyPatch) -> None:
     from tests.helpers.unit.config_override import apply_config_overrides
 
@@ -1010,9 +1028,11 @@ def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch
 
 
 def test_workflow_run_queries_delegate_to_repositories(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    service = SnippetService(session=sqlite_session)
+    service = _snippet_service(sqlite_session_factory)
     workflow_run_repo = SimpleNamespace(
         get_paginated_workflow_runs=Mock(return_value=SimpleNamespace(data=[])),
         get_workflow_run_by_id=Mock(return_value=WorkflowRun(id="run-1")),
@@ -1023,6 +1043,8 @@ def test_workflow_run_queries_delegate_to_repositories(
     )
     service._workflow_run_repo = workflow_run_repo
     service._node_execution_service_repo = node_execution_repo
+    service._session = sqlite_session
+    service._session_maker = sqlite_session_factory
     snippet = _snippet()
     expected_traces = [SimpleNamespace(id="node-execution-1:retry:1"), SimpleNamespace(id="node-execution-1")]
     mock_assemble = Mock(return_value=expected_traces)
@@ -1063,8 +1085,10 @@ def test_workflow_run_queries_delegate_to_repositories(
     )
 
 
-def test_workflow_run_node_executions_returns_empty_when_run_missing() -> None:
-    service = SnippetService.__new__(SnippetService)
+def test_workflow_run_node_executions_returns_empty_when_run_missing(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    service = _snippet_service(sqlite_session_factory)
     service._node_execution_service_repo = SimpleNamespace(get_executions_by_workflow_run=Mock())
     service.get_snippet_workflow_run = Mock(return_value=None)
 

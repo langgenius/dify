@@ -27,6 +27,7 @@ from core.workflow.node_factory import (
     is_start_node_type,
     resolve_workflow_node_class,
 )
+from core.workflow.node_runtime import build_knowledge_index_files
 from core.workflow.nodes.human_input.boundary import HumanInputFormEventFilter
 from core.workflow.system_variables import (
     default_system_variables,
@@ -65,6 +66,7 @@ from services.workflow_node_variables import add_node_input_to_variable_pool, lo
 
 if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
@@ -224,6 +226,7 @@ class WorkflowEntry:
         user_id: str,
         user_inputs: Mapping[str, Any],
         variable_pool: VariablePool,
+        knowledge_retrieval: "KnowledgeRetriever",
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         execution_driver: "WorkflowRunDriver | None",
     ) -> tuple[Node, Generator[NodeEvent | ContainerAwaitRequest]]:
@@ -263,6 +266,8 @@ class WorkflowEntry:
             graph_config=workflow.graph_dict,
             run_context=run_context,
             call_depth=0,
+            knowledge_retrieval=knowledge_retrieval,
+            knowledge_index_files=build_knowledge_index_files(),
             execution_driver=execution_driver,
         )
         graph_runtime_state = RuntimeState(
@@ -390,7 +395,14 @@ class WorkflowEntry:
 
     @classmethod
     def run_free_node(
-        cls, node_data: dict[str, Any], node_id: str, tenant_id: str, user_id: str, user_inputs: dict[str, Any]
+        cls,
+        node_data: dict[str, Any],
+        node_id: str,
+        tenant_id: str,
+        user_id: str,
+        user_inputs: dict[str, Any],
+        *,
+        knowledge_retrieval: "KnowledgeRetriever",
     ) -> tuple[Node, Generator[NodeEvent | ContainerAwaitRequest]]:
         """
         Run free node
@@ -433,6 +445,8 @@ class WorkflowEntry:
             graph_config=graph_dict,
             run_context=run_context,
             call_depth=0,
+            knowledge_retrieval=knowledge_retrieval,
+            knowledge_index_files=build_knowledge_index_files(),
         )
         graph_runtime_state = RuntimeState(
             variable_pool=variable_pool,

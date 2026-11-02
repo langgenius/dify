@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 import { zFileResponse } from './generated/api/console/files/zod.gen.ts'
 import {
   zCompletionRequestPayloadWithUser,
+  zHitTestingResponse,
   zParameters,
   zPostChatMessagesResponse,
   zPostCompletionMessagesResponse,
@@ -11,6 +12,17 @@ import {
 } from './generated/api/service/zod.gen.ts'
 
 describe('generated Service API schemas', () => {
+  it('preserves external knowledge retrieval records', () => {
+    const response = {
+      query: { content: 'query' },
+      records: [
+        { content: 'External text', title: 'Guide', score: 0.8, metadata: { source: 'remote' } },
+      ],
+    }
+
+    expect(zHitTestingResponse.parse(response)).toEqual(response)
+  })
+
   it('keeps JSON int64 values as numbers', () => {
     const result = zFileResponse.parse({
       created_at: 1_700_000_000,

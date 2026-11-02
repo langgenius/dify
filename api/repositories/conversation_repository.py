@@ -18,7 +18,7 @@ from models.enums import ConversationFromSource, CreatorUserRole, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser, InstalledApp, Message, MessageAnnotation
 from models.web import PinnedConversation
 from repositories.app.console_repository import find_console_app
-from repositories.conversation_lifecycle import retire_conversation
+from repositories.conversation.lifecycle import retire_conversation
 from repositories.message_projection import snapshot_console_message
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import (

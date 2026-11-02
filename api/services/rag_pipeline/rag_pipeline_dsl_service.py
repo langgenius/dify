@@ -43,7 +43,8 @@ from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
-from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
+from repositories.knowledge.pipeline_query_repository import get_pipeline_dataset
+from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus, PendingImportOwner
@@ -623,6 +624,10 @@ class RagPipelineDslService:
                 Workflow.version == "draft",
             )
             .limit(1)
+            .with_for_update()
+        )
+        previous_upload_file_payloads = (
+            (workflow.graph, workflow._conversation_variables) if workflow is not None else ()
         )
 
         # create draft workflow if not found
@@ -649,6 +654,12 @@ class RagPipelineDslService:
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
             workflow.rag_pipeline_variables = rag_pipeline_variables_list
+        lock_new_workflow_upload_file_references(
+            self._session,
+            tenant_id=pipeline.tenant_id,
+            previous_payloads=previous_upload_file_payloads,
+            current_payloads=(workflow.graph, workflow._conversation_variables),
+        )
         # Keep transaction ownership with the caller while materializing IDs and constraint checks before returning.
         self._session.flush()
 

@@ -1,18 +1,13 @@
-import json
 import logging
 import operator
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Any, cast, override
 
 import httpx
-from sqlalchemy import update
 
-from core.rag.extractor.entity.extract_setting import StoredDocumentExtractionInput
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
-from extensions.ext_database import db
-from models.dataset import Document as DocumentModel
 
 logger = logging.getLogger(__name__)
 
@@ -38,33 +33,19 @@ HEADING_SPLITTER = {
 class NotionExtractor(BaseExtractor):
     def __init__(
         self,
-        notion_workspace_id: str,
         notion_obj_id: str,
         notion_page_type: str,
-        tenant_id: str,
-        document_model: StoredDocumentExtractionInput | None = None,
-        notion_access_token: str | None = None,
-        credential_id: str | None = None,
-        *,
-        notion_token_loader: Callable[[], str],
-    ):
-        self._notion_access_token = None
-        self._document_model = document_model
-        self._notion_workspace_id = notion_workspace_id
+        notion_access_token: str,
+    ) -> None:
+        if not notion_access_token:
+            raise ValueError("Notion access token is required")
+        self._notion_access_token = notion_access_token
         self._notion_obj_id = notion_obj_id
         self._notion_page_type = notion_page_type
-        if notion_access_token:
-            self._notion_access_token = notion_access_token
-        else:
-            self._notion_access_token = notion_token_loader()
 
     @override
     def extract(self) -> list[Document]:
-        self.update_last_edited_time(self._document_model)
-
-        text_docs = self._load_data_as_documents(self._notion_obj_id, self._notion_page_type)
-
-        return text_docs
+        return self._load_data_as_documents(self._notion_obj_id, self._notion_page_type)
 
     def _load_data_as_documents(self, notion_obj_id: str, notion_page_type: str) -> list[Document]:
         docs = []
@@ -329,26 +310,6 @@ class NotionExtractor(BaseExtractor):
 
         result_lines = "\n".join(result_lines_arr)
         return result_lines
-
-    def update_last_edited_time(self, document_model: StoredDocumentExtractionInput | None):
-        if not document_model:
-            return
-
-        last_edited_time = self.get_notion_last_edited_time()
-        data_source_info = document_model.data_source_info_dict
-        if data_source_info:
-            data_source_info["last_edited_time"] = last_edited_time
-
-        db.session.execute(
-            update(DocumentModel)
-            .where(
-                DocumentModel.id == document_model.id,
-                DocumentModel.tenant_id == document_model.tenant_id,
-                DocumentModel.dataset_id == document_model.dataset_id,
-            )
-            .values({DocumentModel.data_source_info: json.dumps(data_source_info)})
-        )
-        db.session.commit()
 
     def get_notion_last_edited_time(self) -> str:
         assert self._notion_access_token is not None, "Notion access token is required"

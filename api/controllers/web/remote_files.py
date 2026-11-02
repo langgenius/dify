@@ -16,11 +16,13 @@ from controllers.common.errors import (
 )
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from models.model import App, EndUser
+from services.entities.upload_file import FileUploadActor
 from services.remote_file_service import (
     RemoteFileAccessDeniedError as RemoteFileAccessDeniedServiceError,
 )
@@ -168,7 +170,8 @@ class RemoteFileUploadApi(WebApiResource):
         try:
             remote_file = application_services().remote_files.upload_from_url(
                 url=payload.url,
-                user=end_user,
+                actor=FileUploadActor(id=end_user.id, creator_role=CreatorUserRole.END_USER),
+                tenant_id=app_model.tenant_id,
             )
         except RemoteFileInvalidUrlServiceError as error:
             raise RemoteFileInvalidUrlError from error

@@ -22,6 +22,12 @@ from tests.e2e_tests.containers.helpers import accounts as account_fixtures
 from tests.e2e_tests.containers.helpers import generate_valid_password
 
 
+def _run_current_vector_delivery(dataset: Dataset, action: str) -> None:
+    """Exercise the current two-field worker contract."""
+
+    deal_dataset_vector_index_task.run(dataset.id, action)
+
+
 class TestDealDatasetVectorIndexTask:
     """Integration tests for deal_dataset_vector_index_task using testcontainers."""
 
@@ -120,15 +126,18 @@ class TestDealDatasetVectorIndexTask:
         db_session_with_containers.commit()
 
         # Execute remove action
-        deal_dataset_vector_index_task(dataset.id, "remove")
+        _run_current_vector_delivery(dataset, "remove")
 
         # Verify index processor clean method was called
         # The mock should be called during task execution
         mock_factory = mock_index_processor_factory.return_value
         mock_processor = mock_factory.init_index_processor.return_value
 
-        # Check if the mock was called at least once
-        assert mock_processor.clean.call_count >= 0  # For now, just check it doesn't fail
+        mock_processor.clean.assert_called_once()
+        clean_args, clean_kwargs = mock_processor.clean.call_args
+        assert clean_args[0].id == dataset.id
+        assert clean_args[1] is None
+        assert clean_kwargs["with_keywords"] is False
 
     def test_deal_dataset_vector_index_task_add_action_success(
         self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
@@ -215,9 +224,9 @@ class TestDealDatasetVectorIndexTask:
         db_session_with_containers.commit()
 
         # Execute add action
-        deal_dataset_vector_index_task(dataset.id, "add")
+        _run_current_vector_delivery(dataset, "add")
 
-        # Verify document status was updated to indexing then completed
+        # Dataset-level rebuilding does not own the document lifecycle status.
         updated_document = db_session_with_containers.scalar(
             select(Document).where(Document.id == document.id).limit(1)
         )
@@ -314,7 +323,7 @@ class TestDealDatasetVectorIndexTask:
         db_session_with_containers.commit()
 
         # Execute update action
-        deal_dataset_vector_index_task(dataset.id, "update")
+        _run_current_vector_delivery(dataset, "update")
 
         # Verify document status was updated to indexing then completed
         updated_document = db_session_with_containers.scalar(
@@ -346,7 +355,7 @@ class TestDealDatasetVectorIndexTask:
         non_existent_dataset_id = str(uuid.uuid4())
 
         # Execute task with non-existent dataset
-        deal_dataset_vector_index_task(non_existent_dataset_id, "add")
+        deal_dataset_vector_index_task.run(non_existent_dataset_id, "add")
 
         # Verify that no index processor operations were performed
         mock_factory = mock_index_processor_factory.return_value
@@ -378,7 +387,7 @@ class TestDealDatasetVectorIndexTask:
         db_session_with_containers.commit()
 
         # Execute add action
-        deal_dataset_vector_index_task(dataset.id, "add")
+        _run_current_vector_delivery(dataset, "add")
 
         # Verify that no index processor operations were performed
         mock_factory = mock_index_processor_factory.return_value
@@ -428,7 +437,7 @@ class TestDealDatasetVectorIndexTask:
         db_session_with_containers.commit()
 
         # Execute add action
-        deal_dataset_vector_index_task(dataset.id, "add")
+        _run_current_vector_delivery(dataset, "add")
 
         # Verify document status was updated to indexing then completed
         updated_document = db_session_with_containers.scalar(
@@ -465,7 +474,7 @@ class TestDealDatasetVectorIndexTask:
         db_session_with_containers.commit()
 
         # Execute update action
-        deal_dataset_vector_index_task(dataset.id, "update")
+        _run_current_vector_delivery(dataset, "update")
 
         # Verify that index processor clean was called but no load
         mock_factory = mock_index_processor_factory.return_value
@@ -485,8 +494,8 @@ class TestDealDatasetVectorIndexTask:
         """
         Test add action with exception handling during processing.
 
-        This test verifies that the task correctly handles exceptions
-        during document processing and updates document status to error.
+        This test verifies that per-document vector failures are recorded on the
+        affected document without aborting the remaining rebuild.
         """
         fake = Faker()
         account, tenant = account_and_tenant
@@ -563,15 +572,14 @@ class TestDealDatasetVectorIndexTask:
         mock_processor = mock_factory.init_index_processor.return_value
         mock_processor.load.side_effect = Exception("Test exception during indexing")
 
-        # Execute add action
-        deal_dataset_vector_index_task(dataset.id, "add")
+        _run_current_vector_delivery(dataset, "add")
 
-        # Verify document status was updated to error
         updated_document = db_session_with_containers.scalar(
             select(Document).where(Document.id == document.id).limit(1)
         )
+        assert updated_document is not None
         assert updated_document.indexing_status == IndexingStatus.ERROR
-        assert "Test exception during indexing" in updated_document.error
+        assert "Test exception during indexing" in (updated_document.error or "")
 
     def test_deal_dataset_vector_index_task_with_custom_index_type(
         self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
@@ -634,7 +642,7 @@ class TestDealDatasetVectorIndexTask:
         db_session_with_containers.commit()
 
         # Execute add action
-        deal_dataset_vector_index_task(dataset.id, "add")
+        _run_current_vector_delivery(dataset, "add")
 
         # Verify document status was updated to indexing then completed
         updated_document = db_session_with_containers.scalar(
@@ -709,7 +717,7 @@ class TestDealDatasetVectorIndexTask:
         db_session_with_containers.commit()
 
         # Execute add action
-        deal_dataset_vector_index_task(dataset.id, "add")
+        _run_current_vector_delivery(dataset, "add")
 
         # Verify document status was updated to indexing then completed
         updated_document = db_session_with_containers.scalar(
@@ -811,7 +819,7 @@ class TestDealDatasetVectorIndexTask:
         db_session_with_containers.commit()
 
         # Execute add action
-        deal_dataset_vector_index_task(dataset.id, "add")
+        _run_current_vector_delivery(dataset, "add")
 
         # Verify all documents were processed
         for document in documents:
@@ -826,14 +834,14 @@ class TestDealDatasetVectorIndexTask:
         mock_processor = mock_factory.init_index_processor.return_value
         assert mock_processor.load.call_count == 3
 
-    def test_deal_dataset_vector_index_task_document_status_transitions(
+    def test_deal_dataset_vector_index_task_preserves_document_status(
         self, db_session_with_containers: Session, mock_index_processor_factory, account_and_tenant
     ):
         """
-        Test document status transitions during task execution.
+        Test document status ownership during dataset vector rebuilding.
 
-        This test verifies that document status correctly transitions from
-        'completed' to 'indexing' and back to 'completed' during processing.
+        This test verifies that the dataset-level task does not repurpose the
+        document indexing lifecycle status while rebuilding vectors.
         """
         fake = Faker()
         account, tenant = account_and_tenant
@@ -913,7 +921,7 @@ class TestDealDatasetVectorIndexTask:
         mock_processor.load.return_value = None
 
         # Execute add action
-        deal_dataset_vector_index_task(dataset.id, "add")
+        _run_current_vector_delivery(dataset, "add")
 
         # Verify final document status
         updated_document = db_session_with_containers.scalar(
@@ -1020,7 +1028,7 @@ class TestDealDatasetVectorIndexTask:
         db_session_with_containers.commit()
 
         # Execute add action
-        deal_dataset_vector_index_task(dataset.id, "add")
+        _run_current_vector_delivery(dataset, "add")
 
         # Verify only enabled document was processed
         updated_enabled_document = db_session_with_containers.scalar(
@@ -1138,7 +1146,7 @@ class TestDealDatasetVectorIndexTask:
         db_session_with_containers.commit()
 
         # Execute add action
-        deal_dataset_vector_index_task(dataset.id, "add")
+        _run_current_vector_delivery(dataset, "add")
 
         # Verify only active document was processed
         updated_active_document = db_session_with_containers.scalar(
@@ -1256,7 +1264,7 @@ class TestDealDatasetVectorIndexTask:
         db_session_with_containers.commit()
 
         # Execute add action
-        deal_dataset_vector_index_task(dataset.id, "add")
+        _run_current_vector_delivery(dataset, "add")
 
         # Verify only completed document was processed
         updated_completed_document = db_session_with_containers.scalar(

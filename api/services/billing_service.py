@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from extensions.ext_redis import redis_client
 from services.billing_client import billing, saas
+from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -75,27 +76,46 @@ class BillingService:
         bucket: str = "",
     ) -> billing.QuotaCommitReply:
         """Commit a reservation with actual consumption."""
-        return billing.quota_commit(
-            body=billing.QuotaCommitReq(
-                tenant_id=tenant_id,
-                feature_key=feature_key,
-                reservation_id=reservation_id,
-                actual_amount=actual_amount,
-                meta=_quota_meta(meta),
-                bucket=bucket,
+        try:
+            return billing.quota_commit(
+                body=billing.QuotaCommitReq(
+                    tenant_id=tenant_id,
+                    feature_key=feature_key,
+                    reservation_id=reservation_id,
+                    actual_amount=actual_amount,
+                    meta=_quota_meta(meta),
+                    bucket=bucket,
+                )
             )
-        )
+        except BillingUpstreamInvalidResponseError as error:
+            # The generated transport chains JSON/model validation failures, while
+            # permanent non-2xx responses (for example 409) have no cause. An
+            # invalid success body leaves the idempotent commit outcome unknown,
+            # so retain the durable settlement and retry it.
+            if error.__cause__ is not None:
+                raise BillingUpstreamUnavailableError("Quota commit returned an invalid success body") from error
+            raise
 
     @classmethod
     def quota_release(
         cls, tenant_id: str, feature_key: str, reservation_id: str, bucket: str = ""
     ) -> billing.QuotaReleaseReply:
         """Release a reservation (cancel, return frozen quota)."""
-        return billing.quota_release(
-            body=billing.QuotaReleaseReq(
-                tenant_id=tenant_id, feature_key=feature_key, reservation_id=reservation_id, bucket=bucket
+        try:
+            return billing.quota_release(
+                body=billing.QuotaReleaseReq(
+                    tenant_id=tenant_id,
+                    feature_key=feature_key,
+                    reservation_id=reservation_id,
+                    bucket=bucket,
+                )
             )
-        )
+        except BillingUpstreamInvalidResponseError as error:
+            # As with commit, a chained validation failure means the release may
+            # already have applied remotely and must remain retryable.
+            if error.__cause__ is not None:
+                raise BillingUpstreamUnavailableError("Quota release returned an invalid success body") from error
+            raise
 
     @classmethod
     def quota_get_balance(cls, tenant_id: str, feature_key: str, bucket: str = "") -> billing.QuotaGetBalanceReply:

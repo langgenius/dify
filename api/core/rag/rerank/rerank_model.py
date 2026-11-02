@@ -1,8 +1,11 @@
 import base64
+from collections.abc import Mapping, Sequence
 from typing import override
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.file_access import DatabaseFileAccessController
 from core.credit_usage import CreditUsageCreatedBy
 from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance
@@ -15,14 +18,48 @@ from extensions.otel import trace_span
 from graphon.model_runtime.entities.model_entities import ModelFeature
 from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from models.model import UploadFile
+from repositories.knowledge.retrieval_source_repository import get_authorized_retrieval_attachment_file_keys
+
+_file_access_controller = DatabaseFileAccessController()
 
 
 class RerankModelRunner(BaseRerankRunner):
-    _session: Session
-
-    def __init__(self, rerank_model_instance: ModelInstance, *, session: Session):
+    def __init__(
+        self,
+        rerank_model_instance: ModelInstance,
+        *,
+        tenant_id: str,
+        session_factory: sessionmaker[Session],
+        dataset_document_filters: Mapping[str, Sequence[str] | None],
+    ):
         self.rerank_model_instance = rerank_model_instance
-        self._session = session
+        self._tenant_id = tenant_id
+        self._sessions = session_factory
+        self._dataset_document_filters = {
+            str(dataset_id): None
+            if document_ids is None
+            else tuple(dict.fromkeys(str(document_id) for document_id in document_ids))
+            for dataset_id, document_ids in dataset_document_filters.items()
+        }
+
+    def _resolve_multimodal_file_keys(
+        self, *, query_file_id: str, candidate_attachment_ids: set[str]
+    ) -> tuple[str | None, dict[str, str]]:
+        with self._sessions() as session:
+            query_file_stmt = select(UploadFile).where(
+                UploadFile.tenant_id == self._tenant_id,
+                UploadFile.id == query_file_id,
+            )
+            query_file = session.scalar(_file_access_controller.apply_upload_file_filters(query_file_stmt))
+            if query_file is None:
+                return None, {}
+            candidate_file_keys = get_authorized_retrieval_attachment_file_keys(
+                tenant_id=self._tenant_id,
+                attachment_ids=tuple(candidate_attachment_ids),
+                dataset_document_filters=self._dataset_document_filters,
+                session=session,
+            )
+            return query_file.key, candidate_file_keys
 
     @override
     @trace_span()
@@ -57,18 +94,51 @@ class RerankModelRunner(BaseRerankRunner):
         rerank_documents = []
         for result in rerank_result.docs:
             if score_threshold is None or result.score >= score_threshold:
-                # format document
-                rerank_document = Document(
-                    page_content=result.text,
-                    metadata=unique_documents[result.index].metadata,
-                    provider=unique_documents[result.index].provider,
-                )
-                if rerank_document.metadata is not None:
-                    rerank_document.metadata["score"] = result.score
+                representative = unique_documents[result.index]
+                for source_document in self._source_documents(representative, documents):
+                    rerank_document = source_document.model_copy(
+                        deep=True,
+                        update={
+                            "page_content": result.text,
+                            "metadata": {**source_document.metadata, "score": result.score},
+                        },
+                    )
                     rerank_documents.append(rerank_document)
 
         rerank_documents.sort(key=lambda x: x.metadata.get("score", 0.0), reverse=True)
         return rerank_documents[:top_n] if top_n else rerank_documents
+
+    @staticmethod
+    def _source_dataset_id(document: Document) -> str | None:
+        source_dataset_id = document.metadata.get("_retrieval_source_dataset_id")
+        if source_dataset_id is None:
+            source_dataset_id = document.metadata.get("dataset_id")
+        return str(source_dataset_id) if source_dataset_id is not None else None
+
+    @classmethod
+    def _source_documents(cls, representative: Document, documents: Sequence[Document]) -> list[Document]:
+        if representative.provider != "dify" or not representative.metadata.get("doc_id"):
+            return [representative]
+
+        doc_id = str(representative.metadata["doc_id"])
+        is_shared_attachment = representative.metadata.get("doc_type") == DocType.IMAGE
+        source_documents: list[Document] = []
+        source_dataset_ids: set[str | None] = set()
+        for document in documents:
+            if (
+                document.provider != "dify"
+                or str(document.metadata.get("doc_id")) != doc_id
+                or (document.metadata.get("doc_type") == DocType.IMAGE) != is_shared_attachment
+            ):
+                continue
+            source_dataset_id = cls._source_dataset_id(document)
+            if not is_shared_attachment and source_dataset_id != cls._source_dataset_id(representative):
+                continue
+            if source_dataset_id in source_dataset_ids:
+                continue
+            source_dataset_ids.add(source_dataset_id)
+            source_documents.append(document)
+        return source_documents
 
     def _check_model_support_vision(self) -> bool:
         """Check capabilities on the model instance already resolved for this run."""
@@ -91,16 +161,15 @@ class RerankModelRunner(BaseRerankRunner):
         :return:
         """
         docs = []
-        doc_ids = set()
+        document_identities: set[tuple[str | None, str]] = set()
         unique_documents = []
         for document in documents:
-            if (
-                document.provider == "dify"
-                and document.metadata is not None
-                and document.metadata["doc_id"] not in doc_ids
-            ):
+            if document.provider == "dify" and document.metadata.get("doc_id"):
                 if not document.metadata.get("doc_type") or document.metadata.get("doc_type") == DocType.TEXT:
-                    doc_ids.add(document.metadata["doc_id"])
+                    identity = (self._source_dataset_id(document), str(document.metadata["doc_id"]))
+                    if identity in document_identities:
+                        continue
+                    document_identities.add(identity)
                     docs.append(document.page_content)
                     unique_documents.append(document)
             elif document.provider == "external":
@@ -130,34 +199,54 @@ class RerankModelRunner(BaseRerankRunner):
         :param query_type: query type
         :return: rerank result
         """
+        if query_type == QueryType.TEXT_QUERY:
+            return self.fetch_text_rerank(query, documents, score_threshold, top_n)
+        if query_type != QueryType.IMAGE_QUERY:
+            raise ValueError(f"Query type {query_type} is not supported")
+
+        candidate_attachment_ids = {
+            str(document.metadata["doc_id"])
+            for document in documents
+            if document.provider == "dify"
+            and document.metadata is not None
+            and document.metadata.get("doc_type") == DocType.IMAGE
+        }
+        query_file_key, candidate_file_keys = self._resolve_multimodal_file_keys(
+            query_file_id=query,
+            candidate_attachment_ids=candidate_attachment_ids,
+        )
+
         docs: list[MultimodalRerankInput] = []
-        doc_ids = set()
+        document_identities: set[tuple[str | None, str]] = set()
         unique_documents = []
         for document in documents:
-            if (
-                document.provider == "dify"
-                and document.metadata is not None
-                and document.metadata["doc_id"] not in doc_ids
-            ):
+            if document.provider == "dify" and document.metadata.get("doc_id"):
                 if document.metadata.get("doc_type") == DocType.IMAGE:
-                    upload_file = self._session.get(UploadFile, document.metadata["doc_id"])
-                    if upload_file:
-                        blob = storage.load_once(upload_file.key)
-                        document_file_base64 = base64.b64encode(blob).decode()
-                        docs.append(
-                            MultimodalRerankInput(
-                                content=document_file_base64,
-                                content_type=document.metadata["doc_type"],
-                            )
+                    identity = (None, str(document.metadata["doc_id"]))
+                    file_key = candidate_file_keys.get(str(document.metadata["doc_id"]))
+                    if file_key is None:
+                        continue
+                    if identity in document_identities:
+                        continue
+                    blob = storage.load_once(file_key)
+                    document_file_base64 = base64.b64encode(blob).decode()
+                    docs.append(
+                        MultimodalRerankInput(
+                            content=document_file_base64,
+                            content_type=document.metadata["doc_type"],
                         )
+                    )
                 else:
+                    identity = (self._source_dataset_id(document), str(document.metadata["doc_id"]))
+                    if identity in document_identities:
+                        continue
                     docs.append(
                         MultimodalRerankInput(
                             content=document.page_content,
                             content_type=document.metadata.get("doc_type") or DocType.TEXT,
                         )
                     )
-                doc_ids.add(document.metadata["doc_id"])
+                document_identities.add(identity)
                 unique_documents.append(document)
             elif document.provider == "external":
                 if document not in unique_documents:
@@ -169,25 +258,15 @@ class RerankModelRunner(BaseRerankRunner):
                     )
                     unique_documents.append(document)
 
-        documents = unique_documents
-        if query_type == QueryType.TEXT_QUERY:
-            rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n)
-            return rerank_result, unique_documents
-        elif query_type == QueryType.IMAGE_QUERY:
-            upload_file = self._session.get(UploadFile, query)
-            if upload_file:
-                blob = storage.load_once(upload_file.key)
-                file_query = base64.b64encode(blob).decode()
-                file_query_input = MultimodalRerankInput(
-                    content=file_query,
-                    content_type=DocType.IMAGE,
-                )
-                rerank_result = self.rerank_model_instance.invoke_multimodal_rerank(
-                    query=file_query_input, docs=docs, score_threshold=score_threshold, top_n=top_n
-                )
-                return rerank_result, unique_documents
-            else:
-                raise ValueError(f"Upload file not found for query: {query}")
-
-        else:
-            raise ValueError(f"Query type {query_type} is not supported")
+        if query_file_key is None:
+            raise ValueError(f"Upload file not found for query: {query}")
+        blob = storage.load_once(query_file_key)
+        file_query = base64.b64encode(blob).decode()
+        file_query_input = MultimodalRerankInput(
+            content=file_query,
+            content_type=DocType.IMAGE,
+        )
+        rerank_result = self.rerank_model_instance.invoke_multimodal_rerank(
+            query=file_query_input, docs=docs, score_threshold=score_threshold, top_n=top_n
+        )
+        return rerank_result, unique_documents

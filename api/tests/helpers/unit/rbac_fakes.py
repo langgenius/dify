@@ -1,6 +1,8 @@
 """Explicit RBAC transport and task fakes for exercising real application services."""
 
+from contextlib import nullcontext
 from dataclasses import dataclass, field
+from unittest.mock import create_autospec
 
 import pytest
 from pydantic import JsonValue
@@ -8,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.workspace import build_workspace_membership_services
+from extensions.ext_redis import RedisClientWrapper
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
@@ -79,21 +82,33 @@ class RBACDomain:
     sessions: sessionmaker[Session]
 
 
+class WorkspaceQuotaLocks:
+    def lock(self, *_args: object, **_kwargs: object) -> nullcontext[None]:
+        return nullcontext()
+
+
 def build_rbac_domain(sessions: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> RBACDomain:
     transport = RBACTransport()
     tasks = AccessTasks()
     monkeypatch.setattr(EnterpriseRequest, "send_inner_rbac_request", transport.send)
     monkeypatch.setattr(initialize_created_app_rbac_access_task, "delay", tasks.delay)
     workspaces = WorkspaceRepository(sessions)
+    redis = create_autospec(RedisClientWrapper, instance=True, spec_set=True)
+    redis.lock.side_effect = WorkspaceQuotaLocks().lock
     members, _ = build_workspace_membership_services(
-        workspaces=workspaces, accounts=SQLAlchemyAccountRepository(sessions)
+        workspaces=workspaces,
+        accounts=SQLAlchemyAccountRepository(sessions),
+        redis=redis,
     )
     return RBACDomain(
         rbac=build_rbac_services(
             workspaces=workspaces,
             workspace_members=members,
             apps=ConsoleAppRepository(session_factory=sessions),
-            datasets=SQLAlchemyDatasetRepository(session_factory=sessions),
+            datasets=SQLAlchemyDatasetRepository(
+                revoke_keys_after_commit=lambda _session, _tokens: None,
+                session_factory=sessions,
+            ),
         ),
         transport=transport,
         tasks=tasks,

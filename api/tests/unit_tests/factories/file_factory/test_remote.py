@@ -8,12 +8,12 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from factories.file_factory import builders
 from factories.file_factory.remote import extract_filename, get_remote_file_info
 from graphon.file import FileTransferMethod
 from models import UploadFile
-from models.enums import CreatorUserRole
 
 
 @dataclass(eq=False, repr=False)

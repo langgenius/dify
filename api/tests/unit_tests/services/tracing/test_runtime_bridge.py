@@ -30,6 +30,7 @@ from core.ops.exceptions import RetryableTraceDispatchError
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.ops.unified_trace.trace_builder import CanonicalTraceBuilder
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.node_runtime import build_knowledge_index_files
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
 from extensions.ext_database import db
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
@@ -1083,6 +1084,7 @@ class TestWorkflowToolTracingBoundaryCases:
             user=actor,
             app_id=ids["root"],
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=build_knowledge_index_files(),
         )
         info = WorkflowTraceInfo(
             workflow_data=workflow,

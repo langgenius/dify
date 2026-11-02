@@ -35,11 +35,12 @@ from core.workflow.nodes.human_input.entities import (
 )
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from enums.creator import CreatorUserRole
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.datetime_utils import to_utc_timestamp
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import ConversationFromSource
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.model import AppMode, Message
 from models.workflow import (
@@ -814,7 +815,7 @@ def test_console_snapshot_replays_node_details_without_exposing_them_by_default(
 
     monkeypatch.setattr(node_repo, "get_executions_by_workflow_run", get_executions)
     monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory, "create_api_workflow_node_execution_repository", lambda _: node_repo
+        service_module.WorkflowRepositoryFactory, "create_api_workflow_node_execution_repository", lambda _: node_repo
     )
     monkeypatch.setattr(
         service_module.MessageGenerator, "get_response_topic", lambda *_args: _Topic(_StaticSubscription())
@@ -870,7 +871,7 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
         create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
-    monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
+    monkeypatch.setattr(service_module, "WorkflowRepositoryFactory", factory)
     monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
     message_context_lookup = MagicMock(side_effect=lambda *_args, **_kwargs: call_order.append("message") or None)
     app_lookup = MagicMock(return_value=None)
@@ -965,7 +966,7 @@ def test_build_advanced_chat_snapshot_requires_conversation_context(
         create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
-    monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
+    monkeypatch.setattr(service_module, "WorkflowRepositoryFactory", factory)
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=resumption_context))
     conversation_lookup = MagicMock(return_value=None)
     app_lookup = MagicMock(return_value=None)
@@ -1001,7 +1002,7 @@ def test_build_non_suspended_advanced_chat_snapshot_uses_app_scoped_fallback(
         create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
-    monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
+    monkeypatch.setattr(service_module, "WorkflowRepositoryFactory", factory)
     load_resumption_context = MagicMock(return_value=None)
     monkeypatch.setattr(service_module, "_load_resumption_context", load_resumption_context)
     conversation_lookup = MagicMock(return_value=None)
@@ -1048,7 +1049,7 @@ def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_id
         create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
-    monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
+    monkeypatch.setattr(service_module, "WorkflowRepositoryFactory", factory)
     monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))
     monkeypatch.setattr(service_module, "_build_snapshot_events", MagicMock(return_value=[]))
@@ -1103,7 +1104,7 @@ def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
         create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
-    monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
+    monkeypatch.setattr(service_module, "WorkflowRepositoryFactory", factory)
     monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))
     monkeypatch.setattr(service_module, "_build_snapshot_events", MagicMock(return_value=[]))
@@ -1147,7 +1148,7 @@ def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
         create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
-    monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
+    monkeypatch.setattr(service_module, "WorkflowRepositoryFactory", factory)
     monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))
     monkeypatch.setattr(service_module, "_resolve_task_id", MagicMock(return_value="task-1"))
@@ -1396,7 +1397,7 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
         create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
         create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
     )
-    monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
+    monkeypatch.setattr(service_module, "WorkflowRepositoryFactory", factory)
     monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
     monkeypatch.setattr(
         service_module, "_load_resumption_context", MagicMock(return_value=_build_resumption_context("task-1"))
@@ -1536,7 +1537,7 @@ def test_stream_continues_with_live_events_when_all_forms_submitted(
         paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
         pause_reasons=[_human_input_reason("form-1")],
     )
-    factory = service_module.DifyAPIRepositoryFactory
+    factory = service_module.WorkflowRepositoryFactory
     monkeypatch.setattr(factory, "create_api_workflow_run_repository", lambda _sm: _PausedRunRepo(pause_entity))
     monkeypatch.setattr(factory, "create_api_workflow_node_execution_repository", lambda _sm: _EmptyNodeRepo())
     topic = _Topic(_StaticSubscription())
@@ -1604,11 +1605,11 @@ def test_authorized_snapshot_indexes_legacy_pause_for_stop(
         generate_entity.workflow_execution_id = saved_run_id
     monkeypatch.setattr(service_module, "_load_resumption_context", lambda _: context)
     monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory, "create_api_workflow_run_repository", lambda _: repository
+        service_module.WorkflowRepositoryFactory, "create_api_workflow_run_repository", lambda _: repository
     )
     node_repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)
     monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory,
+        service_module.WorkflowRepositoryFactory,
         "create_api_workflow_node_execution_repository",
         lambda _: node_repository,
     )

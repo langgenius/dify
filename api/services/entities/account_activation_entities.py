@@ -28,6 +28,7 @@ class AccountInvitation:
     workspace_name: str | None
     role: str | None
     requires_setup: bool | None
+    membership_exists: bool
 
 
 @dataclass(frozen=True, slots=True)

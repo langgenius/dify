@@ -12,7 +12,8 @@ from sqlalchemy.orm import Session
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore, DocumentSegment
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from models.dataset import ChildChunk, Dataset, SegmentAttachmentBinding
-from tests.helpers.unit.model_factories import make_dataset
+from services.errors.file import UploadFileReferenceNotFoundError
+from tests.helpers.unit.model_factories import make_dataset, make_upload_file
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 DATASET_ID = "00000000-0000-0000-0000-000000000002"
@@ -502,6 +503,10 @@ class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
         attachment = AttachmentDocument(page_content="attachment", metadata={"doc_id": ATTACHMENT_ID})
 
         mock_session = self.session
+        upload = make_upload_file(tenant_id=TENANT_ID)
+        upload.id = ATTACHMENT_ID
+        mock_session.add(upload)
+        mock_session.flush()
 
         store = DatasetDocumentStore(
             dataset=_dataset(),
@@ -563,6 +568,19 @@ class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
         store.add_multimodel_documents_binding("seg-1", [attachment], session=mock_session)
 
         assert mock_session.scalar(select(func.count()).select_from(SegmentAttachmentBinding)) == 0
+
+    def test_add_multimodel_documents_binding_rejects_missing_attachment(self) -> None:
+        attachment = AttachmentDocument(page_content="attachment", metadata={"doc_id": ATTACHMENT_ID})
+        store = DatasetDocumentStore(
+            dataset=_dataset(),
+            user_id=USER_ID,
+            document_id=DOCUMENT_ID,
+        )
+
+        with pytest.raises(UploadFileReferenceNotFoundError):
+            store.add_multimodel_documents_binding("seg-1", [attachment], session=self.session)
+
+        assert self.session.scalar(select(func.count()).select_from(SegmentAttachmentBinding)) == 0
 
 
 class TestDatasetDocumentStoreAddDocumentsUpdateChild(_UsesSQLiteSession):

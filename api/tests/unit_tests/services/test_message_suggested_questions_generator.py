@@ -5,6 +5,7 @@ unit tests do not replace that backend or claim to cover successful LLM calls.
 """
 
 from collections.abc import Callable, Iterator
+from unittest.mock import create_autospec
 from uuid import uuid4
 
 import httpx
@@ -21,12 +22,15 @@ import core.plugin.impl.model_runtime as model_runtime_module
 from core.llm_generator.llm_generator import _normalize_completion_params
 from core.memory.token_buffer_memory import HistoryPrompt, PreparedHistory
 from core.model_context import get_credit_usage_metadata
+from core.model_manager import ModelInstance, ModelManager
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
 from core.plugin.impl.base import _get_plugin_daemon_request_timeout
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
-from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, ImagePromptMessageContent
+from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule, ParameterType
 from models.provider import Provider, TenantDefaultModel
 from services.entities.message_entities import MessageEndUser
 from services.message_suggested_questions_generator import (
@@ -35,7 +39,7 @@ from services.message_suggested_questions_generator import (
     _default_suggested_questions_model_parameters,
 )
 from services.message_suggested_questions_service import SuggestedQuestionsContext
-from tests.helpers.unit.core.model_fixtures import make_model_instance
+from tests.helpers.unit.core.model_fixtures import make_model_config, make_model_instance
 from tests.helpers.unit.model_factories import make_app
 
 
@@ -194,6 +198,174 @@ def test_configured_parameters_keep_positive_limits() -> None:
         {"max_tokens": 512, "max_output_tokens": 1024},
         [],
     )
+
+
+class _SuggestedQuestionsModelManager:
+    def __init__(
+        self,
+        *,
+        configured: ModelInstance | None,
+        default: ModelInstance,
+    ) -> None:
+        self.configured = configured
+        self.default = default
+        self.configured_calls: list[tuple[str, ModelType, str, str]] = []
+        self.default_calls: list[tuple[str, ModelType]] = []
+
+    def get_model_instance(
+        self,
+        *,
+        tenant_id: str,
+        model_type: ModelType,
+        provider: str,
+        model: str,
+    ) -> ModelInstance:
+        self.configured_calls.append((tenant_id, model_type, provider, model))
+        if self.configured is None:
+            raise ValueError("configured model is unavailable")
+        return self.configured
+
+    def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> ModelInstance:
+        self.default_calls.append((tenant_id, model_type))
+        return self.default
+
+
+def _suggested_questions_result(content: str) -> LLMResult:
+    return LLMResult(
+        model="test-model",
+        message=AssistantPromptMessage(content=content),
+        usage=LLMUsage.empty_usage(),
+    )
+
+
+def test_configured_model_is_resolved_once_before_successful_invocation(monkeypatch: pytest.MonkeyPatch) -> None:
+    configured = make_model_instance(provider="openai", model="custom-model")
+    default = make_model_instance(provider="openai", model="default-model")
+    manager = _SuggestedQuestionsModelManager(configured=configured, default=default)
+
+    def resolve_manager(_cls: type[ModelManager], tenant_id: str) -> _SuggestedQuestionsModelManager:
+        assert tenant_id == "tenant-id"
+        return manager
+
+    monkeypatch.setattr(ModelManager, "for_tenant", classmethod(resolve_manager))
+    invocation = create_autospec(
+        configured.invoke_llm,
+        return_value=_suggested_questions_result('["Next question?"]'),
+    )
+    monkeypatch.setattr(configured, "invoke_llm", invocation)
+
+    prepared = SuggestedQuestionsGenerator._prepare_model(
+        "tenant-id",
+        model_config={
+            "provider": "openai",
+            "name": "custom-model",
+            "completion_params": {"temperature": 0.2, "stop": ["END"], "max_tokens": 0},
+        },
+    )
+
+    assert prepared is not None
+    assert prepared.model_instance is configured
+    assert prepared.completion_params == {"temperature": 0.2, "stop": ["END"], "max_tokens": 0}
+    assert manager.configured_calls == [("tenant-id", ModelType.LLM, "openai", "custom-model")]
+    assert manager.default_calls == []
+
+    def unexpected_model_lookup(_cls: type[ModelManager], tenant_id: str) -> ModelManager:
+        raise AssertionError(f"unexpected model lookup for {tenant_id}")
+
+    monkeypatch.setattr(ModelManager, "for_tenant", classmethod(unexpected_model_lookup))
+
+    result = SuggestedQuestionsGenerator._invoke(
+        prepared,
+        "Human: hello\nAssistant: world",
+        instruction_prompt="Ask a follow-up",
+    )
+
+    assert result == ["Next question?"]
+    invocation_kwargs = invocation.call_args.kwargs
+    assert invocation_kwargs["model_parameters"] == {"temperature": 0.2}
+    assert invocation_kwargs["stop"] == ["END"]
+    assert invocation_kwargs["stream"] is False
+    assert "Human: hello\nAssistant: world" in invocation_kwargs["prompt_messages"][0].content
+    assert "Ask a follow-up" in invocation_kwargs["prompt_messages"][0].content
+
+
+def test_unavailable_configured_model_falls_back_to_default_tuning(monkeypatch: pytest.MonkeyPatch) -> None:
+    default = make_model_instance(provider="openai", model="default-model")
+    manager = _SuggestedQuestionsModelManager(configured=None, default=default)
+
+    def resolve_manager(_cls: type[ModelManager], tenant_id: str) -> _SuggestedQuestionsModelManager:
+        assert tenant_id == "tenant-id"
+        return manager
+
+    monkeypatch.setattr(ModelManager, "for_tenant", classmethod(resolve_manager))
+
+    prepared = SuggestedQuestionsGenerator._prepare_model(
+        "tenant-id",
+        model_config={
+            "provider": "missing/provider",
+            "name": "missing-model",
+            "completion_params": {"temperature": 0.9},
+        },
+    )
+
+    assert prepared == PreparedSuggestedQuestionsModel(model_instance=default, completion_params=None)
+    assert manager.configured_calls == [("tenant-id", ModelType.LLM, "missing/provider", "missing-model")]
+    assert manager.default_calls == [("tenant-id", ModelType.LLM)]
+
+
+@pytest.mark.parametrize(
+    ("parameter_rules", "expected_extra"),
+    [
+        (
+            [
+                ParameterRule(
+                    name="thinking",
+                    label=I18nObject(en_US="Thinking"),
+                    type=ParameterType.BOOLEAN,
+                )
+            ],
+            {"thinking": False},
+        ),
+        (
+            [
+                ParameterRule(
+                    name="thinking",
+                    label=I18nObject(en_US="Thinking"),
+                    type=ParameterType.STRING,
+                    options=["enabled", "disabled"],
+                )
+            ],
+            {"thinking": "disabled"},
+        ),
+        (
+            [
+                ParameterRule(
+                    name="reasoning_effort",
+                    label=I18nObject(en_US="Reasoning effort"),
+                    type=ParameterType.STRING,
+                    options=["minimal", "low", "medium", "high"],
+                )
+            ],
+            {"reasoning_effort": "minimal"},
+        ),
+    ],
+)
+def test_default_parameters_disable_expensive_reasoning(
+    monkeypatch: pytest.MonkeyPatch,
+    parameter_rules: list[ParameterRule],
+    expected_extra: dict[str, object],
+) -> None:
+    model = make_model_instance(provider="openai", model="default-model")
+    schema = make_model_config(provider="openai", model="default-model", mode="chat").model_schema.model_copy(
+        update={"parameter_rules": parameter_rules}
+    )
+    monkeypatch.setattr(model, "get_model_schema", lambda: schema)
+
+    assert _default_suggested_questions_model_parameters(model) == {
+        "max_tokens": 256,
+        "temperature": 0.0,
+        **expected_extra,
+    }
 
 
 @pytest.mark.parametrize("tracing", ["invalid trace JSON", '{"enabled":{"invalid":"type"}}'])

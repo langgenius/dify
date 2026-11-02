@@ -220,22 +220,6 @@ class TriggerConfig(BaseSettings):
     )
 
 
-class AsyncWorkflowConfig(BaseSettings):
-    """
-    Configuration for async workflow
-    """
-
-    ASYNC_WORKFLOW_SCHEDULER_GRANULARITY: int = Field(
-        description="Granularity for async workflow scheduler, "
-        "sometime, few users could block the queue due to some time-consuming tasks, "
-        "to avoid this, workflow can be suspended if needed, to achieve"
-        "this, a time-based checker is required, every granularity seconds, "
-        "the checker will check the workflow queue and suspend the workflow",
-        default=120,
-        ge=1,
-    )
-
-
 class PluginConfig(BaseSettings):
     """
     Plugin configs
@@ -1792,7 +1776,6 @@ class FeatureConfig(
     CodeExecutionSandboxConfig,
     CreatorsPlatformConfig,
     TriggerConfig,
-    AsyncWorkflowConfig,
     PluginConfig,
     MarketplaceConfig,
     DataSetConfig,

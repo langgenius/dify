@@ -71,6 +71,7 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
 from services import workflow_persistence as persistence_mod
+from services.file_adapters import build_file_service
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -355,6 +356,7 @@ def _make_sql_layer(session_factory, *, node_run_indices=None):
             user=user,
             app_id="caller-app",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=build_file_service(session_factory=session_factory),
         ),
     )
     layer._application_generate_entity.app_config.app_id = "caller-app"

@@ -94,9 +94,10 @@ from models.skill import (
     SkillVersionManifestFile,
 )
 from models.tools import ToolFile
+from repositories.tag_repository import replace_skill_tag_bindings
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.roster_service import AgentRosterService
-from services.file_service import FileService
+from services.file_upload_policy import is_file_size_within_limit
 
 logger = logging.getLogger(__name__)
 
@@ -771,7 +772,7 @@ class SkillManagementService:
     ) -> dict[str, Any]:
         """Store one draft file payload as a ToolFile for later ``upsert_tool_file`` operations."""
         extension = posixpath.splitext(filename)[1].lstrip(".").lower()
-        if not FileService.is_file_size_within_limit(extension=extension, file_size=len(content)):
+        if not is_file_size_within_limit(extension=extension, file_size=len(content)):
             raise SkillManagementServiceError(
                 "skill_assistant_attachment_too_large",
                 "Skill Builder attachment exceeds the configured file size limit",
@@ -3487,7 +3488,7 @@ class SkillManagementService:
 
     @staticmethod
     def _sync_skill_tag_bindings(
-        session,
+        session: Session,
         *,
         tenant_id: str,
         user_id: str,
@@ -3495,46 +3496,13 @@ class SkillManagementService:
         tags: list[str],
     ) -> None:
         normalized_tags = SkillManagementService._normalize_tags(tags)
-        session.execute(
-            delete(TagBinding).where(
-                TagBinding.tenant_id == tenant_id,
-                TagBinding.target_id == skill_id,
-                TagBinding.tag_id.in_(select(Tag.id).where(Tag.tenant_id == tenant_id, Tag.type == TagType.SKILL)),
-            )
+        replace_skill_tag_bindings(
+            session,
+            workspace_id=tenant_id,
+            actor_id=user_id,
+            skill_id=skill_id,
+            names=normalized_tags,
         )
-        if not normalized_tags:
-            return
-
-        existing_tags = list(
-            session.scalars(
-                select(Tag).where(
-                    Tag.tenant_id == tenant_id,
-                    Tag.type == TagType.SKILL,
-                    func.lower(Tag.name).in_([tag.casefold() for tag in normalized_tags]),
-                )
-            )
-        )
-        tag_by_key = {tag.name.casefold(): tag for tag in existing_tags}
-        for tag_name in normalized_tags:
-            tag = tag_by_key.get(tag_name.casefold())
-            if tag is None:
-                tag = Tag(
-                    tenant_id=tenant_id,
-                    type=TagType.SKILL,
-                    name=tag_name,
-                    created_by=user_id,
-                )
-                session.add(tag)
-                session.flush()
-                tag_by_key[tag_name.casefold()] = tag
-            session.add(
-                TagBinding(
-                    tenant_id=tenant_id,
-                    tag_id=tag.id,
-                    target_id=skill_id,
-                    created_by=user_id,
-                )
-            )
 
     @staticmethod
     def _require_skill(session, *, tenant_id: str, skill_id: str) -> Skill:

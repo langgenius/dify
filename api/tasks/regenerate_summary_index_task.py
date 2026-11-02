@@ -163,11 +163,9 @@ def regenerate_summary_index_task(
                                 exc_info=True,
                             )
                             total_segments_failed += 1
-                            # Update summary record with error status
-                            summary_record.status = SummaryStatus.ERROR
-                            summary_record.error = f"Re-vectorization failed: {str(e)}"
-                            session.add(summary_record)
-                            session.commit()
+                            # The summary repository conditionally records the
+                            # failure for the exact vectorization attempt.
+                            session.rollback()
                             continue
 
             else:
@@ -230,7 +228,6 @@ def regenerate_summary_index_task(
                         )
 
                         for segment in segments:
-                            existing_summary_record: DocumentSegmentSummary | None = None
                             try:
                                 # Get existing summary record
                                 existing_summary_record = session.scalar(
@@ -260,12 +257,11 @@ def regenerate_summary_index_task(
                                     exc_info=True,
                                 )
                                 total_segments_failed += 1
-                                # Update summary record with error status
-                                if existing_summary_record is not None:
-                                    existing_summary_record.status = SummaryStatus.ERROR
-                                    existing_summary_record.error = f"Regeneration failed: {str(e)}"
-                                    session.add(existing_summary_record)
-                                    session.commit()
+                                # Generation/vectorization failures are recorded
+                                # through the attempt snapshot owned by the
+                                # summary repository. Do not commit this stale ORM
+                                # instance over a newer manual edit.
+                                session.rollback()
                                 continue
 
                     except Exception as e:

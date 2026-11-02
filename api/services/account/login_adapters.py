@@ -26,6 +26,7 @@ from services.account.login_service import (
     EmailCodeGateway,
     HumanVerificationGateway,
     ResetPasswordEmailGateway,
+    WorkspaceInvitationQuota,
 )
 from services.account_activation_service import (
     AccountActivationRepository,
@@ -39,6 +40,7 @@ from services.entities.account_activation_entities import InvitationLookup
 from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import EmailCodeChallengeStatus, LoginInvitation, RefreshAccountStatus
 from services.entities.auth_audit_entities import LoginFailureReason
+from services.errors.workspace import WorkspaceInvitationQuotaError
 from services.system_feature_service import SystemFeatureService
 from services.turnstile_service import (
     EMAIL_CODE_SEND_ACTION,
@@ -74,10 +76,12 @@ class AccountActivationConsoleAuthInvitationGateway(ConsoleAuthInvitationGateway
         tokens: InvitationTokenStore,
         accounts: AccountActivationRepository,
         activation: AccountActivationService,
+        quotas: WorkspaceInvitationQuota,
     ) -> None:
         self._tokens = tokens
         self._accounts = accounts
         self._activation = activation
+        self._quotas = quotas
 
     @override
     def resolve(self, *, email: str, token: str) -> LoginInvitation | None:
@@ -90,12 +94,26 @@ class AccountActivationConsoleAuthInvitationGateway(ConsoleAuthInvitationGateway
                 continue
             invitation = self._accounts.resolve(invitation_token)
             if invitation is not None:
-                return LoginInvitation(email=invitation.account_email)
+                return LoginInvitation(
+                    account_id=invitation.account_id,
+                    workspace_id=invitation.workspace_id,
+                    email=invitation.account_email,
+                )
         return None
 
     @override
+    def check_membership_quota(self, workspace_id: str) -> None:
+        try:
+            self._quotas.check_invitation_quota(workspace_id)
+        except WorkspaceInvitationQuotaError as error:
+            raise account_errors.LoginInvitationQuotaError(seats=error.seats) from error
+
+    @override
     def ensure_membership(self, *, account_id: str, email: str, token: str) -> bool:
-        return self._activation.ensure_membership(account_id=account_id, email=email, token=token)
+        try:
+            return self._activation.ensure_membership(account_id=account_id, email=email, token=token)
+        except WorkspaceInvitationQuotaError as error:
+            raise account_errors.LoginInvitationQuotaError(seats=error.seats) from error
 
 
 class DeploymentConsoleAuthPolicyGateway(ConsoleAuthPolicyGateway):

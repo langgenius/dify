@@ -10,6 +10,7 @@ from celery import shared_task
 
 from configs import dify_config
 from core.db.session_factory import session_factory
+from extensions.ext_application_services import application_services
 from libs.datetime_utils import naive_utc_now
 from services.knowledge_fs.lifecycle_readiness import get_configured_knowledge_fs_lifecycle_worker_readiness
 from services.knowledge_fs.lifecycle_saga import KnowledgeFSLifecycleSagaRunner
@@ -64,9 +65,11 @@ def cleanup_knowledge_fs_staged_uploads() -> int:
         return 0
     session_maker = session_factory.get_session_maker()
     runtime = get_knowledge_fs_runtime(session_maker)
-    return KnowledgeFSStagedUploadService(session_maker, facade=runtime.facade).cleanup_expired(
-        limit=dify_config.KNOWLEDGE_FS_LIFECYCLE_BATCH_SIZE
-    )
+    return KnowledgeFSStagedUploadService(
+        session_maker,
+        facade=runtime.facade,
+        files=application_services().files,
+    ).cleanup_expired(limit=dify_config.KNOWLEDGE_FS_LIFECYCLE_BATCH_SIZE)
 
 
 __all__ = ["cleanup_knowledge_fs_staged_uploads", "run_knowledge_fs_lifecycle_worker"]

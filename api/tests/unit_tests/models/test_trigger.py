@@ -11,8 +11,9 @@ cover actual query behaviour rather than a mock's recorded call.
 
 from sqlalchemy.orm import Session
 
+from enums.creator import CreatorUserRole
 from models.account import Account
-from models.enums import CreatorUserRole, EndUserType, WorkflowTriggerStatus
+from models.enums import EndUserType, WorkflowTriggerStatus
 from models.model import EndUser
 from models.trigger import WorkflowTriggerLog
 

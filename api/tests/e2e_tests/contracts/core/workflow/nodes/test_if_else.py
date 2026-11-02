@@ -6,6 +6,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_runtime import build_knowledge_index_files
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
@@ -15,6 +16,7 @@ from graphon.nodes.if_else.if_else_node import IfElseNode
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.utils.condition.entities import Condition, SubCondition, SubVariableCondition
 from graphon.variables import ArrayFileSegment
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -74,6 +76,8 @@ def test_execute_if_else_result_true():
     node_factory = DifyNodeFactory(
         init_params=init_params,
         runtime_state=graph_runtime_state,
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=build_knowledge_index_files(),
     )
     Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
@@ -159,6 +163,8 @@ def test_execute_if_else_result_false():
     node_factory = DifyNodeFactory(
         init_params=init_params,
         runtime_state=graph_runtime_state,
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=build_knowledge_index_files(),
     )
     Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
@@ -313,6 +319,8 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
     node_factory = DifyNodeFactory(
         init_params=init_params,
         runtime_state=graph_runtime_state,
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=build_knowledge_index_files(),
     )
     Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
@@ -363,6 +371,8 @@ def test_execute_if_else_boolean_false_conditions():
     node_factory = DifyNodeFactory(
         init_params=init_params,
         runtime_state=graph_runtime_state,
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=build_knowledge_index_files(),
     )
     Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
@@ -424,6 +434,8 @@ def test_execute_if_else_boolean_cases_structure():
     node_factory = DifyNodeFactory(
         init_params=init_params,
         runtime_state=graph_runtime_state,
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=build_knowledge_index_files(),
     )
     Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 

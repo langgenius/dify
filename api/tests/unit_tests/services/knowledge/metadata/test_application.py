@@ -1,4 +1,3 @@
-from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 from typing import cast
@@ -10,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models import Account, Tenant
 from models.dataset import DatasetMetadataBinding, Document
-from models.enums import DocumentCreatedFrom
+from models.enums import DocumentCreatedFrom, IndexingStatus
 from repositories.knowledge.metadata_repository import SQLAlchemyMetadataRepository
 from services.errors.metadata import MetadataResourceNotFoundError
 from services.knowledge.dataset_access import DatasetAccess
@@ -20,8 +19,8 @@ from services.knowledge.entities.knowledge_entities import (
     MetadataDetail,
     MetadataOperationData,
 )
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.metadata.application import MetadataService
-from services.knowledge.resource_scope import DatasetRef
 from tests.helpers.unit.model_factories import make_account, make_dataset, make_document
 
 
@@ -296,7 +295,7 @@ def _operation(document_id: str, metadata_id: str, *, partial: bool = False) -> 
 class TestMetadataServiceSessionBoundaryCases:
     @staticmethod
     @pytest.fixture
-    def metadata_service(sqlite_session_factory: sessionmaker[Session]) -> Iterator[MetadataService]:
+    def metadata_service(sqlite_session_factory: sessionmaker[Session]) -> MetadataService:
         with sqlite_session_factory.begin() as session:
             account = make_account(account_id="actor", name="User", email="metadata@example.com")
             session.add(account)
@@ -316,7 +315,7 @@ class TestMetadataServiceSessionBoundaryCases:
                 )
                 document.enabled = True
                 document.archived = False
-                document.indexing_status = "completed"
+                document.indexing_status = IndexingStatus.COMPLETED
                 session.add(document)
         return MetadataService(
             store=SQLAlchemyMetadataRepository(session_factory=sqlite_session_factory),
@@ -431,6 +430,7 @@ class TestMetadataServiceSessionBoundaryCases:
             foreign = session.get(Document, FOREIGN_ID)
             assert document is not None
             assert foreign is not None
+            assert document.doc_metadata is not None
             assert document.doc_metadata["uploader"] == "User"
             assert foreign.doc_metadata is None
         metadata_service.disable_built_in_field(REF)

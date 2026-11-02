@@ -47,7 +47,9 @@ def _document(**overrides: object) -> Document:
     return Document(**values)
 
 
-def _pipeline(*, pipeline_id: str = "p-new", tenant_id: str = "t1") -> Pipeline:
+def _pipeline(
+    *, pipeline_id: str = "p-new", tenant_id: str = "t1", workflow_id: str = "workflow-published"
+) -> Pipeline:
     pipeline = Pipeline(
         tenant_id=tenant_id,
         name="Pipeline",
@@ -56,6 +58,7 @@ def _pipeline(*, pipeline_id: str = "p-new", tenant_id: str = "t1") -> Pipeline:
         updated_by="user-1",
     )
     pipeline.id = pipeline_id
+    pipeline.workflow_id = workflow_id
     return pipeline
 
 
@@ -388,7 +391,7 @@ def test_transform_dataset_full_flow(mocker: MockerFixture, sqlite_session: Sess
     sqlite_session.commit()
 
     mocker.patch.object(service, "_deal_dependencies")
-    mocker.patch.object(service, "_deal_document_data")
+    deal_document_data = mocker.patch.object(service, "_deal_document_data")
 
     pipeline = _pipeline()
     create_pipeline = mocker.patch.object(service, "_create_pipeline", return_value=pipeline)
@@ -403,6 +406,7 @@ def test_transform_dataset_full_flow(mocker: MockerFixture, sqlite_session: Sess
         "account_id": "user-1",
         "session": sqlite_session,
     }
+    deal_document_data.assert_called_once_with(dataset, sqlite_session)
 
 
 @pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)

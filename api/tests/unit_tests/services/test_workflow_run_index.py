@@ -9,6 +9,7 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFr
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_factory import DifyNodeFactory
+from core.workflow.node_runtime import build_knowledge_index_files
 from core.workflow.system_variables import build_system_variables
 from graphon.engine import Engine
 from graphon.engine_events import NodeRunStartedEvent
@@ -19,8 +20,10 @@ from graphon.runtime import RuntimeState, VariablePool
 from models import Account, AppMode
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from services.file_adapters import build_file_service
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -56,7 +59,12 @@ def _engine(*, invocation_id: str | None = None) -> Engine:
     return Engine(
         graph=Graph.init(
             graph_config=graph_config,
-            node_factory=DifyNodeFactory(init_params=params, runtime_state=state),
+            node_factory=DifyNodeFactory(
+                init_params=params,
+                runtime_state=state,
+                knowledge_retrieval=make_knowledge_retriever(),
+                knowledge_index_files=build_knowledge_index_files(),
+            ),
             root_node_id="start",
         ),
         runtime_state=state,
@@ -82,6 +90,7 @@ def test_engine_indices_are_available_before_delivery_and_match_persistence(
         user=user,
         app_id="app",
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        files=build_file_service(session_factory=sqlite_session_factory),
     )
     history = _history("earlier", 7)
     node_repo.save(history)

@@ -1,7 +1,7 @@
 import logging
 import time
 from collections.abc import Sequence
-from typing import cast, override
+from typing import TYPE_CHECKING, cast, override
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.execution_coordinator import app_task_command_channel_key
@@ -34,6 +34,9 @@ from graphon.variable_loader import VariableLoader
 from libs.datetime_utils import naive_utc_now
 from models.workflow import Workflow
 
+if TYPE_CHECKING:
+    from services.knowledge.retrieval.retrieval import KnowledgeRetriever
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,6 +50,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         *,
         application_generate_entity: WorkflowAppGenerateEntity,
         queue_manager: AppQueueManager,
+        knowledge_retrieval: "KnowledgeRetriever",
         variable_loader: VariableLoader,
         workflow: Workflow,
         system_user_id: str,
@@ -58,6 +62,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
     ):
         super().__init__(
             queue_manager=queue_manager,
+            knowledge_retrieval=knowledge_retrieval,
             execution_driver=execution_driver,
             variable_loader=variable_loader,
             app_id=application_generate_entity.app_config.app_id,

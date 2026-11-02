@@ -149,18 +149,30 @@ class Jieba(BaseKeyword):
 
         k = kwargs.get("top_k", 4)
         document_ids_filter = kwargs.get("document_ids_filter")
-        sorted_chunk_indices = self._retrieve_ids_by_query(keyword_table or {}, query, k)
+        segment_map: dict[str, DocumentSegment] | None = None
+        candidate_ids: set[str] | None = None
+        if document_ids_filter is not None:
+            segments = session.scalars(
+                select(DocumentSegment).where(
+                    DocumentSegment.tenant_id == self.dataset.tenant_id,
+                    DocumentSegment.dataset_id == self.dataset.id,
+                    DocumentSegment.document_id.in_(document_ids_filter),
+                )
+            ).all()
+            segment_map = {segment.index_node_id: segment for segment in segments if segment.index_node_id is not None}
+            candidate_ids = set(segment_map)
+        sorted_chunk_indices = self._retrieve_ids_by_query(keyword_table or {}, query, k, candidate_ids=candidate_ids)
 
         documents = []
-
-        segment_query_stmt = select(DocumentSegment).where(
-            DocumentSegment.dataset_id == self.dataset.id, DocumentSegment.index_node_id.in_(sorted_chunk_indices)
-        )
-        if document_ids_filter:
-            segment_query_stmt = segment_query_stmt.where(DocumentSegment.document_id.in_(document_ids_filter))
-
-        segments = session.scalars(segment_query_stmt).all()
-        segment_map = {segment.index_node_id: segment for segment in segments}
+        if segment_map is None:
+            segments = session.scalars(
+                select(DocumentSegment).where(
+                    DocumentSegment.tenant_id == self.dataset.tenant_id,
+                    DocumentSegment.dataset_id == self.dataset.id,
+                    DocumentSegment.index_node_id.in_(sorted_chunk_indices),
+                )
+            ).all()
+            segment_map = {segment.index_node_id: segment for segment in segments if segment.index_node_id is not None}
         for chunk_index in sorted_chunk_indices:
             segment = segment_map.get(chunk_index)
 
@@ -217,7 +229,14 @@ class Jieba(BaseKeyword):
 
         return keyword_table
 
-    def _retrieve_ids_by_query(self, keyword_table: dict[str, set[str]], query: str, k: int = 4) -> list[str]:
+    def _retrieve_ids_by_query(
+        self,
+        keyword_table: dict[str, set[str]],
+        query: str,
+        k: int = 4,
+        *,
+        candidate_ids: set[str] | None = None,
+    ) -> list[str]:
         keyword_table_handler = JiebaKeywordTableHandler()
         keywords = keyword_table_handler.extract_keywords(query)
 
@@ -226,7 +245,8 @@ class Jieba(BaseKeyword):
         keywords_list = [keyword for keyword in keywords if keyword in set(keyword_table.keys())]
         for keyword in keywords_list:
             for node_id in keyword_table[keyword]:
-                chunk_indices_count[node_id] += 1
+                if candidate_ids is None or node_id in candidate_ids:
+                    chunk_indices_count[node_id] += 1
 
         sorted_chunk_indices = sorted(
             chunk_indices_count.keys(),

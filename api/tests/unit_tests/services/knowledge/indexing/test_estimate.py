@@ -5,12 +5,12 @@ from unittest.mock import Mock, create_autospec
 import pytest
 
 from core.entities.knowledge_entities import IndexingEstimate
-from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting, UploadFileExtractionInput
 from machinery.context import RequestContext
 from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.data_source.credential_gateway import DatasourceCredentialNotFoundError
 from services.data_source.entities.notion_import import NotionPageType
+from services.data_source.entities.website import WebsiteJobSelection
+from services.extraction.contracts import DatasourceType, ExtractSetting, UploadFileExtractionInput
 from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess, DatasetAccessDeniedError
 from services.knowledge.entities.indexing_estimate import (
     NewSourcesEstimateCommand,
@@ -18,14 +18,14 @@ from services.knowledge.entities.indexing_estimate import (
     UploadFileEstimateSource,
     WebsiteEstimateSource,
 )
+from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge.indexing.contracts import DatasetEstimateRecord, EstimateDocumentRecord, StoredSource
 from services.knowledge.indexing.errors import IndexingInputSourceError, UnsupportedStoredSourceError
 from services.knowledge.indexing.estimate import (
-    DatasetEstimateRecord,
     EstimateDatasetReader,
     EstimateDocumentAlreadyFinishedError,
     EstimateDocumentNotFoundError,
     EstimateDocumentReader,
-    EstimateDocumentRecord,
     EstimateSourceNotFoundError,
     IndexingEstimateApplicationService,
     IndexingEstimateCredentialUnavailableError,
@@ -34,12 +34,10 @@ from services.knowledge.indexing.estimate import (
     NotionEstimateSourceResolver,
     ProcessRuleReader,
     StoredEstimateSourceResolver,
-    StoredSource,
     UnsupportedEstimateSourceError,
     UploadEstimateSourceResolver,
     WebsiteEstimateSourceResolver,
 )
-from services.knowledge.resource_scope import DatasetRef
 
 
 def _context() -> RequestContext:
@@ -154,7 +152,11 @@ def test_estimate_new_sources_resolves_each_variant_and_normalizes_rule(fixture:
             sources=(
                 UploadFileEstimateSource("file-1"),
                 NotionEstimateSource("notion-workspace", "page-1", NotionPageType.PAGE, "credential-1"),
-                WebsiteEstimateSource("firecrawl", "job-1", "https://example.com", only_main_content=True),
+                WebsiteEstimateSource(
+                    WebsiteJobSelection("firecrawl", "job-1"),
+                    "https://example.com",
+                    only_main_content=True,
+                ),
             ),
             process_rule={"mode": "automatic", "summary_index_setting": {"enable": None}},
             dataset_id="dataset-1",
@@ -179,8 +181,7 @@ def test_estimate_new_sources_resolves_each_variant_and_normalizes_rule(fixture:
     )
     fixture.websites.resolve_selection.assert_called_once_with(
         workspace_id="workspace-1",
-        provider="firecrawl",
-        job_id="job-1",
+        job=WebsiteJobSelection("firecrawl", "job-1"),
         url="https://example.com",
         mode="crawl",
         only_main_content=True,
@@ -195,7 +196,7 @@ def test_estimate_new_sources_resolves_each_variant_and_normalizes_rule(fixture:
     "source",
     [
         NotionEstimateSource("notion-workspace", "page-1", NotionPageType.PAGE, "credential-1"),
-        WebsiteEstimateSource("firecrawl", "job-1", "https://example.com"),
+        WebsiteEstimateSource(WebsiteJobSelection("firecrawl", "job-1"), "https://example.com"),
     ],
     ids=["notion", "website"],
 )

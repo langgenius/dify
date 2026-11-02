@@ -4,7 +4,7 @@ from collections.abc import Generator, Mapping, Sequence
 from contextlib import AbstractContextManager, nullcontext
 from typing import TYPE_CHECKING, Any, final
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.orm.attributes import set_committed_value
 
 from core.app.apps.draft_variable_saver import (
@@ -26,6 +26,7 @@ from graphon.variables.input_entities import VariableEntityType
 from libs.orjson import orjson_dumps
 from models import Account, EndUser, Workflow, WorkflowRun
 from services.app.file_input_defaults import apply_file_input_defaults
+from services.file_adapters import build_file_service
 from services.workflow_draft_variable_service import DraftVariableSaver as DraftVariableSaverImpl
 
 if TYPE_CHECKING:
@@ -58,10 +59,13 @@ class _DebuggerDraftVariableSaver:
         self._node_type = node_type
         self._node_execution_id = node_execution_id
         self._enclosing_node_id = enclosing_node_id
+        self._session_factory = sessionmaker(bind=db.engine)
+        self._files = build_file_service(session_factory=self._session_factory)
 
     def save(self, process_data: Mapping[str, Any] | None, outputs: Mapping[str, Any] | None) -> None:
-        with Session(db.engine) as session, session.begin():
+        with self._session_factory.begin() as session:
             DraftVariableSaverImpl(
+                files=self._files,
                 session=session,
                 tenant_id=self._tenant_id,
                 app_id=self._app_id,

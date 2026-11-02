@@ -18,15 +18,17 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
-from core.repositories.factory import OrderConfig
 from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     SQLAlchemyWorkflowNodeExecutionRepository,
     _deterministic_json_dump,
     _filter_by_offload_type,
     _find_first,
+    _InputsOutputsTruncationResult,
     _replace_or_append_offload,
 )
+from core.workflow.file_reference import build_file_reference
 from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
+from enums.creator import CreatorUserRole
 from graphon.entities import (
     WorkflowNodeExecution as _sqlalchemy_workflow_node_execution_repository_WorkflowNodeExecution,
 )
@@ -42,7 +44,7 @@ from graphon.entities.workflow_node_execution import (
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecutionStatus as _workflow_node_execution_truncation_WorkflowNodeExecutionStatus,
 )
-from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.enums import (
     WorkflowNodeExecutionStatus as _RepositoryExecutionStatus,
 )
@@ -55,16 +57,19 @@ from models import (
 from models import (
     WorkflowNodeExecutionTriggeredFrom as _workflow_node_execution_truncation_WorkflowNodeExecutionTriggeredFrom,
 )
-from models.enums import CreatorUserRole, ExecutionOffLoadType
+from models.enums import ExecutionOffLoadType
 from models.model import UploadFile
+from models.tools import ToolFile
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
 from models.workflow import (
     WorkflowNodeExecutionModel as _sqlalchemy_workflow_node_execution_repository_WorkflowNodeExecutionModel,
 )
 from models.workflow import WorkflowNodeExecutionModel as _workflow_node_execution_truncation_WorkflowNodeExecutionModel
-from models.workflow import WorkflowNodeExecutionOffload
 from models.workflow import (
     WorkflowNodeExecutionTriggeredFrom as _RepositoryTriggeredFrom,
 )
+from services.errors.file import UploadFileReferenceNotFoundError
+from services.file_adapters import build_file_service
 from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
 
 """SQLite-backed tests for the workflow node execution repository."""
@@ -140,8 +145,11 @@ def _sqlalchemy_workflow_node_execution_repository_execution(
     )
 
 
+_execution = _sqlalchemy_workflow_node_execution_repository_execution
+
+
 def _repository(
-    monkeypatch: pytest.MonkeyPatch,
+    _monkeypatch: pytest.MonkeyPatch,
     factory: sessionmaker[Session] | Engine,
     *,
     tenant_id: str = "tenant-1",
@@ -149,16 +157,17 @@ def _repository(
     user: Account | EndUser | None = None,
     triggered_from: _RepositoryTriggeredFrom | None = _RepositoryTriggeredFrom.WORKFLOW_RUN,
 ) -> SQLAlchemyWorkflowNodeExecutionRepository:
-    monkeypatch.setattr(
-        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-        lambda *_args: SimpleNamespace(upload_file=Mock()),
-    )
     return SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=factory,
         tenant_id=tenant_id,
         user=user or _sqlalchemy_workflow_node_execution_repository_account(tenant_id=tenant_id),
         app_id=app_id,
         triggered_from=triggered_from,
+        files=build_file_service(
+            session_factory=factory
+            if isinstance(factory, sessionmaker)
+            else sessionmaker(bind=factory, expire_on_commit=False)
+        ),
     )
 
 
@@ -220,11 +229,7 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
             )
 
     @staticmethod
-    def test_init_rejects_invalid_factory_and_missing_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
-            lambda *_args: SimpleNamespace(upload_file=Mock()),
-        )
+    def test_init_rejects_invalid_factory_and_missing_tenant() -> None:
         with pytest.raises(ValueError, match="Invalid session_factory type"):
             SQLAlchemyWorkflowNodeExecutionRepository(
                 session_factory=object(),  # type: ignore[arg-type]
@@ -232,6 +237,7 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
                 user=_sqlalchemy_workflow_node_execution_repository_account(),
                 app_id=None,
                 triggered_from=_RepositoryTriggeredFrom.WORKFLOW_RUN,
+                files=Mock(),
             )
         user = _sqlalchemy_workflow_node_execution_repository_account()
         user._current_tenant = None
@@ -242,6 +248,7 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
                 user=user,
                 app_id=None,
                 triggered_from=_RepositoryTriggeredFrom.WORKFLOW_RUN,
+                files=Mock(),
             )
 
     @staticmethod
@@ -480,6 +487,9 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
             type_=offload_type,
             file_id="file-1",
         )
+        upload_file = make_upload_file(file_id="file-1", tenant_id="tenant-1")
+        with sqlite_session_factory.begin() as session:
+            session.add(upload_file)
         result = SimpleNamespace(truncated_value={"large": "truncated"}, offload=offload)
         monkeypatch.setattr(repo, "_truncate_and_upload", lambda values, *_args: result if values else None)
         repo.save_execution_data(execution)
@@ -498,7 +508,7 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
         assert read_truncated(execution) == {"large": "truncated"}
 
     @staticmethod
-    def test_get_by_workflow_run_filters_tenant_app_trigger_and_paused_and_orders(
+    def test_get_by_workflow_run_filters_tenant_app_trigger_and_paused(
         monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
     ) -> None:
         repo = _repository(monkeypatch, sqlite_session_factory)
@@ -540,21 +550,12 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
             )
         )
 
-        models = repo.get_db_models_by_workflow_run(
-            "run-1",
-            OrderConfig(order_by=["missing", "index"], order_direction="desc"),
-        )
-        assert [model.id for model in models] == ["two", "one"]
+        models = repo.get_db_models_by_workflow_run("run-1")
+        assert {model.id for model in models} == {"one", "two"}
         assert set(repo._node_execution_cache) >= {"node-one", "node-two"}
         assert repo.get_db_models_by_workflow_run("missing-run") == []
         no_app_repo = _repository(monkeypatch, sqlite_session_factory, app_id=None)
-        assert (
-            no_app_repo.get_db_models_by_workflow_run(
-                "missing-run",
-                OrderConfig(order_by=["missing"], order_direction="asc"),
-            )
-            == []
-        )
+        assert no_app_repo.get_db_models_by_workflow_run("missing-run") == []
 
     @staticmethod
     def test_get_by_workflow_execution_maps_real_rows_to_domain(
@@ -562,7 +563,7 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
     ) -> None:
         repo = _repository(monkeypatch, sqlite_session_factory)
         repo.save(_sqlalchemy_workflow_node_execution_repository_execution(inputs={"input": 1}, outputs={"output": 2}))
-        domains = repo.get_by_workflow_execution("run-1", OrderConfig(order_by=["index"], order_direction="asc"))
+        domains = repo.get_by_workflow_execution("run-1")
         assert len(domains) == 1
         assert domains[0].inputs == {"input": 1}
         assert domains[0].outputs == {"output": 2}
@@ -582,6 +583,7 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
             user=user,
             app_id="app-1",
             triggered_from=_RepositoryTriggeredFrom.WORKFLOW_RUN,
+            files=build_file_service(session_factory=sqlite_session_factory),
         )
         writer.save_synchronously(
             _sqlalchemy_workflow_node_execution_repository_execution(
@@ -603,6 +605,7 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
             user=user,
             app_id="app-1",
             triggered_from=_RepositoryTriggeredFrom.WORKFLOW_RUN,
+            files=build_file_service(session_factory=sqlite_session_factory),
         )
         source_reader = reader.for_workflow_tool("app-1")
         assert {node.id for node in reader.get_by_workflow_execution("run-1")} == {"finished"}
@@ -727,7 +730,7 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
         uploaded.id = "file-1"
         repo = _repository(monkeypatch, sqlite_session_factory)
         upload_file = Mock(return_value=uploaded)
-        monkeypatch.setattr(repo._file_service, "upload_file", upload_file)
+        monkeypatch.setattr(repo._files, "upload_file", upload_file)
 
         class Truncator:
             def truncate_variable_mapping(self, _value: Any) -> tuple[dict[str, bool], bool]:
@@ -738,11 +741,11 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
         assert result is not None
         assert result.truncated_value == {"truncated": True}
         upload_file.assert_called_once_with(
+            actor=repo._file_actor,
+            tenant_id="tenant-1",
             filename="node_execution_execution-1_inputs.json",
             content=b'{"value": 1}',
             mimetype="application/json",
-            user=repo._user,
-            tenant_id="tenant-1",
         )
         assert result.offload.file_id == "file-1"
         assert result.offload.type_ == ExecutionOffLoadType.INPUTS
@@ -931,6 +934,7 @@ class TestWorkflowNodeExecutionConflictHandlingCases:
             user=_workflow_node_execution_conflict_handling_account(),
             app_id="test-app-id",
             triggered_from=_workflow_node_execution_conflict_handling_WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            files=build_file_service(session_factory=conflict_database.session_factory),
         )
 
     class TestWorkflowNodeExecutionConflictHandling:
@@ -1151,6 +1155,7 @@ class TestWorkflowNodeExecutionTruncationCases:
                 user=mock_user(),
                 app_id="test-app-id",
                 triggered_from=_workflow_node_execution_truncation_WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                files=build_file_service(session_factory=sessionmaker(bind=sqlite_engine, expire_on_commit=False)),
             )
             with repository._session_factory() as session:
                 assert isinstance(session, Session)
@@ -1240,3 +1245,101 @@ class TestWorkflowNodeExecutionTruncationCases:
             assert model.inputs_truncated is False
             assert model.outputs_truncated is False
             assert model.process_data_truncated is False
+
+
+def test_get_by_workflow_run_filters_tenant_app_trigger_and_paused(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    repo = _repository(monkeypatch, sqlite_session_factory)
+    repo.save(_execution(execution_id="two", node_execution_id="node-two", index=2))
+    repo.save(_execution(execution_id="one", node_execution_id="node-one", index=1))
+    repo.save(
+        _execution(
+            execution_id="paused",
+            node_execution_id="node-paused",
+            index=3,
+            status=WorkflowNodeExecutionStatus.PAUSED,
+        )
+    )
+    _repository(monkeypatch, sqlite_session_factory, tenant_id="tenant-2").save(
+        _execution(execution_id="foreign-tenant", node_execution_id="foreign-tenant")
+    )
+    _repository(monkeypatch, sqlite_session_factory, app_id="app-2").save(
+        _execution(execution_id="foreign-app", node_execution_id="foreign-app")
+    )
+    _repository(
+        monkeypatch,
+        sqlite_session_factory,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
+    ).save(_execution(execution_id="single-step", node_execution_id="single-step"))
+
+    models = repo.get_db_models_by_workflow_run("run-1")
+    assert {model.id for model in models} == {"two", "one"}
+    assert set(repo._node_execution_cache) >= {"node-one", "node-two"}
+    assert repo.get_db_models_by_workflow_run("missing-run") == []
+    no_app_repo = _repository(monkeypatch, sqlite_session_factory, app_id=None)
+    assert no_app_repo.get_db_models_by_workflow_run("missing-run") == []
+
+
+def test_save_execution_data_locks_reference_hidden_by_truncation(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    repo = _repository(monkeypatch, sqlite_session_factory)
+    execution = _execution(inputs={"value": "before"})
+    repo.save(execution)
+    missing_file_id = "missing-upload"
+    execution.inputs = {
+        "large": "value",
+        "file": {
+            "transfer_method": "local_file",
+            "reference": build_file_reference(record_id=missing_file_id),
+        },
+    }
+    offload = WorkflowNodeExecutionOffload(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        node_execution_id=execution.id,
+        type_=ExecutionOffLoadType.INPUTS,
+        file_id="offload-file",
+    )
+    result = _InputsOutputsTruncationResult(truncated_value={"large": "truncated"}, offload=offload)
+    monkeypatch.setattr(repo, "_truncate_and_upload", lambda values, *_args: result if values else None)
+    with sqlite_session_factory.begin() as session:
+        session.add(make_upload_file(file_id="offload-file", tenant_id="tenant-1"))
+
+    with pytest.raises(UploadFileReferenceNotFoundError) as error:
+        repo.save_execution_data(execution)
+
+    assert error.value.missing_file_ids == (missing_file_id,)
+
+
+def test_save_many_persists_agent_tool_file_output(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    tool_file = ToolFile(
+        user_id="user-1",
+        tenant_id="tenant-1",
+        conversation_id=None,
+        file_key="tool-output/report.pdf",
+        mimetype="application/pdf",
+        name="report.pdf",
+        size=42,
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add(tool_file)
+
+    output = {
+        "report": {
+            "transfer_method": "tool_file",
+            "reference": build_file_reference(record_id=tool_file.id),
+        }
+    }
+    execution = _execution(outputs=output)
+
+    _repository(monkeypatch, sqlite_session_factory).save_many([execution])
+
+    with sqlite_session_factory() as session:
+        persisted = session.get(WorkflowNodeExecutionModel, execution.id)
+        assert persisted is not None
+        assert persisted.outputs_dict == output

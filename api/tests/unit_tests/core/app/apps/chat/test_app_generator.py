@@ -17,6 +17,17 @@ from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message, MessageAnnotation
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
+
+
+def _generator() -> ChatAppGenerator:
+    return ChatAppGenerator(knowledge_retrieval=make_knowledge_retriever())
+
+
+def _runner() -> ChatAppRunner:
+    return ChatAppRunner(
+        knowledge_retrieval=make_knowledge_retriever(),
+    )
 
 
 class DummyGenerateEntity:
@@ -120,7 +131,7 @@ def _bind_db_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
 
 class TestChatAppGenerator:
     def test_generate_requires_query(self, unbound_session: Session):
-        generator = ChatAppGenerator()
+        generator = _generator()
         with pytest.raises(ValueError, match="query is required"):
             generator.generate(
                 session=unbound_session,
@@ -132,7 +143,7 @@ class TestChatAppGenerator:
             )
 
     def test_generate_rejects_non_string_query(self, unbound_session: Session):
-        generator = ChatAppGenerator()
+        generator = _generator()
         with pytest.raises(ValueError, match="query must be a string"):
             generator.generate(
                 session=unbound_session,
@@ -144,7 +155,7 @@ class TestChatAppGenerator:
             )
 
     def test_generate_debugger_overrides_model_config(self, unbound_session: Session):
-        generator = ChatAppGenerator()
+        generator = _generator()
         app_model = _app()
         user = _account()
         args = {
@@ -199,7 +210,7 @@ class TestChatAppGenerator:
         assert generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
 
     def test_generate_uses_session_for_annotation_reply(self, unbound_session: Session):
-        generator = ChatAppGenerator()
+        generator = _generator()
         app_model = _app()
         app_model_config = AppModelConfig(app_id="app-1")
         annotation_reply = {"enabled": False}
@@ -232,7 +243,7 @@ class TestChatAppGenerator:
         assert get_app_config.call_args.kwargs["annotation_reply"] is annotation_reply
 
     def test_generate_rejects_model_config_override_for_non_debugger(self, unbound_session: Session):
-        generator = ChatAppGenerator()
+        generator = _generator()
         with pytest.raises(ValueError, match="Only in App debug mode can override model config"):
             with (
                 patch.object(ChatAppGenerator, "_get_app_model_config", return_value=AppModelConfig(app_id="app-1")),
@@ -248,7 +259,7 @@ class TestChatAppGenerator:
                 )
 
     def test_generate_worker_handles_exceptions(self):
-        generator = ChatAppGenerator()
+        generator = _generator()
         queue_manager = DummyQueueManager()
         entity = DummyGenerateEntity(task_id="t1", user_id="u1")
 
@@ -283,7 +294,7 @@ class TestChatAppGenerator:
 
 class TestChatAppRunner:
     def test_run_raises_when_app_missing(self, sqlite_session: Session):
-        runner = ChatAppRunner()
+        runner = _runner()
         app_config = SimpleNamespace(
             app_id="app-1", tenant_id="tenant-1", prompt_template=None, external_data_variables=[]
         )
@@ -311,7 +322,7 @@ class TestChatAppRunner:
 
     def test_run_moderation_error_direct_output(self, sqlite_session: Session):
         _, conversation, message = _persist_records(sqlite_session)
-        runner = ChatAppRunner()
+        runner = _runner()
         app_config = SimpleNamespace(
             app_id="app-1",
             tenant_id="tenant-1",
@@ -351,7 +362,7 @@ class TestChatAppRunner:
 
     def test_run_annotation_reply_short_circuits(self, sqlite_session: Session):
         _, conversation, message = _persist_records(sqlite_session)
-        runner = ChatAppRunner()
+        runner = _runner()
         app_config = SimpleNamespace(
             app_id="app-1",
             tenant_id="tenant-1",
@@ -396,7 +407,7 @@ class TestChatAppRunner:
 
     def test_run_returns_when_hosting_moderation_blocks(self, sqlite_session: Session):
         _, conversation, message = _persist_records(sqlite_session)
-        runner = ChatAppRunner()
+        runner = _runner()
         app_config = SimpleNamespace(
             app_id="app-1",
             tenant_id="tenant-1",
@@ -434,7 +445,7 @@ class TestChatAppRunner:
 
     def test_run_closes_explicit_session_before_stream_consumption(self, sqlite_session: Session):
         _, conversation, message = _persist_records(sqlite_session)
-        runner = ChatAppRunner()
+        runner = _runner()
         app_config = SimpleNamespace(
             app_id="app-1",
             tenant_id="tenant-1",

@@ -1,4 +1,4 @@
-"""Remove application-owned storage before deleting the durable database references.
+"""Remove application-owned storage before deleting its database references.
 
 Uploads owned by accounts, subscription-wide trigger requests, tenant telemetry,
 and manually named exports do not have exclusive application ownership. They are
@@ -12,20 +12,20 @@ from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql.selectable import Exists
 
 from core.db.session_factory import session_factory
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import storage
 from models import Conversation, EndUser, Message, MessageFile, UploadFile
-from models.enums import CreatorUserRole
-from models.human_input import HumanInputFormUploadFile
 from models.tools import ToolFile
 from models.workflow import (
     Workflow,
-    WorkflowDraftVariableFile,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
     WorkflowPause,
     WorkflowPauseReason,
     WorkflowRun,
 )
+from repositories.file.upload_file_repository import UploadFileRepository
+from services.file_adapters import build_upload_file_reclaimer, delete_upload_blob
 
 logger = logging.getLogger(__name__)
 _BATCH_SIZE = 500
@@ -48,8 +48,9 @@ def cleanup_app_storage(tenant_id: str, app_id: str) -> None:
     """Clean exclusively owned files with external I/O outside DB transactions.
 
     Call before deleting runs, conversations, messages, or end users. A storage
-    failure propagates to the app deletion task so its existing retry can still
-    resolve the keys. Each successful batch removes its references atomically.
+    failure propagates to the retrying App deletion task while the remaining
+    references still resolve the keys. Each
+    successful batch removes its references atomically.
     """
     # The App row is already deleted by the caller. Validate trace ownership
     # against remaining tenant-scoped resources before removing those resources.
@@ -61,7 +62,6 @@ def cleanup_app_storage(tenant_id: str, app_id: str) -> None:
     _cleanup_pauses(tenant_id, app_id)
     _cleanup_node_offloads(tenant_id, app_id)
     _cleanup_tool_files(tenant_id, app_id)
-    _cleanup_end_user_uploads(tenant_id, app_id)
     if owns_traces:
         _cleanup_traces(app_id)
 
@@ -178,35 +178,39 @@ def _cleanup_tool_files(tenant_id: str, app_id: str) -> None:
             _delete_object(key)
         with session_factory.create_session() as session, session.begin():
             session.execute(
-                delete(ToolFile).where(ToolFile.tenant_id == tenant_id, ToolFile.id.in_([r.id for r in rows]))
+                delete(ToolFile).where(ToolFile.tenant_id == tenant_id, ToolFile.id.in_([row.id for row in rows]))
             )
 
 
-def _cleanup_end_user_uploads(tenant_id: str, app_id: str) -> None:
+def cleanup_app_uploads(tenant_id: str, app_id: str) -> None:
+    """Offer candidates to global liveness checks after App references are removed.
+
+    EndUser rows must remain until this finishes so retries can rediscover candidates.
+    Shared files remain owned by their other domains.
+    """
+    sessions = session_factory.get_session_maker()
+    files = UploadFileRepository(session_factory=sessions)
+    reclaimer = build_upload_file_reclaimer(session_factory=sessions, files=files)
     end_user_ids = select(EndUser.id).where(EndUser.tenant_id == tenant_id, EndUser.app_id == app_id)
+    after_id: str | None = None
     while True:
-        with session_factory.create_session() as session:
-            rows = session.execute(
-                select(UploadFile.id, UploadFile.key)
-                .where(
-                    UploadFile.tenant_id == tenant_id,
-                    UploadFile.created_by_role == CreatorUserRole.END_USER,
-                    UploadFile.created_by.in_(end_user_ids),
-                    ~_other_app_message_reference(UploadFile.id, app_id),
-                    ~exists().where(WorkflowNodeExecutionOffload.file_id == UploadFile.id),
-                    ~exists().where(WorkflowDraftVariableFile.upload_file_id == UploadFile.id),
-                    ~exists().where(HumanInputFormUploadFile.upload_file_id == UploadFile.id),
-                )
-                .limit(_BATCH_SIZE)
-            ).all()
-        if not rows:
-            return
-        for _, key in rows:
-            _delete_object(key)
-        with session_factory.create_session() as session, session.begin():
-            session.execute(
-                delete(UploadFile).where(UploadFile.tenant_id == tenant_id, UploadFile.id.in_([row.id for row in rows]))
+        with sessions() as session:
+            query = select(UploadFile.id).where(
+                UploadFile.tenant_id == tenant_id,
+                UploadFile.created_by_role == CreatorUserRole.END_USER,
+                UploadFile.created_by.in_(end_user_ids),
             )
+            if after_id is not None:
+                query = query.where(UploadFile.id > after_id)
+            candidates = tuple(session.scalars(query.order_by(UploadFile.id).limit(_BATCH_SIZE)))
+        if not candidates:
+            return
+        reclaimer.delete_unreferenced_files(
+            tenant_id=tenant_id,
+            file_ids=candidates,
+            delete_blob=delete_upload_blob,
+        )
+        after_id = candidates[-1]
 
 
 def _cleanup_traces(app_id: str) -> None:

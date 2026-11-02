@@ -30,6 +30,7 @@ from graphon.entities.workflow_node_execution import (
 )
 from graphon.nodes import BuiltinNodeTypes
 from models import Account, App, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom
+from services.file_adapters import build_file_service
 
 logger = logging.getLogger(__name__)
 
@@ -257,6 +258,7 @@ class TencentDataTrace(BaseTraceInstance):
                 user=service_account,
                 app_id=trace_info.metadata.get("app_id"),
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                files=build_file_service(session_factory=session_maker),
             )
 
             executions = repository.get_by_workflow_execution(workflow_execution_id=trace_info.workflow_run_id)

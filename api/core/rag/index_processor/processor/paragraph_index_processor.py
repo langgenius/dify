@@ -4,7 +4,7 @@ import contextlib
 import logging
 import re
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any, TypedDict, cast, override
 
 from sqlalchemy import select
@@ -16,15 +16,13 @@ from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_context import with_credit_usage_created_by
-from core.model_manager import ModelManager
+from core.model_manager import ModelInstance, ModelManager
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.embedding.token_counter import calculate_segment_token_counts
 from core.rag.entities import Rule
-from core.rag.extractor.entity.extract_setting import ExtractSetting
-from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
@@ -64,25 +62,25 @@ class ParagraphFormatPreviewDict(TypedDict):
 
 class ParagraphIndexProcessor(BaseIndexProcessor):
     @override
-    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs) -> list[Document]:
-        text_docs = ExtractProcessor.extract(
-            extract_setting=extract_setting,
-            is_automatic=(
-                kwargs.get("process_rule_mode") == "automatic" or kwargs.get("process_rule_mode") == "hierarchical"
-            ),
-            session=session,
-        )
-
-        return text_docs
-
-    @override
     def transform(
-        self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs
+        self,
+        documents: list[Document],
+        current_user: Account | None = None,
+        *,
+        process_rule: Mapping[str, object],
+        tenant_id: str,
+        on_upload_file_created: Callable[[str], None],
+        session: Session,
+        embedding_model_instance: ModelInstance | None = None,
+        doc_language: str = "English",
+        preview: bool = False,
     ) -> list[Document]:
-        process_rule = kwargs.get("process_rule")
         if not process_rule:
             raise ValueError("No process rule found.")
-        if process_rule.get("mode") == "automatic":
+        mode = process_rule.get("mode")
+        if not isinstance(mode, str):
+            raise ValueError("Invalid process rule mode.")
+        if mode == "automatic":
             automatic_rule = DatasetProcessRule.AUTOMATIC_RULES
             rules = Rule.model_validate(automatic_rule)
         else:
@@ -93,16 +91,16 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if not rules.segmentation:
             raise ValueError("No segmentation found in rules.")
         splitter = self._get_splitter(
-            processing_rule_mode=process_rule.get("mode"),
+            processing_rule_mode=mode,
             max_tokens=rules.segmentation.max_tokens,
             chunk_overlap=rules.segmentation.chunk_overlap,
             separator=rules.segmentation.separator,
-            embedding_model_instance=kwargs.get("embedding_model_instance"),
+            embedding_model_instance=embedding_model_instance,
         )
         all_documents = []
         for document in documents:
             # document clean
-            document_text = CleanProcessor.clean(document.page_content, kwargs.get("process_rule", {}))
+            document_text = CleanProcessor.clean(document.page_content, dict(process_rule))
             document.page_content = document_text
             # parse document to nodes
             document_nodes = splitter.split_documents([document])
@@ -118,8 +116,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         self._get_content_files(
                             document_node,
                             current_user,
-                            tenant_id=kwargs["tenant_id"],
+                            tenant_id=tenant_id,
                             session=session,
+                            on_upload_file_created=on_upload_file_created,
                         )
                         if document_node.metadata
                         else None
@@ -143,7 +142,6 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         with_keywords: bool = True,
         *,
         session: Session,
-        **kwargs,
     ) -> None:
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             vector = Vector(dataset, session=session)
@@ -152,22 +150,25 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 vector.create_multimodal(multimodal_documents)
             with_keywords = False
         if with_keywords:
-            keywords_list = kwargs.get("keywords_list")
             keyword = Keyword(dataset)
-            if keywords_list and len(keywords_list) > 0:
-                keyword.add_texts(documents, session, keywords_list=keywords_list)
-            else:
-                keyword.add_texts(documents, session)
+            keyword.add_texts(documents, session)
 
     @override
     def clean(
-        self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
+        self,
+        dataset: Dataset,
+        node_ids: list[str] | None,
+        with_keywords: bool = True,
+        *,
+        session: Session,
+        delete_summaries: bool = False,
+        delete_child_chunks: bool = False,
+        precomputed_child_node_ids: list[str] | None = None,
     ) -> None:
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
         # For disable operations, disable_summaries_for_segments is called directly in the task.
         # Only delete summaries if explicitly requested (e.g., when segment is actually deleted)
-        delete_summaries = kwargs.get("delete_summaries", False)
         if delete_summaries:
             if node_ids:
                 # Find segments by index_node_id

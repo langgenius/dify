@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import override
-from unittest.mock import MagicMock, Mock, patch, sentinel
+from unittest.mock import MagicMock, Mock, create_autospec, patch, sentinel
 from uuid import uuid4
 
 import pytest
@@ -97,8 +97,10 @@ from models.dataset import SegmentAttachmentBinding
 from models.enums import CreatorUserRole
 from models.model import StorageType, UploadFile
 from models.tools import ToolFile
+from services.file_service import UploadFileCreator
 from tests.helpers.unit.core.model_fixtures import make_model_config, make_model_instance
 from tests.helpers.unit.core.workflow.nodes.parameter_extractor.fixtures.model import get_mocked_fetch_model_instance
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context, build_test_variable_pool
 
 pytest_plugins = ("tests.helpers.unit.core.workflow.nodes.parameter_extractor.fixtures.plugin_daemon",)
@@ -107,6 +109,10 @@ pytest_plugins = ("tests.helpers.unit.core.workflow.nodes.parameter_extractor.fi
 
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
+
+
+def _knowledge_index_files() -> UploadFileCreator:
+    return create_autospec(UploadFileCreator, instance=True)
 
 
 def init_llm_node(config: dict[str, object]) -> LLMNode:
@@ -933,6 +939,8 @@ def init_tool_node(config: dict[str, object]) -> ToolNode:
     node_factory = DifyNodeFactory(
         init_params=init_params,
         runtime_state=graph_runtime_state,
+        knowledge_retrieval=make_knowledge_retriever(),
+        knowledge_index_files=_knowledge_index_files(),
     )
 
     Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
@@ -945,7 +953,10 @@ def init_tool_node(config: dict[str, object]) -> ToolNode:
         init_params=init_params,
         runtime_state=graph_runtime_state,
         tool_file_manager=tool_file_manager,
-        runtime=DifyToolNodeRuntime(init_params.run_context),
+        runtime=DifyToolNodeRuntime(
+            init_params.run_context,
+            knowledge_retrieval=make_knowledge_retriever(),
+        ),
     )
     node.bind_execution_id(str(uuid.uuid4()))
     return node
@@ -1061,7 +1072,11 @@ class TestToolNodeRuntimeCases:
             call_depth=0,
         )
         session_maker = sessionmaker(sqlite_engine, expire_on_commit=False)
-        return DifyToolNodeRuntime(init_params.run_context, session_maker=session_maker)
+        return DifyToolNodeRuntime(
+            init_params.run_context,
+            knowledge_retrieval=make_knowledge_retriever(),
+            session_maker=session_maker,
+        )
 
     @staticmethod
     def test_invoke_creates_callback_and_converts_messages(runtime: DifyToolNodeRuntime) -> None:
@@ -2162,7 +2177,10 @@ class TestNodeRuntimeCases:
             ),
         )
 
-        runtime = node_runtime.DifyToolNodeRuntime(_build_run_context())
+        runtime = node_runtime.DifyToolNodeRuntime(
+            _build_run_context(),
+            knowledge_retrieval=make_knowledge_retriever(),
+        )
         node_data = ToolNodeData(
             title="Workflow Tool Node",
             desc=None,
@@ -2207,7 +2225,10 @@ class TestNodeRuntimeCases:
 
         run_context = _build_run_context()
         run_context[DIFY_RUN_CONTEXT_KEY].trace_session_id = "session-1"
-        runtime = node_runtime.DifyToolNodeRuntime(run_context)
+        runtime = node_runtime.DifyToolNodeRuntime(
+            run_context,
+            knowledge_retrieval=make_knowledge_retriever(),
+        )
         node_data = ToolNodeData(
             title="Workflow Tool Node",
             desc=None,
@@ -2239,7 +2260,10 @@ class TestNodeRuntimeCases:
         monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
         monkeypatch.setattr(node_runtime, "get_system_text", lambda _pool, _key: None)
 
-        runtime = node_runtime.DifyToolNodeRuntime(_build_run_context())
+        runtime = node_runtime.DifyToolNodeRuntime(
+            _build_run_context(),
+            knowledge_retrieval=make_knowledge_retriever(),
+        )
         node_data = ToolNodeData(
             title="Builtin Tool Node",
             desc=None,
@@ -2299,7 +2323,10 @@ class TestNodeRuntimeCases:
             return {"amount": Decimal("1.25")}, [{"id": "file-id", "name": "input.txt"}]
 
         monkeypatch.setattr(tool, "prepare_container_inputs", prepare_container_inputs)
-        runtime = DifyToolNodeRuntime(_build_run_context())
+        runtime = DifyToolNodeRuntime(
+            _build_run_context(),
+            knowledge_retrieval=make_knowledge_retriever(),
+        )
 
         payload = runtime.build_workflow_tool_container_payload(
             tool_runtime=ToolRuntimeHandle(raw=tool),
@@ -2322,7 +2349,10 @@ class TestNodeRuntimeCases:
 
     @staticmethod
     def test_dify_tool_node_runtime_rejects_non_workflow_tool_container_payload() -> None:
-        runtime = DifyToolNodeRuntime(_build_run_context())
+        runtime = DifyToolNodeRuntime(
+            _build_run_context(),
+            knowledge_retrieval=make_knowledge_retriever(),
+        )
         with pytest.raises(ToolRuntimeResolutionError, match="resolved tool is not a Workflow Tool"):
             runtime.build_workflow_tool_container_payload(
                 tool_runtime=ToolRuntimeHandle(raw=object()),

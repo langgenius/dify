@@ -1,6 +1,5 @@
 """Application ports and policies for datasource credential resolution."""
 
-import logging
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -13,8 +12,6 @@ from services.credentials.refresh import (
 )
 from services.data_source.entities.credential import DatasourceCredentialRecord, DatasourceOAuthClientConfigRecord
 
-logger = logging.getLogger(__name__)
-
 
 class NotionCredentialUnavailableError(ValueError):
     pass
@@ -26,31 +23,32 @@ def resolve_stored_notion_access_token(
     load_token: Callable[[str], str],
     integration_token: str | None,
 ) -> str:
-    """Use the saved credential, then the configured legacy integration.
+    """Resolve an explicit saved credential or the legacy integration.
 
     Stored documents never select a tenant default credential: changing that
     default must not change the integration used to read an existing document.
-    Preserve indexing's environment fallback when credential resolution fails,
-    including refresh failures. Actor-selected imports do not use this policy.
-    Without a fallback, preserve temporary refresh failures so callers can retry.
+    Only historical sources without a credential ID may use the environment
+    integration. An explicit ID is an authorization boundary and must fail
+    closed when it is deleted, invalid, or cannot be refreshed/decrypted.
+    Temporary refresh failures propagate so callers can retry without switching
+    credentials. Actor-selected imports do not use this policy.
     """
-    credential_error: Exception | None = None
-    if credential_id:
+    if credential_id is not None:
         try:
             token = load_token(credential_id)
             if isinstance(token, str) and token:
                 return token
+        except CredentialRefreshUnavailableError:
+            raise
         except Exception as error:
-            credential_error = error
+            raise NotionCredentialUnavailableError("Stored Notion credential is unavailable.") from error
+        raise NotionCredentialUnavailableError("Stored Notion credential is unavailable.")
 
     if not integration_token:
-        if isinstance(credential_error, CredentialRefreshUnavailableError):
-            raise credential_error
         raise NotionCredentialUnavailableError(
             "Must specify `integration_token` or set environment variable `NOTION_INTEGRATION_TOKEN`."
-        ) from credential_error
+        )
 
-    logger.warning("Stored Notion credential %s unavailable; using NOTION_INTEGRATION_TOKEN", credential_id)
     return integration_token
 
 

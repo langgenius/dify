@@ -14,7 +14,7 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
-from models.enums import CreatorUserRole
+from enums.creator import CreatorUserRole
 from models.model import ConversationFromSource, Message
 from models.web import SavedMessage
 

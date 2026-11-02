@@ -54,6 +54,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.db.session_factory import session_factory
+from extensions.ext_application_services import application_services
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
@@ -770,7 +771,11 @@ def _actor() -> tuple[str, str]:
 
 def _staged_uploads() -> KnowledgeFSStagedUploadService:
     session_maker = session_factory.get_session_maker()
-    return KnowledgeFSStagedUploadService(session_maker, facade=_console_services().facade)
+    return KnowledgeFSStagedUploadService(
+        session_maker,
+        facade=_console_services().facade,
+        files=application_services().files,
+    )
 
 
 def _payload[PayloadT: BaseModel](model: type[PayloadT]) -> PayloadT:

@@ -14,6 +14,7 @@ from models import App, AppMode, ConversationVariable
 from models.enums import AppStatus, ConversationFromSource
 from models.model import Conversation, EndUser
 from repositories.app.console_repository import find_console_app
+from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
 from services.conversation_variable_query import (
     CONVERSATION_VARIABLE_LIMIT,
     ConversationVariableAppNotFoundError,
@@ -114,7 +115,14 @@ class ConversationVariableRepository(ConversationVariableQuery):
             if row is None:
                 raise ConversationVariableNotExistsError()
             variable = transform(row.to_variable())
-            row.data = variable.model_dump_json()
+            serialized = variable.model_dump_json()
+            lock_new_workflow_upload_file_references(
+                session,
+                tenant_id=ref.tenant_id,
+                previous_payloads=(row.data,),
+                current_payloads=(serialized,),
+            )
+            row.data = serialized
             row.updated_at = naive_utc_now()
             record = ConversationVariableRecord(
                 id=row.id,

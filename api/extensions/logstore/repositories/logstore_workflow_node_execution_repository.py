@@ -18,8 +18,8 @@ from sqlalchemy.orm import sessionmaker
 from configs import dify_config
 from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
 from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
+from enums.creator import CreatorUserRole
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier
@@ -29,11 +29,12 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import (
     Account,
-    CreatorUserRole,
     EndUser,
     WorkflowNodeExecutionTriggeredFrom,
 )
 from repositories.workflow_run_control import apply_workflow_stop_to_node, get_stopped_workflow_run
+from services.file_service import UploadFileCreator
+from services.workflow.persistence import WorkflowNodeExecutionRepository
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +117,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
+        files: UploadFileCreator,
     ):
         """
         Initialize the repository with a SQLAlchemy sessionmaker or engine and context information.
@@ -126,6 +128,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             user: Account or EndUser used for creator attribution
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (SINGLE_STEP or WORKFLOW_RUN)
+            files: Upload capability reused by the SQL dual-write repository
         """
         logger.debug(
             "LogstoreWorkflowNodeExecutionRepository.__init__: app_id=%s, triggered_from=%s", app_id, triggered_from
@@ -150,6 +153,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
         # Determine user role based on user type
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
+        self._files = files
 
         # Initialize SQL repository for dual-write support
         self.sql_repository = SQLAlchemyWorkflowNodeExecutionRepository(
@@ -158,6 +162,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             user=user,
             app_id=app_id,
             triggered_from=triggered_from,
+            files=files,
         )
 
         # Keep the migration switch on the typed application config so callers
@@ -172,6 +177,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             user=self._user,
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+            files=self._files,
         )
 
     def _to_logstore_model(self, domain_model: WorkflowNodeExecution, *, log_version: int) -> Sequence[tuple[str, str]]:
@@ -383,7 +389,6 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     def get_by_workflow_execution(
         self,
         workflow_execution_id: str,
-        order_config: OrderConfig | None = None,
         *,
         include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecution]:
@@ -394,10 +399,6 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         This ensures we only get the most recent version of each node execution record.
         Args:
             workflow_execution_id: The workflow execution identifier
-            order_config: Optional configuration for ordering results
-                order_config.order_by: List of fields to order by (e.g., ["index", "created_at"])
-                order_config.order_direction: Direction to order ("asc" or "desc")
-
         Returns:
             A list of workflow node execution instances
 
@@ -405,11 +406,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             This method uses ROW_NUMBER() window function partitioned by node_execution_id
             to get the latest version (highest log_version) of each node execution.
         """
-        logger.debug(
-            "get_by_workflow_execution: workflow_execution_id=%s, order_config=%s",
-            workflow_execution_id,
-            order_config,
-        )
+        logger.debug("get_by_workflow_execution: workflow_execution_id=%s", workflow_execution_id)
         # Build SQL query with deduplication using window function
         # ROW_NUMBER() OVER (PARTITION BY node_execution_id ORDER BY log_version DESC)
         # ensures we get the latest version of each node execution
@@ -424,20 +421,6 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             if self._triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL
             else f"(triggered_from IS NULL OR triggered_from!='{tool_origin}')"
         )
-
-        # Build ORDER BY clause for outer query
-        order_clause = ""
-        if order_config and order_config.order_by:
-            order_fields = []
-            for field in order_config.order_by:
-                # Map domain field names to logstore field names if needed
-                field_name = field
-                if order_config.order_direction == "desc":
-                    order_fields.append(f"{field_name} DESC")
-                else:
-                    order_fields.append(f"{field_name} ASC")
-            if order_fields:
-                order_clause = "ORDER BY " + ", ".join(order_fields)
 
         # Build app_id filter for subquery
         app_id_filter = ""
@@ -457,9 +440,6 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             ) t
             WHERE rn = 1
         """
-
-        if order_clause:
-            sql += f" {order_clause}"
 
         try:
             # Execute SQL query

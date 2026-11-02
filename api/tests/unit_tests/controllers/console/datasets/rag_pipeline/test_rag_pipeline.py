@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from dataclasses import dataclass, field
 from inspect import unwrap
 from unittest.mock import ANY, PropertyMock, patch
 
@@ -21,12 +22,13 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline import (
     PipelineTemplateListQuery,
     PublishCustomizedPipelineTemplateApi,
 )
+from machinery.context import RequestContext
 from models.account import Account, TenantAccountRole
-from models.dataset import Pipeline, PipelineCustomizedTemplate
+from models.dataset import Dataset, Pipeline, PipelineCustomizedTemplate
 from models.engine import db
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
-from services.errors.base import NoPermissionError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
+from services.knowledge.dataset_access import DatasetAccessDeniedError
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 from tests.helpers.unit.model_factories import make_account
@@ -71,6 +73,37 @@ def _pipeline() -> Pipeline:
     pipeline = Pipeline(tenant_id="tenant-1", name="Pipeline")
     pipeline.id = "pipeline-1"
     return pipeline
+
+
+def _dataset() -> Dataset:
+    dataset = Dataset(tenant_id="tenant-1", name="Dataset", created_by="account-1")
+    dataset.id = "dataset-1"
+    return dataset
+
+
+@dataclass
+class _DatasetAccessRecorder:
+    error: DatasetAccessDeniedError | None = None
+    calls: list[tuple[RequestContext, str]] = field(default_factory=list)
+
+    def require_accessible(self, context: RequestContext, dataset_id: str) -> None:
+        self.calls.append((context, dataset_id))
+        if self.error is not None:
+            raise self.error
+
+
+@dataclass(frozen=True)
+class _KnowledgeServices:
+    datasets: _DatasetAccessRecorder
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    knowledge: _KnowledgeServices
+
+
+def _services_with_datasets(datasets: _DatasetAccessRecorder) -> _ApplicationServices:
+    return _ApplicationServices(knowledge=_KnowledgeServices(datasets=datasets))
 
 
 @pytest.fixture
@@ -371,19 +404,24 @@ class TestPublishCustomizedPipelineTemplateApi:
         payload = _payload()
         account = _account()
         pipeline = _pipeline()
-        dataset = object()
+        dataset = _dataset()
+        datasets = _DatasetAccessRecorder()
 
         with (
             config_overrides_context(RBAC_ENABLED=True),
             patch.object(module, "get_pipeline_dataset", return_value=dataset),
-            patch.object(module.DatasetService, "check_dataset_permission") as legacy_acl,
+            patch.object(
+                module,
+                "application_services",
+                return_value=_services_with_datasets(datasets),
+            ),
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
         ):
             response, status = method(api, CustomizedPipelineTemplatePayload.model_validate(payload), account, pipeline)
 
         assert (response, status) == ("", 204)
         publish.assert_called_once_with(pipeline, dataset, payload, account, session=ANY)
-        legacy_acl.assert_not_called()
+        assert datasets.calls == []
 
     @pytest.mark.parametrize(
         ("payload", "expected_icon_info"),
@@ -404,7 +442,7 @@ class TestPublishCustomizedPipelineTemplateApi:
         method = unwrap(api.post)
         account = _account()
         pipeline = _pipeline()
-        dataset = object()
+        dataset = _dataset()
 
         with (
             config_overrides_context(RBAC_ENABLED=True),
@@ -440,19 +478,29 @@ class TestPublishCustomizedPipelineTemplateApi:
         account = _account()
         account.role = TenantAccountRole.DATASET_OPERATOR
         pipeline = _pipeline()
-        dataset = object()
+        dataset = _dataset()
+        datasets = _DatasetAccessRecorder()
         payload = _payload()
 
         with (
             config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "get_pipeline_dataset", return_value=dataset),
-            patch.object(module.DatasetService, "check_dataset_permission") as check_permission,
+            patch.object(
+                module,
+                "application_services",
+                return_value=_services_with_datasets(datasets),
+            ),
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
         ):
             response = method(api, CustomizedPipelineTemplatePayload.model_validate(payload), account, pipeline)
 
         assert response == ("", 204)
-        assert check_permission.call_args.args[:2] == (dataset, account)
+        [(context, dataset_id)] = datasets.calls
+        assert (context.account_id, context.active_workspace_id, dataset_id) == (
+            account.id,
+            pipeline.tenant_id,
+            dataset.id,
+        )
         publish.assert_called_once_with(pipeline, dataset, payload, account, session=ANY)
 
     def test_post_rejects_legacy_non_editor_before_dataset_acl(self) -> None:
@@ -460,17 +508,22 @@ class TestPublishCustomizedPipelineTemplateApi:
         method = unwrap(api.post)
         account = _account()
         account.role = TenantAccountRole.NORMAL
+        datasets = _DatasetAccessRecorder()
 
         with (
             config_overrides_context(RBAC_ENABLED=False),
-            patch.object(module, "get_pipeline_dataset", return_value=object()),
-            patch.object(module.DatasetService, "check_dataset_permission") as check_permission,
+            patch.object(module, "get_pipeline_dataset", return_value=_dataset()),
+            patch.object(
+                module,
+                "application_services",
+                return_value=_services_with_datasets(datasets),
+            ),
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
             pytest.raises(Forbidden),
         ):
             method(api, CustomizedPipelineTemplatePayload.model_validate(_payload()), account, _pipeline())
 
-        check_permission.assert_not_called()
+        assert datasets.calls == []
         publish.assert_not_called()
 
     def test_post_rejects_legacy_dataset_acl_before_publish(self) -> None:
@@ -478,14 +531,15 @@ class TestPublishCustomizedPipelineTemplateApi:
         method = unwrap(api.post)
         account = _account()
         account.role = TenantAccountRole.EDITOR
+        datasets = _DatasetAccessRecorder(error=DatasetAccessDeniedError("Dataset is private"))
 
         with (
             config_overrides_context(RBAC_ENABLED=False),
-            patch.object(module, "get_pipeline_dataset", return_value=object()),
+            patch.object(module, "get_pipeline_dataset", return_value=_dataset()),
             patch.object(
-                module.DatasetService,
-                "check_dataset_permission",
-                side_effect=NoPermissionError("Dataset is private"),
+                module,
+                "application_services",
+                return_value=_services_with_datasets(datasets),
             ),
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
             pytest.raises(Forbidden, match="Dataset is private"),
@@ -499,15 +553,20 @@ class TestPublishCustomizedPipelineTemplateApi:
         method = unwrap(api.post)
         account = _account()
         account.role = TenantAccountRole.EDITOR
+        datasets = _DatasetAccessRecorder()
 
         with (
             config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "get_pipeline_dataset", return_value=None),
-            patch.object(module.DatasetService, "check_dataset_permission") as check_permission,
+            patch.object(
+                module,
+                "application_services",
+                return_value=_services_with_datasets(datasets),
+            ),
             patch.object(module.RagPipelineService, "publish_customized_pipeline_template") as publish,
             pytest.raises(NotFound, match="Dataset not found"),
         ):
             method(api, CustomizedPipelineTemplatePayload.model_validate(_payload()), account, _pipeline())
 
-        check_permission.assert_not_called()
+        assert datasets.calls == []
         publish.assert_not_called()

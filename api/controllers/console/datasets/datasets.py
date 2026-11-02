@@ -19,9 +19,11 @@ from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_create_erro
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
+    DatasetConcurrentUpdateError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
 )
+from controllers.console.datasets.permission_keys import get_dataset_permission_keys
 from controllers.console.error import ApiKeyLimitExceededHTTPError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
@@ -32,6 +34,7 @@ from controllers.console.wraps import (
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.constant.query_type import QueryType
+from enums.creator import CreatorUserRole
 from extensions.ext_application_services import application_services
 from fields.api_key_fields import ApiKeyItem, ApiKeyList, build_masked_api_key_list
 from fields.base import ResponseModel
@@ -44,9 +47,10 @@ from libs.external_api import error_responses
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
-from models.enums import CreatorUserRole, DatasetQuerySource
+from models.enums import DatasetQuerySource
 from models.enums import PermissionEnum as DatasetPermissionEnum
 from models.model import AppMode, IconType
+from services.data_source.entities.website import WebsiteJobSelection
 from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeConflictError,
     KnowledgeFSUpgradeNotFoundError,
@@ -54,7 +58,10 @@ from services.dataset_knowledge_fs_upgrade_service import (
 )
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
-from services.knowledge.datasets.application import DatasetListFilter
+from services.knowledge.datasets.contracts import (
+    DatasetConcurrentUpdateError as DatasetConcurrentUpdateFailure,
+)
+from services.knowledge.datasets.contracts import DatasetListFilter
 from services.knowledge.datasets.upgrades import KnowledgeFSUpgradeUnavailableError
 from services.knowledge.entities.indexing_estimate import (
     NewEstimateSource,
@@ -100,6 +107,8 @@ def _raise_dataset_error(error: Exception) -> Never:
         raise NotFound("Dataset not found.") from error
     if isinstance(error, DatasetAccessDeniedError):
         raise Forbidden(str(error)) from error
+    if isinstance(error, DatasetConcurrentUpdateFailure):
+        raise DatasetConcurrentUpdateError() from error
     raise error
 
 
@@ -244,10 +253,13 @@ def _new_estimate_sources(info_list: dict[str, Any]) -> tuple[NewEstimateSource,
             if not isinstance(values, dict):
                 raise ValueError("Website info list is required")
             website = WebsiteInfo.model_validate({"only_main_content": False, **values})
+            job = WebsiteJobSelection(
+                provider=website.provider,
+                job_id=website.job_id,
+            )
             return tuple(
                 WebsiteEstimateSource(
-                    provider=website.provider,
-                    job_id=website.job_id,
+                    job=job,
                     url=url,
                     only_main_content=website.only_main_content,
                 )
@@ -422,8 +434,9 @@ class DatasetListApi(Resource):
             if key in request.args:
                 query_params[key] = request.args.getlist(key)
         query = ConsoleDatasetListQuery.model_validate(query_params)
-        result = application_services().knowledge.datasets.list_datasets(
-            request_context, DatasetListFilter(**query.model_dump())
+        result = application_services().knowledge.datasets.list_accessible_datasets(
+            request_context,
+            DatasetListFilter(**query.model_dump()),
         )
         return dump_response(DatasetListResponse, result), HTTPStatus.OK
 
@@ -444,11 +457,15 @@ class DatasetListApi(Resource):
     def post(self, req_data: DatasetCreatePayload, request_context: RequestContext):
         try:
             result = application_services().knowledge.datasets.create_dataset(
-                request_context, values=req_data.model_dump()
+                request_context,
+                values=req_data.model_dump(),
             )
         except Exception as error:
             _raise_dataset_create_error(error)
-        return dump_response(DatasetDetailWithPartialMembersResponse, result), 201
+        return dump_response(
+            DatasetDetailWithPartialMembersResponse,
+            {**result, "permission_keys": get_dataset_permission_keys(request_context, result["id"])},
+        ), 201
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>")
@@ -466,10 +483,16 @@ class DatasetApi(Resource):
     @console_account_admission()
     def get(self, request_context: RequestContext, dataset_id: UUID):
         try:
-            result = application_services().knowledge.datasets.get_dataset(request_context, dataset_id=str(dataset_id))
+            result = application_services().knowledge.datasets.get_dataset(
+                request_context,
+                dataset_id=str(dataset_id),
+            )
         except Exception as error:
             _raise_dataset_error(error)
-        return dump_response(DatasetDetailWithPartialMembersResponse, result), 200
+        return dump_response(
+            DatasetDetailWithPartialMembersResponse,
+            {**result, "permission_keys": get_dataset_permission_keys(request_context, result["id"])},
+        ), 200
 
     @console_ns.doc("update_dataset")
     @console_ns.doc(description="Update dataset details")
@@ -481,6 +504,8 @@ class DatasetApi(Resource):
     )
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(403, "Permission denied")
+    @console_ns.response(409, "Dataset changed during the update")
+    @error_responses(DatasetConcurrentUpdateError)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
     )
@@ -489,11 +514,16 @@ class DatasetApi(Resource):
     def patch(self, req_data: DatasetUpdatePayload, request_context: RequestContext, dataset_id: UUID):
         try:
             result = application_services().knowledge.datasets.update_dataset(
-                request_context, dataset_id=str(dataset_id), values=req_data.model_dump(exclude_unset=True)
+                request_context,
+                dataset_id=str(dataset_id),
+                values=req_data.model_dump(exclude_unset=True),
             )
         except Exception as error:
             _raise_dataset_error(error)
-        return dump_response(DatasetDetailWithPartialMembersResponse, result), 200
+        return dump_response(
+            DatasetDetailWithPartialMembersResponse,
+            {**result, "permission_keys": get_dataset_permission_keys(request_context, result["id"])},
+        ), 200
 
     @console_ns.response(204, "Dataset deleted successfully")
     @console_account_admission(
@@ -765,23 +795,17 @@ class DatasetApiKeyApi(Resource):
         rbac_checks=(RBACCheck(RBACPermission.DATASET_API_KEY_MANAGE, Workspace()),),
     )
     def post(self, request_context: RequestContext):
-        # Preserve the optional scope and validation response of the workspace route.
-        payload = request.get_json(silent=True) or {}
-        raw_dataset_ids = self._id_list(payload, "dataset_ids")
-        knowledge_space_ids = self._id_list(payload, "knowledge_space_ids")
+        try:
+            payload = DatasetApiKeyCreatePayload.model_validate(request.get_json() if request.get_data() else {})
+        except ValidationError as error:
+            raise BadRequest("dataset_ids and knowledge_space_ids must be lists of strings.") from error
         with api_key_create_errors():
             key = application_services().dataset_api_keys.create_workspace_key(
-                request_context, tuple(raw_dataset_ids), knowledge_space_ids=tuple(knowledge_space_ids)
+                request_context,
+                tuple(dict.fromkeys(payload.dataset_ids)),
+                knowledge_space_ids=tuple(dict.fromkeys(payload.knowledge_space_ids)),
             )
         return dump_response(ApiKeyItem, key), 200
-
-    @staticmethod
-    def _id_list(payload: object, key: str) -> list[str]:
-        raw = payload.get(key) if isinstance(payload, dict) else None
-        raw = raw or []
-        if not isinstance(raw, list) or any(not isinstance(item, str) for item in raw):
-            raise BadRequest(f"{key} must be a list of strings.")
-        return list(dict.fromkeys(raw))
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")

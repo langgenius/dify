@@ -10,16 +10,16 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, override
 
 import psycopg2.errors
-from sqlalchemy import UnaryExpression, and_, asc, desc, or_, select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt
 
 from configs import dify_config
-from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
 from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
 from core.workflow.node_execution_process_data import keep_agent_and_tool_ids
+from enums.creator import CreatorUserRole
 from extensions.ext_storage import storage
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -28,7 +28,6 @@ from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.uuid_utils import uuidv7
 from models import (
     Account,
-    CreatorUserRole,
     EndUser,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionTriggeredFrom,
@@ -36,9 +35,12 @@ from models import (
 from models.enums import ExecutionOffLoadType
 from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionOffload
+from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
 from repositories.workflow_run_control import apply_workflow_stop_to_node, get_stopped_workflow_run
-from services.file_service import FileService
+from services.entities.upload_file import FileUploadActor
+from services.file_service import UploadFileCreator
 from services.variable_truncator import VariableTruncator
+from services.workflow.persistence import WorkflowNodeExecutionRepository
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,6 @@ logger = logging.getLogger(__name__)
 @dataclasses.dataclass(frozen=True)
 class _InputsOutputsTruncationResult:
     truncated_value: Mapping[str, Any]
-    file: UploadFile
     offload: WorkflowNodeExecutionOffload
 
 
@@ -69,6 +70,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
+        files: UploadFileCreator,
     ):
         """
         Initialize the repository with a SQLAlchemy sessionmaker or engine and context information.
@@ -79,6 +81,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             user: Account or EndUser used for creator attribution
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (SINGLE_STEP or WORKFLOW_RUN)
+            files: Upload capability for oversized execution payloads
         """
         # If an engine is provided, create a sessionmaker from it
         match session_factory:
@@ -105,12 +108,14 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         # Determine user role based on user type
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
+        self._file_actor = FileUploadActor(
+            id=user.id,
+            creator_role=CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER,
+        )
+        self._files = files
 
         # Initialize in-memory cache for node executions
         self._node_execution_cache: dict[str, WorkflowNodeExecutionModel] = {}
-
-        # Initialize FileService for handling offloaded data
-        self._file_service = FileService(session_factory)
 
     @override
     def for_workflow_tool(self, app_id: str) -> "SQLAlchemyWorkflowNodeExecutionRepository":
@@ -120,6 +125,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             user=self._user,
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+            files=self._files,
         )
 
     def _create_truncator(self) -> VariableTruncator:
@@ -311,12 +317,12 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         assert value_json is not None, "value_json should be not None here."
 
         suffix = type_.value
-        upload_file = self._file_service.upload_file(
+        upload_file = self._files.upload_file(
+            actor=self._file_actor,
+            tenant_id=self._tenant_id,
             filename=f"node_execution_{execution_id}_{suffix}.json",
             content=value_json.encode("utf-8"),
             mimetype="application/json",
-            user=self._user,
-            tenant_id=self._tenant_id,
         )
         assert self._app_id
         offload = WorkflowNodeExecutionOffload(
@@ -329,7 +335,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         offload.id = str(uuidv7())
         return _InputsOutputsTruncationResult(
             truncated_value=truncated_values,
-            file=upload_file,
             offload=offload,
         )
 
@@ -425,9 +430,28 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                     )
                 ),
             )
-            existing_models = {model.id: model for model in session.scalars(query)}
+            existing_models = {
+                model.id: model
+                for model in session.scalars(query.order_by(WorkflowNodeExecutionModel.id).with_for_update())
+            }
             for db_model in db_models:
                 existing = existing_models.get(db_model.id)
+                lock_new_workflow_upload_file_references(
+                    session,
+                    tenant_id=self._tenant_id,
+                    previous_payloads=(
+                        existing.inputs if existing is not None else None,
+                        existing.process_data if existing is not None else None,
+                        existing.outputs if existing is not None else None,
+                        existing.execution_metadata if existing is not None else None,
+                    ),
+                    current_payloads=(
+                        db_model.inputs,
+                        db_model.process_data,
+                        db_model.outputs,
+                        db_model.execution_metadata,
+                    ),
+                )
                 if existing is None:
                     session.add(db_model)
                     continue
@@ -477,7 +501,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                         session, tenant_id=self._tenant_id, workflow_run_id=db_model.workflow_run_id, lock=True
                     ),
                 )
-            # Check if record already exists
+            # Scope the lookup to this repository owner and lock the row before
+            # reconciling payload-owned upload-file references.
             execution_scope = (
                 WorkflowNodeExecutionModel.id == db_model.id,
                 WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
@@ -486,7 +511,24 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 WorkflowNodeExecutionModel.workflow_run_id == db_model.workflow_run_id,
                 WorkflowNodeExecutionModel.triggered_from == self._triggered_from,
             )
-            existing = session.scalar(select(WorkflowNodeExecutionModel).where(*execution_scope))
+            existing = session.scalar(select(WorkflowNodeExecutionModel).where(*execution_scope).with_for_update())
+
+            lock_new_workflow_upload_file_references(
+                session,
+                tenant_id=self._tenant_id,
+                previous_payloads=(
+                    existing.inputs if existing is not None else None,
+                    existing.process_data if existing is not None else None,
+                    existing.outputs if existing is not None else None,
+                    existing.execution_metadata if existing is not None else None,
+                ),
+                current_payloads=(
+                    db_model.inputs,
+                    db_model.process_data,
+                    db_model.outputs,
+                    db_model.execution_metadata,
+                ),
+            )
 
             if existing:
                 merged_process_data = keep_agent_and_tool_ids(
@@ -537,6 +579,12 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     @override
     def save_execution_data(self, execution: WorkflowNodeExecution):
         domain_model = execution
+        converter = WorkflowRuntimeTypeConverter()
+        untruncated_reference_payloads = tuple(
+            _deterministic_json_dump(converter.to_json_encodable(payload)) if payload is not None else None
+            for payload in (domain_model.inputs, domain_model.process_data, domain_model.outputs)
+        )
+        new_offload_file_ids: set[str] = set()
         with self._session_factory(expire_on_commit=False) as session:
             query = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel)).where(
                 WorkflowNodeExecutionModel.id == domain_model.id
@@ -559,6 +607,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 db_model.inputs = self._json_encode(result.truncated_value)
                 domain_model.set_truncated_inputs(result.truncated_value)
                 offload_data = _replace_or_append_offload(offload_data, result.offload)
+                new_offload_file_ids.add(result.offload.file_id)
             else:
                 db_model.inputs = self._json_encode(domain_model.inputs)
 
@@ -572,6 +621,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 db_model.outputs = self._json_encode(result.truncated_value)
                 domain_model.set_truncated_outputs(result.truncated_value)
                 offload_data = _replace_or_append_offload(offload_data, result.offload)
+                new_offload_file_ids.add(result.offload.file_id)
             else:
                 db_model.outputs = self._json_encode(domain_model.outputs)
 
@@ -592,11 +642,13 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 db_model.process_data = self._json_encode(truncated_process_data)
                 domain_model.set_truncated_process_data(truncated_process_data)
                 offload_data = _replace_or_append_offload(offload_data, result.offload)
+                new_offload_file_ids.add(result.offload.file_id)
             else:
                 db_model.process_data = self._json_encode(process_data)
 
         db_model.offload_data = offload_data
         with self._session_factory() as session, session.begin():
+            existing = session.get(WorkflowNodeExecutionModel, db_model.id, with_for_update=True)
             if db_model.status in (
                 WorkflowNodeExecutionStatus.RUNNING,
                 WorkflowNodeExecutionStatus.PAUSED,
@@ -608,13 +660,30 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                         session, tenant_id=self._tenant_id, workflow_run_id=db_model.workflow_run_id, lock=True
                     ),
                 )
+            lock_new_workflow_upload_file_references(
+                session,
+                tenant_id=self._tenant_id,
+                previous_payloads=(
+                    existing.inputs if existing is not None else None,
+                    existing.process_data if existing is not None else None,
+                    existing.outputs if existing is not None else None,
+                    existing.execution_metadata if existing is not None else None,
+                ),
+                current_payloads=(
+                    db_model.inputs,
+                    db_model.process_data,
+                    db_model.outputs,
+                    db_model.execution_metadata,
+                    *untruncated_reference_payloads,
+                ),
+                direct_upload_file_ids=new_offload_file_ids,
+            )
             session.merge(db_model)
             session.flush()
 
     def get_db_models_by_workflow_run(
         self,
         workflow_run_id: str,
-        order_config: OrderConfig | None = None,
         *,
         include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecutionModel]:
@@ -633,10 +702,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         Args:
             workflow_run_id: The workflow run ID
-            order_config: Optional configuration for ordering results
-                order_config.order_by: List of fields to order by (e.g., ["index", "created_at"])
-                order_config.order_direction: Direction to order ("asc" or "desc")
-
         Returns:
             A list of WorkflowNodeExecution database models
         """
@@ -655,21 +720,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             if self._app_id:
                 stmt = stmt.where(WorkflowNodeExecutionModel.app_id == self._app_id)
 
-            # Apply ordering if provided
-            if order_config and order_config.order_by:
-                order_columns: list[UnaryExpression] = []
-                for field in order_config.order_by:
-                    column = getattr(WorkflowNodeExecutionModel, field, None)
-                    if not column:
-                        continue
-                    if order_config.order_direction == "desc":
-                        order_columns.append(desc(column))
-                    else:
-                        order_columns.append(asc(column))
-
-                if order_columns:
-                    stmt = stmt.order_by(*order_columns)
-
             db_models = session.scalars(stmt).all()
 
             # Update the cache with the retrieved DB models
@@ -683,7 +733,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     def get_by_workflow_execution(
         self,
         workflow_execution_id: str,
-        order_config: OrderConfig | None = None,
         *,
         include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecution]:
@@ -695,16 +744,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         Args:
             workflow_execution_id: The workflow execution identifier
-            order_config: Optional configuration for ordering results
-                order_config.order_by: List of fields to order by (e.g., ["index", "created_at"])
-                order_config.order_direction: Direction to order ("asc" or "desc")
-
         Returns:
             A list of node execution instances
         """
-        db_models = self.get_db_models_by_workflow_run(
-            workflow_execution_id, order_config, include_paused=include_paused
-        )
+        db_models = self.get_db_models_by_workflow_run(workflow_execution_id, include_paused=include_paused)
 
         with ThreadPoolExecutor(max_workers=10) as executor:
             domain_models = executor.map(self._to_domain_model, db_models, timeout=30)

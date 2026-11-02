@@ -20,6 +20,7 @@ from controllers.console.error import (
     EmailDomainSuspendedError,
     EmailSendIpLimitError,
     SeatsLimitExceeded,
+    WorkspacesLimitExceeded,
 )
 from controllers.console.flask_admission import console_email_registration_admission
 from controllers.console.wraps import model_validate
@@ -39,6 +40,7 @@ from services.account_errors import (
     EmailRegistrationSendIPLimitedError,
     EmailRegistrationSendRateLimitError,
     EmailRegistrationVerificationLimitError,
+    EmailRegistrationWorkspaceLimitError,
     InvalidEmailRegistrationAddressError,
     InvalidEmailRegistrationCodeError,
     InvalidEmailRegistrationTokenError,
@@ -165,6 +167,7 @@ class EmailRegisterResetApi(Resource):
         NormalizedEmailAlreadyInUseError,
         PasswordMismatchError,
         SeatsLimitExceeded,
+        WorkspacesLimitExceeded,
     )
     @console_ns.expect(console_ns.models[EmailRegisterResetPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[EmailRegisterResetResponse.__name__])
@@ -190,6 +193,8 @@ class EmailRegisterResetApi(Resource):
             raise EmailAlreadyInUseError() from None
         except EmailRegistrationSeatsLimitError:
             raise SeatsLimitExceeded() from None
+        except EmailRegistrationWorkspaceLimitError:
+            raise WorkspacesLimitExceeded() from None
         except AccountEmailDomainSuspendedError:
             raise EmailDomainSuspendedError() from None
         except AccountEmailFrozenError:

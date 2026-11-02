@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 
 from controllers.console.app import message as message_module
 from core.app.entities.app_invoke_entities import InvokeFrom
+from enums.creator import CreatorUserRole
 from fields.conversation_fields import MessageResponseSource
 from models.account import Account
-from models.enums import ConversationFromSource, CreatorUserRole, FeedbackFromSource, FeedbackRating
+from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
 from models.model import (
     App,
     AppAnnotationHitHistory,

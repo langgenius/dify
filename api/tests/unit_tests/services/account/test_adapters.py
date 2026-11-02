@@ -57,7 +57,9 @@ def test_invitation_token_store_reads_workspace_invitation_key(
     redis_transport: tuple[RedisClientWrapper, MagicMock],
 ) -> None:
     redis, commands = redis_transport
-    commands.return_value = b"account-1"
+    commands.side_effect = lambda command, key, *_args, **_kwargs: (
+        None if command == "GET" and str(key).endswith(":state") else b"account-1"
+    )
     lookup = InvitationLookup(workspace_id="workspace-1", email="invitee@example.com", token="token-1")
 
     result = RedisInvitationTokenStore(redis=redis).find(lookup)
@@ -68,10 +70,19 @@ def test_invitation_token_store_reads_workspace_invitation_key(
         workspace_id="workspace-1",
     )
     email_hash = sha256(b"invitee@example.com").hexdigest()
-    commands.assert_called_once_with(
-        "GET",
-        f"member_invite_token:workspace-1, {email_hash}:token-1",
-        keys=[f"member_invite_token:workspace-1, {email_hash}:token-1"],
+    commands.assert_has_calls(
+        [
+            call(
+                "GET",
+                f"member_invite_token:workspace-1, {email_hash}:token-1",
+                keys=[f"member_invite_token:workspace-1, {email_hash}:token-1"],
+            ),
+            call(
+                "GET",
+                "member_invite:subject:workspace-1:account-1:state",
+                keys=["member_invite:subject:workspace-1:account-1:state"],
+            ),
+        ]
     )
 
 
@@ -79,9 +90,12 @@ def test_invitation_token_store_reads_global_invitation_payload(
     redis_transport: tuple[RedisClientWrapper, MagicMock],
 ) -> None:
     redis, commands = redis_transport
-    commands.return_value = (
+    payload = (
         b'{"account_id":"account-1","email":"invitee@example.com","workspace_id":"workspace-1",'
         b'"role":"editor","requires_setup":false}'
+    )
+    commands.side_effect = lambda command, key, *_args, **_kwargs: (
+        None if command == "GET" and str(key).endswith(":state") else payload
     )
     lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
 
@@ -94,53 +108,191 @@ def test_invitation_token_store_reads_global_invitation_payload(
         role="editor",
         requires_setup=False,
     )
-    commands.assert_called_once_with("GET", "member_invite:token:token-1", keys=["member_invite:token:token-1"])
+    commands.assert_has_calls(
+        [
+            call("GET", "member_invite:token:token-1", keys=["member_invite:token:token-1"]),
+            call(
+                "GET",
+                "member_invite:subject:workspace-1:account-1:state",
+                keys=["member_invite:subject:workspace-1:account-1:state"],
+            ),
+        ]
+    )
 
 
-def test_invitation_token_store_revokes_its_redis_key(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
-    redis, commands = redis_transport
-    lookup = InvitationLookup(workspace_id="workspace-1", email="invitee@example.com", token="token-1")
-
-    RedisInvitationTokenStore(redis=redis).revoke(lookup)
-
-    email_hash = sha256(b"invitee@example.com").hexdigest()
-    commands.assert_any_call("DEL", f"member_invite_token:workspace-1, {email_hash}:token-1")
-    assert commands.call_count == 1
-
-
-def test_invitation_token_store_marks_membership_use_with_token_ttl(
+def test_invitation_token_store_rejects_every_token_for_a_revoked_subject(
     redis_transport: tuple[RedisClientWrapper, MagicMock],
 ) -> None:
     redis, commands = redis_transport
-    commands.side_effect = [1200, b"OK"]
-    lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
+    payload = (
+        b'{"account_id":"account-1","email":"invitee@example.com","workspace_id":"workspace-1",'
+        b'"role":"editor","requires_setup":false}'
+    )
 
-    assert RedisInvitationTokenStore(redis=redis).consume_membership(lookup) is True
+    def execute(command: object, key: object, *_args: object, **_kwargs: object) -> object:
+        if command == "GET" and str(key).endswith(":state"):
+            return b"revoked"
+        if command == "GET":
+            return payload
+        return 1
 
-    assert commands.call_args_list[0].args == ("PTTL", "member_invite:token:token-1")
-    set_args = commands.call_args_list[1].args
-    assert set_args[:3] == ("SET", "member_invite:token:token-1:membership_used", "1")
-    assert "NX" in set_args
-    assert set_args[set_args.index("PX") + 1] == 1200
+    commands.side_effect = execute
+    lookup = InvitationLookup(workspace_id=None, email=None, token="older-token")
+
+    assert RedisInvitationTokenStore(redis=redis).find(lookup) is None
 
 
-@pytest.mark.parametrize("ttl", [-2, -1, 0])
-def test_invitation_token_store_refuses_membership_use_without_live_token(
-    redis_transport: tuple[RedisClientWrapper, MagicMock], ttl: int
+def test_new_invitation_reopens_only_its_subject_lifecycle(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
 ) -> None:
     redis, commands = redis_transport
-    commands.return_value = ttl
+    invitation = InvitationToken(
+        account_id="account-1",
+        email="invitee@example.com",
+        workspace_id="workspace-1",
+    )
+
+    with patch("services.account.adapters.uuid.uuid4", return_value="new-token"):
+        token = RedisInvitationTokenStore(redis=redis).create(invitation)
+
+    assert token == "new-token"
+    flattened_args = tuple(str(value) for call_args in commands.call_args_list for value in call_args.args)
+    assert "member_invite:token:new-token" in flattened_args
+    assert "member_invite:subject:workspace-1:account-1:state" in flattened_args
+
+
+def test_reinvitation_does_not_reactivate_an_older_subject_token(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    stored: dict[str, object] = {}
+
+    def execute(command: object, *args: object, **_kwargs: object) -> object:
+        operation, key = str(command).upper(), str(args[0])
+        if operation == "SETEX":
+            stored[key] = args[2]
+            return True
+        if operation == "GET":
+            return stored.get(key)
+        return None
+
+    commands.side_effect = execute
+    store = RedisInvitationTokenStore(redis=redis)
+    invitation = InvitationToken(
+        account_id="account-1",
+        email="invitee@example.com",
+        workspace_id="workspace-1",
+    )
+    with patch("services.account.adapters.uuid.uuid4", side_effect=["token-a", "token-b"]):
+        first = store.create(invitation)
+        second = store.create(invitation)
+
+    assert store.find(InvitationLookup(workspace_id=None, email=None, token=first)) is None
+    assert store.find(InvitationLookup(workspace_id=None, email=None, token=second)) == invitation
+
+
+def test_invitation_token_store_completes_activation_only_for_owned_claim(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.side_effect = lambda command, *_args, **_kwargs: b"account-1" if command == "GET" else 1
+    lookup = InvitationLookup(workspace_id="workspace-1", email="invitee@example.com", token="token-1")
+
+    RedisInvitationTokenStore(redis=redis).complete_activation(lookup, "claim-1")
+
+    email_hash = sha256(b"invitee@example.com").hexdigest()
+    flattened_args = tuple(str(value) for call_args in commands.call_args_list for value in call_args.args)
+    assert f"member_invite_token:workspace-1, {email_hash}:token-1" in flattened_args
+    assert "member_invite:token:token-1:acceptance_claim" in flattened_args
+    assert "member_invite:subject:workspace-1:account-1:state" in flattened_args
+
+
+def test_invitation_subject_revocation_uses_an_atomic_bounded_tombstone(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = 1
+
+    store = RedisInvitationTokenStore(redis=redis)
+    store.revoke_subject("workspace-1", "account-1")
+
+    eval_call = next(call_args for call_args in commands.call_args_list if call_args.args[0] == "EVALSHA")
+    assert "member_invite:subject:workspace-1:account-1:state" in eval_call.args
+    assert eval_call.args[-1] == store._maximum_ttl_ms()
+
+
+@pytest.mark.parametrize(("stored", "expected"), [(b"revoked", True), ("revoked", True), (None, False)])
+def test_invitation_token_store_reports_subject_revocation(
+    redis_transport: tuple[RedisClientWrapper, MagicMock], stored: bytes | str | None, expected: bool
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = stored
+
+    assert RedisInvitationTokenStore(redis=redis).is_subject_revoked("workspace-1", "account-1") is expected
+
+    commands.assert_called_once_with(
+        "GET",
+        "member_invite:subject:workspace-1:account-1:state",
+        keys=["member_invite:subject:workspace-1:account-1:state"],
+    )
+
+
+def test_invitation_token_store_claims_for_the_source_token_lifetime(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = 1
     lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
 
-    assert RedisInvitationTokenStore(redis=redis).consume_membership(lookup) is False
+    with patch("services.account.adapters.uuid.uuid4", return_value="claim-uuid"):
+        claim_id = RedisInvitationTokenStore(redis=redis).claim(lookup, require_unused_membership=True)
 
-    assert commands.call_count == 1
-    assert commands.call_args.args == ("PTTL", "member_invite:token:token-1")
+    assert claim_id == "claim:claim-uuid"
+    flattened_args = tuple(str(value) for call_args in commands.call_args_list for value in call_args.args)
+    assert "member_invite:token:token-1" in flattened_args
+    assert "member_invite:token:token-1:acceptance_claim" in flattened_args
+    assert "member_invite:token:token-1:membership_used" in flattened_args
 
 
-@pytest.mark.parametrize(("stored", "expected"), [(b"1", True), (None, False)])
+def test_invitation_token_store_refuses_claim_without_live_source_token(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = 0
+    lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
+
+    assert RedisInvitationTokenStore(redis=redis).claim(lookup, require_unused_membership=True) is None
+
+
+def test_invitation_token_store_rechecks_membership_after_acquiring_claim(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    membership_reads = 0
+
+    def execute(command: object, key: object, *_args: object, **_kwargs: object) -> object:
+        nonlocal membership_reads
+        if command == "GET" and str(key).endswith(":membership_used"):
+            membership_reads += 1
+            return None if membership_reads == 1 else b"1"
+        if command == "PTTL":
+            return 3600
+        if command == "SET":
+            return b"OK"
+        return 1
+
+    commands.side_effect = execute
+    lookup = InvitationLookup(workspace_id=None, email="invitee@example.com", token="token-1")
+
+    assert RedisInvitationTokenStore(redis=redis).claim(lookup, require_unused_membership=True) is None
+
+    assert membership_reads == 2
+    assert any(call_args.args[0] == "EVALSHA" for call_args in commands.call_args_list)
+
+
+@pytest.mark.parametrize(("stored", "expected"), [(b"1", True), ("1", True), (None, False)])
 def test_invitation_token_store_reports_membership_use(
-    redis_transport: tuple[RedisClientWrapper, MagicMock], stored: bytes | None, expected: bool
+    redis_transport: tuple[RedisClientWrapper, MagicMock], stored: bytes | str | None, expected: bool
 ) -> None:
     redis, commands = redis_transport
     commands.return_value = stored

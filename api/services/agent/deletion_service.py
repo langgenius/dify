@@ -96,7 +96,8 @@ class AgentDeletionService:
                         model.agent_id.in_(stored_ids),
                     )
                 )
-            session.execute(delete(Agent).where(Agent.tenant_id == tenant_id, Agent.id.in_(stored_ids)))
+            for agent in sorted(agents, key=lambda item: (item.icon or "", item.id)):
+                session.delete(agent)
             session.commit()
 
 

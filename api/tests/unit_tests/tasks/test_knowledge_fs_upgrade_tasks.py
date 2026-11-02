@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from unittest.mock import patch
 
@@ -20,6 +21,13 @@ from tasks.knowledge_fs_upgrade_tasks import (
     run_knowledge_fs_upgrade,
 )
 from tests.helpers.unit.tasks.task_options import task_options
+
+
+@pytest.fixture(autouse=True)
+def _stub_application_services() -> Iterator[None]:
+    with patch("tasks.knowledge_fs_upgrade_tasks.application_services") as services:
+        services.return_value.files = "files-1"
+        yield
 
 
 @dataclass
@@ -69,13 +77,16 @@ def test_deferred_file_cleanup_uses_the_upgrade_session_factory() -> None:
 def test_worker_enqueues_only_the_expected_follow_up(has_more: bool) -> None:
     runner = _UpgradeRunner(outcome=has_more)
     with (
+        patch("tasks.knowledge_fs_upgrade_tasks.application_services") as services,
         patch("tasks.knowledge_fs_upgrade_tasks.session_factory.get_session_maker", return_value="maker"),
-        patch("tasks.knowledge_fs_upgrade_tasks.KnowledgeFSUpgradeRunner", return_value=runner),
+        patch("tasks.knowledge_fs_upgrade_tasks.KnowledgeFSUpgradeRunner", return_value=runner) as runner_type,
         patch("services.knowledge.datasets.upgrades.enqueue_upgrade_job") as continue_upgrade,
         patch("tasks.knowledge_fs_upgrade_tasks._dispatch_reconciliations") as reconcile,
     ):
+        services.return_value.files = "files-1"
         run_knowledge_fs_upgrade.run(job_id="job-1")
 
+    runner_type.assert_called_once_with("maker", files="files-1")
     assert len(runner.runs) == 1
     assert runner.runs[0]["job_id"] == "job-1"
     if has_more:

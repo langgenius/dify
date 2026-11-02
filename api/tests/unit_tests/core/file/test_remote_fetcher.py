@@ -16,8 +16,9 @@ from core.datasource.datasource_file_manager import DatasourceFileManager
 from core.file import remote_fetcher
 from core.tools.signature import sign_tool_file, sign_upload_file_preview_url
 from core.tools.tool_file_manager import ToolFileManager
+from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
-from models import CreatorUserRole, ToolFile, UploadFile
+from models import ToolFile, UploadFile
 
 UPLOAD_FILE_ID = "1602650a-4fe4-423c-85a2-af76c083e3c4"
 TOOL_FILE_ID = "2602650a-4fe4-423c-85a2-af76c083e3c4"

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from pytest_mock import MockerFixture
@@ -19,10 +19,13 @@ from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
-from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, CreditUsageCreatedBy
+from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, CreditUsageCreatedBy, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import QueueMessageFileEvent
+from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
 from core.credit_usage import CreditUsageAppType
 from core.model_manager import ModelInstance
+from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool as AgentDatasetRetrieverTool
+from enums.creator import CreatorUserRole
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -34,8 +37,9 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from libs.datetime_utils import naive_utc_now
-from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus
+from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Conversation, Message, StorageType, UploadFile
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from services.workflow_run_agg import WorkflowRunAgg
 
 # ==============================
@@ -82,6 +86,36 @@ def _make_message(*, message_id: str = "m1", conversation_id: str = "conv1") -> 
     )
     message.created_at = naive_utc_now()
     return message
+
+
+def _make_dataset_tool(*, tenant_id: str) -> AgentDatasetRetrieverTool:
+    from core.tools.__base.tool_runtime import ToolRuntime
+    from core.tools.entities.common_entities import I18nObject
+    from core.tools.entities.tool_entities import ToolDescription, ToolEntity, ToolIdentity
+    from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool
+
+    return AgentDatasetRetrieverTool(
+        entity=ToolEntity(
+            identity=ToolIdentity(provider="dataset", author="Dify", name="dataset", label=I18nObject(en_US="Dataset")),
+            parameters=[],
+            description=ToolDescription(human=I18nObject(en_US="Retrieve dataset"), llm="Retrieve dataset"),
+        ),
+        runtime=ToolRuntime(tenant_id=tenant_id),
+        retrieval_tool=DatasetRetrieverTool(
+            tenant_id=tenant_id,
+            app_id="app",
+            user_id="user",
+            user_from=CreatorUserRole.ACCOUNT.value,
+            dataset_id="dataset-id",
+            return_resource=True,
+            retriever_from="dev",
+            knowledge_retrieval=create_autospec(KnowledgeRetriever, instance=True, spec_set=True),
+            retrieve_config=DatasetRetrieveConfigEntity(
+                retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE
+            ),
+            metadata_inputs={},
+        ),
+    )
 
 
 class DummyMessage:
@@ -134,6 +168,7 @@ def real_runner(
     app_config.agent.strategy = AgentEntity.Strategy.FUNCTION_CALLING
     return FunctionCallAgentRunner(
         execution_driver=WorkflowRunAgg.run,
+        knowledge_retrieval=create_autospec(KnowledgeRetriever, instance=True, spec_set=True),
         session=sqlite_session,
         tenant_id=app_config.tenant_id,
         application_generate_entity=agent_generate_entity,
@@ -193,6 +228,7 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
 
     runner = FunctionCallAgentRunner(
         execution_driver=WorkflowRunAgg.run,
+        knowledge_retrieval=create_autospec(KnowledgeRetriever, instance=True, spec_set=True),
         tenant_id="tenant",
         application_generate_entity=application_generate_entity,
         conversation=conversation,
@@ -409,15 +445,12 @@ class TestBuildDatasetToolImageContents:
     def test_builds_image_contents_from_dataset_tool_preview_links(
         self, runner: FunctionCallAgentRunner, mocker: MockerFixture
     ):
-        from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
-
         runner.vision_enabled = True
         image_content = ImagePromptMessageContent(format="url", mime_type="image/png")
         to_prompt_content = mocker.patch(
             "core.agent.fc_agent_runner.file_manager.to_prompt_message_content",
             return_value=image_content,
         )
-        grant_access = mocker.patch("core.agent.fc_agent_runner.grant_upload_file_access")
         sign_preview = mocker.patch(
             "core.agent.fc_agent_runner.sign_upload_file_preview_url",
             return_value="http://localhost:5001/files/file-id/file-preview?sign=1",
@@ -462,40 +495,121 @@ class TestBuildDatasetToolImageContents:
             "file ![file](http://localhost:5001/files/11111111-1111-1111-1111-111111111111/file-preview)"
         )
 
-        from core.tools.__base.tool_runtime import ToolRuntime
-        from core.tools.entities.common_entities import I18nObject
-        from core.tools.entities.tool_entities import ToolDescription, ToolEntity, ToolIdentity
-        from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool as RetrievalTool
-
-        tool = DatasetRetrieverTool(
-            entity=ToolEntity(
-                identity=ToolIdentity(
-                    provider="dataset", author="Dify", name="dataset", label=I18nObject(en_US="Dataset")
-                ),
-                parameters=[],
-                description=ToolDescription(human=I18nObject(en_US="Retrieve dataset"), llm="Retrieve dataset"),
-            ),
-            runtime=ToolRuntime(tenant_id=upload_file.tenant_id),
-            retrieval_tool=RetrievalTool(
-                tenant_id=upload_file.tenant_id,
-                dataset_id="dataset-id",
-                return_resource=True,
-                retriever_from="dev",
-                retrieve_config=DatasetRetrieveConfigEntity(
-                    retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE
-                ),
-                inputs={},
-            ),
+        tool = _make_dataset_tool(tenant_id=upload_file.tenant_id)
+        scope = FileAccessScope(
+            tenant_id=upload_file.tenant_id,
+            user_id="end-user-id",
+            user_from=UserFrom.END_USER,
+            invoke_from=InvokeFrom.WEB_APP,
+            granted_upload_file_ids=frozenset({upload_file.id}),
         )
-        contents = runner._build_dataset_tool_image_contents(session, response, tool)
+        with bind_file_access_scope(scope):
+            contents = runner._build_dataset_tool_image_contents(session, response, tool)
+            current_scope = get_current_file_access_scope()
 
         assert contents == [image_content]
         assert contents[0].type == PromptMessageContentType.IMAGE
-        grant_access.assert_called_once()
-        assert list(grant_access.call_args.args[0]) == ["890985e9-c2f1-484e-bc7b-62010a337e6d"]
+        assert current_scope == scope
         sign_preview.assert_called_once_with(upload_file.id, upload_file.extension)
         build_reference.assert_called_once_with(record_id=str(upload_file.id))
         to_prompt_content.assert_called_once()
+
+    @pytest.mark.parametrize(
+        ("file_tenant_id", "created_by_role", "created_by", "pregranted", "expected"),
+        [
+            pytest.param("tenant-id", CreatorUserRole.END_USER, "other-end-user", False, False, id="other-end-user"),
+            pytest.param("tenant-id", CreatorUserRole.END_USER, "request-user", False, False, id="owned-but-ungranted"),
+            pytest.param("tenant-id", CreatorUserRole.ACCOUNT, "account-id", False, False, id="same-tenant"),
+            pytest.param("foreign-tenant", CreatorUserRole.ACCOUNT, "account-id", True, False, id="foreign-tenant"),
+            pytest.param("tenant-id", CreatorUserRole.ACCOUNT, "account-id", True, True, id="retrieval-grant"),
+        ],
+    )
+    def test_preview_text_cannot_expand_end_user_file_access(
+        self,
+        runner: FunctionCallAgentRunner,
+        monkeypatch: pytest.MonkeyPatch,
+        file_tenant_id: str,
+        created_by_role: CreatorUserRole,
+        created_by: str,
+        pregranted: bool,
+        expected: bool,
+    ) -> None:
+        runner.vision_enabled = True
+        upload_file = UploadFile(
+            tenant_id=file_tenant_id,
+            storage_type=StorageType.LOCAL,
+            key="image_files/private.png",
+            name="private.png",
+            size=123,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=created_by_role,
+            created_by=created_by,
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        upload_file.id = "890985e9-c2f1-484e-bc7b-62010a337e6d"
+        runner.session.add(upload_file)
+        runner.session.commit()
+        prompt_content = ImagePromptMessageContent(format="url", mime_type="image/png")
+        monkeypatch.setattr(
+            "core.agent.fc_agent_runner.file_manager.to_prompt_message_content",
+            lambda _file, *, image_detail_config: prompt_content if image_detail_config else prompt_content,
+        )
+        monkeypatch.setattr(
+            "core.agent.fc_agent_runner.sign_upload_file_preview_url",
+            lambda _file_id, _extension: "https://example.test/signed-preview",
+        )
+        scope = FileAccessScope(
+            tenant_id="tenant-id",
+            user_id="request-user",
+            user_from=UserFrom.END_USER,
+            invoke_from=InvokeFrom.WEB_APP,
+            granted_upload_file_ids=frozenset({upload_file.id}) if pregranted else frozenset(),
+        )
+        response = f"arbitrary unsigned output /files/{upload_file.id}/file-preview"
+
+        with bind_file_access_scope(scope):
+            contents = runner._build_dataset_tool_image_contents(
+                runner.session,
+                response,
+                _make_dataset_tool(tenant_id="tenant-id"),
+            )
+            current_scope = get_current_file_access_scope()
+
+        assert bool(contents) is expected
+        assert current_scope == scope
+
+    def test_dataset_tool_preview_requires_a_bound_file_access_scope(
+        self,
+        runner: FunctionCallAgentRunner,
+    ) -> None:
+        runner.vision_enabled = True
+        upload_file = UploadFile(
+            tenant_id="tenant-id",
+            storage_type=StorageType.LOCAL,
+            key="image_files/private.png",
+            name="private.png",
+            size=123,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.END_USER,
+            created_by="request-user",
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        upload_file.id = "890985e9-c2f1-484e-bc7b-62010a337e6d"
+        runner.session.add(upload_file)
+        runner.session.commit()
+
+        assert (
+            runner._build_dataset_tool_image_contents(
+                runner.session,
+                f"/files/{upload_file.id}/file-preview",
+                _make_dataset_tool(tenant_id="tenant-id"),
+            )
+            == []
+        )
 
 
 # ==============================

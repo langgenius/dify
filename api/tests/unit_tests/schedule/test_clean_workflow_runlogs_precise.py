@@ -12,6 +12,7 @@ from sqlalchemy import Connection, create_engine, event, select
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.pool import ConnectionPoolEntry
 
+from enums.creator import CreatorUserRole
 from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod, FileType
@@ -19,7 +20,6 @@ from models.base import Base
 from models.enums import (
     AppTriggerType,
     ConversationFromSource,
-    CreatorUserRole,
     ExecutionOffLoadType,
     FeedbackFromSource,
     FeedbackRating,
@@ -53,7 +53,7 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
-from repositories.factory import DifyAPIRepositoryFactory
+from repositories.workflow.factory import WorkflowRepositoryFactory
 
 TABLES = [
     Base.metadata.tables[model.__tablename__]
@@ -309,7 +309,7 @@ def test_delete_batch_keeps_cascade_in_caller_transaction(
         run = _seed_batch(session)
         original_rows = _row_ids(session)
 
-    repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+    repository = WorkflowRepositoryFactory.create_api_workflow_run_repository(session_maker)
     with session_maker() as session:
         if outcome == "failure":
 

@@ -6,12 +6,20 @@ Test objectives:
 2. Verify span attribute mapping correctness
 """
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
+
+import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.otel.decorators.handlers.generate_handler import AppGenerateHandler
 from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
+from services.knowledge.retrieval.retrieval import KnowledgeRetriever
 from tests.helpers.unit.config_override import config_overrides_context
+
+
+@pytest.fixture
+def knowledge_retrieval() -> KnowledgeRetriever:
+    return create_autospec(KnowledgeRetriever, instance=True, spec_set=True)
 
 
 class TestAppGenerateHandler:
@@ -19,7 +27,7 @@ class TestAppGenerateHandler:
 
     @config_overrides_context(ENABLE_OTEL=True)
     def test_compatible_with_real_function_signature(
-        self, tracer_provider_with_memory_exporter, mock_app_model, mock_account_user
+        self, tracer_provider_with_memory_exporter, mock_app_model, mock_account_user, knowledge_retrieval
     ):
         """
         Verify handler compatibility with real AppGenerateService.generate signature.
@@ -30,6 +38,7 @@ class TestAppGenerateHandler:
         from services.app_generate_service import AppGenerateService
 
         handler = AppGenerateHandler()
+        service = AppGenerateService(knowledge_retrieval=knowledge_retrieval)
 
         kwargs = {
             "session": MagicMock(),
@@ -41,13 +50,14 @@ class TestAppGenerateHandler:
             "root_node_id": None,
         }
 
-        arguments = handler._extract_arguments(AppGenerateService.generate, **kwargs)
+        arguments = handler._extract_arguments(service.generate, **kwargs)
 
         assert arguments is not None, "Failed to extract arguments from AppGenerateService.generate"
         assert "app_model" in arguments, "Handler uses app_model but parameter is missing"
         assert "user" in arguments, "Handler uses user but parameter is missing"
         assert "args" in arguments, "Handler uses args but parameter is missing"
         assert "streaming" in arguments, "Handler uses streaming but parameter is missing"
+        assert "knowledge_retrieval" not in arguments
 
     @config_overrides_context(ENABLE_OTEL=True)
     def test_all_span_attributes_set_correctly(
