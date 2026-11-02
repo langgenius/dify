@@ -392,7 +392,7 @@ class AppDslImportConfirmApi(Resource):
     )
     def post(self, ctx: RequestContext, workspace_id: str, import_id: str):
         try:
-            result = application_services().apps.imports.confirm_import(ctx, import_id)
+            result = application_services().apps.console.confirm_import(ctx, import_id)
         except NoPermissionError as exc:
             raise ForbiddenError(str(exc)) from exc
         except DraftChangedError as exc:
