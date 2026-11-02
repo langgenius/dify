@@ -32,6 +32,7 @@ import { useDocLink } from '@/context/i18n'
 import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
+import { getErrorMessage } from '@/utils/error-message'
 import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
 type SettingsModalProps = {
@@ -182,15 +183,17 @@ const SettingsModal: FC<SettingsModalProps> = ({
           }
         })
       }
-      await updateDatasetSetting(requestParams)
+      await updateDatasetSetting(requestParams, { silent: true })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onSave({
         ...localeCurrentDataset,
         indexing_technique: indexMethod ?? null,
         retrieval_model_dict: retrievalConfig,
       })
-    } catch {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
     } finally {
       setLoading(false)
     }

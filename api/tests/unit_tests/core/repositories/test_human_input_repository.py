@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import Engine, event, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
@@ -27,6 +28,12 @@ from core.workflow.human_input_adapter import (
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
+    InstantMessageChannelRecipient,
+    InstantMessageDeliveryConfig,
+    InstantMessageDeliveryMethod,
+    InstantMessageProvider,
+    InstantMessageRecipients,
+    InstantMessageUserRecipient,
     MemberRecipient,
     WebAppDeliveryMethod,
 )
@@ -49,6 +56,7 @@ from models.human_input import (
     HumanInputDelivery,
     HumanInputForm,
     HumanInputFormRecipient,
+    InstantMessageRecipientPayload,
     RecipientType,
     StandaloneWebAppRecipientPayload,
 )
@@ -546,27 +554,6 @@ def _persist_recipient(
 
 
 class TestHumanInputRepositoryCases:
-    @staticmethod
-    @pytest.fixture
-    def repository_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
-        """Bind repository-owned sessions to an isolated SQLite database."""
-
-        tables = [
-            HumanInputForm.__table__,
-            HumanInputDelivery.__table__,
-            HumanInputFormRecipient.__table__,
-            _human_input_repository_Account.__table__,
-            _human_input_repository_TenantAccountJoin.__table__,
-        ]
-        TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-        repository_session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-        monkeypatch.setattr(
-            "core.repositories.human_input_repository.session_factory.create_session",
-            repository_session_factory,
-        )
-        with repository_session_factory() as session:
-            yield session
-
     @staticmethod
     def test_recipient_entity_token_raises_when_missing() -> None:
         recipient = HumanInputFormRecipient(
@@ -1161,3 +1148,130 @@ class TestHumanInputRepositoryCases:
         repo = HumanInputFormSubmissionRepository()
         with pytest.raises(FormNotFoundError, match="form not found"):
             repo.mark_timeout(form_id="missing", timeout_status=HumanInputFormStatus.TIMEOUT)
+
+
+def test_delivery_method_to_model_instant_message_creates_recipients(
+    repository_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
+    monkeypatch.setattr("core.repositories.human_input_repository.uuidv7", lambda: "del-1")
+    method = InstantMessageDeliveryMethod(
+        config=InstantMessageDeliveryConfig(
+            provider=InstantMessageProvider.SLACK,
+            recipients=InstantMessageRecipients(
+                items=[
+                    InstantMessageChannelRecipient(channel_id="C123"),
+                    InstantMessageUserRecipient(user_id="U123"),
+                ]
+            ),
+            message="Review {{#url#}}",
+        )
+    )
+
+    result = repo._delivery_method_to_model(session=repository_session, form_id="form-1", delivery_method=method)
+
+    assert result.delivery.id == "del-1"
+    assert result.delivery.delivery_method_type == method.type
+    assert result.delivery.channel_payload == method.model_dump_json()
+    assert [recipient.recipient_type for recipient in result.recipients] == [
+        RecipientType.INSTANT_MESSAGE,
+        RecipientType.INSTANT_MESSAGE,
+    ]
+    channel_payload = InstantMessageRecipientPayload.model_validate_json(result.recipients[0].recipient_payload)
+    user_payload = InstantMessageRecipientPayload.model_validate_json(result.recipients[1].recipient_payload)
+    assert channel_payload.provider == InstantMessageProvider.SLACK
+    assert channel_payload.recipient_kind == "channel"
+    assert channel_payload.channel_id == "C123"
+    assert user_payload.recipient_kind == "user"
+    assert user_payload.user_id == "U123"
+
+
+@pytest.mark.parametrize(
+    ("payload", "error_message"),
+    [
+        (
+            {
+                "TYPE": "instant_message",
+                "provider": "slack",
+                "recipient_kind": "channel",
+                "user_id": "U123",
+            },
+            "channel recipients must include channel_id and must not include user_id",
+        ),
+        (
+            {
+                "TYPE": "instant_message",
+                "provider": "slack",
+                "recipient_kind": "channel",
+                "channel_id": "C123",
+                "user_id": "U123",
+            },
+            "channel recipients must include channel_id and must not include user_id",
+        ),
+        (
+            {
+                "TYPE": "instant_message",
+                "provider": "slack",
+                "recipient_kind": "user",
+                "channel_id": "C123",
+            },
+            "user recipients must include user_id and must not include channel_id",
+        ),
+        (
+            {
+                "TYPE": "instant_message",
+                "provider": "slack",
+                "recipient_kind": "user",
+                "channel_id": "C123",
+                "user_id": "U123",
+            },
+            "user recipients must include user_id and must not include channel_id",
+        ),
+    ],
+)
+def test_instant_message_recipient_payload_rejects_mismatched_targets(
+    payload: dict[str, str],
+    error_message: str,
+) -> None:
+    with pytest.raises(ValidationError, match=error_message):
+        InstantMessageRecipientPayload.model_validate(payload)
+
+
+def test_build_email_recipients_uses_all_members_when_whole_workspace(
+    repository_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = HumanInputFormRepositoryImpl(tenant_id="tenant")
+    monkeypatch.setattr(
+        repo,
+        "_query_all_workspace_members",
+        lambda *, session: [_WorkspaceMemberInfo(user_id="u", email="a@example.com")],
+    )
+    monkeypatch.setattr(repo, "_create_email_recipients_from_resolved", lambda **_: ["ok"])
+    recipients = repo._build_email_recipients(
+        session=repository_session,
+        form_id="f",
+        delivery_id="d",
+        recipients_config=EmailRecipients(include_bound_group=True, items=[ExternalRecipient(email="e@example.com")]),
+    )
+    assert recipients == ["ok"]
+
+
+@pytest.fixture
+def repository_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
+    """Bind repository-owned sessions to an isolated SQLite database."""
+
+    tables = [
+        HumanInputForm.__table__,
+        HumanInputDelivery.__table__,
+        HumanInputFormRecipient.__table__,
+        _human_input_repository_Account.__table__,
+        _human_input_repository_TenantAccountJoin.__table__,
+    ]
+    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
+    repository_session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    monkeypatch.setattr(
+        "core.repositories.human_input_repository.session_factory.create_session",
+        repository_session_factory,
+    )
+    with repository_session_factory() as session:
+        yield session

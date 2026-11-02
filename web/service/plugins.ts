@@ -1,5 +1,6 @@
 import type { PluginInfoFromMarketPlace } from '@dify/contracts/marketplace'
 import type { Dependency, PluginManifestInMarket } from '@/app/components/plugins/types'
+import type { ConsoleClientContext } from '@/service/console'
 import { consoleClient } from '@/service/console'
 import { getMarketplace, upload } from './base'
 
@@ -38,14 +39,18 @@ export const uploadGitHub = async (
   repoUrl: string,
   selectedVersion: string,
   selectedPackage: string,
+  context?: ConsoleClientContext,
 ) => {
-  return consoleClient.workspaces.current.plugin.upload.github.post({
-    body: {
-      repo: repoUrl,
-      version: selectedVersion,
-      package: selectedPackage,
+  return consoleClient.workspaces.current.plugin.upload.github.post(
+    {
+      body: {
+        repo: repoUrl,
+        version: selectedVersion,
+        package: selectedPackage,
+      },
     },
-  })
+    { context },
+  )
 }
 
 export const fetchManifestFromMarketPlace = async (uniqueIdentifier: string) => {

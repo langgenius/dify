@@ -657,9 +657,12 @@ describe('SnippetList', () => {
     await user.click(screen.getByRole('button', { name: 'common.tag.manageTags' }))
     expect(screen.getByTestId('tag-management-modal')).toHaveAttribute('data-show', 'true')
     await waitFor(() =>
-      expect(mockBindTags).toHaveBeenCalledExactlyOnceWith({
-        body: { tag_ids: ['tag-1'], target_id: 'snippet-1', type: 'snippet' },
-      }),
+      expect(mockBindTags).toHaveBeenCalledExactlyOnceWith(
+        {
+          body: { tag_ids: ['tag-1'], target_id: 'snippet-1', type: 'snippet' },
+        },
+        { context: { silent: true } },
+      ),
     )
     await waitFor(() => expect(mockRefetch).toHaveBeenCalledOnce())
     await user.click(screen.getByRole('button', { name: 'refresh tags' }))

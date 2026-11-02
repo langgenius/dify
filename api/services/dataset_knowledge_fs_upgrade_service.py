@@ -48,7 +48,6 @@ from services.knowledge_fs.initial_source_import import (
     submit_initial_source_for_upgrade,
 )
 from services.knowledge_fs.product_dto import (
-    KnowledgeFSAppBindingPayload,
     KnowledgeFSDocumentAvailabilityPayload,
     KnowledgeFSDocumentMetadataPayload,
     KnowledgeFSDocumentStagedUploadPayload,
@@ -882,6 +881,13 @@ class KnowledgeFSUpgradeRunner:
                 document.last_error_message = str(error)[:4000]
 
     def _migrate_access(self, job: KnowledgeFSUpgradeJob) -> None:
+        """Copy access policy from a snapshotted job into its existing new space.
+
+        The job must have a persisted control space and valid access snapshots.
+        On success, members, visibility, channel switches, and tags are copied
+        and the job advances to finalizing. App bindings remain unchanged.
+        If a write fails, the stage does not advance; earlier writes may remain.
+        """
         control_space_id = _required_space_id(job)
         runtime = get_knowledge_fs_runtime(self._session_maker)
         _migrate_metadata_fields(job, runtime.facade)
@@ -918,16 +924,6 @@ class KnowledgeFSUpgradeRunner:
                 mcp_enabled=False,
             ),
         )
-        for binding in job.app_binding_snapshot:
-            runtime.app_bindings.upsert(
-                tenant_id=job.tenant_id,
-                actor_account_id=job.owner_account_id,
-                control_space_id=control_space_id,
-                payload=KnowledgeFSAppBindingPayload(
-                    app_id=str(binding["app_id"]),
-                    caller_kind=KnowledgeFSAppSpaceJoinType(str(binding["caller_kind"])),
-                ),
-            )
         runtime.space_tags.replace_tags(
             tenant_id=job.tenant_id,
             account_id=job.owner_account_id,

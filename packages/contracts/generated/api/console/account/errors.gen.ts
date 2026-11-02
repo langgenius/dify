@@ -106,11 +106,51 @@ const zEmailCodeAccountDeletionRateLimitExceededError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zBillingRequestInProgressError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('billing_request_in_progress'),
+      status: z.literal(429),
+    }),
+  ))()
+
+const zBillingOperationFailedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('billing_operation_failed'),
+      status: z.literal(502),
+    }),
+  ))()
+
+const zBillingUnavailableError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('billing_unavailable'),
+      status: z.literal(503),
+    }),
+  ))()
+
+const zEducationActivateFailedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('education_activate_failed'),
+      status: z.literal(400),
+    }),
+  ))()
+
 const zEducationActivateLimitError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
       code: z.literal('education_activate_limit'),
       status: z.literal(429),
+    }),
+  ))()
+
+const zEducationVerifyFailedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('education_verify_failed'),
+      status: z.literal(400),
     }),
   ))()
 
@@ -203,13 +243,32 @@ export const post6Errors = {
   invalid_account_deletion_code: { status: 400, data: zInvalidAccountDeletionCodeError },
 }
 
+export const get3Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+}
+
 export const get4Errors = {
   account_not_found: { status: 400, data: zAccountNotFoundError },
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  education_verify_failed: { status: 400, data: zEducationVerifyFailedError },
   education_verify_limit: { status: 429, data: zEducationVerifyLimitError },
+}
+
+export const get5Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
 }
 
 export const post7Errors = {
   account_not_found: { status: 400, data: zAccountNotFoundError },
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_request_in_progress: { status: 429, data: zBillingRequestInProgressError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  education_activate_failed: { status: 400, data: zEducationActivateFailedError },
   education_activate_limit: { status: 429, data: zEducationActivateLimitError },
 }
 

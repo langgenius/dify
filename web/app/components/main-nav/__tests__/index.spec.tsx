@@ -37,6 +37,7 @@ import { MainNav } from '../index'
 const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
 const mockTrackEvent = vi.hoisted(() => vi.fn())
+const mockConfig = vi.hoisted(() => ({ ENABLE_HITL_IM: true }))
 
 const { mockInstalledAppsRequest, mockIsAgentV2Enabled, mockSwitchWorkspace, mockUpdatePinStatus } =
   vi.hoisted(() => ({
@@ -133,6 +134,9 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
+    get ENABLE_HITL_IM() {
+      return mockConfig.ENABLE_HITL_IM
+    },
     SUPPORT_EMAIL_ADDRESS: '',
     ZENDESK_WIDGET_KEY: '',
   }
@@ -350,6 +354,7 @@ function render(...args: Parameters<typeof renderWithoutPricing>) {
 describe('MainNav', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockConfig.ENABLE_HITL_IM = true
     mockInstalledAppsRequest.mockReset()
     mockUpdatePinStatus.mockReset()
     mockSwitchWorkspace.mockReset()
@@ -443,6 +448,28 @@ describe('MainNav', () => {
     expect(integrationsLink).toHaveAttribute('href', '/integrations/model-provider')
     const marketplaceLink = screen.getByRole('link', { name: /navigation.mainNav.marketplace/ })
     expect(marketplaceLink).toHaveAttribute('href', '/marketplace')
+    expect(
+      within(screen.getByRole('navigation', { name: 'common.navigation.primary' }))
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href')),
+    ).toEqual([
+      '/',
+      '/apps',
+      '/agents',
+      '/datasets',
+      '/contacts',
+      '/skills',
+      '/integrations/model-provider',
+      '/marketplace',
+    ])
+  })
+
+  it('hides Contacts while keeping other navigation available when HITL IM is not released', () => {
+    mockConfig.ENABLE_HITL_IM = false
+
+    renderMainNav()
+
+    expect(screen.queryByRole('link', { name: /contacts.directory.title/ })).not.toBeInTheDocument()
     expect(
       within(screen.getByRole('navigation', { name: 'common.navigation.primary' }))
         .getAllByRole('link')
@@ -570,6 +597,7 @@ describe('MainNav', () => {
       'href',
       '/datasets',
     )
+    expect(screen.queryByRole('link', { name: /contacts.directory.title/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /navigation.mainNav.integrations/ })).toHaveAttribute(
       'href',
       '/integrations/model-provider',
@@ -602,6 +630,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /navigation.menus.apps/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Agents/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /navigation.menus.datasets/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /contacts.directory.title/ })).not.toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: /navigation.mainNav.integrations/ }),
     ).toBeInTheDocument()

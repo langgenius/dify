@@ -29,6 +29,7 @@ export const zErrorResponse = z.object({
 export const zHumanInputPauseTypeResponse = z.object({
   backstage_input_url: z.string().nullish(),
   form_id: z.string(),
+  form_version: z.enum(['1', '2']).optional().default('1'),
   type: z.literal('human_input'),
 })
 

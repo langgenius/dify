@@ -256,6 +256,7 @@ def _update_datasource_credentials_if_unchanged(
             DatasourceProvider.provider == record.provider,
             DatasourceProvider.plugin_id == record.plugin_id,
             DatasourceProvider.user_id == record.owner_id,
+            DatasourceProvider.auth_type == record.auth_type,
             credentials_match,
             DatasourceProvider.expires_at == record.expires_at,
         )
