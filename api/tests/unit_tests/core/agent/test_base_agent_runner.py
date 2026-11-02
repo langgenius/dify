@@ -418,10 +418,10 @@ def test_save_agent_thought_serialization_fallbacks(
     tool_meta = {"c": 3}
     real_dumps = json.dumps
 
-    def dumps_side_effect(value, *args, **kwargs):
+    def dumps_side_effect(value: object, *args: object, **kwargs: object) -> str:
         if value in (tool_input, observation, tool_meta) and kwargs.get("ensure_ascii") is False:
             raise TypeError("fail")
-        return real_dumps(value, *args, **kwargs)
+        return real_dumps(value, *args, **kwargs)  # pyrefly: ignore[bad-argument-type]
 
     mocker.patch.object(module.json, "dumps", side_effect=dumps_side_effect)
 
