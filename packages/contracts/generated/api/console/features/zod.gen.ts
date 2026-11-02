@@ -87,7 +87,7 @@ export const zCloudPlan = z.enum(['professional', 'sandbox', 'team'])
  * SubscriptionModel
  */
 export const zSubscriptionModel = z.object({
-  interval: z.string().default(''),
+  interval: z.enum(['', 'month', 'year']).default(''),
   plan: zCloudPlan.default('sandbox'),
 })
 

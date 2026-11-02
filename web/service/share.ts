@@ -11,6 +11,7 @@ import type { AccessMode } from '@/models/access-control'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import type { HumanInputFormData as WorkflowHumanInputFormData } from '@/types/workflow'
 import { form as webFormContract } from '@dify/contracts/api/web/orpc.gen'
+import { zWebAppHumanInputV2SubmitPayload } from '@dify/contracts/api/web/zod.gen'
 import { createORPCClient } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
@@ -82,16 +83,23 @@ export const stopChatMessageResponding = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
+  options?: Pick<IOtherOptions, 'silent'>,
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.chatMessages.byTaskId.stop.post({
-      params: { installed_app_id: installedAppId, task_id: taskId },
-    })
+    return consoleClient.installedApps.byInstalledAppId.chatMessages.byTaskId.stop.post(
+      {
+        params: { installed_app_id: installedAppId, task_id: taskId },
+      },
+      { context: options },
+    )
   if (appSourceType === AppSourceType.tryApp)
-    return consoleClient.trialApps.byAppId.chatMessages.byTaskId.stop.post({
-      params: { app_id: installedAppId, task_id: taskId },
-    })
-  return post(getUrl(`chat-messages/${taskId}/stop`, appSourceType, installedAppId))
+    return consoleClient.trialApps.byAppId.chatMessages.byTaskId.stop.post(
+      {
+        params: { app_id: installedAppId, task_id: taskId },
+      },
+      { context: options },
+    )
+  return post(getUrl(`chat-messages/${taskId}/stop`, appSourceType, installedAppId), {}, options)
 }
 
 export const sendCompletionMessage = async (
@@ -157,17 +165,24 @@ export const stopWorkflowMessage = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
+  options?: Pick<IOtherOptions, 'silent'>,
 ) => {
   if (!taskId) return
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.workflows.tasks.byTaskId.stop.post({
-      params: { installed_app_id: installedAppId, task_id: taskId },
-    })
+    return consoleClient.installedApps.byInstalledAppId.workflows.tasks.byTaskId.stop.post(
+      {
+        params: { installed_app_id: installedAppId, task_id: taskId },
+      },
+      { context: options },
+    )
   if (appSourceType === AppSourceType.tryApp)
-    return consoleClient.trialApps.byAppId.workflows.tasks.byTaskId.stop.post({
-      params: { app_id: installedAppId, task_id: taskId },
-    })
-  return post(getUrl(`workflows/tasks/${taskId}/stop`, appSourceType, installedAppId))
+    return consoleClient.trialApps.byAppId.workflows.tasks.byTaskId.stop.post(
+      {
+        params: { app_id: installedAppId, task_id: taskId },
+      },
+      { context: options },
+    )
+  return post(getUrl(`workflows/tasks/${taskId}/stop`, appSourceType, installedAppId), {}, options)
 }
 
 export const fetchAppInfo = async () => {
@@ -769,8 +784,8 @@ export const submitHumanInputForm = (
   if (formVersion === '2') {
     return webAppHumanInputFormClient.submit({
       params: { form_token: token },
-      body: data,
+      body: zWebAppHumanInputV2SubmitPayload.parse(data),
     })
   }
-  return post(`/form/human_input/${token}`, { body: data })
+  return post(`/form/human_input/${token}`, { body: { inputs: data.inputs, action: data.action } })
 }

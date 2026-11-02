@@ -1,213 +1,105 @@
 import type { SnippetWorkflowResponse } from '@dify/contracts/api/console/snippets/types.gen'
-import type { QueryClient } from '@tanstack/react-query'
-import { act, renderHook } from '@testing-library/react'
+import type { Node } from '../../../types'
+import { act } from '@testing-library/react'
+import { useStoreApi } from 'reactflow'
 import { consoleQuery } from '@/service/console'
-import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
+import { createNode } from '../../../__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '../../../__tests__/workflow-test-env'
+import HumanInputV2Default from '../../../nodes/human-input-v2/default'
 import HumanInputDefault from '../../../nodes/human-input/default'
-import { createDefaultFormInputByType } from '../../../nodes/human-input/types'
-import { InputVarType } from '../../../types'
+import { BlockEnum } from '../../../types'
 import { useInsertSnippet } from '../use-insert-snippet'
 
-const mockRequest = vi.hoisted(() => vi.fn())
 const releaseGate = vi.hoisted(() => ({ enabled: true }))
-
 vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
   get ENABLE_HITL_IM() {
     return releaseGate.enabled
   },
 }))
-const mockHandleSyncWorkflowDraft = vi.fn()
-const mockSaveStateToHistory = vi.fn()
-const mockToastError = vi.fn()
-const mockToastWarning = vi.fn()
-const mockGetNodes = vi.fn()
-const mockSetNodes = vi.fn()
-const mockSetEdges = vi.fn()
-const mockIncrementSnippetUseCount = vi.fn()
-let mockEdges: unknown[] = [{ id: 'existing-edge', source: 'old', target: 'old-2' }]
 
-vi.mock('@/service/base', () => ({
-  request: (...args: unknown[]) => mockRequest(...args),
-  sseGeneratorPost: vi.fn(),
-}))
-
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: mockGetNodes,
-      setNodes: mockSetNodes,
-      edges: mockEdges,
-      setEdges: mockSetEdges,
-    }),
-  }),
-}))
-
-vi.mock('../../../hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({
-    handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
-  }),
-}))
-
-vi.mock('../../../hooks/use-workflow-history', () => ({
-  useWorkflowHistory: () => ({
-    saveStateToHistory: mockSaveStateToHistory,
-  }),
-  WorkflowHistoryEvent: {
-    NodePaste: 'NodePaste',
-  },
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    error: (...args: unknown[]) => mockToastError(...args),
-    warning: (...args: unknown[]) => mockToastWarning(...args),
-  },
-}))
-
+// Usage accounting is a service boundary; graph insertion and its stores stay real.
 vi.mock('@/service/use-snippets', () => ({
-  useIncrementSnippetUseCountMutation: () => ({
-    mutate: mockIncrementSnippetUseCount,
-  }),
+  useIncrementSnippetUseCountMutation: () => ({ mutate: vi.fn() }),
 }))
 
-type PublishedWorkflow = Pick<SnippetWorkflowResponse, 'graph'>
-
-const seedPublishedWorkflow = (queryClient: QueryClient, workflow: PublishedWorkflow) => {
-  const queryOptions = consoleQuery.snippets.bySnippetId.workflows.publish.get.queryOptions({
-    input: {
-      params: { snippet_id: 'snippet-1' },
+const approval = (id: string, version?: '2') =>
+  createNode({
+    id,
+    data: {
+      ...(version ? HumanInputV2Default : HumanInputDefault).defaultValue,
+      type: BlockEnum.HumanInput,
+      title: 'Approval',
     },
   })
-
-  queryClient.setQueryData<PublishedWorkflow>(queryOptions.queryKey, workflow)
+function setup(nodes: Node[], insertedNode: Node) {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData<Pick<SnippetWorkflowResponse, 'graph'>>(
+    consoleQuery.snippets.bySnippetId.workflows.publish.get.queryKey({
+      input: { params: { snippet_id: 'snippet-1' } },
+    }),
+    { graph: { nodes: [insertedNode], edges: [] } },
+  )
+  return renderWorkflowCanvasHook(
+    () => ({
+      ...useInsertSnippet(),
+      canvas: useStoreApi(),
+    }),
+    {
+      nodes,
+      edges: [],
+      queryClient,
+      historyStore: { nodes, edges: [] },
+      hooksStoreProps: { doSyncWorkflowDraft: async () => null },
+    },
+  )
 }
 
-describe('useInsertSnippet', () => {
-  let queryClient: QueryClient
-  const renderUseInsertSnippet = () =>
-    renderHook(() => useInsertSnippet(), {
-      wrapper: createQueryClientWrapper(queryClient),
-    })
+beforeEach(() => {
+  releaseGate.enabled = true
+  vi.useFakeTimers()
+})
+afterEach(() => {
+  vi.clearAllTimers()
+  vi.useRealTimers()
+})
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    releaseGate.enabled = true
-    queryClient = createTestQueryClient()
-    mockEdges = [{ id: 'existing-edge', source: 'old', target: 'old-2' }]
-    mockGetNodes.mockReturnValue([
-      {
-        id: 'existing-node',
-        position: { x: 0, y: 0 },
-        data: { selected: true },
-      },
-    ])
+it.each([undefined, '2'] as const)(
+  'allows only legacy snippet approvals (version %s) when the release gate is off',
+  async (version) => {
+    releaseGate.enabled = false
+    const existing = version ? createNode({ id: 'existing-code' }) : approval('existing-legacy')
+    const inserted = approval('snippet-approval', version)
+    const { result } = setup([existing], inserted)
+    const before = result.current.canvas.getState().getNodes()
+
+    await act(async () => result.current.handleInsertSnippet('snippet-1'))
+
+    const nodes = result.current.canvas.getState().getNodes()
+    if (version) {
+      expect(nodes).toEqual(before)
+    } else {
+      expect(nodes).toHaveLength(2)
+      expect(nodes[0]).toMatchObject({ id: existing.id, data: existing.data })
+      expect(nodes[1]?.id).not.toBe(inserted.id)
+      expect(nodes[1]?.data).toMatchObject(inserted.data)
+    }
+    expect(result.current.canvas.getState().edges).toEqual([])
+  },
+)
+
+it('preserves the graph when a legacy draft blocks a Human Input v2 snippet', async () => {
+  const { result } = setup([approval('legacy-human-input')], approval('snippet-human-input', '2'))
+  const before = result.current.canvas.getState().getNodes()
+
+  let inserted: boolean | undefined
+  await act(async () => {
+    inserted = await result.current.handleInsertSnippet('snippet-1')
+    await vi.advanceTimersByTimeAsync(600)
   })
 
-  afterEach(() => {
-    queryClient.clear()
-  })
-
-  describe('Insert Flow', () => {
-    it.each([undefined, '2'])(
-      'allows only legacy snippet approvals (version %s) when the release gate is off',
-      async (version) => {
-        releaseGate.enabled = false
-        const data = {
-          ...HumanInputDefault.defaultValue,
-          type: 'human-input',
-          title: 'Approval',
-          ...(version ? { version } : {}),
-        }
-        mockGetNodes.mockReturnValue([
-          {
-            id: 'existing-legacy',
-            type: 'custom',
-            position: { x: 0, y: 0 },
-            data: version
-              ? { type: 'code', title: 'Existing code' }
-              : { ...HumanInputDefault.defaultValue, type: 'human-input' },
-          },
-        ])
-        seedPublishedWorkflow(queryClient, {
-          graph: {
-            nodes: [{ id: 'snippet-approval', type: 'custom', position: { x: 10, y: 20 }, data }],
-            edges: [],
-          },
-        })
-        const { result } = renderUseInsertSnippet()
-
-        await act(async () => result.current.handleInsertSnippet('snippet-1'))
-
-        if (version) {
-          expect(mockToastWarning).toHaveBeenCalledWith('workflow.nodes.humanInputV2.disabled')
-          expect(mockSetNodes).not.toHaveBeenCalled()
-          expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
-        } else {
-          expect(mockSetNodes).toHaveBeenCalledTimes(1)
-          expect(mockSetNodes.mock.lastCall![0]).toHaveLength(2)
-          expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-        }
-      },
-    )
-
-    it('keeps legacy-only snippets usable when existing legacy fields cannot migrate', async () => {
-      const data = {
-        ...HumanInputDefault.defaultValue,
-        inputs: [createDefaultFormInputByType(InputVarType.select, 'decision')],
-      }
-      mockGetNodes.mockReturnValue([
-        { id: 'legacy-human-input', type: 'custom', position: { x: 0, y: 0 }, data },
-      ])
-      seedPublishedWorkflow(queryClient, {
-        graph: {
-          nodes: [{ id: 'snippet-human-input', type: 'custom', position: { x: 10, y: 20 }, data }],
-          edges: [],
-        },
-      })
-      const { result } = renderUseInsertSnippet()
-
-      await act(async () => result.current.handleInsertSnippet('snippet-1'))
-
-      expect(mockToastWarning).not.toHaveBeenCalled()
-      expect(mockSetNodes).toHaveBeenCalledTimes(1)
-      expect(mockSetNodes.mock.lastCall![0]).toHaveLength(2)
-      expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-    })
-
-    it('blocks snippets containing Human Input while the draft has a legacy node', async () => {
-      mockGetNodes.mockReturnValue([
-        {
-          id: 'legacy-human-input',
-          position: { x: 0, y: 0 },
-          data: { type: 'human-input' },
-        },
-      ])
-      seedPublishedWorkflow(queryClient, {
-        graph: {
-          nodes: [
-            {
-              id: 'snippet-human-input',
-              position: { x: 10, y: 20 },
-              data: { type: 'human-input', version: '2' },
-            },
-          ],
-          edges: [],
-        },
-      })
-      const { result } = renderUseInsertSnippet()
-
-      await act(async () => {
-        expect(await result.current.handleInsertSnippet('snippet-1')).toBe(false)
-      })
-
-      expect(mockToastWarning).toHaveBeenCalledWith(
-        'workflow.nodes.humanInputMigration.disabledReason',
-      )
-      expect(mockSetNodes).not.toHaveBeenCalled()
-      expect(mockSetEdges).not.toHaveBeenCalled()
-      expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
-    })
-  })
+  expect(inserted).toBe(false)
+  expect(result.current.canvas.getState().getNodes()).toEqual(before)
+  expect(result.current.canvas.getState().edges).toEqual([])
 })

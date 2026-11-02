@@ -1,3 +1,4 @@
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -141,18 +142,14 @@ export default function Turnstile({
   return (
     <>
       {hasError && (
-        <div
-          role="alert"
-          className="mt-3 flex min-h-16.25 w-full items-center gap-3 rounded-xl border border-state-destructive-border bg-state-destructive-hover-alt p-3"
-        >
-          <span className="i-ri-error-warning-fill size-4 shrink-0 text-text-destructive" />
-          <span className="grow system-xs-regular text-text-destructive">
-            {t(($) => $['turnstile.loadError'], { ns: 'login' })}
-          </span>
-          <Button type="button" size="small" variant="secondary" onClick={handleRetry}>
-            {t(($) => $['operation.retry'], { ns: 'common' })}
-          </Button>
-        </div>
+        <Alert type="error" className="mt-3 w-full">
+          <AlertTitle>{t(($) => $['turnstile.loadError'], { ns: 'login' })}</AlertTitle>
+          <AlertActions>
+            <Button type="button" size="small" onClick={handleRetry}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          </AlertActions>
+        </Alert>
       )}
       <div ref={containerRef} className={`mt-3 h-16.25 w-full ${hasError ? 'hidden' : ''}`} />
       <Script

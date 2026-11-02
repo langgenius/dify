@@ -3,10 +3,21 @@
 from collections.abc import Callable
 from unittest.mock import patch
 
+import httpx
 import pytest
 
 from enums import DeploymentEdition, QuotaType
+from services.billing_client import billing
+from services.errors.billing import BillingUpstreamInvalidResponseError, BillingUpstreamUnavailableError
 from services.quota_service import QuotaCharge, QuotaService, unlimited
+
+
+def _feature(*, limit: int, usage: int) -> billing.QuotaFeatureInfo:
+    return billing.QuotaFeatureInfo(usage=usage, limit=limit, reset_date=0)
+
+
+def _quota_info(*, trigger_event: billing.QuotaFeatureInfo) -> billing.QuotaGetInfoReply:
+    return billing.QuotaGetInfoReply(trigger_event=trigger_event, api_rate_limit=_feature(limit=0, usage=0))
 
 
 class TestQuotaType:
@@ -39,7 +50,9 @@ class TestQuotaService:
 
     def test_reserve_success(self) -> None:
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.quota_reserve.return_value = {"reservation_id": "rid-1", "available": 99}
+            mock_bs.quota_reserve.return_value = billing.QuotaReserveReply(
+                reservation_id="rid-1", available=99, reserved=1
+            )
 
             charge = QuotaService.reserve(QuotaType.TRIGGER, "t1", amount=1)
 
@@ -54,7 +67,7 @@ class TestQuotaService:
         from services.errors.app import QuotaExceededError
 
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.quota_reserve.return_value = dict[str, object]()
+            mock_bs.quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="", available=0, reserved=0)
 
             with pytest.raises(QuotaExceededError):
                 QuotaService.reserve(QuotaType.TRIGGER, "t1")
@@ -68,6 +81,30 @@ class TestQuotaService:
             with pytest.raises(QuotaExceededError):
                 QuotaService.reserve(QuotaType.TRIGGER, "t1")
 
+    @pytest.mark.parametrize(
+        "error",
+        [
+            BillingUpstreamInvalidResponseError("POST /quota/reserve returned 400"),
+            BillingUpstreamUnavailableError("POST /quota/reserve returned 503"),
+        ],
+    )
+    def test_reserve_billing_error_answer_propagates(self, error: Exception) -> None:
+        with patch("services.billing_service.BillingService") as mock_bs:
+            mock_bs.quota_reserve.side_effect = error
+
+            with pytest.raises(type(error)):
+                QuotaService.reserve(QuotaType.TRIGGER, "t1")
+
+    def test_reserve_unreachable_billing_returns_unlimited(self) -> None:
+        error = BillingUpstreamUnavailableError("POST /quota/reserve failed")
+        error.__cause__ = httpx.ConnectError("connection refused")
+        with patch("services.billing_service.BillingService") as mock_bs:
+            mock_bs.quota_reserve.side_effect = error
+
+            charge = QuotaService.reserve(QuotaType.TRIGGER, "t1")
+            assert charge.success is True
+            assert charge.charge_id is None
+
     def test_reserve_api_exception_returns_unlimited(self) -> None:
         with patch("services.billing_service.BillingService") as mock_bs:
             mock_bs.quota_reserve.side_effect = RuntimeError("network")
@@ -78,8 +115,10 @@ class TestQuotaService:
 
     def test_consume_calls_reserve_and_commit(self) -> None:
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.quota_reserve.return_value = {"reservation_id": "rid-c"}
-            mock_bs.quota_commit.return_value = dict[str, object]()
+            mock_bs.quota_reserve.return_value = billing.QuotaReserveReply(
+                reservation_id="rid-c", available=9, reserved=1
+            )
+            mock_bs.quota_commit.return_value = billing.QuotaCommitReply(available=9, reserved=0, refunded=0)
 
             charge = QuotaService.consume(QuotaType.TRIGGER, "t1")
             assert charge.success is True
@@ -122,7 +161,7 @@ class TestQuotaService:
 
     def test_release_success(self) -> None:
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.quota_release.return_value = dict[str, object]()
+            mock_bs.quota_release.return_value = billing.QuotaReleaseReply(available=10, reserved=0, released=1)
             QuotaService.release(QuotaType.TRIGGER, "rid-1", "t1", "trigger_event")
             mock_bs.quota_release.assert_called_once_with(
                 tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1"
@@ -135,17 +174,17 @@ class TestQuotaService:
 
     def test_get_remaining_normal(self) -> None:
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.get_quota_info.return_value = {"trigger_event": {"limit": 100, "usage": 30}}
+            mock_bs.get_quota_info.return_value = _quota_info(trigger_event=_feature(limit=100, usage=30))
             assert QuotaService.get_remaining(QuotaType.TRIGGER, "t1") == 70
 
     def test_get_remaining_unlimited(self) -> None:
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.get_quota_info.return_value = {"trigger_event": {"limit": -1, "usage": 0}}
+            mock_bs.get_quota_info.return_value = _quota_info(trigger_event=_feature(limit=-1, usage=0))
             assert QuotaService.get_remaining(QuotaType.TRIGGER, "t1") == -1
 
     def test_get_remaining_over_limit_returns_zero(self) -> None:
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.get_quota_info.return_value = {"trigger_event": {"limit": 10, "usage": 15}}
+            mock_bs.get_quota_info.return_value = _quota_info(trigger_event=_feature(limit=10, usage=15))
             assert QuotaService.get_remaining(QuotaType.TRIGGER, "t1") == 0
 
     def test_get_remaining_exception_returns_neg1(self) -> None:
@@ -153,32 +192,11 @@ class TestQuotaService:
             mock_bs.get_quota_info.side_effect = RuntimeError
             assert QuotaService.get_remaining(QuotaType.TRIGGER, "t1") == -1
 
-    def test_get_remaining_empty_response(self) -> None:
-        with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.get_quota_info.return_value = dict[str, object]()
-            assert QuotaService.get_remaining(QuotaType.TRIGGER, "t1") == 0
-
-    def test_get_remaining_non_dict_response(self) -> None:
-        with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.get_quota_info.return_value = "invalid"
-            assert QuotaService.get_remaining(QuotaType.TRIGGER, "t1") == 0
-
-    def test_get_remaining_feature_not_in_response(self) -> None:
-        with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.get_quota_info.return_value = {"other_feature": {"limit": 100, "usage": 0}}
-            remaining = QuotaService.get_remaining(QuotaType.TRIGGER, "t1")
-            assert remaining == 0
-
-    def test_get_remaining_non_dict_feature_info(self) -> None:
-        with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.get_quota_info.return_value = {"trigger_event": "not_a_dict"}
-            assert QuotaService.get_remaining(QuotaType.TRIGGER, "t1") == 0
-
 
 class TestQuotaCharge:
     def test_commit_success(self) -> None:
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.quota_commit.return_value = dict[str, object]()
+            mock_bs.quota_commit.return_value = billing.QuotaCommitReply(available=9, reserved=0, refunded=0)
             charge = QuotaCharge(
                 success=True,
                 charge_id="rid-1",
@@ -198,7 +216,7 @@ class TestQuotaCharge:
 
     def test_commit_with_actual_amount(self) -> None:
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.quota_commit.return_value = dict[str, object]()
+            mock_bs.quota_commit.return_value = billing.QuotaCommitReply(available=9, reserved=0, refunded=0)
             charge = QuotaCharge(
                 success=True,
                 charge_id="rid-1",
@@ -213,7 +231,7 @@ class TestQuotaCharge:
 
     def test_commit_idempotent(self) -> None:
         with patch("services.billing_service.BillingService") as mock_bs:
-            mock_bs.quota_commit.return_value = dict[str, object]()
+            mock_bs.quota_commit.return_value = billing.QuotaCommitReply(available=9, reserved=0, refunded=0)
             charge = QuotaCharge(
                 success=True,
                 charge_id="rid-1",
