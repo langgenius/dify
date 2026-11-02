@@ -56,7 +56,7 @@ def _runner(workflow_variables: list[object]) -> AdvancedChatAppRunner:
         type=WorkflowType.CHAT,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="44444444-4444-4444-4444-444444444444",
     )
     workflow.conversation_variables = workflow_variables
@@ -214,7 +214,7 @@ class TestAppRunnerInputModerationCases:
             type=WorkflowType.CHAT,
             version=Workflow.VERSION_DRAFT,
             graph=json.dumps(MINIMAL_GRAPH),
-            features="{}",
+            _features="{}",
             created_by=str(uuid4()),
         )
 

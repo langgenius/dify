@@ -349,7 +349,7 @@ describe('useAgentConfigureSync', () => {
     vi.useRealTimers()
   })
 
-  it('should automatically save configure page changes to draft', async () => {
+  it('should automatically save configure changes without overwriting server-owned files', async () => {
     const { queryClient, store } = renderUseAgentConfigureSync()
     queryClient.setQueryData(
       consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
@@ -360,6 +360,7 @@ describe('useAgentConfigureSync', () => {
       store.set(agentComposerDraftAtom, {
         ...store.get(agentComposerDraftAtom),
         prompt: 'Draft only prompt',
+        files: [{ id: 'stale.md', name: 'stale.md', icon: 'markdown', fileId: 'stale-upload' }],
       })
     })
 
@@ -391,6 +392,9 @@ describe('useAgentConfigureSync', () => {
           }),
         }),
       }),
+    )
+    expect(composerPutMutationFn.mock.calls[0]?.[0]).not.toHaveProperty(
+      'body.agent_soul.config_files',
     )
     expect(
       queryClient.getQueryData(
@@ -529,6 +533,7 @@ describe('useAgentConfigureSync', () => {
       store.set(agentComposerDraftAtom, {
         ...store.get(agentComposerDraftAtom),
         prompt: 'Closing prompt',
+        files: [{ id: 'stale.md', name: 'stale.md', icon: 'markdown', fileId: 'stale-upload' }],
       })
     })
 
@@ -542,6 +547,9 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+    expect(composerPutMutationFn.mock.calls[0]?.[0]).not.toHaveProperty(
+      'body.agent_soul.config_files',
+    )
     expect(composerPutRequestContexts).toEqual([{ keepalive: true, silent: true }])
     expect(composerPutMutationFn).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -783,7 +791,7 @@ describe('useAgentConfigureSync', () => {
     expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
   })
 
-  it('should include Agent Soul files when autosaving file changes', async () => {
+  it('should leave file persistence to the file API when autosaving file changes', async () => {
     const { store } = renderUseAgentConfigureSync()
 
     act(() => {
@@ -809,18 +817,17 @@ describe('useAgentConfigureSync', () => {
       expect.objectContaining({
         body: expect.objectContaining({
           agent_soul: expect.objectContaining({
-            config_files: [
-              {
-                file_id: 'drive-file-1',
-                file_kind: 'upload_file',
-                name: 'uploaded.md',
-              },
-            ],
             config_skills: [],
           }),
         }),
       }),
     )
+    expect(composerPutMutationFn.mock.calls[0]?.[0]).not.toHaveProperty(
+      'body.agent_soul.config_files',
+    )
+    expect(store.get(agentComposerFilesAtom)).toEqual([
+      expect.objectContaining({ name: 'uploaded.md', fileId: 'drive-file-1' }),
+    ])
   })
 
   it('should preserve uploaded skills when prompt is updated immediately after upload', async () => {
@@ -863,7 +870,6 @@ describe('useAgentConfigureSync', () => {
                 size: 42,
               },
             ],
-            config_files: [],
           }),
         }),
       }),
@@ -900,21 +906,17 @@ describe('useAgentConfigureSync', () => {
             prompt: expect.objectContaining({
               system_prompt: 'Use [§file:uploaded.md:uploaded.md§]',
             }),
-            config_files: [
-              {
-                file_id: 'drive-file-1',
-                file_kind: 'upload_file',
-                hash: 'sha256:file-1',
-                mime_type: 'text/markdown',
-                name: 'uploaded.md',
-                size: 5,
-              },
-            ],
             config_skills: [],
           }),
         }),
       }),
     )
+    expect(composerPutMutationFn.mock.calls[0]?.[0]).not.toHaveProperty(
+      'body.agent_soul.config_files',
+    )
+    expect(store.get(agentComposerFilesAtom)).toEqual([
+      expect.objectContaining({ name: 'uploaded.md', fileId: 'drive-file-1' }),
+    ])
   })
 
   it('should autosave when knowledge retrieval validation fails', async () => {

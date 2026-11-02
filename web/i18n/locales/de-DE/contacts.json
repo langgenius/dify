@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "Die ausgewählten Kontakte werden dauerhaft aus diesem Arbeitsbereich entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
+  "directory.removalTitle": "Kontakte entfernen?",
+  "imPlatform.bindingDialog.clearSavedCredential": "Gespeicherten Wert löschen",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Dieser gespeicherte Wert wird beim Speichern gelöscht.",
+  "imPlatform.bindingDialog.replacementRequired": "Diese Zugangsdaten gehören zu einem anderen IM-Mandanten und können nicht direkt gespeichert werden. Ein Mandantenwechsel erfordert das Ersetzen des aktuellen IM-Kanals. Dabei werden alle automatischen und manuellen IM-Zuordnungen gelöscht. Synchronisieren Sie die Kontakte nach dem Ersetzen erneut.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Die Konfiguration wurde gespeichert, aber ihre Details konnten nicht geladen werden. Schließen Sie diesen Dialog und öffnen Sie ihn erneut.",
+  "imPlatform.bindingDialog.undoClearCredential": "Löschen rückgängig machen"
+}

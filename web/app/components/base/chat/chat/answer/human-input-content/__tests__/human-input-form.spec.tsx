@@ -11,6 +11,15 @@ import { createDeferred } from '@/test/deferred'
 import { TransferMethod } from '@/types/app'
 import HumanInputForm from '../human-input-form'
 
+const releaseGate = vi.hoisted(() => ({ enabled: true }))
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return releaseGate.enabled
+  },
+}))
+
 vi.mock('@/app/components/base/file-uploader', () => ({
   FileUploaderInAttachmentWrapper: ({
     onChange,
@@ -44,6 +53,10 @@ vi.mock('@/app/components/base/file-uploader', () => ({
 }))
 
 describe('HumanInputForm', () => {
+  beforeEach(() => {
+    releaseGate.enabled = true
+  })
+
   const mockFormData: HumanInputFormData = {
     form_id: 'form_1',
     node_id: 'node_1',
@@ -67,6 +80,45 @@ describe('HumanInputForm', () => {
     ],
     resolved_default_values: {},
   }
+
+  it('does not expose a V2 form or its submit and upload controls when HITL IM is disabled', () => {
+    releaseGate.enabled = false
+    const onSubmit = vi.fn()
+
+    render(<HumanInputForm formData={{ ...mockFormData, form_version: '2' }} onSubmit={onSubmit} />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('share.humanInputV2.unavailable')
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it.each([undefined, '1'] as const)(
+    'keeps legacy version %s interactive when HITL IM is disabled',
+    async (form_version) => {
+      releaseGate.enabled = false
+      const user = userEvent.setup()
+      const onSubmit = vi.fn().mockResolvedValue(undefined)
+
+      render(<HumanInputForm formData={{ ...mockFormData, form_version }} onSubmit={onSubmit} />)
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      expect(onSubmit).toHaveBeenCalledWith('token_123', {
+        action: 'action_1',
+        inputs: { field1: 'initial' },
+      })
+    },
+  )
+
+  it('keeps V2 submissions available when HITL IM is enabled', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+
+    render(<HumanInputForm formData={{ ...mockFormData, form_version: '2' }} onSubmit={onSubmit} />)
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    expect(onSubmit).toHaveBeenCalledOnce()
+  })
 
   it('should handle input changes and submit correctly', async () => {
     const user = userEvent.setup()

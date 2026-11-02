@@ -92,10 +92,9 @@ describe('DocumentTableRow', () => {
     isGeneralMode: true,
     isQAMode: false,
     embeddingAvailable: true,
-    selectedIds: [],
-    onSelectedIdChange: vi.fn(),
     onShowRenameModal: vi.fn(),
     onUpdate: vi.fn(),
+    onDelete: vi.fn(),
   }
 
   beforeEach(() => {

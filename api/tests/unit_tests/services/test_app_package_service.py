@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import zipfile
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Mapping
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -15,6 +16,16 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
 
+from configs import dify_config
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from libs.archive_writer import (
+    ArchiveLimits,
+    ArchiveOptions,
+    ArchiveResult,
+    StrictPathPolicy,
+    entries_from_folder,
+    write_archive,
+)
 from models import Account, App, AppMode
 from models.agent import (
     Agent,
@@ -38,7 +49,6 @@ from services.agent.errors import (
 )
 from services.agent.package_resource_exporter import AgentPackageResourceExporter, _FileSource, _SkillSource
 from services.agent.package_resource_importer import AgentPackageResourceImporter
-from services.agent.roster_package_entities import PackageIcon, PreparedPackageArchive, RosterAgentPackageMember
 from services.app_dsl_service import AppDslService, Import
 from services.app_package_service import AppPackageManifest, AppPackageService
 from services.dsl_content import DSL_MAX_SIZE
@@ -48,6 +58,11 @@ from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_upload_file, make_workflow
 
 """Workflow packages restore node-owned Agents and assets across workspaces."""
+
+
+def _bundle_any_app(app: App) -> bool:
+    del app
+    return True
 
 
 class _MemoryStorage:
@@ -215,8 +230,15 @@ def _account(tenant_id: str = "tenant-2") -> Account:
     return make_account(tenant=make_tenant(tenant_id=tenant_id))
 
 
-def _import(session: Session, content: bytes, *, app_id: str | None = None, account: Account | None = None) -> Import:
-    prepared = AppPackageService().read_package(io.BytesIO(content))
+def _import(
+    session: Session,
+    content: bytes,
+    *,
+    app_id: str | None = None,
+    account: Account | None = None,
+    preserve_agent_bindings: bool = False,
+) -> Import:
+    prepared = AppPackageService().read_package(io.BytesIO(content), accept_roster_references=preserve_agent_bindings)
     assert prepared is not None
     with prepared:
         result = AppDslService(session).import_app(
@@ -225,6 +247,7 @@ def _import(session: Session, content: bytes, *, app_id: str | None = None, acco
             yaml_content=prepared.dsl,
             app_id=app_id,
             package=prepared,
+            preserve_agent_bindings=preserve_agent_bindings,
         )
     if result.status == ImportStatus.FAILED:
         session.rollback()
@@ -250,6 +273,74 @@ def _rewrite(
         for name, payload in members.items():
             archive.writestr(name, payload)
     return output.getvalue()
+
+
+def _add_roster_node(session: Session, app: App, *, graph_binding: Mapping[str, object] | None = None) -> Agent:
+    workflow = session.get(Workflow, "workflow-1")
+    assert workflow is not None
+    graph = workflow.graph_dict
+    data: dict[str, object] = {"type": "agent", "version": "2", "title": "Roster", "agent_node_kind": "dify_agent"}
+    if graph_binding is not None:
+        data["agent_binding"] = dict(graph_binding)
+    graph["nodes"].append({"id": "node-3", "data": data})
+    workflow.graph = json.dumps(graph)
+    agent = Agent(
+        id="roster-agent-1",
+        tenant_id=app.tenant_id,
+        name="Roster",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.ROSTER,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="roster-snapshot-1",
+        created_by="account-1",
+    )
+    snapshot = AgentConfigSnapshot(
+        id="roster-snapshot-1",
+        tenant_id=app.tenant_id,
+        agent_id=agent.id,
+        version=1,
+        config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "Roster"}}),
+        created_by="account-1",
+    )
+    binding = WorkflowAgentNodeBinding(
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        workflow_id=workflow.id,
+        workflow_version=workflow.version,
+        node_id="node-3",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id=agent.id,
+        current_snapshot_id=snapshot.id,
+        node_job_config={"workflow_prompt": "Roster job"},
+        created_by="account-1",
+    )
+    session.add_all([agent, snapshot, binding])
+    session.commit()
+    return agent
+
+
+def _read_export(content: bytes) -> tuple[dict[str, object], dict[str, object]]:
+    with zipfile.ZipFile(io.BytesIO(content)) as archive:
+        return yaml.safe_load(archive.read("app.yaml")), yaml.safe_load(archive.read("manifest.yaml"))
+
+
+def _node_data(data: dict[str, object], node_id: str = "node-3") -> dict[str, object]:
+    workflow = cast(dict[str, dict[str, list[dict[str, object]]]], data["workflow"])
+    return next(cast(dict[str, object], node["data"]) for node in workflow["graph"]["nodes"] if node["id"] == node_id)
+
+
+def _roster_export(session: Session, storage: _MemoryStorage) -> bytes:
+    app = _source(session, storage)
+    _add_roster_node(session, app)
+    with AppPackageService().export_app(
+        may_bundle=_bundle_any_app, app_model=app, preserve_agent_bindings=True
+    ) as exported:
+        return exported.archive.read()
+
+
+def _bindings_by_node(session: Session, app_id: str | None) -> dict[str, WorkflowAgentNodeBinding]:
+    rows = session.scalars(select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.app_id == app_id))
+    return {row.node_id: row for row in rows}
 
 
 class TestWorkflowPackageServiceCases:
@@ -279,7 +370,9 @@ class TestWorkflowPackageServiceCases:
         published: bool,
     ) -> None:
         app = _source(sqlite_session, storage, mode=mode, published=published)
-        with AppPackageService().export_app(app_model=app, workflow_id="workflow-1" if published else None) as exported:
+        with AppPackageService().export_app(
+            may_bundle=_bundle_any_app, app_model=app, workflow_id="workflow-1" if published else None
+        ) as exported:
             content = exported.archive.read()
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             manifest = yaml.safe_load(archive.read("manifest.yaml"))
@@ -365,7 +458,7 @@ class TestWorkflowPackageServiceCases:
         row.tenant_id = "tenant-elsewhere"
         sqlite_session.commit()
         with pytest.raises(RosterAgentPackageExportFailedError, match="payload is unavailable"):
-            AppPackageService().export_app(app_model=app)
+            AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -377,7 +470,7 @@ class TestWorkflowPackageServiceCases:
         mutation: str,
     ) -> None:
         app = _source(sqlite_session, storage)
-        with AppPackageService().export_app(app_model=app) as exported:
+        with AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app) as exported:
             content = exported.archive.read()
 
         def mutate(manifest: AppPackageManifest, data: dict[str, object], members: dict[str, bytes]) -> None:
@@ -409,7 +502,7 @@ class TestWorkflowPackageServiceCases:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         app = _source(sqlite_session, storage)
-        with AppPackageService().export_app(app_model=app) as exported:
+        with AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app) as exported:
             content = exported.archive.read()
 
         def mutate(manifest: AppPackageManifest, data: dict[str, object], members: dict[str, bytes]) -> None:
@@ -443,7 +536,7 @@ class TestWorkflowPackageServiceCases:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         app = _source(sqlite_session, storage)
-        with AppPackageService().export_app(app_model=app) as exported:
+        with AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app) as exported:
             content = exported.archive.read()
         monkeypatch.setattr(AppDslService, "_load_app_for_overwrite", Mock(side_effect=NoPermissionError("Denied")))
         with pytest.raises(NoPermissionError):
@@ -457,7 +550,7 @@ class TestWorkflowPackageServiceCases:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         app = _source(sqlite_session, storage)
-        with AppPackageService().export_app(app_model=app) as exported:
+        with AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app) as exported:
             content = exported.archive.read()
         original = _import(sqlite_session, content)
         assert original.status == ImportStatus.COMPLETED, original.error
@@ -527,7 +620,7 @@ class TestWorkflowPackageServiceCases:
 
         monkeypatch.setattr(storage, "load_stream", checked_load)
         monkeypatch.setattr(storage, "save", checked_save)
-        with AppPackageService().export_app(app_model=app) as exported:
+        with AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app) as exported:
             content = exported.archive.read()
         result = _import(sqlite_session, content)
         assert result.status == ImportStatus.COMPLETED, result.error
@@ -542,10 +635,148 @@ class TestWorkflowPackageServiceCases:
         soul.config_files[0].file_id = ""
         snapshot.config_snapshot = soul
         sqlite_session.commit()
-        with AppPackageService().export_app(app_model=app) as exported:
+        with AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app) as exported:
             result = _import(sqlite_session, exported.archive.read())
         assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS, result.error
         assert any(warning.code == "agent_file_omitted" for warning in result.warnings)
+
+    @staticmethod
+    def test_reader_keeps_legacy_packaged_roster_nodes(sqlite_session: Session, storage: _MemoryStorage) -> None:
+        app = _source(sqlite_session, storage)
+        with AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app) as exported:
+            content = exported.archive.read()
+
+        def mutate(_manifest: AppPackageManifest, data: dict[str, object], _members: dict[str, bytes]) -> None:
+            cast(dict[str, object], _node_data(data, "node-1")["agent_binding"])["binding_type"] = "roster_agent"
+
+        legacy = _rewrite(content, mutate)
+        prepared = AppPackageService().read_package(io.BytesIO(legacy), accept_roster_references=True)
+        assert prepared is not None
+        prepared.close()
+
+    @staticmethod
+    def test_package_export_keeps_roster_references(sqlite_session: Session, storage: _MemoryStorage) -> None:
+        app = _source(sqlite_session, storage)
+        _add_roster_node(sqlite_session, app)
+        with AppPackageService().export_app(
+            may_bundle=_bundle_any_app, app_model=app, preserve_agent_bindings=True
+        ) as exported:
+            data, manifest = _read_export(exported.archive.read())
+        node = _node_data(data)
+        assert node["agent_binding"] == {
+            "binding_type": "roster_agent",
+            "agent_id": "roster-agent-1",
+            "current_snapshot_id": "roster-snapshot-1",
+        }
+        assert node["agent_task"] == "Roster job"
+        assert (
+            set(cast(dict[str, object], manifest["agent_resources"]))
+            == set(cast(dict[str, object], data["agent_packages"]))
+            == {"agent_1", "agent_2"}
+        )
+
+    @staticmethod
+    @pytest.mark.usefixtures("storage")
+    def test_roster_only_package_export_passes_self_check(sqlite_session: Session) -> None:
+        app = make_app(mode=AppMode.WORKFLOW, name="Roster Only")
+        workflow = make_workflow(
+            workflow_id="workflow-1",
+            app_id=app.id,
+            graph={"nodes": [], "edges": []},
+            workflow_type=WorkflowType.WORKFLOW,
+            version=Workflow.VERSION_DRAFT,
+        )
+        sqlite_session.add_all([app, workflow])
+        sqlite_session.commit()
+        _add_roster_node(sqlite_session, app)
+        with AppPackageService().export_app(
+            may_bundle=_bundle_any_app, app_model=app, preserve_agent_bindings=True
+        ) as exported:
+            data, manifest = _read_export(exported.archive.read())
+        assert not manifest.get("agent_resources")
+        assert cast(dict[str, object], _node_data(data)["agent_binding"])["agent_id"] == "roster-agent-1"
+
+    @staticmethod
+    def test_published_export_projects_the_exported_versions_bindings(
+        sqlite_session: Session, storage: _MemoryStorage
+    ) -> None:
+        app = _source(sqlite_session, storage, published=True)
+        _add_roster_node(sqlite_session, app, graph_binding={"binding_type": "roster_agent", "agent_id": "stale-agent"})
+        with AppPackageService().export_app(
+            may_bundle=_bundle_any_app, app_model=app, workflow_id="workflow-1", preserve_agent_bindings=True
+        ) as exported:
+            content = exported.archive.read()
+        data, _manifest = _read_export(content)
+        node = _node_data(data)
+        assert cast(dict[str, object], node["agent_binding"])["agent_id"] == "roster-agent-1"
+        assert node["agent_task"] == "Roster job"
+        result = _import(sqlite_session, content, account=_account("tenant-1"), preserve_agent_bindings=True)
+        assert result.status == ImportStatus.COMPLETED, result.error
+        roster = sqlite_session.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.app_id == result.app_id,
+                WorkflowAgentNodeBinding.node_id == "node-3",
+            )
+        ).one()
+        assert (roster.binding_type, roster.agent_id) == (WorkflowAgentBindingType.ROSTER_AGENT, "roster-agent-1")
+        assert roster.node_job_config_dict["workflow_prompt"] == "Roster job"
+
+    @staticmethod
+    def test_overwrite_with_mixed_graph_keeps_roster_link(
+        sqlite_session: Session, storage: _MemoryStorage, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned", lambda **_kwargs: None
+        )
+        content = _roster_export(sqlite_session, storage)
+        account = _account("tenant-1")
+        original = _import(sqlite_session, content, account=account, preserve_agent_bindings=True)
+        updated = _import(
+            sqlite_session, content, app_id=original.app_id, account=account, preserve_agent_bindings=True
+        )
+        assert updated.status == ImportStatus.COMPLETED, updated.error
+        rows = _bindings_by_node(sqlite_session, original.app_id)
+        assert rows["node-3"].binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+        assert rows["node-3"].agent_id == "roster-agent-1"
+        assert rows["node-3"].node_job_config_dict["workflow_prompt"] == "Roster job"
+        assert {rows["node-1"].binding_type, rows["node-2"].binding_type} == {WorkflowAgentBindingType.INLINE_AGENT}
+
+    @staticmethod
+    def test_unresolvable_roster_reference_fails_the_import(sqlite_session: Session, storage: _MemoryStorage) -> None:
+        content = _roster_export(sqlite_session, storage)
+
+        def mutate(_manifest: AppPackageManifest, data: dict[str, object], _members: dict[str, bytes]) -> None:
+            cast(dict[str, object], _node_data(data)["agent_binding"])["agent_id"] = "missing-agent"
+
+        result = _import(
+            sqlite_session, _rewrite(content, mutate), account=_account("tenant-1"), preserve_agent_bindings=True
+        )
+        assert result.status == ImportStatus.FAILED
+        assert "roster agent" in (result.error or "")
+
+    @staticmethod
+    def test_confirm_keeps_roster_link(
+        sqlite_session: Session, storage: _MemoryStorage, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        content = _roster_export(sqlite_session, storage)
+
+        def mutate(_manifest: AppPackageManifest, data: dict[str, object], _members: dict[str, bytes]) -> None:
+            data["version"] = "99.0.0"
+
+        pending: dict[str, str] = {}
+        monkeypatch.setattr(
+            "services.app_dsl_service.redis_client.setex", lambda key, _ttl, value: pending.__setitem__(key, value)
+        )
+        monkeypatch.setattr("services.app_dsl_service.redis_client.get", pending.get)
+        monkeypatch.setattr("services.app_dsl_service.redis_client.delete", pending.pop)
+        account = _account("tenant-1")
+        result = _import(sqlite_session, _rewrite(content, mutate), account=account, preserve_agent_bindings=True)
+        assert result.status == ImportStatus.PENDING
+        confirmed = AppDslService(sqlite_session).confirm_import(import_id=result.id, account=account)
+        assert confirmed.status in {ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS}, confirmed.error
+        row = _bindings_by_node(sqlite_session, confirmed.app_id)["node-3"]
+        assert row.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+        assert row.agent_id == "roster-agent-1"
 
 
 """Ordinary App packages preserve DSLs and enforce container integrity."""
@@ -573,6 +804,40 @@ def _dsl_with_size(size: int) -> str:
     return header + "\U0001f600" * (padding // 4) + "a" * (padding % 4)
 
 
+def _roster_archive(binding: dict[str, object], agent_job: dict[str, object] | None = None) -> io.BytesIO:
+    node_data = {
+        "type": "agent",
+        "version": "2",
+        "title": "Roster",
+        "agent_node_kind": "dify_agent",
+        "agent_binding": binding,
+        "agent_job": agent_job or {"workflow_prompt": "Roster job"},
+    }
+    dsl = yaml.safe_dump(
+        {
+            "kind": "app",
+            "app": {"mode": "workflow", "name": "Roster"},
+            "workflow": {"graph": {"nodes": [{"id": "node-1", "data": node_data}], "edges": []}},
+        }
+    )
+    with AppPackageService().export(dsl=dsl, name="Roster", workflow_tools=[]) as package:
+        return io.BytesIO(package.archive.read())
+
+
+_FOLDER_DSL = "kind: app\nversion: 0.1.0\napp:\n  mode: workflow\n"
+
+
+def _rebuild_from_folder(extra: dict[str, bytes]) -> ArchiveResult:
+    with (
+        AppPackageService().export(dsl=_FOLDER_DSL, name="Example", workflow_tools=[]) as package,
+        zipfile.ZipFile(package.archive) as source,
+    ):
+        parts = {name: io.BytesIO(source.read(name)) for name in source.namelist()}
+    parts.update({path: io.BytesIO(data) for path, data in extra.items()})
+    limits = ArchiveLimits(dify_config.AGENT_PACKAGE_MAX_ENTRIES, dify_config.AGENT_PACKAGE_MAX_BYTES)
+    return write_archive(entries_from_folder(parts), ArchiveOptions(StrictPathPolicy(), limits))
+
+
 class TestAppPackageServiceCases:
     @staticmethod
     @pytest.mark.parametrize("mode", ["workflow", "advanced-chat", "chat", "completion", "agent-chat"])
@@ -580,7 +845,7 @@ class TestAppPackageServiceCases:
     def test_round_trip_retains_exact_dsl_and_defers_version_handling(mode: str, version: str) -> None:
         dsl = f"kind: app\nversion: {version}\napp:\n  mode: {mode}\n# Preserve the DSL verbatim.\n"
         service = AppPackageService()
-        with service.export(dsl=dsl, name="Example App") as package:
+        with service.export(dsl=dsl, name="Example App", workflow_tools=[]) as package:
             assert package.filename == "example-app.ifpkg"
             prepared = service.read_package(package.archive)
             assert prepared is not None
@@ -639,7 +904,7 @@ class TestAppPackageServiceCases:
     def test_package_round_trip_accepts_large_dsl_within_legacy_limit(size: int) -> None:
         dsl = _dsl_with_size(size)
         service = AppPackageService()
-        with service.export(dsl=dsl, name="Large Workflow") as package:
+        with service.export(dsl=dsl, name="Large Workflow", workflow_tools=[]) as package:
             prepared = service.read_package(package.archive)
             assert prepared is not None
             with prepared:
@@ -649,7 +914,7 @@ class TestAppPackageServiceCases:
     def test_export_rejects_dsl_exceeding_legacy_byte_limit() -> None:
         dsl = _dsl_with_size(DSL_MAX_SIZE + 1)
         with pytest.raises(RosterAgentPackageTooLargeError):
-            AppPackageService().export(dsl=dsl, name="Large Workflow")
+            AppPackageService().export(dsl=dsl, name="Large Workflow", workflow_tools=[])
 
     @staticmethod
     def test_import_rejects_compressed_dsl_exceeding_legacy_byte_limit() -> None:
@@ -658,13 +923,226 @@ class TestAppPackageServiceCases:
         with pytest.raises(RosterAgentPackageTooLargeError):
             AppPackageService().read_package(source)
 
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("binding", "agent_job"),
+        [
+            pytest.param({"binding_type": "roster_agent"}, None, id="agent-id-missing"),
+            pytest.param({"binding_type": "roster_agent", "agent_id": ""}, None, id="agent-id-empty"),
+            pytest.param(
+                {"binding_type": "roster_agent", "agent_id": "a", "package_ref": "agent_1"},
+                None,
+                id="package-ref-extra",
+            ),
+            pytest.param(
+                {"binding_type": "roster_agent", "agent_id": "a"},
+                {"declared_outputs": "not-a-list"},
+                id="invalid-agent-job",
+            ),
+        ],
+    )
+    def test_roster_only_package_rejects_bad_references_when_accepted(
+        binding: dict[str, object], agent_job: dict[str, object] | None
+    ) -> None:
+        with pytest.raises(InvalidRosterAgentPackageError, match="Agent references are invalid"):
+            AppPackageService().read_package(_roster_archive(binding, agent_job), accept_roster_references=True)
+
+    @staticmethod
+    def test_non_workflow_package_is_accepted_when_roster_references_accepted() -> None:
+        dsl = yaml.safe_dump({"kind": "app", "app": {"mode": "chat", "name": "Chat"}})
+        with AppPackageService().export(dsl=dsl, name="Chat", workflow_tools=[]) as package:
+            prepared = AppPackageService().read_package(package.archive, accept_roster_references=True)
+        assert prepared is not None
+        assert prepared.agents == {}
+        prepared.close()
+
+    @staticmethod
+    def test_an_unpacked_export_rebuilt_from_folder_parts_reads_back_and_nesting_is_refused() -> None:
+        with _rebuild_from_folder({".DS_Store": b""}).file as archive:
+            prepared = AppPackageService().read_package(archive)
+            assert prepared is not None
+            with prepared:
+                assert prepared.dsl == _FOLDER_DSL
+        with _rebuild_from_folder({"skills/a/SKILL.md": b""}).file as archive:
+            with pytest.raises(InvalidRosterAgentPackageError, match="unsafe path"):
+                AppPackageService().read_package(archive)
+
+
+"""Packages bundle the workflows an App calls through Workflow Tools as nested App packages."""
+
+_WORKFLOW_DSL = f"kind: app\nversion: {CURRENT_APP_DSL_VERSION}\napp:\n  mode: workflow\n"
+
+
+def _nested_package(dsl: str) -> bytes:
+    with AppPackageService().export(dsl=dsl, name="Summarize", workflow_tools=[]) as exported:
+        return exported.archive.read()
+
+
+def _workflow_tool(index: int, member: bytes, **overrides: object) -> dict[str, object]:
+    return {
+        "id": f"w_{index:06d}",
+        "path": f"w_{index:06d}.ifpkg",
+        "size": len(member),
+        "sha256": hashlib.sha256(member).hexdigest(),
+        "provider_id": f"33333333-3333-4333-8333-{index:012d}",
+        "name": f"summarize_{index}",
+        "label": "Summarize",
+        "icon": {"background": "#FFEAD5", "content": "🤖"},
+        "description": "Summarize a document",
+        "parameters": [{"name": "document", "description": "Document", "form": "llm"}],
+        "labels": ["productivity"],
+        "privacy_policy": "",
+        **overrides,
+    }
+
+
+def _bundle(
+    members: list[bytes], *, root_dsl: str = _WORKFLOW_DSL, format_version: int = 2, **tool_overrides: object
+) -> io.BytesIO:
+    tools = [_workflow_tool(index, member, **tool_overrides) for index, member in enumerate(members, start=1)]
+    source = _archive(root_dsl, format_version=format_version, workflow_tools=tools)
+    with zipfile.ZipFile(source, "a") as archive:
+        for tool, member in zip(tools, members, strict=True):
+            archive.writestr(str(tool["path"]), member)
+    source.seek(0)
+    return source
+
+
+class TestWorkflowToolPackageCases:
+    @staticmethod
+    def test_reads_bundled_workflow_tools_and_opens_each_as_an_app_package() -> None:
+        member = _nested_package(_WORKFLOW_DSL)
+
+        prepared = AppPackageService().read_package(_bundle([member]))
+
+        assert prepared is not None
+        with prepared:
+            assert prepared.dsl == _WORKFLOW_DSL
+            [tool] = prepared.workflow_tools
+            assert (tool.provider_id, tool.name, tool.labels) == (
+                "33333333-3333-4333-8333-000000000001",
+                "summarize_1",
+                ["productivity"],
+            )
+            with prepared.open_workflow_tool(tool) as nested:
+                assert nested.dsl == _WORKFLOW_DSL
+                assert nested.workflow_tools == []
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("format_version", "tool_overrides"),
+        [
+            (1, {}),
+            (2, {"name": "not a tool name"}),
+            (2, {"provider_id": "not-a-uuid"}),
+            (2, {"path": "w_000009.ifpkg"}),
+        ],
+        ids=["v1-with-tools", "invalid-name", "invalid-provider-id", "path-without-its-id"],
+    )
+    def test_rejects_invalid_workflow_tool_manifests(format_version: int, tool_overrides: dict[str, str]) -> None:
+        member = _nested_package(_WORKFLOW_DSL)
+        with pytest.raises(InvalidRosterAgentPackageError, match="manifest"):
+            AppPackageService().read_package(_bundle([member], format_version=format_version, **tool_overrides))
+
+    @staticmethod
+    def test_rejects_workflow_tool_checksum_mismatch() -> None:
+        member = _nested_package(_WORKFLOW_DSL)
+        with pytest.raises(InvalidRosterAgentPackageError, match="integrity"):
+            AppPackageService().read_package(_bundle([member], sha256="0" * 64))
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "nested_dsl",
+        [
+            f"kind: app\nversion: {CURRENT_APP_DSL_VERSION}\napp:\n  mode: advanced-chat\n",
+            "kind: app\nversion: 99.0.0\napp:\n  mode: workflow\n",
+        ],
+        ids=["not-a-workflow", "needs-version-confirmation"],
+    )
+    def test_rejects_workflow_tools_that_cannot_import_with_the_package(nested_dsl: str) -> None:
+        with pytest.raises(InvalidRosterAgentPackageError):
+            AppPackageService().read_package(_bundle([_nested_package(nested_dsl)]))
+
+    @staticmethod
+    def test_rejects_a_root_app_that_needs_version_confirmation_with_workflow_tools() -> None:
+        member = _nested_package(_WORKFLOW_DSL)
+        root_dsl = "kind: app\nversion: 99.0.0\napp:\n  mode: workflow\n"
+        with pytest.raises(InvalidRosterAgentPackageError, match="confirmation"):
+            AppPackageService().read_package(_bundle([member], root_dsl=root_dsl))
+
+    @staticmethod
+    def test_rejects_workflow_tools_that_bundle_workflow_tools() -> None:
+        nested = _bundle([_nested_package(_WORKFLOW_DSL)]).getvalue()
+        with pytest.raises(InvalidRosterAgentPackageError, match="must not bundle"):
+            AppPackageService().read_package(_bundle([nested]))
+
+    @staticmethod
+    def test_rejects_more_workflow_tools_than_the_limit(config_overrides: Callable[..., None]) -> None:
+        member = _nested_package(_WORKFLOW_DSL)
+        config_overrides(APP_PACKAGE_MAX_WORKFLOW_TOOLS=1)
+        with pytest.raises(RosterAgentPackageTooLargeError, match="too many workflow tools"):
+            AppPackageService().read_package(_bundle([member, member]))
+
+    @staticmethod
+    def test_rejects_workflow_tools_that_share_a_provider_id() -> None:
+        member = _nested_package(_WORKFLOW_DSL)
+        with pytest.raises(InvalidRosterAgentPackageError, match="manifest"):
+            AppPackageService().read_package(
+                _bundle([member, member], provider_id="33333333-3333-4333-8333-000000000009")
+            )
+
+    @staticmethod
+    def test_rejects_a_workflow_tool_larger_than_declared() -> None:
+        member = _nested_package(_WORKFLOW_DSL)
+        with pytest.raises(InvalidRosterAgentPackageError, match="integrity"):
+            AppPackageService().read_package(_bundle([member], size=1))
+
+    @staticmethod
+    def test_rejects_a_workflow_tool_that_is_an_agent_package() -> None:
+        member = io.BytesIO()
+        with zipfile.ZipFile(member, "w") as archive:
+            archive.writestr("manifest.yaml", yaml.safe_dump({"format": "dify.roster-agent", "format_version": 1}))
+        with pytest.raises(InvalidRosterAgentPackageError, match="must be an App package"):
+            AppPackageService().read_package(_bundle([member.getvalue()]))
+
+    @staticmethod
+    def test_rejects_a_corrupted_workflow_tool_member() -> None:
+        source = _bundle([_nested_package(_WORKFLOW_DSL)])
+        with zipfile.ZipFile(source) as archive:
+            offset = archive.getinfo("w_000001.ifpkg").header_offset
+        payload = bytearray(source.getvalue())
+        # A local file header is 30 bytes, then the member name and extra field, then the stored data.
+        name_length = int.from_bytes(payload[offset + 26 : offset + 28], "little")
+        extra_length = int.from_bytes(payload[offset + 28 : offset + 30], "little")
+        payload[offset + 30 + name_length + extra_length] ^= 0xFF
+        with pytest.raises(InvalidRosterAgentPackageError, match="not a valid ZIP"):
+            AppPackageService().read_package(io.BytesIO(bytes(payload)))
+
+    @staticmethod
+    def test_bounds_what_all_workflow_tools_expand_to(config_overrides: Callable[..., None]) -> None:
+        dsl = f"{_WORKFLOW_DSL}  description: {'a' * 60_000}\n"
+        member = _nested_package(dsl)
+        config_overrides(AGENT_PACKAGE_MAX_BYTES=100_000)
+        with pytest.raises(RosterAgentPackageTooLargeError, match="workflow tools exceed"):
+            AppPackageService().read_package(_bundle([member, member]))
+
+    @staticmethod
+    def test_the_app_and_its_workflow_tools_share_one_size_limit(config_overrides: Callable[..., None]) -> None:
+        member = _nested_package(f"{_WORKFLOW_DSL}  description: {'a' * 60_000}\n")
+        root_dsl = f"{_WORKFLOW_DSL}  description: {'b' * 50_000}\n"
+        config_overrides(AGENT_PACKAGE_MAX_BYTES=100_000)
+        with pytest.raises(RosterAgentPackageTooLargeError, match="App package and its workflow tools exceed"):
+            AppPackageService().read_package(_bundle([member], root_dsl=root_dsl))
+
 
 """Packaged image icons travel with Apps and receive destination-owned file ids."""
 
 
 def _icon_archive(*, payload: bytes = b"image", digest: str | None = None, reference: str = "i_000001") -> io.BytesIO:
     dsl = yaml.safe_dump({"kind": "app", "app": {"mode": "chat", "icon_type": "image", "icon": reference}})
-    with AppPackageService().export(dsl=dsl.replace(reference, "legacy-id"), name="Example") as exported:
+    with AppPackageService().export(
+        dsl=dsl.replace(reference, "legacy-id"), name="Example", workflow_tools=[]
+    ) as exported:
         with zipfile.ZipFile(exported.archive) as package:
             manifest = yaml.safe_load(package.read("manifest.yaml"))
     app_bytes = dsl.encode()
@@ -688,38 +1166,64 @@ def _icon_archive(*, payload: bytes = b"image", digest: str | None = None, refer
 
 class TestPackageIconsCases:
     @staticmethod
-    def test_app_icon_export_deduplicates_uploads_and_restores_references(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_app_icon_export_deduplicates_uploads_and_restores_references(
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
         source_id = str(uuid4())
         payload = b"image payload"
-        backend = Mock()
-        backend.load_stream.side_effect = lambda _: iter([payload])
+        backend = _MemoryStorage()
+        backend.files["source/icon.png"] = payload
+        source = make_upload_file(
+            file_id=source_id,
+            tenant_id="source-tenant",
+            key="source/icon.png",
+            name="icon.png",
+            size=len(payload),
+            extension="png",
+            mime_type="image/png",
+        )
+        sqlite_session.add(source)
+        sqlite_session.commit()
         exporter = AgentPackageResourceExporter(storage_backend=backend)
-        upload_lookup = Mock(return_value={source_id: SimpleNamespace(key="source/icon.png", extension="png")})
-        monkeypatch.setattr(exporter, "_upload_files", upload_lookup)
+        monkeypatch.setattr(
+            "services.app_package_service.AgentPackageResourceImporter",
+            lambda: AgentPackageResourceImporter(storage_backend=backend),
+        )
         metadata = {"mode": "chat", "icon_type": "image", "icon": source_id}
         duplicate = dict(metadata)
-        exporter.collect_icon(session=Mock(), tenant_id="source-tenant", metadata=metadata)
-        exporter.collect_icon(session=Mock(), tenant_id="source-tenant", metadata=duplicate)
+        exporter.collect_icon(session=sqlite_session, tenant_id="source-tenant", metadata=metadata)
+        exporter.collect_icon(session=sqlite_session, tenant_id="source-tenant", metadata=duplicate)
         assert metadata["icon"] == duplicate["icon"] == "i_000001"
-        assert upload_lookup.call_args.kwargs["tenant_id"] == "source-tenant"
-        assert upload_lookup.call_count == 1
         dsl = yaml.safe_dump({"kind": "app", "app": metadata})
-        with AppPackageService().export(dsl=dsl, name="Example", resources=exporter) as exported:
+        with AppPackageService().export(dsl=dsl, name="Example", resources=exporter, workflow_tools=[]) as exported:
             with zipfile.ZipFile(exported.archive) as package:
                 assert package.read("i_000001.png") == payload
             exported.archive.seek(0)
             prepared = AppPackageService().read_package(exported.archive)
             assert prepared is not None
             with prepared:
-                restore = Mock(return_value={"i_000001": "destination-id"})
-                monkeypatch.setattr(AgentPackageResourceImporter, "materialize_icons", restore)
+                assert len(prepared.icons) == 1
                 data = yaml.safe_load(prepared.dsl)
                 prepared.materialize_icons(data=data, tenant_id="destination", account_id="account")
-                assert data["app"]["icon"] == "destination-id"
-                assert restore.call_args.kwargs["tenant_id"] == "destination"
+                destination_id = data["app"]["icon"]
+                assert destination_id != source_id
+                restored = sqlite_session.get(UploadFile, destination_id)
+                assert restored is not None
+                assert restored.tenant_id == "destination"
+                assert restored.created_by == "account"
+                assert restored.mime_type == "image/png"
+                assert restored.size == len(payload)
+                assert backend.files[restored.key] == payload
+                assert sqlite_session.scalars(
+                    select(UploadFile).where(UploadFile.tenant_id == "destination")
+                ).all() == [restored]
+                assert source.tenant_id == "source-tenant"
+                assert backend.files[source.key] == payload
 
     @staticmethod
-    def test_app_package_restores_independent_site_image_icon(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_app_package_restores_independent_site_image_icon(
+        monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ) -> None:
         app_icon_id, site_icon_id = str(uuid4()), str(uuid4())
         backend = Mock()
         backend.load_stream.side_effect = lambda key: iter([key.encode()])
@@ -735,10 +1239,13 @@ class TestPackageIconsCases:
         )
         app = {"mode": "chat", "icon_type": "image", "icon": app_icon_id}
         site = {"title": "Site", "icon_type": "image", "icon": site_icon_id}
-        exporter.collect_icon(session=Mock(), tenant_id="source", metadata=app)
-        exporter.collect_icon(session=Mock(), tenant_id="source", metadata=site)
+        exporter.collect_icon(session=unbound_session, tenant_id="source", metadata=app)
+        exporter.collect_icon(session=unbound_session, tenant_id="source", metadata=site)
         with AppPackageService().export(
-            dsl=yaml.safe_dump({"kind": "app", "app": app, "site": site}), name="App", resources=exporter
+            dsl=yaml.safe_dump({"kind": "app", "app": app, "site": site}),
+            name="App",
+            resources=exporter,
+            workflow_tools=[],
         ) as exported:
             prepared = AppPackageService().read_package(exported.archive)
             assert prepared is not None
@@ -755,12 +1262,16 @@ class TestPackageIconsCases:
                 assert data["site"]["icon"] == "new-site-icon"
 
     @staticmethod
-    def test_icon_export_rejects_unavailable_tenant_upload(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_icon_export_rejects_unavailable_tenant_upload(
+        monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ) -> None:
         exporter = AgentPackageResourceExporter(storage_backend=Mock())
         monkeypatch.setattr(exporter, "_upload_files", Mock(return_value={}))
         with pytest.raises(RosterAgentPackageExportFailedError, match="unavailable"):
             exporter.collect_icon(
-                session=Mock(), tenant_id="tenant", metadata={"icon_type": "image", "icon": str(uuid4())}
+                session=unbound_session,
+                tenant_id="tenant",
+                metadata={"icon_type": "image", "icon": str(uuid4())},
             )
 
     @staticmethod
@@ -781,36 +1292,7 @@ class TestPackageIconsCases:
             AppPackageService().read_package(_icon_archive())
 
     @staticmethod
-    def test_materialized_icon_is_owned_by_destination(monkeypatch: pytest.MonkeyPatch) -> None:
-        payload = b"image payload"
-        digest = hashlib.sha256(payload).hexdigest()
-        archive = io.BytesIO()
-        with zipfile.ZipFile(archive, "w") as package:
-            package.writestr("i_000001.png", payload)
-        prepared = PreparedPackageArchive(
-            archive=archive, members={"i_000001.png": RosterAgentPackageMember(size=len(payload), sha256=digest)}
-        )
-        icon = PackageIcon(id="i_000001", path="i_000001.png", size=len(payload), sha256=digest)
-        session = MagicMock()
-        monkeypatch.setattr(
-            "services.agent.package_resource_importer.session_factory.create_session",
-            MagicMock(return_value=session),
-        )
-        backend = Mock()
-        with prepared:
-            mapping = AgentPackageResourceImporter(storage_backend=backend).materialize_icons(
-                archive=prepared, icons=[icon], tenant_id="destination", account_id="importer"
-            )
-        row = session.__enter__.return_value.add_all.call_args.args[0][0]
-        assert row.id == mapping["i_000001"]
-        assert row.tenant_id == "destination"
-        assert row.created_by == "importer"
-        assert row.mime_type == "image/png"
-        assert row.key.startswith("upload_files/destination/")
-        backend.save.assert_called_once_with(row.key, payload)
-
-    @staticmethod
-    def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_roster_export_embeds_agent_icon(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
         from models.agent_config_entities import AgentSoulConfig
         from models.model import App, AppMode
         from services.agent.dsl_entities import AgentPackage, AgentPackageMetadata, make_agent_app_dsl
@@ -832,7 +1314,7 @@ class TestPackageIconsCases:
                 }
             ),
         )
-        resources.collect_icon(session=Mock(), tenant_id="source", metadata=metadata)
+        resources.collect_icon(session=unbound_session, tenant_id="source", metadata=metadata)
         app = make_agent_app_dsl(
             App(name="Agent", mode=AppMode.AGENT),
             package_ref="agent_1",

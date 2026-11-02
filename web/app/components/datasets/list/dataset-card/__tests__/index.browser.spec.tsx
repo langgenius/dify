@@ -29,6 +29,7 @@ it('makes the whole card the entry while footer details and tags stay separate c
       <button type="button">Before dataset</button>
       <ul className="mt-4 grid w-80 p-4">
         <DatasetCard
+          onDelete={vi.fn()}
           dataset={createDatasetFixture({
             permission_keys: [DatasetACLPermission.Edit],
             document_count: 3,
@@ -64,3 +65,44 @@ it('makes the whole card the entry while footer details and tags stay separate c
     .element(screen.getByRole('dialog', { name: 'common.datasetMenus.documents' }))
     .toBeVisible()
 })
+
+it('returns focus after renaming is cancelled and resets the draft on reopening', async () => {
+  vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+  const { queryClient, wrapper: Providers } = createConsoleQueryWrapper({
+    accountProfile: { id: 'user-1' },
+    systemFeatures: { rbac_enabled: true },
+  })
+  queryClient.setQueryData(
+    consoleQuery.tags.get.queryOptions({ input: { query: { type: 'knowledge' } } }).queryKey,
+    [],
+  )
+  const screen = await render(
+    <Providers>
+      <ul className="grid w-80 p-4">
+        <DatasetCard
+          onDelete={vi.fn()}
+          dataset={createDatasetFixture({ permission_keys: [DatasetACLPermission.Edit] })}
+        />
+      </ul>
+    </Providers>,
+  )
+  const trigger = screen.getByRole('button', { name: 'common.operation.more' })
+  const open = async () => {
+    await screen.getByRole('link', { name: 'Test Dataset' }).hover()
+    await trigger.click()
+    await screen.getByRole('menuitem', { name: 'common.operation.edit', exact: true }).click()
+    await expect
+      .element(screen.getByRole('dialog', { name: 'datasetSettings.title' }))
+      .toBeVisible()
+  }
+  await open()
+  const name = screen.getByRole('textbox', { name: 'datasetSettings.form.name', exact: true })
+  await name.fill('Unsaved draft')
+  await userEvent.keyboard('{Escape}')
+  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  await expect.element(trigger).toHaveFocus()
+  await open()
+  await expect.element(name).toHaveValue('Test Dataset')
+})
+
+afterEach(() => vi.unstubAllGlobals())

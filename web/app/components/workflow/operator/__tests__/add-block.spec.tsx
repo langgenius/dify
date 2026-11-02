@@ -1,53 +1,10 @@
-import type { NodeDefault } from '../../types'
-import { screen, waitFor } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { CanvasNodesCatalogProbe } from '../../__tests__/canvas-nodes-catalog-probe'
 import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
-import { BlockClassification } from '../../block-selector/types'
 import { BlockEnum } from '../../types'
 import AddBlock from '../add-block'
-
-const { mockHandlePaneContextmenuCancel } = vi.hoisted(() => ({
-  mockHandlePaneContextmenuCancel: vi.fn(),
-}))
-
-let mockNodesReadOnly = false
-let chatflowMode = false
-
-const answerBlock: NodeDefault = {
-  metaData: {
-    classification: BlockClassification.Default,
-    sort: 0,
-    type: BlockEnum.Answer,
-    title: 'Answer',
-    author: 'Dify',
-    description: 'Answer description',
-  },
-  defaultValue: {
-    title: 'Answer',
-    desc: '',
-    type: BlockEnum.Answer,
-  },
-  checkValid: () => ({ isValid: true }),
-}
-
-vi.mock('../../hooks/use-available-blocks', () => ({
-  useAvailableBlocks: () => ({
-    availableNextBlocks: [BlockEnum.Answer],
-  }),
-}))
-
-vi.mock('../../hooks/use-nodes-meta-data', () => ({
-  useNodesMetaData: () => ({
-    nodesMap: { [BlockEnum.Answer]: answerBlock },
-  }),
-}))
-
-vi.mock('../../hooks/use-panel-interactions', () => ({
-  usePanelInteractions: () => ({
-    handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
-  }),
-}))
 
 vi.mock('@/service/use-plugins', () => ({
   useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
@@ -77,44 +34,38 @@ vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: () => ({ data: undefined }),
 }))
 
-const renderWithReactFlow = (nodes: Array<ReturnType<typeof createNode>> = []) =>
-  renderWorkflowFlowComponent(<AddBlock />, {
-    resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
-    nodes,
-    edges: [],
-    initialStoreState: { canvasReadOnly: mockNodesReadOnly },
-    hooksStoreProps: { availableNodesMetaData: { nodes: [answerBlock] } },
-  })
+const renderWithReactFlow = (nodes: Array<ReturnType<typeof createNode>> = [], readonly = false) =>
+  renderWorkflowFlowComponent(
+    <>
+      <CanvasNodesCatalogProbe />
+      <AddBlock />
+    </>,
+    {
+      resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
+      nodes,
+      edges: [],
+      initialStoreState: { canvasReadOnly: readonly, contextMenuTarget: { type: 'panel' } },
+    },
+  )
 
 describe('AddBlock', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockNodesReadOnly = false
-    chatflowMode = false
-  })
-
   it('opens the real selector and exposes its open state', async () => {
     const user = userEvent.setup()
     renderWithReactFlow()
 
     const trigger = screen.getByRole('button', { name: 'workflow.common.addBlock' })
-    expect(trigger).not.toHaveAttribute('data-block-selector-open')
-
-    await user.hover(trigger)
-    await waitFor(() => expect(trigger).toHaveAttribute('data-popup-open', ''))
-    expect(trigger).not.toHaveAttribute('data-block-selector-open')
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
 
     await user.click(trigger)
 
-    expect(trigger).toHaveAttribute('data-block-selector-open', '')
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('dialog', { name: 'workflow.common.addBlock' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Answer' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'workflow.blocks.answer' })).toBeInTheDocument()
   })
 
   it('keeps the disabled trigger focusable without opening the selector', async () => {
     const user = userEvent.setup()
-    mockNodesReadOnly = true
-    renderWithReactFlow()
+    renderWithReactFlow([], true)
 
     const trigger = screen.getByRole('button', { name: 'workflow.common.addBlock' })
     expect(trigger).toHaveAttribute('aria-disabled', 'true')
@@ -129,13 +80,16 @@ describe('AddBlock', () => {
 
   it('closes the selector through the real trigger and cancels the pane menu', async () => {
     const user = userEvent.setup()
-    renderWithReactFlow()
+    const { store } = renderWithReactFlow()
 
     const trigger = screen.getByRole('button', { name: 'workflow.common.addBlock' })
     await user.click(trigger)
     await user.click(trigger)
 
-    expect(mockHandlePaneContextmenuCancel).toHaveBeenCalledTimes(1)
+    expect(
+      screen.queryByRole('dialog', { name: 'workflow.common.addBlock' }),
+    ).not.toBeInTheDocument()
+    expect(store.getState().contextMenuTarget).toBeUndefined()
   })
 
   it('creates a candidate node after selecting a real block option', async () => {
@@ -146,7 +100,7 @@ describe('AddBlock', () => {
     ])
 
     await user.click(screen.getByRole('button', { name: 'workflow.common.addBlock' }))
-    await user.click(screen.getByRole('button', { name: 'Answer' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.blocks.answer' }))
 
     expect(store.getState()).toMatchObject({
       candidateNode: expect.objectContaining({

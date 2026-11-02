@@ -21,7 +21,7 @@ import { Toggle } from '@langgenius/dify-ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
+import EditAnnotationDialog from '@/app/components/app/annotation/edit-annotation-modal'
 import Log from '@/app/components/base/chat/chat/log'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import AnnotationCtrlButton from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button'
@@ -166,7 +166,6 @@ function Operation({
     showRegenerate,
     readonly,
   } = useChatContext()
-  const [isShowReplyModal, setIsShowReplyModal] = useState(false)
   // Submitting replaces the dialog trigger with the current rating button.
   const feedbackRef = useRef<HTMLButtonElement>(null)
   const feedbackActionsRef = useRef<DialogActions>(null)
@@ -292,8 +291,8 @@ function Operation({
       <div
         className={cn(
           'absolute flex justify-end gap-1',
-          hasWorkflowProcess && 'right-2 -bottom-4',
-          !positionRight && 'right-2 -bottom-4',
+          hasWorkflowProcess && 'inset-e-2 -bottom-4',
+          !positionRight && 'inset-e-2 -bottom-4',
           !hasWorkflowProcess && positionRight && 'top-2.25!',
         )}
         style={!hasWorkflowProcess && positionRight ? { left: contentWidth + 8 } : {}}
@@ -309,7 +308,7 @@ function Operation({
           {shouldShowUserFeedbackBar && !humanInputFormDataList?.length && (
             <div
               className={cn(
-                'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+                'ms-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
                 hasUserFeedback ? 'flex' : feedbackActionsClassName,
               )}
             >
@@ -368,7 +367,7 @@ function Operation({
           {shouldShowAdminFeedbackBar && !humanInputFormDataList?.length && (
             <div
               className={cn(
-                'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+                'ms-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
                 hasAdminFeedback || hasUserFeedback ? 'flex' : feedbackActionsClassName,
               )}
             >
@@ -474,7 +473,7 @@ function Operation({
         {!isOpeningStatement && (
           <div
             className={cn(
-              'ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
+              'ms-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs',
               answerActiveFlexClassName,
             )}
             data-testid="operation-actions"
@@ -492,37 +491,31 @@ function Operation({
                 <span aria-hidden="true" className="i-ri-reset-left-line size-4" />
               </IconButton>
             )}
-            {shouldShowAnnotationAction && (
-              <AnnotationCtrlButton
-                appId={config?.appId || ''}
-                messageId={id}
-                cached={!!annotation?.id}
-                query={question}
-                answer={content}
-                onAdded={(id, authorName) =>
-                  onAnnotationAdded?.(id, authorName, question, content, index)
-                }
-                onEdit={() => setIsShowReplyModal(true)}
-              />
-            )}
+            {shouldShowAnnotationAction &&
+              (annotation?.id ? (
+                <EditAnnotationDialog
+                  appId={config?.appId || ''}
+                  annotationId={annotation.id}
+                  question={question}
+                  answer={content}
+                  createdAt={annotation.created_at}
+                  onEdited={(question, answer) => onAnnotationEdited?.(question, answer, index)}
+                  onRemoved={() => onAnnotationRemoved?.(index)}
+                />
+              ) : (
+                <AnnotationCtrlButton
+                  appId={config?.appId || ''}
+                  messageId={id}
+                  query={question}
+                  answer={content}
+                  onAdded={(id, authorName) =>
+                    onAnnotationAdded?.(id, authorName, question, content, index)
+                  }
+                />
+              ))}
           </div>
         )}
       </div>
-      {canManageAnnotation && annotation?.id && isShowReplyModal && (
-        <EditReplyModal
-          isShow
-          onHide={() => setIsShowReplyModal(false)}
-          query={question}
-          answer={content}
-          onEdited={(editedQuery, editedAnswer) =>
-            onAnnotationEdited?.(editedQuery, editedAnswer, index)
-          }
-          appId={config?.appId || ''}
-          annotationId={annotation.id}
-          createdAt={annotation?.created_at}
-          onRemove={() => onAnnotationRemoved?.(index)}
-        />
-      )}
     </>
   )
 }

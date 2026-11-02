@@ -6,10 +6,18 @@ from collections.abc import Iterator
 import httpx
 import logfire
 import pytest
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from opentelemetry.trace import StatusCode
+from opentelemetry.trace import (
+    INVALID_SPAN,
+    NonRecordingSpan,
+    SpanContext,
+    StatusCode,
+    TraceFlags,
+    set_span_in_context,
+    use_span,
+)
 from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, TextPart, ToolCallPart, ToolReturnPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
@@ -186,3 +194,63 @@ async def test_uninstrumented_tool_failure_does_not_mark_an_unrelated_ambient_sp
         assert spans[0].status.status_code is not StatusCode.ERROR
     finally:
         provider.shutdown()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("ambient_parent", ["none", "otel-unsampled", "logfire-unsampled"])
+@pytest.mark.parametrize("outcome", ["success", "invocation", "timeout", "configuration"])
+async def test_uninstrumented_tool_preserves_observations_under_nonrecording_parents(
+    ambient_parent: str,
+    outcome: str,
+) -> None:
+    platform_client = None
+    parent = INVALID_SPAN
+    if ambient_parent != "none":
+        parent = NonRecordingSpan(SpanContext(trace_id=1, span_id=2, is_remote=True, trace_flags=TraceFlags(0)))
+    if ambient_parent == "logfire-unsampled":
+        platform_client = logfire.configure(
+            local=True,
+            send_to_logfire=False,
+            console=False,
+            metrics=False,
+            inspect_arguments=False,
+        )
+        parent = (
+            platform_client.config.get_tracer_provider()
+            .get_tracer("platform")
+            .start_span("Unsampled ambient", context=set_span_in_context(parent))
+        )
+        # Logfire advertises ReadableSpan while delegating to a non-recording
+        # OTel span that has no attributes property.
+        assert isinstance(parent, ReadableSpan)
+        assert isinstance(parent.span, NonRecordingSpan)
+    assert not parent.is_recording()
+    calls: list[str] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.path)
+        if outcome == "timeout":
+            raise httpx.ReadTimeout("private-transport-content", request=request)
+        if outcome == "success":
+            return httpx.Response(200, json={"observation": "successful observation"})
+        return httpx.Response(422, json={"code": "agent_tool_invoke_failed", "message": "handled failure"})
+
+    try:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
+            agent = Agent(FunctionModel(tool_model), deps_type=Deps, toolsets=[Toolset("core_tools")])
+            agent.instrument = False
+            with use_span(parent, end_on_exit=True):
+                result = await agent.run(
+                    "Call the tool", deps=dependencies(client, missing_context=outcome == "configuration")
+                )
+        expected = {
+            "success": "successful observation",
+            "invocation": "tool invoke error: handled failure",
+            "timeout": "Tool is temporarily unavailable. Please continue without it if possible.",
+            "configuration": "Tool is unavailable because required execution context is missing.",
+        }
+        assert result.output == f"Handled: {expected[outcome]}"
+        assert len(calls) == (0 if outcome == "configuration" else 1)
+    finally:
+        if platform_client is not None:
+            platform_client.shutdown()

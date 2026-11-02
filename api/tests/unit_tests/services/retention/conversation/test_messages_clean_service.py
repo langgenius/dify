@@ -11,7 +11,7 @@ import pytest
 from sqlalchemy import Engine, delete, func, select
 
 from core.db.session_factory import session_factory
-from enums import CloudPlan, DeploymentEdition
+from enums import DeploymentEdition
 from models import Tenant
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import (
@@ -32,6 +32,7 @@ from services.retention.conversation.messages_clean_policy import (
     create_message_clean_policy,
 )
 from services.retention.conversation.messages_clean_service import MessagesCleanService
+from tests.helpers import billing_builders as builders
 
 """SQLite-backed coverage for message retention cleanup."""
 
@@ -440,7 +441,7 @@ class TestMessagesCleanServiceCases:
                 make_simple_message("msg2", "app2"),
             ]
             app_to_tenant = {}  # No mapping
-            tenant_plans = {"tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1}}
+            tenant_plans = {"tenant1": builders.plan_item("sandbox", -1)}
             plan_provider = make_plan_provider(tenant_plans)
 
             policy = BillingSandboxPolicy(
@@ -488,9 +489,9 @@ class TestMessagesCleanServiceCases:
             ]
             app_to_tenant = {"app1": "tenant1", "app2": "tenant2", "app3": "tenant3"}
             tenant_plans = {
-                "tenant1": {"plan": CloudPlan.PROFESSIONAL, "expiration_date": -1},
-                "tenant2": {"plan": CloudPlan.TEAM, "expiration_date": -1},
-                "tenant3": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},  # Only this one
+                "tenant1": builders.plan_item("professional", -1),
+                "tenant2": builders.plan_item("team", -1),
+                "tenant3": builders.plan_item("sandbox", -1),  # Only this one
             }
             plan_provider = make_plan_provider(tenant_plans)
 
@@ -516,9 +517,9 @@ class TestMessagesCleanServiceCases:
             ]
             app_to_tenant = {"app1": "tenant1", "app2": "tenant2", "app3": "tenant3"}
             tenant_plans = {
-                "tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
-                "tenant2": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
-                "tenant3": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                "tenant1": builders.plan_item("sandbox", -1),
+                "tenant2": builders.plan_item("sandbox", -1),
+                "tenant3": builders.plan_item("sandbox", -1),
             }
             plan_provider = make_plan_provider(tenant_plans)
             tenant_whitelist = ["tenant1", "tenant3"]
@@ -545,8 +546,8 @@ class TestMessagesCleanServiceCases:
             ]
             app_to_tenant = {"app1": "tenant1", "app2": "tenant2"}
             tenant_plans = {
-                "tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
-                "tenant2": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                "tenant1": builders.plan_item("sandbox", -1),
+                "tenant2": builders.plan_item("sandbox", -1),
             }
             plan_provider = make_plan_provider(tenant_plans)
 
@@ -577,9 +578,9 @@ class TestMessagesCleanServiceCases:
             ]
             app_to_tenant = {"app1": "tenant1", "app2": "tenant2", "app3": "tenant3"}
             tenant_plans = {
-                "tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": expired_1_day_ago},
-                "tenant2": {"plan": CloudPlan.SANDBOX, "expiration_date": expired_5_days_ago},
-                "tenant3": {"plan": CloudPlan.SANDBOX, "expiration_date": expired_7_days_ago},
+                "tenant1": builders.plan_item("sandbox", expired_1_day_ago),
+                "tenant2": builders.plan_item("sandbox", expired_5_days_ago),
+                "tenant3": builders.plan_item("sandbox", expired_7_days_ago),
             }
             plan_provider = make_plan_provider(tenant_plans)
 
@@ -604,7 +605,7 @@ class TestMessagesCleanServiceCases:
             messages = [make_simple_message("msg1", "app1")]
             app_to_tenant = {"app1": "tenant1"}
             tenant_plans = {
-                "tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": expired_exactly_8_days_ago},
+                "tenant1": builders.plan_item("sandbox", expired_exactly_8_days_ago),
             }
             plan_provider = make_plan_provider(tenant_plans)
 
@@ -633,8 +634,8 @@ class TestMessagesCleanServiceCases:
             ]
             app_to_tenant = {"app1": "tenant1", "app2": "tenant2"}
             tenant_plans = {
-                "tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": expired_9_days_ago},
-                "tenant2": {"plan": CloudPlan.SANDBOX, "expiration_date": expired_30_days_ago},
+                "tenant1": builders.plan_item("sandbox", expired_9_days_ago),
+                "tenant2": builders.plan_item("sandbox", expired_30_days_ago),
             }
             plan_provider = make_plan_provider(tenant_plans)
 
@@ -655,7 +656,7 @@ class TestMessagesCleanServiceCases:
             # Arrange
             messages: list[SimpleMessage] = []
             app_to_tenant = {"app1": "tenant1"}
-            plan_provider = make_plan_provider({"tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1}})
+            plan_provider = make_plan_provider({"tenant1": builders.plan_item("sandbox", -1)})
 
             policy = BillingSandboxPolicy(
                 plan_provider=plan_provider,
@@ -721,11 +722,11 @@ class TestMessagesCleanServiceCases:
                 # app5 has no mapping
             }
             tenant_plans = {
-                "tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
-                "tenant2": {"plan": CloudPlan.SANDBOX, "expiration_date": sandbox_expired_old},
-                "tenant3": {"plan": CloudPlan.SANDBOX, "expiration_date": sandbox_expired_recent},
-                "tenant4": {"plan": CloudPlan.TEAM, "expiration_date": future_expiration},
-                "tenant7": {"plan": CloudPlan.SANDBOX, "expiration_date": sandbox_expired_old},
+                "tenant1": builders.plan_item("sandbox", -1),
+                "tenant2": builders.plan_item("sandbox", sandbox_expired_old),
+                "tenant3": builders.plan_item("sandbox", sandbox_expired_recent),
+                "tenant4": builders.plan_item("team", future_expiration),
+                "tenant7": builders.plan_item("sandbox", sandbox_expired_old),
                 # tenant6 has no plan
             }
             plan_provider = make_plan_provider(tenant_plans)

@@ -11,7 +11,7 @@ import httpx
 import logfire
 import pytest
 from opentelemetry import context as otel_context
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import NonRecordingSpan, SpanContext, TraceFlags, get_current_span, set_span_in_context
@@ -423,6 +423,50 @@ def test_isolated_tracer_remote_and_same_instance_parent_policy(method: str, sam
     finally:
         business_client.shutdown(timeout_millis=5000)
         platform_client.shutdown(timeout_millis=5000)
+
+
+@pytest.mark.parametrize("method", ["start_span", "start_as_current_span"])
+@pytest.mark.parametrize("preserve_external_parent", [True, False])
+def test_isolated_tracer_handles_logfire_wrapped_nonrecording_parent(
+    method: str, preserve_external_parent: bool
+) -> None:
+    exporter = InMemorySpanExporter()
+    client = _local_client(exporter)
+    remote = NonRecordingSpan(SpanContext(trace_id=0xABCD, span_id=0x1234, is_remote=True, trace_flags=TraceFlags(0)))
+    parent = (
+        client.config.get_tracer_provider()
+        .get_tracer("sampled-out")
+        .start_span("sampled-out-parent", context=set_span_in_context(remote))
+    )
+    token = otel_context.attach(set_span_in_context(parent))
+    try:
+        # Logfire's real wrapper is a ReadableSpan even when its underlying OTel
+        # span was not sampled and therefore has no SDK resource.
+        assert isinstance(parent, ReadableSpan)
+        assert isinstance(parent.span, NonRecordingSpan)
+        assert parent.get_span_context().is_valid
+        tracer = IsolatedTracerProvider(client, preserve_external_parent=preserve_external_parent).get_tracer("child")
+        if method == "start_span":
+            child = tracer.start_span("child")
+            child.end()
+        else:
+            with tracer.start_as_current_span("child") as child:
+                assert get_current_span().get_span_context() == child.get_span_context()
+        assert get_current_span() is parent
+        assert client.force_flush(timeout_millis=10000)
+
+        if preserve_external_parent:
+            assert child.get_span_context().trace_id == remote.get_span_context().trace_id
+            assert not child.get_span_context().trace_flags.sampled
+            assert not exporter.get_finished_spans()
+        else:
+            span = _spans_by_name(exporter, "child")[0]
+            assert span.parent is None
+            assert span.context.trace_id != remote.get_span_context().trace_id
+    finally:
+        otel_context.detach(token)
+        parent.end()
+        client.shutdown(timeout_millis=5000)
 
 
 def test_concurrent_agent_runs_have_independent_business_roots() -> None:

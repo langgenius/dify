@@ -23,7 +23,7 @@ import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, UserFrom
 from core.app.entities.queue_entities import AppQueueEvent, QueueWorkflowFailedEvent
 from core.workflow.workflow_entry import WorkflowEntry
 from graphon.engine_events import EngineEvent, GraphRunFailedEvent
@@ -102,6 +102,7 @@ def _persist_scope(
 def _build_app_generate_entity() -> RagPipelineGenerateEntity:
     app_config = PipelineConfig(app_id="pipe", workflow_id="wf", tenant_id="tenant", app_mode=AppMode.RAG_PIPELINE)
     return RagPipelineGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task",
         stream=True,
         app_config=app_config,

@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "Seçilen kişiler bu çalışma alanından kalıcı olarak kaldırılacak. Bu işlem geri alınamaz.",
+  "directory.removalTitle": "Kişiler kaldırılsın mı?",
+  "imPlatform.bindingDialog.clearSavedCredential": "Kayıtlı değeri temizle",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Kaydettiğinizde bu kayıtlı değer temizlenecek.",
+  "imPlatform.bindingDialog.replacementRequired": "Bu kimlik bilgileri farklı bir IM kiracısına aittir ve doğrudan kaydedilemez. Kiracı değiştirmek, mevcut IM kanalını yenisiyle değiştirmeyi gerektirir; bu işlem tüm otomatik ve manuel IM bağlamalarını siler. Değiştirme işleminden sonra kişileri yeniden eşitleyin.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Yapılandırma kaydedildi ancak ayrıntıları yüklenemedi. Bu iletişim kutusunu kapatıp yeniden açın.",
+  "imPlatform.bindingDialog.undoClearCredential": "Temizlemeyi geri al"
+}

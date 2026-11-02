@@ -6,7 +6,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
@@ -34,6 +34,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -136,6 +137,7 @@ def _build_generate_entity(
         workflow_id=workflow_id,
     )
     return WorkflowAppGenerateEntity(
+        user_from=UserFrom.ACCOUNT,
         task_id=str(uuid.uuid4()),
         app_config=app_config,
         inputs={},
@@ -202,13 +204,13 @@ class TestHumanInputResumeNodeExecutionIntegration:
         workflow = Workflow(
             tenant_id=tenant.id,
             app_id=app.id,
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="draft",
             graph='{"nodes": [], "edges": []}',
-            features='{"file_upload": {"enabled": false}}',
+            _features='{"file_upload": {"enabled": false}}',
             created_by=account.id,
-            created_at=naive_utc_now(),
         )
+        workflow.created_at = naive_utc_now()
         db_session_with_containers.add(workflow)
         db_session_with_containers.commit()
 

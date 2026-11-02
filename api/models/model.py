@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import contextlib
 import json
-import re
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import field
@@ -21,11 +20,10 @@ from sqlalchemy.orm import Mapped, Session, mapped_column, relationship, scoped_
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
-from core.tools.signature import sign_tool_file
 from extensions.storage.storage_type import StorageType
+from factories.file_url_factory import re_sign_file_urls
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
-from graphon.file import helpers as file_helpers
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.url_utils import normalize_api_base_url
 from libs.uuid_utils import uuidv7
@@ -1606,90 +1604,7 @@ class Message(TypeBase):
 
     @property
     def re_sign_file_url_answer(self) -> str:
-        if not self.answer:
-            return self.answer
-
-        # Match file URLs in three shapes the agent runtime may produce:
-        #   - Markdown link:        [text](https://.../files/tools/.../timestamp=&nonce=&sign=)
-        #   - Backticked link:      `https://.../files/tools/.../timestamp=&nonce=&sign=`
-        #   - Bare URL:             https://.../files/tools/.../timestamp=&nonce=&sign=
-        # The original implementation only matched the markdown form, so
-        # bare and backticked tool file URLs kept the long-lived
-        # INTERNAL_FILES_URL host and 5xx-ed at serve time. Refs #40788.
-        # The host prefix is optional so relative `/files/...` URLs that
-        # the agent returns without a host are also covered. The
-        # `(?=[)\s`]|$)` at the end of the bare-URL pattern (and the
-        # closing backtick / paren on the wrapped forms) stops the
-        # greedy `.*?=.*?` after `&sign=` from running off the end of
-        # the answer.
-        url_core = r"(?:https?:\/\/.+?)?\/files\/(tools\/)?[\w-]+.*?timestamp=[^)\s]*?&nonce=[^)\s]*?&sign=[^)\s]*?"
-        patterns = [
-            r"\[!?.*?\]\((" + url_core + r")\)",  # [text](url)
-            r"`(" + url_core + r")`",  # `url`
-            r"(?:^|\s|\()(" + url_core + r")(?:[\s)\].,;]|$)",  # bare url
-        ]
-        urls: set[str] = set()
-        for pattern in patterns:
-            urls.update(m.group(1) for m in re.finditer(pattern, self.answer))
-
-        if not urls:
-            return self.answer
-
-        re_sign_file_url_answer = self.answer
-        for url in urls:
-            if "files/tools" in url:
-                # get tool file id
-                tool_file_id_pattern = r"\/files\/tools\/([\.\w-]+)?\?timestamp="
-                result = re.search(tool_file_id_pattern, url)
-                if not result:
-                    continue
-
-                tool_file_id = result.group(1)
-
-                # get extension
-                if "." in tool_file_id:
-                    split_result = tool_file_id.split(".")
-                    extension = f".{split_result[-1]}"
-                    if len(extension) > 10:
-                        extension = ".bin"
-                    tool_file_id = split_result[0]
-                else:
-                    extension = ".bin"
-
-                if not tool_file_id:
-                    continue
-
-                sign_url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
-            elif "file-preview" in url:
-                # get upload file id
-                upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview\?timestamp="
-                result = re.search(upload_file_id_pattern, url)
-                if not result:
-                    continue
-
-                upload_file_id = result.group(1)
-                if not upload_file_id:
-                    continue
-                sign_url = file_helpers.get_signed_file_url(upload_file_id)
-            elif "image-preview" in url:
-                # image-preview is deprecated, use file-preview instead
-                upload_file_id_pattern = r"\/files\/([\w-]+)\/image-preview\?timestamp="
-                result = re.search(upload_file_id_pattern, url)
-                if not result:
-                    continue
-
-                upload_file_id = result.group(1)
-                if not upload_file_id:
-                    continue
-                sign_url = file_helpers.get_signed_file_url(upload_file_id)
-            else:
-                continue
-            # if as_attachment is in the url, add it to the sign_url.
-            if "as_attachment" in url:
-                sign_url += "&as_attachment=true"
-            re_sign_file_url_answer = re_sign_file_url_answer.replace(url, sign_url)
-
-        return re_sign_file_url_answer
+        return re_sign_file_urls(self.answer)
 
     def user_feedback_with_session(self, *, session: Session) -> MessageFeedback | None:
         return session.scalar(
@@ -1744,7 +1659,8 @@ class Message(TypeBase):
 
     @property
     def retriever_resources(self) -> Any:
-        return self.message_metadata_dict.get("retriever_resources") if self.message_metadata else []
+        resources = self.message_metadata_dict.get("retriever_resources", []) if self.message_metadata else []
+        return [] if resources is None else resources
 
     def message_files_with_session(self, *, session: Session) -> list[MessageFileInfo]:
         from factories import file_factory
@@ -1943,6 +1859,7 @@ class MessageFile(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="message_file_pkey"),
         sa.Index("message_file_message_idx", "message_id"),
+        sa.Index("message_file_upload_file_id_idx", "upload_file_id"),
         sa.Index("message_file_created_by_idx", "created_by"),
     )
 

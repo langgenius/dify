@@ -252,7 +252,7 @@ class AccountService:
 class InstallationStore(Protocol):
     def mark_setup(self) -> None: ...
 
-    def reset_setup(self) -> None: ...
+    def reset_setup(self, account_id: str | None) -> None: ...
 
 
 class InstallationTelemetry(Protocol):
@@ -274,6 +274,7 @@ class AccountSetupProvisioner:
         self._telemetry = telemetry
 
     def provision(self, setup: SetupInput) -> None:
+        account_id: str | None = None
         try:
             account = self._accounts.create_account(
                 email=setup.email,
@@ -284,9 +285,10 @@ class AccountSetupProvisioner:
                 is_setup=True,
                 initialized=True,
             )
+            account_id = account.id
             self._workspaces.create_owner_workspace(account.id, is_setup=True, if_missing=True)
             self._installation.mark_setup()
         except Exception as exc:
-            self._installation.reset_setup()
+            self._installation.reset_setup(account_id)
             raise ValueError(f"Setup failed: {exc}") from exc
         self._telemetry.report()

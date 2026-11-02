@@ -209,7 +209,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             queue_manager=queue_manager,
             conversation=conversation,
             message=message,
-            user=user,
             stream=streaming,
         )
         return AgentAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)

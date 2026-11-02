@@ -11,11 +11,13 @@ export type MainNavRouteConfig = {
   icon: string
   activeIcon: string
   visibility: MainNavRouteVisibility
-  feature?: 'agentV2' | 'marketplace'
+  feature?: 'agentV2' | 'contacts' | 'marketplace'
 } & ({ label: string; labelKey?: never } | { label?: never; labelKey: string })
 
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
+  canViewContacts: boolean
+  contactsEnabled: boolean
   canViewSkills: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   marketplaceEnabled: boolean
@@ -28,6 +30,7 @@ export type DetailSidebarVisibilityOptions = Pick<
 >
 
 const VISIBLE_TO_ALL: MainNavRouteVisibility = () => true
+const CAN_VIEW_CONTACTS: MainNavRouteVisibility = (options) => options.canViewContacts
 const SKILL_ENABLED_FOR_WORKSPACE: MainNavRouteVisibility = (options) =>
   options.skillEnabled && options.canViewSkills && !options.isCurrentWorkspaceDatasetOperator
 
@@ -77,6 +80,16 @@ export const MAIN_NAV_ROUTES = [
     visibility: VISIBLE_TO_ALL,
   },
   {
+    key: 'contacts',
+    href: '/contacts',
+    labelKey: 'directory.title',
+    active: (path: string) => isPathUnderRoute(path, '/contacts'),
+    icon: 'i-ri-contacts-book-2-line',
+    activeIcon: 'i-ri-contacts-book-2-fill',
+    visibility: CAN_VIEW_CONTACTS,
+    feature: 'contacts',
+  },
+  {
     key: 'skills',
     href: '/skills',
     labelKey: 'mainNav.skills',
@@ -117,6 +130,8 @@ export function isMainNavRouteVisible(
   if (route.feature === 'agentV2' && !options.agentV2Enabled) return false
 
   if (route.feature === 'marketplace' && !options.marketplaceEnabled) return false
+
+  if (route.feature === 'contacts' && !options.contactsEnabled) return false
 
   return route.visibility(options)
 }

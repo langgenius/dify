@@ -49,6 +49,7 @@
   "generation.tabs.saved": "ذخیره شده",
   "generation.title": "تکمیل هوش مصنوعی",
   "humanInput.completed": "به نظر می‌رسد این درخواست در جای دیگری پردازش شده است.",
+  "humanInput.currentAccount": "حساب فعلی: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "این اقدام {{relativeTime}} منقضی خواهد شد.",
   "humanInput.expired": "به نظر می‌رسد این درخواست منقضی شده است.",
   "humanInput.expiredTip": "این اقدام منقضی شده است.",
@@ -57,6 +58,9 @@
   "humanInput.recorded": "ورودی شما ثبت شد.",
   "humanInput.sorry": "متأسفیم!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "تغییر حساب",
   "humanInput.thanks": "متشکریم!",
+  "humanInput.unavailableDescription": "ممکن است پیوند در دسترس نباشد یا با حسابی که با آن وارد شده‌اید مطابقت نداشته باشد. فرم را از اعلان دریافتی باز کنید یا حساب را تغییر دهید.",
+  "humanInput.unavailableTitle": "امکان باز کردن این فرم وجود ندارد",
   "login.backToHome": "بازگشت به خانه"
 }

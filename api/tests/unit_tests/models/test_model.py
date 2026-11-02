@@ -20,7 +20,6 @@ from core.ops.entities.trace_entity import MessageTraceInfo
 from core.ops.ops_trace_manager import OpsTraceManager, TaskData
 from core.workflow.file_reference import build_file_reference
 from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod
-from models import model as model_module
 from models.account import Account, Tenant
 from models.base import Base, TypeBase
 from models.dataset import DatasetCollectionBinding
@@ -1255,6 +1254,83 @@ class TestAppModelsCases:
             # Assert
             assert result == {}
 
+        def test_retriever_resources_missing_key_returns_empty_list(self):
+            """message_metadata present without retriever_resources must yield [].
+
+            Regression for #41688: web GET /messages failed Pydantic list validation
+            when metadata existed but the key was absent (property returned None).
+            """
+            message = Message(
+                app_id=str(uuid4()),
+                conversation_id=str(uuid4()),
+                query="Test query",
+                message={"role": "user", "content": "Test"},
+                answer="Test answer",
+                message_unit_price=Decimal("0.0001"),
+                answer_unit_price=Decimal("0.0002"),
+                currency="USD",
+                from_source=ConversationFromSource.API,
+                message_metadata=json.dumps({"usage": {"tokens": 1}}),
+            )
+
+            assert message.retriever_resources == []
+
+        def test_retriever_resources_none_metadata_returns_empty_list(self):
+            """No message_metadata should still expose retriever_resources as []."""
+            message = Message(
+                app_id=str(uuid4()),
+                conversation_id=str(uuid4()),
+                query="Test query",
+                message={"role": "user", "content": "Test"},
+                answer="Test answer",
+                message_unit_price=Decimal("0.0001"),
+                answer_unit_price=Decimal("0.0002"),
+                currency="USD",
+                from_source=ConversationFromSource.API,
+                message_metadata=None,
+            )
+
+            assert message.retriever_resources == []
+
+        def test_retriever_resources_present_passthrough(self):
+            """Existing retriever_resources list should be returned unchanged."""
+            resources = [{"dataset_id": "ds-1", "document_id": "doc-1"}]
+            message = Message(
+                app_id=str(uuid4()),
+                conversation_id=str(uuid4()),
+                query="Test query",
+                message={"role": "user", "content": "Test"},
+                answer="Test answer",
+                message_unit_price=Decimal("0.0001"),
+                answer_unit_price=Decimal("0.0002"),
+                currency="USD",
+                from_source=ConversationFromSource.API,
+                message_metadata=json.dumps({"retriever_resources": resources}),
+            )
+
+            assert message.retriever_resources == resources
+
+        def test_retriever_resources_explicit_null_returns_empty_list(self):
+            """Explicit retriever_resources: null must yield [], not None.
+
+            WebMessageListItem.retriever_resources is list[RetrieverResource].
+            dict.get(..., []) does not replace an explicit JSON null.
+            """
+            message = Message(
+                app_id=str(uuid4()),
+                conversation_id=str(uuid4()),
+                query="Test query",
+                message={"role": "user", "content": "Test"},
+                answer="Test answer",
+                message_unit_price=Decimal("0.0001"),
+                answer_unit_price=Decimal("0.0002"),
+                currency="USD",
+                from_source=ConversationFromSource.API,
+                message_metadata=json.dumps({"retriever_resources": None}),
+            )
+
+            assert message.retriever_resources == []
+
         @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
         def test_message_to_dict_serialization(self, sqlite_session: Session):
             """Test message to_dict method."""
@@ -2183,8 +2259,7 @@ class TestModelCases:
         Patch file_helpers.get_signed_file_url to a deterministic stub.
         """
         monkeypatch.setattr(
-            model_module.file_helpers,
-            "get_signed_file_url",
+            "graphon.file.helpers.get_signed_file_url",
             lambda file_id: f"https://signed.example/{file_id}",
         )
 

@@ -201,7 +201,7 @@ it('keeps a quarter-hour field reachable and rounds Now down to its current inte
   vi.restoreAllMocks()
 })
 
-it('discards a draft when Tab leaves the nonmodal picker inside a modal dialog', async () => {
+it('traps focus in a nested picker and discards its draft without closing the parent dialog', async () => {
   const changed = vi.fn()
   const screen = await render(
     <Dialog defaultOpen>
@@ -225,7 +225,13 @@ it('discards a draft when Tab leaves the nonmodal picker inside a modal dialog',
   await userEvent.tab()
   await expect.element(screen.getByRole('button', { name: 'OK', exact: true })).toHaveFocus()
   await userEvent.tab()
-  await expect.element(screen.getByRole('button', { name: 'Save settings' })).toHaveFocus()
+  await expect
+    .element(screen.getByRole('listbox', { name: 'Hour' }).getByRole('option', { name: '2' }))
+    .toHaveFocus()
+  await userEvent.tab({ shift: true })
+  await expect.element(screen.getByRole('button', { name: 'OK', exact: true })).toHaveFocus()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(screen.getByRole('button', { name: 'Time 1:30 PM' })).toHaveFocus()
   await expect
     .element(screen.getByRole('dialog', { name: 'Time', exact: true }))
     .not.toBeInTheDocument()
@@ -233,6 +239,16 @@ it('discards a draft when Tab leaves the nonmodal picker inside a modal dialog',
     .element(screen.getByRole('dialog', { name: 'Settings', exact: true }))
     .toBeInTheDocument()
   expect(changed).not.toHaveBeenCalled()
+  await screen.getByRole('button', { name: 'Time 1:30 PM' }).click()
+  await expect
+    .element(screen.getByRole('listbox', { name: 'Hour' }).getByRole('option', { name: '1' }))
+    .toHaveFocus()
+  const closeButton = screen
+    .getByRole('button', { name: 'Close', exact: true })
+    .element() as HTMLButtonElement
+  closeButton.click()
+  await expect.element(screen.getByRole('button', { name: 'Time 1:30 PM' })).toHaveFocus()
+  await expect.element(screen.getByRole('dialog', { name: 'Settings', exact: true })).toBeVisible()
 })
 
 it('aligns pointer selections and immediately positions keyboard selections at the same top anchor', async () => {
@@ -272,14 +288,12 @@ it('preserves draft selection after focus leaves and does not select hovered opt
       <TimePicker defaultValue="13:30" onValueChange={changed}>
         <TimePickerLabel className="sr-only">Time</TimePickerLabel>
         <TimePickerTrigger />
-        <TimePickerContent />
+        <TimePickerContent dir="rtl" />
       </TimePicker>
     </DirectionProvider>,
   )
   await screen.getByRole('button', { name: 'Time 1:30 PM' }).click()
-  await expect
-    .element(screen.getByRole('dialog', { name: 'Time', exact: true }))
-    .toHaveAttribute('dir', 'rtl')
+  await expect.element(screen.getByRole('dialog', { name: 'Time', exact: true })).toBeVisible()
   const hours = screen.getByRole('listbox', { name: 'Hour' })
   const minutes = screen.getByRole('listbox', { name: 'Minute' })
   expect(hours.element().getBoundingClientRect().left).toBeGreaterThan(

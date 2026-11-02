@@ -1,6 +1,7 @@
 import json
 import sys
-from contextlib import contextmanager, nullcontext
+from collections.abc import Generator
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from types import ModuleType
 from unittest.mock import MagicMock, patch
 
@@ -28,12 +29,12 @@ def _application_tracing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @contextmanager
-def fake_app_context():
+def fake_app_context() -> Generator[None]:
     yield
 
 
 class FakeCurrentApp:
-    def app_context(self):
+    def app_context(self) -> AbstractContextManager[None]:
         return fake_app_context()
 
 
@@ -51,9 +52,9 @@ def _install_trace_manager(
             return trace_instance
 
     telemetry_module = ModuleType("extensions.ext_enterprise_telemetry")
-    telemetry_module.is_enabled = lambda: enterprise_enabled
+    telemetry_module.is_enabled = lambda: enterprise_enabled  # pyrefly: ignore[missing-attribute]
 
-    ops_trace_manager_module.OpsTraceManager = StubOpsTraceManager
+    ops_trace_manager_module.OpsTraceManager = StubOpsTraceManager  # pyrefly: ignore[missing-attribute]
     modules = {
         "core.ops.ops_trace_manager": ops_trace_manager_module,
         "extensions.ext_enterprise_telemetry": telemetry_module,
@@ -62,7 +63,7 @@ def _install_trace_manager(
         enterprise_module = ModuleType("enterprise")
         enterprise_telemetry_module = ModuleType("enterprise.telemetry")
         enterprise_trace_module = ModuleType("enterprise.telemetry.enterprise_trace")
-        enterprise_trace_module.EnterpriseOtelTrace = enterprise_trace_cls
+        enterprise_trace_module.EnterpriseOtelTrace = enterprise_trace_cls  # pyrefly: ignore[missing-attribute]
         modules.update(
             {
                 "enterprise": enterprise_module,
@@ -88,7 +89,7 @@ def _retryable_dispatch_error() -> RetryableTraceDispatchError:
 
 
 def _run_task(file_info: dict[str, str], retries: int = 0) -> None:
-    process_trace_tasks.push_request(retries=retries)
+    process_trace_tasks.push_request(retries=retries)  # pyrefly: ignore[unexpected-keyword, missing-argument]
     try:
         process_trace_tasks.run(file_info)
     finally:
@@ -138,7 +139,7 @@ def test_process_trace_tasks_retries_only_confirmed_retryable_dispatch_failures(
         mock_incr.assert_not_called()
 
 
-def test_process_trace_tasks_marks_enterprise_trace_dispatched_before_retryable_dispatch_retry():
+def test_process_trace_tasks_marks_enterprise_trace_dispatched_before_retryable_dispatch_retry() -> None:
     file_info = {"app_id": "app-id", "file_id": "file-id"}
     trace_instance = MagicMock()
     pending_error = _retryable_dispatch_error()
@@ -178,7 +179,7 @@ def test_process_trace_tasks_marks_enterprise_trace_dispatched_before_retryable_
     mock_incr.assert_not_called()
 
 
-def test_process_trace_tasks_does_not_mark_failed_enterprise_trace_as_dispatched_before_retry():
+def test_process_trace_tasks_does_not_mark_failed_enterprise_trace_as_dispatched_before_retry() -> None:
     file_info = {"app_id": "app-id", "file_id": "file-id"}
     trace_instance = MagicMock()
     pending_error = _retryable_dispatch_error()
@@ -217,7 +218,7 @@ def test_process_trace_tasks_does_not_mark_failed_enterprise_trace_as_dispatched
     mock_incr.assert_not_called()
 
 
-def test_process_trace_tasks_skips_enterprise_trace_when_retry_payload_was_already_dispatched():
+def test_process_trace_tasks_skips_enterprise_trace_when_retry_payload_was_already_dispatched() -> None:
     file_info = {"app_id": "app-id", "file_id": "file-id"}
     trace_instance = MagicMock()
     enterprise_trace_cls = MagicMock()
@@ -247,14 +248,13 @@ def test_process_trace_tasks_skips_enterprise_trace_when_retry_payload_was_alrea
     mock_incr.assert_not_called()
 
 
-def test_process_trace_tasks_default_retry_window_covers_workflow_and_export_grace_period():
-    assert (
-        process_trace_tasks.max_retries * process_trace_tasks.default_retry_delay
-        >= dify_config.WORKFLOW_MAX_EXECUTION_TIME + 300
-    )
+def test_process_trace_tasks_default_retry_window_covers_workflow_and_export_grace_period() -> None:
+    max_retries = process_trace_tasks.max_retries
+    assert max_retries is not None
+    assert max_retries * process_trace_tasks.default_retry_delay >= dify_config.WORKFLOW_MAX_EXECUTION_TIME + 300
 
 
-def test_process_trace_tasks_deletes_payload_on_success():
+def test_process_trace_tasks_deletes_payload_on_success() -> None:
     file_info = {"app_id": "app-id", "file_id": "file-id"}
     trace_instance = MagicMock()
 
@@ -272,7 +272,7 @@ def test_process_trace_tasks_deletes_payload_on_success():
     mock_incr.assert_not_called()
 
 
-def test_process_trace_tasks_deletes_payload_and_counts_terminal_failure():
+def test_process_trace_tasks_deletes_payload_and_counts_terminal_failure() -> None:
     file_info = {"app_id": "app-id", "file_id": "file-id"}
     trace_instance = MagicMock()
     trace_instance.trace.side_effect = RuntimeError("trace failed")
@@ -290,7 +290,7 @@ def test_process_trace_tasks_deletes_payload_and_counts_terminal_failure():
     mock_incr.assert_called_once_with(f"{OPS_TRACE_FAILED_KEY}_app-id")
 
 
-def test_process_trace_tasks_treats_retry_enqueue_failure_as_terminal_failure():
+def test_process_trace_tasks_treats_retry_enqueue_failure_as_terminal_failure() -> None:
     file_info = {"app_id": "app-id", "file_id": "file-id"}
     trace_instance = MagicMock()
     pending_error = _retryable_dispatch_error()
@@ -315,7 +315,7 @@ def test_process_trace_tasks_treats_retry_enqueue_failure_as_terminal_failure():
     mock_incr.assert_called_once_with(f"{OPS_TRACE_FAILED_KEY}_app-id")
 
 
-def test_process_trace_tasks_deletes_payload_and_counts_exhausted_retryable_dispatch_failure():
+def test_process_trace_tasks_deletes_payload_and_counts_exhausted_retryable_dispatch_failure() -> None:
     file_info = {"app_id": "app-id", "file_id": "file-id"}
     trace_instance = MagicMock()
     pending_error = _retryable_dispatch_error()
@@ -329,14 +329,18 @@ def test_process_trace_tasks_deletes_payload_and_counts_exhausted_retryable_disp
         patch("tasks.ops_trace_task.redis_client.incr") as mock_incr,
         patch.object(process_trace_tasks, "retry") as mock_retry,
     ):
-        _run_task(file_info, retries=process_trace_tasks.max_retries)
+        max_retries = process_trace_tasks.max_retries
+        assert max_retries is not None
+        _run_task(file_info, retries=max_retries)
 
     mock_retry.assert_not_called()
     mock_delete.assert_called_once_with("ops_trace/app-id/file-id.json")
     mock_incr.assert_called_once_with(f"{OPS_TRACE_FAILED_KEY}_app-id")
 
 
-def test_managed_application_capture_receives_restored_info_and_preserves_enterprise(monkeypatch: pytest.MonkeyPatch):
+def test_managed_application_capture_receives_restored_info_and_preserves_enterprise(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from core.ops.entities.trace_entity import MessageTraceInfo
 
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
@@ -394,7 +398,7 @@ def test_managed_application_capture_receives_restored_info_and_preserves_enterp
 @pytest.mark.parametrize("enabled", [False, True])
 def test_nonmanaged_task_uses_legacy_and_disabled_gate_never_calls_collector(
     monkeypatch: pytest.MonkeyPatch, enabled: bool
-):
+) -> None:
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=enabled)
     legacy_calls: list[object] = []
 
@@ -426,7 +430,7 @@ def test_nonmanaged_task_uses_legacy_and_disabled_gate_never_calls_collector(
     lookup.assert_called_once_with("app-id")
 
 
-def test_capture_persistence_failure_preserves_payload_without_legacy_export(monkeypatch: pytest.MonkeyPatch):
+def test_capture_persistence_failure_preserves_payload_without_legacy_export(monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
     pending_error = RetryableTraceDispatchError("database busy")
     calls: list[BaseTraceInfo] = []

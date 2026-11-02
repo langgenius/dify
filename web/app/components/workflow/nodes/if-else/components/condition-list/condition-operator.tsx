@@ -3,12 +3,12 @@ import type { VarType } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -48,8 +48,8 @@ const ConditionOperator = ({
     Array.isArray(value) ? o.value === value[0] : o.value === value,
   )
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <Button
             className={cn('shrink-0', !selectedOption && 'opacity-50', className)}
@@ -63,22 +63,22 @@ const ConditionOperator = ({
           ? selectedOption.label
           : t(($) => $[`${i18nPrefix}.select`], { ns: 'workflowLogic' })}
         <RiArrowDownSLine className="size-3.5" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1">
-        <DropdownMenuRadioGroup value={selectedOption?.value} onValueChange={onSelect}>
+      </MenuTrigger>
+      <MenuContent className="rounded-xl border-[0.5px] bg-components-panel-bg-blur">
+        <MenuRadioGroup value={selectedOption?.value} onValueChange={onSelect}>
           {options.map((option) => (
-            <DropdownMenuRadioItem
+            <MenuRadioItem
               key={option.value}
               value={option.value}
               closeOnClick
               className="h-7 rounded-lg px-3 py-1.5 text-[13px] font-medium text-text-secondary"
             >
               {option.label}
-            </DropdownMenuRadioItem>
+            </MenuRadioItem>
           ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
   )
 }
 

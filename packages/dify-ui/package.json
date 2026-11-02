@@ -25,6 +25,10 @@
       "types": "./src/merge-props.ts",
       "import": "./src/merge-props.ts"
     },
+    "./alert": {
+      "types": "./src/alert/index.tsx",
+      "import": "./src/alert/index.tsx"
+    },
     "./alert-dialog": {
       "types": "./src/alert-dialog/index.tsx",
       "import": "./src/alert-dialog/index.tsx"
@@ -89,9 +93,9 @@
       "types": "./src/drawer/index.tsx",
       "import": "./src/drawer/index.tsx"
     },
-    "./dropdown-menu": {
-      "types": "./src/dropdown-menu/index.tsx",
-      "import": "./src/dropdown-menu/index.tsx"
+    "./menu": {
+      "types": "./src/menu/index.tsx",
+      "import": "./src/menu/index.tsx"
     },
     "./field": {
       "types": "./src/field/index.tsx",

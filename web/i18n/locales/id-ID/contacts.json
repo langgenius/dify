@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "Kontak yang dipilih akan dihapus secara permanen dari ruang kerja ini. Tindakan ini tidak dapat dibatalkan.",
+  "directory.removalTitle": "Hapus kontak?",
+  "imPlatform.bindingDialog.clearSavedCredential": "Hapus nilai tersimpan",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Nilai tersimpan ini akan dihapus saat Anda menyimpan.",
+  "imPlatform.bindingDialog.replacementRequired": "Kredensial ini milik tenant IM lain dan tidak dapat disimpan langsung. Untuk beralih tenant, Anda harus mengganti kanal IM saat ini, yang akan menghapus semua pengikatan IM otomatis dan manual. Sinkronkan ulang kontak setelah penggantian.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Konfigurasi telah disimpan, tetapi detailnya tidak dapat dimuat. Tutup dialog ini lalu buka kembali.",
+  "imPlatform.bindingDialog.undoClearCredential": "Urungkan penghapusan"
+}

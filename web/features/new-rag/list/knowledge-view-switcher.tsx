@@ -90,10 +90,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
             </PopoverDescription>
             <div className="mt-auto flex flex-wrap items-center justify-end gap-3 pt-3">
               <a
-                href={docLink(
-                  // @ts-expect-error Cloud-only page not yet in the generated doc paths.
-                  '/cloud/use-dify/knowledge-base/overview',
-                )}
+                href={docLink('/cloud/use-dify/knowledge-base/overview')}
                 target="_blank"
                 rel="noreferrer"
                 className="rounded-sm system-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"

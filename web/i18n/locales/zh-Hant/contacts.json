@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "所選聯絡人將從此工作區永久移除，此操作無法復原。",
+  "directory.removalTitle": "移除聯絡人？",
+  "imPlatform.bindingDialog.clearSavedCredential": "清除已儲存的值",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "儲存時將清除此已儲存的值。",
+  "imPlatform.bindingDialog.replacementRequired": "此憑證屬於另一個 IM 租用戶，無法直接儲存。切換租用戶需要取代目前的 IM 頻道，這會清除所有自動和手動 IM 綁定；取代後請重新同步聯絡人。",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "設定已儲存，但無法載入詳細資料。請關閉此對話方塊後重新開啟。",
+  "imPlatform.bindingDialog.undoClearCredential": "復原清除"
+}

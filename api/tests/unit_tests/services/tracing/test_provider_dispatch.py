@@ -22,6 +22,7 @@ import requests
 import wandb
 import weave
 from aliyun.log.logclient import LogClient
+from aliyun.log.util import Util
 from dify_trace_aliyun.aliyun_trace import AliyunDataTrace
 from dify_trace_aliyun.config import AliyunConfig
 from dify_trace_aliyun.data_exporter.traceclient import TraceClient, convert_to_span_id
@@ -215,6 +216,8 @@ class TestApplicationTraceNodeAliasCases:
             monkeypatch.setattr(
                 AliyunLogStore, "_check_endpoint_connectivity", staticmethod(lambda _endpoint, _timeout: None)
             )
+            # The SDK constructor probes the endpoint through a socket before any HTTP request.
+            monkeypatch.setattr(Util, "get_host_ip", staticmethod(lambda _host: "127.0.0.1"))
 
             def reject_http_transport(*_args: object, **_kwargs: object) -> None:
                 pytest.fail("Configured LogStore test escaped its isolated transport boundary")
@@ -740,10 +743,10 @@ class TestLegacyAliyunTransportCases:
             total_tokens=32,
             created_by=account.id,
             created_by_role=CreatorUserRole.ACCOUNT,
-            created_at=_LEGACY_ALIYUN_TRANSPORT_START,
             finished_at=_LEGACY_ALIYUN_TRANSPORT_START + timedelta(seconds=1),
             elapsed_time=1,
         )
+        run.created_at = _LEGACY_ALIYUN_TRANSPORT_START
         sqlite_session.add_all([tenant, account, app, membership, run])
         nodes = [
             WorkflowNodeExecutionModel(
@@ -764,7 +767,6 @@ class TestLegacyAliyunTransportCases:
                 outputs=json.dumps(
                     {"text": "ok", "usage": {"prompt_tokens": 21, "completion_tokens": 11, "total_tokens": 32}}
                 ),
-                created_at=_LEGACY_ALIYUN_TRANSPORT_START + timedelta(milliseconds=i),
                 finished_at=_LEGACY_ALIYUN_TRANSPORT_START + timedelta(milliseconds=i + 100),
                 elapsed_time=0.1,
                 process_data=json.dumps(
@@ -781,6 +783,8 @@ class TestLegacyAliyunTransportCases:
                 [("Start", BuiltinNodeTypes.START), ("LLM", BuiltinNodeTypes.LLM), ("End", BuiltinNodeTypes.END)]
             )
         ]
+        for node_index, node_record in enumerate(nodes):
+            node_record.created_at = _LEGACY_ALIYUN_TRANSPORT_START + timedelta(milliseconds=node_index)
         sqlite_session.add_all(nodes)
         sqlite_session.commit()
         info = WorkflowTraceInfo(
@@ -1131,7 +1135,6 @@ class TestLegacyWeaveTransportCases:
                 created_by_role=CreatorUserRole.ACCOUNT,
                 inputs=json.dumps({"synthetic": True}),
                 outputs=json.dumps({"answer": "ok"}),
-                created_at=_LEGACY_WEAVE_TRANSPORT_START + timedelta(milliseconds=i),
                 finished_at=_LEGACY_WEAVE_TRANSPORT_START + timedelta(milliseconds=i + 100),
                 elapsed_time=0.1,
                 process_data=json.dumps(
@@ -1152,6 +1155,8 @@ class TestLegacyWeaveTransportCases:
                 [("Start", BuiltinNodeTypes.START), ("LLM", BuiltinNodeTypes.LLM), ("End", BuiltinNodeTypes.END)]
             )
         ]
+        for node_index, node_record in enumerate(nodes):
+            node_record.created_at = _LEGACY_WEAVE_TRANSPORT_START + timedelta(milliseconds=node_index)
         sqlite_session.add_all(nodes)
         sqlite_session.commit()
         adapter = WeaveDataTrace(_legacy_weave_transport_config())

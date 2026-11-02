@@ -49,6 +49,7 @@
   "generation.tabs.saved": "Salvato",
   "generation.title": "Completamento AI",
   "humanInput.completed": "Sembra che questa richiesta sia stata gestita altrove.",
+  "humanInput.currentAccount": "Account attuale: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "Questa azione scadrà {{relativeTime}}.",
   "humanInput.expired": "Sembra che questa richiesta sia scaduta.",
   "humanInput.expiredTip": "Questa azione è scaduta.",
@@ -57,6 +58,9 @@
   "humanInput.recorded": "Il tuo input è stato registrato.",
   "humanInput.sorry": "Spiacente!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "Cambia account",
   "humanInput.thanks": "Grazie!",
+  "humanInput.unavailableDescription": "Il link potrebbe non essere disponibile o non corrispondere all’account con cui hai effettuato l’accesso. Apri il modulo dalla notifica che hai ricevuto oppure prova a cambiare account.",
+  "humanInput.unavailableTitle": "Impossibile aprire questo modulo",
   "login.backToHome": "Torna alla home"
 }

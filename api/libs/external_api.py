@@ -1,3 +1,4 @@
+import json
 import pkgutil
 import re
 from collections.abc import Callable, Iterable, Mapping
@@ -285,10 +286,12 @@ def _explicit_json_schema(response: Mapping[str, Any]) -> object | None:
 
 
 def _comparable_schema(schema: object) -> object:
-    """``schema`` with order-insensitive parts (``required``) normalized, for equality checks."""
+    """``schema`` with order-insensitive parts (``required``, ``enum``) normalized for equality checks."""
     if isinstance(schema, dict):
         return {
-            key: sorted(value) if key == "required" and isinstance(value, list) else _comparable_schema(value)
+            key: sorted(value, key=lambda item: json.dumps(item, sort_keys=True))
+            if key in {"required", "enum"} and isinstance(value, list)
+            else _comparable_schema(value)
             for key, value in schema.items()
         }
     if isinstance(schema, list):

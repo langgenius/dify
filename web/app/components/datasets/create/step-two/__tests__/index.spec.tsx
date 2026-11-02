@@ -433,7 +433,7 @@ it.each([
       }),
     )
     expect(screen.getByRole('button', { name: nextName })).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+    expect(screen.getByText('common.loading').closest('[role="status"]')).toBeInTheDocument()
     expect(screen.queryByText('Previewed chunk')).not.toBeInTheDocument()
     await act(async () =>
       pending.resolve({

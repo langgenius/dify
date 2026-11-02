@@ -32,7 +32,6 @@
   "createNewExternalAPI": "Tạo API Kiến thức Bên ngoài mới",
   "creatorFilter.creators": "Người tạo",
   "creatorFilter.maxCreators": "Số người tạo tối đa",
-  "datasetDeleted": "Bộ kiến thức đã được xóa",
   "datasetUsedByApp": "Bộ kiến thức này đang được sử dụng bởi một số ứng dụng. Các ứng dụng sẽ không thể sử dụng bộ kiến thức này nữa, và tất cả cấu hình lời nhắc cùng nhật ký sẽ bị xóa vĩnh viễn.",
   "defaultRetrievalTip": "Truy xuất nhiều đường dẫn được sử dụng theo mặc định. Kiến thức được lấy từ nhiều cơ sở kiến thức và sau đó được xếp hạng lại.",
   "deleteDatasetConfirmContent": "Việc xóa bộ kiến thức là không thể hoàn tác. Người dùng sẽ không còn truy cập được vào bộ kiến thức của bạn, và tất cả cấu hình cùng nhật ký lời nhắc sẽ bị xóa vĩnh viễn.",

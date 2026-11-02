@@ -30,7 +30,6 @@ import ErrorBoundary from '@/app/components/base/error-boundary'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
-import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -120,27 +119,12 @@ function DetailPanel({ appDetail, detail, onFeedback, initialMessages }: IDetail
     [allChatItems, threadChatItems],
   )
   const handleAnnotationRemoved = useCallback(
-    async (index: number): Promise<boolean> => {
+    (index: number) => {
       const itemIndex = getAllChatItemIndex(allChatItems, threadChatItems, index)
-      const annotation = allChatItems[itemIndex]?.annotation
-
-      try {
-        if (!annotation?.id) throw new Error('Annotation not found')
-
-        await consoleClient.apps.byAppId.annotations.byAnnotationId.delete({
-          params: { app_id: appDetail.id, annotation_id: annotation.id },
-        })
-
-        setAllChatItems(applyAnnotationRemoved(allChatItems, itemIndex))
-
-        toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-        return true
-      } catch {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-        return false
-      }
+      if (itemIndex < 0) return
+      setAllChatItems(applyAnnotationRemoved(allChatItems, itemIndex))
     },
-    [allChatItems, appDetail.id, t, threadChatItems],
+    [allChatItems, threadChatItems],
   )
 
   const [isLoading, setIsLoading] = useState(false)
@@ -432,7 +416,7 @@ export function ConversationDetail({ appDetail, conversationId }: ConversationDe
 
   return (
     <div className="flex min-h-0 flex-1 flex-col rounded-xl border-[0.5px] border-components-panel-border">
-      <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pt-3 pr-3 pb-2 pl-4">
+      <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg ps-4 pe-3 pt-3 pb-2">
         <div className="min-w-0">
           <DialogTitle className="sr-only">
             {isChatMode

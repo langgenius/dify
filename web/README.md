@@ -6,7 +6,7 @@ This is a [Next.js] application with [vinext] as the default local development s
 
 ### Run by source code
 
-The required Node.js and pnpm versions are pinned by the repository root `devEngines.runtime` and `packageManager` fields. [Vite+] is also available for repository checks and tests; use its official documentation as the installation reference.
+The required Node.js range is declared by the repository root `engines.node` field (enforced via `engineStrict`), and the pnpm version is pinned by `packageManager`. [Vite+] is also available for repository checks and tests; use its official documentation as the installation reference.
 
 - [Node.js]
 - [pnpm]

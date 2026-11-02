@@ -7,8 +7,7 @@ from typing import Any, Literal, overload
 
 from flask import Flask, copy_current_request_context, current_app
 from pydantic import ValidationError
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
@@ -21,16 +20,15 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
+from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_trace_session_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from models import Account, App, AppModelConfig, Conversation, EndUser, Message
+from models import Account, App, Conversation, EndUser, Message
 from models.model import load_annotation_reply_config
-from services.errors.app import MoreLikeThisDisabledError
-from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
 
@@ -184,44 +182,64 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 session=session,
             )
 
-            # init queue manager
-            queue_manager = MessageBasedAppQueueManager(
-                task_id=application_generate_entity.task_id,
-                user_id=application_generate_entity.user_id,
-                invoke_from=application_generate_entity.invoke_from,
-                conversation_id=conversation.id,
-                app_mode=conversation.mode,
+            response = self._start_generation(application_generate_entity, conversation, message)
+            return CompletionAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+
+    def generate_from_entity(
+        self,
+        application_generate_entity: CompletionAppGenerateEntity,
+        *,
+        session_factory: sessionmaker[Session],
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
+        """Persist prepared completion records before starting provider work.
+
+        Preparation owns configuration, inputs and files. This path preserves
+        those values and closes its write session before starting the worker or
+        waiting for a blocking response.
+        """
+        with session_factory(expire_on_commit=False) as session:
+            conversation, message = self._init_generate_records(application_generate_entity, session=session)
+        response = self._start_generation(application_generate_entity, conversation, message)
+        return CompletionAppGenerateResponseConverter.convert(
+            response=response, invoke_from=application_generate_entity.invoke_from
+        )
+
+    def _start_generation(
+        self,
+        application_generate_entity: CompletionAppGenerateEntity,
+        conversation: Conversation,
+        message: Message,
+    ) -> AppBlockingResponse | Generator[AppStreamResponse]:
+        queue_manager = MessageBasedAppQueueManager(
+            task_id=application_generate_entity.task_id,
+            user_id=application_generate_entity.user_id,
+            invoke_from=application_generate_entity.invoke_from,
+            conversation_id=conversation.id,
+            app_mode=conversation.mode,
+            message_id=message.id,
+        )
+        context = contextvars.copy_context()
+
+        @copy_current_request_context
+        def worker_with_context() -> None:
+            context.run(
+                self._generate_worker,
+                flask_app=current_app._get_current_object(),  # type: ignore
+                application_generate_entity=application_generate_entity,
+                queue_manager=queue_manager,
                 message_id=message.id,
             )
 
-            context = contextvars.copy_context()
+        worker_thread = threading.Thread(target=worker_with_context)
+        worker_thread.start()
 
-            # new thread with request context
-            @copy_current_request_context
-            def worker_with_context():
-                return context.run(
-                    self._generate_worker,
-                    flask_app=current_app._get_current_object(),  # type: ignore
-                    application_generate_entity=application_generate_entity,
-                    queue_manager=queue_manager,
-                    message_id=message.id,
-                )
-
-            worker_thread = threading.Thread(target=worker_with_context)
-
-            worker_thread.start()
-
-            # return response or stream generator
-            response = self._handle_response(
-                application_generate_entity=application_generate_entity,
-                queue_manager=queue_manager,
-                conversation=conversation,
-                message=message,
-                user=user,
-                stream=streaming,
-            )
-
-            return CompletionAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+        return self._handle_response(
+            application_generate_entity=application_generate_entity,
+            queue_manager=queue_manager,
+            conversation=conversation,
+            message=message,
+            stream=application_generate_entity.stream,
+        )
 
     def _generate_worker(
         self,
@@ -229,7 +247,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         application_generate_entity: CompletionAppGenerateEntity,
         queue_manager: AppQueueManager,
         message_id: str,
-    ):
+    ) -> None:
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
@@ -270,142 +288,3 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
                 db.session.close()
-
-    def generate_more_like_this(
-        self,
-        app_model: App,
-        message_id: str,
-        user: Account | EndUser,
-        invoke_from: InvokeFrom,
-        stream: bool = True,
-        *,
-        session: Session,
-    ) -> Mapping | Generator[Mapping | str]:
-        """
-        Generate App response.
-
-        :param session: caller-owned database session used for message and historical model-config reads
-        :param app_model: App
-        :param message_id: message ID
-        :param user: account or end user
-        :param invoke_from: invoke from source
-        :param stream: is stream
-        """
-        stmt = select(Message).where(
-            Message.id == message_id,
-            Message.app_id == app_model.id,
-            Message.from_source == ("api" if isinstance(user, EndUser) else "console"),
-            Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-            Message.from_account_id == (user.id if isinstance(user, Account) else None),
-        )
-        message = session.scalar(stmt)
-
-        if not message:
-            raise MessageNotExistsError()
-
-        current_app_model_config = (
-            session.get(AppModelConfig, app_model.app_model_config_id) if app_model.app_model_config_id else None
-        )
-        if not current_app_model_config:
-            raise MoreLikeThisDisabledError()
-
-        more_like_this = current_app_model_config.more_like_this_dict
-
-        if not current_app_model_config.more_like_this or more_like_this.get("enabled", False) is False:
-            raise MoreLikeThisDisabledError()
-
-        conversation = session.get(Conversation, message.conversation_id) if message.conversation_id else None
-        app_model_config = (
-            session.get(AppModelConfig, conversation.app_model_config_id)
-            if conversation and conversation.app_model_config_id
-            else None
-        )
-        if not app_model_config:
-            raise ValueError("Message app_model_config is None")
-        annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
-        override_model_config_dict = app_model_config.to_dict(annotation_reply=annotation_reply)
-        model_dict = override_model_config_dict["model"]
-        completion_params = model_dict.get("completion_params", {})
-        completion_params["temperature"] = 0.9
-        model_dict["completion_params"] = completion_params
-        override_model_config_dict["model"] = model_dict
-
-        with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
-            # parse files
-            file_extra_config = FileUploadConfigManager.convert(override_model_config_dict)
-            if file_extra_config:
-                file_objs = file_factory.build_from_mappings(
-                    mappings=message.message_files_with_session(session=session),
-                    tenant_id=app_model.tenant_id,
-                    config=file_extra_config,
-                    access_controller=self._file_access_controller,
-                )
-            else:
-                file_objs = []
-
-            # convert to app config
-            app_config = CompletionAppConfigManager.get_app_config(
-                app_model=app_model,
-                app_model_config=app_model_config,
-                override_config_dict=override_model_config_dict,
-                annotation_reply=annotation_reply,
-            )
-
-            # init application generate entity
-            application_generate_entity = CompletionAppGenerateEntity(
-                task_id=str(uuid.uuid4()),
-                app_config=app_config,
-                model_conf=ModelConfigConverter.convert(app_config),
-                inputs=message.inputs_with_session(session=session),
-                query=message.query,
-                files=list(file_objs),
-                user_id=user.id,
-                stream=stream,
-                invoke_from=invoke_from,
-                extras={},
-            )
-
-            # init generate records
-            (conversation, message) = self._init_generate_records(
-                application_generate_entity,
-                session=session,
-            )
-
-            # init queue manager
-            queue_manager = MessageBasedAppQueueManager(
-                task_id=application_generate_entity.task_id,
-                user_id=application_generate_entity.user_id,
-                invoke_from=application_generate_entity.invoke_from,
-                conversation_id=conversation.id,
-                app_mode=conversation.mode,
-                message_id=message.id,
-            )
-
-            context = contextvars.copy_context()
-
-            # new thread with request context
-            @copy_current_request_context
-            def worker_with_context():
-                return context.run(
-                    self._generate_worker,
-                    flask_app=current_app._get_current_object(),  # type: ignore
-                    application_generate_entity=application_generate_entity,
-                    queue_manager=queue_manager,
-                    message_id=message.id,
-                )
-
-            worker_thread = threading.Thread(target=worker_with_context)
-
-            worker_thread.start()
-
-            # return response or stream generator
-            response = self._handle_response(
-                application_generate_entity=application_generate_entity,
-                queue_manager=queue_manager,
-                conversation=conversation,
-                message=message,
-                user=user,
-                stream=stream,
-            )
-
-            return CompletionAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)

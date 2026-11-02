@@ -138,6 +138,7 @@ function setup({ datasetOperator = false, enableSkill = true, canInstall = true 
     accountProfileMeta: { currentVersion: '1.0.0' },
     workspacePermissionKeys: canInstall ? ['plugin.install'] : [],
     systemFeatures: {
+      enable_marketplace: true,
       rbac_enabled: true,
       plugin_installation_permission: {
         plugin_installation_scope: 'all',

@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "Contactele selectate vor fi eliminate definitiv din acest spațiu de lucru. Această acțiune nu poate fi anulată.",
+  "directory.removalTitle": "Elimini contactele?",
+  "imPlatform.bindingDialog.clearSavedCredential": "Șterge valoarea salvată",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Această valoare salvată va fi ștearsă la salvare.",
+  "imPlatform.bindingDialog.replacementRequired": "Aceste date de autentificare aparțin unui alt tenant IM și nu pot fi salvate direct. Pentru a schimba tenantul, trebuie înlocuit canalul IM curent, ceea ce șterge toate asocierile IM automate și manuale. Sincronizează din nou contactele după înlocuire.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Configurația a fost salvată, dar detaliile ei nu au putut fi încărcate. Închide acest dialog și deschide-l din nou.",
+  "imPlatform.bindingDialog.undoClearCredential": "Anulează ștergerea"
+}

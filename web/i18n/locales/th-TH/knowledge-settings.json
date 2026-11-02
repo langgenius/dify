@@ -16,6 +16,8 @@
   "settings.membersRequired": "เลือกสมาชิกทีมอย่างน้อยหนึ่งคน",
   "settings.nameRequired": "ต้องระบุชื่อฐานความรู้ Agent",
   "settings.pageDescription": "จัดการข้อมูลพื้นฐาน การเข้าถึง API และการเรียกค้น",
+  "settings.reasoningChangeConfirm": "ยืนยันการเปลี่ยนแปลง",
+  "settings.reasoningChangeWarning": "การเปลี่ยนโมเดลการให้เหตุผลของระบบจะประมวลผลเอกสารที่สร้างดัชนีแล้วใหม่และอัปเดตดัชนีการค้นคืนของเอกสาร กระบวนการนี้ต้องใช้เวลาและมีค่าใช้จ่ายในการใช้โมเดลเพิ่มเติม",
   "settings.reloadLatest": "โหลดการตั้งค่าล่าสุด",
   "settings.rerankModelRequired": "เลือกโมเดลจัดอันดับใหม่",
   "settings.retrievalDepth": "ความลึกของการเรียกคืน",

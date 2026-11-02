@@ -32,6 +32,9 @@ from core.workflow.nodes.human_input.boundary import build_human_input_pause_rea
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import PauseReason
 from core.workflow.nodes.human_input.session_binding import default_session_binding
+from core.workflow.nodes.human_input_v2.events import NodeRunHumanInputV2FormRequiredEvent
+from core.workflow.nodes.human_input_v2.presentation import resolve_human_input_v2_pause_reason
+from core.workflow.nodes.human_input_v2.runtime import PreparedForm
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from core.workflow.workflow_tool_container_types import WorkflowToolContainerPayload
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
@@ -124,10 +127,12 @@ class WorkflowRunAgg:
         node_factory = self._entry.graph_engine.graph.node_factory
         if isinstance(node_factory, DifyNodeFactory):
             node_factory.workflow_tools.update(materialized_tools.tools)
+        self._human_input_v2_forms: dict[str, PreparedForm] = {}
         self._pending_forms = {
-            default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id): reason
+            default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)[1]: reason
             for reason in self._runtime_state.graph_execution.pause_reasons
             if isinstance(reason, HitlRequired)
+            and default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)[0] == "1"
         }
         self._published_form_ids: set[str] = set()
         self._form_repository = HumanInputFormSubmissionRepository()
@@ -227,6 +232,7 @@ class WorkflowRunAgg:
                     node_run_index=aggregate.index.index_for(event.id) if isinstance(event, NodeRunStartedEvent) else 1,
                     node_execution_snapshots=aggregate.index.root_snapshots,
                     pause_reasons=aggregate.pause_reasons,
+                    human_input_v2_forms=aggregate._human_input_v2_forms,
                 )
 
     def iter_events(self) -> Generator[EngineEvent]:
@@ -235,6 +241,8 @@ class WorkflowRunAgg:
         try:
             with closing(self._entry.run()) as events:
                 for event in events:
+                    if isinstance(event, NodeRunHumanInputV2FormRequiredEvent):
+                        self._human_input_v2_forms[event.prepared_form.form.id] = event.prepared_form
                     if isinstance(event, GraphRunPausedEvent):
                         paused_event = event
                         continue
@@ -323,16 +331,26 @@ class WorkflowRunAgg:
 
     def _persist_pause(self, event: GraphRunPausedEvent) -> None:
         form_ids = tuple(
-            default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
+            form_id
             for reason in event.reasons
             if isinstance(reason, HitlRequired)
+            for version, form_id in [
+                default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
+            ]
+            if version == "1"
         )
-        forms = self._load_forms(form_ids)
+        forms = self._load_forms(form_ids) if form_ids else {}
         self.pause_reasons = [
-            build_human_input_pause_reason(
-                reason=reason,
-                record=forms[default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)],
-                variable_pool=self._runtime_state.variable_pool,
+            (
+                build_human_input_pause_reason(
+                    reason=reason,
+                    record=forms[
+                        default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)[1]
+                    ],
+                    variable_pool=self._runtime_state.variable_pool,
+                )
+                if default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)[0] == "1"
+                else resolve_human_input_v2_pause_reason(reason=reason, forms=self._human_input_v2_forms)
             )
             if isinstance(reason, HitlRequired)
             else reason

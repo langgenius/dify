@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.node_factory import DifyNodeFactory
@@ -90,6 +90,7 @@ def test_engine_indices_are_available_before_delivery_and_match_persistence(
     engine = _engine()
     layer = WorkflowPersistenceLayer(
         application_generate_entity=WorkflowAppGenerateEntity(
+            user_from=UserFrom.ACCOUNT,
             task_id="task",
             app_config=WorkflowUIBasedAppConfig(
                 tenant_id="tenant", app_id="app", app_mode=AppMode.WORKFLOW, workflow_id="workflow"
