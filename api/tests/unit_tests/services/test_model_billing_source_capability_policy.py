@@ -1,7 +1,8 @@
+import hashlib
 import json
 from collections.abc import Sequence
 from copy import deepcopy
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 from unittest.mock import Mock
 
 import pytest
@@ -30,6 +31,7 @@ class NegativeEvidenceData(TypedDict):
     model: str
     reason: str
     proof_id: str
+    system_endpoint: NotRequired[str]
 
 
 class DeclarationData(TypedDict):
@@ -62,6 +64,185 @@ def declaration(model: str = "absent", revision: str = "new") -> DeclarationData
             for kind in TYPES
         ],
     }
+
+
+TONGYI_PROVIDER = "langgenius/tongyi/tongyi"
+TONGYI_UID = "langgenius/tongyi:0.2.26@6c75a6b95954ef3c97f0d3225bad7cbfbff7cdbc82d9425074aae121cc056a64"
+LONG_MODEL = "qwen-long-latest"
+
+
+def runtime_declaration(models: Sequence[AIModelEntity]) -> DeclarationData:
+    record = declaration(LONG_MODEL)
+    record.update(
+        schema_version=2,
+        provider_id=TONGYI_PROVIDER,
+        plugin_unique_identifier=TONGYI_UID,
+        catalog_digest=source_catalog_digest(models, METHODS, TYPES),
+    )
+    record["unavailable"][0].update(
+        reason="source_runtime_unavailable", system_endpoint="tongyi_international_without_custom_host"
+    )
+    return record
+
+
+def test_v1_digest_preserves_preexisting_serialized_evidence() -> None:
+    record = declaration()
+    record["original_configurate_methods"].sort()
+    record["supported_model_types"].sort()
+    expected = (
+        "sha256:"
+        + hashlib.sha256(
+            json.dumps([record], sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+        ).hexdigest()
+    )
+    policy = resolve_source_capability_policy(json.dumps([record]), "new")
+    assert policy.digest == expected
+
+
+@pytest.mark.parametrize("declared", [False, True])
+@pytest.mark.parametrize("configured_byok", [False, True])
+def test_runtime_endpoint_evidence_can_exclude_positive_schema_without_changing_byok(
+    declared: bool, configured_byok: bool
+) -> None:
+    models = [schema(), *([schema(LONG_MODEL)] if declared else [])]
+    evidence = resolve_source_capability_policy(json.dumps([runtime_declaration(models)]), "new").for_package(
+        TONGYI_PROVIDER, TONGYI_UID
+    )
+    original = system([RestrictModel(model=name, model_type=ModelType.LLM) for name in ("gpt-4o", LONG_MODEL)])
+    original.credentials = {"use_international_endpoint": "true", "dashscope_api_key": "system-test-key"}
+    before = original.model_dump()
+    configured = frozenset({(ModelType.LLM, LONG_MODEL)}) if configured_byok else frozenset()
+    partition = partition_known_unavailable_sources(original, models, METHODS, TYPES, configured, evidence)
+
+    def forbidden_lookup(*_args: object) -> None:
+        raise AssertionError("Runtime exclusion must not pretend a daemon schema is absent")
+
+    resolved = hosted_migration_sources(partition.system, models, TYPES, forbidden_lookup)
+    assert set(resolved) == {(ModelType.LLM, "gpt-4o")}
+    assert partition.unavailable_reasons[(ModelType.LLM, LONG_MODEL)] == "source_runtime_unavailable"
+    assert set(partition.unavailable) == (
+        {(ModelType.LLM, LONG_MODEL)} if declared else {(kind, LONG_MODEL) for kind in TYPES}
+    )
+    assert original.model_dump() == before
+
+
+@pytest.mark.parametrize(
+    "credentials",
+    [
+        None,
+        {},
+        {"use_international_endpoint": "false"},
+        {"use_international_endpoint": True},
+        {"use_international_endpoint": "true", "api_host": None},
+        {"use_international_endpoint": "true", "api_host": ""},
+        {"use_international_endpoint": "true", "api_host": "dashscope.aliyuncs.com"},
+    ],
+)
+def test_runtime_endpoint_mismatch_preserves_dynamic_source_discovery(credentials: dict[str, object] | None) -> None:
+    models = [schema()]
+    evidence = resolve_source_capability_policy(json.dumps([runtime_declaration(models)]), "new").for_package(
+        TONGYI_PROVIDER, TONGYI_UID
+    )
+    original = system([RestrictModel(model=LONG_MODEL, model_type=ModelType.LLM)])
+    original.credentials = credentials
+    partition = partition_known_unavailable_sources(original, models, METHODS, TYPES, frozenset(), evidence)
+    assert partition.system == original
+    assert partition.unavailable == {}
+    seen: list[ModelType] = []
+
+    def positive_lookup(kind: ModelType, model: str, _credentials: dict[str, object]) -> AIModelEntity | None:
+        seen.append(kind)
+        return schema(model) if kind == ModelType.LLM else None
+
+    resolved = hosted_migration_sources(partition.system, models, TYPES, positive_lookup)
+    assert set(resolved) == {(ModelType.LLM, LONG_MODEL)}
+    assert seen == TYPES
+
+
+@pytest.mark.parametrize(
+    "case", ["v1", "other_provider", "other_model", "wrong_type", "no_endpoint", "schema_endpoint"]
+)
+def test_runtime_evidence_cannot_impersonate_schema_absence_or_other_source_guards(case: str) -> None:
+    record = runtime_declaration([schema()])
+    if case == "v1":
+        record["schema_version"] = 1
+    elif case == "other_provider":
+        record.update(provider_id=PROVIDER, plugin_unique_identifier=UID)
+    elif case == "other_model":
+        record["unavailable"][0]["model"] = "qwen-plus"
+    elif case == "wrong_type":
+        record["unavailable"][0]["model_type"] = ModelType.TEXT_EMBEDDING.value
+        record["unavailable"] = record["unavailable"][:1]
+    elif case == "no_endpoint":
+        del record["unavailable"][0]["system_endpoint"]
+    else:
+        record["unavailable"][0]["reason"] = "source_schema_unsupported"
+    with pytest.raises(ValidationError):
+        resolve_source_capability_policy(json.dumps([record]), "new")
+
+
+def test_runtime_evidence_digest_and_partial_type_coverage_remain_fail_closed() -> None:
+    record = runtime_declaration([schema()])
+    policy = resolve_source_capability_policy(json.dumps([record]), "new")
+    altered = deepcopy(record)
+    altered["unavailable"][0]["proof_id"] = "sha256:" + "d" * 64
+    assert resolve_source_capability_policy(json.dumps([altered]), "new").digest != policy.digest
+    record["unavailable"] = record["unavailable"][:1]
+    evidence = resolve_source_capability_policy(json.dumps([record]), "new").for_package(TONGYI_PROVIDER, TONGYI_UID)
+    original = system([RestrictModel(model=LONG_MODEL, model_type=ModelType.LLM)])
+    original.credentials = {"use_international_endpoint": "true"}
+    partition = partition_known_unavailable_sources(original, [schema()], METHODS, TYPES, frozenset(), evidence)
+    assert partition.system == original
+    assert partition.unavailable == {}
+
+
+@pytest.mark.parametrize("case", ["base", "fine_tune", "ambiguous", "configured_other_type"])
+def test_runtime_endpoint_evidence_cannot_hide_deployment_or_other_typed_dependency(case: str) -> None:
+    models = [
+        schema(),
+        *([schema(LONG_MODEL), schema(LONG_MODEL, ModelType.TEXT_EMBEDDING)] if case == "ambiguous" else []),
+    ]
+    record = runtime_declaration(models)
+    if case == "ambiguous":
+        # Neither schema absence nor endpoint proof can resolve a name shared
+        # by multiple actual model types. Preserve the ordinary strict path.
+        record["unavailable"] = record["unavailable"][:1]
+    evidence = resolve_source_capability_policy(json.dumps([record]), "new").for_package(TONGYI_PROVIDER, TONGYI_UID)
+    original = system(
+        [
+            RestrictModel(
+                model="ft:qwen-long:org:id" if case == "fine_tune" else LONG_MODEL,
+                model_type=ModelType.LLM,
+                base_model_name=LONG_MODEL if case == "base" else None,
+            )
+        ]
+    )
+    original.credentials = {"use_international_endpoint": "true"}
+    configured = frozenset({(ModelType.TEXT_EMBEDDING, LONG_MODEL)}) if case == "configured_other_type" else frozenset()
+    partition = partition_known_unavailable_sources(original, models, METHODS, TYPES, configured, evidence)
+    assert partition.system == original
+    assert partition.unavailable == {}
+
+
+@pytest.mark.parametrize(
+    ("pool", "unit", "limit"),
+    [
+        (ProviderQuotaType.FREE, QuotaUnit.CREDITS, 100),
+        (ProviderQuotaType.TRIAL, QuotaUnit.CREDITS, -1),
+        (ProviderQuotaType.PAID, QuotaUnit.TOKENS, 100),
+    ],
+)
+def test_runtime_evidence_does_not_change_independent_or_unmetered_pools(
+    pool: ProviderQuotaType, unit: QuotaUnit, limit: int
+) -> None:
+    evidence = resolve_source_capability_policy(json.dumps([runtime_declaration([schema()])]), "new").for_package(
+        TONGYI_PROVIDER, TONGYI_UID
+    )
+    original = system([RestrictModel(model=LONG_MODEL, model_type=ModelType.LLM)], pool=pool, unit=unit, limit=limit)
+    original.credentials = {"use_international_endpoint": "true"}
+    partition = partition_known_unavailable_sources(original, [schema()], METHODS, TYPES, frozenset(), evidence)
+    assert partition.system == original
+    assert partition.unavailable == {}
 
 
 def test_default_other_revisions_and_record_order_preserve_contract() -> None:

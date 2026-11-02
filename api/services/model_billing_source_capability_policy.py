@@ -2,8 +2,10 @@
 
 An immutable source package can lack a model even when the global hosting list
 contains it. Only exact, revision-bound evidence may remove that impossible
-source from preparation. Runtime lookup, target completeness and retirement
-remain separate contracts. This pure owner performs no I/O or error matching.
+source from preparation. Version 2 can additionally attest a source runtime's
+public SYSTEM endpoint restriction; it does not claim that its schema is absent.
+Target completeness and retirement remain separate contracts. This pure owner
+performs no I/O or error matching.
 """
 
 import hashlib
@@ -26,14 +28,38 @@ class UnavailableSourceEvidence(BaseModel):
 
     model_type: ModelType
     model: str = Field(min_length=1)
-    reason: Literal["source_schema_unsupported"]
+    reason: Literal["source_schema_unsupported", "source_runtime_unavailable"]
     proof_id: Digest
+    # None is the original schema-only evidence, not a wildcard endpoint.
+    system_endpoint: Literal["tongyi_international_without_custom_host"] | None = None
+
+    @model_validator(mode="after")
+    def validate_runtime_evidence(self) -> Self:
+        if (self.reason == "source_runtime_unavailable") != (self.system_endpoint is not None):
+            raise ValueError("Runtime source evidence requires an exact public endpoint predicate")
+        return self
+
+    def matches_system_endpoint(self, credentials: dict[str, object] | None) -> bool:
+        """Read only public endpoint facts; never inspect or serialize API keys.
+
+        The reviewed Tongyi runtime compares the string ``true`` and allows a
+        custom host to select a different region. Requiring an absent host is
+        deliberately narrower than its normalization of blank host strings.
+        Unknown/malformed settings therefore retain strict discovery.
+        """
+        return bool(
+            self.reason == "source_runtime_unavailable"
+            and self.system_endpoint == "tongyi_international_without_custom_host"
+            and credentials is not None
+            and credentials.get("use_international_endpoint") == "true"
+            and "api_host" not in credentials
+        )
 
 
 class SourceCapabilityDeclaration(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
-    schema_version: Literal[1]
+    schema_version: Literal[1, 2]
     mapping_revision: str = Field(min_length=1)
     provider_id: str = Field(pattern=r"^[a-z0-9_-]+/[a-z0-9_-]+/[a-z0-9_-]+$")
     plugin_unique_identifier: str = Field(pattern=r"^[a-z0-9_-]+/[a-z0-9_-]+:[^@\s]+@[0-9a-f]{64}$")
@@ -55,6 +81,16 @@ class SourceCapabilityDeclaration(BaseModel):
             raise ValueError("Duplicate negative source identity")
         if any(item.model_type not in self.supported_model_types for item in self.unavailable):
             raise ValueError("Negative evidence has an unsupported model type")
+        runtime_evidence = [item for item in self.unavailable if item.reason == "source_runtime_unavailable"]
+        if runtime_evidence and self.schema_version != 2:
+            raise ValueError("Runtime source evidence requires schema version 2")
+        if any(
+            self.provider_id != "langgenius/tongyi/tongyi"
+            or item.model_type != ModelType.LLM
+            or not item.model.startswith("qwen-long")
+            for item in runtime_evidence
+        ):
+            raise ValueError("Runtime endpoint evidence does not match the reviewed source guard")
         return self
 
 
@@ -76,7 +112,9 @@ class ModelSourceCapabilityPolicy:
     def digest(self) -> str:
         records = []
         for declaration in self.declarations:
-            record = declaration.model_dump(mode="json")
+            # Preserve the exact v1 digest: the new optional endpoint field is
+            # not part of already-frozen schema-only evidence.
+            record = declaration.model_dump(mode="json", exclude_none=True)
             record["original_configurate_methods"] = sorted(record["original_configurate_methods"])
             record["supported_model_types"] = sorted(record["supported_model_types"])
             record["unavailable"] = sorted(record["unavailable"], key=itemgetter("model_type", "model"))

@@ -358,7 +358,8 @@ class PluginConfig(BaseSettings):
     TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON: str = Field(
         description=(
             "Operator-only immutable source-unavailable evidence bound to mapping revision, exact plugin UID and "
-            "catalog digest; empty keeps strict source validation"
+            "catalog digest; v2 runtime exclusions also require the exact public SYSTEM endpoint predicate; "
+            "empty keeps strict source validation"
         ),
         default="[]",
     )

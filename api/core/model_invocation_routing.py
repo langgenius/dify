@@ -641,7 +641,7 @@ def migration_inventory(
                             "model_type": kind.value,
                             "model": model,
                             "pool_types": sorted(pool.value for pool in pools),
-                            "reason": "source_schema_unsupported",
+                            "reason": unavailable.unavailable_reasons[(kind, model)],
                             "proof_id": proof_id,
                         }
                     )

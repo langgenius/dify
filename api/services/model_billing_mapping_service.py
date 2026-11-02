@@ -28,7 +28,7 @@ from models.provider_ids import ModelProviderID
 from services.entities.model_billing_mapping import ModelMapping
 from services.entities.model_billing_mapping import model_schema_digest as model_schema_digest  # noqa: PLC0414
 from services.model_billing_retirement_policy import ModelRetirementPolicy, resolve_retirement_policy
-from services.model_billing_source_capability_policy import SourceCapabilityDeclaration
+from services.model_billing_source_capability_policy import SourceCapabilityDeclaration, UnavailableSourceEvidence
 from services.model_billing_source_capability_policy import (
     resolve_source_capability_policy as resolve_source_capability_policy,  # noqa: PLC0414
 )
@@ -429,6 +429,52 @@ def source_catalog_digest(
 class SourceCapabilityPartition:
     system: SystemConfiguration
     unavailable: dict[SourceIdentity, tuple[str, set[ProviderQuotaType]]]
+    unavailable_reasons: dict[SourceIdentity, str] = field(default_factory=dict)
+
+
+def _runtime_unavailable_sources(
+    restricted: RestrictModel,
+    system: SystemConfiguration,
+    models: Sequence[AIModelEntity],
+    supported_model_types: Sequence[ModelType],
+    configured_models: frozenset[SourceIdentity],
+    evidence: dict[SourceIdentity, UnavailableSourceEvidence],
+) -> set[SourceIdentity]:
+    """Require typed complete evidence for a runtime-only SYSTEM exclusion.
+
+    A declared schema may legitimately be unavailable at the hosted endpoint.
+    An undeclared legacy LLM placeholder is still ambiguous across supported
+    types, so all possible types need evidence. Explicit deployment bindings
+    and fine-tunes are never covered by this public-endpoint attestation.
+    """
+    if restricted.base_model_name is not None or restricted.model.startswith("ft:"):
+        return set()
+    candidates = _installed_restricted_schemas(restricted, models)
+    if len(candidates) > 1:
+        return set()
+    kinds = (
+        [candidates[0].model_type]
+        if candidates
+        else [restricted.model_type]
+        if restricted.model_type != ModelType.LLM
+        else supported_model_types
+    )
+    required = {(kind, restricted.model) for kind in kinds}
+    if not required or not required <= evidence.keys():
+        return set()
+    runtime = [evidence[identity] for identity in required if evidence[identity].reason == "source_runtime_unavailable"]
+    if not runtime or not all(item.matches_system_endpoint(system.credentials) for item in runtime):
+        return set()
+    # A BYOK model row cannot disprove an exact SYSTEM runtime restriction.
+    # But a configured dynamic identity must not be hidden by schema-negative
+    # evidence for that identity or an unrelated type.
+    if any(
+        model == restricted.model
+        and ((kind, model) not in required or evidence[(kind, model)].reason != "source_runtime_unavailable")
+        for kind, model in configured_models
+    ):
+        return set()
+    return required
 
 
 def partition_known_unavailable_sources(
@@ -439,11 +485,13 @@ def partition_known_unavailable_sources(
     configured_models: frozenset[SourceIdentity],
     evidence: SourceCapabilityDeclaration | None,
 ) -> SourceCapabilityPartition:
-    """Exclude only attested impossible sources; never catch discovery errors.
+    """Exclude only attested impossible SYSTEM sources; never discovery errors.
 
     Unknown package/catalog evidence and dynamic overrides keep ordinary strict
     lookup. A legacy LLM placeholder requires negative evidence for *all*
     supported types; otherwise an existing dynamic non-LLM could be hidden.
+    Runtime exclusions additionally require their reviewed public endpoint
+    predicate. They may have a positive schema and never mutate BYOK settings.
     """
     unchanged = SourceCapabilityPartition(system, {})
     if evidence is None or ConfigurateMethod.PREDEFINED_MODEL not in original_methods:
@@ -456,9 +504,11 @@ def partition_known_unavailable_sources(
     ):
         return unchanged
     negatives = {(item.model_type, item.model): item for item in evidence.unavailable}
-    if negatives.keys() & {(schema.model_type, schema.model) for schema in models}:
+    schema_negatives = {identity for identity, item in negatives.items() if item.reason == "source_schema_unsupported"}
+    if schema_negatives & {(schema.model_type, schema.model) for schema in models}:
         raise ValueError("Negative capability contradicts a declared source model")
     unavailable: dict[SourceIdentity, tuple[str, set[ProviderQuotaType]]] = {}
+    unavailable_reasons: dict[SourceIdentity, str] = {}
     quotas: list[QuotaConfiguration] = []
     for quota in system.quota_configurations:
         if (
@@ -471,6 +521,15 @@ def partition_known_unavailable_sources(
             continue
         retained = []
         for restricted in quota.restrict_models:
+            runtime_unavailable = _runtime_unavailable_sources(
+                restricted, system, models, supported_model_types, configured_models, negatives
+            )
+            if runtime_unavailable:
+                for identity in runtime_unavailable:
+                    _, pools = unavailable.setdefault(identity, (negatives[identity].proof_id, set()))
+                    pools.add(quota.quota_type)
+                    unavailable_reasons[identity] = negatives[identity].reason
+                continue
             if (
                 restricted.base_model_name is not None
                 or restricted.model.startswith("ft:")
@@ -481,17 +540,20 @@ def partition_known_unavailable_sources(
                 continue
             types = [restricted.model_type] if restricted.model_type != ModelType.LLM else supported_model_types
             required = {(kind, restricted.model) for kind in types}
-            if not required or not required <= negatives.keys():
+            if not required or not required <= schema_negatives:
                 retained.append(restricted)
                 continue
             for identity in required:
                 _, pools = unavailable.setdefault(identity, (negatives[identity].proof_id, set()))
                 pools.add(quota.quota_type)
+                unavailable_reasons[identity] = negatives[identity].reason
         if retained:
             quotas.append(quota.model_copy(update={"restrict_models": retained}))
         # All restrictions proved absent: omit this inventory-only quota; an
         # empty restriction list would incorrectly mean unrestricted access.
-    return SourceCapabilityPartition(system.model_copy(update={"quota_configurations": quotas}), unavailable)
+    return SourceCapabilityPartition(
+        system.model_copy(update={"quota_configurations": quotas}), unavailable, unavailable_reasons
+    )
 
 
 def retirement_policy_for_revision(

@@ -386,6 +386,116 @@ def test_source_capability_inventory_uses_exact_complete_bound_catalog(
     assert provider.model_dump() == before
 
 
+@pytest.mark.parametrize("case", ["matched", "host_override", "uid_mismatch", "catalog_mismatch", "eligible_unmapped"])
+def test_runtime_source_inventory_audits_real_reason_without_mutating_custom_configuration(
+    monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
+    from core.entities.provider_entities import CustomModelConfiguration, CustomProviderConfiguration
+    from core.model_invocation_routing import migration_inventory
+    from core.plugin.entities.plugin import PluginInstallationSource
+    from core.plugin.entities.plugin_daemon import PluginModelProviderBinding, PluginModelProviderDeclaration
+    from tests.unit_tests.services.test_model_billing_mapping_service import mapping, schema, section, system
+    from tests.unit_tests.services.test_model_billing_source_capability_policy import (
+        LONG_MODEL,
+        METHODS,
+        TONGYI_PROVIDER,
+        TONGYI_UID,
+        TYPES,
+        runtime_declaration,
+    )
+
+    models = [schema(), schema(LONG_MODEL)]
+    if case == "eligible_unmapped":
+        models.append(schema("qwen-unmapped"))
+    original_system = system([RestrictModel(model=item.model, model_type=item.model_type) for item in models])
+    original_system.credentials = {"use_international_endpoint": "true", "dashscope_api_key": "system-test-key"}
+    if case == "host_override":
+        original_system.credentials["api_host"] = "workspace.cn-beijing.maas.aliyuncs.com"
+    uid = TONGYI_UID.replace("0.2.26", "0.2.27") if case == "uid_mismatch" else TONGYI_UID
+    provider = ProviderConfiguration(
+        tenant_id="runtime-source-capability-tenant",
+        provider=PluginModelProviderDeclaration(
+            provider=TONGYI_PROVIDER,
+            label=I18nObject(en_US="Tongyi"),
+            supported_model_types=TYPES,
+            configurate_methods=METHODS,
+            models=models,
+            plugin_unique_identifier=uid,
+            installation_source=PluginInstallationSource.Marketplace,
+        ),
+        preferred_provider_type=ProviderType.CUSTOM,
+        using_provider_type=ProviderType.CUSTOM,
+        system_configuration=original_system,
+        custom_configuration=CustomConfiguration(
+            provider=CustomProviderConfiguration(
+                credentials={"dashscope_api_key": "byok-test-key", "api_host": "dashscope.aliyuncs.com"}
+            ),
+            models=[CustomModelConfiguration(model=LONG_MODEL, model_type=ModelType.LLM, credentials=None)],
+        ),
+        model_settings=[],
+    )
+    configurations = ProviderConfigurations(tenant_id=provider.tenant_id)
+    configurations.configurations[TONGYI_PROVIDER] = provider
+    manager = InventoryProviderManager(configurations)
+
+    def discover(*, tenant_id: str) -> ProviderManager:
+        assert tenant_id == provider.tenant_id
+        return manager
+
+    def bindings(_client: PluginModelClient, tenant_id: str) -> list[PluginModelProviderBinding]:
+        assert tenant_id == provider.tenant_id
+        return [
+            PluginModelProviderBinding(
+                provider="tongyi",
+                installation_id="runtime-source-installation",
+                plugin_id="langgenius/tongyi",
+                plugin_unique_identifier=uid,
+                runtime_type="local",
+                source=PluginInstallationSource.Marketplace,
+                version="0.2.26",
+                verified=True,
+            )
+        ]
+
+    def forbidden_lookup(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("The positive source catalog must not be reported as schema=None")
+
+    record = runtime_declaration(models)
+    if case == "catalog_mismatch":
+        record["catalog_digest"] = "sha256:" + "f" * 64
+    route = mapping(schema(), revision="new")
+    section(route, "source")["provider_id"] = TONGYI_PROVIDER
+    apply_config_overrides(
+        monkeypatch,
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps([route]),
+        TOKENER_LEGACY_RETIRED_MODELS_JSON="[]",
+        TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON=json.dumps([record]),
+    )
+    monkeypatch.setattr("core.plugin.impl.model_runtime_factory.create_plugin_provider_manager", discover)
+    monkeypatch.setattr(PluginModelClient, "fetch_model_provider_bindings", bindings)
+    monkeypatch.setattr(PluginModelClient, "get_model_schema", forbidden_lookup)
+    before = provider.model_dump()
+    if case == "matched":
+        result = migration_inventory(provider.tenant_id, "new")
+        assert [item["model"] for item in result["models"]] == ["gpt-4o"]
+        assert result["unavailable_sources"] == [
+            {
+                "provider": TONGYI_PROVIDER,
+                "plugin_unique_identifier": TONGYI_UID,
+                "model_type": "llm",
+                "model": LONG_MODEL,
+                "pool_types": ["paid"],
+                "reason": "source_runtime_unavailable",
+                "proof_id": record["unavailable"][0]["proof_id"],
+            }
+        ]
+    else:
+        with pytest.raises(ModelRouteUnmapped):
+            migration_inventory(provider.tenant_id, "new")
+    assert provider.model_dump() == before
+    assert provider.using_provider_type == ProviderType.CUSTOM
+
+
 def plan() -> FrozenModelInvocation:
     return replace(
         FrozenModelInvocation(
