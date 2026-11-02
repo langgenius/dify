@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "Bronnen",
   "resourceAccessToken.searchPlaceholder": "Tokens zoeken…",
   "resourceAccessToken.searchResourcesPlaceholder": "Apps of kennisbanken zoeken…",
-  "resourceAccessToken.tabAll": "Alles",
+  "resourceAccessToken.tabAllTypes": "Alle typen",
   "resourceAccessToken.tabApps": "Apps",
   "resourceAccessToken.tabKnowledgeBases": "Kennisbanken",
   "resourceAccessToken.token": "Token",

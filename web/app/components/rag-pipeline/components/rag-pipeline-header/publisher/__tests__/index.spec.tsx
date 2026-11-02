@@ -318,9 +318,7 @@ it('keeps the draft available after a publish failure and supports retry', async
   api.publish.mockRejectedValueOnce(new Error('Publish unavailable'))
   const { queryClient } = renderPipeline()
   await user.click(await openPublisher(user))
-  await waitFor(() =>
-    expect(error).toHaveBeenCalledWith('datasetPipeline.publishPipeline.error.message'),
-  )
+  await waitFor(() => expect(error).toHaveBeenCalledWith('Publish unavailable'))
   expect(queryClient.getQueryState(datasetListKey)?.isInvalidated).toBe(false)
   await user.click(publishButton())
   await waitFor(() =>
@@ -407,9 +405,7 @@ it('reports template publication failure without invalidating the catalog', asyn
   const { queryClient } = renderPipeline()
   const dialog = await openTemplate(user)
   await user.click(dialog.getByRole('button', { name: 'workflow.common.publish' }))
-  await waitFor(() =>
-    expect(error).toHaveBeenCalledWith('datasetPipeline.publishTemplate.error.message'),
-  )
+  await waitFor(() => expect(error).toHaveBeenCalledWith('Templates unavailable'))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(queryClient.getQueryState(templateListKey)?.isInvalidated).toBe(false)
 })

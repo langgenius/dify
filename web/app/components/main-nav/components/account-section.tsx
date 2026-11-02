@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import AccountDropdown from '@/app/components/header/account-dropdown'
+import AccountMenu from '@/app/components/header/account-menu'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getAvatarInitial } from '@/utils/avatar'
 
@@ -18,7 +18,7 @@ const AccountSection = ({ compact = false }: AccountSectionProps) => {
   })
 
   return (
-    <AccountDropdown
+    <AccountMenu
       trigger={({ ariaLabel }) => (
         <button
           type="button"

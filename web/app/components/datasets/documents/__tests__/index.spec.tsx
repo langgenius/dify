@@ -326,10 +326,13 @@ it('renames the selected document through its real form and refreshes the row af
     }),
   )
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
-  expect(api.rename).toHaveBeenCalledWith({
-    params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
-    body: { name: 'API Reference' },
-  })
+  expect(api.rename).toHaveBeenCalledWith(
+    {
+      params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
+      body: { name: 'API Reference' },
+    },
+    { context: { silent: true } },
+  )
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
   expect(await screen.findByText('API Reference')).toBeInTheDocument()
 })

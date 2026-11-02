@@ -1,5 +1,6 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Locale } from '@/i18n/locale'
+import { normalizeHumanInputFormInput } from '@/app/components/workflow/nodes/human-input/shared/types'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
@@ -129,8 +130,9 @@ describe('human-input utils', () => {
       ['removed-option', ''],
       ['', ''],
       [undefined, ''],
-    ])('initializes a select default only when available: %s', (defaultValue, expected) => {
-      const input = selectInput({
+    ])('initializes an API select default only when available: %s', (defaultValue, expected) => {
+      const input = normalizeHumanInputFormInput({
+        type: 'select',
         output_variable_name: 'decision',
         default_value: defaultValue,
         option_source: { type: 'constant', selector: [], value: ['approve', 'reject'] },

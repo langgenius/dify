@@ -209,7 +209,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             ))}
           </div>
         </div>
-        <div className="absolute right-0 bottom-0 left-0 hidden min-h-20 flex-wrap items-end gap-2 rounded-xl bg-linear-to-t from-components-panel-on-panel-item-bg via-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 group-focus-within:flex group-hover:flex">
+        <div className="absolute inset-x-0 bottom-0 hidden min-h-20 flex-wrap items-end gap-2 rounded-xl bg-linear-to-t from-components-panel-on-panel-item-bg via-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 group-focus-within:flex group-hover:flex">
           {canSetPluginPreferences && (showModelProvider || !notConfigured) && (
             <button
               ref={collapsedButtonRef}

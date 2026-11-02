@@ -50,7 +50,7 @@ function SelectItem<Value = string>({ text, value, isChecked }: ItemProps<Value>
           isChecked
             ? 'border-2 border-util-colors-indigo-indigo-600 bg-components-panel-on-panel-item-bg shadow-sm'
             : 'border border-components-card-border',
-          'flex h-9 w-full min-w-0 cursor-pointer items-center gap-2 rounded-xl bg-components-panel-on-panel-item-bg px-3 text-left outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover',
+          'flex h-9 w-full min-w-0 cursor-pointer items-center gap-2 rounded-xl bg-components-panel-on-panel-item-bg px-3 text-start outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover',
         )}
       >
         <Radio<Value> value={value} />
@@ -116,7 +116,7 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
           >
             <DrawerContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
               <div className="shrink-0 border-b border-divider-regular py-4">
-                <div className="flex h-6 items-center justify-between pr-5 pl-6">
+                <div className="flex h-6 items-center justify-between ps-6 pe-5">
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                     {t(($) => $['createTool.authMethod.title'], { ns: 'tools' })}
                   </DrawerTitle>
@@ -134,7 +134,7 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
               </div>
               <ScrollArea className="min-h-0 flex-1 overflow-hidden">
                 <ScrollAreaViewport className="overscroll-contain">
-                  <ScrollAreaContent className="space-y-4 pt-2 pr-8 pl-6">
+                  <ScrollAreaContent className="space-y-4 ps-6 pe-8 pt-2">
                     <Field name="auth_type" className="contents">
                       <Fieldset
                         render={
@@ -224,7 +224,7 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                               {t(($) => $['createTool.authMethod.key'], { ns: 'tools' })}
                             </label>
                             <Infotip>
-                              <InfotipTrigger aria-labelledby={headerLabelId} className="ml-0.5" />
+                              <InfotipTrigger aria-labelledby={headerLabelId} className="ms-0.5" />
                               <InfotipContent aria-labelledby={headerLabelId} className="w-65.25">
                                 {t(($) => $['createTool.authMethod.keyTooltip'], { ns: 'tools' })}
                               </InfotipContent>
@@ -281,7 +281,7 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                               {t(($) => $['createTool.authMethod.queryParam'], { ns: 'tools' })}
                             </label>
                             <Infotip>
-                              <InfotipTrigger aria-labelledby={queryLabelId} className="ml-0.5" />
+                              <InfotipTrigger aria-labelledby={queryLabelId} className="ms-0.5" />
                               <InfotipContent aria-labelledby={queryLabelId} className="w-65.25">
                                 {t(($) => $['createTool.authMethod.queryParamTooltip'], {
                                   ns: 'tools',

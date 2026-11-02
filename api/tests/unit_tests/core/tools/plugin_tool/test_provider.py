@@ -49,7 +49,7 @@ def _build_controller() -> PluginToolProviderController:
     )
 
 
-def test_plugin_tool_provider_controller_basic_behaviors():
+def test_plugin_tool_provider_controller_basic_behaviors() -> None:
     controller = _build_controller()
     assert controller.provider_type == ToolProviderType.PLUGIN
 
@@ -66,7 +66,7 @@ def test_plugin_tool_provider_controller_basic_behaviors():
 
 
 @pytest.mark.parametrize("valid", [True, False])
-def test_validate_credentials(monkeypatch: pytest.MonkeyPatch, valid: bool):
+def test_validate_credentials(monkeypatch: pytest.MonkeyPatch, valid: bool) -> None:
     controller = _build_controller()
     requests: list[httpx.Request] = []
 

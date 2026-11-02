@@ -37,7 +37,6 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.llm.model_access import resolve_model_context_window, resolve_model_supports_vision
-from core.ops.base_trace_instance import application_tracing_hooks
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
@@ -54,9 +53,10 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     build_shell_layer_config,
     load_runtime_agent_skill_configs,
 )
+from extensions.tracing import application_tracing_hooks
 from graphon.file import File, FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
-from models.agent_config_entities import AgentSoulConfig, AgentSoulToolsConfig
+from models.agent_config_entities import AgentKnowledgeSpaceConfig, AgentSoulConfig, AgentSoulToolsConfig
 from models.provider_ids import ModelProviderID
 from services.agent.knowledge_runtime_config import build_knowledge_fs_layer_config
 from services.agent.prompt_mentions import expand_prompt_mentions
@@ -126,6 +126,7 @@ class AgentAppRuntimeRequestBuilder:
                 user_id=context.dify_context.user_id,
                 tools=agent_soul.tools,
                 invoke_from=context.dify_context.invoke_from,
+                knowledge_fs_spaces=tuple(agent_soul.knowledge.spaces),
             )
         except WorkflowAgentDifyToolsBuildError as error:
             raise AgentAppRuntimeRequestBuildError(error.error_code, str(error)) from error
@@ -261,6 +262,7 @@ class AgentAppRuntimeRequestBuilder:
         user_id: str | None,
         tools: AgentSoulToolsConfig,
         invoke_from: InvokeFrom,
+        knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...],
     ) -> WorkflowAgentToolLayers:
         # Production Agent App runs intentionally keep existing plugin configs
         # on the direct `dify.plugin.tools` route. This builder emits plugin
@@ -271,6 +273,7 @@ class AgentAppRuntimeRequestBuilder:
             user_id=user_id,
             tools=tools,
             invoke_from=invoke_from,
+            knowledge_fs_spaces=knowledge_fs_spaces,
         )
 
     @staticmethod

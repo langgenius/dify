@@ -102,7 +102,7 @@ const PermissionSelector = ({
         aria-invalid={invalid}
         disabled={isDisabled}
         className={cn(
-          'group/permission-trigger flex w-full cursor-pointer touch-manipulation items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-left hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
+          'group/permission-trigger flex w-full cursor-pointer touch-manipulation items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-start hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
           'data-disabled:cursor-not-allowed! data-disabled:bg-components-input-bg-disabled! data-disabled:hover:bg-components-input-bg-disabled!',
           invalid && 'ring-1 ring-text-destructive',
         )}
@@ -160,11 +160,15 @@ const PermissionSelector = ({
               )}
               {selectedMembers.length >= 2 && (
                 <>
-                  <Avatar className="absolute top-0 left-0 z-0" size="xxs" aria-hidden="true">
+                  <Avatar className="absolute inset-s-0 top-0 z-0" size="xxs" aria-hidden="true">
                     <AvatarFallback>{getAvatarInitial(selectedMembers[0]!.name)}</AvatarFallback>
                     <AvatarImage src={selectedMembers[0]!.avatar_url || undefined} alt="" />
                   </Avatar>
-                  <Avatar className="absolute right-0 bottom-0 z-10" size="xxs" aria-hidden="true">
+                  <Avatar
+                    className="absolute inset-e-0 bottom-0 z-10"
+                    size="xxs"
+                    aria-hidden="true"
+                  >
                     <AvatarFallback>{getAvatarInitial(selectedMembers[1]!.name)}</AvatarFallback>
                     <AvatarImage src={selectedMembers[1]!.avatar_url || undefined} alt="" />
                   </Avatar>
@@ -249,8 +253,8 @@ const PermissionSelector = ({
             />
           </RadioGroup>
           {isPartialMembers && (
-            <div className="max-h-90 overflow-y-auto border-t border-divider-regular pr-1 pb-1 pl-1">
-              <div className="sticky top-0 left-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1">
+            <div className="max-h-90 overflow-y-auto border-t border-divider-regular px-1 pb-1">
+              <div className="sticky inset-s-0 top-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1">
                 <SearchInput
                   disabled={isDisabled}
                   name="member-search"

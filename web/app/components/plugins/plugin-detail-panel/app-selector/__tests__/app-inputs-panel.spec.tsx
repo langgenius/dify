@@ -46,7 +46,7 @@ it('loads real input schemas and preserves the other field when inputs change', 
     return (
       <AppInputsPanel
         appDetail={appDetail}
-        value={{ app_id: 'app-1', inputs }}
+        inputs={inputs}
         onFormChange={(next) => {
           setInputs(next)
           onChange(next)
@@ -71,7 +71,9 @@ it('loads real input schemas and preserves the other field when inputs change', 
 it('retries a failed app query and replaces the error with its actual fields', async () => {
   getApp.mockRejectedValueOnce(new Error('Unavailable')).mockResolvedValue(appWithInputs())
   const user = userEvent.setup()
-  renderWithConsoleQuery(<AppInputsPanel appDetail={appDetail} onFormChange={vi.fn()} />)
+  renderWithConsoleQuery(
+    <AppInputsPanel inputs={{}} appDetail={appDetail} onFormChange={vi.fn()} />,
+  )
   expect(await screen.findByRole('alert')).toHaveTextContent('common.errorBoundary.title')
   await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
   expect(await screen.findByRole('textbox', { name: 'Topic' })).toBeInTheDocument()
@@ -81,7 +83,9 @@ it('retries a failed app query and replaces the error with its actual fields', a
 
 it('shows no parameters when the app has no user input fields', async () => {
   getApp.mockResolvedValue(createAppDetailFixture({ id: 'app-1', mode: 'completion' }))
-  renderWithConsoleQuery(<AppInputsPanel appDetail={appDetail} onFormChange={vi.fn()} />)
+  renderWithConsoleQuery(
+    <AppInputsPanel inputs={{}} appDetail={appDetail} onFormChange={vi.fn()} />,
+  )
   expect(await screen.findByText('app.appSelector.noParams')).toBeInTheDocument()
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
 })

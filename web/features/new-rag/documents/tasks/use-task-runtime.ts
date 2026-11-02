@@ -30,7 +30,12 @@ import { taskProgressStoreAtom, taskRuntimeStateAtom } from '../state/scoped'
 import { useQueryDataUpdateCount } from '../use-query-data-update-count'
 import { findBackgroundTask, findBackgroundTasks, taskSnapshotErrorIsTransient } from './recovery'
 import { mergeTaskOverride } from './snapshot'
-import { activeTasksAtom, applyTaskRuntimeEventAtom, effectiveTasksAtom } from './state'
+import {
+  activeTasksAtom,
+  applyTaskRuntimeEventAtom,
+  effectiveTasksAtom,
+  runtimeBaseTasksAtom,
+} from './state'
 
 const MAX_TASK_EVENT_STREAMS = 6
 const FAILED_TASK_POLL_REQUEST_TIMEOUT = 3000
@@ -65,17 +70,18 @@ export function useTaskRuntimeController({
     [documentPermissionDenied, knowledgeSpaceId],
   )
   const tasksQuery = useAtomValue(tasksQueryAtom)
-  const baseTasks = useAtomValue(baseTasksAtom)
+  const listedTasks = useAtomValue(baseTasksAtom)
+  const baseTasks = useAtomValue(runtimeBaseTasksAtom)
   const backgroundTasks: BackgroundTask[] = useAtomValue(backgroundTasksAtom)
   const taskDataUpdateCount = useQueryDataUpdateCount(queryClient, tasksQueryOptions.queryKey)
   const listSnapshot = useMemo(
     () => ({
       data: tasksQuery.data,
-      tasks: baseTasks,
+      tasks: listedTasks,
       dataUpdateCount: taskDataUpdateCount,
       dataUpdatedAt: tasksQuery.dataUpdatedAt,
     }),
-    [baseTasks, taskDataUpdateCount, tasksQuery.data, tasksQuery.dataUpdatedAt],
+    [listedTasks, taskDataUpdateCount, tasksQuery.data, tasksQuery.dataUpdatedAt],
   )
   const taskPermissionDenied = useAtomValue(taskPermissionDeniedAtom)
   const permissionDenied = externalPermissionDenied || taskPermissionDenied
@@ -100,19 +106,19 @@ export function useTaskRuntimeController({
           : listSnapshot.dataUpdateCount,
     }
     if (
-      taskListSnapshotRef.current?.tasks === baseTasks &&
+      taskListSnapshotRef.current?.tasks === listedTasks &&
       taskListSnapshotRef.current?.dataUpdateCount === snapshot.dataUpdateCount &&
       taskListSnapshotRef.current.dataUpdatedAt === snapshot.dataUpdatedAt &&
       taskListSnapshotRef.current.data === snapshot.data
     )
       return
     taskListSnapshotRef.current = snapshot
-    applyRuntimeEvent({ tasks: baseTasks, type: 'list-snapshot' })
-  }, [applyRuntimeEvent, baseTasks, listSnapshot, queryClient, tasksQueryOptions.queryKey])
+    applyRuntimeEvent({ tasks: listedTasks, type: 'list-snapshot' })
+  }, [applyRuntimeEvent, listedTasks, listSnapshot, queryClient, tasksQueryOptions.queryKey])
 
   const readBaseTask = useAtomCallback(
     useCallback(
-      (get, _set, taskId: string) => get(baseTasksAtom).find((task) => task.id === taskId),
+      (get, _set, taskId: string) => get(runtimeBaseTasksAtom).find((task) => task.id === taskId),
       [],
     ),
   )

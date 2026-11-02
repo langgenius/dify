@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, ValidationError
 from controllers.common.fields import RedirectResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.error import PaidPlanRequiredError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     cloud_edition_billing_paid_plan_required,
@@ -17,6 +18,7 @@ from controllers.console.wraps import (
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
@@ -107,6 +109,7 @@ register_response_schema_models(
 
 @console_ns.route("/workflow-run-archives")
 class WorkflowRunArchivesApi(Resource):
+    @error_responses(PaidPlanRequiredError)
     @console_ns.doc("list_workflow_run_archives")
     @console_ns.doc(description="List monthly workflow-run archive metadata for the current workspace")
     @console_ns.response(200, "Success", console_ns.models[WorkflowRunArchiveListResponse.__name__])
@@ -122,6 +125,7 @@ class WorkflowRunArchivesApi(Resource):
 
 @console_ns.route("/workflow-run-archives/<int:year>/<int:month>")
 class WorkflowRunArchiveMonthApi(Resource):
+    @error_responses(PaidPlanRequiredError)
     @console_ns.doc("delete_workflow_run_archive")
     @console_ns.doc(description="Permanently delete this workspace's monthly archive files and archive index")
     @console_ns.doc(
@@ -154,6 +158,7 @@ class WorkflowRunArchiveMonthApi(Resource):
 
 @console_ns.route("/workflow-run-archives/downloads")
 class WorkflowRunArchiveDownloadsApi(Resource):
+    @error_responses(PaidPlanRequiredError)
     @console_ns.doc("create_workflow_run_archive_download")
     @console_ns.doc(description="Create or return a temporary workflow-run archive download task")
     @console_ns.expect(console_ns.models[WorkflowRunArchiveDownloadPayload.__name__])
@@ -179,6 +184,7 @@ class WorkflowRunArchiveDownloadsApi(Resource):
 
 @console_ns.route("/workflow-run-archives/downloads/<string:download_id>")
 class WorkflowRunArchiveDownloadApi(Resource):
+    @error_responses(PaidPlanRequiredError)
     @console_ns.doc("get_workflow_run_archive_download")
     @console_ns.doc(description="Get a temporary workflow-run archive download task")
     @console_ns.response(200, "Success", console_ns.models[WorkflowRunArchiveDownloadTaskResponse.__name__])
@@ -197,6 +203,7 @@ class WorkflowRunArchiveDownloadApi(Resource):
 
 @console_ns.route("/workflow-run-archives/downloads/<string:download_id>/file")
 class WorkflowRunArchiveDownloadFileApi(Resource):
+    @error_responses(PaidPlanRequiredError)
     @console_ns.doc("download_workflow_run_archive_file")
     @console_ns.doc(description="Redirect to a prepared workflow-run archive ZIP file")
     @console_ns.response(

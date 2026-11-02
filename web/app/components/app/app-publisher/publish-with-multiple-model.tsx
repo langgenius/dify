@@ -5,12 +5,7 @@ import type {
 import type { FC } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -66,8 +61,8 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
   const triggerDisabled = disabled || !validModelConfigs.length
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         disabled={triggerDisabled}
         render={<Button variant="primary" disabled={triggerDisabled} className="w-full" />}
       >
@@ -75,13 +70,13 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
           {t(($) => $['operation.applyConfig'], { ns: 'appDebug' })}
           <RiArrowDownSLine className="size-3" />
         </>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-[288px] p-1">
+      </MenuTrigger>
+      <MenuContent className="w-[288px]">
         <div className="flex h-5.5 items-center px-3 text-xs font-medium text-text-tertiary">
           {t(($) => $.publishAs, { ns: 'appDebug' })}
         </div>
         {validModelConfigs.map((item, index) => (
-          <DropdownMenuItem key={item.id} className="gap-0 px-3" onClick={() => onSelect(item)}>
+          <MenuItem key={item.id} className="gap-0 px-3" onClick={() => onSelect(item)}>
             <span className="min-w-4.5 italic">#{index + 1}</span>
             <ModelIcon modelName={item.model} provider={item.providerItem} className="ml-2" />
             <div
@@ -90,10 +85,10 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
             >
               {renderI18nObject(item.modelItem.label, language)}
             </div>
-          </DropdownMenuItem>
+          </MenuItem>
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }
 

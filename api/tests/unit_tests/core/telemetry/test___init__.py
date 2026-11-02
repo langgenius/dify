@@ -2,107 +2,111 @@
 
 from __future__ import annotations
 
-import queue
-from unittest.mock import MagicMock, patch
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import DraftNodeExecuted, TraceCorrelation, TraceEvent
 
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.telemetry import emit
+from core.telemetry import gateway as gateway_module
 from core.telemetry.events import DraftNodeExecutionTraceEvent, TelemetryContext
+
+type _ScopeRequest = tuple[str, str | None, str | None, Mapping[str, object]]
+
+
+@dataclass
+class _TracePipeline:
+    """Stands in for the bound trace pipeline: hands out scopes and records what they emit."""
+
+    scope_requests: list[_ScopeRequest] = field(default_factory=list)
+    events: list[TraceEvent] = field(default_factory=list)
+
+    def create_scope(
+        self, *, tenant_id: str, app_id: str | None, user_id: str | None, extras: Mapping[str, object]
+    ) -> TraceScope:
+        self.scope_requests.append((tenant_id, app_id, user_id, extras))
+        return TraceScope(
+            emitter=self,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            user_id=user_id,
+            correlation=TraceCorrelation(
+                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+            ),
+        )
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
 
 
 @pytest.fixture
-def telemetry_test_setup():
-    trace_queue: queue.Queue[TraceTask] = queue.Queue()
-    with (
-        patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=None),
-        patch("core.ops.ops_trace_manager.trace_manager_queue", trace_queue),
-        patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False),
-        patch.object(TraceQueueManager, "start_timer"),
-    ):
-        yield emit, trace_queue
+def pipeline(monkeypatch: pytest.MonkeyPatch) -> _TracePipeline:
+    pipeline = _TracePipeline()
+    monkeypatch.setattr(gateway_module, "create_trace_scope_for_app", pipeline.create_scope)
+    return pipeline
+
+
+def _enable_enterprise_telemetry(monkeypatch: pytest.MonkeyPatch, enabled: bool) -> None:
+    monkeypatch.setattr(gateway_module, "is_enterprise_telemetry_enabled", lambda: enabled)
+
+
+def _draft_node_event(node_execution_data: dict[str, object]) -> DraftNodeExecutionTraceEvent:
+    return DraftNodeExecutionTraceEvent(
+        context=TelemetryContext(tenant_id="test-tenant", user_id="test-user", app_id="test-app"),
+        payload={"node_execution_data": node_execution_data},
+    )
 
 
 class TestTelemetryEmit:
-    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_emit_enterprise_trace_creates_trace_task(self, mock_ee, telemetry_test_setup):
-        emit_fn, trace_queue = telemetry_test_setup
+    def test_emit_enterprise_trace_reports_the_draft_node_execution(
+        self, monkeypatch: pytest.MonkeyPatch, pipeline: _TracePipeline
+    ) -> None:
+        _enable_enterprise_telemetry(monkeypatch, True)
 
-        event = DraftNodeExecutionTraceEvent(
-            context=TelemetryContext(
-                tenant_id="test-tenant",
-                user_id="test-user",
-                app_id="test-app",
-            ),
-            payload={"node_execution_data": {"key": "value"}},
+        emit(_draft_node_event({"node_id": "node-1", "status": "succeeded"}))
+
+        assert pipeline.scope_requests == [("test-tenant", "test-app", "test-user", {})]
+        (event,) = pipeline.events
+        assert (event.tenant_id, event.app_id, event.user_id) == ("test-tenant", "test-app", "test-user")
+        assert event.payload == DraftNodeExecuted(node_execution={"node_id": "node-1", "status": "succeeded"})
+
+    def test_emit_makes_node_execution_values_json_safe(
+        self, monkeypatch: pytest.MonkeyPatch, pipeline: _TracePipeline
+    ) -> None:
+        _enable_enterprise_telemetry(monkeypatch, True)
+        created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
+
+        emit(_draft_node_event({"created_at": created_at, "elapsed_time": float("nan"), "node_inputs": {"q": 1}}))
+
+        (event,) = pipeline.events
+        assert event.payload == DraftNodeExecuted(
+            node_execution={"created_at": str(created_at), "elapsed_time": "NaN", "node_inputs": {"q": 1}}
         )
 
-        emit_fn(event)
+    def test_emit_enterprise_only_trace_dropped_when_ee_disabled(
+        self, monkeypatch: pytest.MonkeyPatch, pipeline: _TracePipeline
+    ) -> None:
+        _enable_enterprise_telemetry(monkeypatch, False)
 
-        called_task = trace_queue.get_nowait()
-        assert trace_queue.empty()
-        assert called_task.app_id == "test-app"
-        assert called_task.user_id == "test-user"
-        assert called_task.trace_type == TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
+        emit(_draft_node_event({}))
 
-    def test_emit_enterprise_only_trace_dropped_when_ee_disabled(self, telemetry_test_setup):
-        emit_fn, trace_queue = telemetry_test_setup
+        assert pipeline.scope_requests == []
+        assert pipeline.events == []
 
-        event = DraftNodeExecutionTraceEvent(
-            context=TelemetryContext(
-                tenant_id="test-tenant",
-                user_id="test-user",
-                app_id="test-app",
-            ),
-            payload={"node_execution_data": {}},
+    def test_emit_drops_trace_without_a_workspace(
+        self, monkeypatch: pytest.MonkeyPatch, pipeline: _TracePipeline
+    ) -> None:
+        _enable_enterprise_telemetry(monkeypatch, True)
+
+        emit(
+            DraftNodeExecutionTraceEvent(
+                context=TelemetryContext(tenant_id=None, user_id="test-user", app_id="test-app"),
+                payload={"node_execution_data": {}},
+            )
         )
 
-        emit_fn(event)
-
-        assert trace_queue.empty()
-
-    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_emit_passes_name_directly_to_trace_task(self, mock_ee, telemetry_test_setup):
-        emit_fn, trace_queue = telemetry_test_setup
-
-        event = DraftNodeExecutionTraceEvent(
-            context=TelemetryContext(
-                tenant_id="test-tenant",
-                user_id="test-user",
-                app_id="test-app",
-            ),
-            payload={"node_execution_data": {"extra": "data"}},
-        )
-
-        emit_fn(event)
-
-        called_task = trace_queue.get_nowait()
-        assert trace_queue.empty()
-        assert called_task.app_id == "test-app"
-        assert called_task.user_id == "test-user"
-        assert called_task.trace_type == TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
-        assert isinstance(called_task.trace_type, TraceTaskName)
-
-    @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_emit_with_provided_trace_manager(self, mock_ee, telemetry_test_setup):
-        emit_fn, trace_queue = telemetry_test_setup
-
-        mock_trace_manager = MagicMock()
-        mock_trace_manager.add_trace_task = MagicMock()
-
-        event = DraftNodeExecutionTraceEvent(
-            context=TelemetryContext(
-                tenant_id="test-tenant",
-                user_id="test-user",
-                app_id="test-app",
-            ),
-            payload={"node_execution_data": {}},
-        )
-
-        emit_fn(event, trace_manager=mock_trace_manager)
-
-        mock_trace_manager.add_trace_task.assert_called_once()
-        called_task = mock_trace_manager.add_trace_task.call_args[0][0]
-        assert called_task.trace_type == TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
+        assert pipeline.scope_requests == []
+        assert pipeline.events == []

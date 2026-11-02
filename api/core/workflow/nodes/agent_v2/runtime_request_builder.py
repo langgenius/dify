@@ -49,9 +49,9 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.llm.model_access import resolve_model_context_window
-from core.ops.base_trace_instance import application_tracing_hooks
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
+from extensions.tracing import application_tracing_hooks
 from graphon.file import File, FileTransferMethod
 from graphon.variables.segments import Segment
 from graphon.variables.template_resolution import convert_template
@@ -60,6 +60,7 @@ from models.agent_config_entities import (
     AgentKnowledgeMetadataFilteringConfig,
     AgentKnowledgeModelConfig,
     AgentKnowledgeRetrievalConfig,
+    AgentKnowledgeSpaceConfig,
     AgentSoulConfig,
     AgentSoulToolsConfig,
     DeclaredArrayItem,
@@ -192,6 +193,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 user_id=context.dify_context.user_id,
                 tools=agent_soul.tools,
                 invoke_from=context.dify_context.invoke_from,
+                knowledge_fs_spaces=tuple(agent_soul.knowledge.spaces),
             )
         except WorkflowAgentDifyToolsBuildError as error:
             raise WorkflowAgentRuntimeRequestBuildError(error.error_code, str(error)) from error
@@ -309,6 +311,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         user_id: str | None,
         tools: AgentSoulToolsConfig,
         invoke_from: InvokeFrom,
+        knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...],
     ) -> WorkflowAgentToolLayers:
         # Production workflow runs intentionally keep existing plugin configs on
         # the direct `dify.plugin.tools` route. This builder emits plugin tools
@@ -319,6 +322,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             user_id=user_id,
             tools=tools,
             invoke_from=invoke_from,
+            knowledge_fs_spaces=knowledge_fs_spaces,
         )
 
     @staticmethod

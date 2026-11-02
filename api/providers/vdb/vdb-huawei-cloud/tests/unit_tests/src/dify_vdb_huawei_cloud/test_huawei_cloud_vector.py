@@ -1,7 +1,8 @@
 import importlib
 import json
 import sys
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,12 +12,15 @@ from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
+if TYPE_CHECKING:
+    from dify_vdb_huawei_cloud.huawei_cloud_vector import HuaweiCloudVectorConfig
 
-def _build_fake_elasticsearch_modules():
+
+def _build_fake_elasticsearch_modules() -> dict[str, FakeModule]:
     elasticsearch = FakeModule("elasticsearch")
 
     class Elasticsearch:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: object) -> None:
             self.kwargs = kwargs
             self.index = MagicMock()
             self.exists = MagicMock(return_value=False)
@@ -31,7 +35,7 @@ def _build_fake_elasticsearch_modules():
 
 
 @pytest.fixture
-def huawei_module(monkeypatch: pytest.MonkeyPatch):
+def huawei_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     for name, module in _build_fake_elasticsearch_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -40,17 +44,17 @@ def huawei_module(monkeypatch: pytest.MonkeyPatch):
     return importlib.reload(module)
 
 
-def _config(module):
+def _config(module: ModuleType) -> "HuaweiCloudVectorConfig":
     return module.HuaweiCloudVectorConfig(hosts="http://localhost:9200", username="user", password="pass")
 
 
-def test_create_ssl_context(huawei_module):
+def test_create_ssl_context(huawei_module: ModuleType) -> None:
     ctx = huawei_module.create_ssl_context()
     assert ctx.check_hostname is False
     assert ctx.verify_mode == huawei_module.ssl.CERT_NONE
 
 
-def test_huawei_config_validation_and_params(huawei_module):
+def test_huawei_config_validation_and_params(huawei_module: ModuleType) -> None:
     with pytest.raises(ValidationError, match="HOSTS is required"):
         huawei_module.HuaweiCloudVectorConfig.model_validate({"hosts": ""})
 
@@ -64,7 +68,7 @@ def test_huawei_config_validation_and_params(huawei_module):
     assert "basic_auth" not in params
 
 
-def test_init_get_type_and_add_texts(huawei_module):
+def test_init_get_type_and_add_texts(huawei_module: ModuleType) -> None:
     vector = huawei_module.HuaweiCloudVector("COLLECTION", _config(huawei_module))
 
     assert vector._collection_name == "collection"
@@ -82,7 +86,7 @@ def test_init_get_type_and_add_texts(huawei_module):
     vector._client.indices.refresh.assert_called_once_with(index="collection")
 
 
-def test_crud_methods(huawei_module):
+def test_crud_methods(huawei_module: ModuleType) -> None:
     vector = huawei_module.HuaweiCloudVector("collection", _config(huawei_module))
 
     vector._client.exists.return_value = True
@@ -99,7 +103,7 @@ def test_crud_methods(huawei_module):
     vector.delete_by_ids.assert_called_once_with(["id-1"])
 
     vector.delete_by_ids.reset_mock()
-    vector._client.search.return_value = {"hits": {"hits": []}}
+    vector._client.search.return_value = {"hits": {"hits": list[dict[str, object]]()}}
     vector.delete_by_metadata_field("doc_id", "x")
     vector.delete_by_ids.assert_not_called()
 
@@ -107,7 +111,7 @@ def test_crud_methods(huawei_module):
     vector._client.indices.delete.assert_called_once_with(index="collection")
 
 
-def test_search_by_vector_and_full_text(huawei_module):
+def test_search_by_vector_and_full_text(huawei_module: ModuleType) -> None:
     vector = huawei_module.HuaweiCloudVector("collection", _config(huawei_module))
     vector._client.search.return_value = {
         "hits": {
@@ -157,9 +161,11 @@ def test_search_by_vector_and_full_text(huawei_module):
     assert docs[0].page_content == "text-hit"
 
 
-def test_search_by_vector_skips_hits_without_metadata(huawei_module, monkeypatch: pytest.MonkeyPatch):
+def test_search_by_vector_skips_hits_without_metadata(
+    huawei_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     class FakeDocument:
-        def __init__(self, page_content, vector, metadata):
+        def __init__(self, page_content: str, vector: list[float], metadata: dict[str, object]) -> None:
             self.page_content = page_content
             self.vector = vector
             self.metadata = None
@@ -187,7 +193,7 @@ def test_search_by_vector_skips_hits_without_metadata(huawei_module, monkeypatch
     assert docs == []
 
 
-def test_create_and_create_collection_paths(huawei_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_and_create_collection_paths(huawei_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -220,7 +226,7 @@ def test_create_and_create_collection_paths(huawei_module, monkeypatch: pytest.M
     huawei_module.redis_client.set.assert_called_once()
 
 
-def test_huawei_factory_branches(huawei_module, monkeypatch: pytest.MonkeyPatch):
+def test_huawei_factory_branches(huawei_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     factory = huawei_module.HuaweiCloudVectorFactory()
     dataset_with_index = Dataset(
         id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})

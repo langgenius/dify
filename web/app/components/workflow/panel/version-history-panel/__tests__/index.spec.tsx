@@ -289,10 +289,7 @@ describe('VersionHistoryPanel', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
     await waitFor(() => expect(mockDeleteWorkflow).toHaveBeenCalledWith('published-version-id'))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-    if (failed)
-      expect(mockToast.error).toHaveBeenCalledWith(
-        'workflowHistory.versionHistory.action.deleteFailure',
-      )
+    if (failed) expect(mockToast.error).toHaveBeenCalledWith('Delete failed')
     else expect(mockToast.error).not.toHaveBeenCalled()
   })
 

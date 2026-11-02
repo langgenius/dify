@@ -10,6 +10,7 @@ type Props = Readonly<{
   description?: string
   children?: React.ReactNode
   disabled?: boolean
+  loading?: boolean
   onChange?: (state: boolean) => void
   onMouseEnter?: () => void
   onMouseLeave?: () => void
@@ -23,6 +24,7 @@ const FeatureCard = ({
   description,
   children,
   disabled,
+  loading,
   onChange,
   onMouseEnter,
   onMouseLeave,
@@ -49,6 +51,7 @@ const FeatureCard = ({
         <Switch
           aria-labelledby={titleId}
           disabled={disabled}
+          loading={loading}
           className="shrink-0"
           onCheckedChange={(state) => onChange?.(state)}
           checked={value}

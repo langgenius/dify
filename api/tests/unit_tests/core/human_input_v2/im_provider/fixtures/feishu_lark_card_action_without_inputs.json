@@ -1,0 +1,50 @@
+{
+  "transport_evidence": {
+    "kind": "authenticated_webhook",
+    "payload_boundary": "durable_inbox_to_card_decoder",
+    "source": "sanitized_hitl_dev_callback"
+  },
+  "captured_at": "2026-10-22T07:39:41.203169+00:00",
+  "authenticated_event": {
+    "provider": "feishu",
+    "provider_tenant_id": "tenant_test_only",
+    "event_id": "evt_no_inputs_test_only",
+    "event_type": "card.action.trigger",
+    "payload": {
+      "schema": "2.0",
+      "header": {
+        "event_id": "evt_no_inputs_test_only",
+        "token": "verification_test_only",
+        "create_time": "1792654781203169",
+        "event_type": "card.action.trigger",
+        "tenant_key": "tenant_test_only",
+        "app_id": "cli_test_only"
+      },
+      "event": {
+        "operator": {
+          "tenant_key": "tenant_test_only",
+          "open_id": "open_test_only",
+          "union_id": "union_test_only"
+        },
+        "token": "callback_test_only",
+        "action": {
+          "value": {
+            "__dify.human_input.action": {
+              "action_id": "confirm",
+              "correlation_token": "no-inputs-correlation-token-test-only",
+              "version": 1
+            }
+          },
+          "tag": "button",
+          "timezone": "Asia/Shanghai",
+          "name": "confirm"
+        },
+        "host": "im_message",
+        "context": {
+          "open_message_id": "message_test_only",
+          "open_chat_id": "chat_test_only"
+        }
+      }
+    }
+  }
+}

@@ -17,7 +17,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
 from core.app.layers.pause_state_persist_layer import (
     WorkflowResumptionContext,
     _AdvancedChatAppGenerateEntityWrapper,
@@ -69,6 +74,7 @@ def _build_advanced_chat_generate_entity(conversation_id: str | None) -> Advance
 
 def _build_workflow_generate_entity(stream: bool) -> WorkflowAppGenerateEntity:
     return WorkflowAppGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task-id",
         inputs={},
         files=[],
@@ -116,11 +122,11 @@ def _make_workflow(*, workflow_id: str = "workflow-id", app_id: str = "app-id") 
         type=WorkflowType.CHAT,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="workflow-owner",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
 
 
@@ -191,11 +197,11 @@ def _persist_app_and_workflow(session_factory: sessionmaker[Session]) -> None:
         type=WorkflowType.CHAT,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="workflow-owner",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
     with session_factory.begin() as session:
         session.add_all([app, workflow])
@@ -222,11 +228,11 @@ def _persist_resumption_models(
         type=WorkflowType.CHAT,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="workflow-owner",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
     workflow_run = WorkflowRun(
         id=workflow_run_id,

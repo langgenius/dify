@@ -807,7 +807,7 @@ export const zDeclaredOutputType = z.enum([
  *
  * Per-item shape for an ``array``-typed declared output.
  *
- * PRD §OUTPUT 配置框 keeps arrays one level deep on first version; nested arrays
+ * The PRD output configuration section limits arrays to one level; nested arrays
  * are rejected so the runtime type checker and JSON Schema stay easy to reason
  * about. Stage 4 §4.2.
  */
@@ -1367,7 +1367,7 @@ export const zAgentSoulModelConfig = z.object({
  *
  * File-output content check via a model-based comparison against a benchmark file.
  *
- * Per PRD §OUTPUT 配置框, output check is **file-only** and optional. Stage 4 §4.3.
+ * Per the PRD output configuration section, output checks are **file-only** and optional. Stage 4 §4.3.
  */
 export const zDeclaredOutputCheckConfig = z.object({
   benchmark_file_ref: zAgentFileRefConfig.nullish(),

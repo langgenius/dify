@@ -675,7 +675,6 @@ class TestDatasetServiceDatasetCases:
                     tenant_id="tenant-1",
                     user=user,
                     accessible_dataset_ids=[accessible.id],
-                    include_own_datasets=True,
                     tags=application_tags,
                 )
 
@@ -720,7 +719,6 @@ class TestDatasetServiceDatasetCases:
                 "tenant-1",
                 user=user,
                 accessible_dataset_ids=[accessible.id, "not-requested"],
-                include_own_datasets=True,
                 session=sqlite_session,
             )
 
@@ -1968,6 +1966,31 @@ class TestDatasetServiceDocumentCases:
             )
             event.remove(sqlite_session, "after_commit", count_commit)
             assert commits == 0
+
+        def test_delete_document_dispatches_cleanup_after_the_deletion_commits(self, sqlite_session: Session) -> None:
+            dataset = _dataset_row()
+            document = _document_row(document_id="doc-1", data_source_info=json.dumps({"upload_file_id": "file-1"}))
+            sqlite_session.add_all([dataset, document])
+            sqlite_session.commit()
+            visible_when_dispatched: list[bool] = []
+
+            def record_visibility(*_args: object) -> None:
+                # Cleanup and in-flight indexing run in other sessions; they must not see the row.
+                with Session(sqlite_session.get_bind()) as other_session:
+                    visible_when_dispatched.append(
+                        other_session.get(_dataset_service_document_Document, "doc-1") is not None
+                    )
+
+            with _dataset_service_document_patch(
+                "events.event_handlers.clean_when_document_deleted.clean_document_task"
+            ) as clean_task:
+                clean_task.delay.side_effect = record_visibility
+                _dataset_service_document_DocumentService.delete_document(document, sqlite_session)
+
+            clean_task.delay.assert_called_once_with(
+                "doc-1", dataset.id, _dataset_service_document_IndexStructureType.PARAGRAPH_INDEX, "file-1"
+            )
+            assert visible_when_dispatched == [False]
 
         def test_rename_document_raises_when_dataset_is_missing(self, sqlite_session: Session):
             with _dataset_service_document_patch(

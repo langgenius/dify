@@ -68,12 +68,11 @@ export const toControlSpaceSummary = (space: {
   }
 }
 
-/** Mirrors the published binding sync, which authorizes every selected space with these capabilities. */
+/** App authors need read/query access to a space, not permission to manage its sharing settings. */
 export const canBindControlSpace = (
   space: Pick<KnowledgeFsSpaceListItemResponse, 'permission_keys' | 'state' | 'technical_status'>,
 ) =>
   space.state === 'active' &&
   space.technical_status === 'available' &&
   space.permission_keys.includes('knowledge_space_read') &&
-  space.permission_keys.includes('knowledge_space_query') &&
-  space.permission_keys.includes('knowledge_space_access_config')
+  space.permission_keys.includes('knowledge_space_query')

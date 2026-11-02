@@ -63,7 +63,7 @@ const AddCredentialInLoadBalancing = ({
             open && 'bg-state-base-hover',
           )}
         >
-          <span className="mr-2 i-ri-add-line size-4" />
+          <span className="me-2 i-ri-add-line size-4" />
           {t(($) => $['modelProvider.auth.addCredential'], { ns: 'modelProvider' })}
         </button>
       )

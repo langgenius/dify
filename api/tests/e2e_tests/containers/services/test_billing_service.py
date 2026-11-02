@@ -5,7 +5,9 @@ import pytest
 from flask import Flask
 
 from extensions.ext_redis import redis_client
+from services.billing_client import billing
 from services.billing_service import BillingService
+from tests.helpers import billing_builders as builders
 
 
 class TestBillingServiceGetPlanBulkWithCache:
@@ -33,15 +35,15 @@ class TestBillingServiceGetPlanBulkWithCache:
             if keys:
                 redis_client.delete(*keys)
 
-    def _create_test_plan_data(self, plan: str = "sandbox", expiration_date: int = 1735689600):
-        """Helper to create test SubscriptionPlan data."""
-        return {"plan": plan, "expiration_date": expiration_date}
+    def _create_test_plan_data(
+        self, plan: str = "sandbox", expiration_date: int = 1735689600
+    ) -> billing.SubscriptionPlanItem:
+        return builders.plan_item(plan, expiration_date)
 
-    def _set_cache(self, tenant_id: str, plan_data: dict, ttl: int = 600):
+    def _set_cache(self, tenant_id: str, plan_data: billing.SubscriptionPlanItem, ttl: int = 600):
         """Helper to set cache data in Redis."""
         cache_key = BillingService._make_plan_cache_key(tenant_id)
-        json_str = json.dumps(plan_data)
-        redis_client.setex(cache_key, ttl, json_str)
+        redis_client.setex(cache_key, ttl, plan_data.model_dump_json())
 
     def _get_cache(self, tenant_id: str):
         """Helper to get cache data from Redis."""
@@ -74,12 +76,12 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert
             assert len(result) == 3
-            assert result["tenant-1"]["plan"] == "sandbox"
-            assert result["tenant-1"]["expiration_date"] == 1735689600
-            assert result["tenant-2"]["plan"] == "professional"
-            assert result["tenant-2"]["expiration_date"] == 1767225600
-            assert result["tenant-3"]["plan"] == "team"
-            assert result["tenant-3"]["expiration_date"] == 1798761600
+            assert result["tenant-1"].plan == "sandbox"
+            assert result["tenant-1"].expiration_date == 1735689600
+            assert result["tenant-2"].plan == "professional"
+            assert result["tenant-2"].expiration_date == 1767225600
+            assert result["tenant-3"].plan == "team"
+            assert result["tenant-3"].expiration_date == 1798761600
 
             # Verify API was not called
             mock_get_plan_bulk.assert_not_called()
@@ -100,8 +102,8 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert
             assert len(result) == 2
-            assert result["tenant-1"]["plan"] == "sandbox"
-            assert result["tenant-2"]["plan"] == "professional"
+            assert result["tenant-1"].plan == "sandbox"
+            assert result["tenant-2"].plan == "professional"
 
             # Verify API was called with correct tenant_ids
             mock_get_plan_bulk.assert_called_once_with(tenant_ids)
@@ -113,8 +115,8 @@ class TestBillingServiceGetPlanBulkWithCache:
             assert cached_2 is not None
 
             # Verify cache content
-            cached_data_1 = json.loads(cached_1)
-            cached_data_2 = json.loads(cached_2)
+            cached_data_1 = billing.SubscriptionPlanItem.model_validate_json(cached_1)
+            cached_data_2 = billing.SubscriptionPlanItem.model_validate_json(cached_2)
             assert cached_data_1 == expected_plans["tenant-1"]
             assert cached_data_2 == expected_plans["tenant-2"]
 
@@ -142,9 +144,9 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert
             assert len(result) == 3
-            assert result["tenant-1"]["plan"] == "sandbox"
-            assert result["tenant-2"]["plan"] == "professional"
-            assert result["tenant-3"]["plan"] == "team"
+            assert result["tenant-1"].plan == "sandbox"
+            assert result["tenant-2"].plan == "professional"
+            assert result["tenant-3"].plan == "team"
 
             # Verify API was called only for missing tenant
             mock_get_plan_bulk.assert_called_once_with(["tenant-3"])
@@ -152,7 +154,7 @@ class TestBillingServiceGetPlanBulkWithCache:
             # Verify tenant-3 data was written to cache
             cached_3 = self._get_cache("tenant-3")
             assert cached_3 is not None
-            cached_data_3 = json.loads(cached_3)
+            cached_data_3 = billing.SubscriptionPlanItem.model_validate_json(cached_3)
             assert cached_data_3 == missing_plan["tenant-3"]
 
     def test_get_plan_bulk_with_cache_redis_mget_failure(self, flask_app_with_containers: Flask):
@@ -174,8 +176,8 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert
             assert len(result) == 2
-            assert result["tenant-1"]["plan"] == "sandbox"
-            assert result["tenant-2"]["plan"] == "professional"
+            assert result["tenant-1"].plan == "sandbox"
+            assert result["tenant-2"].plan == "professional"
 
             # Verify API was called for all tenants (fallback)
             mock_get_plan_bulk.assert_called_once_with(tenant_ids)
@@ -211,9 +213,9 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert
             assert len(result) == 3
-            assert result["tenant-1"]["plan"] == "sandbox"  # From cache
-            assert result["tenant-2"]["plan"] == "professional"  # From API (fallback)
-            assert result["tenant-3"]["plan"] == "team"  # From API
+            assert result["tenant-1"].plan == "sandbox"  # From cache
+            assert result["tenant-2"].plan == "professional"  # From API (fallback)
+            assert result["tenant-3"].plan == "team"  # From API
 
             # Verify API was called for tenant-2 and tenant-3
             mock_get_plan_bulk.assert_called_once_with(["tenant-2", "tenant-3"])
@@ -221,10 +223,10 @@ class TestBillingServiceGetPlanBulkWithCache:
             # Verify tenant-2's invalid JSON was replaced with correct data in cache
             cached_2 = self._get_cache("tenant-2")
             assert cached_2 is not None
-            cached_data_2 = json.loads(cached_2)
+            cached_data_2 = billing.SubscriptionPlanItem.model_validate_json(cached_2)
             assert cached_data_2 == expected_plans["tenant-2"]
-            assert cached_data_2["plan"] == "professional"
-            assert cached_data_2["expiration_date"] == 1767225600
+            assert cached_data_2.plan == "professional"
+            assert cached_data_2.expiration_date == 1767225600
 
             # Verify tenant-2 cache has correct TTL
             cache_key_2_new = BillingService._make_plan_cache_key("tenant-2")
@@ -235,11 +237,11 @@ class TestBillingServiceGetPlanBulkWithCache:
             # Verify tenant-3 data was also written to cache
             cached_3 = self._get_cache("tenant-3")
             assert cached_3 is not None
-            cached_data_3 = json.loads(cached_3)
+            cached_data_3 = billing.SubscriptionPlanItem.model_validate_json(cached_3)
             assert cached_data_3 == expected_plans["tenant-3"]
 
     def test_get_plan_bulk_with_cache_invalid_plan_data_in_cache(self, flask_app_with_containers: Flask):
-        """Test fallback to API when cache data doesn't match SubscriptionPlan schema."""
+        """Test fallback to API when cache data doesn't match the plan model."""
         with flask_app_with_containers.app_context():
             # Arrange
             tenant_ids = ["tenant-1", "tenant-2", "tenant-3"]
@@ -264,9 +266,9 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert
             assert len(result) == 3
-            assert result["tenant-1"]["plan"] == "sandbox"  # From cache
-            assert result["tenant-2"]["plan"] == "professional"  # From API (fallback)
-            assert result["tenant-3"]["plan"] == "team"  # From API
+            assert result["tenant-1"].plan == "sandbox"  # From cache
+            assert result["tenant-2"].plan == "professional"  # From API (fallback)
+            assert result["tenant-3"].plan == "team"  # From API
 
             # Verify API was called for tenant-2 and tenant-3
             mock_get_plan_bulk.assert_called_once_with(["tenant-2", "tenant-3"])
@@ -294,8 +296,8 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert - Function should still return correct result despite pipeline failure
             assert len(result) == 2
-            assert result["tenant-1"]["plan"] == "sandbox"
-            assert result["tenant-2"]["plan"] == "professional"
+            assert result["tenant-1"].plan == "sandbox"
+            assert result["tenant-2"].plan == "professional"
 
             # Verify pipeline was attempted
             mock_pipeline.assert_called_once()
@@ -349,8 +351,8 @@ class TestBillingServiceGetPlanBulkWithCache:
 
             # Assert
             assert len(result) == 2
-            assert result["tenant-1"]["plan"] == "sandbox"
-            assert result["tenant-2"]["plan"] == "professional"
+            assert result["tenant-1"].plan == "sandbox"
+            assert result["tenant-2"].plan == "professional"
 
             # Verify API was called for both tenants (tenant-1 expired, tenant-2 missing)
             mock_get_plan_bulk.assert_called_once_with(tenant_ids)

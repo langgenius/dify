@@ -23,7 +23,7 @@ from tests.helpers.unit.config_override import apply_config_overrides
 
 class TestPubsubChannelCases:
     @staticmethod
-    def test_get_pubsub_broadcast_channel_defaults_to_pubsub(monkeypatch: pytest.MonkeyPatch):
+    def test_get_pubsub_broadcast_channel_defaults_to_pubsub(monkeypatch: pytest.MonkeyPatch) -> None:
         apply_config_overrides(monkeypatch, PUBSUB_REDIS_CHANNEL_TYPE="pubsub")
         monkeypatch.setattr(ext_redis, "_pubsub_redis_client", object())
 
@@ -32,7 +32,7 @@ class TestPubsubChannelCases:
         assert isinstance(channel, RedisBroadcastChannel)
 
     @staticmethod
-    def test_get_pubsub_broadcast_channel_sharded(monkeypatch: pytest.MonkeyPatch):
+    def test_get_pubsub_broadcast_channel_sharded(monkeypatch: pytest.MonkeyPatch) -> None:
         apply_config_overrides(monkeypatch, PUBSUB_REDIS_CHANNEL_TYPE="sharded")
         monkeypatch.setattr(ext_redis, "_pubsub_redis_client", object())
 

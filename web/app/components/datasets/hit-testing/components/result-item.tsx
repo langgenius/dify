@@ -77,14 +77,14 @@ export const ResultItem = memo(({ payload }: ResultItemProps) => {
               aria-expanded={!isFold}
               className={cn(
                 'inline-flex h-6 cursor-pointer items-center space-x-0.5 rounded-lg text-text-secondary select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid',
-                isFold && 'bg-workflow-process-bg pl-1',
+                isFold && 'bg-workflow-process-bg ps-1',
               )}
               onClick={(e) => {
                 e.stopPropagation()
                 toggleFold()
               }}
             >
-              <Icon className={cn('size-4', isFold && 'opacity-50')} />
+              <Icon className={cn('size-4', isFold && 'opacity-50 rtl:rotate-180')} />
               <span className="text-xs font-semibold uppercase">
                 {t(($) => $[`${i18nPrefix}hitChunks`], {
                   ns: 'datasetHitTesting',
@@ -97,7 +97,7 @@ export const ResultItem = memo(({ payload }: ResultItemProps) => {
                 {child_chunks.map((item) => (
                   <div
                     key={item.id}
-                    className="ml-1.75 border-l-2 border-text-accent-secondary pl-1.75"
+                    className="ms-1.75 border-s-2 border-text-accent-secondary ps-1.75"
                   >
                     <ChildChunkItem payload={item} isShowAll={false} />
                   </div>
@@ -109,7 +109,7 @@ export const ResultItem = memo(({ payload }: ResultItemProps) => {
         {!isParentChildRetrieval && keywords && keywords.length > 0 && (
           <div className="mt-2 flex flex-wrap">
             {keywords.map((keyword) => (
-              <Tag key={keyword} text={keyword} className="mr-2" />
+              <Tag key={keyword} text={keyword} className="me-2" />
             ))}
           </div>
         )}

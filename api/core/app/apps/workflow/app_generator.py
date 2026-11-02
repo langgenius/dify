@@ -25,7 +25,7 @@ from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
     WorkflowAppPausedBlockingResponse,
@@ -38,12 +38,12 @@ from core.helper.trace_id_helper import (
     extract_parent_trace_context_from_args,
     extract_trace_session_id_from_args,
 )
-from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.trigger.constants import is_trigger_node_type
 from core.workflow.node_factory import get_default_root_node_id
 from extensions.ext_database import db
+from extensions.tracing import create_trace_scope
 from factories import file_factory
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.engine.layer import Layer
@@ -55,6 +55,8 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from repositories.entities.workflow_execution import WorkflowExecutionIdentity
+from services.app.file_input_defaults import grant_file_default_access
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
@@ -97,6 +99,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -116,6 +119,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -135,6 +139,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -153,6 +158,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def generate(
         self,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: Workflow,
         user: Account | EndUser,
@@ -191,12 +197,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 workflow=workflow,
             )
 
-            # get tracing instance
-            trace_manager = TraceQueueManager(
-                app_id=app_model.id,
-                user_id=user.id if isinstance(user, Account) else user.session_id,
-            )
-
             inputs: Mapping[str, Any] = args["inputs"]
 
             extras = {
@@ -204,6 +204,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 **extract_parent_trace_context_from_args(args),
                 **extract_trace_session_id_from_args(args),
             }
+            trace_scope = create_trace_scope(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                app_tracing=app_model.tracing,
+                user_id=user.id if isinstance(user, Account) else user.session_id,
+                extras=extras,
+            )
             workflow_run_id = str(workflow_run_id or uuid.uuid4())
             root_node_id = root_node_id or get_default_root_node_id(workflow.graph_dict)
             root_node_config = workflow.get_node_config_by_id(root_node_id)
@@ -223,12 +230,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 file_upload_config=file_extra_config,
                 inputs=inputs,
                 files=list(system_files),
-                user_id=user.id,
+                user_id=execution_identity.user_id,
+                user_from=execution_identity.user_from,
                 stream=streaming,
                 invoke_from=invoke_from,
                 allow_human_input=allow_human_input,
                 call_depth=call_depth,
-                trace_manager=trace_manager,
+                trace_scope=trace_scope,
                 workflow_execution_id=workflow_run_id,
                 extras=extras,
             )
@@ -296,15 +304,18 @@ class WorkflowAppGenerator(BaseAppGenerator):
         """
         Resume a paused workflow execution using the persisted runtime state.
 
-        ``trace_manager`` is transient and excluded from generate-entity serialization,
-        so resumed executions rebuild it here before persistence layers receive the entity.
+        ``trace_scope`` is transient and excluded from generate-entity serialization,
+        so resumed executions create it again before persistence layers receive the entity.
         """
-        if application_generate_entity.trace_manager is None:
+        if application_generate_entity.trace_scope is None:
             application_generate_entity = application_generate_entity.model_copy(
                 update={
-                    "trace_manager": TraceQueueManager(
+                    "trace_scope": create_trace_scope(
+                        tenant_id=app_model.tenant_id,
                         app_id=app_model.id,
+                        app_tracing=app_model.tracing,
                         user_id=user.id if isinstance(user, Account) else user.session_id,
+                        extras=application_generate_entity.extras,
                     )
                 }
             )
@@ -360,6 +371,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             invoke_from=invoke_from,
         ):
+            grant_file_default_access(application_generate_entity.app_config.variables)
             # init queue manager
             queue_manager = WorkflowAppQueueManager(
                 task_id=application_generate_entity.task_id,
@@ -432,6 +444,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         args: Mapping[str, Any],
         streaming: bool = True,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
@@ -460,7 +473,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_config=app_config,
             inputs={},
             files=[],
-            user_id=user.id,
+            user_id=execution_identity.user_id,
+            user_from=execution_identity.user_from,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={
@@ -526,6 +540,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         args: LoopNodeRunPayload,
         streaming: bool = True,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         session: Session,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
@@ -554,7 +569,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_config=app_config,
             inputs={},
             files=[],
-            user_id=user.id,
+            user_id=execution_identity.user_id,
+            user_from=execution_identity.user_from,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={
@@ -651,18 +667,16 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         workflow_run_id=application_generate_entity.workflow_execution_id,
                     )
 
-                # Determine system_user_id based on invocation source
-                is_external_api_call = application_generate_entity.invoke_from in {
-                    InvokeFrom.WEB_APP,
-                    InvokeFrom.SERVICE_API,
-                }
-
-                if is_external_api_call:
-                    # For external API calls, use end user's session ID
-                    end_user = session.scalar(select(EndUser).where(EndUser.id == application_generate_entity.user_id))
+                user_from = application_generate_entity.user_from
+                if user_from == UserFrom.END_USER:
+                    end_user = session.scalar(
+                        select(EndUser).where(
+                            EndUser.tenant_id == application_generate_entity.app_config.tenant_id,
+                            EndUser.id == application_generate_entity.user_id,
+                        )
+                    )
                     system_user_id = end_user.session_id if end_user else ""
                 else:
-                    # For internal calls, use the original user ID
                     system_user_id = application_generate_entity.user_id
 
             runner = WorkflowAppRunner(

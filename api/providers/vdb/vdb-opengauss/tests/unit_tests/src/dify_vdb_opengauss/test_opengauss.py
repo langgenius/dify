@@ -1,8 +1,10 @@
 import importlib
 import json
 import sys
+from collections.abc import Generator
 from contextlib import contextmanager
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,15 +14,18 @@ from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
+if TYPE_CHECKING:
+    from dify_vdb_opengauss.opengauss import OpenGaussConfig
 
-def _build_fake_psycopg2_modules():
+
+def _build_fake_psycopg2_modules() -> dict[str, FakeModule]:
     psycopg2 = FakeModule("psycopg2")
     psycopg2.__path__ = []
     psycopg2_extras = FakeModule("psycopg2.extras")
     psycopg2_pool = FakeModule("psycopg2.pool")
 
     class SimpleConnectionPool:
-        def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
+        def __init__[**P](self, *args: P.args, **kwargs: P.kwargs) -> None:
             self.args = args
             self.kwargs = kwargs
             self.getconn = MagicMock()
@@ -39,7 +44,7 @@ def _build_fake_psycopg2_modules():
 
 
 @pytest.fixture
-def opengauss_module(monkeypatch: pytest.MonkeyPatch):
+def opengauss_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     for name, module in _build_fake_psycopg2_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -48,7 +53,7 @@ def opengauss_module(monkeypatch: pytest.MonkeyPatch):
     return importlib.reload(module)
 
 
-def _config(module, *, enable_pq=False):
+def _config(module: ModuleType, *, enable_pq: bool = False) -> "OpenGaussConfig":
     return module.OpenGaussConfig(
         host="localhost",
         port=6600,
@@ -73,7 +78,7 @@ def _config(module, *, enable_pq=False):
         ("max_connection", 0, "config OPENGAUSS_MAX_CONNECTION is required"),
     ],
 )
-def test_opengauss_config_validation(opengauss_module, field, value, message):
+def test_opengauss_config_validation(opengauss_module: ModuleType, field: str, value: str | int, message: str) -> None:
     values = _config(opengauss_module).model_dump()
     values[field] = value
 
@@ -81,7 +86,7 @@ def test_opengauss_config_validation(opengauss_module, field, value, message):
         opengauss_module.OpenGaussConfig.model_validate(values)
 
 
-def test_opengauss_config_validation_rejects_min_greater_than_max(opengauss_module):
+def test_opengauss_config_validation_rejects_min_greater_than_max(opengauss_module: ModuleType) -> None:
     values = _config(opengauss_module).model_dump()
     values["min_connection"] = 6
     values["max_connection"] = 5
@@ -90,7 +95,7 @@ def test_opengauss_config_validation_rejects_min_greater_than_max(opengauss_modu
         opengauss_module.OpenGaussConfig.model_validate(values)
 
 
-def test_init_sets_table_name_and_vector_type(opengauss_module, monkeypatch: pytest.MonkeyPatch):
+def test_init_sets_table_name_and_vector_type(opengauss_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
 
@@ -101,7 +106,7 @@ def test_init_sets_table_name_and_vector_type(opengauss_module, monkeypatch: pyt
     assert vector.pool is pool
 
 
-def test_create_index_with_pq_executes_pq_sql(opengauss_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_index_with_pq_executes_pq_sql(opengauss_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
 
@@ -116,7 +121,7 @@ def test_create_index_with_pq_executes_pq_sql(opengauss_module, monkeypatch: pyt
     cursor = MagicMock()
 
     @contextmanager
-    def _cursor_ctx():
+    def _cursor_ctx() -> Generator[MagicMock]:
         yield cursor
 
     vector._get_cursor = _cursor_ctx
@@ -128,7 +133,9 @@ def test_create_index_with_pq_executes_pq_sql(opengauss_module, monkeypatch: pyt
     opengauss_module.redis_client.set.assert_called_once()
 
 
-def test_create_index_skips_index_sql_for_large_dimension(opengauss_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_index_skips_index_sql_for_large_dimension(
+    opengauss_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
 
@@ -143,7 +150,7 @@ def test_create_index_skips_index_sql_for_large_dimension(opengauss_module, monk
     cursor = MagicMock()
 
     @contextmanager
-    def _cursor_ctx():
+    def _cursor_ctx() -> Generator[MagicMock]:
         yield cursor
 
     vector._get_cursor = _cursor_ctx
@@ -153,14 +160,16 @@ def test_create_index_skips_index_sql_for_large_dimension(opengauss_module, monk
     opengauss_module.redis_client.set.assert_called_once()
 
 
-def test_search_by_vector_validates_top_k(opengauss_module):
+def test_search_by_vector_validates_top_k(opengauss_module: ModuleType) -> None:
     vector = opengauss_module.OpenGauss.__new__(opengauss_module.OpenGauss)
 
     with pytest.raises(ValueError, match="top_k must be a positive integer"):
         vector.search_by_vector([0.1, 0.2], top_k=0)
 
 
-def test_delete_by_ids_short_circuits_with_empty_input(opengauss_module, monkeypatch: pytest.MonkeyPatch):
+def test_delete_by_ids_short_circuits_with_empty_input(
+    opengauss_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
     vector = opengauss_module.OpenGauss("collection_1", _config(opengauss_module))
@@ -171,7 +180,7 @@ def test_delete_by_ids_short_circuits_with_empty_input(opengauss_module, monkeyp
     vector._get_cursor.assert_not_called()
 
 
-def test_get_cursor_closes_commits_and_returns_connection(opengauss_module):
+def test_get_cursor_closes_commits_and_returns_connection(opengauss_module: ModuleType) -> None:
     vector = opengauss_module.OpenGauss.__new__(opengauss_module.OpenGauss)
     pool = MagicMock()
     conn = MagicMock()
@@ -188,7 +197,7 @@ def test_get_cursor_closes_commits_and_returns_connection(opengauss_module):
     pool.putconn.assert_called_once_with(conn)
 
 
-def test_create_calls_collection_insert_and_index(opengauss_module):
+def test_create_calls_collection_insert_and_index(opengauss_module: ModuleType) -> None:
     vector = opengauss_module.OpenGauss.__new__(opengauss_module.OpenGauss)
     vector._create_collection = MagicMock()
     vector.add_texts = MagicMock()
@@ -202,7 +211,7 @@ def test_create_calls_collection_insert_and_index(opengauss_module):
     vector._create_index.assert_called_once_with(2)
 
 
-def test_create_index_returns_early_on_cache_hit(opengauss_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_index_returns_early_on_cache_hit(opengauss_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
 
@@ -222,7 +231,9 @@ def test_create_index_returns_early_on_cache_hit(opengauss_module, monkeypatch: 
     opengauss_module.redis_client.set.assert_not_called()
 
 
-def test_create_index_without_pq_executes_standard_index_sql(opengauss_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_index_without_pq_executes_standard_index_sql(
+    opengauss_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
 
@@ -237,7 +248,7 @@ def test_create_index_without_pq_executes_standard_index_sql(opengauss_module, m
     cursor = MagicMock()
 
     @contextmanager
-    def _cursor_ctx():
+    def _cursor_ctx() -> Generator[MagicMock]:
         yield cursor
 
     vector._get_cursor = _cursor_ctx
@@ -247,7 +258,7 @@ def test_create_index_without_pq_executes_standard_index_sql(opengauss_module, m
     assert any("embedding_cosine_embedding_collection_1_idx" in query for query in sql)
 
 
-def test_add_texts_uses_execute_values(opengauss_module, monkeypatch: pytest.MonkeyPatch):
+def test_add_texts_uses_execute_values(opengauss_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
     vector = opengauss_module.OpenGauss("collection_1", _config(opengauss_module))
@@ -255,7 +266,7 @@ def test_add_texts_uses_execute_values(opengauss_module, monkeypatch: pytest.Mon
     opengauss_module.psycopg2.extras.execute_values.reset_mock()
 
     @contextmanager
-    def _cursor_ctx():
+    def _cursor_ctx() -> Generator[MagicMock]:
         yield cursor
 
     vector._get_cursor = _cursor_ctx
@@ -271,7 +282,7 @@ def test_add_texts_uses_execute_values(opengauss_module, monkeypatch: pytest.Mon
     opengauss_module.psycopg2.extras.execute_values.assert_called_once()
 
 
-def test_text_exists_and_get_by_ids(opengauss_module):
+def test_text_exists_and_get_by_ids(opengauss_module: ModuleType) -> None:
     vector = opengauss_module.OpenGauss.__new__(opengauss_module.OpenGauss)
     vector.table_name = "embedding_collection_1"
     cursor = MagicMock()
@@ -279,7 +290,7 @@ def test_text_exists_and_get_by_ids(opengauss_module):
     cursor.__iter__.return_value = iter([({"doc_id": "1"}, "text-1"), ({"doc_id": "2"}, "text-2")])
 
     @contextmanager
-    def _cursor_ctx():
+    def _cursor_ctx() -> Generator[MagicMock]:
         yield cursor
 
     vector._get_cursor = _cursor_ctx
@@ -290,13 +301,13 @@ def test_text_exists_and_get_by_ids(opengauss_module):
     assert docs[0].page_content == "text-1"
 
 
-def test_delete_and_metadata_field_queries(opengauss_module):
+def test_delete_and_metadata_field_queries(opengauss_module: ModuleType) -> None:
     vector = opengauss_module.OpenGauss.__new__(opengauss_module.OpenGauss)
     vector.table_name = "embedding_collection_1"
     cursor = MagicMock()
 
     @contextmanager
-    def _cursor_ctx():
+    def _cursor_ctx() -> Generator[MagicMock]:
         yield cursor
 
     vector._get_cursor = _cursor_ctx
@@ -311,7 +322,7 @@ def test_delete_and_metadata_field_queries(opengauss_module):
     assert any("DROP TABLE IF EXISTS embedding_collection_1" in query for query in sql)
 
 
-def test_search_by_vector_and_full_text(opengauss_module):
+def test_search_by_vector_and_full_text(opengauss_module: ModuleType) -> None:
     vector = opengauss_module.OpenGauss.__new__(opengauss_module.OpenGauss)
     vector.table_name = "embedding_collection_1"
     cursor = MagicMock()
@@ -323,7 +334,7 @@ def test_search_by_vector_and_full_text(opengauss_module):
     )
 
     @contextmanager
-    def _cursor_ctx():
+    def _cursor_ctx() -> Generator[MagicMock]:
         yield cursor
 
     vector._get_cursor = _cursor_ctx
@@ -338,13 +349,13 @@ def test_search_by_vector_and_full_text(opengauss_module):
     assert full_docs[0].page_content == "full-text"
 
 
-def test_search_by_full_text_validates_top_k(opengauss_module):
+def test_search_by_full_text_validates_top_k(opengauss_module: ModuleType) -> None:
     vector = opengauss_module.OpenGauss.__new__(opengauss_module.OpenGauss)
     with pytest.raises(ValueError, match="top_k must be a positive integer"):
         vector.search_by_full_text("query", top_k=0)
 
 
-def test_create_collection_cache_and_create_path(opengauss_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_collection_cache_and_create_path(opengauss_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     pool = MagicMock()
     monkeypatch.setattr(opengauss_module.psycopg2.pool, "SimpleConnectionPool", MagicMock(return_value=pool))
     lock = MagicMock()
@@ -357,7 +368,7 @@ def test_create_collection_cache_and_create_path(opengauss_module, monkeypatch: 
     cursor = MagicMock()
 
     @contextmanager
-    def _cursor_ctx():
+    def _cursor_ctx() -> Generator[MagicMock]:
         yield cursor
 
     vector._get_cursor = _cursor_ctx
@@ -372,7 +383,9 @@ def test_create_collection_cache_and_create_path(opengauss_module, monkeypatch: 
     opengauss_module.redis_client.set.assert_called_once()
 
 
-def test_opengauss_factory_uses_existing_or_generated_collection(opengauss_module, monkeypatch: pytest.MonkeyPatch):
+def test_opengauss_factory_uses_existing_or_generated_collection(
+    opengauss_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     factory = opengauss_module.OpenGaussFactory()
     dataset_with_index = Dataset(
         id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})

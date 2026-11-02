@@ -5,14 +5,8 @@ import type { DeploymentVersion } from '../utils/version'
 import type { OpenUndeployDialog } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Fragment, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
@@ -145,8 +139,8 @@ export function EnvironmentRowActions({
           {rowActionLabel(primaryAction, row, t, defaultVersionName)}
         </span>
       </Button>
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger
+      <Menu modal={false}>
+        <MenuTrigger
           render={
             <IconButton
               ref={menuTriggerRef}
@@ -159,11 +153,11 @@ export function EnvironmentRowActions({
             </IconButton>
           }
         />
-        <DropdownMenuContent className="w-50">
+        <MenuContent align="end" className="w-50">
           {moreActions.map((action, index) => (
             <Fragment key={action.kind}>
-              {action.kind === 'undeploy' && index > 0 && <DropdownMenuSeparator />}
-              <DropdownMenuItem
+              {action.kind === 'undeploy' && index > 0 && <MenuSeparator />}
+              <MenuItem
                 disabled={action.disabled}
                 className="gap-2 px-2"
                 onClick={() => {
@@ -180,11 +174,11 @@ export function EnvironmentRowActions({
                 <span className="min-w-0 flex-1 truncate system-md-regular text-text-secondary">
                   {rowActionLabel(action, row, t, defaultVersionName)}
                 </span>
-              </DropdownMenuItem>
+              </MenuItem>
             </Fragment>
           ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
     </div>
   )
 }

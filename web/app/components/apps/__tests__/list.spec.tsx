@@ -22,6 +22,7 @@ import { List } from '../list'
 
 const api = vi.hoisted(() => ({
   apps: vi.fn<typeof consoleClient.apps.get>(),
+  delete: vi.fn<typeof consoleClient.apps.byAppId.delete>(),
   starred: vi.fn<typeof consoleClient.apps.starred.get>(),
   online: vi.fn<typeof consoleClient.apps.workflows.onlineUsers.post>(),
   learn: vi.fn<typeof consoleClient.explore.apps.learnDify.get>(),
@@ -42,6 +43,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'apps.get': api.apps,
+      'apps.byAppId.delete': api.delete,
       'apps.starred.get': api.starred,
       'apps.workflows.onlineUsers.post': api.online,
       'explore.apps.learnDify.get': api.learn,
@@ -171,6 +173,7 @@ async function setup(
 
 beforeEach(() => {
   api.apps.mockReset().mockResolvedValue(page())
+  api.delete.mockReset().mockResolvedValue(undefined)
   api.starred.mockReset().mockResolvedValue(page([]))
   api.online.mockReset().mockResolvedValue({ data: [] })
   api.learn.mockReset().mockResolvedValue({ recommended_apps: [learnApp] })
@@ -586,4 +589,78 @@ it('opens the create walkthrough after resolving the guide group without activat
     within(menu).getByRole('menuitem', { name: /app.newApp.startFromBlank/, hidden: true }),
   )
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+async function openDeleteDialog(user: ReturnType<typeof userEvent.setup>, appName = 'Chat app') {
+  const card = screen.getByRole('link', { name: appName }).closest('li')!
+  await user.click(within(card).getByRole('button', { name: /common\.operation\.moreActionsFor/ }))
+  await user.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
+  return screen.findByRole('textbox')
+}
+
+it('clears the failed deletion and confirmation name when reopening the catalog dialog', async () => {
+  api.apps.mockResolvedValue(page([app({ permission_keys: [AppACLPermission.Delete] })]))
+  api.delete.mockRejectedValueOnce(new Error('Delete failed'))
+  const { user } = await setup()
+  await user.type(await openDeleteDialog(user), 'Chat app')
+  await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Delete failed')
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(await openDeleteDialog(user)).toHaveValue('')
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeDisabled()
+})
+
+it('retains a failed catalog deletion for retry and closes after success', async () => {
+  api.apps.mockResolvedValue(page([app({ permission_keys: [AppACLPermission.Delete] })]))
+  api.delete.mockRejectedValueOnce(new Error('Delete failed'))
+  const { user } = await setup()
+  await user.type(await openDeleteDialog(user), 'Chat app')
+  await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Delete failed')
+  expect(screen.getByRole('textbox')).toHaveValue('Chat app')
+  expect(api.delete).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
+  api.apps.mockResolvedValue(page([]))
+  await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(api.delete).toHaveBeenCalledTimes(2)
+})
+
+it('keeps the confirmation name stable and blocks dismissal while catalog deletion is pending', async () => {
+  const target = app({ permission_keys: [AppACLPermission.Delete] })
+  api.apps.mockResolvedValue(page([target]))
+  const pending = createDeferred<void>()
+  api.delete.mockReturnValueOnce(pending.promise)
+  const { user, queryClient } = await setup()
+  await openDeleteDialog(user)
+  await user.click(screen.getByRole('button', { name: 'common.operation.fill' }))
+  api.apps.mockResolvedValue(page([{ ...target, name: 'Renamed elsewhere' }]))
+  await act(async () => queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }))
+  expect(screen.getByRole('textbox')).toHaveValue('Chat app')
+  await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() => expect(api.delete).toHaveBeenCalledOnce())
+  expect(screen.getByRole('textbox')).toHaveAttribute('readonly')
+  expect(screen.getByRole('button', { name: 'common.operation.fill' })).toBeDisabled()
+  await user.keyboard('{Escape}')
+  expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  api.apps.mockResolvedValue(page([]))
+  await act(async () => pending.resolve())
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+})
+
+it('requires the exact app name and supports autofill before deleting from the catalog', async () => {
+  api.apps.mockResolvedValue(page([app({ permission_keys: [AppACLPermission.Delete] })]))
+  const { user } = await setup()
+  const input = await openDeleteDialog(user)
+  await user.type(input, 'Chat')
+  expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeDisabled()
+  await user.keyboard('{Enter}')
+  expect(api.delete).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'common.operation.fill' }))
+  expect(input).toHaveValue('Chat app')
+  api.apps.mockResolvedValue(page([]))
+  await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(api.delete).toHaveBeenCalledExactlyOnceWith({ params: { app_id: 'app-1' } })
 })
