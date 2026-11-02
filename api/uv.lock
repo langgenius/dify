@@ -1369,7 +1369,7 @@ wheels = [
 
 [[package]]
 name = "dify-agent"
-version = "1.18.0"
+version = "1.19.0"
 source = { editable = "../dify-agent" }
 dependencies = [
     { name = "httpx" },
@@ -1423,7 +1423,7 @@ docs = [
 
 [[package]]
 name = "dify-api"
-version = "1.18.0"
+version = "1.19.0"
 source = { virtual = "." }
 default-groups = ["kms", "storage", "tools", "trace-all", "vdb-all"]
 dependencies = [
