@@ -718,9 +718,15 @@ def test_snapshot_is_immutable_after_the_legacy_dataset_changes(
         assert persisted_job.config_snapshot["embedding_model_provider"] == "openai"
         assert persisted_job.config_snapshot["retrieval_model"] == {"top_k": 8, "reranking_enable": True}
         assert persisted_job.resolved_configuration is not None
-        assert persisted_job.resolved_configuration["embedding"]["model"] == "selected-embedding"
-        assert persisted_job.resolved_configuration["retrieval"]["reasoningModel"]["model"] == "selected-llm"
-        assert persisted_job.resolved_configuration["retrieval"]["topK"] == 8
+        embedding_config = persisted_job.resolved_configuration["embedding"]
+        retrieval_config = persisted_job.resolved_configuration["retrieval"]
+        assert isinstance(embedding_config, dict)
+        assert isinstance(retrieval_config, dict)
+        reasoning_model = retrieval_config["reasoningModel"]
+        assert isinstance(reasoning_model, dict)
+        assert embedding_config["model"] == "selected-embedding"
+        assert reasoning_model["model"] == "selected-llm"
+        assert retrieval_config["topK"] == 8
         assert persisted_job.config_snapshot["enable_api"] is True
         assert persisted_job.config_snapshot["metadata_fields"] == [{"name": "department", "type": "string"}]
         assert snapshot_document.desired_enabled is False
