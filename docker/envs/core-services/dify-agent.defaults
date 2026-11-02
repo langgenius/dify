@@ -49,11 +49,13 @@ DIFY_AGENT_REDIS_URL=${DIFY_AGENT_REDIS_URL:-redis://:${REDIS_PASSWORD:-difyai12
 # LOGFIRE_CONSOLE=false
 
 # Leave empty to derive from PLUGIN_DAEMON_URL and PLUGIN_DAEMON_KEY in Docker Compose.
+# Set PLUGIN_DAEMON_KEY in docker/.env when using the bundled daemon; keep the key expression below unchanged.
 DIFY_AGENT_PLUGIN_DAEMON_URL=${DIFY_AGENT_PLUGIN_DAEMON_URL:-${PLUGIN_DAEMON_URL:-http://plugin_daemon:5002}}
 DIFY_AGENT_PLUGIN_DAEMON_API_KEY=${DIFY_AGENT_PLUGIN_DAEMON_API_KEY:-${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}}
 
 # Leave empty to derive from PLUGIN_DIFY_INNER_API_URL and PLUGIN_DIFY_INNER_API_KEY in Docker Compose.
 # DIFY_AGENT_INNER_API_KEY must match API/worker INNER_API_KEY_FOR_PLUGIN, not INNER_API_KEY.
+# Set PLUGIN_DIFY_INNER_API_KEY in docker/.env; keep the key expression below unchanged for the bundled API.
 DIFY_AGENT_INNER_API_URL=${DIFY_AGENT_INNER_API_URL:-${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}}
 DIFY_AGENT_INNER_API_KEY=${DIFY_AGENT_INNER_API_KEY:-${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}}
 

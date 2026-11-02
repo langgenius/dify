@@ -292,6 +292,44 @@ class ComposeEnvironmentTests(unittest.TestCase):
                 self.assertEqual(args[-1], env["REDIS_PASSWORD"])
             self.assertFalse((self.project / "should-not-exist").exists())
 
+    def test_root_plugin_credentials_reach_every_consumer(self):
+        for name in ("shared", "api", "worker", "worker-beat", "plugin-daemon", "dify-agent"):
+            self.copy_template(f"envs/core-services/{name}.defaults", f"envs/core-services/{name}.env")
+        api_services = (
+            "api",
+            "api_websocket",
+            "worker",
+            "worker_knowledge_fs_upgrade",
+            "knowledge_fs_document_worker",
+            "knowledge_fs_source_worker",
+            "knowledge_fs_research_worker",
+            "knowledge_fs_maintenance_worker",
+            "knowledge_fs_dispatch_worker",
+        )
+        cases = {
+            "PLUGIN_DAEMON_KEY": {
+                **dict.fromkeys((*api_services, "worker_beat"), "PLUGIN_DAEMON_KEY"),
+                "plugin_daemon": "SERVER_KEY",
+                "agent_backend": "DIFY_AGENT_PLUGIN_DAEMON_API_KEY",
+            },
+            "PLUGIN_DIFY_INNER_API_KEY": {
+                **dict.fromkeys(api_services, "INNER_API_KEY_FOR_PLUGIN"),
+                "plugin_daemon": "DIFY_INNER_API_KEY",
+                "agent_backend": "DIFY_AGENT_INNER_API_KEY",
+                "knowledge_fs": "DIFY_INNER_API_KEY",
+            },
+        }
+        for key, consumers in cases.items():
+            value = f"custom-{key.lower()}"
+            self.override_root({key: value})
+            services = self.render()
+            for name, native in consumers.items():
+                self.assertEqual(services[name]["environment"][native], value, f"{name}.{native}")
+            if key == "PLUGIN_DIFY_INNER_API_KEY":
+                for name in api_services:
+                    if name.startswith("knowledge_fs_"):
+                        self.assertEqual(services[name]["environment"]["DIFY_INNER_API_KEY"], value, name)
+
     def test_websocket_uses_copied_shared_settings(self):
         self.copy_template(
             "envs/core-services/shared.env.example",

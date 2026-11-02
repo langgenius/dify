@@ -19,7 +19,7 @@ API_WEBSOCKET_GUNICORN_TIMEOUT=${API_WEBSOCKET_GUNICORN_TIMEOUT:-360}
 # so the API connection and Compose port mapping use the same address.
 PLUGIN_MAX_PACKAGE_SIZE=${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
 PLUGIN_DAEMON_TIMEOUT=${PLUGIN_DAEMON_TIMEOUT:-600.0}
-PLUGIN_DIFY_INNER_API_KEY=${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+# Set PLUGIN_DIFY_INNER_API_KEY in docker/.env; all callers must share the API's inner credential.
 # Optional server-side secret mixed into account password hashes. Leave empty to keep the legacy hashing.
 # WARNING: setting, changing, or removing this value changes every password hash and existing passwords
 # will stop working. Do not change it casually.

@@ -138,6 +138,26 @@ Run `docker compose up -d`, then open
 Use root `.env` for values shared with the isolated local Agent sandbox, including
 its authentication token.
 
+### Change shared plugin credentials
+
+Set both shared plugin credentials in root `.env`, so every service receives the
+same values:
+
+| Root `.env` setting | Used by |
+| --- | --- |
+| `PLUGIN_DAEMON_KEY` | Plugin daemon authentication and its API, worker, and Agent clients |
+| `PLUGIN_DIFY_INNER_API_KEY` | API inner-endpoint authentication and its plugin daemon, worker, Agent, and KnowledgeFS clients |
+
+Generate a separate value for each key with `openssl rand -hex 32`, then add the two
+assignments to `.env`. If you previously set these keys in a service `.env` file,
+move them to root `.env`. Leave the derived container key expressions unchanged
+when copying service defaults, including the Agent's derived key expressions.
+Editing only `plugin-daemon.env`, `api.env`, or `worker.env` does not update every
+consumer and can cause HTTP 401 responses.
+
+Run `docker compose up -d` to apply the credentials to all affected services.
+These optional overrides do not need to be added to `.env.example`.
+
 ### Select a database or vector store
 
 Set `DB_TYPE` or `VECTOR_STORE` and the provider's connection settings in the

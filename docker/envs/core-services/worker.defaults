@@ -8,7 +8,7 @@ API_SENTRY_DSN=${API_SENTRY_DSN:-}
 API_SENTRY_TRACES_SAMPLE_RATE=${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
 API_SENTRY_PROFILES_SAMPLE_RATE=${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
 PLUGIN_MAX_PACKAGE_SIZE=${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
-PLUGIN_DIFY_INNER_API_KEY=${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+# Set PLUGIN_DIFY_INNER_API_KEY in docker/.env; all callers must share the API's inner credential.
 # Set COMPOSE_WORKER_HEALTHCHECK_DISABLED in docker/.env; Compose needs it before loading service files.
 # Set COMPOSE_WORKER_HEALTHCHECK_INTERVAL in docker/.env; Compose needs it before loading service files.
 # Set COMPOSE_WORKER_HEALTHCHECK_TIMEOUT in docker/.env; Compose needs it before loading service files.
