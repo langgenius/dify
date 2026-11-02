@@ -187,7 +187,7 @@ def test_independent_binding_cleanup_task_retries_with_exponential_backoff(
     mocker: MockerFixture,
     account_application_services: ApplicationServices,
 ) -> None:
-    upstream_error = NetworkAccessGroupUpstreamError(409, "NETWORK_ACCESS_APP_STILL_EXISTS")
+    upstream_error = NetworkAccessGroupUpstreamError(unavailable=False)
     retry_error = RuntimeError("retry scheduled")
     mocker.patch.object(
         account_application_services.network_access_groups, "cleanup_app_binding", side_effect=upstream_error

@@ -59,7 +59,7 @@ function workflowPath(...workflows: WorkflowReference[]): WorkflowPath {
 
 function renderCredentialField() {
   return renderWithConsoleQuery(
-    <CredentialField slot={credentialSlot} value="credential-1" onChange={vi.fn()} />,
+    <CredentialField slot={credentialSlot} defaultValue="credential-1" onChange={vi.fn()} />,
   )
 }
 
@@ -99,7 +99,7 @@ describe('CredentialField', () => {
     renderWithConsoleQuery(
       <CredentialField
         slot={{ ...credentialSlot, candidates: [] }}
-        value={undefined}
+        defaultValue={undefined}
         onChange={vi.fn()}
       />,
     )
@@ -125,7 +125,7 @@ describe('CredentialField', () => {
       <CredentialField
         slot={credentialSlot}
         paths={[workflowPath(root, source)]}
-        value="credential-1"
+        defaultValue="credential-1"
         onChange={vi.fn()}
       />,
     )
@@ -156,7 +156,7 @@ describe('CredentialField', () => {
             workflowReference('Audit workflow', 'audit'),
           ),
         ]}
-        value="credential-1"
+        defaultValue="credential-1"
         onChange={vi.fn()}
       />,
     )

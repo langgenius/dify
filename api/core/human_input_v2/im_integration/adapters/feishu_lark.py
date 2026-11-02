@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import binascii
 import hashlib
 import hmac
 import json
@@ -1382,7 +1381,7 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
     ) -> ReplacementError | None:
         try:
             decoded_locator = _FeishuLarkLocatorPayload.decode(str(locator))
-        except (ValueError, binascii.Error, ValidationError):
+        except ValueError:
             return ReplacementError(
                 ReplacementErrorKind.INVALID_REFERENCE,
                 f"The {_provider_name(self._provider)} message reference is invalid.",
@@ -1507,7 +1506,7 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
                 plaintext = _decrypt_webhook_payload(envelope.encrypt, self._encrypt_key)
                 native_payload = plaintext.decode()
                 decoded = _decode_json_object(plaintext)
-        except (ValueError, ValidationError, UnicodeDecodeError, binascii.Error):
+        except ValueError:
             return None
         # The official SDK authenticates URL verification with the body token and requires signatures only for events.
         if decoded.get("type") == "url_verification":

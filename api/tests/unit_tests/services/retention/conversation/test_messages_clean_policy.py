@@ -1,13 +1,20 @@
 import datetime
+from collections.abc import Callable
 from unittest.mock import MagicMock, patch
 
+import httpx
+import pytest
+
 from enums import DeploymentEdition
+from services.billing_client import transport
+from services.billing_service import BillingService
 from services.retention.conversation.messages_clean_policy import (
     BillingDisabledPolicy,
     BillingSandboxPolicy,
     SimpleMessage,
     create_message_clean_policy,
 )
+from tests.helpers import billing_builders as builders
 
 MODULE = "services.retention.conversation.messages_clean_policy"
 
@@ -46,6 +53,24 @@ class TestBillingSandboxPolicy:
         policy = self._policy({})
         assert policy.filter_message_ids([], {"app1": "t1"}) == []
 
+    def test_malformed_billing_item_does_not_interrupt_other_tenants(
+        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ) -> None:
+        payload = {
+            "data": {
+                "t1": {"plan": "sandbox", "expiration_date": "-1"},
+                "t2": {"plan": "sandbox"},
+            }
+        }
+        policy = BillingSandboxPolicy(plan_provider=BillingService.get_plan_bulk)
+        config_overrides(BILLING_API_URL="http://billing/v1")
+        with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
+            monkeypatch.setattr(transport, "_http_client", client)
+
+            result = policy.filter_message_ids([_msg("m1", "a1"), _msg("m2", "a2")], {"a1": "t1", "a2": "t2"})
+
+        assert result == ["m1"]
+
     def test_empty_app_to_tenant_returns_empty(self):
         policy = self._policy({})
         assert policy.filter_message_ids([_msg("m1", "app1")], {}) == []
@@ -56,14 +81,14 @@ class TestBillingSandboxPolicy:
         assert policy.filter_message_ids(msgs, {"app1": "t1"}) == []
 
     def test_non_sandbox_tenant_skipped(self):
-        plans = {"t1": {"plan": "professional", "expiration_date": 0}}
+        plans = {"t1": builders.plan_item("professional", 0)}
         policy = self._policy(plans)
         msgs = [_msg("m1", "app1")]
 
         assert policy.filter_message_ids(msgs, {"app1": "t1"}) == []
 
     def test_sandbox_no_previous_subscription_deletes(self):
-        plans = {"t1": {"plan": "sandbox", "expiration_date": -1}}
+        plans = {"t1": builders.plan_item("sandbox", -1)}
         policy = self._policy(plans)
         msgs = [_msg("m1", "app1")]
 
@@ -72,7 +97,7 @@ class TestBillingSandboxPolicy:
     def test_sandbox_expired_beyond_grace_period_deletes(self):
         now = 1_000_000_000
         expired_long_ago = now - (22 * 24 * 60 * 60)  # 22 days ago > 21 day grace
-        plans = {"t1": {"plan": "sandbox", "expiration_date": expired_long_ago}}
+        plans = {"t1": builders.plan_item("sandbox", expired_long_ago)}
         policy = self._policy(plans, now=now)
         msgs = [_msg("m1", "app1")]
 
@@ -81,21 +106,21 @@ class TestBillingSandboxPolicy:
     def test_sandbox_within_grace_period_kept(self):
         now = 1_000_000_000
         expired_recently = now - (10 * 24 * 60 * 60)  # 10 days ago < 21 day grace
-        plans = {"t1": {"plan": "sandbox", "expiration_date": expired_recently}}
+        plans = {"t1": builders.plan_item("sandbox", expired_recently)}
         policy = self._policy(plans, now=now)
         msgs = [_msg("m1", "app1")]
 
         assert policy.filter_message_ids(msgs, {"app1": "t1"}) == []
 
     def test_whitelisted_tenant_skipped(self):
-        plans = {"t1": {"plan": "sandbox", "expiration_date": -1}}
+        plans = {"t1": builders.plan_item("sandbox", -1)}
         policy = self._policy(plans, whitelist=["t1"])
         msgs = [_msg("m1", "app1")]
 
         assert policy.filter_message_ids(msgs, {"app1": "t1"}) == []
 
     def test_message_without_tenant_mapping_skipped(self):
-        plans = {"t1": {"plan": "sandbox", "expiration_date": -1}}
+        plans = {"t1": builders.plan_item("sandbox", -1)}
         policy = self._policy(plans)
         msgs = [_msg("m1", "unmapped_app")]
 
@@ -103,8 +128,8 @@ class TestBillingSandboxPolicy:
 
     def test_mixed_tenants_only_sandbox_deleted(self):
         plans = {
-            "t_sandbox": {"plan": "sandbox", "expiration_date": -1},
-            "t_pro": {"plan": "professional", "expiration_date": 0},
+            "t_sandbox": builders.plan_item("sandbox", -1),
+            "t_pro": builders.plan_item("professional", 0),
         }
         policy = self._policy(plans)
         msgs = [_msg("m1", "app_sandbox"), _msg("m2", "app_pro")]

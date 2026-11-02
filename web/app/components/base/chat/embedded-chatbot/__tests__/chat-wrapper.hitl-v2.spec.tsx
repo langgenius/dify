@@ -1,452 +1,197 @@
-import type { HumanInputFieldValue } from '../../chat/answer/human-input-content/field-renderer'
-import type { ChatConfig, ChatItem, ChatItemInTree } from '../../types'
+import type { ChatItemInTree } from '../../types'
 import type { EmbeddedChatbotContextValue } from '../context'
 import type { HumanInputFormData } from '@/types/workflow'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { InputVarType } from '@/app/components/workflow/types'
-import { AppSourceType, fetchSuggestedQuestions, submitHumanInputForm } from '@/service/share'
+import { onTestFinished } from 'vite-plus/test'
+import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
+import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
+// oxlint-disable-next-line no-restricted-imports -- Exercise the existing chat SSE transport at its network boundary.
+import { sseGet } from '@/service/base'
+import { AppSourceType, submitHumanInputForm } from '@/service/share'
 import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
-import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
-import { useChat } from '../../chat/hooks'
+import { submitHumanInputForm as submitInstalledHumanInput } from '@/service/workflow'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createChatConfigFixture } from '@/test/fixtures/chat'
+import { createEmbeddedChatbotContextFixture } from '@/test/fixtures/embedded-chatbot'
+import {
+  createHumanInputFormFixture,
+  createWorkflowProcessFixture,
+} from '@/test/fixtures/workflow-process'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ChatWrapper from '../chat-wrapper'
-import { useEmbeddedChatbotContext } from '../context'
+import { EmbeddedChatbotContext } from '../context'
 
-const mockTrackEvent = vi.hoisted(() => vi.fn())
+// oxlint-disable-next-line typescript/no-deprecated -- Existing workflow event transport boundary.
+const workflowEvents = vi.mocked(sseGet)
 
-const createHumanInputForm = (
-  formVersion: HumanInputFormData['form_version'],
-): HumanInputFormData => ({
-  form_version: formVersion,
-  form_id: 'form-id',
-  form_token: 'form-token',
-  node_id: 'human-node',
-  node_title: 'Review',
-  form_content: 'Review',
-  inputs: [],
-  actions: [],
-  resolved_default_values: {},
-  display_in_ui: true,
-  expiration_time: null,
-})
-
-vi.mock('@/app/components/base/amplitude/web-app-event', () => ({
-  trackWebAppEvent: mockTrackEvent,
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  ENABLE_HITL_IM: true,
 }))
-
-vi.mock('../context', () => ({
-  useEmbeddedChatbotContext: vi.fn(),
+vi.mock('@/next/navigation', () => ({
+  useParams: () => ({ token: 'share-code' }),
+  usePathname: () => '/chat/share-code',
 }))
-
-vi.mock('../../chat/hooks', () => ({
-  useChat: vi.fn(),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  sseGet: vi.fn(),
+  ssePost: vi.fn(),
 }))
-
-vi.mock('../inputs-form', () => ({
-  __esModule: true,
-  default: () => <div>inputs form</div>,
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  submitHumanInputForm: vi.fn().mockResolvedValue(undefined),
 }))
-
-vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div>{content}</div>,
+vi.mock('@/service/workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/workflow')>()),
+  submitHumanInputForm: vi.fn().mockResolvedValue(undefined),
 }))
-
-vi.mock('../../chat', () => ({
-  __esModule: true,
-  default: ({
-    chatNode,
-    chatList,
-    inputDisabled,
-    questionIcon,
-    answerIcon,
-    onSend,
-    onRegenerate,
-    switchSibling,
-    onHumanInputFormSubmit,
-    onStopResponding,
-  }: {
-    chatNode: React.ReactNode
-    chatList: ChatItem[]
-    inputDisabled: boolean
-    questionIcon?: React.ReactNode
-    answerIcon?: React.ReactNode
-    onSend: (message: string) => void
-    onRegenerate: (
-      chatItem: ChatItem,
-      editedQuestion?: { message: string; files?: never[] },
-    ) => void
-    switchSibling: (siblingMessageId: string) => void
-    onHumanInputFormSubmit: (
-      formToken: string,
-      formData: { inputs: Record<string, HumanInputFieldValue>; action: string },
-    ) => Promise<void>
-    onStopResponding: () => void
-  }) => (
-    <div>
-      <div>{chatNode}</div>
-      {answerIcon}
-      {chatList.map((item) => (
-        <div key={item.id}>{item.content}</div>
-      ))}
-      <div>chat count: {chatList.length}</div>
-      {questionIcon}
-      <button onClick={() => onSend('hello world')}>send through chat</button>
-      <button
-        onClick={() =>
-          onRegenerate({
-            id: 'answer-1',
-            isAnswer: true,
-            content: 'answer',
-            parentMessageId: 'question-1',
-          })
-        }
-      >
-        regenerate answer
-      </button>
-      <button
-        onClick={() =>
-          onRegenerate(
-            { id: 'answer-1', isAnswer: true, content: 'answer', parentMessageId: 'question-1' },
-            { message: 'new query' },
-          )
-        }
-      >
-        regenerate edited
-      </button>
-      <button onClick={() => switchSibling('sibling-2')}>switch sibling</button>
-      <button disabled={inputDisabled}>send message</button>
-      <button onClick={onStopResponding}>stop responding</button>
-      <button
-        onClick={() =>
-          onHumanInputFormSubmit('form-token', { inputs: { answer: 'ok' }, action: 'approve' })
-        }
-      >
-        submit human input
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/service/share', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/share')>()
-  return {
-    ...actual,
-    fetchSuggestedQuestions: vi.fn(),
-    getUrl: vi.fn(() => '/chat-messages'),
-    stopChatMessageResponding: vi.fn(),
-    submitHumanInputForm: vi.fn(),
-  }
-})
-
-vi.mock('@/service/workflow', () => ({
-  submitHumanInputForm: vi.fn(),
-}))
-
 vi.mock('@/service/webapp-human-input', () => ({
-  submitWebAppHumanInputForm: vi.fn(),
+  submitWebAppHumanInputForm: vi.fn().mockResolvedValue(undefined),
 }))
 
-const mockIsDify = vi.fn(() => false)
-vi.mock('../utils', () => ({
-  isDify: () => mockIsDify(),
-}))
+const createForm = (formVersion: HumanInputFormData['form_version']): HumanInputFormData =>
+  createHumanInputFormFixture({
+    form_version: formVersion,
+    form_token: 'form-token',
+    node_title: 'Approval',
+    form_content: '{{#$output.review#}}',
+    inputs: [
+      {
+        type: InputVarType.paragraph,
+        output_variable_name: 'review',
+        default: { type: 'constant', value: '', selector: [] },
+      },
+    ],
+    actions: [{ id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary }],
+  })
 
-type UseChatReturn = ReturnType<typeof useChat>
-
-const createContextValue = (
-  overrides: Partial<EmbeddedChatbotContextValue> = {},
-): EmbeddedChatbotContextValue => ({
-  appMeta: { tool_icons: {} },
-  appData: {
-    app_id: 'app-1',
-    mode: 'chat',
-    can_replace_logo: true,
-    custom_config: {
-      remove_webapp_brand: false,
-      replace_webapp_logo: '',
-    },
-    enable_site: true,
-    end_user_id: 'user-1',
-    site: {
-      title: 'Embedded App',
-      icon_type: 'emoji',
-      icon: 'bot',
-      icon_background: '#000000',
-      icon_url: '',
-      use_icon_as_answer_icon: false,
-    },
+const pausedConversation = (formVersion: HumanInputFormData['form_version']): ChatItemInTree[] => [
+  {
+    id: 'question',
+    content: 'Please review',
+    isAnswer: false,
+    children: [
+      {
+        id: 'paused-answer',
+        content: '',
+        isAnswer: true,
+        parentMessageId: 'question',
+        workflow_run_id: 'run-1',
+        workflowProcess: createWorkflowProcessFixture({ status: WorkflowRunningStatus.Paused }),
+        humanInputFormDataList: [createForm(formVersion)],
+      },
+    ],
   },
-  appParams: {
-    system_parameters: {
-      audio_file_size_limit: 1,
-      file_size_limit: 1,
-      image_file_size_limit: 1,
-      video_file_size_limit: 1,
-      workflow_file_upload_limit: 1,
-    },
-    more_like_this: {
-      enabled: false,
-    },
-  } as ChatConfig,
-  appChatListDataLoading: false,
-  currentConversationId: '',
-  currentConversationItem: undefined,
-  appPrevChatList: [],
-  pinnedConversationList: [],
-  conversationList: [],
-  newConversationInputs: {},
-  newConversationInputsRef: { current: {} },
-  handleNewConversationInputsChange: vi.fn(),
-  inputsForms: [],
-  handleNewConversation: vi.fn(),
-  handleStartChat: vi.fn(),
-  handleChangeConversation: vi.fn(),
-  handleNewConversationCompleted: vi.fn(),
-  chatShouldReloadKey: 'reload-key',
-  isMobile: false,
-  isInstalledApp: false,
-  appSourceType: AppSourceType.webApp,
-  allowResetChat: true,
-  appId: 'app-1',
-  disableFeedback: false,
-  handleFeedback: vi.fn(),
-  currentChatInstanceRef: { current: { handleStop: vi.fn() } },
-  theme: undefined,
-  clearChatList: false,
-  setClearChatList: vi.fn(),
-  isResponding: false,
-  setIsResponding: vi.fn(),
-  currentConversationInputs: {},
-  setCurrentConversationInputs: vi.fn(),
-  allInputsHidden: false,
-  initUserVariables: {},
-  ...overrides,
-})
+]
 
-const createUseChatReturn = (overrides: Partial<UseChatReturn> = {}): UseChatReturn => ({
-  chatList: [],
-  setTargetMessageId: vi.fn() as UseChatReturn['setTargetMessageId'],
-  handleSend: vi.fn(),
-  handleResume: vi.fn(),
-  setIsResponding: vi.fn() as UseChatReturn['setIsResponding'],
-  handleStop: vi.fn(),
-  handleSwitchSibling: vi.fn(),
-  prepareHumanInputSubmission: vi.fn().mockResolvedValue(true),
-  isResponding: false,
-  suggestedQuestions: [],
-  handleRestart: vi.fn(),
-  handleAnnotationEdited: vi.fn(),
-  handleAnnotationAdded: vi.fn(),
-  handleAnnotationRemoved: vi.fn(),
-  ...overrides,
-})
+const renderSubject = (
+  formVersion: HumanInputFormData['form_version'],
+  overrides: Partial<EmbeddedChatbotContextValue>,
+) => {
+  const context = createEmbeddedChatbotContextFixture({
+    appId: 'app-1',
+    appData: {
+      app_id: 'app-1',
+      mode: 'chat',
+      custom_config: null,
+      site: { title: 'Embedded App', input_placeholder: 'Ask the assistant' },
+    },
+    appMeta: { tool_icons: {} },
+    appParams: createChatConfigFixture(),
+    currentConversationId: 'conversation-1',
+    appPrevChatList: pausedConversation(formVersion),
+    ...overrides,
+  })
+  renderWithConsoleQuery(
+    // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider component.
+    <EmbeddedChatbotContext.Provider value={context}>
+      <ChatWrapper />
+    </EmbeddedChatbotContext.Provider>,
+  )
+  return userEvent.setup()
+}
 
-describe('EmbeddedChatbot chat-wrapper', () => {
+const confirmWorkflowReady = async () => {
+  await waitFor(() => expect(workflowEvents).toHaveBeenCalledOnce())
+  act(() =>
+    workflowEvents.mock.calls[0]![2].onWorkflowPaused?.({
+      task_id: 'task-1',
+      workflow_run_id: 'run-1',
+      event: 'workflow_paused',
+      data: { workflow_run_id: 'run-1', outputs: {}, paused_nodes: ['human-input'], reasons: [] },
+    }),
+  )
+}
+
+const submitVisibleForm = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.type(await screen.findByRole('textbox', { name: 'review' }), 'Approved')
+  await user.click(screen.getByRole('button', { name: 'Approve' }))
+}
+
+describe('EmbeddedChatbot human-input submission', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue())
-    vi.mocked(useChat).mockReturnValue(createUseChatReturn())
+    const stopGuard = guardUnexpectedFetch()
+    onTestFinished(stopGuard)
   })
 
-  describe('Human input submit behavior', () => {
-    it.each([undefined, '1', '2'] as const)(
-      'submits installed app forms with event version %s',
-      async (formVersion) => {
-        let resolveWorkflowEventsReady: (isReady: boolean) => void = () => {}
-        const prepareHumanInputSubmission = vi.fn(
-          () =>
-            new Promise<boolean>((resolve) => {
-              resolveWorkflowEventsReady = resolve
-            }),
-        )
-        vi.mocked(useChat).mockReturnValue(
-          createUseChatReturn({
-            prepareHumanInputSubmission,
-            chatList: [
-              {
-                id: 'answer-1',
-                content: '',
-                isAnswer: true,
-                humanInputFormDataList: [createHumanInputForm(formVersion)],
-              },
-            ],
-          }),
-        )
-        vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
-          createContextValue({
-            isInstalledApp: true,
-          }),
-        )
+  it.each(['1', '2', undefined] as const)(
+    'submits installed-app form version %s after the workflow stream is ready',
+    async (formVersion) => {
+      const user = renderSubject(formVersion, { isInstalledApp: true })
+      await submitVisibleForm(user)
 
-        render(<ChatWrapper />)
-        fireEvent.click(screen.getByRole('button', { name: 'submit human input' }))
-
-        expect(prepareHumanInputSubmission).toHaveBeenCalledOnce()
-        expect(submitHumanInputFormService).not.toHaveBeenCalled()
-
-        await act(async () => {
-          resolveWorkflowEventsReady(true)
-        })
-        await waitFor(() => {
-          expect(submitHumanInputFormService).toHaveBeenCalledWith(
-            'form-token',
-            {
-              inputs: { answer: 'ok' },
-              action: 'approve',
-            },
-            formVersion,
-          )
-        })
-        expect(submitHumanInputForm).not.toHaveBeenCalled()
-      },
-    )
-
-    it.each([undefined, '1', '2'] as const)(
-      'submits Web App forms with event version %s and supports chat actions',
-      async (formVersion) => {
-        const handleSend = vi.fn()
-        const handleSwitchSibling = vi.fn()
-        const handleStop = vi.fn()
-        vi.mocked(useChat).mockReturnValue(
-          createUseChatReturn({
-            handleSend,
-            handleSwitchSibling,
-            handleStop,
-            chatList: [
-              { id: 'opening-1', isAnswer: true, isOpeningStatement: true, content: 'Welcome' },
-              { id: 'question-1', isAnswer: false, content: 'Question' },
-              {
-                id: 'answer-1',
-                isAnswer: true,
-                content: 'Answer',
-                parentMessageId: 'question-1',
-                humanInputFormDataList: [createHumanInputForm(formVersion)],
-              },
-            ] as ChatItemInTree[],
-          }),
-        )
-        vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
-          createContextValue({
-            isInstalledApp: false,
-            appSourceType: AppSourceType.tryApp,
-            isMobile: true,
-            inputsForms: [
-              { variable: 'topic', label: 'Topic', required: false, type: InputVarType.textInput },
-            ],
-            currentConversationId: 'conversation-1',
-          }),
-        )
-        mockIsDify.mockReturnValue(true)
-
-        render(<ChatWrapper />)
-
-        expect(screen.getByText('chat count: 3')).toBeInTheDocument()
-        expect(screen.queryByText('inputs form')).not.toBeInTheDocument()
-
-        fireEvent.click(screen.getByRole('button', { name: 'send through chat' }))
-        fireEvent.click(screen.getByRole('button', { name: 'regenerate answer' }))
-        fireEvent.click(screen.getByRole('button', { name: 'switch sibling' }))
-        fireEvent.click(screen.getByRole('button', { name: 'stop responding' }))
-        fireEvent.click(screen.getByRole('button', { name: 'submit human input' }))
-
-        await waitFor(() => {
-          expect(submitHumanInputForm).toHaveBeenCalledWith(
-            'form-token',
-            {
-              inputs: { answer: 'ok' },
-              action: 'approve',
-            },
-            formVersion,
-          )
-        })
-        expect(handleSend).toHaveBeenCalledTimes(2)
-        const sendOptions = handleSend.mock.calls[0]?.[2] as {
-          onGetSuggestedQuestions: (responseItemId: string) => void
-        }
-        sendOptions.onGetSuggestedQuestions('resp-1')
-        expect(handleSwitchSibling).toHaveBeenCalledWith(
-          'sibling-2',
-          expect.objectContaining({
-            isPublicAPI: false,
-          }),
-        )
-        const switchOptions = handleSwitchSibling.mock.calls.find(
-          (call) => call[0] === 'sibling-2',
-        )?.[1] as { onGetSuggestedQuestions: (responseItemId: string) => void }
-        switchOptions.onGetSuggestedQuestions('resp-2')
-        expect(fetchSuggestedQuestions).toHaveBeenCalledWith(
-          'resp-1',
-          AppSourceType.tryApp,
-          'app-1',
-        )
-        expect(fetchSuggestedQuestions).toHaveBeenCalledWith(
-          'resp-2',
-          AppSourceType.tryApp,
-          'app-1',
-        )
-        expect(handleStop).toHaveBeenCalled()
-        expect(screen.queryByRole('img', { name: 'Alice' })).not.toBeInTheDocument()
-        expect(mockTrackEvent).not.toHaveBeenCalled()
-
-        cleanup()
-        vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
-          createContextValue({
-            isMobile: true,
-            currentConversationId: '',
-            inputsForms: [
-              { variable: 'topic', label: 'Topic', required: false, type: InputVarType.textInput },
-            ],
-          }),
-        )
-        vi.mocked(useChat).mockReturnValue(
-          createUseChatReturn({
-            chatList: [
-              {
-                id: 'opening-mobile',
-                isAnswer: true,
-                isOpeningStatement: true,
-                content: 'Mobile welcome',
-              },
-            ],
-          }),
-        )
-
-        render(<ChatWrapper />)
-        expect(screen.getByText('inputs form')).toBeInTheDocument()
-      },
-    )
-
-    it.each(['1', '2', undefined] as const)(
-      'submits web app version %s through the passport-aware service',
-      async (formVersion) => {
-        const user = userEvent.setup()
-        vi.mocked(useChat).mockReturnValue(
-          createUseChatReturn({
-            chatList: [
-              {
-                id: 'answer-1',
-                isAnswer: true,
-                content: '',
-                humanInputFormDataList: [createHumanInputForm(formVersion)],
-              },
-            ],
-          }),
-        )
-        render(<ChatWrapper />)
-
-        await user.click(screen.getByRole('button', { name: 'submit human input' }))
-
-        expect(submitWebAppHumanInputForm).toHaveBeenCalledWith(
+      expect(submitInstalledHumanInput).not.toHaveBeenCalled()
+      await confirmWorkflowReady()
+      await waitFor(() =>
+        expect(submitInstalledHumanInput).toHaveBeenCalledExactlyOnceWith(
           'form-token',
-          {
-            inputs: { answer: 'ok' },
-            action: 'approve',
-          },
+          { inputs: { review: 'Approved' }, action: 'approve' },
           formVersion,
-        )
-        expect(submitHumanInputForm).not.toHaveBeenCalled()
-        expect(submitHumanInputFormService).not.toHaveBeenCalled()
-      },
-    )
-  })
+        ),
+      )
+      expect(submitHumanInputForm).not.toHaveBeenCalled()
+      expect(submitWebAppHumanInputForm).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(['1', '2', undefined] as const)(
+    'submits public-share form version %s after the workflow stream is ready',
+    async (formVersion) => {
+      const user = renderSubject(formVersion, { appSourceType: AppSourceType.tryApp })
+      await submitVisibleForm(user)
+
+      expect(submitHumanInputForm).not.toHaveBeenCalled()
+      await confirmWorkflowReady()
+      await waitFor(() =>
+        expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith(
+          'form-token',
+          { inputs: { review: 'Approved' }, action: 'approve' },
+          formVersion,
+        ),
+      )
+      expect(submitInstalledHumanInput).not.toHaveBeenCalled()
+      expect(submitWebAppHumanInputForm).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(['1', '2', undefined] as const)(
+    'submits web-app form version %s after the workflow stream is ready',
+    async (formVersion) => {
+      const user = renderSubject(formVersion, { appSourceType: AppSourceType.webApp })
+      await submitVisibleForm(user)
+
+      expect(submitWebAppHumanInputForm).not.toHaveBeenCalled()
+      await confirmWorkflowReady()
+      await waitFor(() =>
+        expect(submitWebAppHumanInputForm).toHaveBeenCalledExactlyOnceWith(
+          'form-token',
+          { inputs: { review: 'Approved' }, action: 'approve' },
+          formVersion,
+        ),
+      )
+      expect(submitInstalledHumanInput).not.toHaveBeenCalled()
+      expect(submitHumanInputForm).not.toHaveBeenCalled()
+    },
+  )
 })

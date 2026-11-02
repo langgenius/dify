@@ -28,7 +28,7 @@ import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { toast } from '@/app/notifications'
 import { createExternalAPI } from '@/service/datasets'
-import Form from './Form'
+import ExternalAPIForm from './Form'
 
 type AddExternalAPIModalProps = {
   data?: CreateExternalAPIReq
@@ -215,7 +215,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
           <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
-          <Form
+          <ExternalAPIForm
             id={formId}
             value={formData}
             onChange={handleDataChange}

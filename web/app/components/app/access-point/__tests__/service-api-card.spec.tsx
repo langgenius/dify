@@ -4,6 +4,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
@@ -11,7 +12,8 @@ import { ServiceApiAccessPointCard } from '../built-in-access-points/service-api
 
 const mocks = vi.hoisted(() => ({
   appInfo: null as AppDetailWithSite | null,
-  apiSecretKeyButtonProps: vi.fn(),
+  getAppDetail: vi.fn(),
+  apiKeys: vi.fn(),
   apiEnable: vi.fn(),
 }))
 
@@ -22,33 +24,25 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/service/base', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/base')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    request: async (url: string, _init: RequestInit, options: { request: Request }) => {
-      if (options.request.method === 'GET') return Response.json(mocks.appInfo)
-      const body = await options.request.json()
-      const updatedApp = await mocks.apiEnable({ params: { app_id: 'app-1' }, body })
-      mocks.appInfo = { ...mocks.appInfo, ...updatedApp }
-      return Response.json(mocks.appInfo)
-    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.get': mocks.getAppDetail,
+      'apps.byAppId.apiEnable.post': async (input) => {
+        const response = await mocks.apiEnable(input)
+        mocks.appInfo = { ...mocks.appInfo!, ...response }
+        return mocks.appInfo
+      },
+      'apps.byResourceId.apiKeys.get': mocks.apiKeys,
+    }),
   }
 })
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
-}))
-
-vi.mock('../built-in-access-points/api-secret-key-button', () => ({
-  ApiSecretKeyButton: (props: { canManage: boolean; disabled?: boolean }) => {
-    mocks.apiSecretKeyButtonProps(props)
-    return (
-      <button type="button" disabled={!props.canManage || props.disabled}>
-        api-secret-keys
-      </button>
-    )
-  },
 }))
 
 function createAppInfo(
@@ -72,6 +66,7 @@ function renderCard(
 ) {
   mocks.appInfo = createAppInfo(mode, overrides)
   const queryClient = createTestQueryClient()
+  seedAccountProfileQuery(queryClient)
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     createAppInfo(mode, overrides),
@@ -118,8 +113,16 @@ function createDeferredPromise<T>() {
 
 describe('ServiceApiAccessPointCard', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.apiEnable.mockResolvedValue(createAppDetailFixture({ enable_api: true }))
+    mocks.getAppDetail.mockImplementation(async () => mocks.appInfo)
+    mocks.apiEnable.mockImplementation(async ({ body }) => {
+      mocks.appInfo = { ...mocks.appInfo!, ...body }
+      return mocks.appInfo
+    })
+    mocks.apiKeys.mockResolvedValue({
+      data: [
+        { id: 'key-1', type: 'app', token: 'app-existing-key', last_used_at: null, created_at: 1 },
+      ],
+    })
   })
 
   it.each([
@@ -149,28 +152,35 @@ describe('ServiceApiAccessPointCard', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('keeps API keys and external documentation available when the API is stopped', () => {
+  it('keeps API keys and external documentation available when the API is stopped', async () => {
+    const user = userEvent.setup()
     renderCard('workflow', 'available', true, { enable_api: false })
 
-    expect(screen.getByRole('button', { name: 'api-secret-keys' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /apiKeyModal\.apiSecretKey/ })).toBeEnabled()
     const apiReferenceLink = screen.getByRole('link', { name: /apiInfo\.doc/ })
     expect(apiReferenceLink).toHaveAttribute(
       'href',
       'https://docs.example.test/en/api-reference/guides/workflow',
     )
+    await user.click(screen.getByRole('button', { name: /apiKeyModal\.apiSecretKey/ }))
+    expect(
+      await screen.findByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' }),
+    ).toBeVisible()
+    expect(await screen.findByText('app-e...-key')).toBeVisible()
+    expect(mocks.apiKeys).toHaveBeenCalledWith({ params: { resource_id: 'app-1' } })
   })
 
   it('disables API management without Access Point management permission', () => {
     renderCard('workflow', 'available', false)
 
-    expect(screen.getByRole('button', { name: 'api-secret-keys' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /apiKeyModal\.apiSecretKey/ })).toBeDisabled()
     expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('disables API keys and external documentation when the access point is unavailable', () => {
     renderCard('workflow', 'unavailable')
 
-    expect(screen.getByRole('button', { name: 'api-secret-keys' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /apiKeyModal\.apiSecretKey/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: /apiInfo\.doc/ })).toBeDisabled()
   })
 
@@ -197,7 +207,7 @@ describe('ServiceApiAccessPointCard', () => {
     await waitFor(() => {
       expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
     })
-    expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+    expect(toast.error).toHaveBeenCalledWith('request failed')
     expect(toast.success).not.toHaveBeenCalled()
   })
 

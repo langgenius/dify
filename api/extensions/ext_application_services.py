@@ -796,11 +796,7 @@ def build_application_services(
             notifications=BillingNotificationGateway(),
         ),
         network_access_groups=NetworkAccessGroupService(
-            control_plane=NetworkAccessGroupGateway(
-                base_url=dify_config.NETWORK_ACCESS_API_URL,
-                fallback_base_url=BillingService.base_url,
-                secret_key=BillingService.secret_key,
-            ),
+            control_plane=NetworkAccessGroupGateway(),
             apps=SQLAlchemyNetworkAccessGroupAppRepository(session_factory=database_client),
             memberships=workspace_repository,
             entitlement=BillingNetworkAccessGroupEntitlementGateway(),
@@ -870,10 +866,12 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
+    from extensions.application_services.tools import resolve_tool_credentials
     from extensions.ext_login import bind_account_loader
 
     app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
     ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
+    ToolManager.configure_credential_resolver(resolve_tool_credentials)
     services = build_application_services(
         database_client=get_session_maker(),
         deployment_edition=dify_config.DEPLOYMENT_EDITION,

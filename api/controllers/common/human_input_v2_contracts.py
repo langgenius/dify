@@ -167,6 +167,9 @@ class ContactOption(ResponseModel):
     name: str = Field(description="Display name shown in the contact picker.")
     avatar_url: str | None = Field(default=None, description="Signed avatar URL if one is available.")
     email: str | None = Field(default=None, description="Current deliverable Email, when available.")
+    im_providers: list[IMProvider] = Field(
+        description="Distinct providers of effective IM bindings in the current workspace; not a delivery health check."
+    )
 
 
 class ExternalContactCreateResponse(ResponseModel):

@@ -13,6 +13,7 @@ from controllers.common.errors import (
     InvalidArgumentError,
     NotFoundError,
     UnauthorizedError,
+    register_credential_refresh_error_handler,
     register_permission_error_handler,
 )
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
@@ -36,6 +37,7 @@ api = ExternalApi(
     description="Console management APIs for app configuration, monitoring, and administration",
 )
 register_permission_error_handler(api)
+register_credential_refresh_error_handler(api)
 # Errors the Console client handles centrally (bootstrap redirects, forced logout, malformed
 # input); any operation may answer with them, so no operation lists them. The shared
 # ``not_found``, ``unauthorized`` and ``internal_server_error`` codes are the ones Werkzeug's own
