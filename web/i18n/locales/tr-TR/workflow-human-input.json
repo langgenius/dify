@@ -54,7 +54,7 @@
   "nodes.humanInput.deliveryMethod.types.webapp.description": "Web uygulamasında son kullanıcıya göster",
   "nodes.humanInput.deliveryMethod.types.webapp.title": "Web Uygulaması",
   "nodes.humanInput.deliveryMethod.upgradeTip": "İnsan Girdisi için E-posta Teslimatını Kilitle Aç",
-  "nodes.humanInput.deliveryMethod.upgradeTipContent": "Aracılar harekete geçmeden önce e-posta yoluyla onay talepleri gönderin — yayınlama ve onay iş akışları için kullanışlıdır.",
+  "nodes.humanInput.deliveryMethod.upgradeTipContent": "Ajanlar harekete geçmeden önce e-posta yoluyla onay talepleri gönderin — yayınlama ve onay iş akışları için kullanışlıdır.",
   "nodes.humanInput.deliveryMethod.upgradeTipHide": "Kapat",
   "nodes.humanInput.editor.previewTip": "Önizleme modunda, eylem düğmeleri işlevsel değildir.",
   "nodes.humanInput.formContent.hotkeyTip": "Değişken eklemek için <Key/>, giriş alanı eklemek için <CtrlKey/><Key/> tuşuna basın",
