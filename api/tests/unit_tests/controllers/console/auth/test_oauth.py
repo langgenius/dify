@@ -6,6 +6,7 @@ from typing import NoReturn
 import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden, UnprocessableEntity
+from werkzeug.wrappers import Response
 
 from controllers.console import wraps as console_wraps
 from controllers.console.auth import oauth as oauth_controller
@@ -28,6 +29,7 @@ from services.entities.account_oauth_entities import (
     OAuthSignInResult,
 )
 from services.system_feature_service import SystemFeatureService
+from tests.helpers.unit.controllers.knowledge_fs_controller_fakes import narrowed
 
 CONSOLE_WEB_URL = "https://console.example.com"
 
@@ -83,7 +85,7 @@ def test_login_parses_input_and_delegates_to_application_service(
     with app.test_request_context(
         "/oauth/login/github?invite_token=invite&timezone=Asia%2FShanghai&language=zh-Hans&redirect_url=%2Fapps"
     ):
-        response = OAuthLogin().get("github")
+        response = narrowed(OAuthLogin().get("github"), Response)
 
     assert response.status_code == 302
     assert response.headers["Location"] == "https://provider.example/authorize"
@@ -108,7 +110,7 @@ def test_login_returns_adapter_error_for_unknown_provider(
     _install_service(monkeypatch, service)
 
     with app.test_request_context("/oauth/login/unknown"):
-        payload, status = OAuthLogin().get("unknown")
+        payload, status = narrowed(OAuthLogin().get("unknown"), tuple)
 
     assert status == 400
     assert payload == {"error": "Invalid provider"}
@@ -130,7 +132,7 @@ def test_oauth_admission_does_not_query_enterprise_features(
     monkeypatch.setattr(SystemFeatureService, "get_license", unexpected_feature_query)
 
     with app.test_request_context("/oauth/login/github"):
-        response = OAuthLogin().get("github")
+        response = narrowed(OAuthLogin().get("github"), Response)
 
     assert response.status_code == 302
     assert service.authorization_calls
@@ -170,7 +172,7 @@ def test_callback_passes_stable_values_and_serializes_session_cookies(
         f"/oauth/authorize/github?code=code-1&state={state}",
         headers={"Accept-Language": "en-US,en;q=0.9"},
     ):
-        response = OAuthCallback().get("github")
+        response = narrowed(OAuthCallback().get("github"), Response)
 
     assert response.status_code == 302
     assert response.headers["Location"] == "/apps?oauth_new_user=false"
@@ -213,7 +215,7 @@ def test_callback_serializes_safe_redirect_target(
     state = encode_oauth_state(redirect_url=redirect_url)
 
     with app.test_request_context(f"/oauth/authorize/github?code=code-1&state={state}"):
-        response = OAuthCallback().get("github")
+        response = narrowed(OAuthCallback().get("github"), Response)
 
     assert response.headers["Location"] == expected
 
@@ -227,7 +229,7 @@ def test_callback_serializes_invitation_completion_target(
     _install_service(monkeypatch, service)
 
     with app.test_request_context("/oauth/authorize/github?code=code-1"):
-        response = OAuthCallback().get("github")
+        response = narrowed(OAuthCallback().get("github"), Response)
 
     assert response.headers["Location"] == f"{CONSOLE_WEB_URL}/signin/invite-settings?invite_token=invite+token"
 
@@ -255,7 +257,7 @@ def test_callback_maps_oauth_processing_error_to_bad_request(
     _install_service(monkeypatch, service)
 
     with app.test_request_context("/oauth/authorize/github?code=code-1"):
-        payload, status = OAuthCallback().get("github")
+        payload, status = narrowed(OAuthCallback().get("github"), tuple)
 
     assert status == 400
     assert payload == {"error": "OAuth process failed"}
@@ -282,7 +284,7 @@ def test_callback_serializes_application_errors_as_signin_redirects(
     _install_service(monkeypatch, service)
 
     with app.test_request_context("/oauth/authorize/github?code=code-1"):
-        response = OAuthCallback().get("github")
+        response = narrowed(OAuthCallback().get("github"), Response)
 
     assert response.status_code == 302
     assert response.headers["Location"] == f"{CONSOLE_WEB_URL}/signin?{expected_query}"
