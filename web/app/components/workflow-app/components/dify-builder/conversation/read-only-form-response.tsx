@@ -35,17 +35,17 @@ export const ReadOnlyFormResponse = ({
   const sourceFieldsByKey = new Map(sourceFields?.map((field) => [field.key, field]) ?? [])
 
   return (
-    <div className="flex flex-col gap-3 px-2 pb-2">
+    <div className="flex min-w-0 flex-col gap-3 px-2 pb-2 wrap-anywhere">
       {fields.map((field) => {
         const sourceField = sourceFieldsByKey.get(field.key)
         const type = sourceField?.type
         const isBoolean = type === 'bool' || type === 'checkbox' || typeof field.value === 'boolean'
         if (isBoolean) {
           return (
-            <Field key={field.key} name={field.key}>
-              <FieldLabel className="flex items-center gap-2">
+            <Field key={field.key} className="grid-cols-1" name={field.key}>
+              <FieldLabel className="flex max-w-full items-center gap-2">
                 <Checkbox checked={field.value === true} disabled />
-                <span>{renderText(field.label)}</span>
+                <span className="min-w-0">{renderText(field.label)}</span>
               </FieldLabel>
             </Field>
           )
@@ -53,19 +53,23 @@ export const ReadOnlyFormResponse = ({
 
         if (type === 'select') {
           return (
-            <Field key={field.key} name={field.key}>
+            <Field key={field.key} className="grid-cols-1" name={field.key}>
               <Select<string>
                 value={typeof field.value === 'string' && field.value ? field.value : null}
                 readOnly
               >
                 <SelectLabel>{renderText(field.label)}</SelectLabel>
-                <SelectTrigger>
-                  <SelectValue>{() => renderText(field.display_value)}</SelectValue>
+                <SelectTrigger className="h-auto min-h-8 min-w-0">
+                  <SelectValue className="block wrap-anywhere whitespace-normal">
+                    {() => renderText(field.display_value)}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {(sourceField?.options ?? []).map((option) => (
-                    <SelectItem key={option} value={option}>
-                      <SelectItemText>{option}</SelectItemText>
+                    <SelectItem key={option} className="h-auto min-h-8 py-1.5" value={option}>
+                      <SelectItemText className="wrap-anywhere whitespace-normal">
+                        {option}
+                      </SelectItemText>
                       <SelectItemIndicator />
                     </SelectItem>
                   ))}
@@ -79,7 +83,7 @@ export const ReadOnlyFormResponse = ({
           const files = toFileEntities(field.value)
           return (
             <fieldset key={field.key} className="m-0 min-w-0 border-0 p-0">
-              <legend className="mb-1 system-xs-medium text-text-secondary">
+              <legend className="mb-1 max-w-full system-xs-medium text-text-secondary">
                 {renderText(field.label)}
               </legend>
               <ul className="flex min-h-8 flex-col gap-1 rounded-lg bg-components-input-bg-normal px-3 py-1.75 system-sm-regular text-components-input-text-filled">
@@ -106,7 +110,7 @@ export const ReadOnlyFormResponse = ({
         const value = isNumber ? String(field.value) : renderText(field.display_value)
 
         return (
-          <Field key={field.key} name={field.key}>
+          <Field key={field.key} className="grid-cols-1" name={field.key}>
             <FieldLabel>{renderText(field.label)}</FieldLabel>
             {isMultiline ? (
               <Textarea
