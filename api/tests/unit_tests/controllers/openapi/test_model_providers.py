@@ -327,7 +327,9 @@ def test_delete_model(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_sessio
     with app.test_request_context(
         "/openapi/v1/workspaces/ws/model-providers/x/models?model=llama3&model_type=llm", method="DELETE"
     ):
-        response = api.delete.__handler__(api, _context(sqlite_session), "ws", _OLLAMA, query=query)
+        response = api.delete.__handler__(  # pyrefly: ignore[missing-attribute]
+            api, _context(sqlite_session), "ws", _OLLAMA, query=query
+        )
 
     assert response.result == "success"
     assert deleted == [("ws", _OLLAMA, "llm", "llama3")]
@@ -348,7 +350,9 @@ def test_delete_model_credential(app: Flask, monkeypatch: pytest.MonkeyPatch, sq
         "/openapi/v1/workspaces/ws/model-providers/x/models/credentials/cred-1?model=llama3&model_type=llm",
         method="DELETE",
     ):
-        response = api.delete.__handler__(api, _context(sqlite_session), "ws", _OLLAMA, "cred-1", query=query)
+        response = api.delete.__handler__(  # pyrefly: ignore[missing-attribute]
+            api, _context(sqlite_session), "ws", _OLLAMA, "cred-1", query=query
+        )
 
     assert response.result == "success"
     assert deleted == [("ws", _OLLAMA, "llm", "llama3", "cred-1")]
