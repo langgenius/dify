@@ -35,10 +35,10 @@ class IrisVectorTest(AbstractVectorTest):
         )
 
 
-def test_iris_vector(setup_mock_redis) -> None:
+def test_iris_vector(setup_real_redis) -> None:
     """Run all IRIS vector store tests.
 
     Args:
-        setup_mock_redis: Pytest fixture for mock Redis setup
+        setup_real_redis: Pytest fixture for isolated Redis setup
     """
     IrisVectorTest().run_all_tests()

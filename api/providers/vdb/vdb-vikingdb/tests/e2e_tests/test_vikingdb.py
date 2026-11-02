@@ -38,5 +38,5 @@ class VikingDBVectorTest(AbstractVectorTest):
         assert len(ids) > 0
 
 
-def test_vikingdb_vector(setup_mock_redis, setup_vikingdb_mock):
+def test_vikingdb_vector(setup_real_redis, setup_vikingdb_mock):
     VikingDBVectorTest().run_all_tests()
