@@ -1815,6 +1815,10 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
             },
           },
+          // The upgrade dialog reports start failures, including model issues, inline.
+          knowledgeFsUpgrades: {
+            post: { mutationOptions: { context: { silent: true } } },
+          },
           get: {
             queryOptions: {
               // A missing or inaccessible dataset sends the detail page back to the list.
