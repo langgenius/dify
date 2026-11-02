@@ -1,6 +1,7 @@
 import contextvars
 import threading
 from contextlib import nullcontext
+from typing import override
 
 import pytest
 from flask import Flask, current_app
@@ -12,9 +13,10 @@ from libs.flask_utils import preserve_flask_contexts
 class User(UserMixin):
     """Simple User class for testing."""
 
-    def __init__(self, id: str):
+    def __init__(self, id: str) -> None:
         self.id = id
 
+    @override
     def get_id(self) -> str:
         return self.id
 
@@ -43,7 +45,7 @@ def test_user() -> User:
     return User("test_user")
 
 
-def test_current_user_not_accessible_across_threads(login_app: Flask, test_user: User):
+def test_current_user_not_accessible_across_threads(login_app: Flask, test_user: User) -> None:
     """
     Test that current_user is not accessible in a different thread without preserve_flask_contexts.
 
@@ -57,10 +59,10 @@ def test_current_user_not_accessible_across_threads(login_app: Flask, test_user:
         assert current_user.id == "test_user"
 
         # Store the result of the thread execution
-        result = {"user_accessible": True, "error": None}
+        result: dict[str, object] = {"user_accessible": True, "error": None}
 
         # Define a function to run in a separate thread
-        def check_user_in_thread():
+        def check_user_in_thread() -> None:
             try:
                 # Try to access current_user in a different thread with app_context
                 with login_app.app_context():
@@ -79,7 +81,7 @@ def test_current_user_not_accessible_across_threads(login_app: Flask, test_user:
         assert result["error"] is not None or (result["user_accessible"] is not None and not result["user_accessible"])
 
 
-def test_current_user_accessible_with_preserve_flask_contexts(login_app: Flask, test_user: User):
+def test_current_user_accessible_with_preserve_flask_contexts(login_app: Flask, test_user: User) -> None:
     """
     Test that current_user is accessible in a different thread with preserve_flask_contexts.
 
@@ -96,10 +98,10 @@ def test_current_user_accessible_with_preserve_flask_contexts(login_app: Flask, 
         context_vars = contextvars.copy_context()
 
         # Store the result of the thread execution
-        result = {"user_accessible": False, "user_id": None, "error": None}
+        result: dict[str, object] = {"user_accessible": False, "user_id": None, "error": None}
 
         # Define a function to run in a separate thread
-        def check_user_in_thread_with_manager():
+        def check_user_in_thread_with_manager() -> None:
             try:
                 # Use preserve_flask_contexts to access current_user in a different thread
                 with preserve_flask_contexts(login_app, context_vars):
@@ -126,9 +128,11 @@ def test_current_user_accessible_with_preserve_flask_contexts(login_app: Flask, 
 
 @pytest.mark.parametrize("caller_value", [None, "caller"])
 @pytest.mark.parametrize("failure_stage", [None, "body", "teardown"])
-def test_preserve_flask_contexts_restores_bindings_after_teardown(caller_value, failure_stage):
+def test_preserve_flask_contexts_restores_bindings_after_teardown(
+    caller_value: str | None, failure_stage: str | None
+) -> None:
     flask_app = Flask(__name__)
-    caller_app = current_app._get_current_object()
+    caller_app = current_app._get_current_object()  # pyrefly: ignore[missing-attribute]
     test_var = contextvars.ContextVar("preserved_var")
     captured = contextvars.copy_context()
     captured.run(test_var.set, "captured")
@@ -136,7 +140,7 @@ def test_preserve_flask_contexts_restores_bindings_after_teardown(caller_value, 
     teardown_values = []
 
     @flask_app.teardown_appcontext
-    def teardown(_error):
+    def teardown(_error) -> None:
         teardown_values.append(test_var.get())
         if failure_stage == "teardown":
             raise ValueError("teardown failed")
