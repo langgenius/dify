@@ -3730,6 +3730,22 @@ export const zPatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByC
 export const zPatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse =
   zCredentialWriteResponse
 
+export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsPath = z.object({
+  provider: z.string(),
+  workspace_id: z.string(),
+})
+
+export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsQuery = z.object({
+  model: z.string(),
+  model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
+})
+
+/**
+ * Model deleted
+ */
+export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponse =
+  zSimpleResultResponse
+
 export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsBody =
   zModelCredentialCreatePayload
 
@@ -3743,6 +3759,25 @@ export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentia
  */
 export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse =
   zCredentialWriteResponse
+
+export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdPath =
+  z.object({
+    credential_id: z.string(),
+    provider: z.string(),
+    workspace_id: z.string(),
+  })
+
+export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdQuery =
+  z.object({
+    model: z.string(),
+    model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
+  })
+
+/**
+ * Credential deleted
+ */
+export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse =
+  zSimpleResultResponse
 
 export const zPatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdBody =
   zModelCredentialUpdatePayload

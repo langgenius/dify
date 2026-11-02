@@ -1850,6 +1850,24 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [DELETE] /workspaces/{workspace_id}/model-providers/{provider}/models
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| model | query | Model name, as in get.model | Yes | string |
+| model_type | query | Enum class for model type. | Yes | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials
 #### Parameters
 
@@ -1869,6 +1887,25 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Credential saved | **application/json**: [CredentialWriteResponse](#credentialwriteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| model | query | Model name, as in get.model | Yes | string |
+| model_type | query | Enum class for model type. | Yes | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 

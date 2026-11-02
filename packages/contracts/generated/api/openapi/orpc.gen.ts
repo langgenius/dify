@@ -10,6 +10,12 @@ import {
   zDeleteAppsByAppIdEnvByEnvIdResponse,
   zDeleteWorkspacesByWorkspaceIdMembersByMemberIdPath,
   zDeleteWorkspacesByWorkspaceIdMembersByMemberIdResponse,
+  zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdPath,
+  zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdQuery,
+  zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse,
+  zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsPath,
+  zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsQuery,
+  zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponse,
   zDeleteWorkspacesByWorkspaceIdPluginsByPluginIdPath,
   zDeleteWorkspacesByWorkspaceIdPluginsByPluginIdResponse,
   zGetAccountResponse,
@@ -2160,6 +2166,27 @@ export const credentials = {
   byCredentialId,
 }
 
+export const delete5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId:
+      'deleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialId',
+    path: '/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params:
+        zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdPath,
+      query:
+        zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdQuery,
+    }),
+  )
+  .output(
+    zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse,
+  )
+
 export const patch17 = oc
   .route({
     inputStructure: 'detailed',
@@ -2181,6 +2208,7 @@ export const patch17 = oc
   )
 
 export const byCredentialId2 = {
+  delete: delete5,
   patch: patch17,
 }
 
@@ -2206,7 +2234,24 @@ export const credentials2 = {
   byCredentialId: byCredentialId2,
 }
 
+export const delete6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteWorkspacesByWorkspaceIdModelProvidersByProviderModels',
+    path: '/workspaces/{workspace_id}/model-providers/{provider}/models',
+    tags: ['openapi'],
+  })
+  .input(
+    z.object({
+      params: zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsPath,
+      query: zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsQuery,
+    }),
+  )
+  .output(zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderModelsResponse)
+
 export const models = {
+  delete: delete6,
   credentials: credentials2,
 }
 
@@ -2270,7 +2315,7 @@ export const pluginTasks = {
   byTaskId: byTaskId2,
 }
 
-export const delete5 = oc
+export const delete7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -2282,7 +2327,7 @@ export const delete5 = oc
   .output(zDeleteWorkspacesByWorkspaceIdPluginsByPluginIdResponse)
 
 export const byPluginId = {
-  delete: delete5,
+  delete: delete7,
 }
 
 export const post30 = oc
