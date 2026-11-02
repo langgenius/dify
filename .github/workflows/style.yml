@@ -61,7 +61,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: false
           python-version: '3.13'
@@ -80,6 +80,10 @@ jobs:
       - name: Run Response Contract Linter
         if: inputs.run-python-style
         run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
+
+      - name: Check Billing Client Is Generated From Snapshot
+        if: inputs.run-python-style
+        run: uv run --project api --dev python api/dev/generate_billing_client.py --check
 
       - name: Run No New Getattr Guard
         if: inputs.run-python-style
@@ -102,6 +106,18 @@ jobs:
         env:
           GUARD_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}
         run: uv run --project api python scripts/check_no_new_base_model.py --base-rev "$GUARD_BASE_REV"
+
+      - name: Run No New Cast Guard
+        if: inputs.run-python-style
+        env:
+          GUARD_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}
+        run: uv run --project api python scripts/check_no_new_cast.py --base-rev "$GUARD_BASE_REV"
+
+      - name: Run No New Constructor Bypass Guard
+        if: inputs.run-python-style
+        env:
+          GUARD_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}
+        run: uv run --project api python scripts/check_no_new_constructor_bypass.py --base-rev "$GUARD_BASE_REV"
 
       - name: Run No New Test Doubles Guard
         if: inputs.run-python-style || inputs.run-dify-agent-style
@@ -238,6 +254,9 @@ jobs:
 
       - name: Static check
         run: vp run -w check
+
+      - name: Type check with tsrs
+        run: vp run -r type-check
 
       - name: Tooling rule tests
         run: vp run @dify/tooling#test run

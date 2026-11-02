@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginCategoryEnum, SupportedCreationMethods } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
+import { marketplaceLinks } from '@/features/marketplace/links'
 import { BlockEnum } from '../../types'
 import FeaturedTriggers from '../featured-triggers'
 
@@ -22,11 +23,14 @@ vi.mock(
   }),
 )
 
-vi.mock('@/utils/var', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/utils/var')>()
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
   return {
     ...actual,
-    getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: 'https://marketplace.test',
+    },
   }
 })
 
@@ -106,7 +110,12 @@ describe('FeaturedTriggers', () => {
       const user = userEvent.setup()
 
       const { unmount } = render(
-        <FeaturedTriggers plugins={[]} providerMap={new Map()} onSelect={vi.fn()} />,
+        <FeaturedTriggers
+          marketplace={marketplaceLinks}
+          plugins={[]}
+          providerMap={new Map()}
+          onSelect={vi.fn()}
+        />,
       )
 
       const trigger = screen.getByRole('button', { name: /workflow\.tabs\.featuredTools/ })
@@ -122,7 +131,14 @@ describe('FeaturedTriggers', () => {
       ).not.toBeInTheDocument()
       expect(globalThis.localStorage.getItem('workflow_triggers_featured_collapsed')).toBe('true')
       unmount()
-      render(<FeaturedTriggers plugins={[]} providerMap={new Map()} onSelect={vi.fn()} />)
+      render(
+        <FeaturedTriggers
+          marketplace={marketplaceLinks}
+          plugins={[]}
+          providerMap={new Map()}
+          onSelect={vi.fn()}
+        />,
+      )
       expect(screen.getByRole('button', { name: /workflow\.tabs\.featuredTools/ })).toHaveAttribute(
         'aria-expanded',
         'false',
@@ -148,7 +164,14 @@ describe('FeaturedTriggers', () => {
         }),
       )
 
-      render(<FeaturedTriggers plugins={plugins} providerMap={providerMap} onSelect={vi.fn()} />)
+      render(
+        <FeaturedTriggers
+          marketplace={marketplaceLinks}
+          plugins={plugins}
+          providerMap={providerMap}
+          onSelect={vi.fn()}
+        />,
+      )
 
       expect(screen.getByText('Provider 4')).toBeInTheDocument()
       expect(screen.queryByText('Provider 5')).not.toBeInTheDocument()
@@ -177,7 +200,14 @@ describe('FeaturedTriggers', () => {
   // Rendering should cover the empty state link and installed trigger selection.
   describe('Rendering and Selection', () => {
     it('should render the empty state link when there are no featured plugins', () => {
-      render(<FeaturedTriggers plugins={[]} providerMap={new Map()} onSelect={vi.fn()} />)
+      render(
+        <FeaturedTriggers
+          marketplace={marketplaceLinks}
+          plugins={[]}
+          providerMap={new Map()}
+          onSelect={vi.fn()}
+        />,
+      )
 
       expect(
         screen.getByRole('link', { name: 'workflow.tabs.noFeaturedTriggers' }),
@@ -191,6 +221,7 @@ describe('FeaturedTriggers', () => {
 
       render(
         <FeaturedTriggers
+          marketplace={marketplaceLinks}
           plugins={[
             createPlugin({ plugin_id: 'plugin-1', latest_package_identifier: 'plugin-1@1.0.0' }),
           ]}
@@ -221,7 +252,12 @@ describe('FeaturedTriggers', () => {
       const user = userEvent.setup()
 
       render(
-        <FeaturedTriggers plugins={[createPlugin()]} providerMap={new Map()} onSelect={vi.fn()} />,
+        <FeaturedTriggers
+          marketplace={marketplaceLinks}
+          plugins={[createPlugin()]}
+          providerMap={new Map()}
+          onSelect={vi.fn()}
+        />,
       )
 
       const detailsLink = screen.getByRole('link', { name: 'Plugin One' })

@@ -18,8 +18,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
+from domain.workflow.agent_node import is_dify_agent_node_data
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.agent import (
@@ -674,10 +674,23 @@ class AgentDslService:
                     DslImportWarning(
                         code="agent_knowledge_unresolved",
                         path=(f"{package_path}.soul.knowledge.sets.{set_index}.datasets.{dataset_index}"),
-                        message=f"Knowledge dataset {dataset_name!r} is unavailable in the target workspace.",
+                        message=f"Knowledge Base {dataset_name!r} is unavailable in the target workspace.",
                         details={"name": dataset_name},
                     )
                 )
+        # A portable configuration carries references, not the source app's
+        # access grants. Require explicit reselection even for a same-tenant
+        # import so import cannot silently publish new knowledge access.
+        for index, space in enumerate(soul_data.get("knowledge", {}).get("spaces", [])):
+            space["is_missing"] = True
+            warnings.append(
+                DslImportWarning(
+                    code="agent_knowledge_fs_rebind_required",
+                    path=f"{package_path}.soul.knowledge.spaces.{index}",
+                    message=f"Agent Knowledge Base {space['name']!r} must be reselected in the target workspace.",
+                    details={"name": space["name"]},
+                )
+            )
         return AgentSoulConfig.model_validate(soul_data), warnings
 
     def _mark_missing_package_assets(

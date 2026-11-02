@@ -1,0 +1,35 @@
+from collections.abc import Callable
+from typing import override
+
+import pytest
+from tos import TosClientV2
+
+from extensions.storage.volcengine_tos_storage import VolcengineTosStorage
+from tests.helpers.unit.oss.__mock.base import (
+    BaseStorageTest,
+    get_example_bucket,
+)
+
+pytest_plugins = ("tests.helpers.unit.oss.__mock.volcengine_tos",)
+
+
+class TestVolcengineTos(BaseStorageTest):
+    @pytest.fixture(autouse=True)
+    @override
+    def setup_method(self, setup_volcengine_tos_mock: None, config_overrides: Callable[..., None]) -> None:
+        """Executed before each test method."""
+        config_overrides(
+            VOLCENGINE_TOS_ACCESS_KEY="test_access_key",
+            VOLCENGINE_TOS_SECRET_KEY="test_secret_key",
+            VOLCENGINE_TOS_ENDPOINT="test_endpoint",
+            VOLCENGINE_TOS_REGION="test_region",
+        )
+        self.storage = VolcengineTosStorage()
+
+        self.storage.bucket_name = get_example_bucket()
+        self.storage.client = TosClientV2(
+            ak="dify",
+            sk="dify",
+            endpoint="https://xxx.volces.com",
+            region="cn-beijing",
+        )

@@ -49,6 +49,7 @@
   "generation.tabs.saved": "ບັນທຶກແລ້ວ",
   "generation.title": "AI ສ້າງເນື້ອຫາ",
   "humanInput.completed": "ເບິ່ງຄືວ່າຄຳຮ້ອງຂໍນີ້ໄດ້ຮັບການຈັດການຢູ່ບ່ອນອື່ນແລ້ວ.",
+  "humanInput.currentAccount": "ບັນຊີປັດຈຸບັນ: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "ການດຳເນີນການນີ້ຈະໝົດອາຍຸໃນ {{relativeTime}}.",
   "humanInput.expired": "ເບິ່ງຄືວ່າຄຳຮ້ອງຂໍນີ້ໝົດອາຍຸແລ້ວ.",
   "humanInput.expiredTip": "ການດຳເນີນການນີ້ໝົດອາຍຸແລ້ວ.",
@@ -57,6 +58,9 @@
   "humanInput.recorded": "ບັນທຶກຂໍ້ມູນຂອງທ່ານແລ້ວ.",
   "humanInput.sorry": "ຂໍອະໄພ!",
   "humanInput.submissionID": "ລະຫັດການສົ່ງ (submission_id): {{id}}",
+  "humanInput.switchAccount": "ປ່ຽນບັນຊີ",
   "humanInput.thanks": "ຂອບໃຈ!",
+  "humanInput.unavailableDescription": "ລິ້ງອາດບໍ່ພ້ອມໃຊ້ງານ ຫຼື ບໍ່ກົງກັບບັນຊີທີ່ທ່ານກຳລັງເຂົ້າລະບົບ. ກະລຸນາເປີດແບບຟອມຈາກການແຈ້ງເຕືອນທີ່ທ່ານໄດ້ຮັບ ຫຼື ລອງປ່ຽນບັນຊີ.",
+  "humanInput.unavailableTitle": "ບໍ່ສາມາດເປີດແບບຟອມນີ້ໄດ້",
   "login.backToHome": "ກັບຄືນສູ່ໜ້າຫຼັກ"
 }

@@ -1,21 +1,47 @@
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ContactsManagementRepository } from '@/features/contacts/management/repository'
+import type {
+  ContactsFeatureContextValue,
+  RemoveMemberResult,
+} from '@/features/contacts/management/types'
 import type { Role } from '@/models/access-control'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
+import { QueryObserver } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { onTestFinished } from 'vite-plus/test'
+import { createContactsMockRepository } from '@/features/contacts/management/__tests__/fixtures/repository'
+import {
+  ContactsMockScenario,
+  createContactsMockScenario,
+} from '@/features/contacts/management/__tests__/fixtures/scenarios'
+import { ContactsManagementProvider } from '@/features/contacts/management/composition'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import MembersPage from '../index'
 
-const { membersRequest, rolesRequest, memberRolesRequest, updateRoles, inviteMember } = vi.hoisted(
-  () => ({
-    membersRequest: vi.fn(),
-    rolesRequest: vi.fn(),
-    memberRolesRequest: vi.fn(),
-    updateRoles: vi.fn(),
-    inviteMember: vi.fn(),
-  }),
-)
+const {
+  membersRequest,
+  rolesRequest,
+  memberRolesRequest,
+  updateRoles,
+  inviteMember,
+  removeMember,
+  contactsEnabled,
+} = vi.hoisted(() => ({
+  membersRequest: vi.fn(),
+  rolesRequest: vi.fn(),
+  memberRolesRequest: vi.fn(),
+  updateRoles: vi.fn(),
+  inviteMember: vi.fn(),
+  removeMember: vi.fn(),
+  contactsEnabled: vi.fn(() => false),
+}))
+vi.mock('@/features/contacts/management/feature-flag', () => ({
+  isContactsManagementEnabled: contactsEnabled,
+}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -31,6 +57,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.rbac.members.byMemberId.rbacRoles.get': memberRolesRequest,
       'workspaces.current.rbac.members.byMemberId.rbacRoles.put': updateRoles,
       'workspaces.current.members.inviteEmail.post': inviteMember,
+      'workspaces.current.members.byMemberId.delete': removeMember,
     }),
   }
 })
@@ -86,11 +113,17 @@ const choices = [
   createRole({ id: 'role-next', name: 'Next role' }),
   createRole({ id: 'role-extra', name: 'Extra role' }),
 ]
-async function renderMembersPage(options: ConsoleQueryTestOptions = {}) {
-  const view = renderWithConsoleQuery(
+async function renderMembersPage(
+  options: ConsoleQueryTestOptions = {},
+  contacts?: { context: ContactsFeatureContextValue; repository: ContactsManagementRepository },
+) {
+  const page = (
     <NuqsTestingAdapter>
       <MembersPage />
-    </NuqsTestingAdapter>,
+    </NuqsTestingAdapter>
+  )
+  const view = renderWithConsoleQuery(
+    contacts ? <ContactsManagementProvider {...contacts}>{page}</ContactsManagementProvider> : page,
     {
       accountProfile: { id: '1', email: 'owner@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'owner' },
@@ -112,16 +145,21 @@ async function chooseRoles(user: ReturnType<typeof userEvent.setup>, multiple: b
       name: multiple ? /memberDetails\.assign(?=$|:)/ : 'common.operation.edit',
     }),
   )
-  await user.click(await screen.findByRole(multiple ? 'checkbox' : 'radio', { name: /Next role/ }))
-  if (multiple) await user.click(screen.getByRole('checkbox', { name: /Extra role/ }))
+  await user.click(await screen.findByRole('option', { name: /Next role/ }))
+  if (multiple) await user.click(screen.getByRole('option', { name: /Extra role/ }))
   await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
   return details
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  contactsEnabled.mockReturnValue(false)
   accounts = structuredClone(defaultAccounts)
   membersRequest.mockImplementation(async () => ({ accounts }))
+  removeMember.mockImplementation(async ({ params }: { params: { member_id: string } }) => {
+    accounts = accounts.filter((account) => account.id !== params.member_id)
+    return { result: 'success', tenant_id: 'tenant-1' }
+  })
   rolesRequest.mockResolvedValue({
     data: choices,
     pagination: { current_page: 1, total_pages: 1, total_count: 3, per_page: 20 },
@@ -144,6 +182,157 @@ beforeEach(() => {
       { email: 'sent@example.com', status: 'success', url: 'http://invite/link' },
     ],
   })
+})
+
+function contactRemoval() {
+  const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
+  const context: ContactsFeatureContextValue = {
+    deployment: scenario.deployment,
+    imCentrallyManaged: true,
+    permissions: scenario.permissions,
+    workspaceId: scenario.workspaceId,
+  }
+  const repository = createContactsMockRepository({ scenario })
+  const remove = vi.spyOn(repository, 'removeMember').mockImplementation(async ({ memberId }) => {
+    accounts = accounts.filter((account) => account.id !== memberId)
+    return { kind: 'removed', contactId: null, contactOutcome: 'not_found' }
+  })
+  return { context, repository, remove }
+}
+
+async function openAdminRemoval(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: /members\.memberActions: Admin User/ }))
+  await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam$/ }))
+  return screen.findByRole('alertdialog')
+}
+
+const contactOptionsKey = consoleQuery.workspaces.current.humanInput.v2.contactOptions.get.key({
+  type: 'query',
+})
+
+describe('MembersPage contact removal', () => {
+  it('submits the contact retention choice and removes the member from the list', async () => {
+    contactsEnabled.mockReturnValue(true)
+    const contacts = contactRemoval()
+    const user = userEvent.setup()
+    const { queryClient } = await renderMembersPage({}, contacts)
+    queryClient.setQueryData(contactOptionsKey, { cached: true })
+    const refresh = createDeferred<{ cached: boolean }>()
+    const contactOptions = new QueryObserver(queryClient, {
+      queryKey: contactOptionsKey,
+      queryFn: () => refresh.promise,
+      staleTime: Infinity,
+    })
+    const unsubscribe = contactOptions.subscribe(() => {})
+    onTestFinished(() => {
+      refresh.resolve({ cached: false })
+      unsubscribe()
+    })
+    const dialog = await openAdminRemoval(user)
+    const retention = within(dialog).getByRole('checkbox', { name: /memberRemoval\.keepPlatform/ })
+    expect(retention).toBeChecked()
+    await user.click(retention)
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.memberRemoval.remove' }))
+
+    await waitFor(() =>
+      expect(contacts.remove).toHaveBeenCalledExactlyOnceWith({
+        memberId: '2',
+        keepAsPlatformContact: false,
+      }),
+    )
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(screen.queryByRole('row', { name: /admin@example.com/ })).not.toBeInTheDocument()
+    expect(removeMember).not.toHaveBeenCalled()
+    expect(queryClient.getQueryState(contactOptionsKey)?.isInvalidated).toBe(true)
+  })
+
+  it('blocks dismissal during contact removal and starts a fresh choice after closing a failure', async () => {
+    contactsEnabled.mockReturnValue(true)
+    const contacts = contactRemoval()
+    const request = createDeferred<RemoveMemberResult>()
+    contacts.remove.mockReturnValueOnce(request.promise)
+    const user = userEvent.setup()
+    await renderMembersPage({}, contacts)
+    const dialog = await openAdminRemoval(user)
+    const retention = within(dialog).getByRole('checkbox', { name: /memberRemoval\.keepPlatform/ })
+    await user.click(retention)
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.memberRemoval.remove' }))
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'contacts.action.cancel' })).toBeDisabled()
+    expect(contacts.remove).toHaveBeenCalledOnce()
+    await act(async () => request.resolve({ kind: 'failed' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'contacts.memberRemoval.failed',
+    )
+    expect(retention).not.toBeChecked()
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.action.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+
+    const reopened = await openAdminRemoval(user)
+    expect(
+      within(reopened).getByRole('checkbox', { name: /memberRemoval\.keepPlatform/ }),
+    ).toBeChecked()
+    expect(within(reopened).queryByRole('alert')).not.toBeInTheDocument()
+    await user.click(
+      within(reopened).getByRole('button', { name: 'contacts.memberRemoval.remove' }),
+    )
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(contacts.remove).toHaveBeenLastCalledWith({ memberId: '2', keepAsPlatformContact: true })
+  })
+
+  it('retains the contact choice after failure and submits it on a successful retry', async () => {
+    contactsEnabled.mockReturnValue(true)
+    const contacts = contactRemoval()
+    contacts.remove.mockResolvedValueOnce({ kind: 'failed' })
+    const user = userEvent.setup()
+    await renderMembersPage({}, contacts)
+    const dialog = await openAdminRemoval(user)
+    const retention = within(dialog).getByRole('checkbox', { name: /memberRemoval\.keepPlatform/ })
+    await user.click(retention)
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.memberRemoval.remove' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'contacts.memberRemoval.failed',
+    )
+    expect(retention).not.toBeChecked()
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.memberRemoval.remove' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(contacts.remove).toHaveBeenCalledTimes(2)
+    expect(contacts.remove).toHaveBeenLastCalledWith({
+      memberId: '2',
+      keepAsPlatformContact: false,
+    })
+  })
+
+  it.each([
+    { status: 'active', supportsMemberManagement: false, enabled: true, contactCopy: true },
+    { status: 'pending', supportsMemberManagement: true, enabled: true, contactCopy: false },
+    { status: 'active', supportsMemberManagement: true, enabled: false, contactCopy: false },
+  ])(
+    'uses standard removal for status=$status with contact support=$supportsMemberManagement',
+    async ({ status, supportsMemberManagement, enabled, contactCopy }) => {
+      contactsEnabled.mockReturnValue(enabled)
+      accounts[1] = { ...accounts[1]!, status }
+      const contacts = contactRemoval()
+      contacts.repository.supportsMemberManagement = supportsMemberManagement
+      const user = userEvent.setup()
+      const { queryClient } = await renderMembersPage({}, contacts)
+      queryClient.setQueryData(contactOptionsKey, { cached: true })
+      const dialog = await openAdminRemoval(user)
+      expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
+      if (contactCopy) expect(dialog).toHaveTextContent('contacts.memberRemoval.accessImpact')
+      await user.click(
+        within(dialog).getByRole('button', {
+          name: contactCopy ? 'contacts.memberRemoval.remove' : 'common.operation.confirm',
+        }),
+      )
+      await waitFor(() =>
+        expect(removeMember).toHaveBeenCalledExactlyOnceWith({ params: { member_id: '2' } }),
+      )
+      expect(contacts.remove).not.toHaveBeenCalled()
+      expect(queryClient.getQueryState(contactOptionsKey)?.isInvalidated).toBe(true)
+    },
+  )
 })
 
 describe('MembersPage', () => {
@@ -236,6 +425,23 @@ describe('MembersPage', () => {
     },
   )
 
+  it('discards canceled role edits when reopening the shared details dialog', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage()
+    const dialog = await chooseRoles(user, false)
+    expect(within(dialog).getByText('Next role')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Owner User' }))
+    expect(within(detailsDialog()).getByText('owner@example.com')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Admin User' }))
+    expect(within(detailsDialog()).getByText('admin@example.com')).toBeInTheDocument()
+    expect(within(detailsDialog()).queryByText('Next role')).not.toBeInTheDocument()
+    expect(updateRoles).not.toHaveBeenCalled()
+  })
+
   it('keeps role edits while saving and after failure, then closes only after a successful retry', async () => {
     const user = userEvent.setup()
     let rejectSave!: (error: Error) => void
@@ -280,6 +486,33 @@ describe('MembersPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('discards canceled role selection and search before reopening from the member menu', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage({ systemFeatures: { rbac_enabled: false } })
+    const more = within(screen.getByRole('row', { name: /admin@example.com/ })).getByRole(
+      'button',
+      { name: /members\.memberActions/ },
+    )
+    const openRoles = async () => {
+      await user.click(more)
+      await user.click(screen.getByRole('menuitem', { name: /members\.editRole(?=$|:)/ }))
+      const search = await screen.findByRole('combobox')
+      await waitFor(() => expect(search).toHaveFocus())
+      return search
+    }
+    const search = await openRoles()
+    await user.click(await screen.findByRole('option', { name: /Next role/ }))
+    await user.type(search, 'Next')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(await openRoles()).toHaveValue('')
+    expect(await screen.findByRole('option', { name: /Next role/ })).toHaveAttribute(
+      'aria-selected',
+      'false',
+    )
+    expect(updateRoles).not.toHaveBeenCalled()
+  })
+
   it('disables ownership transfer when the feature is unavailable', async () => {
     await renderMembersPage({ features: { is_allow_transfer_workspace: false } })
     expect(
@@ -295,6 +528,7 @@ describe('MembersPage', () => {
     const edit = screen.getByRole('button', { name: /account\.editWorkspaceInfo/ })
     await user.click(edit)
     const input = screen.getByRole('textbox', { name: /account\.workspaceName$/ })
+    await waitFor(() => expect(input).toHaveFocus())
     await user.clear(input)
     await user.type(input, 'Unsaved name')
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
@@ -315,6 +549,31 @@ describe('MembersPage', () => {
       features: { billing: { subscription: { plan } }, members: { size: 2, limit } },
     })
     expect(screen.getByText(new RegExp(label))).toBeInTheDocument()
+  })
+
+  it('hands invitation results to a persistent dialog and closes them normally', async () => {
+    const user = userEvent.setup()
+    await renderMembersPage()
+    const invite = screen.getByRole('button', { name: /members\.invite$/ })
+    await user.click(invite)
+    await user.type(
+      screen.getByRole('textbox', { name: /members\.emailRecipients/ }),
+      'sent@example.com',
+    )
+    await user.click(screen.getByRole('combobox', { name: /members\.role$/ }))
+    await user.click(await screen.findByRole('option', { name: /Admin/ }))
+    await user.click(screen.getByRole('button', { name: /members\.sendInviteCount/ }))
+    const results = await screen.findByRole('dialog', { name: /members\.invitationSent$/ })
+    expect(results).toHaveTextContent('http://invite/link')
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: /members\.inviteTeamMember$/ }),
+      ).not.toBeInTheDocument(),
+    )
+    await user.click(within(results).getByRole('button', { name: /members\.ok$/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(invite)
+    expect(screen.getByRole('textbox', { name: /members\.emailRecipients/ })).toHaveValue('')
   })
 
   it('keeps invitation available at the displayed plan limit', async () => {

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
@@ -6,27 +7,30 @@ import Placeholder from '@/app/components/workflow/nodes/tool/components/mixed-v
 import { BlockEnum } from '@/app/components/workflow/types'
 
 type MailBodyInputProps = {
-  'aria-labelledby'?: string
   readOnly?: boolean
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   value?: string
   onChange?: (text: string) => void
+  children?: ReactNode
+  requestURLSelectable?: boolean
+  'aria-labelledby'?: string
 }
 
 const MailBodyInput = ({
-  'aria-labelledby': ariaLabelledBy,
   readOnly = false,
   nodesOutputVars,
   availableNodes = [],
   value = '',
   onChange,
+  children,
+  requestURLSelectable = true,
+  'aria-labelledby': ariaLabelledby,
 }: MailBodyInputProps) => {
   const { t } = useTranslation(['workflow'])
 
   return (
     <PromptEditor
-      aria-labelledby={ariaLabelledBy}
       wrapperClassName={cn(
         'w-full rounded-lg border border-transparent bg-components-input-bg-normal px-2 py-1',
         'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
@@ -34,10 +38,11 @@ const MailBodyInput = ({
       )}
       className="min-h-32"
       editable={!readOnly}
+      aria-labelledby={ariaLabelledby}
       value={value}
       requestURLBlock={{
         show: true,
-        selectable: true,
+        selectable: requestURLSelectable,
       }}
       workflowVariableBlock={{
         show: true,
@@ -61,7 +66,9 @@ const MailBodyInput = ({
       }}
       placeholder={<Placeholder hideBadge />}
       onChange={onChange}
-    />
+    >
+      {children}
+    </PromptEditor>
   )
 }
 

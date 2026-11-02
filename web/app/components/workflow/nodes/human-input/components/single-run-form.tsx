@@ -21,6 +21,7 @@ import {
   initializeInputs,
   splitByOutputVar,
 } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
+import { toast } from '@/app/notifications'
 
 type Props = Readonly<{
   nodeName: string
@@ -37,7 +38,7 @@ type Props = Readonly<{
 }>
 
 const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: Props) => {
-  const { t } = useTranslation(['workflowHumanInput'])
+  const { t } = useTranslation(['workflowHumanInput', 'common'])
   const contentList = splitByOutputVar(data.form_content)
   const renderedFormInputs = getRenderedFormInputs(data.inputs, data.form_content)
   const defaultInputs = initializeInputs(renderedFormInputs, data.resolved_default_values || {})
@@ -55,8 +56,13 @@ const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: P
 
   const submit = async (actionID: string) => {
     setIsSubmitting(true)
-    await onSubmit?.({ inputs, action: actionID })
-    setIsSubmitting(false)
+    try {
+      await onSubmit?.({ inputs, action: actionID })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t(($) => $.error, { ns: 'common' }))
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (

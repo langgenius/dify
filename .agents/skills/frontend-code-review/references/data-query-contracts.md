@@ -10,13 +10,14 @@ Review explicit team conventions as contracts, including direct generated option
 - Distinguish a pass-through wrapper from a feature hook with actual orchestration. Check whether an independent execution condition or Promise composition justifies the documented query/mutation exception.
 - Trace generated input and output types through their boundaries. Identify the exact DTO mirror, field widening, placeholder input, or lost intentional empty value when reporting a violation.
 - Check whether a local mutation callback owns feature feedback or replaces shared invalidation, retry, or cache defaults. Match optimistic changes to the current list/detail owner.
-- Check whether a new or changed toast reports something the user cannot already see. Flag a success toast for a result visible in place, a second error toast for a failure another layer already reports, and validation reported through a toast.
+- Trace feature feedback and shared error handling before adding or keeping a toast; apply the [Toast contract] to the result visible to the user.
 
 ## Imperative Access And SSR
 
 - Check freshness, projection, retries, and the caller's execution condition separately against [Data and queries]. Trace Promise ownership to distinguish an awaited hard gate from soft prefetching with an explicit failure owner.
 - For Server Components, identify who renders the data and who may revalidate it. Check dehydration, the same-key client consumer, error handling, and the intended Suspense/server-rendered-content contract when the diff changes streaming.
 - For auth, setup, roles, branding, or availability, trace authoritative data and the loading/fallback path. A static redirect or placeholder value cannot stand in for a request-dependent decision.
+- Check server-side authorization and request/tenant isolation independently of rendering performance, including server actions and shared caches.
 
 ## Tenant, URL, And Persistence Boundaries
 
@@ -27,3 +28,4 @@ Report the violated rule and applicable scope or the concrete failing path. Do n
 
 [Data and queries]: ../../how-to-write-component/references/data.md
 [State ownership]: ../../how-to-write-component/references/state.md
+[Toast contract]: ../../../../web/docs/toasts.md

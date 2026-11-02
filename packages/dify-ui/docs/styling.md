@@ -34,6 +34,9 @@ See Base UI's [styling] and [composition] guides for the upstream contracts.
 
 ## Tailwind CSS v4
 
+When merging default classes with an incoming `className`, use the local `cn(...)` helper and put
+defaults first so callers can override them. Resolve state callbacks before merging their classes.
+
 Import Tailwind from the consumer's root stylesheet as described in the [Tailwind CSS v4 upgrade
 guide], then import the Dify UI CSS entry:
 
@@ -52,6 +55,14 @@ stylesheet:
 @source not '../../../packages/dify-ui/src/**/*.{spec,test}.{ts,tsx}';
 @source not '../../../packages/dify-ui/src/**/*.stories.{ts,tsx}';
 ```
+
+## Writing direction
+
+Use logical inline-direction utilities for spacing, offsets, borders, corners, and alignment.
+Caller overrides must use the same family: `cn` does not merge `pl-*` with `ps-*`.
+
+Keep block-axis and sizing utilities unchanged. Preserve physical directions for swipe geometry
+and transform-based centering; explain deliberate physical exceptions with a scoped lint directive.
 
 ## Border radius
 
@@ -87,14 +98,14 @@ outline handling at their call sites. A package-wide interaction contract can ha
 owner; visual similarity alone is not a reason to share constants. Keep component-specific selectors local.
 
 Controls own their focus indicator, so callers never write one. That includes every trigger that
-opens a surface (Popover, DropdownMenu, Collapsible, Combobox, Dialog, AlertDialog, Drawer); they
+opens a surface (Popover, Menu, Collapsible, Combobox, Dialog, AlertDialog, Drawer); they
 share one ring. Rows inside a composite defer to its highlight. Parts that only attach behavior
 (Tooltip, PreviewCard, and ContextMenu triggers, and Close parts) add no styles.
 
 Text controls (Input, Textarea, InputGroup, NumberField, and the Combobox and Autocomplete input
 groups) draw that ring on the visible field. It replaces the hover border, and an invalid field
 keeps its border and fill inside it. Switch, Checkbox, and Radio leave a gap between the control and
-the indicator, because their checked fill is the indicator color. `DropdownMenuInputGroup` is the
+the indicator, because their checked fill is the indicator color. `MenuInputGroup` is the
 exception: Base UI marks `Menu.Input` with `data-highlighted` while the input holds the keyboard
 highlight, so the group draws the ring on that state and drops it once the arrow keys move the
 highlight into the list.

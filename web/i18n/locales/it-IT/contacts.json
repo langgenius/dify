@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "I contatti selezionati verranno rimossi definitivamente da questo spazio di lavoro. Questa azione non può essere annullata.",
+  "directory.removalTitle": "Rimuovere i contatti?",
+  "imPlatform.bindingDialog.clearSavedCredential": "Cancella il valore salvato",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Questo valore salvato verrà cancellato al salvataggio.",
+  "imPlatform.bindingDialog.replacementRequired": "Queste credenziali appartengono a un altro tenant IM e non possono essere salvate direttamente. Per cambiare tenant è necessario sostituire il canale IM attuale, eliminando tutte le associazioni IM automatiche e manuali. Sincronizza nuovamente i contatti dopo la sostituzione.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "La configurazione è stata salvata, ma non è stato possibile caricarne i dettagli. Chiudi questa finestra e riaprila.",
+  "imPlatform.bindingDialog.undoClearCredential": "Annulla cancellazione"
+}

@@ -106,7 +106,7 @@ const PermissionSetModalBody = ({
           <div className="flex shrink-0 flex-col gap-1">
             <label htmlFor="permission-set-name" className="system-sm-medium text-text-secondary">
               {t(($) => $['permissionSet.nameLabel'], { ns: 'permission' })}
-              <span aria-hidden className="ml-0.5 text-text-destructive">
+              <span aria-hidden className="ms-0.5 text-text-destructive">
                 *
               </span>
             </label>

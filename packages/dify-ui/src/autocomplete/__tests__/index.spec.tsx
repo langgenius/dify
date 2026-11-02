@@ -264,7 +264,8 @@ describe('Autocomplete wrappers', () => {
           </AutocompleteInputGroup>
           <AutocompletePortal>
             <AutocompletePositioner
-              placement="top-end"
+              side="top"
+              align="end"
               sideOffset={12}
               alignOffset={6}
               role="group"

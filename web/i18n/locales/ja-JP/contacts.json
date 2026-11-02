@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "選択した連絡先はこのワークスペースから完全に削除されます。この操作は取り消せません。",
+  "directory.removalTitle": "連絡先を削除しますか？",
+  "imPlatform.bindingDialog.clearSavedCredential": "保存済みの値をクリア",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "保存すると、この保存済みの値がクリアされます。",
+  "imPlatform.bindingDialog.replacementRequired": "この認証情報は別の IM テナントに属するため、そのまま保存できません。テナントを切り替えるには、現在の IM チャネルを置き換える必要があり、自動および手動で設定されたすべての IM バインディングが削除されます。置き換え後に連絡先を再同期してください。",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "設定は保存されましたが、詳細を読み込めませんでした。このダイアログを閉じて、再度開いてください。",
+  "imPlatform.bindingDialog.undoClearCredential": "クリアを取り消す"
+}

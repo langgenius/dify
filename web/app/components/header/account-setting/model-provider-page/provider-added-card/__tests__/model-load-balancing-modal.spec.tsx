@@ -4,7 +4,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { consoleQuery } from '@/service/console'
 import { createProviderResponseFixture } from '@/test/console/model-provider'
@@ -114,7 +114,7 @@ const renderModal = (
           onSave={onSave}
           onClose={onClose}
         />
-        <AppToastHost timeout={0} />
+        <AppToaster timeout={0} />
       </ModalContextProvider>
     </NuqsTestingAdapter>,
     {

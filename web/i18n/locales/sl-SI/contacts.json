@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "Izbrani stiki bodo trajno odstranjeni iz tega delovnega prostora. Tega dejanja ni mogoče razveljaviti.",
+  "directory.removalTitle": "Odstranim stike?",
+  "imPlatform.bindingDialog.clearSavedCredential": "Počisti shranjeno vrednost",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Ta shranjena vrednost bo ob shranjevanju počiščena.",
+  "imPlatform.bindingDialog.replacementRequired": "Ti prijavni podatki pripadajo drugemu najemniku IM in jih ni mogoče neposredno shraniti. Za zamenjavo najemnika morate zamenjati trenutni kanal IM, s čimer se izbrišejo vse samodejne in ročne povezave IM. Po zamenjavi znova sinhronizirajte stike.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "Konfiguracija je bila shranjena, vendar podrobnosti ni bilo mogoče naložiti. Zaprite to pogovorno okno in ga znova odprite.",
+  "imPlatform.bindingDialog.undoClearCredential": "Razveljavi čiščenje"
+}

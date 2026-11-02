@@ -49,6 +49,7 @@
   "generation.tabs.saved": "Guardado",
   "generation.title": "Completado por IA",
   "humanInput.completed": "Parece que esta solicitud fue tratada en otro lugar.",
+  "humanInput.currentAccount": "Cuenta actual: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "Esta acción expirará {{relativeTime}}.",
   "humanInput.expired": "Parece que esta solicitud ha expirado.",
   "humanInput.expiredTip": "Esta acción ha expirado.",
@@ -57,6 +58,9 @@
   "humanInput.recorded": "Su entrada ha sido registrada.",
   "humanInput.sorry": "¡Lo sentimos!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "Cambiar de cuenta",
   "humanInput.thanks": "¡Gracias!",
+  "humanInput.unavailableDescription": "Es posible que el enlace no esté disponible o no corresponda a la cuenta con la que has iniciado sesión. Abre el formulario desde la notificación que recibiste o intenta cambiar de cuenta.",
+  "humanInput.unavailableTitle": "No se puede abrir este formulario",
   "login.backToHome": "Volver a Inicio"
 }

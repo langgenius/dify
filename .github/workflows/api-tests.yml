@@ -23,7 +23,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           python-version: '3.13'
           enable-cache: false
@@ -45,7 +45,9 @@ jobs:
             --write-plan unit-test-plan.json \
             --split-threshold 60 \
             --ignore api/tests/unit_tests/controllers \
+            --ignore api/tests/e2e_tests/contracts/controllers \
             api/tests/unit_tests \
+            api/tests/e2e_tests/contracts \
             api/providers/vdb/*/tests/unit_tests \
             api/providers/trace/*/tests/unit_tests
       - name: Upload shared plan
@@ -86,7 +88,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -110,7 +112,9 @@ jobs:
             --shard-index "${{ matrix.shardIndex }}" \
             --shard-total "${{ matrix.shardTotal }}" \
             --ignore api/tests/unit_tests/controllers \
+            --ignore api/tests/e2e_tests/contracts/controllers \
             api/tests/unit_tests \
+            api/tests/e2e_tests/contracts \
             api/providers/vdb/*/tests/unit_tests \
             api/providers/trace/*/tests/unit_tests > "$RUNNER_TEMP/unit-test-files.txt"
           uv run --project api pytest \
@@ -171,7 +175,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
           python-version: '3.13'
@@ -193,7 +197,8 @@ jobs:
             -o 'addopts=-p no:opik -p no:langsmith_plugin --cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --junitxml=test-results/controllers.xml \
-            api/tests/unit_tests/controllers
+            api/tests/unit_tests/controllers \
+            api/tests/e2e_tests/contracts/controllers
 
       - name: Upload controller test reports
         if: ${{ !cancelled() }}
@@ -243,7 +248,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -265,9 +270,9 @@ jobs:
             -o 'addopts=-p no:opik -p no:langsmith_plugin --cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --timeout "${PYTEST_TIMEOUT:-180}" \
-            api/tests/integration_tests/workflow \
-            api/tests/integration_tests/tools \
-            api/tests/test_containers_integration_tests
+            api/tests/e2e_tests/middleware/workflow \
+            api/tests/e2e_tests/middleware/tools \
+            api/tests/e2e_tests/containers
 
       - name: Generate coverage report
         run: uv run --project api coverage xml -o coverage.xml

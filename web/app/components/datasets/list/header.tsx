@@ -1,20 +1,17 @@
 'use client'
 
+import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/list/knowledge-view-switcher'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
+import { CreatorFilter } from '@/app/components/datasets/creator-filter'
 import {
-  getStepByStepTourDropdownMenuContentProps,
-  useStepByStepTourControlledDropdown,
-} from '@/app/components/step-by-step-tour/dropdown-menu'
+  getStepByStepTourMenuContentProps,
+  useStepByStepTourControlledMenu,
+} from '@/app/components/step-by-step-tour/menu'
+import { KnowledgeViewSwitcher } from '@/features/new-rag/list/knowledge-view-switcher'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { ServiceApi } from '../extra-info/service-api'
 
@@ -22,6 +19,7 @@ type Props = {
   apiBaseUrl: string
   canConnectExternalDataset: boolean
   canCreateDataset: boolean
+  creatorFilterValue: string[]
   includeAll: boolean
   isCurrentWorkspaceOwner: boolean
   keywords: string
@@ -30,6 +28,7 @@ type Props = {
   onCreateFromPipeline: () => void
   onConnectDataset: () => void
   onExternalApiClick: () => void
+  onCreatorsChange: (value: string[]) => void
   onIncludeAllChange: () => void
   onKeywordsChange: (value: string) => void
   onOpenTagManagement: () => void
@@ -37,12 +36,14 @@ type Props = {
   stepByStepTourCreateMenuHighlightPart?: string
   stepByStepTourCreateMenuOpen?: boolean
   stepByStepTourCreateMenuTarget?: string
+  knowledgeViewSwitcherProps?: KnowledgeViewSwitcherProps
 }
 
 const DatasetListHeader = ({
   apiBaseUrl,
   canConnectExternalDataset,
   canCreateDataset,
+  creatorFilterValue,
   includeAll,
   isCurrentWorkspaceOwner,
   keywords,
@@ -51,6 +52,7 @@ const DatasetListHeader = ({
   onCreateFromPipeline,
   onConnectDataset,
   onExternalApiClick,
+  onCreatorsChange,
   onIncludeAllChange,
   onKeywordsChange,
   onOpenTagManagement,
@@ -58,10 +60,11 @@ const DatasetListHeader = ({
   stepByStepTourCreateMenuHighlightPart,
   stepByStepTourCreateMenuOpen,
   stepByStepTourCreateMenuTarget,
+  knowledgeViewSwitcherProps,
 }: Props) => {
   const { t } = useTranslation(['common', 'dataset'])
   const showCreateMenu = canCreateDataset || canConnectExternalDataset
-  const createMenu = useStepByStepTourControlledDropdown({
+  const createMenu = useStepByStepTourControlledMenu({
     controlledOpen: stepByStepTourCreateMenuOpen,
   })
 
@@ -72,6 +75,7 @@ const DatasetListHeader = ({
           <h1 className="min-w-0 text-[18px]/[21.6px] font-semibold text-text-primary">
             {t(($) => $.knowledge, { ns: 'dataset' })}
           </h1>
+          {knowledgeViewSwitcherProps && <KnowledgeViewSwitcher {...knowledgeViewSwitcherProps} />}
         </div>
         <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">
           {canConnectExternalDataset && (
@@ -101,8 +105,14 @@ const DatasetListHeader = ({
             onChange={onTagsChange}
             onOpenTagManagement={onOpenTagManagement}
             showLeadingIcon={false}
+            triggerClassName="min-w-0"
           />
-          <SearchInput className="w-50" value={keywords} onValueChange={onKeywordsChange} />
+          <CreatorFilter value={creatorFilterValue} onChange={onCreatorsChange} />
+          <SearchInput
+            className="w-full min-w-0 sm:w-50"
+            value={keywords}
+            onValueChange={onKeywordsChange}
+          />
           {isCurrentWorkspaceOwner && (
             <>
               <div className="h-3.5 w-px bg-divider-regular" />
@@ -119,12 +129,8 @@ const DatasetListHeader = ({
         </div>
         <div className="flex items-center gap-2">
           {showCreateMenu && (
-            <DropdownMenu
-              modal={false}
-              open={createMenu.open}
-              onOpenChange={createMenu.onOpenChange}
-            >
-              <DropdownMenuTrigger
+            <Menu modal={false} open={createMenu.open} onOpenChange={createMenu.onOpenChange}>
+              <MenuTrigger
                 render={
                   <Button
                     variant="primary"
@@ -138,10 +144,9 @@ const DatasetListHeader = ({
                   </Button>
                 }
               />
-              <DropdownMenuContent
-                placement="bottom-end"
-                sideOffset={4}
-                {...getStepByStepTourDropdownMenuContentProps({
+              <MenuContent
+                align="end"
+                {...getStepByStepTourMenuContentProps({
                   disableMotion: createMenu.controlled,
                   highlightPart: createMenu.controlled
                     ? stepByStepTourCreateMenuHighlightPart
@@ -152,7 +157,7 @@ const DatasetListHeader = ({
               >
                 {canCreateDataset && (
                   <>
-                    <DropdownMenuItem
+                    <MenuItem
                       className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
                       onClick={onCreateDataset}
                     >
@@ -163,8 +168,8 @@ const DatasetListHeader = ({
                       <span className="min-w-0 flex-1 truncate px-1">
                         {t(($) => $['firstEmpty.createTitle'], { ns: 'dataset' })}
                       </span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
+                    </MenuItem>
+                    <MenuItem
                       className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
                       onClick={onCreateFromPipeline}
                     >
@@ -175,14 +180,14 @@ const DatasetListHeader = ({
                       <span className="min-w-0 flex-1 truncate px-1">
                         {t(($) => $['firstEmpty.pipelineTitle'], { ns: 'dataset' })}
                       </span>
-                    </DropdownMenuItem>
+                    </MenuItem>
                   </>
                 )}
                 {canCreateDataset && canConnectExternalDataset && (
-                  <DropdownMenuSeparator className="my-1" />
+                  <MenuSeparator className="my-1" />
                 )}
                 {canConnectExternalDataset && (
-                  <DropdownMenuItem
+                  <MenuItem
                     className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
                     onClick={onConnectDataset}
                   >
@@ -193,10 +198,10 @@ const DatasetListHeader = ({
                     <span className="min-w-0 flex-1 truncate px-1">
                       {t(($) => $.connectDataset, { ns: 'dataset' })}
                     </span>
-                  </DropdownMenuItem>
+                  </MenuItem>
                 )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </MenuContent>
+            </Menu>
           )}
         </div>
       </div>

@@ -36,7 +36,7 @@ export function PluginTagsFilter({
         <CompactTrigger tags={value} tagsMap={tagsMap} onTagsChange={onValueChange} />
       )}
       <PopoverContent
-        placement="bottom-start"
+        align="start"
         sideOffset={4}
         alignOffset={-6}
         className="border-none bg-transparent shadow-none"
