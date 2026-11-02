@@ -162,7 +162,7 @@ export const DifyBuilderPanelFooter = ({
       {error && (
         <div
           role="alert"
-          className="mx-4 mb-2 rounded-lg bg-state-destructive-hover px-2 py-1.5 system-xs-regular text-text-destructive"
+          className="mx-4 mb-2 rounded-lg bg-state-destructive-hover px-2 py-1.5 system-xs-regular wrap-anywhere text-text-destructive"
         >
           {error}
         </div>
