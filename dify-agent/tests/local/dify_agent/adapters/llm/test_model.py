@@ -1,6 +1,7 @@
 import asyncio
 import json
 import unittest
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from decimal import Decimal
 from typing import cast
@@ -45,6 +46,7 @@ from ._test_support import (
     build_stream_response,
     make_usage,
     single_text_chunk,
+    wrap_plugin_daemon_stream_item,
 )
 
 
@@ -443,6 +445,61 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertAlmostEqual(usage.latency, 1.2)
         self.assertEqual(usage.time_to_first_token, 0.2)
         self.assertEqual(usage.time_to_generate, 0.6)
+
+    async def test_request_stream_records_usage_when_the_consumer_fails_after_the_usage_chunk(self) -> None:
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+            with self.assertRaises(RuntimeError):
+                async with adapter.request_stream(
+                    [ModelRequest(parts=[UserPromptPart("hello")])],
+                    model_settings=None,
+                    model_request_parameters=ModelRequestParameters(),
+                ) as stream:
+                    events = [event async for event in stream]
+                    raise RuntimeError("the run was stopped")
+
+        self.assertTrue(events)
+        usage = adapter.accumulated_usage
+        self.assertIsNotNone(usage)
+        assert usage is not None
+        self.assertEqual(usage.prompt_tokens, 11)
+        self.assertEqual(usage.completion_tokens, 7)
+
+    async def test_request_records_usage_when_the_response_stream_aborts(self) -> None:
+        body = wrap_plugin_daemon_stream_item(single_text_chunk("partial", prompt_tokens=11, completion_tokens=7)[0])
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                status_code=200,
+                headers={"content-type": "text/event-stream"},
+                stream=_AbortedByteStream(body.encode("utf-8")),
+            )
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+            with self.assertRaises(ModelHTTPError):
+                _ = await adapter.request(
+                    [ModelRequest(parts=[UserPromptPart("hello")])],
+                    model_settings=None,
+                    model_request_parameters=ModelRequestParameters(),
+                )
+
+        usage = adapter.accumulated_usage
+        self.assertIsNotNone(usage)
+        assert usage is not None
+        self.assertEqual(usage.prompt_tokens, 11)
+        self.assertEqual(usage.completion_tokens, 7)
 
     async def test_request_merges_system_messages_before_history(self) -> None:
         messages = [
@@ -1030,3 +1087,14 @@ def test_request_rejects_unsupported_pydantic_ai_request_parts(
                 )
 
     asyncio.run(scenario())
+
+
+class _AbortedByteStream(httpx.AsyncByteStream):
+    """Sends one SSE frame and then fails like a connection dropped mid-response."""
+
+    def __init__(self, body: bytes) -> None:
+        self._body = body
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield self._body
+        raise httpx.ReadError("connection lost")

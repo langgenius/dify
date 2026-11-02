@@ -166,10 +166,14 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
             response_model_name=self.model_name,
             provider_name_value=self.system,
         )
-        async for _event in response:
-            pass
+        # The tokens were already spent once the stream produced its usage chunk, so count them
+        # even when the run is cancelled or the stream aborts before it ends.
+        try:
+            async for _event in response:
+                pass
+        finally:
+            self._record_usage(response.dify_usage)
         model_response = response.get()
-        self._record_usage(response.dify_usage)
         return model_response
 
     @asynccontextmanager
@@ -199,8 +203,11 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
             response_model_name=self.model_name,
             provider_name_value=self.system,
         )
-        yield response
-        self._record_usage(response.dify_usage)
+        try:
+            yield response
+        finally:
+            # Stopping or failing a run does not refund the tokens the provider already reported.
+            self._record_usage(response.dify_usage)
 
     def _record_usage(self, usage: LLMUsage | None) -> None:
         """Add one completed Dify request to this run's usage total."""
