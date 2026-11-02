@@ -8,13 +8,13 @@ Run Dify with Docker Compose. Configuration templates live in `.env.example` and
 2. **Environment Setup**:
    - Navigate to the `docker` directory.
    - Copy `.env.example` to `.env`.
-   - Customize `.env` when you need to change essential startup defaults. Copy optional files from `envs/` without the `.example` suffix when you need advanced settings.
+   - Select the bundled services through `COMPOSE_PROFILES`. Add overrides to `.env` only when needed. Copy optional files from `envs/` without the `.example` suffix when you need advanced settings.
    - **Optional (for advanced deployments)**:
      If you maintain a full `.env` file copied from `.env.example`, you may use the environment synchronization tool to keep it aligned with the latest `.env.example` updates while preserving your custom settings.
      See the [Environment Variables Synchronization](#environment-variables-synchronization) section below.
 3. **Running the Services**:
    - Execute `docker compose up -d` from the `docker` directory to start the services.
-   - To specify a vector database, set the `VECTOR_STORE` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`. See `envs/vectorstores/` for the full list of supported options.
+   - To specify a vector database, set the `VECTOR_STORE` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`, and select the matching service in `COMPOSE_PROFILES`. See `envs/vectorstores/` for the full list of supported options.
    ```bash
    cp .env.example .env
    docker compose up -d
@@ -98,6 +98,18 @@ public JWKS material. The `knowledge_fs` container can still return `200` from
 this is intentional fail-closed behavior. Do not add a proxy route, set
 `KNOWLEDGE_FS_ENABLED=true`, or send product traffic until readiness returns `200` and the migration
 and per-Workspace cutover gates are complete.
+
+### Ops tracing rolling upgrades
+
+New tracing tasks use `OPS_TRACE_QUEUE=ops_trace_v2` by default. Set it consistently on the API,
+workers, and Beat in `docker/envs/core-services/shared.env` (or `docker/.env`). Default worker
+subscriptions follow this value; explicit `CELERY_QUEUES` or `CELERY_WORKER_QUEUES` lists must
+include it and exclude legacy `ops_trace` while old workers are draining.
+
+Keep an old tracing worker pool on `ops_trace` until old producers stop and their queued, active, reserved, scheduled, and
+retry tasks finish. To return to `ops_trace`, first remove old workers, have new workers consume
+both queues, then change `OPS_TRACE_QUEUE` on all new processes and drain `ops_trace_v2` before
+removing its consumers. See the [complete rollout sequence](../api/providers/trace/README.md#rolling-upgrade-from-the-previous-pipeline).
 
 ### KnowledgeFS lifecycle and upgrade workers
 
@@ -263,14 +275,19 @@ use multiple real addresses.
 
 ## Overview of `.env`, `.env.example`, and `envs/`
 
-- `.env.example` contains the essential default configuration for Docker Compose deployments.
-- `.env` contains local startup values copied from `.env.example` and any local changes.
+- `.env.example` contains only settings requiring manual configuration, such as the Compose service selection.
+- `.env` contains your deployment inputs and any explicit overrides.
 - `envs/*.env.example` files contain optional advanced configuration grouped by theme.
 
-Keep the root `.env.example` limited to variables required to start the default Docker Compose deployment.
-Do not add optional, advanced, provider-specific, or service-specific variables there; place them in the appropriate `envs/*.env.example` file instead.
+Keep the root `.env.example` limited to settings that require manual user configuration.
+Settings with usable application or Docker defaults must not appear there. Document optional,
+advanced, provider-specific, and service-specific overrides in the appropriate `envs/*.env.example` file.
 
-Docker Compose reads `envs/*.env` files when present, then reads `.env` last so values in `.env` take precedence.
+Docker Compose loads Docker-specific defaults from `envs/core-services/shared.defaults`,
+then optional `envs/*.env` files, then `.env` so your overrides take precedence. Other defaults
+come from the application and each service in `docker-compose.yaml`; do not copy them into `.env`.
+The bundled credentials are intended for local deployment; override them for production using
+the matching security and service templates.
 
 For the available variables and defaults, read the matching `envs/**/*.env.example` template and its service in `docker-compose.yaml`.
 
@@ -288,10 +305,10 @@ provider's interaction configuration after changing the public origin.
 
 ## Environment Variables Synchronization
 
-When upgrading Dify or pulling the latest changes, new environment variables may be introduced in `.env.example` only when they are required for startup,
+When upgrading Dify or pulling the latest changes, new environment variables may be introduced in `.env.example` only when they require manual configuration,
 or in the optional files under `envs/` for advanced, provider-specific, and service-specific settings.
 
-If you use the default workflow, review `.env.example` and keep your `.env` aligned with essential startup values.
+If you use the default workflow, review `.env.example` and supply any new deployment inputs that require manual configuration.
 
 If you maintain a customized `.env` file copied from `.env.example`, an optional environment variables synchronization tool is provided.
 
@@ -306,8 +323,8 @@ This script compares your current `.env` file with the latest `.env.example` tem
 
 - Creates a backup of the current `.env` file before making any changes
 - Synchronizes newly added environment variables from `.env.example`
-- Preserves all existing custom values in `.env`
-- Displays differences and variables removed from `.env.example` for review
+- Preserves the existing `.env`, including custom settings absent from `.env.example`
+- Displays differences and additional local overrides for review
 
 **Backup behavior**
 
