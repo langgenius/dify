@@ -12,7 +12,6 @@ project-excludes = [
   "commands/test_data_migration.py",
   "dev/test_generate_swagger_markdown_docs.py",
   "dev/test_generate_swagger_specs.py",
-  "dev/test_lint_response_contracts.py",
   "commands/test_system.py",
   "repositories/test_app_definition_query_repository.py",
   "controllers/common/test_errors.py",
