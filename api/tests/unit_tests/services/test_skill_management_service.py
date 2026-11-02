@@ -3752,9 +3752,8 @@ def test_archive_limits_accept_high_compression_ratio_within_size_budget(monkeyp
 def test_archive_limits_name_the_file_count_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     apply_config_overrides(monkeypatch, SKILL_PACKAGE_MAX_ENTRIES=2)
     content = _zip_payload({"SKILL.md": _skill_md(), "a.md": "a", "b.md": "b"})
-    with zipfile.ZipFile(io.BytesIO(content)) as archive:
-        with pytest.raises(SkillManagementServiceError) as exc_info:
-            SkillManagementService._validate_archive_limits(archive)
+    with zipfile.ZipFile(io.BytesIO(content)) as archive, pytest.raises(SkillManagementServiceError) as exc_info:
+        SkillManagementService._validate_archive_limits(archive)
 
     assert (exc_info.value.code, exc_info.value.message) == ("too_many_files", "skill has more than 2 files")
 
