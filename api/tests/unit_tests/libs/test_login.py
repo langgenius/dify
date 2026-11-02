@@ -61,7 +61,9 @@ def login_app(mocker: MockerFixture) -> Flask:
 
     login_manager = DifyLoginManager()
     login_manager.init_app(app)
-    login_manager.unauthorized = mocker.Mock(
+    mocker.patch.object(
+        login_manager,
+        "unauthorized",
         name="unauthorized",
         return_value=Response("Unauthorized", status=401, content_type="application/json"),
     )

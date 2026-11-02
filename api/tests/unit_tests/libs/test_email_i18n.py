@@ -577,7 +577,7 @@ class TestEmailI18nIntegration:
 
 
 @pytest.mark.parametrize("branding_enabled", [False, True])
-def test_account_deletion_success_email_renders_chinese_template(branding_enabled: bool):
+def test_account_deletion_success_email_renders_chinese_template(branding_enabled: bool) -> None:
     app = Flask(__name__, template_folder=str(Path(__file__).resolve().parents[3] / "templates"))
     sender = MockEmailSender()
     service = EmailI18nService(
