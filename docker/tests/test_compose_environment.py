@@ -18,9 +18,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="dify-compose-env-")
         self.addCleanup(self.temp.cleanup)
         self.project = Path(self.temp.name)
-        shutil.copyfile(
-            DOCKER_DIR / "docker-compose.yaml", self.project / "docker-compose.yaml"
-        )
+        shutil.copyfile(DOCKER_DIR / "docker-compose.yaml", self.project / "docker-compose.yaml")
         for source in (DOCKER_DIR / "envs").rglob("*.defaults"):
             target = self.project / source.relative_to(DOCKER_DIR)
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -46,23 +44,13 @@ class ComposeEnvironmentTests(unittest.TestCase):
 
     def override_root(self, values):
         with (self.project / ".env").open("a") as target:
-            target.write(
-                "\n"
-                + "\n".join(f"{key}={value}" for key, value in values.items())
-                + "\n"
-            )
+            target.write("\n" + "\n".join(f"{key}={value}" for key, value in values.items()) + "\n")
 
     def render(self, *compose_args):
-        inputs = set(
-            re.findall(r"\$\{(\w+)", (DOCKER_DIR / "docker-compose.yaml").read_text())
-        )
+        inputs = set(re.findall(r"\$\{(\w+)", (DOCKER_DIR / "docker-compose.yaml").read_text()))
         for source in (DOCKER_DIR / "envs").rglob("*.defaults"):
             inputs.update(re.findall(r"\$\{(\w+)", source.read_text()))
-        env = {
-            key: value
-            for key, value in os.environ.items()
-            if key not in inputs and not key.startswith("COMPOSE_")
-        }
+        env = {key: value for key, value in os.environ.items() if key not in inputs and not key.startswith("COMPOSE_")}
         result = subprocess.run(
             [
                 "docker",
@@ -96,32 +84,20 @@ class ComposeEnvironmentTests(unittest.TestCase):
                 "REDIS_PASSWORD": "difyai123456",
             }.items():
                 self.assertEqual(values[key], expected, f"{name}.{key}")
-        self.assertEqual(
-            services["plugin_daemon"]["environment"]["DB_DATABASE"], "dify_plugin"
-        )
-        self.assertEqual(
-            services["web"]["environment"]["SERVER_CONSOLE_API_URL"], "http://api:5001"
-        )
-        self.assertEqual(
-            services["web"]["environment"]["NEXT_PUBLIC_ENABLE_AGENT_V2"], "true"
-        )
+        self.assertEqual(services["plugin_daemon"]["environment"]["DB_DATABASE"], "dify_plugin")
+        self.assertEqual(services["web"]["environment"]["SERVER_CONSOLE_API_URL"], "http://api:5001")
+        self.assertEqual(services["web"]["environment"]["NEXT_PUBLIC_ENABLE_AGENT_V2"], "true")
         self.assertEqual(
             services["local_sandbox"]["environment"]["SHELLCTL_AUTH_TOKEN"],
             "test-sandbox-token",
         )
         self.assertEqual(
-            services["agent_backend"]["environment"][
-                "DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN"
-            ],
+            services["agent_backend"]["environment"]["DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN"],
             "test-sandbox-token",
         )
         self.assertFalse((DOCKER_DIR / ".env.custom.example").exists())
-        self.assertEqual(
-            services["elasticsearch"]["environment"]["xpack.security.enabled"], "true"
-        )
-        self.assertEqual(
-            services["elasticsearch"]["environment"]["discovery.type"], "single-node"
-        )
+        self.assertEqual(services["elasticsearch"]["environment"]["xpack.security.enabled"], "true")
+        self.assertEqual(services["elasticsearch"]["environment"]["discovery.type"], "single-node")
 
     def test_copying_defaults_without_changes_preserves_service_values(self):
         baseline = self.render()
@@ -136,9 +112,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
         actual = self.render()
         for name, service in baseline.items():
             for key, value in service.get("environment", {}).items():
-                self.assertEqual(
-                    actual[name]["environment"].get(key), value, f"{name}.{key}"
-                )
+                self.assertEqual(actual[name]["environment"].get(key), value, f"{name}.{key}")
 
     def test_service_overrides_and_root_precedence(self):
         cases = [
@@ -216,14 +190,10 @@ class ComposeEnvironmentTests(unittest.TestCase):
             ),
         ]
         for path, _, key, _, local, _ in cases:
-            self.copy_template(
-                f"envs/{path}.defaults", f"envs/{path}.env", {key: local}
-            )
+            self.copy_template(f"envs/{path}.defaults", f"envs/{path}.env", {key: local})
         services = self.render()
         for _, service, _, native, local, _ in cases:
-            expected = (
-                f"-Xms{local} -Xmx1024m" if native == "OPENSEARCH_JAVA_OPTS" else local
-            )
+            expected = f"-Xms{local} -Xmx1024m" if native == "OPENSEARCH_JAVA_OPTS" else local
             self.assertEqual(
                 services[service]["environment"][native],
                 expected,
@@ -232,9 +202,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
         self.override_root({key: value for _, _, key, _, _, value in cases})
         services = self.render()
         for _, service, _, native, _, value in cases:
-            expected = (
-                f"-Xms{value} -Xmx1024m" if native == "OPENSEARCH_JAVA_OPTS" else value
-            )
+            expected = f"-Xms{value} -Xmx1024m" if native == "OPENSEARCH_JAVA_OPTS" else value
             self.assertEqual(
                 services[service]["environment"][native],
                 expected,
@@ -250,9 +218,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
             "plugin-daemon",
             "dify-agent",
         ):
-            self.copy_template(
-                f"envs/core-services/{name}.defaults", f"envs/core-services/{name}.env"
-            )
+            self.copy_template(f"envs/core-services/{name}.defaults", f"envs/core-services/{name}.env")
         self.copy_template(
             "envs/databases/db-postgres.defaults",
             "envs/databases/db-postgres.env",
@@ -284,12 +250,8 @@ class ComposeEnvironmentTests(unittest.TestCase):
             services["db_postgres"]["environment"]["POSTGRES_PASSWORD"],
             "test-db-password",
         )
-        self.assertEqual(
-            services["plugin_daemon"]["environment"]["DB_DATABASE"], "dify_plugin"
-        )
-        self.assertEqual(
-            services["redis"]["environment"]["REDISCLI_AUTH"], "test-redis-password"
-        )
+        self.assertEqual(services["plugin_daemon"]["environment"]["DB_DATABASE"], "dify_plugin")
+        self.assertEqual(services["redis"]["environment"]["REDISCLI_AUTH"], "test-redis-password")
         self.assertEqual(
             services["agent_backend"]["environment"]["DIFY_AGENT_REDIS_URL"],
             "redis://:test-redis-password@redis:6379/2",
@@ -339,9 +301,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
         config = self.render()["api_websocket"]
         # Stand in for the image's entrypoint; exercise the actual shell expansion.
         command = [arg.replace("$$", "$") for arg in config["entrypoint"]]
-        command[-1] = command[-1].replace(
-            "exec /bin/bash /entrypoint.sh", 'printf "%s" "$SERVER_WORKER_AMOUNT"'
-        )
+        command[-1] = command[-1].replace("exec /bin/bash /entrypoint.sh", 'printf "%s" "$SERVER_WORKER_AMOUNT"')
         result = subprocess.run(
             command,
             env=config["environment"],
@@ -361,9 +321,9 @@ class ComposeEnvironmentTests(unittest.TestCase):
                 "DIFY_AGENT_E2B_TEMPLATE": "custom-template",
             },
         )
-        values = self.render(
-            "-f", "docker-compose.yaml", "-f", "docker-compose.e2b.yaml"
-        )["agent_backend"]["environment"]
+        values = self.render("-f", "docker-compose.yaml", "-f", "docker-compose.e2b.yaml")["agent_backend"][
+            "environment"
+        ]
         self.assertEqual(values["DIFY_AGENT_RUNTIME_BACKEND"], "e2b")
         self.assertEqual(values["DIFY_AGENT_E2B_API_KEY"], "service-api-key")
         self.assertEqual(values["DIFY_AGENT_E2B_TEMPLATE"], "custom-template")
@@ -386,9 +346,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
         self.assertEqual(list((self.project / "envs").rglob("*.env")), [])
         (self.project / ".env").write_text("COMPOSE_PROFILES=custom\n")
         subprocess.run(command, check=True, capture_output=True)
-        self.assertEqual(
-            (self.project / ".env").read_text(), "COMPOSE_PROFILES=custom\n"
-        )
+        self.assertEqual((self.project / ".env").read_text(), "COMPOSE_PROFILES=custom\n")
 
     def test_runtime_secrets_stay_in_their_service(self):
         self.copy_template(
@@ -402,12 +360,8 @@ class ComposeEnvironmentTests(unittest.TestCase):
             {"NEXT_PUBLIC_ENABLE_HITL_IM": "true"},
         )
         services = self.render()
-        self.assertEqual(
-            services["web"]["environment"]["NEXT_PUBLIC_ENABLE_HITL_IM"], "true"
-        )
-        self.assertEqual(
-            services["api"]["environment"]["PASSWORD_PEPPER"], "api-only-test-secret"
-        )
+        self.assertEqual(services["web"]["environment"]["NEXT_PUBLIC_ENABLE_HITL_IM"], "true")
+        self.assertEqual(services["api"]["environment"]["PASSWORD_PEPPER"], "api-only-test-secret")
         for name in ("web", "plugin_daemon", "nginx", "db_postgres", "agent_backend"):
             self.assertNotIn("PASSWORD_PEPPER", services[name]["environment"], name)
 
