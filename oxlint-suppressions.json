@@ -810,16 +810,6 @@
       "count": 2
     }
   },
-  "web/app/components/app/tracing/configuration.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
-  "web/app/components/app/tracing/provider-panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/app/tracing/summary-disclosure.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -4930,11 +4920,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/single-run-form.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/variable-in-markdown.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -6744,11 +6729,6 @@
   "web/features/new-rag/upgrade/knowledge-upgrade-card.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/features/new-rag/upgrade/knowledge-upgrade-dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/features/new-rag/upload/file-list.tsx": {

@@ -55,14 +55,6 @@ const knowledgeQueryMock = vi.hoisted(() => ({
 
 const membersQueryMock = vi.hoisted(() => ({ accounts: [] as AccountWithRoleResponse[] }))
 
-const modelSelectionMock = vi.hoisted(() => ({
-  next: {
-    model: 'openrouter/auto',
-    plugin_id: 'langgenius/openrouter',
-    provider: 'langgenius/openrouter/openrouter',
-  },
-}))
-
 vi.mock('@/next/navigation', () => ({
   useRouter: () => routerMock,
   useSearchParams: () => new URLSearchParams(),
@@ -123,7 +115,13 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
           data-invalid={ariaInvalid ? '' : undefined}
           data-required={ariaRequired ? '' : undefined}
           disabled={disabled}
-          onClick={() => onValueChange?.(modelSelectionMock.next)}
+          onClick={() =>
+            onValueChange?.({
+              model: 'openrouter/auto',
+              plugin_id: 'langgenius/openrouter',
+              provider: 'langgenius/openrouter/openrouter',
+            })
+          }
         >
           {value ? `${value.provider}:${value.model}` : 'select-model'}
         </button>
@@ -368,17 +366,6 @@ async function saveChanges(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }))
 }
 
-async function confirmReasoningChange(user: ReturnType<typeof userEvent.setup>) {
-  const dialog = await screen.findByRole('alertdialog', {
-    name: 'modelProvider.modelProvider.systemReasoningModel.key',
-  })
-  await user.click(
-    within(dialog).getByRole('button', {
-      name: 'knowledgeSettings.settings.reasoningChangeConfirm',
-    }),
-  )
-}
-
 const teamMember = {
   avatar: '',
   avatar_url: null,
@@ -414,15 +401,13 @@ async function editAllSettings(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByRole('switch', { name }))
     expectNoWrites()
   }
-  await user.click(
-    screen.getByRole('button', { name: 'knowledgeSettings.settings.systemReasoningModelLabel' }),
-  )
-  await confirmReasoningChange(user)
-  expectNoWrites()
-  await user.click(
-    screen.getByRole('button', { name: 'modelProvider.modelProvider.rerankModel.key' }),
-  )
-  expectNoWrites()
+  for (const name of [
+    'knowledgeSettings.settings.systemReasoningModelLabel',
+    'modelProvider.modelProvider.rerankModel.key',
+  ]) {
+    await user.click(screen.getByRole('button', { name }))
+    expectNoWrites()
+  }
   await user.click(screen.getByText('knowledgeSpace.settings.retrievalMode.deep'))
   expectNoWrites()
   const topK = screen.getByRole('textbox', { name: 'knowledgeSpace.settings.topKLabel' })
@@ -442,11 +427,6 @@ async function editAllSettings(user: ReturnType<typeof userEvent.setup>) {
 describe('KnowledgeSettingsPage workflows', () => {
   beforeEach(() => {
     vi.resetAllMocks()
-    modelSelectionMock.next = {
-      model: 'openrouter/auto',
-      plugin_id: 'langgenius/openrouter',
-      provider: 'langgenius/openrouter/openrouter',
-    }
     serviceMock.deleteSpace.mockResolvedValue(undefined)
     serviceMock.getSpace.mockImplementation(async () => knowledgeQueryMock.space)
     serviceMock.patchExternalAccess.mockImplementation(
@@ -1060,7 +1040,6 @@ describe('KnowledgeSettingsPage workflows', () => {
         name: 'knowledgeSettings.settings.systemReasoningModelLabel',
       }),
     )
-    await confirmReasoningChange(user)
 
     expectNoWrites()
     await saveChanges(user)
@@ -1101,7 +1080,6 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'knowledgeSettings.settings.systemReasoningModelLabel',
     })
     await user.click(selector)
-    await confirmReasoningChange(user)
     expectNoWrites()
     await saveChanges(user)
 
@@ -1157,7 +1135,6 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'knowledgeSettings.settings.systemReasoningModelLabel',
     })
     await user.click(selector)
-    await confirmReasoningChange(user)
     expectNoWrites()
     await saveChanges(user)
     const reload = await screen.findByRole('button', {
@@ -1178,7 +1155,6 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(selector).not.toHaveTextContent('openrouter/auto')
     expect(serviceMock.patchSettings).toHaveBeenCalledTimes(1)
     await user.click(selector)
-    await confirmReasoningChange(user)
     await saveChanges(user)
     await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
     expect(serviceMock.patchSettings.mock.calls[1]?.[0].body).toMatchObject({
@@ -1335,109 +1311,6 @@ describe('KnowledgeSettingsPage workflows', () => {
         params: { control_space_id: 'space-1' },
       }),
     )
-  })
-
-  it('cancels reasoning model changes and clears the warning when returning to the saved model', async () => {
-    const user = userEvent.setup()
-    await renderForm()
-    const selector = screen.getByRole('button', {
-      name: 'knowledgeSettings.settings.systemReasoningModelLabel',
-    })
-    const save = screen.getByRole('button', {
-      name: 'knowledgeSettings.settings.saveChanges',
-    })
-    const replacement = modelSelectionMock.next
-    modelSelectionMock.next = settings.retrieval.reasoning_model
-
-    await user.click(selector)
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(save).toBeDisabled()
-
-    modelSelectionMock.next = replacement
-    await user.click(selector)
-    const dialog = await screen.findByRole('alertdialog', {
-      name: 'modelProvider.modelProvider.systemReasoningModel.key',
-    })
-    expect(selector).toHaveTextContent('gpt-4o')
-    expectNoWrites()
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
-    expect(selector).toHaveTextContent('gpt-4o')
-    expect(save).toBeDisabled()
-    expect(
-      screen.queryByText('knowledgeSettings.settings.reasoningChangeWarning'),
-    ).not.toBeInTheDocument()
-
-    await user.click(selector)
-    await confirmReasoningChange(user)
-    expect(selector).toHaveTextContent('openrouter/auto')
-    expect(screen.getByText('knowledgeSettings.settings.reasoningChangeWarning')).toBeVisible()
-    expect(selector).toHaveAccessibleDescription(
-      'knowledgeSettings.settings.reasoningChangeWarning',
-    )
-    expectNoWrites()
-
-    modelSelectionMock.next = settings.retrieval.reasoning_model
-    await user.click(selector)
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(selector).toHaveTextContent('gpt-4o')
-    expect(
-      screen.queryByText('knowledgeSettings.settings.reasoningChangeWarning'),
-    ).not.toBeInTheDocument()
-    expect(save).toBeDisabled()
-    expectNoWrites()
-  })
-
-  it('warns before changing the reasoning model when documents exist but cannot yet be queried', async () => {
-    const user = userEvent.setup()
-    await renderForm({
-      settings: {
-        ...settings,
-        capabilities: { ...settings.capabilities, deep: false, query: false, research: false },
-      },
-      space: {
-        ...space,
-        technical_summary: { ...space.technical_summary, document_count: 1 },
-      },
-    })
-    const selector = screen.getByRole('button', {
-      name: 'knowledgeSettings.settings.systemReasoningModelLabel',
-    })
-
-    await user.click(selector)
-
-    expect(
-      await screen.findByRole('alertdialog', {
-        name: 'modelProvider.modelProvider.systemReasoningModel.key',
-      }),
-    ).toBeVisible()
-    expect(selector).toHaveTextContent('gpt-4o')
-    expectNoWrites()
-    await confirmReasoningChange(user)
-    expect(selector).toHaveTextContent('openrouter/auto')
-    expect(screen.getByText('knowledgeSettings.settings.reasoningChangeWarning')).toBeVisible()
-    expectNoWrites()
-  })
-
-  it('changes the reasoning model without warning when there are no documents', async () => {
-    const user = userEvent.setup()
-    await renderForm({
-      space: {
-        ...space,
-        technical_summary: { ...space.technical_summary, document_count: 0 },
-      },
-    })
-    const selector = screen.getByRole('button', {
-      name: 'knowledgeSettings.settings.systemReasoningModelLabel',
-    })
-
-    await user.click(selector)
-
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(selector).toHaveTextContent('openrouter/auto')
-    expect(
-      screen.queryByText('knowledgeSettings.settings.reasoningChangeWarning'),
-    ).not.toBeInTheDocument()
-    expectNoWrites()
   })
 
   it('keeps a confirmed embedding model as a draft until the unified Save', async () => {
@@ -1704,10 +1577,6 @@ describe('KnowledgeSettingsPage workflows', () => {
         name: 'knowledgeSettings.settings.systemReasoningModelLabel',
       }),
     )
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(
-      screen.queryByText('knowledgeSettings.settings.reasoningChangeWarning'),
-    ).not.toBeInTheDocument()
     expect(
       screen.queryByText('knowledgeSettings.settings.systemReasoningModelRequired'),
     ).not.toBeInTheDocument()
@@ -1830,7 +1699,6 @@ describe('KnowledgeSettingsPage workflows', () => {
   })
 
   it('normalizes split Knowledge FS provider identities for the model selector', async () => {
-    const user = userEvent.setup()
     await renderForm({
       settings: {
         ...settings,
@@ -1845,30 +1713,25 @@ describe('KnowledgeSettingsPage workflows', () => {
       },
     })
 
-    await user.click(
+    expect(
       screen.getByRole('button', {
         name: 'knowledgeSettings.settings.systemReasoningModelLabel',
       }),
-    )
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }),
-    ).toBeDisabled()
-    expectNoWrites()
+    ).toBeInTheDocument()
   })
 
-  it('keeps a confirmed reasoning model in draft and splits its provider only on the unified Save', async () => {
+  it('changes the reasoning model without confirmation and saves its normalized provider only on Save', async () => {
     const user = userEvent.setup()
     await renderForm()
 
-    await user.click(
-      screen.getByRole('button', {
-        name: 'knowledgeSettings.settings.systemReasoningModelLabel',
-      }),
-    )
-    await confirmReasoningChange(user)
+    const selector = screen.getByRole('button', {
+      name: 'knowledgeSettings.settings.systemReasoningModelLabel',
+    })
+    await user.click(selector)
 
-    expect(screen.getByText('knowledgeSettings.settings.reasoningChangeWarning')).toBeVisible()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(selector).toHaveTextContent('openrouter/auto')
+    expect(selector).not.toHaveAccessibleDescription()
     expectNoWrites()
     await saveChanges(user)
 
@@ -1887,11 +1750,6 @@ describe('KnowledgeSettingsPage workflows', () => {
         params: { control_space_id: 'space-1' },
       })
     })
-    await waitFor(() =>
-      expect(
-        screen.queryByText('knowledgeSettings.settings.reasoningChangeWarning'),
-      ).not.toBeInTheDocument(),
-    )
   })
 
   it('waits for an active profile migration before reporting the settings as saved', async () => {
@@ -1927,7 +1785,6 @@ describe('KnowledgeSettingsPage workflows', () => {
         name: 'knowledgeSettings.settings.systemReasoningModelLabel',
       }),
     )
-    await confirmReasoningChange(user)
 
     expectNoWrites()
     await saveChanges(user)
@@ -1981,7 +1838,6 @@ describe('KnowledgeSettingsPage workflows', () => {
         name: 'knowledgeSettings.settings.systemReasoningModelLabel',
       }),
     )
-    await confirmReasoningChange(user)
 
     expectNoWrites()
     await saveChanges(user)
@@ -2255,7 +2111,6 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.click(
       screen.getByRole('button', { name: 'knowledgeSettings.settings.systemReasoningModelLabel' }),
     )
-    await confirmReasoningChange(user)
     const topK = screen.getByRole('textbox', { name: 'knowledgeSpace.settings.topKLabel' })
     await user.clear(topK)
     await user.type(topK, '8')
@@ -2427,7 +2282,6 @@ describe('KnowledgeSettingsPage workflows', () => {
       name: 'knowledgeSettings.settings.systemReasoningModelLabel',
     })
     await user.click(reasoning)
-    await confirmReasoningChange(user)
     expectNoWrites()
     await saveChanges(user)
 
