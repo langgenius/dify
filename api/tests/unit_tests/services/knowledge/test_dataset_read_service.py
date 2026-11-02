@@ -156,7 +156,7 @@ class TestDocumentDetailTimestamps:
             for field in format_document_built_in_fields(document, uploader_name="account-id")
         }
 
-        expected = str(int(UPLOADED_AT.replace(tzinfo=UTC).timestamp()))
+        expected = str(UPLOADED_AT.replace(tzinfo=UTC).timestamp())
         assert fields["upload_date"] == expected
         assert fields["last_update_date"] == expected
 
