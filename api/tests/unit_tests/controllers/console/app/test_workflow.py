@@ -1474,7 +1474,7 @@ class TestWorkflowHumanInputDebugApiCases:
                 {
                     "type": "select",
                     "output_variable_name": "choice",
-                    "default_value": default_value,
+                    **({"default_value": default_value} if default_value else {}),
                     "option_source": {"type": "constant", "selector": list[str](), "value": ["one", "two"]},
                 },
                 {
