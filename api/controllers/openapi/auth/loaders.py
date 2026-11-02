@@ -1,16 +1,22 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
+from contextlib import suppress
 from enum import StrEnum
+from functools import partial
 
 from flask import request
 from werkzeug.exceptions import Forbidden, NotFound
 
+from controllers.openapi._errors import require_uuid
 from controllers.openapi.auth.context import Caller, Context, RouteContractError
 from extensions.ext_application_services import application_services
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
 from models.model import App, EndUser
+from services.agent.errors import AgentNotFoundError
+from services.agent.roster_service import AgentRosterService
 from services.app_service import AppService
 
 
@@ -18,6 +24,7 @@ class PathParam(StrEnum):
     """The route path parameters the auth layer reads."""
 
     APP_ID = "app_id"
+    AGENT_ID = "agent_id"
     WORKSPACE_ID = "workspace_id"
     FORM_TOKEN = "form_token"
 
@@ -81,17 +88,45 @@ def _path_param(ctx: Context, name: str) -> str:
         ) from caught_error
 
 
+_APP_NOT_FOUND = partial(NotFound, "app not found")
+_AGENT_NOT_FOUND = partial(NotFound, "agent not found")
+
+
+def canonical_view_args(view_args: Mapping[str, str]) -> dict[str, str]:
+    """The path parameters with a bare-hex Agent id in its stored dashed form, so every
+    reader of the request sees one spelling. An id that is no UUID is left for
+    `_fetch_agent_app` to refuse once the caller is known to belong here.
+    """
+    canonical = dict(view_args)
+    if PathParam.AGENT_ID not in canonical:
+        return canonical
+    # A malformed id is not rewritten: `_fetch_agent_app` refuses it once membership is known.
+    with suppress(NotFound):
+        canonical[PathParam.AGENT_ID] = require_uuid(canonical[PathParam.AGENT_ID], not_found=_AGENT_NOT_FOUND)
+    return canonical
+
+
 def _fetch_app(ctx: Context) -> App:
-    raw = _path_param(ctx, PathParam.APP_ID)
-    try:
-        # Canonical dashed form, so a bare-hex path parameter names the same app.
-        app_id = str(uuid.UUID(raw))
-    except ValueError as caught_error:
-        raise NotFound("app not found") from caught_error
+    if PathParam.AGENT_ID in ctx.view_args:
+        return _fetch_agent_app(ctx)
+    return _fetch_app_by_id(ctx)
+
+
+def _fetch_app_by_id(ctx: Context) -> App:
+    app_id = require_uuid(_path_param(ctx, PathParam.APP_ID), not_found=_APP_NOT_FOUND)
     app = AppService.get_app_by_id(app_id, ctx.session)
     if not app or app.status != AppStatus.NORMAL:
-        raise NotFound("app not found")
+        raise _APP_NOT_FOUND()
     return app
+
+
+def _fetch_agent_app(ctx: Context) -> App:
+    agent_id = require_uuid(_path_param(ctx, PathParam.AGENT_ID), not_found=_AGENT_NOT_FOUND)
+    workspace = load_workspace(ctx)
+    try:
+        return AgentRosterService(ctx.session).get_agent_app_model(tenant_id=str(workspace.id), agent_id=agent_id)
+    except AgentNotFoundError as caught_error:
+        raise _AGENT_NOT_FOUND() from caught_error
 
 
 def _fetch_workspace(ctx: Context) -> Tenant:

@@ -21,6 +21,12 @@ from controllers.openapi._models import (
     AdvancedChatWebAppPatch,
     AgentAppInfo,
     AgentAppInfoPatch,
+    AgentDescribeInfo,
+    AgentDescribeResponse,
+    AgentListQuery,
+    AgentListResponse,
+    AgentListRow,
+    AgentRunPayload,
     AgentServiceApi,
     AgentWebApp,
     AppDescribeInfo,
@@ -214,6 +220,8 @@ register_schema_models(
     AdvancedChatNodeRunPayload,
     AdvancedChatRunPayload,
     AgentAppInfoPatch,
+    AgentListQuery,
+    AgentRunPayload,
     AppDescribeQuery,
     AppInfoPatch,
     ChatAppInfoPatch,
@@ -281,6 +289,10 @@ register_response_schema_models(
     Hint,
     AppListRow,
     AppListResponse,
+    AgentListRow,
+    AgentListResponse,
+    AgentDescribeInfo,
+    AgentDescribeResponse,
     AppInfo,
     AppDescribeInfo,
     AppDescribeResponse,
@@ -385,6 +397,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
     from . import (
         account,
+        agent_run,
+        agents,
         app_create,
         app_dsl,
         app_info,
@@ -412,6 +426,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
     return (
         account,
+        agent_run,
+        agents,
         app_create,
         app_dsl,
         app_info,
@@ -440,6 +456,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 (
     account,
+    agent_run,
+    agents,
     app_create,
     app_dsl,
     app_info,
@@ -469,6 +487,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 __all__ = [
     "account",
+    "agent_run",
+    "agents",
     "app_create",
     "app_dsl",
     "app_info",
