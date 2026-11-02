@@ -326,7 +326,9 @@ const FormBody = ({
         const invalid = attempted && hasInvalidInput([field], inputs)
         return (
           <Field key={key} name={field.output_variable_name} invalid={invalid}>
-            <FieldLabel id={labelID}>{label}</FieldLabel>
+            <FieldLabel id={labelID} className="sr-only">
+              {label}
+            </FieldLabel>
             {isParagraphFormInput(field) ? (
               <Textarea
                 aria-labelledby={labelID}
@@ -437,7 +439,7 @@ const LoadedFormContent = ({
       : null
 
   return (
-    <div className="size-full [scrollbar-gutter:stable_both-edges] overflow-y-auto">
+    <div className="size-full scrollbar-gutter-both overflow-y-auto">
       <div className="mx-auto w-full max-w-180 px-4 py-4 sm:px-6">
         {!branding && !/^#\s/m.test(definition.formContent) && (
           <h1 className="sr-only">{t(($) => $['blocks.human-input'], { ns: 'workflow' })}</h1>

@@ -196,6 +196,8 @@ describe('LoadedFormContent', () => {
     expect(document.querySelectorAll('[id]')).toHaveLength(
       new Set([...document.querySelectorAll('[id]')].map((element) => element.id)).size,
     )
+    // The Markdown prompt is the visible label; the field label only names the control.
+    expect(screen.getByText('Second review', { selector: 'label' })).toHaveClass('sr-only')
     await user.click(screen.getByText('Second review', { selector: 'label' }))
     expect(second).toHaveFocus()
     await user.clear(second)
