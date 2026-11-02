@@ -1216,6 +1216,16 @@
       "path": "/openapi/v1/apps/{app_id}/webapp-access",
       "summary": "Show who can open an app's web app"
     },
+    "describe.webapp_access.agent": {
+      "bind": { "app_id": "path" },
+      "deprecated": false,
+      "input": { "type": "object", "properties": { "app_id": {} }, "required": ["app_id"] },
+      "internal": false,
+      "kind": "object",
+      "method": "GET",
+      "path": "/openapi/v1/apps/{app_id}/webapp-access/agent",
+      "summary": "Who may open an agent app's web app (Enterprise)"
+    },
     "set.webapp_access": {
       "bind": { "access_mode": "body", "app_id": "path" },
       "deprecated": false,

@@ -12,6 +12,7 @@ Four phases. Each ends with a gate; never skip one, even for a small app.
 - Keep the working files in `difyctl/<app-slug>/` in the current folder: `spec.md`, `plan.md`, `app.yml`, and `live.yml` when changing an existing app.
 - Requirement ids (`R1`, `R2`, …) from the spec run through the plan, the build and the final report.
 - One writer per draft at a time.
+- Change an app only through `export console_app dsl` and `import console_app dsl`. Don't use `export console_app package` or `import console_app package`: editing through packages isn't finished.
 - Nothing goes live without the human's yes.
 - **Report problems; never work around them.** When something blocks the agreed design, stop and tell the human what you found and the options. Examples: a tool that isn't configured, a missing credential or plugin, a requirement a node can't meet, a check you can't pass. Never swap in a substitute on your own: an HTTP Request or Code node in place of a tool, prompt text in place of a knowledge base, a dropped or weakened requirement.
 - **Every change from the approved spec or plan needs the human's yes before you build it.** List each one: what changes, why, and what it costs. "Use defaults" or "go" approves only the options you already showed with your recommendation. It never approves a substitute you didn't show.
@@ -33,3 +34,4 @@ Four phases. Each ends with a gate; never skip one, even for a small app.
 - Trigger-started workflows (webhook, schedule, plugin) can't be draft-tested.
 - Loop and iteration nodes can't be tested alone; use a full draft run.
 - With an app's Service API off, difyctl can't find, describe, export (exit 4), test, run or publish it; only import works. An admin turns it on with `difyctl set service_api --app-id <app_id> --enabled`.
+- An Agent node linked to a roster Agent (`agent_binding.binding_type: roster_agent` in the export) becomes a copy on `import console_app dsl`, and stops following the roster Agent. If the export has one, stop and ask the human to make the change in the Dify console.
