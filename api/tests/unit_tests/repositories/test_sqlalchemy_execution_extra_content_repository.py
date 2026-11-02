@@ -188,7 +188,7 @@ def test_map_human_input_content_reads_a_naive_expiration_time_as_utc(monkeypatc
     model = HumanInputContentModel.new(workflow_run_id="workflow-run-1", form_id=form.id, message_id="message-1")
     model.id = "content-1"
     model.form = form
-    repository = SQLAlchemyExecutionExtraContentRepository(cast(sessionmaker[Session], object()))
+    repository = SQLAlchemyExecutionExtraContentRepository(sessionmaker[Session]())
 
     monkeypatch.setenv("TZ", "Asia/Shanghai")
     time.tzset()
