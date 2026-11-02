@@ -5,8 +5,11 @@ import { zProviderWithModelsResponse } from '@dify/contracts/api/console/workspa
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Cookies from 'js-cookie'
+import * as reactI18next from 'react-i18next'
+import { onTestFinished } from 'vite-plus/test'
 import CommonLayoutError from '@/app/(commonLayout)/error'
 import ErrorBoundary from '@/app/components/base/error-boundary'
+import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { DETAIL_SIDEBAR_COOKIE_NAME } from '@/app/components/detail-sidebar/cookie'
 import { PermissionType } from '@/app/components/plugins/types'
 import { useStore as usePluginDependenciesStore } from '@/app/components/workflow/plugin-dependency/store'
@@ -64,6 +67,7 @@ const api = vi.hoisted(() => ({
   install: vi.fn<typeof consoleClient.workspaces.current.plugin.install.marketplace.post>(),
   models: vi.fn<typeof consoleClient.workspaces.current.models.modelTypes.byModelType.get>(),
   modelSummary: vi.fn<typeof consoleClient.workspaces.current.modelProviders.summary.get>(),
+  generate: vi.fn<typeof consoleClient.ruleGenerate.post>(),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -86,6 +90,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         api.rules(input),
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'ruleGenerate.post': (input) => api.generate(input),
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: PermissionType.everyone,
         debug_permission: PermissionType.everyone,
@@ -691,6 +696,56 @@ it('adds a prompt variable, edits its label, and publishes the actual form schem
     body: {
       pre_prompt: expect.stringContaining('{{topic}}'),
       user_input_form: [{ 'text-input': { variable: 'topic', label: 'Discussion topic' } }],
+    },
+  })
+})
+
+it('keeps generated variables when the render after Apply waits for a translation namespace', async () => {
+  const namespace = createDeferred()
+  api.generate.mockResolvedValue({
+    prompt: 'Plan a trip to {{city}}.',
+    variables: ['city'],
+    opening_statement: 'Where to?',
+    error: '',
+  })
+  const { user } = setup()
+  await waitForPage()
+  await user.click(screen.getByRole('button', { name: 'appDebug.operation.automatic' }))
+  const dialog = await screen.findByRole('dialog', { name: 'appGeneration.generate.title' })
+  await replacePromptEditorText(
+    within(dialog).getByRole('textbox', { name: 'appGeneration.generate.instruction' }),
+    'Help plan a city trip',
+  )
+  await user.click(within(dialog).getByRole('button', { name: 'appGeneration.generate.generate' }))
+  await user.click(
+    await within(dialog).findByRole('button', { name: 'appGeneration.generate.apply' }),
+  )
+  // Namespaces load on demand, so the render that first needs this one suspends without committing.
+  const { useTranslation } = reactI18next
+  const namespaceLoading = vi.spyOn(reactI18next, 'useTranslation').mockImplementation(((
+    ...args: Parameters<typeof useTranslation>
+  ) => {
+    if (args[0]?.includes('appAnnotation')) throw namespace.promise
+    return useTranslation(...args)
+  }) as typeof useTranslation)
+  onTestFinished(() => namespaceLoading.mockRestore())
+  await user.click(
+    within(screen.getByRole('alertdialog')).getByRole('button', {
+      name: 'common.operation.confirm',
+    }),
+  )
+  expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  await act(async () => {
+    namespaceLoading.mockRestore()
+    namespace.resolve()
+  })
+  expect(await screen.findByTitle('city · city')).toBeInTheDocument()
+  expect(screen.queryByText('appDebug.formattingChangedTitle')).not.toBeInTheDocument()
+  await publish(user)
+  expect(api.publish.mock.lastCall![0]).toMatchObject({
+    body: {
+      pre_prompt: 'Plan a trip to {{city}}.',
+      user_input_form: [{ 'text-input': { variable: 'city' } }],
     },
   })
 })

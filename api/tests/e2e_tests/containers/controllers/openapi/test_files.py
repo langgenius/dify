@@ -47,7 +47,7 @@ class TestAppFileUpload:
             file=FileStorage(stream=BytesIO(content), filename="note.txt", content_type="text/plain")
         )
         with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/files", method="POST"):
-            result = api.post.__handler__(
+            result = vars(api.post)["__handler__"](
                 api,
                 context_for(
                     account,

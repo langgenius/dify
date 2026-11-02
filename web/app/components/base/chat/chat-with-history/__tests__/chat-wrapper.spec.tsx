@@ -7,8 +7,12 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { registerWebAppEventTracker } from '@/app/components/base/amplitude/web-app-event'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { fetchChatList, fetchSuggestedQuestions, stopChatMessageResponding } from '@/service/share'
-import { submitWebAppHumanInputForm as submitHumanInputForm } from '@/service/webapp-human-input'
+import {
+  fetchChatList,
+  fetchSuggestedQuestions,
+  stopChatMessageResponding,
+  submitHumanInputForm,
+} from '@/service/share'
 import { submitHumanInputForm as submitInstalledForm } from '@/service/workflow'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createChatConfigFixture, createChatFileFixture } from '@/test/fixtures/chat'
@@ -746,5 +750,3 @@ it.each([
   })
   expect(screen.getByRole('img', { name: label })).toHaveTextContent(initial)
 })
-
-vi.mock('@/service/webapp-human-input', () => ({ submitWebAppHumanInputForm: vi.fn() }))
