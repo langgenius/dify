@@ -37,7 +37,7 @@ def workflow_run(sqlite_session_factory: sessionmaker[Session]) -> WorkflowRun:
         tenant_id=str(uuid4()),
         app_id=str(uuid4()),
         workflow_id=str(uuid4()),
-        type=WorkflowType.WORKFLOW,
+        type=ModelWorkflowType(WorkflowType.WORKFLOW),
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="draft",
         graph="{}",
@@ -265,7 +265,7 @@ def test_workflow_pause_reason_to_entity_restores_graphon_hitl_reason() -> None:
         ),
     ],
 )
-def test_legacy_pause_reason_rejects_v2_references(reason) -> None:
+def test_legacy_pause_reason_rejects_v2_references(reason: HitlRequired | HumanInputRequired) -> None:
     with pytest.raises(ValueError, match="only accepts HITL v1"):
         WorkflowPauseReason.from_entity(pause_id="pause-2", pause_reason=reason)
 
