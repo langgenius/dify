@@ -13,7 +13,7 @@ from core.tools.utils.uuid_utils import is_valid_uuid
         pytest.param("urn:uuid:123e4567-e89b-12d3-a456-426614174000", id="urn-prefixed"),
     ],
 )
-def test_is_valid_uuid_accepts_supported_formats(value: str):
+def test_is_valid_uuid_accepts_supported_formats(value: str) -> None:
     assert is_valid_uuid(value) is True
 
 
@@ -28,5 +28,5 @@ def test_is_valid_uuid_accepts_supported_formats(value: str):
         pytest.param("zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz", id="non-hex-characters"),
     ],
 )
-def test_is_valid_uuid_rejects_invalid_values(value: str | None):
+def test_is_valid_uuid_rejects_invalid_values(value: str | None) -> None:
     assert is_valid_uuid(value) is False
