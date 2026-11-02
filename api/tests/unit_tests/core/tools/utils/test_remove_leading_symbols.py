@@ -15,7 +15,7 @@ from core.tools.utils.text_processing_utils import remove_leading_symbols
         pytest.param("—–dash", "dash", id="em-and-en-dash"),
     ],
 )
-def test_remove_leading_symbols_strips_supported_punctuation(text: str, expected: str):
+def test_remove_leading_symbols_strips_supported_punctuation(text: str, expected: str) -> None:
     assert remove_leading_symbols(text) == expected
 
 
@@ -32,7 +32,7 @@ def test_remove_leading_symbols_strips_supported_punctuation(text: str, expected
         pytest.param("", id="empty-string"),
     ],
 )
-def test_remove_leading_symbols_preserves_unmatched_inputs(text: str):
+def test_remove_leading_symbols_preserves_unmatched_inputs(text: str) -> None:
     assert remove_leading_symbols(text) == text
 
 
@@ -48,11 +48,11 @@ def test_remove_leading_symbols_preserves_unmatched_inputs(text: str):
         pytest.param("[label](https://example.com/a(b))", "[label](https://example.com/a(b))", id="url-with-parens"),
     ],
 )
-def test_remove_leading_symbols_preserves_leading_markdown_links(text: str, expected: str):
+def test_remove_leading_symbols_preserves_leading_markdown_links(text: str, expected: str) -> None:
     assert remove_leading_symbols(text) == expected
 
 
-def test_remove_leading_symbols_non_http_link_is_kept():
+def test_remove_leading_symbols_non_http_link_is_kept() -> None:
     # Only http(s) markdown links match the preserve-pattern; other schemes fall through to
     # normal stripping, which leaves the text unchanged because brackets are excluded
     # from the strip class.
