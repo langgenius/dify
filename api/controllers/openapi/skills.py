@@ -21,6 +21,7 @@ from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import (
     CapRequestBody,
+    Effect,
     Example,
     Kind,
     endpoint,
@@ -384,6 +385,7 @@ class SkillImportApi(Resource):
         context="workspace",
         op="import.skill",
         kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
         summary="Create a skill from a folder, or overwrite a skill's draft with one",
         examples=(
             Example(title="Create a skill", input={"files": {"SKILL.md": "./my-skill/SKILL.md"}}),
