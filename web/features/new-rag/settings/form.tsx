@@ -1,11 +1,11 @@
 'use client'
 
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { Form } from '@langgenius/dify-ui/form'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { KnowledgeModelReadinessNotice } from '../components/knowledge-model-readiness-notice'
 import { BasicInformationSection } from './basic-information'
 import { DeleteKnowledgeAction } from './delete-knowledge'
 import { ExternalAccessSection } from './external-access'
@@ -84,15 +84,16 @@ export function KnowledgeSettingsForm() {
         }}
       >
         {(hasConflict || saveError === 'settings.revisionConflict') && !isSaving && (
-          <KnowledgeModelReadinessNotice
-            title={t(($) => $['settings.serverConflict'], { ns: 'knowledgeSettings' })}
-            tone="warning"
-            action={
-              <Button type="button" onClick={() => void cancel()}>
+          <Alert type="warning">
+            <AlertTitle>
+              {t(($) => $['settings.serverConflict'], { ns: 'knowledgeSettings' })}
+            </AlertTitle>
+            <AlertActions>
+              <Button type="button" size="small" onClick={() => void cancel()}>
                 {t(($) => $['settings.reloadLatest'], { ns: 'knowledgeSettings' })}
               </Button>
-            }
-          />
+            </AlertActions>
+          </Alert>
         )}
         <BasicInformationSection />
         <ExternalAccessSection />

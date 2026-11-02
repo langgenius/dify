@@ -4,6 +4,8 @@ import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { AppSourceType } from '@/service/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -175,22 +177,20 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
           )}
         </div>
         {isCallBatchAPI && allFailedTaskList.length > 0 && (
-          <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-xs">
-            <span aria-hidden className="i-ri-error-warning-fill size-4 text-text-destructive" />
-            <div className="system-sm-medium text-text-secondary">
-              {t(($) => $['generation.batchFailed.info'], {
-                ns: 'share',
-                num: allFailedTaskList.length,
-              })}
-            </div>
-            <div className="h-3.5 w-px bg-divider-regular"></div>
-            <button
-              type="button"
-              className="inline cursor-pointer border-none bg-transparent p-0 text-left system-sm-semibold-uppercase text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-              onClick={handleRetryAllFailedTask}
-            >
-              {t(($) => $['generation.batchFailed.retry'], { ns: 'share' })}
-            </button>
+          <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2">
+            <Alert type="error" className="w-max max-w-105">
+              <AlertTitle>
+                {t(($) => $['generation.batchFailed.info'], {
+                  ns: 'share',
+                  num: allFailedTaskList.length,
+                })}
+              </AlertTitle>
+              <AlertActions>
+                <Button size="small" onClick={handleRetryAllFailedTask}>
+                  {t(($) => $['generation.batchFailed.retry'], { ns: 'share' })}
+                </Button>
+              </AlertActions>
+            </Alert>
           </div>
         )}
       </div>

@@ -25,6 +25,10 @@
       "types": "./src/merge-props.ts",
       "import": "./src/merge-props.ts"
     },
+    "./alert": {
+      "types": "./src/alert/index.tsx",
+      "import": "./src/alert/index.tsx"
+    },
     "./alert-dialog": {
       "types": "./src/alert-dialog/index.tsx",
       "import": "./src/alert-dialog/index.tsx"

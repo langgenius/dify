@@ -11,6 +11,8 @@ import {
   HUMAN_INPUT_V2_MOCK_OTP,
 } from './fixtures/mock-transport'
 
+vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
+
 vi.mock('@/app/components/base/chat/chat/answer/human-input-content/expiration-time', () => ({
   default: () => null,
 }))
@@ -262,4 +264,42 @@ it('keeps retry focus through another failure and restores focus to verification
   await act(async () => pending.resolve(definition))
   expect(await screen.findByRole('textbox', { name: 'share.humanInputV2.otpLabel' })).toHaveFocus()
   expect(document.title).toBe('share.humanInputV2.otpLabel - Dify')
+})
+
+it('scopes attachment uploads to the displayed token and injected transport after navigation', async () => {
+  const user = userEvent.setup()
+  const transport = createMockHumanInputV2FormTransport()
+  const uploadLocalFile = vi.spyOn(transport, 'uploadLocalFile')
+  const uploadRemoteFile = vi.spyOn(transport, 'uploadRemoteFile').mockResolvedValue({
+    id: 'remote-2',
+    name: 'review.txt',
+    mimeType: 'text/plain',
+    size: 6,
+    url: 'https://example.com/review.txt',
+  })
+  const { rerender } = render(
+    <HumanInputV2Form key="first-form" token="first-form" transport={transport} />,
+  )
+
+  await screen.findByRole('textbox', { name: 'Please review the request.' })
+  // The native chooser has no accessible label in the current uploader.
+  await user.upload(
+    document.querySelector<HTMLInputElement>('input[type="file"]')!,
+    new File(['review'], 'review.txt', { type: 'text/plain' }),
+  )
+  await screen.findByText('review.txt')
+  await waitFor(() => expect(uploadLocalFile).toHaveBeenCalledOnce())
+  expect(uploadLocalFile).toHaveBeenCalledWith('first-form', expect.any(File))
+
+  rerender(<HumanInputV2Form key="second-form" token="second-form" transport={transport} />)
+  await waitFor(() => expect(screen.queryByText('review.txt')).not.toBeInTheDocument())
+  await user.click(await screen.findByRole('button', { name: 'common.fileUploader.pasteFileLink' }))
+  await user.type(
+    screen.getByPlaceholderText('common.fileUploader.pasteFileLinkInputPlaceholder'),
+    'https://example.com/review.txt',
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
+  await screen.findByText('https://example.com/review.txt')
+  await waitFor(() => expect(uploadRemoteFile).toHaveBeenCalledOnce())
+  expect(uploadRemoteFile).toHaveBeenCalledWith('second-form', 'https://example.com/review.txt')
 })

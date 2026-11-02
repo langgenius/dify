@@ -167,6 +167,46 @@ it('edits through the generated PATCH and preserves an intentional empty name as
   })
 })
 
+it.each(['create', 'edit'] as const)(
+  'rejects an overlong name before %s and allows correcting the Unicode boundary',
+  async (mode) => {
+    const user = userEvent.setup()
+    setup(mode === 'edit' ? alice : undefined)
+    await open(user)
+    const name = screen.getByRole('textbox', { name: 'contacts.external.name' })
+    const save = screen.getByRole('button', {
+      name: `contacts.external.${mode === 'edit' ? 'save' : 'add'}`,
+    })
+    if (mode === 'create')
+      await user.type(
+        screen.getByRole('textbox', { name: 'contacts.external.email' }),
+        alice.email!,
+      )
+    await user.clear(name)
+    await user.click(name)
+    await user.paste('中'.repeat(256))
+    await user.click(save)
+
+    await waitFor(() => expect(name).toHaveFocus())
+    expect(name).toHaveAccessibleDescription(/contacts\.external\.validation\.name_too_long/)
+    expect(name).toHaveAttribute('aria-invalid', 'true')
+    expect(api.create).not.toHaveBeenCalled()
+    expect(api.update).not.toHaveBeenCalled()
+
+    const validName = '😀'.repeat(255)
+    await user.clear(name)
+    await user.click(name)
+    await user.paste(`  ${validName}  `)
+    await user.click(save)
+
+    const body = { name: validName, email: alice.email }
+    await waitFor(() => {
+      if (mode === 'create') expect(api.create).toHaveBeenCalledWith({ body })
+      else expect(api.update).toHaveBeenCalledWith({ params: { contact_id: alice.id }, body })
+    })
+  },
+)
+
 it('uploads a valid avatar and submits its file ID without exposing the blob URL', async () => {
   const user = userEvent.setup()
   setup()

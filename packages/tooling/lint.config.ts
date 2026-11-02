@@ -315,6 +315,24 @@ export const stylingContractRules = {
             '"{{className}}" is outside the InfotipContent styling contract. Use the default hint surface, spacing, typography, and wrapping from packages/dify-ui/src/infotip/index.tsx; callers may constrain width or preserve content line breaks.',
         },
         {
+          pattern: '^Alert$',
+          allow: ['layout'],
+          message:
+            '"{{className}}" is outside the Alert styling contract. The alert owns its surface, spacing, icon and typography; callers may only place and size it.',
+        },
+        {
+          pattern: '^(AlertTitle|AlertDescription)$',
+          allow: ['whitespace-pre-line'],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. Use its default typography and colour; callers may keep line breaks in the message.',
+        },
+        {
+          pattern: '^(AlertActions|AlertClose)$',
+          allow: [],
+          message:
+            '"{{className}}" is outside the {{component}} styling contract. The part owns its spacing and position.',
+        },
+        {
           pattern: '^(Dialog|AlertDialog)Content$',
           allow: [
             'w-*',

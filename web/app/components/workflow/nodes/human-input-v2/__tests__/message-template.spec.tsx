@@ -249,8 +249,8 @@ describe('Human Input v2 Message Template', () => {
       'true',
     )
     expect(
-      screen.getByText('workflow.nodes.humanInputV2.error.subjectRequired'),
-    ).toBeInTheDocument()
+      screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'),
+    ).toHaveAccessibleDescription('workflow.nodes.humanInputV2.error.subjectRequired')
     expect(screen.getByText('workflow.nodes.humanInputV2.error.bodyRequired')).toBeInTheDocument()
     expect(props.onChange).not.toHaveBeenCalled()
 
