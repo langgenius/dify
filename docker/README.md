@@ -1,14 +1,15 @@
 # Docker deployment
 
-Run Dify with Docker Compose. Configuration templates live in `.env.example` and `envs/`; local overrides belong in `.env`.
+Run Dify with Docker Compose. Start with `.env.example`; optional service settings live in `envs/`.
 
 ## How to Deploy Dify with `docker-compose.yaml`
 
-1. **Prerequisites**: Ensure Docker and Docker Compose v2.24.0 or later are installed on your system.
+1. **Prerequisites**: Ensure Docker and Docker Compose v2.35.0 or later are installed on your system. This version is required for root `.env` values to take precedence when interpolating service defaults.
 2. **Environment Setup**:
    - Navigate to the `docker` directory.
    - Copy `.env.example` to `.env`.
-   - Select the bundled services through `COMPOSE_PROFILES`. Add overrides to `.env` only when needed. Copy optional files from `envs/` without the `.example` suffix when you need advanced settings.
+   - Select the bundled services through `COMPOSE_PROFILES` and fill in `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` with a random secret (`openssl rand -hex 32`).
+   - No other configuration files are required. To customize a service, copy its `envs/**/*.defaults` file to the same path with a `.env` extension and edit the copy. Provider templates ending in `.env.example` are also optional; remove only `.example` when copying them.
    - **Optional (for advanced deployments)**:
      If you maintain a full `.env` file copied from `.env.example`, you may use the environment synchronization tool to keep it aligned with the latest `.env.example` updates while preserving your custom settings.
      See the [Environment Variables Synchronization](#environment-variables-synchronization) section below.
@@ -17,6 +18,7 @@ Run Dify with Docker Compose. Configuration templates live in `.env.example` and
    - To specify a vector database, set the `VECTOR_STORE` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`, and select the matching service in `COMPOSE_PROFILES`. See `envs/vectorstores/` for the full list of supported options.
    ```bash
    cp .env.example .env
+   # Edit .env and fill in the required sandbox token before starting.
    docker compose up -d
    ```
 
@@ -277,19 +279,46 @@ use multiple real addresses.
 
 - `.env.example` contains only settings requiring manual configuration, such as the Compose service selection.
 - `.env` contains your deployment inputs and any explicit overrides.
-- `envs/*.env.example` files contain optional advanced configuration grouped by theme.
+- `envs/**/*.defaults` contains tracked defaults, loaded automatically for the matching services.
+- `envs/**/*.env` contains your optional overrides, created by copying the matching defaults file.
+- `envs/**/*.env.example` documents optional application and provider settings; these templates are never loaded directly.
 
 Keep the root `.env.example` limited to settings that require manual user configuration.
-Settings with usable application or Docker defaults must not appear there. Document optional,
-advanced, provider-specific, and service-specific overrides in the appropriate `envs/*.env.example` file.
+Settings with usable application or Docker defaults must not appear there. Keep them in the
+matching categorized file under `envs/`.
 
-Docker Compose loads Docker-specific defaults from `envs/core-services/shared.defaults`,
-then optional `envs/*.env` files, then `.env` so your overrides take precedence. Other defaults
-come from the application and each service in `docker-compose.yaml`; do not copy them into `.env`.
+For example, to change nginx's upload limit:
+
+```bash
+cp envs/infrastructure/nginx.defaults envs/infrastructure/nginx.env
+# In nginx.env, replace the NGINX_CLIENT_MAX_BODY_SIZE value with 200M.
+docker compose up -d
+```
+
+Edit the input settings in the copy; leave the `Container variable mappings` expressions
+unchanged. Uncomment optional application settings only when overriding them. To change shared
+API/worker defaults, copy `envs/core-services/shared.defaults` to `shared.env` in that directory.
+The larger `shared.env.example` remains an optional reference for application settings.
+
+Compose reads optional service files and `.env` first, then resolves expressions in the tracked
+defaults. This preserves custom values and translates settings such as `SANDBOX_WORKER_TIMEOUT`
+into the container's `WORKER_TIMEOUT`. Effective precedence is root `.env`, service overrides,
+then defaults. Shell variables take precedence when Compose interpolates expressions.
+The API, workers, and plugin daemon read the database and Redis override files too, so changes
+to shared credentials there reach both the bundled server and its clients.
+
+Settings that Compose itself consumes must go in root `.env`: profiles, published ports
+(such as `EXPOSE_NGINX_PORT`), volume paths, resource limits, and health-check intervals.
+Service files cannot change the Compose model. These optional settings do not belong in
+`.env.example`, and do not require another template or an `--env-file` flag.
+Use root `.env` for values shared with the isolated local sandbox, including its authentication token.
+
 The bundled credentials are intended for local deployment; override them for production using
 the matching security and service templates.
 
-For the available variables and defaults, read the matching `envs/**/*.env.example` template and its service in `docker-compose.yaml`.
+Existing service `.env` files keep the same paths. Templates for bundled services have been renamed
+from `.env.example` to `.defaults`; root `.env.example` remains the only required starting template.
+The Compose generator creates only a missing root `.env`, leaving optional overrides to the operator.
 
 Custom worker queue lists set through `CELERY_QUEUES` or `CELERY_WORKER_QUEUES` must include
 `human_input_delivery` to process durable Human Input IM inbox events and recover

@@ -1,0 +1,5 @@
+# Defaults for qdrant. Copy this file to qdrant.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+QDRANT_API_KEY=${QDRANT_API_KEY:-difyai123456}
