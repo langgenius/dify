@@ -621,7 +621,7 @@ class DatasetQueryApi(Resource):
         "Query history retrieved successfully",
         console_ns.models[DatasetQueryListResponse.__name__],
     )
-    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_READONLY, DatasetId()),))
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.DATASET_RETRIEVAL_RECALL, DatasetId()),))
     def get(self, request_context: RequestContext, dataset_id: UUID):
         try:
             result = application_services().knowledge.datasets.queries(
