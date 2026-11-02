@@ -11,11 +11,8 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ContactChannelIcon } from '@/features/contacts/management/channel-icon'
-import { basePath } from '@/utils/var'
 import { isHumanInputV2DebugChannel } from '../types'
 import useConfiguredChannels from '../use-configured-channels'
-
-const debugModeBackground = `${basePath ?? ''}/assets/human-input/debug-mode-background.svg`
 
 type DebugModeProps = {
   value: HumanInputV2DebugMode
@@ -56,16 +53,10 @@ const DebugMode = ({ value, onChange, readonly, email }: DebugModeProps) => {
     >
       <div
         className={cn(
-          'relative flex h-9 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg ps-2 pe-2.5 shadow-xs',
+          'relative flex h-9 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg bg-[repeating-linear-gradient(135deg,rgba(16,24,40,0.02)_0_5px,transparent_5px_9.875px)] ps-2 pe-2.5 shadow-xs',
           readonly && 'opacity-70',
         )}
       >
-        <img
-          src={debugModeBackground}
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute top-1/2 left-1/2 h-29 w-305 max-w-none -translate-x-1/2 -translate-y-1/2"
-        />
         <span className="relative flex size-5 shrink-0 items-center justify-center rounded-md border border-divider-regular bg-components-icon-bg-orange-dark-solid bg-linear-to-br from-components-avatar-bg-mask-stop-0 to-components-avatar-bg-mask-stop-100 text-text-primary-on-surface">
           <span className="i-ri-bug-line size-3.5" aria-hidden />
         </span>
