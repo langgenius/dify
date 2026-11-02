@@ -154,9 +154,19 @@ class DatasetService:
         creator_ids: list[str] | None = None,
         *,
         tags: TagTargetQuery,
+        resource_dataset_ids: frozenset[str] | None = None,
     ):
-        """Return visible datasets for a tenant using the injected read session."""
+        """Return visible tenant datasets using the injected read session.
+
+        ``resource_dataset_ids`` is a trusted, mandatory upper bound when provided:
+        an empty set yields no results, None preserves existing visibility rules.
+        Apply it before pagination/counting; RBAC, maintainer fallback and
+        ``include_all`` can never widen this bound. No persistence is changed.
+        """
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
+
+        if resource_dataset_ids is not None:
+            query = query.where(Dataset.id.in_(resource_dataset_ids))
 
         if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
             accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
