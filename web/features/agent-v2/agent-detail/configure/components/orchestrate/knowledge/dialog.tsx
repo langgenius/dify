@@ -1,9 +1,6 @@
 'use client'
 
-import type {
-  KnowledgeFsSpaceListItemResponse,
-  KnowledgeFsTechnicalSummary,
-} from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { RefObject } from 'react'
 import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
@@ -11,7 +8,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import {
   Combobox,
+  ComboboxCollection,
   ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxGroupLabel,
   ComboboxInput,
   ComboboxInputGroup,
   ComboboxItem,
@@ -29,7 +29,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useInfiniteQuery } from '@tanstack/react-query'
@@ -39,10 +39,14 @@ import {
   useKnowledgeValidationMessage,
   validateKnowledgeRetrievals,
 } from '@/features/agent-v2/agent-composer/knowledge-validation'
+import { getVisibleKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { consoleQuery } from '@/service/console'
+import { useClassicKnowledgeCatalog } from './classic-catalog'
+import { ClassicKnowledgeSettings } from './classic-settings'
 
 type Props = {
   open: boolean
+  knowledgeFsEnabled: boolean
   initialBindings: AgentKnowledgeRetrievalItem[]
   onConfirm: (bindings: AgentKnowledgeRetrievalItem[]) => void
   onOpenChange: (open: boolean) => void
@@ -59,20 +63,46 @@ const canBindSpace = (space: KnowledgeFsSpaceListItemResponse) =>
   space.permission_keys.includes('knowledge_space_read') &&
   space.permission_keys.includes('knowledge_space_query')
 
-type SpaceOption = {
-  id: string
-  name: string
-  description?: KnowledgeFsTechnicalSummary['description']
-  unavailable: boolean
+// Option values carry their source, so classic bindings, unbound classic datasets and
+// Agent Knowledge Bases can share one selection without id collisions.
+const bindingValue = (id: string) => `binding:${id}`
+const datasetValue = (id: string) => `dataset:${id}`
+const spaceValue = (id: string) => `space:${id}`
+const parseValue = (value: string) => {
+  const separator = value.indexOf(':')
+  return { kind: value.slice(0, separator), id: value.slice(separator + 1) }
 }
 
-function KnowledgeSpaceOptionItem({
-  option,
-  disabled,
-}: {
-  option: SpaceOption
+// Metadata condition rows are keyed by id while editing; older saved conditions may lack one.
+const withConditionIds = (item: AgentKnowledgeRetrievalItem): AgentKnowledgeRetrievalItem =>
+  item.metadataFilteringConditions
+    ? {
+        ...item,
+        metadataFilteringConditions: {
+          ...item.metadataFilteringConditions,
+          conditions: item.metadataFilteringConditions.conditions.map((condition) => ({
+            ...condition,
+            id: condition.id || crypto.randomUUID(),
+          })),
+        },
+      }
+    : item
+
+type KnowledgeOption = {
+  value: string
+  name: string
+  description?: string | null
+  unavailable: boolean
   disabled: boolean
-}) {
+}
+
+type KnowledgeOptionGroup = {
+  value: 'classic' | 'spaces'
+  label?: string
+  items: KnowledgeOption[]
+}
+
+function KnowledgeOptionItem({ option }: { option: KnowledgeOption }) {
   const { t } = useTranslation(['agentV2'])
   const description = option.unavailable
     ? t(($) => $['agentDetail.configure.knowledgeFs.unavailable'])
@@ -80,8 +110,8 @@ function KnowledgeSpaceOptionItem({
 
   return (
     <ComboboxItem<string>
-      value={option.id}
-      disabled={disabled}
+      value={option.value}
+      disabled={option.disabled}
       className="group/space min-h-12 gap-3"
     >
       <span className="flex min-w-0 items-center gap-2.5">
@@ -125,28 +155,87 @@ function KnowledgeSpaceOptionItem({
   )
 }
 
+function CatalogState({
+  query,
+  loadingLabel,
+  errorLabel,
+  retryLabel,
+  loadMoreLabel,
+}: {
+  query: {
+    isPending: boolean
+    isError: boolean
+    isFetching: boolean
+    hasNextPage: boolean
+    isFetchingNextPage: boolean
+    refetch: () => Promise<unknown>
+    fetchNextPage: () => Promise<unknown>
+  }
+  loadingLabel: string
+  errorLabel: string
+  retryLabel: string
+  loadMoreLabel: string
+}) {
+  return (
+    <>
+      {query.isPending && (
+        <div className="space-y-1">
+          <span className="sr-only">{loadingLabel}</span>
+          {Array.from({ length: 3 }, (_, index) => (
+            <div
+              key={index}
+              aria-hidden
+              className="flex h-12 items-center gap-3 px-2 motion-safe:animate-pulse"
+            >
+              <span className="size-7 rounded-lg bg-background-section" />
+              <span className="h-4 w-1/2 rounded bg-background-section" />
+            </div>
+          ))}
+        </div>
+      )}
+      {query.isError && (
+        <div role="alert" className="space-y-2 py-3 system-sm-regular text-text-destructive">
+          <p>{errorLabel}</p>
+          <Button onClick={() => void query.refetch()} loading={query.isFetching}>
+            {retryLabel}
+          </Button>
+        </div>
+      )}
+      {query.hasNextPage && (
+        <Button onClick={() => void query.fetchNextPage()} loading={query.isFetchingNextPage}>
+          {loadMoreLabel}
+        </Button>
+      )}
+    </>
+  )
+}
+
 /** Draft state lives as long as the dialog content: each opening starts from the saved bindings. */
 function AgentKnowledgeRetrievalForm({
-  initialBindings,
+  initialBindings: bindings,
+  knowledgeFsEnabled,
   onConfirm,
   onClose,
   filterRef,
 }: FormProps) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentV2', 'datasetSettings', 'appDebug', 'knowledgeSpace'])
   const { t: tc } = useTranslation(['common'])
+  const [initialBindings] = useState(() => bindings.map(withConditionIds))
   const [draft, setDraft] = useState(initialBindings)
   const [submitted, setSubmitted] = useState(false)
   const validationMessage = useKnowledgeValidationMessage()
-  const spacesQuery = useInfiniteQuery({
-    ...consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
+  const classic = useClassicKnowledgeCatalog({ draft, initialBindings })
+  const spacesQuery = useInfiniteQuery(
+    consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
+      enabled: knowledgeFsEnabled,
       input: (pageParam) => ({ query: { limit: 50, page: pageParam } }),
       getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
       initialPageParam: 1,
     }),
-  })
+  )
   const spaces = useMemo(
-    () => spacesQuery.data?.pages.flatMap((page) => page.data) ?? [],
-    [spacesQuery.data],
+    () => (knowledgeFsEnabled ? (spacesQuery.data?.pages.flatMap((page) => page.data) ?? []) : []),
+    [knowledgeFsEnabled, spacesQuery.data],
   )
   const spacesById = useMemo(
     () => new Map(spaces.map((space) => [space.control_space_id, space])),
@@ -160,76 +249,128 @@ function AgentKnowledgeRetrievalForm({
       new Set(
         draft
           .filter((item) => {
-            if (!item.controlSpaceId) return false
+            if (!knowledgeFsEnabled || !item.controlSpaceId) return false
             const space = spacesById.get(item.controlSpaceId)
             return space ? !canBindSpace(space) : catalogComplete
           })
           .map((item) => item.id),
       ),
-    [catalogComplete, draft, spacesById],
+    [catalogComplete, draft, knowledgeFsEnabled, spacesById],
   )
   const fallbackName = t(($) => $['agentDetail.configure.knowledgeFs.title'])
   const spaceName = (space?: KnowledgeFsSpaceListItemResponse) =>
     space?.technical_summary?.name || fallbackName
-  // Unavailable bindings stay listed as selected options, so deselecting one is how it is removed.
-  const optionItems = useMemo(() => {
-    const options = new Map<string, SpaceOption>()
-    for (const space of spaces) {
-      if (!canBindSpace(space)) continue
-      options.set(space.control_space_id, {
-        id: space.control_space_id,
-        name: space.technical_summary?.name || fallbackName,
-        description: space.technical_summary?.description,
-        unavailable: false,
-      })
-    }
-    for (const item of draft) {
-      if (!item.controlSpaceId || !unavailableBindingIds.has(item.id)) continue
-      if (options.has(item.controlSpaceId)) continue
-      options.set(item.controlSpaceId, {
-        id: item.controlSpaceId,
-        name:
-          item.name || spacesById.get(item.controlSpaceId)?.technical_summary?.name || fallbackName,
-        unavailable: true,
-      })
-    }
-    return createComboboxItems([...options.values()], {
-      getValue: (option) => option.id,
-      getLabel: (option) => option.name,
-    })
-  }, [draft, fallbackName, spaces, spacesById, unavailableBindingIds])
-  const selectedIds = useMemo(
-    () => [
-      ...new Set(
-        draft.flatMap((item) =>
-          item.controlSpaceId && (!item.isMissing || unavailableBindingIds.has(item.id))
-            ? [item.controlSpaceId]
-            : [],
-        ),
-      ),
-    ],
-    [draft, unavailableBindingIds],
-  )
-  const validation = validateKnowledgeRetrievals(draft)
   const spaceCount = draft.filter((item) => item.controlSpaceId).length
+  const selectedIds = [
+    ...draft.flatMap((item) => (item.controlSpaceId ? [] : [bindingValue(item.id)])),
+    ...new Set(
+      draft.flatMap((item) =>
+        item.controlSpaceId && (!item.isMissing || unavailableBindingIds.has(item.id))
+          ? [spaceValue(item.controlSpaceId)]
+          : [],
+      ),
+    ),
+  ]
+  const classicOptions: KnowledgeOption[] = classic.entries.map((entry) =>
+    entry.kind === 'binding'
+      ? {
+          value: bindingValue(entry.item.id),
+          name: entry.item.name || entry.item.id,
+          description: entry.item.description,
+          unavailable: false,
+          disabled: false,
+        }
+      : {
+          value: datasetValue(entry.dataset.id),
+          name: entry.dataset.name,
+          description: entry.dataset.description,
+          unavailable: false,
+          disabled: !entry.dataset.embedding_available,
+        },
+  )
+  // Unavailable bindings stay listed as selected options, so deselecting one is how it is removed.
+  const spaceOptions = new Map<string, KnowledgeOption>()
+  for (const space of spaces) {
+    if (!canBindSpace(space)) continue
+    const value = spaceValue(space.control_space_id)
+    spaceOptions.set(value, {
+      value,
+      name: spaceName(space),
+      description: space.technical_summary?.description,
+      unavailable: false,
+      disabled: !selectedIds.includes(value) && spaceCount >= 10,
+    })
+  }
+  for (const item of draft) {
+    if (!item.controlSpaceId || !unavailableBindingIds.has(item.id)) continue
+    const value = spaceValue(item.controlSpaceId)
+    if (spaceOptions.has(value)) continue
+    spaceOptions.set(value, {
+      value,
+      name: item.name || spaceName(spacesById.get(item.controlSpaceId)),
+      unavailable: true,
+      disabled: false,
+    })
+  }
+  const groups: KnowledgeOptionGroup[] = [
+    {
+      value: 'classic',
+      label: knowledgeFsEnabled ? t(($) => $['view.classic'], { ns: 'knowledgeSpace' }) : undefined,
+      items: classicOptions,
+    },
+    ...(knowledgeFsEnabled
+      ? [
+          {
+            value: 'spaces' as const,
+            label: t(($) => $['agentDetail.configure.knowledgeFs.select']),
+            items: [...spaceOptions.values()],
+          },
+        ]
+      : []),
+  ]
+  const optionItems = createComboboxItems(groups, {
+    getValue: (option) => option.value,
+    getLabel: (option) => option.name,
+  })
+  const visibleBindings = getVisibleKnowledgeRetrievals(draft, knowledgeFsEnabled)
+  const validation = validateKnowledgeRetrievals(visibleBindings, draft)
   const update = (id: string, patch: Partial<AgentKnowledgeRetrievalItem>) =>
     setDraft((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)))
   const select = (nextIds: string[]) => {
-    const removed = new Set(selectedIds.filter((id) => !nextIds.includes(id)))
-    const added = nextIds.filter((id) => !selectedIds.includes(id))
+    const removed = selectedIds.filter((id) => !nextIds.includes(id)).map(parseValue)
+    const added = nextIds.filter((id) => !selectedIds.includes(id)).map(parseValue)
+    const removedBindings = new Set(
+      removed.flatMap(({ kind, id }) => (kind === 'binding' ? [id] : [])),
+    )
+    const removedSpaces = new Set(removed.flatMap(({ kind, id }) => (kind === 'space' ? [id] : [])))
+    const addedSpaces = added.flatMap(({ kind, id }) => (kind === 'space' ? [id] : []))
     setDraft((current) => {
       const next = current
-        .filter((item) => !item.controlSpaceId || !removed.has(item.controlSpaceId))
+        .filter((item) =>
+          item.controlSpaceId
+            ? !removedSpaces.has(item.controlSpaceId)
+            : !removedBindings.has(item.id),
+        )
         .map((item) =>
-          item.controlSpaceId && item.isMissing && added.includes(item.controlSpaceId)
+          item.controlSpaceId && item.isMissing && addedSpaces.includes(item.controlSpaceId)
             ? { ...item, isMissing: false }
             : item,
         )
-      for (const id of added) {
+      for (const { kind, id } of added) {
+        if (kind === 'binding') {
+          const binding = classic.bindings.find((item) => item.id === id)
+          if (binding && !next.some((item) => item.id === id)) next.push(binding)
+          continue
+        }
+        if (kind === 'dataset') {
+          const dataset = classic.datasets.find((item) => item.id === id)
+          if (dataset) next.push(classic.createBinding(dataset, next))
+          continue
+        }
         const space = spacesById.get(id)
         if (!space || !canBindSpace(space) || next.some((item) => item.controlSpaceId === id))
           continue
-        if (next.filter((item) => item.controlSpaceId).length >= 10) break
+        if (next.filter((item) => item.controlSpaceId).length >= 10) continue
         const title = spaceName(space)
         const name = next.some((item) => item.name?.toLowerCase() === title.toLowerCase())
           ? `${title.slice(0, 109)} (${id.slice(0, 8)})`
@@ -249,7 +390,7 @@ function AgentKnowledgeRetrievalForm({
   return (
     <form
       noValidate
-      className="flex max-h-[80dvh] min-h-0 flex-col text-text-primary"
+      className="flex min-h-0 flex-1 flex-col text-text-primary"
       onSubmit={(event) => {
         event.preventDefault()
         setSubmitted(true)
@@ -257,13 +398,15 @@ function AgentKnowledgeRetrievalForm({
       }}
     >
       <DialogHeader>
-        <DialogTitle>{t(($) => $['agentDetail.configure.knowledgeFs.title'])}</DialogTitle>
+        <DialogTitle>
+          {t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.title'])}
+        </DialogTitle>
         <DialogDescription>
-          {t(($) => $['agentDetail.configure.knowledgeFs.select'])}
+          {t(($) => $['agentDetail.configure.knowledgeRetrieval.empty.description'])}
         </DialogDescription>
         <DialogHeaderCloseButton aria-label={tc(($) => $['operation.close'])} />
       </DialogHeader>
-      <Combobox<string, true, SpaceOption>
+      <Combobox<string, true, KnowledgeOption>
         inline
         open
         multiple
@@ -280,69 +423,59 @@ function AgentKnowledgeRetrievalForm({
             <ComboboxInput
               ref={filterRef}
               enterKeyHint="search"
-              aria-label={t(($) => $['agentDetail.configure.knowledgeFs.filter'])}
-              placeholder={t(($) => $['agentDetail.configure.knowledgeFs.filter'])}
+              aria-label={tc(($) => $['operation.search'])}
+              placeholder={tc(($) => $['operation.search'])}
             />
           </ComboboxInputGroup>
         </div>
-        <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain px-6 pb-4 system-sm-regular">
-          {draft.some((item) => item.isMissing && !unavailableBindingIds.has(item.id)) && (
-            <p role="alert" className="system-xs-regular text-text-warning">
-              {t(($) => $['agentDetail.configure.knowledgeFs.rebind'])}
-            </p>
-          )}
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-6 pb-4 system-sm-regular">
+          {knowledgeFsEnabled &&
+            draft.some((item) => item.isMissing && !unavailableBindingIds.has(item.id)) && (
+              <p role="alert" className="system-xs-regular text-text-warning">
+                {t(($) => $['agentDetail.configure.knowledgeFs.rebind'])}
+              </p>
+            )}
           <ComboboxStatus className="sr-only">
-            {spacesQuery.isPending && t(($) => $['agentDetail.configure.knowledgeFs.loading'])}
+            {(classic.query.isPending || (knowledgeFsEnabled && spacesQuery.isPending)) &&
+              tc(($) => $.loading)}
           </ComboboxStatus>
-          {spacesQuery.isPending && (
-            <div aria-hidden className="space-y-1">
-              {Array.from({ length: 5 }, (_, index) => (
-                <div
-                  key={index}
-                  className="flex h-14 items-center gap-3 px-2 motion-safe:animate-pulse"
-                >
-                  <span className="size-8 rounded-lg bg-background-section" />
-                  <span className="h-4 w-1/2 rounded bg-background-section" />
-                </div>
-              ))}
-            </div>
+          <ComboboxList<KnowledgeOptionGroup>
+            aria-label={t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.title'])}
+            className="max-h-none overflow-visible p-0"
+          >
+            {(group) => (
+              <ComboboxGroup key={group.value} items={group.items}>
+                {!!group.label && <ComboboxGroupLabel>{group.label}</ComboboxGroupLabel>}
+                <ComboboxCollection<KnowledgeOption>>
+                  {(option) => <KnowledgeOptionItem key={option.value} option={option} />}
+                </ComboboxCollection>
+              </ComboboxGroup>
+            )}
+          </ComboboxList>
+          {!classic.query.isPending && (!knowledgeFsEnabled || !spacesQuery.isPending) && (
+            <ComboboxEmpty className="px-0 py-8 text-center">
+              {knowledgeFsEnabled
+                ? t(($) => $['agentDetail.configure.knowledgeFs.empty'])
+                : t(($) => $['feature.dataSet.noDataSet'], { ns: 'appDebug' })}
+            </ComboboxEmpty>
           )}
-          {spacesQuery.isError && (
-            <div role="alert" className="space-y-2 py-3 system-sm-regular text-text-destructive">
-              <p>{t(($) => $['agentDetail.configure.knowledgeFs.loadError'])}</p>
-              <Button onClick={() => void spacesQuery.refetch()} loading={spacesQuery.isFetching}>
-                {t(($) => $['agentDetail.configure.knowledgeFs.retry'])}
-              </Button>
-            </div>
+          <CatalogState
+            query={classic.query}
+            loadingLabel={tc(($) => $.loading)}
+            errorLabel={tc(($) => $.error)}
+            retryLabel={tc(($) => $['operation.retry'])}
+            loadMoreLabel={t(($) => $.loadMore, { ns: 'knowledgeSpace' })}
+          />
+          {knowledgeFsEnabled && (
+            <CatalogState
+              query={spacesQuery}
+              loadingLabel={t(($) => $['agentDetail.configure.knowledgeFs.loading'])}
+              errorLabel={t(($) => $['agentDetail.configure.knowledgeFs.loadError'])}
+              retryLabel={t(($) => $['agentDetail.configure.knowledgeFs.retry'])}
+              loadMoreLabel={t(($) => $['agentDetail.configure.knowledgeFs.loadMore'])}
+            />
           )}
-          {!spacesQuery.isPending && !spacesQuery.isError && (
-            <>
-              <ComboboxList<SpaceOption>
-                aria-label={t(($) => $['agentDetail.configure.knowledgeFs.select'])}
-                className="max-h-none overflow-visible p-0"
-              >
-                {(option) => (
-                  <KnowledgeSpaceOptionItem
-                    key={option.id}
-                    option={option}
-                    disabled={!selectedIds.includes(option.id) && spaceCount >= 10}
-                  />
-                )}
-              </ComboboxList>
-              <ComboboxEmpty className="px-0 py-8 text-center">
-                {t(($) => $['agentDetail.configure.knowledgeFs.empty'])}
-              </ComboboxEmpty>
-            </>
-          )}
-          {spacesQuery.hasNextPage && (
-            <Button
-              onClick={() => void spacesQuery.fetchNextPage()}
-              loading={spacesQuery.isFetchingNextPage}
-            >
-              {t(($) => $['agentDetail.configure.knowledgeFs.loadMore'])}
-            </Button>
-          )}
-          {draft.length > 0 && (
+          {visibleBindings.length > 0 && (
             <Collapsible className="border-t-[0.5px] border-divider-subtle pt-3">
               <CollapsibleTrigger className="group -mx-2 flex h-8 w-[calc(100%+1rem)] touch-manipulation items-center gap-1 rounded-lg px-2 text-start system-sm-medium text-text-secondary select-none hover:bg-state-base-hover">
                 <span className="flex-1">
@@ -355,11 +488,12 @@ function AgentKnowledgeRetrievalForm({
               </CollapsibleTrigger>
               <CollapsiblePanel>
                 <div className="space-y-2 pt-2">
-                  {draft.map((item) => {
+                  {visibleBindings.map((item) => {
                     const title = item.controlSpaceId
                       ? spaceName(spacesById.get(item.controlSpaceId))
-                      : item.name || fallbackName
+                      : item.name || item.id
                     const unavailable = unavailableBindingIds.has(item.id)
+                    const errors = validation.byId[item.id]
                     return (
                       <fieldset
                         key={item.id}
@@ -384,27 +518,44 @@ function AgentKnowledgeRetrievalForm({
                             {title}
                           </span>
                         </div>
-                        <Field invalid={submitted && !!validation.byId[item.id]?.name}>
+                        <Field invalid={submitted && !!errors?.name}>
                           <FieldLabel className="system-xs-medium text-text-tertiary">
-                            {t(($) => $['agentDetail.configure.knowledgeFs.alias'])}
+                            {item.controlSpaceId
+                              ? t(($) => $['agentDetail.configure.knowledgeFs.alias'])
+                              : t(
+                                  ($) =>
+                                    $['agentDetail.configure.knowledgeRetrieval.dialog.nameLabel'],
+                                )}
                           </FieldLabel>
                           <Input
                             required
-                            maxLength={120}
+                            maxLength={item.controlSpaceId ? 120 : 255}
                             value={item.name ?? ''}
                             onChange={(event) => update(item.id, { name: event.target.value })}
                           />
+                          {submitted && errors?.name && (
+                            <FieldError match>{validationMessage(errors.name)}</FieldError>
+                          )}
                         </Field>
                         <Field>
                           <FieldLabel className="system-xs-medium text-text-tertiary">
-                            {t(($) => $['agentDetail.configure.knowledgeFs.bindingDescription'])}
+                            {item.controlSpaceId
+                              ? t(($) => $['agentDetail.configure.knowledgeFs.bindingDescription'])
+                              : t(($) => $['form.desc'], { ns: 'datasetSettings' })}
                           </FieldLabel>
                           <Textarea
-                            maxLength={2000}
+                            maxLength={item.controlSpaceId ? 2000 : undefined}
                             value={item.description ?? ''}
                             onValueChange={(value) => update(item.id, { description: value })}
                           />
                         </Field>
+                        {!item.controlSpaceId && (
+                          <ClassicKnowledgeSettings
+                            item={item}
+                            onChange={(patch) => update(item.id, patch)}
+                            errors={submitted ? errors : undefined}
+                          />
+                        )}
                       </fieldset>
                     )
                   })}
@@ -423,7 +574,7 @@ function AgentKnowledgeRetrievalForm({
       </Combobox>
       <div className="flex shrink-0 items-center justify-end gap-2 border-t border-divider-subtle px-6 py-4">
         <span role="status" className="me-auto system-xs-medium text-text-tertiary tabular-nums">
-          {spaceCount} / 10
+          {visibleBindings.length} {t(($) => $['feature.dataSet.selected'], { ns: 'appDebug' })}
         </span>
         <Button onClick={onClose}>{tc(($) => $['operation.cancel'])}</Button>
         <Button type="submit" variant="primary">
@@ -438,6 +589,7 @@ function AgentKnowledgeRetrievalForm({
 export function AgentKnowledgeRetrievalDialog({
   open,
   initialBindings,
+  knowledgeFsEnabled,
   onConfirm,
   onOpenChange,
 }: Props) {
@@ -445,9 +597,12 @@ export function AgentKnowledgeRetrievalDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent initialFocus={filterRef} className="w-xl overflow-hidden">
+      {/* A fixed height keeps the centered dialog still while knowledge is ticked;
+          growing would re-center it and slide the list under the pointer. */}
+      <DialogContent initialFocus={filterRef} className="h-[min(40rem,80dvh)] w-xl overflow-hidden">
         <AgentKnowledgeRetrievalForm
           initialBindings={initialBindings}
+          knowledgeFsEnabled={knowledgeFsEnabled}
           filterRef={filterRef}
           onConfirm={onConfirm}
           onClose={() => onOpenChange(false)}

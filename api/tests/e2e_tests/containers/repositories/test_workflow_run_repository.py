@@ -7,7 +7,7 @@ from datetime import timedelta
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, delete
+from sqlalchemy import Engine, delete, select
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -91,6 +91,34 @@ def test_scope(db_session_with_containers: Session) -> _TestScope:
     scope = _TestScope()
     yield scope
     _cleanup_scope_data(db_session_with_containers, scope)
+
+
+def test_run_lock_lasts_until_the_callers_transaction_ends(
+    repository: DifyAPISQLAlchemyWorkflowRunRepository,
+    db_session_with_containers: Session,
+    test_scope: _TestScope,
+) -> None:
+    run_id = _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.PAUSED).id
+    sessions = sessionmaker(bind=db_session_with_containers.get_bind())
+    lock_statement = select(WorkflowRun).where(WorkflowRun.id == run_id).with_for_update(nowait=True)
+
+    with sessions() as session, session.begin():
+        run = repository.get_workflow_run_by_id_for_update(
+            session,
+            tenant_id=test_scope.tenant_id,
+            app_id=test_scope.app_id,
+            run_id=run_id,
+        )
+        assert run is not None
+        assert run.id == run_id
+        with sessions() as competing_session:
+            with pytest.raises(sa_exc.OperationalError, match="could not obtain lock"), competing_session.begin():
+                competing_session.scalar(lock_statement)
+
+    with sessions() as session, session.begin():
+        run = session.scalar(lock_statement)
+        assert run is not None
+        assert run.id == run_id
 
 
 class TestGetPaginatedWorkflowRuns:

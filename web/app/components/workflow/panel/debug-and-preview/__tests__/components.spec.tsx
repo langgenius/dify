@@ -397,6 +397,63 @@ describe('debug-and-preview components', () => {
       expect(screen.getByRole('log', { name: 'Conversation' })).toHaveTextContent('hello')
     })
 
+    it('submits a streamed v2 human input form with its event version', async () => {
+      const user = userEvent.setup()
+      renderWorkflowFlowComponent(
+        <ChatWrapper
+          ref={createChatWrapperRef()}
+          showConversationVariableModal={false}
+          onConversationModalHide={vi.fn()}
+          showInputsFieldsPanel={false}
+          onHide={vi.fn()}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'send-chat' }))
+      const envelope = { task_id: 'task-1', workflow_run_id: 'run-1' }
+      act(() => {
+        callbacks().onWorkflowStarted?.({
+          ...envelope,
+          event: 'workflow_started',
+          message_id: 'answer-1',
+          data: { id: 'run-1', workflow_id: 'workflow-1', created_at: 1 },
+        })
+        callbacks().onHumanInputRequired?.({
+          ...envelope,
+          event: 'human_input_required',
+          data: {
+            form_version: '2',
+            form_id: 'form-1',
+            node_id: 'human-input',
+            node_title: 'Approval',
+            form_content: '{{#$output.answer#}}',
+            inputs: [
+              {
+                type: InputVarType.paragraph,
+                output_variable_name: 'answer',
+                default: { type: 'constant', value: '', selector: [] },
+              },
+            ],
+            actions: [{ id: 'approve', title: 'Approve', button_style: 'primary' }],
+            form_token: 'token-1',
+            resolved_default_values: { answer: '' },
+            display_in_ui: true,
+            expiration_time: null,
+          },
+        })
+      })
+      sendChunk('Approval required', 'answer-1')
+      await complete()
+
+      await user.click(screen.getByRole('button', { name: 'submit-human-input' }))
+
+      expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith(
+        'token-1',
+        { inputs: { answer: 'ok' }, action: 'approve' },
+        '2',
+      )
+    })
+
     it('renders streamed answers, regenerates and switches siblings, and stops through the event bus', async () => {
       const user = userEvent.setup()
       const onHide = vi.fn()
@@ -468,10 +525,14 @@ describe('debug-and-preview components', () => {
       expect(screen.getByRole('log', { name: 'Conversation' })).toHaveTextContent('First answer')
       expect(screen.queryByText('Second answer')).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'submit-human-input' }))
-      expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith('token-1', {
-        inputs: { answer: 'ok' },
-        action: 'approve',
-      })
+      expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith(
+        'token-1',
+        {
+          inputs: { answer: 'ok' },
+          action: 'approve',
+        },
+        undefined,
+      )
       await user.click(screen.getByRole('button', { name: 'send-chat' }))
       sendChunk('Pending answer', 'answer-3', 'task-3')
       act(() => emitter.emit({ type: 'unrelated-event' }))

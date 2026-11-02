@@ -94,9 +94,7 @@ it('reports a failed preference change without invalidating model caches', async
   const notify = vi.spyOn(toast, 'error')
   const { result, queryClient, keys } = setup()
   act(() => result.current.handleChangePriority(PreferredProviderTypeEnum.custom))
-  await waitFor(() =>
-    expect(notify).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully'),
-  )
+  await waitFor(() => expect(notify).toHaveBeenCalledWith('network error'))
   keys.forEach((key) => expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false))
   expect(result.current.isChangingPriority).toBe(false)
 })

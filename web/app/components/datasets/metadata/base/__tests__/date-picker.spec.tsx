@@ -75,13 +75,13 @@ it('keeps a cleared metadata date empty when its owner stores null', async () =>
   }
   render(<Example />)
   await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-  expect(screen.getByRole('button', { name: 'Published' })).toHaveTextContent(
-    'dataset.metadata.chooseTime',
-  )
+  expect(
+    screen.getByRole('button', { name: 'Published dataset.metadata.chooseTime' }),
+  ).toHaveTextContent('dataset.metadata.chooseTime')
   expect(screen.queryByRole('button', { name: 'common.operation.clear' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Published' }))
+  await user.click(screen.getByRole('button', { name: 'Published dataset.metadata.chooseTime' }))
   await user.keyboard('{Escape}')
-  expect(screen.getByRole('button', { name: 'Published' })).toHaveTextContent(
-    'dataset.metadata.chooseTime',
-  )
+  expect(
+    screen.getByRole('button', { name: 'Published dataset.metadata.chooseTime' }),
+  ).toHaveTextContent('dataset.metadata.chooseTime')
 })
