@@ -95,6 +95,31 @@ describe('useHumanInputV2FormSession', () => {
     expect(requestAccess).toHaveBeenCalledTimes(2)
   })
 
+  it('keeps the access failure when an action is submitted before a code exists', async () => {
+    const submit = vi.fn<HumanInputV2FormTransport['submit']>()
+    const transport = withOverrides({
+      requestAccess: vi
+        .fn<HumanInputV2FormTransport['requestAccess']>()
+        .mockRejectedValue(createHumanInputV2Error('access-delivery-failed')),
+      submit,
+    })
+    const { result } = renderHook(() =>
+      useHumanInputV2FormSession({
+        token: 'form-token',
+        transport,
+      }),
+    )
+
+    await waitFor(() => expect(result.current.state.phase).toBe('access-error'))
+    await act(() => result.current.submit({}, 'approve'))
+
+    expect(result.current.state).toMatchObject({
+      phase: 'access-error',
+      error: 'access-delivery-failed',
+    })
+    expect(submit).not.toHaveBeenCalled()
+  })
+
   it('derives absolute cooldown/expiry deadlines and never auto-resends after expiry', async () => {
     vi.useFakeTimers()
     let currentTime = 10_000

@@ -138,7 +138,8 @@ export const useHumanInputV2FormSession = ({
       const signal = runtime.controller?.signal
       if (!signal || !isCurrent(signal) || runtime.submitting) return
       const challenge = state.challenge
-      if (!challenge || now() >= challenge.expiresAt) {
+      if (!challenge) return
+      if (now() >= challenge.expiresAt) {
         dispatch({ type: 'challenge-expired' })
         return
       }
