@@ -107,6 +107,10 @@ def test_concurrent_and_sequential_calls_refresh_once() -> None:
     [pytest.param(-1, id="never-expires"), pytest.param(int(time.time()) + 3600, id="expires-in-an-hour")],
 )
 def test_valid_credentials_do_not_acquire_a_lock(expires_at: int) -> None:
+    """Preconditions: Credentials have no expiry or expire after the current time.
+
+    Postconditions: Resolution takes no refresh lock and performs no refresh or write.
+    """
     store, runtime, lock = (
         CredentialStore(_record(expires_at=expires_at)),
         CredentialRuntime(),
