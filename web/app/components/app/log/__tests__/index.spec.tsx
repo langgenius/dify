@@ -215,7 +215,7 @@ describe('Logs', () => {
       vi.setSystemTime(new Date(2027, 0, 1, 9))
       await selectPeriod('last3months', 'yearToDate')
       await expectStart('2027-01-01 00:00')
-      
+
       // Twelve months before February 29 is the last day of the shorter February.
       vi.setSystemTime(new Date(2028, 1, 29, 9))
       await selectPeriod('yearToDate', 'last12months')
