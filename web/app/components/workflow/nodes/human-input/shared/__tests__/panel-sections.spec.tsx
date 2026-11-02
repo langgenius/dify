@@ -18,7 +18,7 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', ()
 
 // Keep the action list and its inputs real; the rich form editor is unrelated to action editing.
 vi.mock('../../components/form-content', () => ({ default: () => null }))
-vi.mock('../../components/form-content-preview', () => ({ default: () => null }))
+vi.mock('../../components/form-content-preview', () => ({ FormContentPreviewTrigger: () => null }))
 
 const initialActions: UserAction[] = [
   { id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary },
@@ -57,7 +57,14 @@ const ActionPanel = ({ actions: startingActions = initialActions }: { actions?: 
     handleFormInputItemRemove: vi.fn(),
   }
 
-  return <HumanInputSharedPanelSections id="human-input" config={config} />
+  return (
+    <HumanInputSharedPanelSections
+      id="human-input"
+      config={config}
+      availableVars={[]}
+      availableNodes={[]}
+    />
+  )
 }
 
 const getActionIds = () =>
@@ -160,4 +167,22 @@ describe('HumanInputSharedPanelSections action editing', () => {
     expect(getActionIds()[0]).toHaveValue('approve')
     expect(getActionTitles()[0]).toHaveValue('Approve')
   })
+})
+
+it.each([0, 1, 2])(
+  'keeps keyboard focus on a surviving action after deleting row %s',
+  async (index) => {
+    const user = userEvent.setup()
+    render(<ActionPanel />)
+    const expected = initialActions[index === 2 ? 1 : index + 1]!.id
+    await user.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[index]!)
+    expect(screen.getByDisplayValue(expected)).toHaveFocus()
+  },
+)
+
+it('returns focus to Add when the last action is removed', async () => {
+  const user = userEvent.setup()
+  render(<ActionPanel actions={[initialActions[0]!]} />)
+  await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+  expect(screen.getByRole('button', { name: 'common.operation.add' })).toHaveFocus()
 })

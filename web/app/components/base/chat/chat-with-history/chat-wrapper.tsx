@@ -16,14 +16,15 @@ import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested
 import { Markdown } from '@/app/components/base/markdown'
 import { InputVarType } from '@/app/components/workflow/types'
 import { saveGenerativeUIState } from '@/features/generative-ui/state-client'
+import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
   fetchChatList,
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
+  submitHumanInputForm,
 } from '@/service/share'
-import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -306,15 +307,12 @@ const ChatWrapper = () => {
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
-      if (!(await prepareHumanInputSubmission())) return
-
-      const form = chatList
-        .flatMap((item) => item.humanInputFormDataList ?? [])
-        .find((item) => item.form_token === formToken)
-      if (isInstalledApp) await submitHumanInputFormService(formToken, formData, form?.form_version)
-      else await submitWebAppHumanInputForm(formToken, formData, form?.form_version)
+      const { form_version: formVersion, ...submission } = formData
+      await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
+      if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
+      else await submitHumanInputForm(formToken, submission, formVersion)
     },
-    [chatList, isInstalledApp, prepareHumanInputSubmission],
+    [isInstalledApp, prepareHumanInputSubmission],
   )
 
   const [collapsed, setCollapsed] = useState(!!currentConversationId)

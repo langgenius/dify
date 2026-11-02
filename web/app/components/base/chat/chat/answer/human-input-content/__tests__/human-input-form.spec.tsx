@@ -106,6 +106,7 @@ describe('HumanInputForm', () => {
       expect(onSubmit).toHaveBeenCalledWith('token_123', {
         action: 'action_1',
         inputs: { field1: 'initial' },
+        form_version,
       })
     },
   )

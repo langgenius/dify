@@ -1,5 +1,8 @@
 import abc
 import datetime
+from collections.abc import Generator
+from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Protocol
 
 import pytz  # type: ignore[import-untyped]
@@ -20,6 +23,23 @@ _now_func: _NowFunction = datetime.datetime.now
 def utc_now() -> datetime.datetime:
     """Return a timezone-aware datetime representing the current UTC time."""
     return _now_func(datetime.UTC)
+
+
+@dataclass
+class Timing:
+    started_at: datetime.datetime
+    ended_at: datetime.datetime
+
+
+@contextmanager
+def measure_time() -> Generator[Timing]:
+    """Time a block in aware UTC; ``ended_at`` is final once the block exits."""
+    started_at = utc_now()
+    timing = Timing(started_at=started_at, ended_at=started_at)
+    try:
+        yield timing
+    finally:
+        timing.ended_at = utc_now()
 
 
 def naive_utc_now() -> datetime.datetime:

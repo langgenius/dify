@@ -39,7 +39,7 @@ const createFormData = (overrides: Partial<HumanInputFormData> = {}): HumanInput
 })
 
 describe('SingleRunForm', () => {
-  it('restores the submit action and keeps entered values after a server failure', async () => {
+  it('reports a failed submission inline and keeps entered values for a retry', async () => {
     const user = userEvent.setup()
     const onSubmit = vi
       .fn()
@@ -50,12 +50,14 @@ describe('SingleRunForm', () => {
     await user.type(screen.getByRole('textbox', { name: 'review' }), 'Keep this answer')
     await user.click(screen.getByRole('button', { name: 'Approve' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Approve' })).toBeEnabled())
-    expect(mockToastError).toHaveBeenCalledWith('Submission unavailable')
+    expect(mockToastError).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
     expect(screen.getByRole('textbox', { name: 'review' })).toHaveValue('Keep this answer')
     await user.click(screen.getByRole('button', { name: 'Approve' }))
     expect(onSubmit).toHaveBeenLastCalledWith({
       action: 'approve',
       inputs: { review: 'Keep this answer' },
     })
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
   })
 })

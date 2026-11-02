@@ -445,26 +445,28 @@ describe('Human Input migration executor', () => {
     expect(harness.saveHistory).not.toHaveBeenCalled()
   })
 
-  it('maps the server invalid-default-value blocker from an HTTP response', async () => {
+  it('maps the server invalid-default-value blocker from the generated client error', async () => {
     const harness = createHarness({ nodes: [createLegacyNode('a')], edges: [] })
     harness.post.mockRejectedValueOnce(
-      new Response(
-        JSON.stringify({
-          message: 'Human Input node-data migration failed.',
-          status: 400,
-          code: 'hitl_node_data_migration_failure',
-          blockers: [
-            {
-              code: 'invalid-default-value',
-              node_id: 'a',
-              node_title: 'Approval',
-              method_id: null,
-              value: 'default_value',
-            },
-          ],
-        }),
-        { status: 400 },
-      ),
+      new ORPCError('BAD_REQUEST', {
+        status: 400,
+        data: {
+          body: {
+            message: 'Human Input node-data migration failed.',
+            status: 400,
+            code: 'hitl_node_data_migration_failure',
+            blockers: [
+              {
+                code: 'invalid-default-value',
+                node_id: 'a',
+                node_title: 'Approval',
+                method_id: null,
+                value: 'default_value',
+              },
+            ],
+          },
+        },
+      }),
     )
     expect(await executeHumanInputV2Migration(harness.dependencies)).toEqual({
       status: 'blocked',

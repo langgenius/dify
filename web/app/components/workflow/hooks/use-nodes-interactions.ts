@@ -22,7 +22,6 @@ import { useTranslation } from 'react-i18next'
 import { getConnectedEdges, getOutgoers, useReactFlow } from 'reactflow'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
-import { ENABLE_HITL_IM } from '@/config'
 import { consoleQuery } from '@/service/console'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
@@ -41,9 +40,10 @@ import {
   isAgentV2NodeData,
   needsInlineAgentBindingCreation,
 } from '../nodes/agent-v2/types'
+import { notifyHumanInputInsertionBlocked } from '../nodes/human-input-v2/migration/insertion-feedback'
 import {
-  canInsertHumanInput,
-  canInsertHumanInputNodes,
+  getHumanInputInsertionBlocker,
+  getHumanInputNodesInsertionBlocker,
 } from '../nodes/human-input-v2/migration/policy'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
@@ -851,23 +851,12 @@ export const useNodesInteractions = () => {
       const nodeMetaData = nodesMetaDataMap?.[nodeType]
       if (!nodeMetaData) return
       const { defaultValue } = nodeMetaData
-      if (
-        !canInsertHumanInput(nodes, nodeType, {
-          ...(defaultValue as Node['data']),
-          ...pluginDefaultValue,
-        })
-      ) {
-        toast.warning(
-          t(
-            ($) =>
-              $[
-                ENABLE_HITL_IM
-                  ? 'nodes.humanInputMigration.disabledReason'
-                  : 'nodes.humanInputV2.disabled'
-              ],
-            { ns: 'workflow' },
-          ),
-        )
+      const insertionBlocker = getHumanInputInsertionBlocker(nodes, nodeType, {
+        ...(defaultValue as Node['data']),
+        ...pluginDefaultValue,
+      })
+      if (insertionBlocker) {
+        notifyHumanInputInsertionBlocked(insertionBlocker, t)
         return
       }
       const nodesWithSameType = getNodesWithSameDefaultDataType(nodes, nodeType, defaultValue)
@@ -1387,23 +1376,12 @@ export const useNodesInteractions = () => {
       const nodeMetaData = nodesMetaDataMap?.[nodeType]
       if (!nodeMetaData) return
       const { defaultValue } = nodeMetaData
-      if (
-        !canInsertHumanInput(nodes, nodeType, {
-          ...(defaultValue as Node['data']),
-          ...pluginDefaultValue,
-        })
-      ) {
-        toast.warning(
-          t(
-            ($) =>
-              $[
-                ENABLE_HITL_IM
-                  ? 'nodes.humanInputMigration.disabledReason'
-                  : 'nodes.humanInputV2.disabled'
-              ],
-            { ns: 'workflow' },
-          ),
-        )
+      const insertionBlocker = getHumanInputInsertionBlocker(nodes, nodeType, {
+        ...(defaultValue as Node['data']),
+        ...pluginDefaultValue,
+      })
+      if (insertionBlocker) {
+        notifyHumanInputInsertionBlocked(insertionBlocker, t)
         return
       }
       const currentNode = nodes.find((node) => node.id === currentNodeId)!
@@ -1764,18 +1742,9 @@ export const useNodesInteractions = () => {
     if (!validatedClipboardElements.length) return
 
     const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
-    if (!canInsertHumanInputNodes(nodes, validatedClipboardElements)) {
-      toast.warning(
-        t(
-          ($) =>
-            $[
-              ENABLE_HITL_IM
-                ? 'nodes.humanInputMigration.disabledReason'
-                : 'nodes.humanInputV2.disabled'
-            ],
-          { ns: 'workflow' },
-        ),
-      )
+    const insertionBlocker = getHumanInputNodesInsertionBlocker(nodes, validatedClipboardElements)
+    if (insertionBlocker) {
+      notifyHumanInputInsertionBlocked(insertionBlocker, t)
       return
     }
     const reservedNodeTitles = new Set(
