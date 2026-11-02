@@ -1,6 +1,5 @@
 import json
 import logging
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -24,10 +23,7 @@ from core.tools.entities.api_entities import (
 )
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.tool_label_manager import ToolLabelManager
-from core.tools.tool_manager import ToolManager
-from core.tools.utils.encryption import ProviderConfigCache, create_provider_encrypter
-from core.tools.utils.system_encryption import decrypt_system_params
+from core.tools.utils.encryption import create_provider_encrypter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.account import Account
@@ -36,6 +32,9 @@ from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from services.credentials.query import CredentialQuery, ToolCredentialRecord
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
+from services.tools.builtin.credentials import resolve_oauth_client
+from services.tools.provider_queries import ToolProviders
+from services.tools.tool_manager import ToolManager
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -106,7 +105,7 @@ class BuiltinToolManageService:
                 ToolTransformService.convert_tool_entity_to_api_entity(
                     tool=tool,
                     tenant_id=tenant_id,
-                    labels=ToolLabelManager.get_tool_labels(provider_controller),
+                    labels=provider_controller.tool_labels,
                 )
             )
 
@@ -157,7 +156,6 @@ class BuiltinToolManageService:
         """
         update builtin tool provider
         """
-        cache: ProviderConfigCache | None = None
         with sessionmaker(bind=db.engine).begin() as session:
             # get if the provider exists
             db_provider = session.scalar(
@@ -193,6 +191,8 @@ class BuiltinToolManageService:
                     # encrypt credentials
                     db_provider.encrypted_credentials = json.dumps(encrypter.encrypt(new_credentials))
 
+                    cache.delete()
+
                 # update name if provided
                 if name and name != db_provider.name:
                     # check if the name is already used
@@ -214,8 +214,6 @@ class BuiltinToolManageService:
 
             except Exception as e:
                 raise ValueError(str(e)) from e
-        if cache is not None:
-            cache.delete()
         return {"result": "success"}
 
     @staticmethod
@@ -232,21 +230,14 @@ class BuiltinToolManageService:
         """
         add builtin tool provider
         """
-        try:
-            provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
-            if not provider_controller.need_credentials:
-                raise ValueError(f"provider {provider} does not need credentials")
+        with sessionmaker(bind=db.engine).begin() as session:
+            try:
+                lock = f"builtin_tool_provider_create_lock:{tenant_id}_{provider}"
+                with redis_client.lock(lock, timeout=20):
+                    provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
+                    if not provider_controller.need_credentials:
+                        raise ValueError(f"provider {provider} does not need credentials")
 
-            # Validation may call external services, so it runs before the lock is taken
-            # to keep its duration independent of the lock timeout.
-            if CredentialType.of(api_type).is_validate_allowed():
-                provider_controller.validate_credentials(user_id, credentials)
-
-            lock = f"builtin_tool_provider_create_lock:{tenant_id}_{provider}"
-            # The transaction commits before the lock is released, so concurrent requests
-            # see this credential when they check the count limit and the name.
-            with redis_client.lock(lock, timeout=20):
-                with sessionmaker(bind=db.engine).begin() as session:
                     provider_count = (
                         session.scalar(
                             select(func.count(BuiltinToolProvider.id)).where(
@@ -260,6 +251,10 @@ class BuiltinToolManageService:
                     # check if the provider count is reached the limit
                     if provider_count >= BuiltinToolManageService.__MAX_BUILTIN_TOOL_PROVIDER_COUNT__:
                         raise ValueError(f"you have reached the maximum number of providers for {provider}")
+
+                    # validate credentials if allowed
+                    if CredentialType.of(api_type).is_validate_allowed():
+                        provider_controller.validate_credentials(user_id, credentials)
 
                     # generate name if not provided
                     if name is None or name == "":
@@ -309,8 +304,8 @@ class BuiltinToolManageService:
                     session.add(db_provider)
                     session.flush()
                     credential_id = db_provider.id
-        except Exception as e:
-            raise ValueError(str(e)) from e
+            except Exception as e:
+                raise ValueError(str(e)) from e
 
         return {"result": "success", "id": credential_id}
 
@@ -531,60 +526,14 @@ class BuiltinToolManageService:
 
     @staticmethod
     def get_oauth_client(
-        tenant_id: str, provider: str, *, provider_controller: PluginToolProviderController | None = None
+        tenant_id: str, provider: str, *, tool_providers: ToolProviders
     ) -> PluginOAuthClientConfig | None:
-        """
-        get builtin tool provider
-        """
-        tool_provider = ToolProviderID(provider)
-        if provider_controller is None:
-            provider_controller = ToolManager.get_plugin_provider(provider, tenant_id)
-        plugin_unique_identifier = provider_controller.plugin_unique_identifier
-        encrypter, _ = create_provider_encrypter(
+        return resolve_oauth_client(
+            providers=tool_providers,
+            controller=ToolManager.get_plugin_provider(provider, tenant_id),
             tenant_id=tenant_id,
-            config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
-            cache=NoOpProviderCredentialCache(),
+            provider_id=provider,
         )
-        with Session(db.engine, autoflush=False) as session:
-            user_client = session.scalar(
-                select(ToolOAuthTenantClient)
-                .where(
-                    ToolOAuthTenantClient.tenant_id == tenant_id,
-                    ToolOAuthTenantClient.provider == tool_provider.provider_name,
-                    ToolOAuthTenantClient.plugin_id == tool_provider.plugin_id,
-                    ToolOAuthTenantClient.enabled.is_(True),
-                )
-                .limit(1)
-            )
-            oauth_params: Mapping[str, Any] | None = None
-            if user_client:
-                oauth_params = encrypter.decrypt(user_client.oauth_params)
-                return PluginOAuthClientConfig(plugin_unique_identifier, dict(oauth_params))
-
-            # only verified provider can use official oauth client
-            is_verified = PluginService.is_plugin_verified(tenant_id, plugin_unique_identifier)
-            if not is_verified:
-                return None
-
-            system_client = session.scalar(
-                select(ToolOAuthSystemClient)
-                .where(
-                    ToolOAuthSystemClient.plugin_id == tool_provider.plugin_id,
-                    ToolOAuthSystemClient.provider == tool_provider.provider_name,
-                )
-                .limit(1)
-            )
-            if system_client:
-                try:
-                    oauth_params = decrypt_system_params(system_client.encrypted_oauth_params)
-                except Exception as e:
-                    raise ValueError(f"Error decrypting system oauth params: {e}") from e
-
-            return (
-                PluginOAuthClientConfig(plugin_unique_identifier, dict(oauth_params))
-                if oauth_params is not None
-                else None
-            )
 
     @staticmethod
     def get_builtin_tool_provider_icon(provider: str):
@@ -597,7 +546,9 @@ class BuiltinToolManageService:
         return icon_bytes, mime_type
 
     @staticmethod
-    def list_builtin_tools(user_id: str, tenant_id: str) -> list[ToolProviderApiEntity]:
+    def list_builtin_tools(
+        user_id: str, tenant_id: str, *, tool_providers: ToolProviders
+    ) -> list[ToolProviderApiEntity]:
         """
         list builtin tools
         """
@@ -605,7 +556,7 @@ class BuiltinToolManageService:
         provider_controllers = ToolManager.list_builtin_providers(tenant_id)
 
         # get all user added providers
-        db_providers: list[BuiltinToolProvider] = ToolManager.list_default_builtin_providers(tenant_id)
+        db_providers: list[BuiltinToolProvider] = tool_providers.default_builtin(tenant_id=tenant_id)
 
         # rewrite db_providers
         for db_provider in db_providers:
@@ -644,7 +595,7 @@ class BuiltinToolManageService:
                         ToolTransformService.convert_tool_entity_to_api_entity(
                             tenant_id=tenant_id,
                             tool=tool,
-                            labels=ToolLabelManager.get_tool_labels(provider_controller),
+                            labels=provider_controller.tool_labels,
                         )
                     )
 

@@ -9,7 +9,6 @@ from sqlalchemy.orm import sessionmaker
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.helper import ssrf_proxy
 from core.tools.__base.tool_runtime import ToolRuntime
-from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
@@ -18,12 +17,14 @@ from core.tools.entities.tool_entities import (
     ApiProviderSchemaType,
 )
 from core.tools.errors import ApiToolProviderNotFoundError
-from core.tools.tool_label_manager import ToolLabelManager
-from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.tools.utils.parser import ApiBasedToolSchemaParser
 from extensions.ext_database import db
 from models.tools import ApiToolProvider
+from services.tools.api.provider import ApiToolProviderController
+from services.tools.provider_queries import ToolProviders
+from services.tools.tool_label_manager import ToolLabelManager
+from services.tools.tool_manager import ToolManager
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -201,9 +202,10 @@ class ApiToolManageService:
             auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
             # create provider entity
-            provider_controller = ApiToolProviderController.from_db(api_tool_provider, auth_type, session=_session)
-            # load tools into provider entity
-            provider_controller.load_bundled_tools(tool_bundles)
+            author = api_tool_provider.user(session=_session)
+            provider_controller = ApiToolProviderController.from_provider(
+                api_tool_provider, auth_type, author=author.name if author else ""
+            )
 
             # encrypt credentials
             encrypter, _ = create_tool_provider_encrypter(
@@ -245,7 +247,9 @@ class ApiToolManageService:
         return {"schema": schema}
 
     @staticmethod
-    def list_api_tool_provider_tools(user_id: str, tenant_id: str, provider_name: str) -> list[ToolApiEntity]:
+    def list_api_tool_provider_tools(
+        user_id: str, tenant_id: str, provider_name: str, *, tool_providers: ToolProviders
+    ) -> list[ToolApiEntity]:
         """
         List tools provided by a specific API tool provider.
 
@@ -255,23 +259,12 @@ class ApiToolManageService:
         :return: A list of ToolApiEntity objects.
         """
 
-        # create new session with automatic transaction management
-        provider: ApiToolProvider | None = None
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            provider = _session.scalar(
-                select(ApiToolProvider)
-                .where(
-                    ApiToolProvider.tenant_id == tenant_id,
-                    ApiToolProvider.name == provider_name,
-                )
-                .limit(1)
-            )
+        provider = tool_providers.api_by_name(tenant_id=tenant_id, name=provider_name)
 
         if provider is None:
             raise ValueError(f"you have not added provider {provider_name}")
 
-        controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
-        labels = ToolLabelManager.get_tool_labels(controller)
+        labels = tool_providers.api_labels(tenant_id=tenant_id, provider_ids=[provider.id]).get(provider.id, [])
 
         return [
             ToolTransformService.convert_tool_entity_to_api_entity(
@@ -352,9 +345,10 @@ class ApiToolManageService:
             auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
             # create provider entity
-            provider_controller = ApiToolProviderController.from_db(provider, auth_type, session=_session)
-            # load tools into provider entity
-            provider_controller.load_bundled_tools(tool_bundles)
+            author = provider.user(session=_session)
+            provider_controller = ApiToolProviderController.from_provider(
+                provider, auth_type, author=author.name if author else ""
+            )
 
             # get original credentials if exists
             encrypter, cache = create_tool_provider_encrypter(
@@ -414,7 +408,9 @@ class ApiToolManageService:
         return {"result": "success"}
 
     @staticmethod
-    def get_api_tool_provider(user_id: str, tenant_id: str, provider: str) -> dict[str, Any]:
+    def get_api_tool_provider(
+        user_id: str, tenant_id: str, provider: str, *, tool_providers: ToolProviders
+    ) -> dict[str, Any]:
         """
         Get API tool provider details.
 
@@ -423,7 +419,7 @@ class ApiToolManageService:
         :param provider: The name of the API tool provider.
         :return: A dictionary containing the provider details.
         """
-        return ToolManager.user_get_api_provider(provider=provider, tenant_id=tenant_id)
+        return ToolManager.user_get_api_provider(provider=provider, tenant_id=tenant_id, tool_providers=tool_providers)
 
     @staticmethod
     def test_api_tool_preview(
@@ -463,6 +459,7 @@ class ApiToolManageService:
 
         # create new session with automatic transaction management to get the provider
         provider: ApiToolProvider | None = None
+        author_name = ""
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             provider = _session.scalar(
                 select(ApiToolProvider)
@@ -472,6 +469,9 @@ class ApiToolManageService:
                 )
                 .limit(1)
             )
+            if provider is not None:
+                author = provider.user(session=_session)
+                author_name = author.name if author else ""
 
         if provider is None:
             # create a fake db provider
@@ -494,7 +494,7 @@ class ApiToolManageService:
         auth_type = ApiProviderAuthType.value_of(credentials["auth_type"])
 
         # create provider entity
-        provider_controller = ApiToolProviderController.from_db(provider, auth_type, session=db.session())
+        provider_controller = ApiToolProviderController.from_provider(provider, auth_type, author=author_name)
         # load tools into provider entity
         provider_controller.load_bundled_tools(tool_bundles)
 
@@ -528,28 +528,23 @@ class ApiToolManageService:
         return {"result": result or "empty response"}
 
     @staticmethod
-    def list_api_tools(tenant_id: str) -> list[ToolProviderApiEntity]:
+    def list_api_tools(tenant_id: str, *, tool_providers: ToolProviders) -> list[ToolProviderApiEntity]:
         """
         List all API tools for a specific tenant.
 
         :param tenant_id: The ID of the workspace/tenant.
         :return: A list of ToolProviderApiEntity objects.
         """
-        # get all api providers
-        # create new session with automatic transaction management
-        providers: list[ApiToolProvider] = []
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
-            providers = list(
-                _session.scalars(select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)).all()
-            )
+        providers = tool_providers.api_providers(tenant_id=tenant_id)
+        provider_labels = tool_providers.api_labels(tenant_id=tenant_id, provider_ids=[p.id for p in providers])
 
         result: list[ToolProviderApiEntity] = []
         for provider in providers:
             # convert provider controller to user provider
             provider_controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
-            labels = ToolLabelManager.get_tool_labels(provider_controller)
+            labels = provider_labels.get(provider.id, [])
             user_provider = ToolTransformService.api_provider_to_user_provider(
-                provider_controller, db_provider=provider, decrypt_credentials=True, session=db.session()
+                provider_controller, db_provider=provider, decrypt_credentials=True
             )
             user_provider.labels = labels
 

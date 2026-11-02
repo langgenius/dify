@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from core.tools.entities.tool_entities import ToolProviderType
 from models import Account, Tenant
 from models.tools import MCPToolProvider
-from services.tools.mcp_tools_manage_service import UNCHANGED_SERVER_URL_PLACEHOLDER, MCPToolManageService
+from services.tools.legacy_mcp_tools_manage_service import UNCHANGED_SERVER_URL_PLACEHOLDER, MCPToolManageService
 
 
 class TestMCPToolManageService:
@@ -17,8 +17,8 @@ class TestMCPToolManageService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.tools.mcp_tools_manage_service.encrypter") as mock_encrypter,
-            patch("services.tools.mcp_tools_manage_service.ToolTransformService") as mock_tool_transform_service,
+            patch("services.tools.legacy_mcp_tools_manage_service.encrypter") as mock_encrypter,
+            patch("services.tools.legacy_mcp_tools_manage_service.ToolTransformService") as mock_tool_transform_service,
         ):
             # Setup default mock returns
             from core.tools.entities.api_entities import ToolProviderApiEntity
@@ -804,7 +804,7 @@ class TestMCPToolManageService:
                 )(),
             ]
 
-            with patch("services.tools.mcp_tools_manage_service.MCPClientWithAuthRetry") as mock_mcp_client:
+            with patch("services.tools.legacy_mcp_tools_manage_service.MCPClientWithAuthRetry") as mock_mcp_client:
                 # Setup mock client
                 mock_client_instance = mock_mcp_client.return_value.__enter__.return_value
                 mock_client_instance.list_tools.return_value = mock_tools
@@ -866,7 +866,7 @@ class TestMCPToolManageService:
             mock_decrypt.return_value = "https://example.com/mcp"
 
             # Mock MCPClient to raise authentication error
-            with patch("services.tools.mcp_tools_manage_service.MCPClientWithAuthRetry") as mock_mcp_client:
+            with patch("services.tools.legacy_mcp_tools_manage_service.MCPClientWithAuthRetry") as mock_mcp_client:
                 from core.mcp.error import MCPAuthError
 
                 mock_client_instance = mock_mcp_client.return_value.__enter__.return_value
@@ -918,7 +918,7 @@ class TestMCPToolManageService:
             mock_decrypt.return_value = "https://example.com/mcp"
 
             # Mock MCPClient to raise connection error
-            with patch("services.tools.mcp_tools_manage_service.MCPClientWithAuthRetry") as mock_mcp_client:
+            with patch("services.tools.legacy_mcp_tools_manage_service.MCPClientWithAuthRetry") as mock_mcp_client:
                 from core.mcp.error import MCPError
 
                 mock_client_instance = mock_mcp_client.return_value.__enter__.return_value

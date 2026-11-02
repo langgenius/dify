@@ -2,7 +2,7 @@
 
 import json
 import logging
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from hashlib import sha256
 
 from core.entities import PluginCredentialType
@@ -22,16 +22,24 @@ from services.credentials.tool_runtime import (
     ToolCredentialService,
     ToolRuntimeCredential,
 )
-from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 
 logger = logging.getLogger(__name__)
 
 
 class ProviderToolCredentialRuntime:
-    def __init__(self, *, controller: BuiltinToolProviderController, provider_id: str, console_api_url: str) -> None:
+    def __init__(
+        self,
+        *,
+        controller: BuiltinToolProviderController,
+        provider_id: str,
+        console_api_url: str,
+        oauth_client_resolver: Callable[[str], PluginOAuthClientConfig | None],
+    ) -> None:
         self._controller = controller
         self._provider_id = provider_id
         self._console_api_url = console_api_url
+        self._oauth_client_resolver = oauth_client_resolver
 
     def resolve(
         self, *, service: ToolCredentialService, workspace_id: str, credential_id: str | None
@@ -100,9 +108,7 @@ class ProviderToolCredentialRuntime:
     def refresh(self, record: ToolRuntimeCredential, credentials: Mapping[str, object]) -> RefreshedToolCredential:
         provider = ToolProviderID(self._provider_id)
         controller = self._controller if isinstance(self._controller, PluginToolProviderController) else None
-        client = BuiltinToolManageService.get_oauth_client(
-            record.workspace_id, self._provider_id, provider_controller=controller
-        )
+        client = self._oauth_client_resolver(record.workspace_id)
         identifier = (
             client.plugin_unique_identifier if client else (controller.plugin_unique_identifier if controller else None)
         )

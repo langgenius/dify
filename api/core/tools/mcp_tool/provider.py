@@ -15,7 +15,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.mcp_tool.tool import MCPTool
 from models.tools import MCPToolProvider
-from services.tools.tools_transform_service import ToolTransformService
+from services.tools.legacy_tools_transform_service import ToolTransformService
 
 
 class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlugin, MCPTool]):

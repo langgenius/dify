@@ -15,7 +15,7 @@ from core.tools.entities.tool_entities import (
 )
 from models.account import Account
 from models.tools import MCPToolProvider
-from services.tools.tools_transform_service import ToolTransformService
+from services.tools.legacy_tools_transform_service import ToolTransformService
 from tests.tool_fixtures import make_runtime_tool
 
 """Test cases for MCP tool transformation functionality."""
@@ -469,7 +469,7 @@ class TestMcpToolsTransformCases:
             assert result[0].label.zh_Hans == "Search the Web"
 
 
-MODULE = "services.tools.tools_transform_service"
+MODULE = "services.tools.legacy_tools_transform_service"
 
 
 def _parameter(
