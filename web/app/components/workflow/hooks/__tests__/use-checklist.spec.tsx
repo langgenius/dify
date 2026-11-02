@@ -909,6 +909,24 @@ describe('HITL contact recipient availability', () => {
     expect(resolveContacts).not.toHaveBeenCalled()
   })
 
+  it('does not report contact recipients as invalid while the lookup is pending', async () => {
+    let resolveLookup: (value: { data: (typeof existingContact)[] }) => void = () => {}
+    resolveContacts.mockReturnValue(
+      new Promise((resolve) => {
+        resolveLookup = resolve
+      }),
+    )
+    const { result } = renderRecipientValidation([{ type: 'contact', contact_id: 'existing' }])
+
+    await waitFor(() => expect(resolveContacts).toHaveBeenCalled())
+    expect(result.current.run.warningNodes).toEqual([])
+
+    await act(async () => {
+      resolveLookup({ data: [existingContact] })
+    })
+    await waitFor(() => expect(result.current.run.hasValidationErrors).toBe(false))
+  })
+
   it('blocks publication on a failed recipient lookup and allows a successful retry', async () => {
     resolveContacts.mockRejectedValue(new Error('Contact lookup unavailable'))
     const { result } = renderRecipientValidation([{ type: 'contact', contact_id: 'existing' }])

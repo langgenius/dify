@@ -188,8 +188,12 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const contactQuery = useQuery(getContactRecipientQueryOptions(workspaceId, contactIds))
   const resolvedContactIds = useMemo(
     () =>
-      new Set(contactQuery.isSuccess ? contactQuery.data.data.map((contact) => contact.id) : []),
-    [contactQuery.data, contactQuery.isSuccess],
+      contactQuery.isPending
+        ? undefined
+        : new Set(
+            contactQuery.isSuccess ? contactQuery.data.data.map((contact) => contact.id) : [],
+          ),
+    [contactQuery.data, contactQuery.isPending, contactQuery.isSuccess],
   )
   const { nodesMap: nodesExtraData } = useNodesMetaData()
   const { data: buildInTools } = useQuery(
