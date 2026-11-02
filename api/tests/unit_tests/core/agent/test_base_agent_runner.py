@@ -1,9 +1,11 @@
 import json
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 
 import core.agent.base_agent_runner as module
@@ -656,6 +658,40 @@ def test_organize_history_without_tool_name(runner: BaseAgentRunner, sqlite_sess
     result = runner.organize_agent_history([], session=sqlite_session)
 
     assert any(isinstance(item, module.AssistantPromptMessage) and item.content == "thinking" for item in result)
+
+
+def test_organize_history_skips_saved_prompt_column(
+    runner: BaseAgentRunner,
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+) -> None:
+    """Message.message stores each turn's full prompt, so history must neither select nor lazy-load it."""
+    first = _message(message_id="m1", query="q1", answer="a1")
+    second = _message(message_id="m2", query="q2", answer="a2")
+    current = _message()
+    second.parent_message_id = first.id
+    current.parent_message_id = second.id
+    now = datetime.now()
+    for offset, message in enumerate((first, second, current)):
+        message.created_at = now + timedelta(seconds=offset)
+    _persist_history(sqlite_session, first, second, current)
+    # Reload rows from the database instead of reusing fully loaded instances from the identity map.
+    sqlite_session.expunge_all()
+    statements: list[str] = []
+
+    def record_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+        statements.append(statement)
+
+    event.listen(sqlite_engine, "before_cursor_execute", record_statement)
+    try:
+        result = runner.organize_agent_history([], session=sqlite_session)
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", record_statement)
+
+    message_selects = [sql for sql in statements if "FROM messages" in sql]
+    assert len(message_selects) == 1
+    assert re.search(r"\bmessages\.message\b", message_selects[0]) is None
+    assert [prompt.content for prompt in result] == ["q1", "a1", "q2", "a2"]
 
 
 def test_convert_tool_to_prompt_message_tool(runner: BaseAgentRunner, mocker: MockerFixture) -> None:
