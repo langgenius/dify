@@ -1,4 +1,5 @@
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldError } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { useTranslation } from 'react-i18next'
 
@@ -28,36 +29,39 @@ const OtpVerification = ({
   const { t } = useTranslation(['share'])
 
   return (
-    <div className="my-3 rounded-xl border border-divider-subtle bg-background-section p-3">
-      <label htmlFor="human-input-v2-otp" className="system-sm-semibold text-text-primary">
-        {t(($) => $['humanInputV2.otpLabel'], { ns: 'share' })}
-      </label>
-      <div className="mt-1 system-xs-regular text-text-secondary">
-        {requesting
-          ? t(($) => $['humanInputV2.requestingCode'], { ns: 'share' })
-          : hasChallenge
-            ? t(($) => $['humanInputV2.codeSent'], { ns: 'share' })
-            : t(($) => $['humanInputV2.codeRequired'], { ns: 'share' })}
+    <div className="flex flex-col gap-3 rounded-xl border border-divider-subtle bg-background-section p-3">
+      <div className="flex flex-col gap-1">
+        <label htmlFor="human-input-v2-otp" className="system-sm-semibold text-text-primary">
+          {t(($) => $['humanInputV2.otpLabel'], { ns: 'share' })}
+        </label>
+        <div className="system-xs-regular text-text-secondary">
+          {requesting
+            ? t(($) => $['humanInputV2.requestingCode'], { ns: 'share' })
+            : hasChallenge
+              ? t(($) => $['humanInputV2.codeSent'], { ns: 'share' })
+              : t(($) => $['humanInputV2.codeRequired'], { ns: 'share' })}
+        </div>
       </div>
       {hasChallenge && (
-        <Input
-          id="human-input-v2-otp"
-          className="mt-3"
-          value={otpCode}
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={6}
-          aria-invalid={Boolean(error)}
-          placeholder={t(($) => $['humanInputV2.otpPlaceholder'], { ns: 'share' })}
-          onChange={(event) => onOtpChange(event.target.value)}
-        />
+        <Field name="otp">
+          <Input
+            id="human-input-v2-otp"
+            value={otpCode}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            placeholder={t(($) => $['humanInputV2.otpPlaceholder'], { ns: 'share' })}
+            onChange={(event) => onOtpChange(event.target.value)}
+          />
+          <FieldError />
+        </Field>
       )}
       {error && (
-        <div role="alert" className="mt-2 system-xs-regular text-text-destructive">
+        <div role="alert" className="system-xs-regular text-text-destructive">
           {error}
         </div>
       )}
-      <div className="mt-3 flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         {hasChallenge ? (
           <>
             <div className="system-xs-regular text-text-tertiary">
