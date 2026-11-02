@@ -1,4 +1,5 @@
 import json
+from collections.abc import Iterable
 from contextlib import nullcontext
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -46,6 +47,7 @@ from models.skill import AgentSkillBindingSnapshot, Skill, SkillVersion, SkillVe
 from models.tools import ToolFile
 from models.workflow import Workflow
 from repositories.agent.config_repository import AgentConfigRepository
+from repositories.agent.retirement_repository import WorkflowAgentRetirementRepository
 from repositories.agent.workflow_binding_repository import workflow_binding_scope
 from repositories.agent_workspace_repository import AgentWorkspaceRepository
 from services.agent import composer_service, roster_service
@@ -61,6 +63,7 @@ from services.agent.errors import (
     InvalidComposerConfigError,
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.roster_service import AgentRosterService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.agent.workflow_resources_gateway import WorkflowAgentSkillReader
@@ -633,11 +636,20 @@ def test_save_workflow_composer_commits_before_retiring_replaced_inline_agent(
     monkeypatch.setattr(AgentComposerService, "collect_validation_findings", lambda **_kwargs: {})
     event.listen(session, "after_commit", lambda _session: events.append("commit"))
 
-    def retire_unowned(**kwargs):
-        assert kwargs["agent_ids"] == {"old-inline-agent"}
+    def retire_unowned(
+        self: WorkflowAgentRetirementService,
+        *,
+        tenant_id: str,
+        agent_ids: Iterable[str],
+        account_id: str | None,
+    ) -> None:
+        assert isinstance(self._repository, WorkflowAgentRetirementRepository)
+        assert tenant_id == "tenant-1"
+        assert set(agent_ids) == {"old-inline-agent"}
+        assert account_id == "account-1"
         events.append("retire")
 
-    monkeypatch.setattr(composer_service.WorkflowAgentRetirementService, "retire_unowned", staticmethod(retire_unowned))
+    monkeypatch.setattr(WorkflowAgentRetirementService, "retire_unowned", retire_unowned)
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.WORKFLOW,
