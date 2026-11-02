@@ -35,6 +35,7 @@ vi.mock('@/app/components/workflow/store', () => ({
 
 vi.mock('@/service/use-plugins', () => ({
   useFetchDynamicOptions: () => ({ mutateAsync: vi.fn() }),
+  useFetchDynamicTreeOptions: () => ({ mutateAsync: vi.fn() }),
 }))
 
 const fieldLabel = 'workflowHumanInput.nodes.humanInput.insertInputField.saveResponseAs'
