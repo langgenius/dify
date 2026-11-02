@@ -461,6 +461,21 @@ def test_upgrade_start_forwards_all_model_choices(app, upgrades):
     )
 
 
+def test_upgrade_start_rejects_incomplete_model_selection(app, upgrades):
+    with (
+        app.test_request_context(
+            f"/datasets/{DATASET_ID}/knowledge-fs-upgrades",
+            method="POST",
+            headers={"Idempotency-Key": "upgrade-request-1"},
+            json={"models": {"embedding": {"provider": "openai", "model": "embedding"}}},
+        ),
+        pytest.raises(BadRequest, match="Invalid upgrade model selection"),
+    ):
+        unwrap(DatasetKnowledgeFSUpgradeApi.post)(DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID)
+
+    upgrades.start.assert_not_called()
+
+
 def test_upgrade_start_returns_field_specific_model_errors(app, upgrades):
     upgrades.start.side_effect = KnowledgeFSUpgradeModelsUnavailableError(
         [
