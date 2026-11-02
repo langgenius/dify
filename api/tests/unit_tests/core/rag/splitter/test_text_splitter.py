@@ -366,6 +366,49 @@ class TestSplitTextOnTokens:
         assert len(result) > 1
         assert all(isinstance(chunk, str) for chunk in result)
 
+    def test_rejects_overlap_equal_to_chunk_size(self):
+        """overlap == tokens_per_chunk must raise, not hang forever (issue #45275).
+
+        The window advance is tokens_per_chunk - chunk_overlap; at zero it never
+        moves and the loop spins with unbounded memory growth.
+        """
+
+        def mock_encode(text: str) -> list[int]:
+            return [ord(c) for c in text]
+
+        def mock_decode(tokens: list[int]) -> str:
+            return "".join([chr(t) for t in tokens])
+
+        tokenizer = Tokenizer(chunk_overlap=5, tokens_per_chunk=5, decode=mock_decode, encode=mock_encode)
+        with pytest.raises(ValueError, match="never terminates"):
+            split_text_on_tokens(text="ABCDEFGHIJ", tokenizer=tokenizer)
+
+    def test_rejects_overlap_greater_than_chunk_size(self):
+        """overlap > tokens_per_chunk must raise, not hang forever (issue #45275)."""
+
+        def mock_encode(text: str) -> list[int]:
+            return [ord(c) for c in text]
+
+        def mock_decode(tokens: list[int]) -> str:
+            return "".join([chr(t) for t in tokens])
+
+        tokenizer = Tokenizer(chunk_overlap=10, tokens_per_chunk=5, decode=mock_decode, encode=mock_encode)
+        with pytest.raises(ValueError, match="never terminates"):
+            split_text_on_tokens(text="ABCDEFGHIJ", tokenizer=tokenizer)
+
+    def test_rejects_non_positive_tokens_per_chunk(self):
+        """tokens_per_chunk <= 0 must raise (issue #45275)."""
+
+        def mock_encode(text: str) -> list[int]:
+            return [ord(c) for c in text]
+
+        def mock_decode(tokens: list[int]) -> str:
+            return "".join([chr(t) for t in tokens])
+
+        tokenizer = Tokenizer(chunk_overlap=0, tokens_per_chunk=0, decode=mock_decode, encode=mock_encode)
+        with pytest.raises(ValueError, match="tokens_per_chunk must be positive"):
+            split_text_on_tokens(text="ABCDEFGHIJ", tokenizer=tokenizer)
+
     def test_token_splitting_with_overlap(self):
         """Test that overlap is correctly applied in token splitting."""
 
