@@ -46,9 +46,16 @@ const originalBody = 'Original body {{#url#}}'
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.messageTemplate.test.post': (input) =>
+        mocks.workflowTest(input),
+      'apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.messageTemplate.test.post':
+        (input) => mocks.chatflowTest(input),
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.messageTemplate.test.post':
         mocks.workflowTest,
@@ -237,6 +244,10 @@ describe('Human Input v2 Message Template', () => {
     await setBody('')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
+    expect(screen.getByLabelText('workflow.nodes.humanInputV2.template.subject')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
     expect(
       screen.getByLabelText('workflow.nodes.humanInputV2.template.subject'),
     ).toHaveAccessibleDescription('workflow.nodes.humanInputV2.error.subjectRequired')
@@ -278,9 +289,7 @@ describe('Human Input v2 Message Template', () => {
       await openTemplate(user)
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        `workflow.nodes.humanInputV2.error.${error}`,
-      )
+      expect(screen.getByText(`workflow.nodes.humanInputV2.error.${error}`)).toBeInTheDocument()
       await waitFor(() => expect(getBodyEditor()).toHaveFocus())
       expect(props.onChange).not.toHaveBeenCalled()
     },
@@ -292,7 +301,7 @@ describe('Human Input v2 Message Template', () => {
     { action: 'test', body: 'Review this request', error: 'requestURLRequired' },
     { action: 'test', body: 'Review {{#url#}} or {{#url#}}', error: 'requestURLDuplicate' },
   ])(
-    'validates $error while editing before $action and clears it when corrected',
+    'waits for $action before validating $error, then clears it when corrected',
     async ({ action, body, error }) => {
       const user = userEvent.setup()
       const { props } = renderTemplate()
@@ -300,18 +309,21 @@ describe('Human Input v2 Message Template', () => {
       else await openTemplate(user)
       await setBody(body)
 
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        `workflow.nodes.humanInputV2.error.${error}`,
-      )
+      expect(
+        screen.queryByText(`workflow.nodes.humanInputV2.error.${error}`),
+      ).not.toBeInTheDocument()
       if (action === 'test') await sendTest(user)
       else await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      expect(screen.getByText(`workflow.nodes.humanInputV2.error.${error}`)).toBeInTheDocument()
       await waitFor(() => expect(getBodyEditor()).toHaveFocus())
       expect(props.onChange).not.toHaveBeenCalled()
       expect(mocks.syncDraft).not.toHaveBeenCalled()
       expectNoTemplateTest()
 
       await setBody('Review {{#url#}}')
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(`workflow.nodes.humanInputV2.error.${error}`),
+      ).not.toBeInTheDocument()
       if (action === 'test') {
         await sendTest(user)
         expect(
@@ -723,6 +735,31 @@ describe('Human Input v2 Message Template', () => {
       expectNoTemplateTest()
     },
   )
+
+  it('associates test validation with its field and opts secrets out of password saving', async () => {
+    const user = userEvent.setup()
+    renderTemplate({
+      value: { subject: 'Subject', body: '{{#start.secret#}} {{#url#}}' },
+      availableVars: [
+        { nodeId: 'start', title: 'Start', vars: [{ variable: 'secret', type: VarType.secret }] },
+      ],
+    })
+    await openTest(user)
+    const secret = screen.getByLabelText('start.secret')
+    expect(secret).toHaveAttribute('type', 'password')
+    expect(secret).toHaveAttribute('autocomplete', 'new-password')
+    await sendTest(user)
+    expect(secret).toHaveAttribute('aria-invalid', 'true')
+    expect(secret).toHaveAccessibleDescription(
+      'workflow.nodes.humanInputV2.template.testInputsRequired',
+    )
+    await waitFor(() => expect(secret).toHaveFocus())
+    await user.type(secret, 'test-value')
+    expect(secret).toHaveAttribute('aria-invalid', 'false')
+    expect(
+      screen.queryByText('workflow.nodes.humanInputV2.template.testInputsRequired'),
+    ).not.toBeInTheDocument()
+  })
 
   it('keeps one request in flight when the send button is double-clicked', async () => {
     const user = userEvent.setup()

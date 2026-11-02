@@ -94,6 +94,7 @@
   "nodes.humanInput.userActions.buttonTextPlaceholder": "قيمة الإجراء",
   "nodes.humanInput.userActions.buttonTextTooLong": "يجب أن يكون نص الزر {{maxLength}} حرفاً أو أقل",
   "nodes.humanInput.userActions.chooseStyle": "اختر نمط الزر",
+  "nodes.humanInput.userActions.defaultTitle": "نص الزر {{index}}",
   "nodes.humanInput.userActions.emptyTip": "انقر فوق الزر '+' لإضافة إجراءات المستخدم",
   "nodes.humanInput.userActions.title": "إجراءات المستخدم",
   "nodes.humanInput.userActions.tooltip": "حدد الأزرار التي يمكن للمستخدمين النقر عليها للرد على هذا النموذج. يتحكم معرف الإجراء في التفريع. يتم عرض قيمة الإجراء في المرحلة التالية كإخراج مدمج محدد. يجب أن يبدأ معرف الإجراء بحرف أو شرطة سفلية، متبوعاً بأحرف أو أرقام أو شرطات سفلية.",

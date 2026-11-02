@@ -3,14 +3,9 @@ import type { ClientLink } from '@orpc/client'
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { TanstackQueryOperationContext } from '@orpc/tanstack-query'
-import type { QueryClient } from '@tanstack/react-query'
 import { createORPCClient, DynamicLink } from '@orpc/client'
 import { consoleBrowserLink } from './browser'
-import {
-  createConsoleQuery,
-  invalidateHumanInputChannelQueries as invalidateChannelQueries,
-  invalidateHumanInputContactQueries as invalidateContactQueries,
-} from './query-policies'
+import { createConsoleQuery } from './query-policies'
 
 export type ConsoleClientContext = TanstackQueryOperationContext & {
   keepalive?: boolean
@@ -39,11 +34,3 @@ const consoleLink = new DynamicLink<ConsoleClientContext>(() => {
 
 export const consoleClient: ConsoleClient = createORPCClient(consoleLink)
 export const consoleQuery = createConsoleQuery(consoleClient)
-
-export function invalidateHumanInputContactQueries(client: QueryClient, workspaceId?: string) {
-  return invalidateContactQueries(consoleQuery, client, workspaceId)
-}
-
-export function invalidateHumanInputChannelQueries(client: QueryClient, workspaceId?: string) {
-  return invalidateChannelQueries(consoleQuery, client, workspaceId)
-}

@@ -13,7 +13,6 @@ import GenerationItem from '../index'
 
 const mocks = vi.hoisted(() => ({
   submitShare: vi.fn(),
-  submitWebApp: vi.fn(),
   submitWorkflow: vi.fn(),
 }))
 
@@ -31,9 +30,6 @@ vi.mock('@/service/share', async (importOriginal) => ({
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
   submitHumanInputForm: mocks.submitWorkflow,
-}))
-vi.mock('@/service/webapp-human-input', () => ({
-  submitWebAppHumanInputForm: mocks.submitWebApp,
 }))
 const renderItem = (ui: ReactElement) =>
   render(<ChatContextProvider chatList={[]}>{ui}</ChatContextProvider>)
@@ -84,12 +80,10 @@ describe('GenerationItem HITL routing', () => {
       await user.click(screen.getByRole('button', { name: 'Submit' }))
       await user.click(screen.getByText('runLog.detail'))
 
-      const expectedSubmit =
-        appSourceType === AppSourceType.webApp ? mocks.submitWebApp : mocks.submitShare
-      expect(expectedSubmit).toHaveBeenCalledWith(
+      expect(mocks.submitShare).toHaveBeenCalledWith(
         'token-1',
         { action: 'submit', inputs: { name: 'Dify' } },
-        ...(appSourceType === AppSourceType.webApp ? [formVersion] : []),
+        formVersion,
       )
       expect(mocks.submitWorkflow).not.toHaveBeenCalled()
       expect(screen.getByText('JSON OUTPUT')).toBeInTheDocument()
@@ -126,18 +120,18 @@ describe('GenerationItem HITL routing', () => {
       await user.type(screen.getByRole('textbox', { name: 'name' }), 'Dify')
       await user.click(screen.getByRole('button', { name: 'Submit' }))
       expect(prepareHumanInputSubmission).toHaveBeenCalledOnce()
-      expect(mocks.submitWebApp).not.toHaveBeenCalled()
+      expect(mocks.submitShare).not.toHaveBeenCalled()
 
       await act(async () => resolvePreparation?.(ready))
 
       if (ready) {
-        expect(mocks.submitWebApp).toHaveBeenCalledExactlyOnceWith(
+        expect(mocks.submitShare).toHaveBeenCalledExactlyOnceWith(
           'token-1',
           { inputs: { name: 'Dify' }, action: 'submit' },
           undefined,
         )
       } else {
-        expect(mocks.submitWebApp).not.toHaveBeenCalled()
+        expect(mocks.submitShare).not.toHaveBeenCalled()
       }
     },
   )

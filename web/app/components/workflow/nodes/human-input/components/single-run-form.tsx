@@ -21,7 +21,6 @@ import {
   initializeInputs,
   splitByOutputVar,
 } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
-import { toast } from '@/app/notifications'
 
 type Props = Readonly<{
   nodeName: string
@@ -58,8 +57,8 @@ const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: P
     setIsSubmitting(true)
     try {
       await onSubmit?.({ inputs, action: actionID })
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t(($) => $.error, { ns: 'common' }))
+    } catch {
+      // Request failures are reported by the Console transport.
     } finally {
       setIsSubmitting(false)
     }
@@ -73,7 +72,7 @@ const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: P
             <BreadcrumbItem className="shrink-0">
               <button
                 type="button"
-                className="flex cursor-pointer items-center gap-1 rounded-sm text-left system-sm-semibold-uppercase text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                className="flex cursor-pointer items-center gap-1 rounded-sm text-start system-sm-semibold-uppercase text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 onClick={handleBack}
               >
                 <span className="i-ri-arrow-left-line size-4" aria-hidden />

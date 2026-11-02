@@ -65,6 +65,49 @@ describe('env runtime transport', () => {
     expect(env.NEXT_PUBLIC_ENABLE_HITL_IM).toBe(false)
   })
 
+  it('preserves runtime configuration when modules load before the streamed body', async () => {
+    const body = document.body
+    const root = document.documentElement
+    const runtimeAttributes = {
+      'data-api-prefix': 'https://runtime.example.com/console/api',
+      'data-base-path': '/runtime',
+      'data-enable-hitl-im': 'true',
+      'data-enable-agent-v2': 'true',
+    }
+    const previous = Object.keys(runtimeAttributes).map((key) => root.getAttribute(key))
+    Object.entries(runtimeAttributes).forEach(([key, value]) => root.setAttribute(key, value))
+    body.remove()
+
+    try {
+      expect(document.body).toBeNull()
+      const { env } = await import('../env')
+      expect(env.NEXT_PUBLIC_API_PREFIX).toBe(runtimeAttributes['data-api-prefix'])
+      expect(env.NEXT_PUBLIC_BASE_PATH).toBe('/runtime')
+      expect(env.NEXT_PUBLIC_ENABLE_HITL_IM).toBe(true)
+      expect(env.NEXT_PUBLIC_ENABLE_AGENT_V2).toBe(true)
+    } finally {
+      root.append(body)
+      Object.keys(runtimeAttributes).forEach((key, index) => {
+        const value = previous[index]
+        if (value == null) root.removeAttribute(key)
+        else root.setAttribute(key, value)
+      })
+    }
+  })
+
+  it('keeps body configuration authoritative after the body is available', async () => {
+    const previous = document.documentElement.getAttribute('data-enable-hitl-im')
+    document.documentElement.setAttribute('data-enable-hitl-im', 'true')
+    document.body.setAttribute('data-enable-hitl-im', 'false')
+    try {
+      const { env } = await import('../env')
+      expect(env.NEXT_PUBLIC_ENABLE_HITL_IM).toBe(false)
+    } finally {
+      if (previous === null) document.documentElement.removeAttribute('data-enable-hitl-im')
+      else document.documentElement.setAttribute('data-enable-hitl-im', previous)
+    }
+  })
+
   it('should read NEXT_PUBLIC_ENABLE_AGENT_V2 from the browser runtime dataset key', async () => {
     document.body.setAttribute('data-enable-agent-v2', 'true')
 

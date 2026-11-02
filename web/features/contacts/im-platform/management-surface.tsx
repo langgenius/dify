@@ -1,6 +1,7 @@
 'use client'
 
-import type { ContactImIntegrationView, ContactImProviderDefinition } from './types'
+import type { ChannelSummary } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ContactImProviderDefinition } from './types'
 import {
   AlertDialog,
   AlertDialogBody,
@@ -14,99 +15,209 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { skipToken, useIsMutating, useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ContactImBindingDialog } from './binding-dialog'
+import { consoleQuery } from '@/service/console'
+import { ContactImBindingContent } from './binding-dialog'
 import { useContactsImPlatformOrganization } from './composition-context'
-import { ContactEmailConfigDialog } from './email-config-dialog'
-import {
-  useContactImIntegrations,
-  useContactImProviderDefinitions,
-  useDisconnectContactImProvider,
-} from './hooks'
+import { providerMetadata, toDetailView } from './credentials'
+import { ContactEmailConfigContent } from './email-config-dialog'
+import { channelError } from './hooks'
 import { ContactImProviderCard } from './provider-card'
 import { ContactImSyncDetailsDialog } from './sync-details-dialog'
 import { useContactImSyncRunUrlState } from './sync-run-url-state'
 import { ContactImDirectorySyncSection } from './sync-section'
-import {
-  ContactImConnectionStatus,
-  ContactImProvider,
-  ContactImProviderAvailability,
-  ContactImRepositoryError,
-  ContactImRepositoryErrorCode,
-  ContactImStatusReason,
-  ContactImUnavailableReason,
-} from './types'
+import { ContactImRepositoryErrorCode } from './types'
 
 type BindingTarget = {
-  integration: ContactImIntegrationView | null
+  integration: ChannelSummary | null
   provider: ContactImProviderDefinition
   replaceActiveProvider: boolean
-  replacedIntegration?: ContactImIntegrationView
+  replacedIntegration?: ChannelSummary
+}
+
+function ConfigurationSession({
+  target,
+  onOpenChange,
+}: {
+  target: BindingTarget
+  onOpenChange: (open: boolean) => void
+}) {
+  const { t } = useTranslation(['contacts'])
+  const channels = consoleQuery.workspaces.current.humanInput.v2.channels
+  const email = useQuery(
+    channels.email.byChannelId.get.queryOptions({
+      input:
+        target.integration?.kind === 'email'
+          ? { params: { channel_id: target.integration.id } }
+          : skipToken,
+      context: { silent: true },
+    }),
+  )
+  const im = useQuery(
+    channels.im.byChannelId.get.queryOptions({
+      input:
+        target.integration?.kind === 'im'
+          ? { params: { channel_id: target.integration.id } }
+          : skipToken,
+      context: { silent: true },
+    }),
+  )
+  const detail = target.integration?.kind === 'email' ? email : im
+  if (target.integration && !detail.data)
+    return (
+      <>
+        <DialogHeader>
+          <DialogTitle>{target.provider.displayName}</DialogTitle>
+          <DialogHeaderCloseButton aria-label={t(($) => $['action.close'])} />
+        </DialogHeader>
+        {detail.isError ? (
+          <div role="alert" className="p-6">
+            <p>{t(($) => $['imPlatform.loadError.description'])}</p>
+            <Button onClick={() => detail.refetch()}>
+              {t(($) => $['imPlatform.action.retry'])}
+            </Button>
+          </div>
+        ) : (
+          <div
+            aria-busy="true"
+            className="m-6 h-40 animate-pulse rounded-xl bg-state-base-active"
+          />
+        )}
+      </>
+    )
+  const integration = detail.data ? toDetailView(detail.data) : null
+  return target.provider.provider === 'resend' ? (
+    <ContactEmailConfigContent
+      integration={integration}
+      provider={target.provider}
+      onOpenChange={onOpenChange}
+    />
+  ) : (
+    <ContactImBindingContent
+      integration={integration}
+      provider={target.provider}
+      replaceActiveProvider={target.replaceActiveProvider}
+      replacedIntegration={target.replacedIntegration}
+      onOpenChange={onOpenChange}
+    />
+  )
 }
 
 export function ContactsImPlatformManagementSurface() {
   const { t } = useTranslation(['contacts'])
   const { t: tCommon } = useTranslation(['common'])
   const organization = useContactsImPlatformOrganization()
-  const integrationsQuery = useContactImIntegrations()
-  const providersQuery = useContactImProviderDefinitions()
-  const disconnectProvider = useDisconnectContactImProvider()
+  const api = consoleQuery.workspaces.current.humanInput.v2
+  const integrationsQuery = useQuery(
+    api.channels.get.queryOptions({ enabled: organization.canManage, context: { silent: true } }),
+  )
+  const providersQuery = useQuery(
+    api.channelProviders.get.queryOptions({
+      enabled: organization.canManage,
+      context: { silent: true },
+    }),
+  )
+  const deleteEmail = useMutation(
+    api.channels.email.byChannelId.delete.mutationOptions({ context: { silent: true } }),
+  )
+  const deleteIM = useMutation(
+    api.channels.im.byChannelId.delete.mutationOptions({ context: { silent: true } }),
+  )
+  const pendingCredentials = useIsMutating({ mutationKey: api.channels.key() }) > 0
   const [bindingTarget, setBindingTarget] = useState<BindingTarget | null>(null)
+  const [bindingOpen, setBindingOpen] = useState(false)
   const [replacementProvider, setReplacementProvider] =
     useState<ContactImProviderDefinition | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<
-    | (ContactImProviderDefinition & Pick<ContactImIntegrationView, 'channelId' | 'configVersion'>)
-    | null
-  >(null)
+  const [replacementOpen, setReplacementOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<ChannelSummary | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [syncRunId, setSyncRunId] = useContactImSyncRunUrlState()
-
-  if (organization.organizationId && organization.workspaceId && !organization.canManage) {
+  const integrations = integrationsQuery.data?.channels ?? []
+  const providers = [
+    ...(providersQuery.data?.email_providers ?? []),
+    ...(providersQuery.data?.im_providers ?? []),
+  ].map(({ provider }) => ({
+    provider,
+    displayName: providerMetadata[provider].name,
+    requiredFields: providerMetadata[provider].fields,
+  }))
+  const byProvider = new Map(integrations.map((integration) => [integration.provider, integration]))
+  const configured = providers.filter((provider) => byProvider.has(provider.provider))
+  const available = providers.filter((provider) => !byProvider.has(provider.provider))
+  const activeIM = integrations.find((integration) => integration.kind === 'im')
+  const deleteMutation = deleteTarget?.kind === 'email' ? deleteEmail : deleteIM
+  const openBinding = (target: BindingTarget) => {
+    setBindingTarget(target)
+    setBindingOpen(true)
+  }
+  const openProvider = (provider: ContactImProviderDefinition) => {
+    const integration = byProvider.get(provider.provider) ?? null
+    if (provider.provider !== 'resend' && !integration && activeIM) {
+      setReplacementProvider(provider)
+      setReplacementOpen(true)
+      return
+    }
+    openBinding({ integration, provider, replaceActiveProvider: false })
+  }
+  const descriptions = {
+    ding_talk: t(($) => $['imPlatform.provider.dingtalkDescription']),
+    resend: t(($) => $['imPlatform.provider.emailDescription']),
+    feishu: t(($) => $['imPlatform.provider.feishuDescription']),
+    slack: t(($) => $['imPlatform.provider.slackDescription']),
+    lark: t(($) => $['imPlatform.provider.larkDescription']),
+    ms_teams: t(($) => $['imPlatform.provider.msTeamsDescription']),
+    we_com: t(($) => $['imPlatform.provider.weComDescription']),
+  }
+  const statuses = {
+    connected: t(($) => $['imPlatform.status.connected']),
+    configured: t(($) => $['imPlatform.status.configured']),
+    connection_failure: t(($) => $['imPlatform.status.connection_error']),
+    invalid_credentials: t(($) => $['imPlatform.status.permission_issue']),
+  }
+  const cards = available.map((provider) => (
+    <ContactImProviderCard
+      key={provider.provider}
+      actionAriaLabel={`${provider.displayName} — ${provider.provider !== 'resend' && activeIM ? t(($) => $['imPlatform.action.replace']) : t(($) => $['imPlatform.action.connect'])}`}
+      actionDisabled={!organization.canManage}
+      actionLabel={
+        provider.provider !== 'resend' && activeIM
+          ? t(($) => $['imPlatform.action.replace'])
+          : t(($) => $['imPlatform.action.connect'])
+      }
+      description={descriptions[provider.provider]}
+      mode="available"
+      provider={provider}
+      showAddIcon={provider.provider === 'resend' || !activeIM}
+      onAction={() => openProvider(provider)}
+    />
+  ))
+  if (!organization.canManage) return null
+  if (integrationsQuery.isPending || providersQuery.isPending)
     return (
-      <div className="mb-4 rounded-xl border border-divider-subtle bg-background-default-subtle p-4">
-        <div className="system-sm-semibold text-text-primary">
-          {t(($) => $['imPlatform.permission.title'])}
-        </div>
-        <div className="mt-1 system-sm-regular text-text-tertiary">
-          {t(($) => $['imPlatform.permission.description'])}
-        </div>
+      <div aria-busy="true" className="max-w-190 space-y-3 pt-4">
+        <div className="h-4 w-52 animate-pulse rounded-md bg-state-base-active" />
+        <div className="h-16 animate-pulse rounded-xl bg-state-base-active" />
+        <div className="h-16 animate-pulse rounded-xl bg-state-base-active" />
       </div>
     )
-  }
-
-  if (
-    !organization.organizationId ||
-    !organization.workspaceId ||
-    integrationsQuery.isPending ||
-    providersQuery.isPending
-  ) {
-    return (
-      <div
-        role="status"
-        aria-label={t(($) => $['imPlatform.loading'])}
-        className="max-w-[760px] space-y-3"
-      >
-        <div className="h-4 w-52 animate-pulse rounded-md bg-state-base-active motion-reduce:animate-none" />
-        <div className="h-16 w-full animate-pulse rounded-xl bg-state-base-active motion-reduce:animate-none" />
-        <div className="h-16 w-full animate-pulse rounded-xl bg-state-base-active motion-reduce:animate-none" />
-      </div>
-    )
-  }
-
-  if (integrationsQuery.isError || providersQuery.isError) {
+  if (integrationsQuery.isError || providersQuery.isError)
     return (
       <div
         role="alert"
-        className="max-w-[760px] rounded-xl border border-divider-subtle bg-background-default-subtle p-5"
+        className="max-w-190 rounded-xl border border-divider-subtle bg-background-default-subtle p-5"
       >
-        <div className="system-md-semibold text-text-primary">
-          {t(($) => $['imPlatform.loadError.title'])}
-        </div>
-        <div className="mt-1 system-sm-regular text-text-tertiary">
-          {t(($) => $['imPlatform.loadError.description'])}
-        </div>
+        <div className="system-md-semibold">{t(($) => $['imPlatform.loadError.title'])}</div>
+        <p>{t(($) => $['imPlatform.loadError.description'])}</p>
         <Button
-          className="mt-4"
           onClick={() => {
             void integrationsQuery.refetch()
             void providersQuery.refetch()
@@ -116,261 +227,95 @@ export function ContactsImPlatformManagementSurface() {
         </Button>
       </div>
     )
-  }
-
-  const integrations = integrationsQuery.data
-  const providers = providersQuery.data
-  const integrationsByProvider = new Map(
-    integrations.map((integration) => [integration.provider, integration]),
-  )
-  const configuredProviders = providers.filter((provider) =>
-    integrationsByProvider.has(provider.provider),
-  )
-  const availableProviders = providers.filter(
-    (provider) => !integrationsByProvider.has(provider.provider),
-  )
-  const activeImIntegration = integrations.find(
-    (integration) => integration.provider !== ContactImProvider.Email,
-  )
-  const activeImProvider = providers.find(
-    (provider) => provider.provider === activeImIntegration?.provider,
-  )
-  const syncIntegration =
-    integrations.find(
-      (integration) =>
-        integration.status === ContactImConnectionStatus.Connected &&
-        integration.capabilities.directorySync,
-    ) ??
-    integrations.find((integration) => integration.capabilities.directorySync) ??
-    integrations.find((integration) => integration.provider !== ContactImProvider.Email)
-  const providerDescriptions = {
-    [ContactImProvider.DingTalk]: t(($) => $['imPlatform.provider.dingtalkDescription']),
-    [ContactImProvider.Email]: t(($) => $['imPlatform.provider.emailDescription']),
-    [ContactImProvider.Feishu]: t(($) => $['imPlatform.provider.feishuDescription']),
-    [ContactImProvider.Slack]: t(($) => $['imPlatform.provider.slackDescription']),
-    [ContactImProvider.Lark]: t(($) => $['imPlatform.provider.larkDescription']),
-    [ContactImProvider.MSTeams]: t(($) => $['imPlatform.provider.msTeamsDescription']),
-    [ContactImProvider.WeCom]: t(($) => $['imPlatform.provider.weComDescription']),
-  }
-  const statusLabels = {
-    [ContactImConnectionStatus.CallbackError]: t(($) => $['imPlatform.status.callback_error']),
-    [ContactImConnectionStatus.Configured]: t(($) => $['imPlatform.status.configured']),
-    [ContactImConnectionStatus.Connected]: t(($) => $['imPlatform.status.connected']),
-    [ContactImConnectionStatus.ConnectionError]: t(($) => $['imPlatform.status.connection_error']),
-    [ContactImConnectionStatus.NotConfigured]: t(($) => $['imPlatform.status.not_configured']),
-    [ContactImConnectionStatus.PermissionIssue]: t(($) => $['imPlatform.status.permission_issue']),
-  }
-  const statusReasonLabels = {
-    [ContactImStatusReason.CallbackMismatch]: t(
-      ($) => $['imPlatform.statusReason.callback_mismatch'],
-    ),
-    [ContactImStatusReason.MissingDirectoryPermission]: t(
-      ($) => $['imPlatform.statusReason.missing_directory_permission'],
-    ),
-    [ContactImStatusReason.ProviderRequestFailed]: t(
-      ($) => $['imPlatform.statusReason.provider_request_failed'],
-    ),
-  }
-  const unavailableReasonLabels = {
-    [ContactImUnavailableReason.DeploymentUnsupported]: t(
-      ($) => $['imPlatform.provider.unavailableReason.deployment_unsupported'],
-    ),
-    [ContactImUnavailableReason.NotReleased]: t(
-      ($) => $['imPlatform.provider.unavailableReason.not_released'],
-    ),
-  }
-  const openProvider = (provider: ContactImProviderDefinition) => {
-    if (
-      provider.availability !== ContactImProviderAvailability.Available ||
-      !organization.canManage
-    ) {
-      return
-    }
-
-    const integration = integrationsByProvider.get(provider.provider) ?? null
-    if (provider.provider !== ContactImProvider.Email && !integration && activeImIntegration) {
-      setReplacementProvider(provider)
-      return
-    }
-
-    setBindingTarget({
-      integration,
-      provider,
-      replaceActiveProvider: false,
-    })
-  }
-
-  const openDeleteDialog = (provider: ContactImProviderDefinition) => {
-    if (!organization.canManage) return
-
-    disconnectProvider.reset()
-    const integration = integrationsByProvider.get(provider.provider)
-    setDeleteTarget({
-      ...provider,
-      channelId: integration?.channelId,
-      configVersion: integration?.configVersion,
-    })
-  }
-
-  const handleDeleteDialogOpenChange = (open: boolean) => {
-    if (open || disconnectProvider.isPending) return
-
-    setDeleteTarget(null)
-  }
-
-  const deleteChannel = () => {
-    if (!deleteTarget || disconnectProvider.isPending) return
-
-    disconnectProvider.mutate(
-      {
-        provider: deleteTarget.provider,
-        channelId: deleteTarget.channelId,
-        expectedConfigVersion: deleteTarget.configVersion,
-      },
-      { onSuccess: () => setDeleteTarget(null) },
-    )
-  }
-
-  const getConfiguredDescription = (
-    provider: ContactImProviderDefinition,
-    integration: ContactImIntegrationView,
-  ) => {
-    if (integration.statusDescription) return integration.statusDescription
-    if (integration.statusReason) return statusReasonLabels[integration.statusReason]
-    if (provider.provider === ContactImProvider.Email) {
-      const senderEmail = integration.configuredValues.senderEmail
-      return senderEmail
-        ? t(($) => $['imPlatform.email.summary'], { email: senderEmail })
-        : statusLabels[integration.status]
-    }
-    if (provider.provider === ContactImProvider.Slack) return statusLabels[integration.status]
-    return integration.displayIdentifier ?? statusLabels[integration.status]
-  }
-
-  const availableProviderCards = availableProviders.map((provider) => {
-    const unavailable = provider.availability === ContactImProviderAvailability.Unavailable
-    const isReplacement =
-      provider.provider !== ContactImProvider.Email && Boolean(activeImIntegration)
-    const actionLabel = isReplacement
-      ? t(($) => $['imPlatform.action.replace'])
-      : t(($) => $['imPlatform.action.connect'])
-
-    return (
-      <ContactImProviderCard
-        key={provider.provider}
-        actionAriaLabel={`${provider.displayName} — ${
-          unavailable ? t(($) => $['imPlatform.provider.unavailable']) : actionLabel
-        }`}
-        actionDisabled={unavailable || !organization.canManage}
-        actionLabel={unavailable ? t(($) => $['imPlatform.provider.unavailable']) : actionLabel}
-        description={providerDescriptions[provider.provider]}
-        mode="available"
-        provider={provider}
-        showAddIcon={!unavailable && !isReplacement}
-        unavailableReason={
-          provider.unavailableReason
-            ? unavailableReasonLabels[provider.unavailableReason]
-            : undefined
-        }
-        onAction={() => openProvider(provider)}
-      />
-    )
-  })
-
   return (
-    <section className="max-w-[760px] pb-8" aria-labelledby="contacts-channels-title">
-      <h2 id="contacts-channels-title" className="sr-only">
-        {t(($) => $['imPlatform.title'])}
-      </h2>
-
-      {configuredProviders.length > 0 && (
-        <div className="space-y-2">
-          {configuredProviders.map((provider) => {
-            const integration = integrationsByProvider.get(provider.provider)
-            if (!integration) return null
-
-            return (
-              <div key={provider.provider}>
-                <span className="sr-only" aria-live="polite">
-                  {statusLabels[integration.status]}
-                </span>
-                <ContactImProviderCard
-                  actionDisabled={!organization.canManage}
-                  configureAriaLabel={t(($) => $['imPlatform.action.configureChannel'], {
-                    provider: provider.displayName,
-                  })}
-                  deleteAriaLabel={t(($) => $['imPlatform.action.deleteChannel'], {
-                    provider: provider.displayName,
-                  })}
-                  description={getConfiguredDescription(provider, integration)}
-                  mode="configured"
-                  provider={provider}
-                  onConfigure={() => openProvider(provider)}
-                  onDelete={() => openDeleteDialog(provider)}
-                />
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {syncIntegration && (
-        <ContactImDirectorySyncSection integration={syncIntegration} onViewDetails={setSyncRunId} />
-      )}
-
-      {availableProviders.length > 0 && configuredProviders.length > 0 && (
-        <Collapsible
-          defaultOpen
-          className="mt-4 pt-4 shadow-[inset_0_1px_0_0_var(--color-divider-subtle)]"
-        >
-          <CollapsibleTrigger className="group/collapsible mb-2 flex min-h-4 items-center gap-1 rounded-sm text-start system-sm-medium-uppercase text-text-tertiary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid">
-            <span
-              aria-hidden
-              className="i-ri-arrow-down-s-line size-4 shrink-0 -rotate-90 group-data-panel-open/collapsible:rotate-0"
+    <div className="max-w-190 pb-8">
+      <div className="space-y-2">
+        {configured.map((provider) => {
+          const integration = byProvider.get(provider.provider)
+          if (!integration) return null
+          return (
+            <ContactImProviderCard
+              key={provider.provider}
+              actionDisabled={!organization.canManage}
+              configureAriaLabel={t(($) => $['imPlatform.action.configureChannel'], {
+                provider: provider.displayName,
+              })}
+              deleteAriaLabel={t(($) => $['imPlatform.action.deleteChannel'], {
+                provider: provider.displayName,
+              })}
+              description={[
+                integration.display_identifier,
+                statuses[integration.status],
+                integration.status === 'connection_failure' ||
+                integration.status === 'invalid_credentials'
+                  ? integration.status_description
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+              mode="configured"
+              provider={provider}
+              onConfigure={() => openProvider(provider)}
+              onDelete={() => {
+                deleteEmail.reset()
+                deleteIM.reset()
+                setDeleteTarget(integration)
+                setDeleteOpen(true)
+              }}
             />
-            {t(($) => $['imPlatform.connectMore'])}
-          </CollapsibleTrigger>
-          <CollapsiblePanel className="space-y-2">{availableProviderCards}</CollapsiblePanel>
-        </Collapsible>
+          )
+        })}
+      </div>
+      {activeIM && (
+        <ContactImDirectorySyncSection integration={activeIM} onViewDetails={setSyncRunId} />
       )}
-
-      {availableProviders.length > 0 && configuredProviders.length === 0 && (
-        <div className="space-y-2 pt-2">
-          <h3 className="system-sm-medium-uppercase text-text-tertiary">
-            {t(($) => $['imPlatform.chooseProvider'])}
-          </h3>
-          {availableProviderCards}
-        </div>
-      )}
-
-      {bindingTarget?.provider.provider === ContactImProvider.Email && (
-        <ContactEmailConfigDialog
-          integration={bindingTarget.integration}
-          open
-          provider={bindingTarget.provider}
-          onOpenChange={(open) => {
-            if (!open) setBindingTarget(null)
-          }}
-        />
-      )}
-
-      {bindingTarget && bindingTarget.provider.provider !== ContactImProvider.Email && (
-        <ContactImBindingDialog
-          key={`${bindingTarget.provider.provider}-${bindingTarget.replaceActiveProvider}`}
-          integration={bindingTarget.integration}
-          open
-          provider={bindingTarget.provider}
-          replaceActiveProvider={bindingTarget.replaceActiveProvider}
-          replacedIntegration={bindingTarget.replacedIntegration}
-          onOpenChange={(open) => {
-            if (!open) setBindingTarget(null)
-          }}
-        />
-      )}
-
-      <AlertDialog
-        open={Boolean(replacementProvider)}
+      {available.length > 0 &&
+        (configured.length > 0 ? (
+          <Collapsible defaultOpen className="mt-4 border-t border-divider-subtle pt-4">
+            <CollapsibleTrigger className="group/collapsible mb-2 flex min-h-4 items-center gap-1 rounded-sm text-start system-sm-medium-uppercase text-text-tertiary">
+              <span
+                aria-hidden
+                className="i-ri-arrow-down-s-line size-4 shrink-0 -rotate-90 group-data-panel-open/collapsible:rotate-0"
+              />
+              {t(($) => $['imPlatform.connectMore'])}
+            </CollapsibleTrigger>
+            <CollapsiblePanel className="space-y-2">{cards}</CollapsiblePanel>
+          </Collapsible>
+        ) : (
+          <div className="space-y-2 pt-2">
+            <h4 className="system-sm-medium-uppercase text-text-tertiary">
+              {t(($) => $['imPlatform.chooseProvider'])}
+            </h4>
+            {cards}
+          </div>
+        ))}
+      <Dialog
+        open={bindingOpen}
+        disablePointerDismissal={pendingCredentials}
         onOpenChange={(open) => {
+          if (!pendingCredentials) setBindingOpen(open)
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) setBindingTarget(null)
+        }}
+      >
+        <DialogContent
+          backdropProps={{ forceRender: true }}
+          className={bindingTarget?.provider.provider === 'resend' ? 'w-130' : 'w-120'}
+        >
+          {bindingTarget && (
+            <ConfigurationSession
+              key={`${bindingTarget.provider.provider}:${bindingTarget.integration?.id ?? 'new'}`}
+              target={bindingTarget}
+              onOpenChange={setBindingOpen}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+      <AlertDialog
+        open={replacementOpen}
+        onOpenChange={setReplacementOpen}
+        onOpenChangeComplete={(open) => {
           if (!open) setReplacementProvider(null)
         }}
       >
@@ -378,7 +323,7 @@ export function ContactsImPlatformManagementSurface() {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {t(($) => $['imPlatform.replacement.title'], {
-                current: activeImProvider?.displayName ?? '',
+                current: activeIM ? providerMetadata[activeIM.provider].name : '',
                 next: replacementProvider?.displayName ?? '',
               })}
             </AlertDialogTitle>
@@ -394,13 +339,13 @@ export function ContactsImPlatformManagementSurface() {
               tone="default"
               onClick={() => {
                 if (!replacementProvider) return
-                setBindingTarget({
+                openBinding({
                   integration: null,
                   provider: replacementProvider,
                   replaceActiveProvider: true,
-                  replacedIntegration: activeImIntegration,
+                  replacedIntegration: activeIM,
                 })
-                setReplacementProvider(null)
+                setReplacementOpen(false)
               }}
             >
               {t(($) => $['imPlatform.replacement.confirm'])}
@@ -408,52 +353,65 @@ export function ContactsImPlatformManagementSurface() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={handleDeleteDialogOpenChange}>
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (!deleteMutation.isPending) setDeleteOpen(open)
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
+      >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <AlertDialogHeader>
             <AlertDialogTitle>
               {t(($) => $['imPlatform.delete.title'], {
-                provider: deleteTarget?.displayName ?? '',
+                provider: deleteTarget ? providerMetadata[deleteTarget.provider].name : '',
               })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {t(($) => $['imPlatform.delete.description'])}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {disconnectProvider.isError && (
+          {deleteMutation.isError && (
             <AlertDialogBody>
-              <div role="alert" className="system-sm-regular text-text-destructive">
-                {disconnectProvider.error instanceof ContactImRepositoryError &&
-                disconnectProvider.error.code === ContactImRepositoryErrorCode.ConfigurationUpdated
+              <div role="alert" className="text-text-destructive">
+                {channelError(deleteMutation.error).code ===
+                ContactImRepositoryErrorCode.ConfigurationUpdated
                   ? t(($) => $['imPlatform.configurationUpdated'])
                   : t(($) => $['imPlatform.delete.failed'])}
               </div>
             </AlertDialogBody>
           )}
           <AlertDialogFooter>
-            <AlertDialogCancelButton disabled={disconnectProvider.isPending}>
+            <AlertDialogCancelButton disabled={deleteMutation.isPending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              loading={disconnectProvider.isPending}
-              onClick={deleteChannel}
+              loading={deleteMutation.isPending}
+              onClick={() => {
+                if (!deleteTarget) return
+                deleteMutation.mutate(
+                  {
+                    params: { channel_id: deleteTarget.id },
+                    query: { expected_config_version: deleteTarget.config_version },
+                  },
+                  { onSuccess: () => setDeleteOpen(false) },
+                )
+              }}
             >
               {t(($) => $['imPlatform.delete.confirm'])}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {syncRunId && (
-        <ContactImSyncDetailsDialog
-          open
-          runId={syncRunId}
-          onOpenChange={(open) => {
-            if (!open) setSyncRunId(null)
-          }}
-        />
-      )}
-    </section>
+      <ContactImSyncDetailsDialog
+        open={Boolean(syncRunId)}
+        runId={syncRunId}
+        onOpenChange={(open) => {
+          if (!open) void setSyncRunId(null)
+        }}
+      />
+    </div>
   )
 }

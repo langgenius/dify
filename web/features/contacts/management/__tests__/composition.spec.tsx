@@ -33,10 +33,6 @@ vi.mock('@/service/console', async () => {
   }
 })
 
-vi.mock('../repository', () => ({
-  createContactsApiRepository: () => ({}),
-}))
-
 function CapabilityProbe() {
   const context = useContactsFeatureContext()
   return (

@@ -10,6 +10,7 @@ import type {
 } from '@/app/components/workflow/types'
 import type { ConsoleClientContext } from '@/service/console'
 import type { FetchWorkflowDraftResponse, HumanInputFormData, VarInInspect } from '@/types/workflow'
+import { zConsoleHumanInputV2SubmitPayload } from '@dify/contracts/api/console/form/zod.gen'
 import { consoleClient } from '@/service/console'
 import { get } from './base'
 
@@ -183,7 +184,7 @@ export const submitHumanInputForm = (
   if (formVersion === '2') {
     return consoleClient.form.humanInput.v2.byFormToken.post({
       params: { form_token: token },
-      body: data,
+      body: zConsoleHumanInputV2SubmitPayload.parse(data),
     })
   }
   return consoleClient.form.humanInput.byFormToken.post({

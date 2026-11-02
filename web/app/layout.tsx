@@ -74,7 +74,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const dehydratedState = errorDocument ? undefined : dehydrateSystemFeatures()
 
   return (
-    <html lang={locale} dir={dir(locale)} suppressHydrationWarning>
+    <html lang={locale} dir={dir(locale)} {...datasetMap} suppressHydrationWarning>
       <head>{!errorDocument && <ReactScanLoader />}</head>
       <body className="bg-background-body" {...datasetMap}>
         {!errorDocument && <CloudAnalytics />}

@@ -258,12 +258,13 @@ describe('useChat – handleSubmitHumanInputForm', () => {
         await result.current.handleSubmitHumanInputForm('nested-token', {
           action: 'approve',
           inputs: {},
+          form_version: version,
         })
       })
 
       expect(mockSubmitHumanInputForm).toHaveBeenCalledWith(
         'nested-token',
-        { action: 'approve', inputs: {} },
+        { action: 'approve', inputs: {}, form_version: version },
         version,
       )
     },

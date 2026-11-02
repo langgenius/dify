@@ -1,3 +1,4 @@
+import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import { submitHumanInputForm } from '../workflow'
 
 const mocks = vi.hoisted(() => ({ legacyPost: vi.fn(), approveV2: vi.fn() }))
@@ -23,6 +24,23 @@ describe('Console human input submission', () => {
       params: { form_token: 'opaque-token' },
       body: data,
     })
+    expect(mocks.legacyPost).not.toHaveBeenCalled()
+  })
+
+  it('keeps workflow preview routing metadata out of the v2 request body', async () => {
+    const data: HumanInputFormSubmitData = {
+      action: 'approve',
+      inputs: { note: 'Approved' },
+      form_version: '2',
+    }
+
+    await submitHumanInputForm('opaque-token', data, data.form_version)
+
+    expect(mocks.approveV2).toHaveBeenCalledWith({
+      params: { form_token: 'opaque-token' },
+      body: { action: 'approve', inputs: { note: 'Approved' } },
+    })
+    expect(data.form_version).toBe('2')
     expect(mocks.legacyPost).not.toHaveBeenCalled()
   })
 

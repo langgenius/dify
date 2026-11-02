@@ -1,12 +1,12 @@
 import type { ContactImProviderDefinition } from './types'
-import { ContactImAuthMode, ContactImProvider, ContactImProviderField } from './types'
+import { ContactImProvider, ContactImProviderField } from './types'
 
-const setupGuideUrls: Record<Exclude<ContactImProvider, 'email'>, string> = {
+const setupGuideUrls: Record<Exclude<ContactImProvider, 'resend'>, string> = {
   slack: 'https://docs.slack.dev/interactivity/handling-user-interaction/',
   feishu:
     'https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/event-subscription-guide/callback-subscription/callback-overview',
   lark: 'https://open.larksuite.com/document/uAjLw4CM/ukTMukTMukTM/event-subscription-guide/callback-subscription/callback-overview',
-  dingtalk: 'https://open.dingtalk.com/document/',
+  ding_talk: 'https://open.dingtalk.com/document/',
   ms_teams:
     'https://learn.microsoft.com/en-us/microsoftteams/platform/bots/how-to/authentication/bot-sso-register-aad',
   we_com: 'https://developer.work.weixin.qq.com/document/path/90665',
@@ -18,7 +18,7 @@ type ContactImCallbackSetup = {
 }
 
 export const resolveContactImCallbackSetup = (
-  provider: Exclude<ContactImProvider, 'email'>,
+  provider: Exclude<ContactImProvider, 'resend'>,
 ): ContactImCallbackSetup | null => {
   switch (provider) {
     case ContactImProvider.Feishu:
@@ -51,8 +51,6 @@ export const resolveContactImCallbackSetup = (
 export const resolveContactImProviderFormAdapter = (definition: ContactImProviderDefinition) => {
   if (definition.provider === ContactImProvider.Email)
     throw new Error('Email uses its dedicated configuration form')
-  if (definition.authMode !== ContactImAuthMode.Credentials)
-    throw new Error(`Provider requires application credentials: ${definition.provider}`)
 
   return {
     setupGuideUrl: setupGuideUrls[definition.provider],

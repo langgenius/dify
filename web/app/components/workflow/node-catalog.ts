@@ -5,12 +5,12 @@ import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from 'reactflow'
+import { useShallow } from 'zustand/react/shallow'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import AnswerDefault from '@/app/components/workflow/nodes/answer/default'
 import EndDefault from '@/app/components/workflow/nodes/end/default'
 import { getHumanInputCreationPolicy } from '@/app/components/workflow/nodes/human-input-v2/migration/policy'
-import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import StartPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
 import StartDefault from '@/app/components/workflow/nodes/start/default'
 import TriggerPluginDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
@@ -44,8 +44,24 @@ export const useWorkflowNodeCatalog = () => {
       select: (features) => features.enable_knowledge_fs,
     }),
   )
-  const canContinueLegacyHumanInput = useStore(
-    (state) => getHumanInputCreationPolicy(state.getNodes(), true).canAddLegacyHumanInput,
+  const humanInputData = useStore(
+    useShallow((state) =>
+      ENABLE_HITL_IM
+        ? state
+            .getNodes()
+            .filter((node) => node.data.type === BlockEnum.HumanInput)
+            .map((node) => node.data)
+        : [],
+    ),
+  )
+  const canContinueLegacyHumanInput = useMemo(
+    () =>
+      ENABLE_HITL_IM &&
+      getHumanInputCreationPolicy(
+        humanInputData.map((data) => ({ data })),
+        true,
+      ).canAddLegacyHumanInput,
+    [humanInputData],
   )
   const useLegacyHumanInput = !ENABLE_HITL_IM || canContinueLegacyHumanInput
 
@@ -107,22 +123,6 @@ export const useWorkflowNodeCatalog = () => {
     [mergedNodesMetaData, t, docLink],
   )
 
-  const legacyHumanInputMetaData = useMemo(() => {
-    const { metaData } = HumanInputDefault
-    const title = t(($) => $[`blocks.${BlockEnum.HumanInput}`], { ns: 'workflow' })
-    const description = t(($) => $[`blocksAbout.${BlockEnum.HumanInput}`], { ns: 'workflow' })
-
-    return {
-      ...HumanInputDefault,
-      metaData: { ...metaData, title, description },
-      defaultValue: {
-        ...HumanInputDefault.defaultValue,
-        type: BlockEnum.HumanInput,
-        title,
-      },
-    }
-  }, [t])
-
   const availableNodesMetaData = useMemo(
     () =>
       nodesMetaData.filter(
@@ -143,11 +143,9 @@ export const useWorkflowNodeCatalog = () => {
           acc![node.metaData.type] = node
           return acc
         },
-        {
-          [BlockEnum.HumanInput]: legacyHumanInputMetaData,
-        } as unknown as AvailableNodesMetaData['nodesMap'],
+        {} as unknown as AvailableNodesMetaData['nodesMap'],
       ),
-    [nodesMetaData, legacyHumanInputMetaData],
+    [nodesMetaData],
   )
 
   return useMemo(

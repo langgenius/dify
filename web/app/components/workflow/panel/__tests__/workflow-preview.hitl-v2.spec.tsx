@@ -104,8 +104,8 @@ describe('WorkflowPreview HITL submission versions', () => {
         },
       })
 
-      await user.type(screen.getByRole('textbox', { name: 'name' }), 'Ada')
-      await user.type(screen.getByRole('textbox', { name: 'reason' }), 'Ready to ship')
+      await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Ada')
+      await user.type(screen.getByRole('textbox', { name: 'Reason' }), 'Ready to ship')
       await user.click(screen.getByRole('button', { name: 'Approve' }))
 
       await waitFor(() =>
@@ -114,6 +114,7 @@ describe('WorkflowPreview HITL submission versions', () => {
           {
             inputs: { name: 'Ada', reason: 'Ready to ship' },
             action: 'approve',
+            form_version: version,
           },
           version,
         ),

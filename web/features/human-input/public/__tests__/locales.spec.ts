@@ -1,4 +1,6 @@
 import i18next from 'i18next'
+import { loadI18nResource } from '@/i18n/load-resource'
+import { supportedLocales } from '@/i18n/locale'
 import enShare from '@/i18n/locales/en-US/share.json'
 import zhHansShare from '@/i18n/locales/zh-Hans/share.json'
 
@@ -20,7 +22,6 @@ const V2_KEYS = [
   'humanInputV2.otpPlaceholder',
   'humanInputV2.requestingCode',
   'humanInputV2.resendCode',
-  'humanInputV2.resendIn',
   'humanInputV2.retry',
   'humanInputV2.sendCode',
   'humanInputV2.unavailable',
@@ -29,10 +30,8 @@ const V2_KEYS = [
 ] as const
 
 describe('Human Input v2 form locales', () => {
-  it.each([
-    ['en-US', enShare],
-    ['zh-Hans', zhHansShare],
-  ] as const)('resolves every v2 key in %s', async (locale, share) => {
+  it.each(supportedLocales)('resolves every v2 key in %s without fallback', async (locale) => {
+    const { default: share } = await loadI18nResource(locale, 'share')
     const i18n = i18next.createInstance()
     await i18n.init({
       lng: locale,
@@ -43,9 +42,12 @@ describe('Human Input v2 form locales', () => {
     })
 
     V2_KEYS.forEach((key) => {
-      expect(i18n.getResource(locale, 'share', key)).not.toBe(key)
-      expect(i18n.getResource(locale, 'share', key)).not.toBe('')
+      expect(i18n.getResource(locale, 'share', key), key).toEqual(expect.stringMatching(/\S/))
     })
+
+    expect(i18n.t(($) => $['humanInputV2.codeExpiresIn'], { ns: 'share', seconds: 42 })).toContain(
+      '42',
+    )
   })
 
   it('uses dedicated Simplified Chinese copy without English fallback', () => {

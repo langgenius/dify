@@ -1,9 +1,13 @@
 import type { AgentSoulDifyToolConfig } from '@dify/contracts/api/console/apps/types.gen'
-import type { ToolProviderListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  BatchGetContactOptionsResponse,
+  ToolProviderListResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PluginsFromMarketplaceByInfoResponse } from '@dify/contracts/marketplace'
 import type { ReactNode } from 'react'
 import type { AvailableNodesMetaData } from '../../hooks-store/store'
 import type { CodeNodeType } from '../../nodes/code/types'
+import type { HumanInputV2Recipient } from '../../nodes/human-input-v2/types'
 import type { CommonEdgeType, CommonNodeType, Edge, Node } from '../../types'
 import type { ChecklistItem } from '../use-checklist'
 import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
@@ -39,6 +43,18 @@ import { BlockEnum, PromptRole, VarType } from '../../types'
 import { useChecklist, useChecklistBeforePublish, useWorkflowRunValidation } from '../use-checklist'
 
 const mockHitlIm = vi.hoisted(() => ({ enabled: true }))
+const resolveContacts = vi.hoisted(() => vi.fn<() => Promise<BatchGetContactOptionsResponse>>())
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.humanInput.v2.contactOptions.batch.get': resolveContacts,
+    }),
+  }
+})
 
 vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
@@ -126,6 +142,7 @@ function renderChecklist(nodes: Node[], edges: Edge[], options: ChecklistOptions
 
 beforeEach(() => {
   mockHitlIm.enabled = true
+  resolveContacts.mockReset().mockResolvedValue({ data: [] })
   resetFixtureCounters()
   marketplace.mockReset().mockImplementation((url: string) => {
     throw new Error(`Unexpected marketplace request: ${url}`)
@@ -751,4 +768,197 @@ describe('HITL release gate in workflow validation', () => {
       })
     },
   )
+})
+
+describe('HITL contact recipient availability', () => {
+  const existingContact = {
+    id: 'existing',
+    name: 'Existing contact',
+    email: 'existing@example.com',
+    type: 'external' as const,
+    im_providers: [],
+  }
+
+  function graphWithRecipients(recipients: HumanInputV2Recipient[], version: '1' | '2' = '2') {
+    return {
+      nodes: [
+        createInputNode(),
+        createNode({
+          id: 'review',
+          data: {
+            type: BlockEnum.HumanInput,
+            title: 'Review',
+            version,
+            form_content: 'Please approve',
+            inputs: [],
+            user_actions: [{ id: 'approve', title: 'Approve', button_style: 'primary' }],
+            timeout: 36,
+            timeout_unit: 'hour',
+            ...(version === '1'
+              ? { delivery_methods: [{ id: 'webapp', type: 'webapp', enabled: true }] }
+              : {
+                  recipients_spec: recipients,
+                  message_template: { subject: 'Review request', body: 'Please review {{#url#}}' },
+                  debug_mode: { enabled: false, channels: [] },
+                }),
+          },
+        }),
+      ],
+      edges: [createEdge({ source: 'start', target: 'review' })],
+    }
+  }
+
+  function renderRecipientValidation(
+    recipients: HumanInputV2Recipient[],
+    version: '1' | '2' = '2',
+  ) {
+    const queryClient = createChecklistQueryClient()
+    const { wrapper } = createChecklistWrapper(graphWithRecipients(recipients, version), {
+      queryClient,
+    })
+    return {
+      ...renderHook(
+        () => ({ run: useWorkflowRunValidation(), publish: useChecklistBeforePublish() }),
+        { wrapper },
+      ),
+      queryClient,
+    }
+  }
+
+  it.each([
+    {
+      label: 'the only recipient',
+      recipients: [{ type: 'contact' as const, contact_id: 'deleted' }],
+    },
+    {
+      label: 'one of several recipients',
+      recipients: [
+        { type: 'contact' as const, contact_id: 'deleted' },
+        { type: 'contact' as const, contact_id: 'existing' },
+      ],
+    },
+  ])(
+    'shows a checklist warning and blocks publication when $label was deleted',
+    async ({ recipients }) => {
+      resolveContacts.mockResolvedValue({ data: [existingContact] })
+      const { result } = renderRecipientValidation(recipients)
+
+      await waitFor(() =>
+        expect(result.current.run.warningNodes).toEqual([
+          expect.objectContaining({ id: 'review', errorMessages: [expect.any(String)] }),
+        ]),
+      )
+      await act(async () => {
+        expect(await result.current.publish.handleCheckBeforePublish()).toBe(false)
+      })
+    },
+  )
+
+  it('revalidates cached contacts before publishing and exposes deletion in the checklist', async () => {
+    resolveContacts.mockResolvedValue({ data: [existingContact] })
+    const { result } = renderRecipientValidation([{ type: 'contact', contact_id: 'existing' }])
+    await waitFor(() => expect(resolveContacts).toHaveBeenCalled())
+    await waitFor(() => expect(result.current.run.warningNodes).toEqual([]))
+
+    resolveContacts.mockResolvedValue({ data: [] })
+    await act(async () => {
+      expect(await result.current.publish.handleCheckBeforePublish()).toBe(false)
+    })
+    await waitFor(() =>
+      expect(result.current.run.warningNodes).toEqual([
+        expect.objectContaining({ id: 'review', errorMessages: [expect.any(String)] }),
+      ]),
+    )
+  })
+
+  it('updates the checklist after contact deletion invalidates the active contact query', async () => {
+    resolveContacts.mockResolvedValue({ data: [existingContact] })
+    const { result, queryClient } = renderRecipientValidation([
+      { type: 'contact', contact_id: 'existing' },
+    ])
+    await waitFor(() => expect(resolveContacts).toHaveBeenCalled())
+    await waitFor(() => expect(result.current.run.hasValidationErrors).toBe(false))
+
+    resolveContacts.mockResolvedValue({ data: [] })
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.humanInput.v2.contactOptions.batch.get.key(),
+      })
+    })
+    await waitFor(() =>
+      expect(result.current.run.warningNodes).toEqual([
+        expect.objectContaining({ id: 'review', errorMessages: [expect.any(String)] }),
+      ]),
+    )
+    expect(result.current.run.validateBeforeRun()).toBe(false)
+  })
+
+  it('keeps V2 disabled without contact requests when the release gate is off', async () => {
+    mockHitlIm.enabled = false
+    const { result } = renderRecipientValidation([{ type: 'contact', contact_id: 'existing' }])
+
+    expect(result.current.run.warningNodes).toEqual([
+      expect.objectContaining({
+        id: 'review',
+        errorMessages: ['workflow.nodes.humanInputV2.disabled'],
+      }),
+    ])
+    await act(async () => {
+      expect(await result.current.publish.handleCheckBeforePublish()).toBe(false)
+    })
+    expect(resolveContacts).not.toHaveBeenCalled()
+  })
+
+  it('blocks publication on a failed recipient lookup and allows a successful retry', async () => {
+    resolveContacts.mockRejectedValue(new Error('Contact lookup unavailable'))
+    const { result } = renderRecipientValidation([{ type: 'contact', contact_id: 'existing' }])
+
+    await act(async () => {
+      expect(await result.current.publish.handleCheckBeforePublish()).toBe(false)
+    })
+    expect(result.current.run.hasValidationErrors).toBe(true)
+
+    resolveContacts.mockResolvedValue({ data: [existingContact] })
+    await act(async () => {
+      expect(await result.current.publish.handleCheckBeforePublish()).toBe(true)
+    })
+    await waitFor(() => expect(result.current.run.warningNodes).toEqual([]))
+  })
+
+  it('does not let cached success bypass a failed fresh lookup', async () => {
+    resolveContacts.mockResolvedValue({ data: [existingContact] })
+    const { result } = renderRecipientValidation([{ type: 'contact', contact_id: 'existing' }])
+    await waitFor(() => expect(resolveContacts).toHaveBeenCalled())
+    await waitFor(() => expect(result.current.run.hasValidationErrors).toBe(false))
+
+    resolveContacts.mockRejectedValue(new Error('Contact lookup unavailable'))
+    await act(async () => {
+      expect(await result.current.publish.handleCheckBeforePublish()).toBe(false)
+    })
+  })
+
+  it.each([
+    {
+      label: 'V1 delivery settings',
+      version: '1' as const,
+      recipients: [],
+    },
+    {
+      label: 'V2 non-contact recipients',
+      version: '2' as const,
+      recipients: [
+        { type: 'initiator' as const },
+        { type: 'all_workspace_contacts' as const },
+        { type: 'onetime_email' as const, email: 'review@example.com' },
+      ],
+    },
+  ])('keeps $label valid without contact requests', async ({ version, recipients }) => {
+    const { result } = renderRecipientValidation(recipients, version)
+
+    expect(result.current.run.warningNodes).toEqual([])
+    await act(async () => {
+      expect(await result.current.publish.handleCheckBeforePublish()).toBe(true)
+    })
+    expect(resolveContacts).not.toHaveBeenCalled()
+  })
 })

@@ -259,8 +259,7 @@ export const env = createEnv({
       ? process.env.NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW
       : getRuntimeEnvFromBody('enableFeaturePreview'),
     NEXT_PUBLIC_ENABLE_HITL_IM: isServer
-      ? // Read at server startup rather than inlining a public env value at build time.
-        Reflect.get(process.env, 'NEXT_PUBLIC_ENABLE_HITL_IM')
+      ? process.env.NEXT_PUBLIC_ENABLE_HITL_IM
       : getRuntimeEnvFromBody('enableHitlIm'),
     NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX
@@ -374,14 +373,14 @@ function getDatasetAttributeName(envKey: ClientEnvKey) {
 }
 
 /**
- * Browser-only function to get runtime env value from HTML body dataset.
+ * Read body configuration when available, or the root attributes while HTML is streaming.
  */
 function getRuntimeEnvFromBody(key: DatasetKey) {
   if (typeof window === 'undefined') {
     throw new TypeError('getRuntimeEnvFromBody can only be called in the browser')
   }
 
-  const value = document.body.dataset[key]
+  const value = document.body?.dataset[key] ?? document.documentElement.dataset[key]
   return value || undefined
 }
 

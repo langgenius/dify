@@ -94,6 +94,7 @@
   "nodes.humanInput.userActions.buttonTextPlaceholder": "Wartość akcji",
   "nodes.humanInput.userActions.buttonTextTooLong": "Tekst przycisku musi mieć {{maxLength}} znaków lub mniej",
   "nodes.humanInput.userActions.chooseStyle": "Wybierz styl przycisku",
+  "nodes.humanInput.userActions.defaultTitle": "Tekst przycisku {{index}}",
   "nodes.humanInput.userActions.emptyTip": "Kliknij przycisk '+', aby dodać akcje użytkownika",
   "nodes.humanInput.userActions.title": "Akcje użytkownika",
   "nodes.humanInput.userActions.tooltip": "Zdefiniuj przyciski, które użytkownicy mogą klikać, aby odpowiedzieć na ten formularz. Identyfikator akcji kontroluje rozgałęzianie. Wartość akcji jest udostępniana w dalszej części jako wybrane wbudowane wyjście. Identyfikator akcji musi zaczynać się od litery lub podkreślenia, po którym następują litery, cyfry lub podkreślenia.",
