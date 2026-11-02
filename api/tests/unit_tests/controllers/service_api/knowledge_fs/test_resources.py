@@ -316,13 +316,14 @@ def test_legacy_source_import_adapts_coordinates_and_admits_durable_workflow(run
 
 def test_malformed_upstream_is_502_and_invalid_input_is_400_without_input_echo(runtime: FakeRuntime) -> None:
     runtime.facade.execute_service.return_value = dict[str, object]()
-    with Flask(__name__).test_request_context("/"):
-        with pytest.raises(KnowledgeFSServiceUpstreamUnavailableHTTPError):
-            resources.KnowledgeFSServiceLogicalDocumentApi().get("control-1", "doc-1")
+    with Flask(__name__).test_request_context("/"), pytest.raises(KnowledgeFSServiceUpstreamUnavailableHTTPError):
+        resources.KnowledgeFSServiceLogicalDocumentApi().get("control-1", "doc-1")
     runtime.facade.execute_service.calls.clear()
-    with Flask(__name__).test_request_context("/?limit=private-invalid-value"):
-        with pytest.raises(KnowledgeFSServiceInvalidRequestHTTPError) as caught:
-            resources.KnowledgeFSServiceLogicalDocumentsApi().get("control-1")
+    with (
+        Flask(__name__).test_request_context("/?limit=private-invalid-value"),
+        pytest.raises(KnowledgeFSServiceInvalidRequestHTTPError) as caught,
+    ):
+        resources.KnowledgeFSServiceLogicalDocumentsApi().get("control-1")
     assert "private-invalid-value" not in str(caught.value.data)
     assert runtime.facade.execute_service.calls == []
 
@@ -404,13 +405,15 @@ def test_image_admission_checks_ownership_before_issuing_a_capability(
     runtime.broker = FakeComponent(issue_service=Recorder())
     validator = Recorder(raises=KnowledgeFSProductRequestRejectedError(status_code=422))
     monkeypatch.setattr(resources, "validate_service_query_image_references", validator)
-    with Flask(__name__).test_request_context(
-        "/",
-        method="POST",
-        json={"queryImages": [{"uploadFileId": "b3d672a0-f379-4c3a-ad89-6eac80aa3efd"}]},
+    with (
+        Flask(__name__).test_request_context(
+            "/",
+            method="POST",
+            json={"queryImages": [{"uploadFileId": "b3d672a0-f379-4c3a-ad89-6eac80aa3efd"}]},
+        ),
+        pytest.raises(BaseHTTPException) as error,
     ):
-        with pytest.raises(BaseHTTPException) as error:
-            resources.KnowledgeFSServiceQueryAdmissionApi().post("control-1")
+        resources.KnowledgeFSServiceQueryAdmissionApi().post("control-1")
     assert error.value.code == 422
     assert runtime.broker.issue_service.calls == []
     assert len(validator.calls) == 1

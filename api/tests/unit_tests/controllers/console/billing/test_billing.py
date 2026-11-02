@@ -96,9 +96,8 @@ class TestBillingPortal:
         method = unwrap(resource.get)
         billing_portal.get_invoices.side_effect = billing.BillingInvoiceUpstreamUnavailableError
 
-        with app.test_request_context("/billing/invoices"):
-            with pytest.raises(BillingUnavailableError) as exc_info:
-                method(resource, request_context)
+        with app.test_request_context("/billing/invoices"), pytest.raises(BillingUnavailableError) as exc_info:
+            method(resource, request_context)
 
         assert exc_info.value.data == {
             "code": "billing_unavailable",
@@ -117,9 +116,11 @@ class TestBillingPortal:
         query = SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month")
         billing_portal.get_subscription.side_effect = billing.BillingSubscriptionUpstreamInvalidResponseError
 
-        with app.test_request_context("/billing/subscription"):
-            with pytest.raises(BillingOperationFailedError) as exc_info:
-                method(resource, query, request_context)
+        with (
+            app.test_request_context("/billing/subscription"),
+            pytest.raises(BillingOperationFailedError) as exc_info,
+        ):
+            method(resource, query, request_context)
 
         assert exc_info.value.data == {
             "code": "billing_operation_failed",

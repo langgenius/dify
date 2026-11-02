@@ -128,8 +128,9 @@ def test_build_zip_streams_objects_and_deduplicates_names() -> None:
 def test_build_zip_rejects_oversized_batch_before_storage_reads() -> None:
     service = KnowledgeFSDownloadService(object_storage=FakeObjectStorage({}))
 
-    with pytest.raises(KnowledgeFSDownloadTooLargeError):
-        with service.build_zip_tempfile(
+    with (
+        pytest.raises(KnowledgeFSDownloadTooLargeError),
+        service.build_zip_tempfile(
             [
                 descriptor(
                     document_id="document-1",
@@ -138,5 +139,6 @@ def test_build_zip_rejects_oversized_batch_before_storage_reads() -> None:
                     size_bytes=KNOWLEDGE_FS_BATCH_DOWNLOAD_MAX_BYTES + 1,
                 )
             ]
-        ):
-            pass
+        ),
+    ):
+        pass

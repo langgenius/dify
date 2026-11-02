@@ -39,9 +39,8 @@ def _end_user() -> EndUser:
 # ---------------------------------------------------------------------------
 class TestWorkflowRunApi:
     def test_wrong_mode_raises(self, app: Flask) -> None:
-        with app.test_request_context("/workflows/run", method="POST"):
-            with pytest.raises(NotWorkflowAppError):
-                WorkflowRunApi().post(_chat_app(), _end_user())
+        with app.test_request_context("/workflows/run", method="POST"), pytest.raises(NotWorkflowAppError):
+            WorkflowRunApi().post(_chat_app(), _end_user())
 
     @patch("controllers.web.workflow.helper.compact_generate_response", return_value={"result": "ok"})
     @patch("controllers.web.workflow.AppGenerateService.generate")
@@ -64,9 +63,11 @@ class TestWorkflowRunApi:
         empty_inputs: dict[str, object] = {}
         mock_ns.payload = {"inputs": empty_inputs}
 
-        with app.test_request_context("/workflows/run", method="POST"):
-            with pytest.raises(ProviderNotInitializeError):
-                WorkflowRunApi().post(_workflow_app(), _end_user())
+        with (
+            app.test_request_context("/workflows/run", method="POST"),
+            pytest.raises(ProviderNotInitializeError),
+        ):
+            WorkflowRunApi().post(_workflow_app(), _end_user())
 
     @patch(
         "controllers.web.workflow.AppGenerateService.generate",
@@ -82,9 +83,11 @@ class TestWorkflowRunApi:
         empty_inputs: dict[str, object] = {}
         mock_ns.payload = {"inputs": empty_inputs}
 
-        with app.test_request_context("/workflows/run", method="POST"):
-            with pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc_info:
-                WorkflowRunApi().post(_workflow_app(), _end_user())
+        with (
+            app.test_request_context("/workflows/run", method="POST"),
+            pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc_info,
+        ):
+            WorkflowRunApi().post(_workflow_app(), _end_user())
 
         assert exc_info.value.code == 403
         assert exc_info.value.error_code == "trigger_workflow_service_mode_unavailable"
@@ -98,9 +101,11 @@ class TestWorkflowRunApi:
         empty_inputs: dict[str, object] = {}
         mock_ns.payload = {"inputs": empty_inputs}
 
-        with app.test_request_context("/workflows/run", method="POST"):
-            with pytest.raises(ProviderQuotaExceededError):
-                WorkflowRunApi().post(_workflow_app(), _end_user())
+        with (
+            app.test_request_context("/workflows/run", method="POST"),
+            pytest.raises(ProviderQuotaExceededError),
+        ):
+            WorkflowRunApi().post(_workflow_app(), _end_user())
 
 
 # ---------------------------------------------------------------------------
@@ -108,9 +113,11 @@ class TestWorkflowRunApi:
 # ---------------------------------------------------------------------------
 class TestWorkflowTaskStopApi:
     def test_wrong_mode_raises(self, app: Flask) -> None:
-        with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
-            with pytest.raises(NotWorkflowAppError):
-                WorkflowTaskStopApi().post(_chat_app(), _end_user(), "task-1")
+        with (
+            app.test_request_context("/workflows/tasks/task-1/stop", method="POST"),
+            pytest.raises(NotWorkflowAppError),
+        ):
+            WorkflowTaskStopApi().post(_chat_app(), _end_user(), "task-1")
 
     @patch("controllers.web.workflow.AppTaskService.stop_workflow_task")
     def test_stop_passes_app_scope(self, stop: MagicMock, app: Flask) -> None:

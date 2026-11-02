@@ -101,8 +101,13 @@ def test_concurrent_and_sequential_calls_refresh_once() -> None:
     assert lock.keys == [("tool", "workspace", "credential")] * 4
 
 
-@pytest.mark.parametrize("expires_at", [-1, int(time.time()) + 3600])
+# Worker clocks can differ during collection, so case IDs must not contain timestamps.
+@pytest.mark.parametrize("expires_at", [-1, int(time.time()) + 3600], ids=["no-expiry", "future-expiry"])
 def test_valid_credentials_do_not_acquire_a_lock(expires_at: int) -> None:
+    """Preconditions: Credentials have no expiry or expire after the current time.
+
+    Postconditions: Resolution takes no refresh lock and performs no refresh or write.
+    """
     store, runtime, lock = (
         CredentialStore(_record(expires_at=expires_at)),
         CredentialRuntime(),

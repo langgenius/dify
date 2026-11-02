@@ -1354,13 +1354,15 @@ class TestKnowledgeFsProductControllersCases:
     @staticmethod
     def test_small_file_console_bff_maps_oversize_to_413() -> None:
         app = Flask(__name__)
-        with app.test_request_context(
-            method="POST",
-            data={"file": (BytesIO(b"large"), "large.bin")},
-            content_type="multipart/form-data",
+        with (
+            app.test_request_context(
+                method="POST",
+                data={"file": (BytesIO(b"large"), "large.bin")},
+                content_type="multipart/form-data",
+            ),
+            pytest.raises(KnowledgeFSProductRequestRejectedError) as oversized,
         ):
-            with pytest.raises(KnowledgeFSProductRequestRejectedError) as oversized:
-                console_resources._read_small_file_body(4)
+            console_resources._read_small_file_body(4)
         assert oversized.value.status_code == 413
 
         @console_resources._knowledge_fs_errors
@@ -4091,14 +4093,16 @@ class TestKnowledgeFsResourceDelegationCases:
         from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 
         app = Flask(__name__)
-        with app.test_request_context(
-            "/",
-            method="POST",
-            data=b"x",
-            environ_overrides={"CONTENT_LENGTH": str(64 * 1024 + 2)},
+        with (
+            app.test_request_context(
+                "/",
+                method="POST",
+                data=b"x",
+                environ_overrides={"CONTENT_LENGTH": str(64 * 1024 + 2)},
+            ),
+            pytest.raises(KnowledgeFSProductRequestRejectedError) as too_large,
         ):
-            with pytest.raises(KnowledgeFSProductRequestRejectedError) as too_large:
-                console_resources._read_small_file_body(1)
+            console_resources._read_small_file_body(1)
         assert too_large.value.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE
 
         malformed_payloads = (
@@ -4107,9 +4111,11 @@ class TestKnowledgeFsResourceDelegationCases:
             {"file": (BytesIO(b""), "empty.txt")},
         )
         for payload in malformed_payloads:
-            with app.test_request_context("/", method="POST", data=payload, content_type="multipart/form-data"):
-                with pytest.raises(KnowledgeFSProductRequestRejectedError) as rejected:
-                    console_resources._read_small_file_body(10)
+            with (
+                app.test_request_context("/", method="POST", data=payload, content_type="multipart/form-data"),
+                pytest.raises(KnowledgeFSProductRequestRejectedError) as rejected,
+            ):
+                console_resources._read_small_file_body(10)
             assert rejected.value.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
     @staticmethod

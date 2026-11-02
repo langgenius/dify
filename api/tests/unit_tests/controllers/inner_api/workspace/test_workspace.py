@@ -57,9 +57,8 @@ class TestResourceDeletionCases:
             "application_services",
             lambda: SimpleNamespace(workspaces=SimpleNamespace(resource_cleanup=service)),
         )
-        with app.test_request_context(method="DELETE"):
-            with pytest.raises(InnerApiUnauthorizedError):
-                controller.EnterpriseWorkspaceResourceDeletion().delete(WORKSPACE_ID)
+        with app.test_request_context(method="DELETE"), pytest.raises(InnerApiUnauthorizedError):
+            controller.EnterpriseWorkspaceResourceDeletion().delete(WORKSPACE_ID)
         service.cleanup.assert_not_called()
 
     @staticmethod
@@ -225,9 +224,11 @@ class TestWorkspaceCases:
         ],
     ) -> None:
         config_overrides(INNER_API=True, INNER_API_KEY="secret", DEPLOYMENT_EDITION="CLOUD")
-        with app.test_request_context(method="POST", json={}, headers={"X-Inner-Api-Key": "secret"}):
-            with pytest.raises(UnprocessableEntity):
-                resource().post()
+        with (
+            app.test_request_context(method="POST", json={}, headers={"X-Inner-Api-Key": "secret"}),
+            pytest.raises(UnprocessableEntity),
+        ):
+            resource().post()
         provisioning.create.assert_not_called()
         provisioning.join_member.assert_not_called()
 
@@ -236,9 +237,8 @@ class TestWorkspaceCases:
         app: Flask, provisioning: Mock, config_overrides: Callable[..., None]
     ) -> None:
         config_overrides(INNER_API=True, INNER_API_KEY="secret", DEPLOYMENT_EDITION="CLOUD")
-        with app.test_request_context(method="POST", json={}):
-            with pytest.raises(InnerApiUnauthorizedError):
-                controller.EnterpriseWorkspace().post()
+        with app.test_request_context(method="POST", json={}), pytest.raises(InnerApiUnauthorizedError):
+            controller.EnterpriseWorkspace().post()
         provisioning.create.assert_not_called()
 
     @staticmethod

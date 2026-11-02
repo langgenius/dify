@@ -1387,9 +1387,11 @@ class TestStreamablehttpClientContextManagerNew:
             raise RuntimeError("connection failed")
 
         monkeypatch.setattr("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client", fail)
-        with pytest.raises(RuntimeError, match="connection failed"):
-            with streamablehttp_client("http://example.com/mcp"):
-                pytest.fail("Client factory failure must prevent context entry")
+        with (
+            pytest.raises(RuntimeError, match="connection failed"),
+            streamablehttp_client("http://example.com/mcp"),
+        ):
+            pytest.fail("Client factory failure must prevent context entry")
 
     def test_timedelta_args_accepted(self, client: httpx.Client):
         with streamablehttp_client(

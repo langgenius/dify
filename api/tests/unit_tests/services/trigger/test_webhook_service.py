@@ -263,14 +263,14 @@ class TestWebhookServiceCases:
                     "services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async",
                     side_effect=quota_error,
                 ) as mock_trigger_workflow_async,
+                pytest.raises(QuotaExceededError) as exc_info,
             ):
-                with pytest.raises(QuotaExceededError) as exc_info:
-                    WebhookService.trigger_workflow_execution(
-                        webhook_trigger,
-                        {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
-                        workflow,
-                        end_users=_EndUserServiceStub(_end_user()),
-                    )
+                WebhookService.trigger_workflow_execution(
+                    webhook_trigger,
+                    {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
+                    workflow,
+                    end_users=_EndUserServiceStub(_end_user()),
+                )
 
             assert exc_info.value is quota_error
             quota_charge.refund.assert_called_once_with()
@@ -1027,9 +1027,11 @@ class TestWebhookServiceAdditionalCases:
 
             apply_config_overrides(monkeypatch, WEBHOOK_REQUEST_BODY_MAX_SIZE=1)
 
-            with flask_app.test_request_context("/webhook", method="POST", data="ab"):
-                with pytest.raises(RequestEntityTooLarge):
-                    WebhookService.extract_webhook_data(_workflow_trigger())
+            with (
+                flask_app.test_request_context("/webhook", method="POST", data="ab"),
+                pytest.raises(RequestEntityTooLarge),
+            ):
+                WebhookService.extract_webhook_data(_workflow_trigger())
 
         def test_extract_octet_stream_body_should_return_none_when_empty_payload(self, flask_app: Flask) -> None:
             webhook_trigger = _workflow_trigger()

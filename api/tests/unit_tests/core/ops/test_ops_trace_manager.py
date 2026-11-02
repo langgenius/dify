@@ -253,9 +253,11 @@ class TestLookupHelpersCases:
         tables = [model.metadata.tables[model.__tablename__] for model in models]
         TypeBase.metadata.create_all(sqlite_engine, tables=tables)
 
-        with patch.object(type(db), "engine", new_callable=PropertyMock, return_value=sqlite_engine):
-            with Session(sqlite_engine, expire_on_commit=False) as session:
-                yield session
+        with (
+            patch.object(type(db), "engine", new_callable=PropertyMock, return_value=sqlite_engine),
+            Session(sqlite_engine, expire_on_commit=False) as session,
+        ):
+            yield session
 
     # ---------------------------------------------------------------------------
     # _lookup_app_and_workspace_names
@@ -1073,9 +1075,11 @@ class TestOpsTraceManagerCases:
             for cached_name in list(sys.modules):
                 if cached_name.partition(".")[0] in {"dify_trace_weave", "weave"}:
                     del sys.modules[cached_name]
-            with patch.dict(sys.modules, {module_name: None}):
-                with pytest.raises(TraceProviderNotInstalledError, match=f"weave.*{module_name}") as caught:
-                    module.OpsTraceProviderConfigMap()["weave"]
+            with (
+                patch.dict(sys.modules, {module_name: None}),
+                pytest.raises(TraceProviderNotInstalledError, match=f"weave.*{module_name}") as caught,
+            ):
+                module.OpsTraceProviderConfigMap()["weave"]
 
         cause = caught.value.__cause__
         assert isinstance(cause, ModuleNotFoundError)

@@ -220,9 +220,11 @@ def test_get_snippet_detail_raises_when_missing(app: Flask, monkeypatch: pytest.
     api = snippets_module.CustomizedSnippetDetailApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/workspaces/current/customized-snippets/snippet-1"):
-        with pytest.raises(NotFound, match="Snippet not found"):
-            handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
+    with (
+        app.test_request_context("/workspaces/current/customized-snippets/snippet-1"),
+        pytest.raises(NotFound, match="Snippet not found"),
+    ):
+        handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
 
 def test_get_snippet_detail_returns_snippet(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
@@ -344,13 +346,15 @@ def test_patch_snippet_does_not_report_a_committed_write_as_a_bad_request(
     api = snippets_module.CustomizedSnippetDetailApi()
     handler = unwrap(api.patch)
 
-    with app.test_request_context(
-        "/workspaces/current/customized-snippets/snippet-1",
-        method="PATCH",
-        json={"name": "New"},
+    with (
+        app.test_request_context(
+            "/workspaces/current/customized-snippets/snippet-1",
+            method="PATCH",
+            json={"name": "New"},
+        ),
+        pytest.raises(ValidationError),
     ):
-        with pytest.raises(ValidationError):
-            handler(api, req_data, sqlite_session, "tenant-1", user, snippet_id="snippet-1")
+        handler(api, req_data, sqlite_session, "tenant-1", user, snippet_id="snippet-1")
 
     assert _persisted_name(sqlite_session) == "New"
 
@@ -382,13 +386,15 @@ def test_patch_snippet_does_not_persist_a_rejected_update(
     def patch_through_decorator(resource, session: Session, snippet_id: str):
         return view(resource, req_data, session, "tenant-1", user, snippet_id=snippet_id)
 
-    with app.test_request_context(
-        "/workspaces/current/customized-snippets/snippet-1",
-        method="PATCH",
-        json={"name": "New"},
+    with (
+        app.test_request_context(
+            "/workspaces/current/customized-snippets/snippet-1",
+            method="PATCH",
+            json={"name": "New"},
+        ),
+        pytest.raises(BadRequest, match="name already in use"),
     ):
-        with pytest.raises(BadRequest, match="name already in use"):
-            patch_through_decorator(api, snippet_id="snippet-1")
+        patch_through_decorator(api, snippet_id="snippet-1")
 
     assert _persisted_name(sqlite_session) == "Snippet"
 
@@ -495,9 +501,11 @@ def test_export_snippet_raises_not_found_for_missing_workflow(
     api = snippets_module.CustomizedSnippetExportApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/workspaces/current/customized-snippets/snippet-1/export?workflow_id=workflow-1"):
-        with pytest.raises(NotFound, match="Missing published workflow workflow-1"):
-            handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
+    with (
+        app.test_request_context("/workspaces/current/customized-snippets/snippet-1/export?workflow_id=workflow-1"),
+        pytest.raises(NotFound, match="Missing published workflow workflow-1"),
+    ):
+        handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
 
 @pytest.mark.usefixtures("app_query_services")
@@ -594,9 +602,11 @@ def test_check_dependencies_raises_when_snippet_missing(
     api = snippets_module.CustomizedSnippetCheckDependenciesApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/workspaces/current/customized-snippets/snippet-1/check-dependencies"):
-        with pytest.raises(NotFound, match="Snippet not found"):
-            handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
+    with (
+        app.test_request_context("/workspaces/current/customized-snippets/snippet-1/check-dependencies"),
+        pytest.raises(NotFound, match="Snippet not found"),
+    ):
+        handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
 
 @pytest.mark.usefixtures("app_query_services")
@@ -632,12 +642,14 @@ def test_increment_use_count_raises_when_snippet_missing(
     api = snippets_module.CustomizedSnippetUseCountIncrementApi()
     handler = unwrap(api.post)
 
-    with app.test_request_context(
-        "/workspaces/current/customized-snippets/snippet-1/use-count/increment",
-        method="POST",
+    with (
+        app.test_request_context(
+            "/workspaces/current/customized-snippets/snippet-1/use-count/increment",
+            method="POST",
+        ),
+        pytest.raises(NotFound, match="Snippet not found"),
     ):
-        with pytest.raises(NotFound, match="Snippet not found"):
-            handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
+        handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
 
 def test_increment_use_count_returns_refreshed_count(

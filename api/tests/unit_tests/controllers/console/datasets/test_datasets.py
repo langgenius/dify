@@ -319,9 +319,11 @@ def test_new_source_estimate_maps_application_errors(
     )
     context = RequestContext("request-1", None, "account-1", "workspace-1")
 
-    with patch("controllers.console.datasets.datasets.application_services", return_value=registry):
-        with pytest.raises(expected_http_error):
-            method(api, payload, context)
+    with (
+        patch("controllers.console.datasets.datasets.application_services", return_value=registry),
+        pytest.raises(expected_http_error),
+    ):
+        method(api, payload, context)
 
 
 @pytest.mark.parametrize(

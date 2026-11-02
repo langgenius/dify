@@ -74,9 +74,11 @@ def test_invalid_image_signature_does_not_query_or_load_file(
     lookup = mocker.spy(files, "get_by_id")
     load_stream = mocker.spy(storage, "load_stream")
     load_once = mocker.spy(storage, "load_once")
-    with patch("services.upload_file_delivery_service.file_helpers.verify_image_signature", return_value=False):
-        with pytest.raises(UploadFileDeliveryNotFoundError):
-            service.get_signed_image_preview(file_id="file-id", timestamp="1", nonce="nonce", sign="invalid")
+    with (
+        patch("services.upload_file_delivery_service.file_helpers.verify_image_signature", return_value=False),
+        pytest.raises(UploadFileDeliveryNotFoundError),
+    ):
+        service.get_signed_image_preview(file_id="file-id", timestamp="1", nonce="nonce", sign="invalid")
 
     lookup.assert_not_called()
     load_stream.assert_not_called()
@@ -92,9 +94,11 @@ def test_invalid_file_signature_does_not_query_or_load_file(
     lookup = mocker.spy(files, "get_by_id")
     load_stream = mocker.spy(storage, "load_stream")
     load_once = mocker.spy(storage, "load_once")
-    with patch("services.upload_file_delivery_service.file_helpers.verify_file_signature", return_value=False):
-        with pytest.raises(UploadFileDeliveryNotFoundError):
-            service.get_signed_file_preview(file_id="file-id", timestamp="1", nonce="nonce", sign="invalid")
+    with (
+        patch("services.upload_file_delivery_service.file_helpers.verify_file_signature", return_value=False),
+        pytest.raises(UploadFileDeliveryNotFoundError),
+    ):
+        service.get_signed_file_preview(file_id="file-id", timestamp="1", nonce="nonce", sign="invalid")
 
     lookup.assert_not_called()
     load_stream.assert_not_called()
@@ -125,9 +129,11 @@ def test_signed_image_preview_rejects_non_image_before_loading(
     mocker: MockerFixture,
 ) -> None:
     load_stream = mocker.spy(storage, "load_stream")
-    with patch("services.upload_file_delivery_service.file_helpers.verify_image_signature", return_value=True):
-        with pytest.raises(UnsupportedFileTypeError):
-            service.get_signed_image_preview(file_id="text-id", timestamp="1", nonce="nonce", sign="valid")
+    with (
+        patch("services.upload_file_delivery_service.file_helpers.verify_image_signature", return_value=True),
+        pytest.raises(UnsupportedFileTypeError),
+    ):
+        service.get_signed_image_preview(file_id="text-id", timestamp="1", nonce="nonce", sign="valid")
 
     load_stream.assert_not_called()
 
@@ -153,9 +159,11 @@ def test_signed_file_preview_reports_missing_file(
     mocker: MockerFixture,
 ) -> None:
     load_stream = mocker.spy(storage, "load_stream")
-    with patch("services.upload_file_delivery_service.file_helpers.verify_file_signature", return_value=True):
-        with pytest.raises(UploadFileDeliveryNotFoundError):
-            service.get_signed_file_preview(file_id="missing", timestamp="1", nonce="nonce", sign="valid")
+    with (
+        patch("services.upload_file_delivery_service.file_helpers.verify_file_signature", return_value=True),
+        pytest.raises(UploadFileDeliveryNotFoundError),
+    ):
+        service.get_signed_file_preview(file_id="missing", timestamp="1", nonce="nonce", sign="valid")
 
     load_stream.assert_not_called()
 
@@ -204,8 +212,10 @@ def test_storage_error_is_not_converted(
     storage_error = OSError("storage unavailable")
     mocker.patch.object(storage, "load_stream", side_effect=storage_error)
 
-    with patch("services.upload_file_delivery_service.file_helpers.verify_file_signature", return_value=True):
-        with pytest.raises(OSError, match="storage unavailable") as error_info:
-            service.get_signed_file_preview(file_id="text-id", timestamp="1", nonce="nonce", sign="valid")
+    with (
+        patch("services.upload_file_delivery_service.file_helpers.verify_file_signature", return_value=True),
+        pytest.raises(OSError, match="storage unavailable") as error_info,
+    ):
+        service.get_signed_file_preview(file_id="text-id", timestamp="1", nonce="nonce", sign="valid")
 
     assert error_info.value is storage_error

@@ -28,10 +28,12 @@ def test_active_workflow_task_tracks_count_during_context() -> None:
 
 
 def test_active_workflow_task_rejects_duplicate_task_id() -> None:
-    with active_workflow_task("task-a"):
-        with pytest.raises(ValueError, match="already active"):
-            with active_workflow_task("task-a"):
-                pass
+    with (
+        active_workflow_task("task-a"),
+        pytest.raises(ValueError, match="already active"),
+        active_workflow_task("task-a"),
+    ):
+        pass
 
 
 def test_managed_stream_waits_for_active_worker_cleanup() -> None:

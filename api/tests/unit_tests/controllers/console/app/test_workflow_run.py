@@ -122,9 +122,11 @@ class TestWorkflowPauseDetailsApiCases:
         api = workflow_run_module.ConsoleWorkflowPauseDetailsApi()
         handler = unwrap(api.get)
 
-        with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
-            with pytest.raises(NotFoundError, match="Workflow run not found"):
-                handler(api, request_context, workflow_run_id="run-1")
+        with (
+            app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"),
+            pytest.raises(NotFoundError, match="Workflow run not found"),
+        ):
+            handler(api, request_context, workflow_run_id="run-1")
 
         workflow_runs.get_pause_details.assert_called_once_with(
             request_context,
@@ -449,9 +451,11 @@ class TestWorkflowRunApiCases:
         api = workflow_run_module.WorkflowRunDetailApi()
         handler = unwrap(api.get)
 
-        with app.test_request_context("/apps/app-1/workflow-runs/run-1", method="GET"):
-            with pytest.raises(NotFoundError, match="Workflow run not found"):
-                handler(api, sqlite_session, request_context, app_model=_app(), run_id="run-1")
+        with (
+            app.test_request_context("/apps/app-1/workflow-runs/run-1", method="GET"),
+            pytest.raises(NotFoundError, match="Workflow run not found"),
+        ):
+            handler(api, sqlite_session, request_context, app_model=_app(), run_id="run-1")
 
         workflow_runs.get_workflow_run.assert_called_once_with(
             request_context,

@@ -24,9 +24,8 @@ PAYLOAD = {
 
 
 def test_vector_controller_rejects_unauthenticated_requests(app: Flask) -> None:
-    with app.test_request_context(json=PAYLOAD):
-        with pytest.raises(NotFound):
-            KnowledgeFSVectorApi().post()
+    with app.test_request_context(json=PAYLOAD), pytest.raises(NotFound):
+        KnowledgeFSVectorApi().post()
 
 
 def test_vector_controller_validates_before_opening_backend(app: Flask) -> None:
@@ -76,9 +75,11 @@ def test_vector_controller_accepts_only_configured_inner_key(app: Flask, config_
         ),
     ):
         for key in [None, "wrong-key"]:
-            with app.test_request_context(json=PAYLOAD, headers={"X-Inner-Api-Key": key} if key else {}):
-                with pytest.raises(NotFound):
-                    KnowledgeFSVectorApi().post()
+            with (
+                app.test_request_context(json=PAYLOAD, headers={"X-Inner-Api-Key": key} if key else {}),
+                pytest.raises(NotFound),
+            ):
+                KnowledgeFSVectorApi().post()
         client.assert_not_called()
         with app.test_request_context(json=PAYLOAD, headers={"X-Inner-Api-Key": "trusted-key"}):
             assert KnowledgeFSVectorApi().post() == {"points": [], "matches": []}
@@ -94,9 +95,9 @@ def test_vector_controller_reports_quota_failure(app: Flask) -> None:
             "controllers.inner_api.knowledge_fs.vectors.execute_vector_request",
             side_effect=VectorSpaceAdmissionError("vector quota exceeded"),
         ),
+        pytest.raises(KnowledgeFSVectorQuotaExceededError, match="vector quota exceeded"),
     ):
-        with pytest.raises(KnowledgeFSVectorQuotaExceededError, match="vector quota exceeded"):
-            inspect.unwrap(handler.post)(handler)
+        inspect.unwrap(handler.post)(handler)
 
 
 @pytest.mark.parametrize("operation", ["get", "search", "delete", "upsert"])
