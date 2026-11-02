@@ -1503,6 +1503,10 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_WORKFLOW_DRAFT_FILE_CLEANUP_TASK: bool = Field(
+        description="Enable recovery of persisted workflow draft upload cleanup requests",
+        default=True,
+    )
     ENABLE_APPLICATION_TRACE_RECONCILE_TASK: bool = Field(
         description="Enable periodic application trace recovery and retention cleanup when Agent tracing is enabled",
         default=True,
