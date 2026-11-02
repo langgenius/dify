@@ -47,7 +47,7 @@ dependencies = [
     "werkzeug>=3.1.7,<4.0.0",
     "zstandard==0.25.0",
     # Emerging: newer and fast-moving, use compatible pins
-    "alibabacloud-dingtalk>=2.2.54,<3.0.0",
+    "alibabacloud-dingtalk>=2.2.65,<3.0.0",
     "botbuilder-schema>=4.17.0,<5.0.0",
     "botframework-connector>=4.17.0,<5.0.0",
     "fastopenapi[flask]==0.7.0",
@@ -194,7 +194,7 @@ dev = [
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
     "pyrefly>=1.4.0",
-    "xinference-client>=2.7.0",
+    "xinference-client>=4.1.0",
     "types-pytz>=2026.3.1.20260727",
     "types-bleach>=6.4.0.20260728",
     "types-croniter>=6.2.4.20260711",
@@ -298,7 +298,7 @@ vdb-vastbase = ["dify-vdb-vastbase"]
 vdb-vikingdb = ["dify-vdb-vikingdb"]
 vdb-weaviate = ["dify-vdb-weaviate"]
 # Optional client used by some tests / integrations (not a vector backend plugin)
-vdb-xinference = ["xinference-client>=2.7.0,<3.0.0"]
+vdb-xinference = ["xinference-client>=4.1.0,<5.0.0"]
 
 trace-all = [
     "dify-trace-aliyun",
