@@ -86,6 +86,7 @@ from services.errors.file import FileNotExistsError
 from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.knowledge.dataset_access import DatasetAccessRecord, DatasetAccessSnapshot, can_access_dataset
+from services.knowledge.entities.datasets import DatasetAvailabilityFilter
 from services.knowledge.entities.document_creation import DocumentCreationDataset, DocumentIndexingJobs
 from services.knowledge.entities.knowledge_entities import (
     KnowledgeConfig,
@@ -157,13 +158,26 @@ class DatasetService:
         *,
         tags: TagTargetQuery,
         service_api_grant: DatasetServiceApiGrant | None = None,
+        availability: DatasetAvailabilityFilter = DatasetAvailabilityFilter.ALL,
+        unavailable_dataset_ids: set[str] | None = None,
     ):
-        """Return datasets under account or Dataset Service API visibility.
+        """Return visible datasets under account, Dataset Service API or availability constraints.
 
         Service API callers skip account ACLs while retaining the tenant boundary.
         A resource-scoped grant further restricts the query to its authorized IDs.
+
+        Preconditions: ``unavailable_dataset_ids`` holds the tenant dataset ids
+        whose embedding configuration is unusable; it is required when
+        ``availability`` is not ``all`` and is ignored otherwise.
+        Postconditions: the returned page and ``total`` reflect every filter,
+        including availability, so paging never disagrees with the totals.
         """
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
+
+        if availability is DatasetAvailabilityFilter.UNAVAILABLE:
+            query = query.where(Dataset.id.in_(sorted(unavailable_dataset_ids or ())))
+        elif availability is DatasetAvailabilityFilter.AVAILABLE and unavailable_dataset_ids:
+            query = query.where(Dataset.id.notin_(sorted(unavailable_dataset_ids)))
 
         if service_api_grant is not None:
             if service_api_grant.tenant_id != tenant_id:
@@ -289,11 +303,26 @@ class DatasetService:
         accessible_dataset_ids: list[str] | None = None,
         *,
         session: Session,
+        availability: DatasetAvailabilityFilter = DatasetAvailabilityFilter.ALL,
+        unavailable_dataset_ids: set[str] | None = None,
     ):
+        """Return the requested visible datasets for a tenant.
+
+        Preconditions: ``unavailable_dataset_ids`` holds the requested dataset
+        ids whose embedding configuration is unusable; it is required when
+        ``availability`` is not ``all`` and is ignored otherwise.
+        Postconditions: the returned rows and ``total`` reflect the id,
+        accessibility and availability filters together.
+        """
         # Check if ids is not empty to avoid WHERE false condition
         if not ids:
             return [], 0
         stmt = select(Dataset).where(Dataset.id.in_(ids), Dataset.tenant_id == tenant_id)
+
+        if availability is DatasetAvailabilityFilter.UNAVAILABLE:
+            stmt = stmt.where(Dataset.id.in_(sorted(unavailable_dataset_ids or ())))
+        elif availability is DatasetAvailabilityFilter.AVAILABLE and unavailable_dataset_ids:
+            stmt = stmt.where(Dataset.id.notin_(sorted(unavailable_dataset_ids)))
 
         if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
             requested_dataset_ids = set(ids)

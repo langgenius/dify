@@ -58,6 +58,7 @@ from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDupl
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.datasets.application import DatasetListFilter
 from services.knowledge.datasets.upgrades import KnowledgeFSUpgradeUnavailableError
+from services.knowledge.entities.datasets import DatasetAvailabilityFilter
 from services.knowledge.entities.indexing_estimate import (
     NewEstimateSource,
     NewSourcesEstimateCommand,
@@ -283,6 +284,10 @@ class ConsoleDatasetListQuery(BaseModel):
         default_factory=list,
         max_length=100,
         description="Filter by creator account IDs",
+    )
+    availability: DatasetAvailabilityFilter = Field(
+        default=DatasetAvailabilityFilter.ALL,
+        description="Filter by knowledge base availability status",
     )
 
 

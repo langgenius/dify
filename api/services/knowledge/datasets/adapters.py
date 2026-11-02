@@ -1,14 +1,16 @@
 """Session-owning dataset administration adapters."""
 
-from collections.abc import Generator, Mapping
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.pagination import clamp_pagination
 from machinery.context import RequestContext
@@ -27,7 +29,12 @@ from services.knowledge.datasets.application import (
     DatasetListFilter,
     DatasetVisibility,
 )
-from services.knowledge.entities.datasets import DatasetDetailRecord, DatasetPage
+from services.knowledge.datasets.availability import is_embedding_available
+from services.knowledge.entities.datasets import (
+    DatasetAvailabilityFilter,
+    DatasetDetailRecord,
+    DatasetPage,
+)
 from services.knowledge.resource_scope import DatasetRef
 from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.rbac import contracts as rbac_contracts
@@ -62,6 +69,60 @@ def _normalize_provider(item: DatasetDetailRecord) -> DatasetDetailRecord:
     if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
         item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
     return item
+
+
+def _canonical_embedding_provider(indexing_technique: str | None, embedding_model_provider: str | None) -> str | None:
+    """Return a stored provider id in the canonical form used by list responses.
+
+    Preconditions: both values come from the same dataset row.
+    Postconditions: an empty value is preserved and a value the plugin identifier
+    rejects is returned unchanged so one malformed legacy row cannot fail a whole
+    filtered list request. No state is mutated.
+    """
+    if indexing_technique != IndexTechniqueType.HIGH_QUALITY or not embedding_model_provider:
+        return embedding_model_provider
+    try:
+        return str(ModelProviderID(embedding_model_provider))
+    except (ValueError, NotFound):
+        return embedding_model_provider
+
+
+def _unavailable_dataset_ids(
+    session: Session,
+    *,
+    tenant_id: str,
+    embedding_models: set[str],
+    dataset_ids: Sequence[str] | None = None,
+) -> set[str]:
+    """Return the tenant's dataset ids whose embedding configuration is unusable.
+
+    Preconditions: ``session`` is a read session, ``embedding_models`` holds the
+    workspace's active ``"<model>:<provider>"`` keys, and ``dataset_ids`` limits
+    the scan to a requested id set (``None`` scans every dataset of the tenant).
+    Postconditions: returns the ids for which the shared list availability rule
+    is false. The scan reads configuration columns only and never mutates state.
+    """
+    stmt = select(
+        Dataset.id,
+        Dataset.indexing_technique,
+        Dataset.embedding_model,
+        Dataset.embedding_model_provider,
+    ).where(Dataset.tenant_id == tenant_id)
+    if dataset_ids is not None:
+        stmt = stmt.where(Dataset.id.in_(dataset_ids))
+    return {
+        row.id
+        for row in session.execute(stmt)
+        if not is_embedding_available(
+            indexing_technique=row.indexing_technique,
+            embedding_model=row.embedding_model,
+            embedding_model_provider=_canonical_embedding_provider(
+                row.indexing_technique, row.embedding_model_provider
+            ),
+            embedding_models=embedding_models,
+            listing=True,
+        )
+    }
 
 
 def _status(document: Document, counts: tuple[int, int] | None = None) -> dict[str, Any]:
@@ -119,11 +180,34 @@ class SQLAlchemyDatasetOperations:
         return {f"{model.model}:{model.provider.provider}" for model in models}
 
     def list_datasets(
-        self, context: RequestContext, query: DatasetListFilter, accessible_ids: list[str] | None
+        self,
+        context: RequestContext,
+        query: DatasetListFilter,
+        accessible_ids: list[str] | None,
+        *,
+        embedding_models: set[str],
     ) -> DatasetPage:
+        """Return one filtered, paginated page of datasets for the active workspace.
+
+        Preconditions: ``embedding_models`` holds the workspace's active
+        ``"<model>:<provider>"`` keys. The availability filter is resolved before
+        pagination so page contents and ``total`` describe the same rows.
+        Postconditions: the page, ``total`` and ``has_more`` reflect the keyword,
+        tag, creator, permission and availability filters together.
+        """
         page, limit = clamp_pagination(query.page, query.limit, 100)
         with self._sessions() as session:
             account = load_actor(session, context)
+            unavailable_dataset_ids = (
+                None
+                if query.availability is DatasetAvailabilityFilter.ALL
+                else _unavailable_dataset_ids(
+                    session,
+                    tenant_id=context.active_workspace_id,
+                    embedding_models=embedding_models,
+                    dataset_ids=list(query.ids) if query.ids else None,
+                )
+            )
             if query.ids:
                 datasets, total = DatasetService.get_datasets_by_ids(
                     list(query.ids),
@@ -131,6 +215,8 @@ class SQLAlchemyDatasetOperations:
                     user=account,
                     accessible_dataset_ids=accessible_ids,
                     session=session,
+                    availability=query.availability,
+                    unavailable_dataset_ids=unavailable_dataset_ids,
                 )
             else:
                 datasets, total = DatasetService.get_datasets(
@@ -145,6 +231,8 @@ class SQLAlchemyDatasetOperations:
                     creator_ids=list(query.creator_ids),
                     tags=self._tags,
                     accessible_dataset_ids=accessible_ids,
+                    availability=query.availability,
+                    unavailable_dataset_ids=unavailable_dataset_ids,
                 )
             data = load_dataset_details(datasets, session=session)
             partial_ids = [item["id"] for item in data if item["permission"] == "partial_members"]
