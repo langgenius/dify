@@ -295,9 +295,10 @@ const ResourceInteraction = ({
   const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   const formId = useId()
   const actionId = activeInteraction.action_id
-  const [payload, setPayload] = useState<Record<string, unknown>>(() =>
-    getDefaultActionPayload(actionId, activeInteraction),
-  )
+  const payloadRef = useRef<Record<string, unknown> | null>(null)
+  if (payloadRef.current === null) {
+    payloadRef.current = getDefaultActionPayload(actionId, activeInteraction)
+  }
   const [pending, setPending] = useState(false)
   const card = activeInteraction.card
   const { renderText } = useBuilderText()
@@ -306,7 +307,7 @@ const ResourceInteraction = ({
     if (busy || pending) return
     setPending(true)
     try {
-      await submitInteraction(actionId, payload)
+      await submitInteraction(actionId, payloadRef.current!)
     } finally {
       setPending(false)
     }
@@ -343,7 +344,7 @@ const ResourceInteraction = ({
           item={card}
           busy={busy || pending}
           onActionPayloadChange={(changedActionId, nextPayload) => {
-            if (changedActionId === actionId) setPayload(nextPayload)
+            if (changedActionId === actionId) payloadRef.current = nextPayload
           }}
         />
       </form>
