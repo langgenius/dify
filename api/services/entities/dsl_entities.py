@@ -10,6 +10,25 @@ from core.plugin.entities.plugin import PluginDependency
 from core.tools.entities.tool_entities import EmojiIconDict, WorkflowToolParameterConfiguration
 from libs.helper import alphanumeric, uuid_value
 from models.model import App, AppMode, IconType
+from services.workflow.contracts import WorkflowSnapshot
+
+
+@dataclass(frozen=True, slots=True)
+class AppDslOverwriteTarget:
+    mode: AppMode
+    workflow: WorkflowSnapshot | None
+
+
+class AppDslOverwriteStore(Protocol):
+    def snapshot(
+        self, *, tenant_id: str, account_id: str, app_id: str, rbac_allowed: bool
+    ) -> AppDslOverwriteTarget | None:
+        """Authorize the target and materialize its encrypted draft in a short read session."""
+        ...
+
+    def load(self, *, tenant_id: str, account_id: str, app_id: str, rbac_allowed: bool) -> App | None:
+        """Recheck the target in the enclosing import transaction."""
+        ...
 
 
 class ImportMode(StrEnum):
