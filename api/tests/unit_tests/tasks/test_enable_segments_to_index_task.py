@@ -1,5 +1,5 @@
 import uuid
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
@@ -61,8 +61,12 @@ def indexed_segment(sqlite_session: Session) -> tuple[Dataset, Document, Documen
 @contextmanager
 def _record_transaction_events(
     sqlite_session_factory: sessionmaker[Session], phase_events: list[str]
-) -> Iterator[None]:
-    """Record real transaction boundaries from task-owned SQLite sessions."""
+) -> Generator[None]:
+    """Record real transaction boundaries from task-owned SQLite sessions.
+
+    Preconditions: the factory creates the test's sessions and phase_events is their event log.
+    Postconditions: commits and rollbacks are recorded; listeners are removed on every exit.
+    """
     session_type = sqlite_session_factory.class_
 
     def after_commit(_session: Session) -> None:

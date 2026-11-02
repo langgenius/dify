@@ -3,8 +3,8 @@ import os
 import uuid
 from typing import override
 
+import pytest
 import tablestore
-from _pytest.python_api import approx
 from dify_vdb_tablestore.tablestore_vector import (
     TableStoreConfig,
     TableStoreVector,
@@ -75,12 +75,17 @@ class TableStoreVectorTest(AbstractVectorTest):
 
     @override
     def search_by_full_text(self):
+        """Verify full-text filtering and optional normalized scores.
+
+        Preconditions: the integration fixture has indexed its example document.
+        Postconditions: filter and threshold assertions hold; backend failures propagate.
+        """
         super().search_by_full_text()
         docs = self.vector.search_by_full_text(get_example_text(), document_ids_filter=[self.example_doc_id])
         assert len(docs) == 1
         assert docs[0].metadata["doc_id"] == self.example_doc_id
         if self.tablestore_vector._config.normalize_full_text_bm25_score:
-            assert docs[0].metadata["score"] == approx(0.1214, abs=1e-3)
+            assert docs[0].metadata["score"] == pytest.approx(0.1214, abs=1e-3)
         else:
             assert docs[0].metadata.get("score") is None
 

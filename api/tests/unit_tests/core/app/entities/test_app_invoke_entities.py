@@ -3,6 +3,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import (
@@ -21,16 +23,27 @@ from core.app.layers.pause_state_persist_layer import (
     _WorkflowGenerateEntityWrapper,
 )
 from core.credit_usage import CreditUsageAppType
-from core.ops.ops_trace_manager import TraceQueueManager
 from models.model import AppMode
 
 
-class TraceQueueManagerStub(TraceQueueManager):
-    """Minimal TraceQueueManager stub that avoids Flask dependencies."""
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
 
-    def __init__(self):
-        # Skip parent initialization to avoid starting timers or accessing Flask globals.
-        pass
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope() -> TraceScope:
+    return TraceScope(
+        emitter=_TraceRecorder(),
+        tenant_id="tenant-id",
+        app_id="app-id",
+        user_id="user-id",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
 
 
 def _build_workflow_app_config(app_mode: AppMode) -> WorkflowUIBasedAppConfig:
@@ -42,7 +55,7 @@ def _build_workflow_app_config(app_mode: AppMode) -> WorkflowUIBasedAppConfig:
     )
 
 
-def _create_workflow_generate_entity(trace_manager: TraceQueueManager | None = None) -> WorkflowAppGenerateEntity:
+def _create_workflow_generate_entity(trace_scope: TraceScope) -> WorkflowAppGenerateEntity:
     return WorkflowAppGenerateEntity(
         user_from=UserFrom.ACCOUNT,
         task_id="workflow-task",
@@ -53,15 +66,13 @@ def _create_workflow_generate_entity(trace_manager: TraceQueueManager | None = N
         stream=True,
         invoke_from=InvokeFrom.DEBUGGER,
         call_depth=1,
-        trace_manager=trace_manager,
+        trace_scope=trace_scope,
         workflow_execution_id="workflow-exec-id",
         extras={"external_trace_id": "trace-id"},
     )
 
 
-def _create_advanced_chat_generate_entity(
-    trace_manager: TraceQueueManager | None = None,
-) -> AdvancedChatAppGenerateEntity:
+def _create_advanced_chat_generate_entity(trace_scope: TraceScope) -> AdvancedChatAppGenerateEntity:
     return AdvancedChatAppGenerateEntity(
         task_id="advanced-task",
         app_config=_build_workflow_app_config(AppMode.ADVANCED_CHAT),
@@ -73,37 +84,42 @@ def _create_advanced_chat_generate_entity(
         invoke_from=InvokeFrom.DEBUGGER,
         query="Explain serialization",
         extras={"auto_generate_conversation_name": True},
-        trace_manager=trace_manager,
+        trace_scope=trace_scope,
         workflow_run_id="workflow-run-id",
     )
 
 
-def test_workflow_app_generate_entity_roundtrip_excludes_trace_manager():
-    entity = _create_workflow_generate_entity(trace_manager=TraceQueueManagerStub())
+def test_workflow_app_generate_entity_roundtrip_excludes_trace_scope() -> None:
+    trace_scope = _trace_scope()
+    entity = _create_workflow_generate_entity(trace_scope=trace_scope)
 
     serialized = entity.model_dump_json()
     payload = json.loads(serialized)
 
-    assert "trace_manager" not in payload
+    assert entity.trace_scope is trace_scope
+    assert "trace_scope" not in payload
+    assert "trace_scope" not in repr(entity)
 
     restored = WorkflowAppGenerateEntity.model_validate_json(serialized)
 
     assert restored.model_dump() == entity.model_dump()
-    assert restored.trace_manager is None
+    assert restored.trace_scope is None
 
 
-def test_advanced_chat_generate_entity_roundtrip_excludes_trace_manager():
-    entity = _create_advanced_chat_generate_entity(trace_manager=TraceQueueManagerStub())
+def test_advanced_chat_generate_entity_roundtrip_excludes_trace_scope() -> None:
+    trace_scope = _trace_scope()
+    entity = _create_advanced_chat_generate_entity(trace_scope=trace_scope)
 
     serialized = entity.model_dump_json()
     payload = json.loads(serialized)
 
-    assert "trace_manager" not in payload
+    assert entity.trace_scope is trace_scope
+    assert "trace_scope" not in payload
 
     restored = AdvancedChatAppGenerateEntity.model_validate_json(serialized)
 
     assert restored.model_dump() == entity.model_dump()
-    assert restored.trace_manager is None
+    assert restored.trace_scope is None
 
 
 @pytest.mark.parametrize(
@@ -167,7 +183,7 @@ class ResumptionContextCase:
 
 
 def _workflow_resumption_case() -> tuple[WorkflowResumptionContext, type]:
-    entity = _create_workflow_generate_entity(trace_manager=TraceQueueManagerStub())
+    entity = _create_workflow_generate_entity(trace_scope=_trace_scope())
     context = WorkflowResumptionContext(
         serialized_graph_runtime_state=json.dumps({"state": "workflow"}),
         generate_entity=_WorkflowGenerateEntityWrapper(entity=entity),
@@ -176,7 +192,7 @@ def _workflow_resumption_case() -> tuple[WorkflowResumptionContext, type]:
 
 
 def _advanced_chat_resumption_case() -> tuple[WorkflowResumptionContext, type]:
-    entity = _create_advanced_chat_generate_entity(trace_manager=TraceQueueManagerStub())
+    entity = _create_advanced_chat_generate_entity(trace_scope=_trace_scope())
     context = WorkflowResumptionContext(
         serialized_graph_runtime_state=json.dumps({"state": "advanced"}),
         generate_entity=_AdvancedChatAppGenerateEntityWrapper(entity=entity),
@@ -201,7 +217,7 @@ def test_workflow_resumption_context_roundtrip(case: ResumptionContextCase):
     entity = restored.get_generate_entity()
     assert isinstance(entity, expected_type)
     assert entity.model_dump() == context.get_generate_entity().model_dump()
-    assert entity.trace_manager is None
+    assert entity.trace_scope is None
 
 
 def test_openapi_variant_present():

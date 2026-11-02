@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
@@ -241,8 +241,12 @@ def _load_balancing_config(
 
 
 @contextmanager
-def _raise_on_sql(engine: Engine, table_name: str, operation: str) -> Iterator[None]:
-    """Fail one table operation while production still owns a real transaction."""
+def _raise_on_sql(engine: Engine, table_name: str, operation: str) -> Generator[None]:
+    """Fail a matching SQL operation inside a production-owned transaction.
+
+    Preconditions: engine is the test engine and operation is an uppercase SQL verb.
+    Postconditions: matching statements raise; the listener is removed on every exit.
+    """
 
     def fail_target(_conn, _cursor, statement, _parameters, _context, _executemany):
         if statement.lstrip().upper().startswith(operation) and table_name in statement:
@@ -256,7 +260,12 @@ def _raise_on_sql(engine: Engine, table_name: str, operation: str) -> Iterator[N
 
 
 @contextmanager
-def _mock_cache_boundaries() -> Iterator[tuple[Mock, Mock]]:
+def _mock_cache_boundaries() -> Generator[tuple[Mock, Mock]]:
+    """Expose cache boundary patches while keeping provider behavior real.
+
+    Preconditions: the production cache attributes are available for patching.
+    Postconditions: both patches are restored on success or a propagated error.
+    """
     with (
         patch("core.entities.provider_configuration.ProviderCredentialsCache") as credentials_cache,
         patch.object(ProviderConfiguration, "_invalidate_provider_configuration_cache") as configuration_cache,
