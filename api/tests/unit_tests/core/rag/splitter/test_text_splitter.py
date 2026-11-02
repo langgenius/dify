@@ -2204,4 +2204,4 @@ def test_split_text_on_tokens_windows_with_overlap():
 
 def test_text_splitter_is_abstract():
     with pytest.raises(TypeError):
-        TextSplitter()  # type: ignore[abstract]
+        TextSplitter()
