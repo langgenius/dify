@@ -9,27 +9,27 @@ from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS
 
 
 class _DummyTFIDF:
-    def __init__(self):
+    def __init__(self) -> None:
         self.stop_words = set()
 
     @staticmethod
-    def extract_tags(sentence: str, top_k: int | None = 20, **kwargs):
+    def extract_tags(sentence: str, top_k: int | None = 20, **kwargs: object) -> list[str]:
         return ["alpha_beta", "during", "gamma"]
 
 
 def _install_fake_jieba_modules(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
     analyse_module: types.ModuleType,
     jieba_attrs: dict[str, object] | None = None,
     tfidf_module: types.ModuleType | None = None,
-):
+) -> None:
     jieba_module = types.ModuleType("jieba")
     jieba_module.__path__ = []
     if jieba_attrs:
         for key, value in jieba_attrs.items():
             setattr(jieba_module, key, value)
 
-    jieba_module.analyse = analyse_module
+    jieba_module.analyse = analyse_module  # pyrefly: ignore[missing-attribute]
     analyse_module.__package__ = "jieba"
 
     monkeypatch.setitem(sys.modules, "jieba", jieba_module)
@@ -40,10 +40,10 @@ def _install_fake_jieba_modules(
         monkeypatch.delitem(sys.modules, "jieba.analyse.tfidf", raising=False)
 
 
-def test_init_uses_existing_default_tfidf(monkeypatch: pytest.MonkeyPatch):
+def test_init_uses_existing_default_tfidf(monkeypatch: pytest.MonkeyPatch) -> None:
     analyse_module = types.ModuleType("jieba.analyse")
     default_tfidf = _DummyTFIDF()
-    analyse_module.default_tfidf = default_tfidf
+    analyse_module.default_tfidf = default_tfidf  # pyrefly: ignore[missing-attribute]
 
     _install_fake_jieba_modules(monkeypatch, analyse_module)
 
@@ -53,14 +53,14 @@ def test_init_uses_existing_default_tfidf(monkeypatch: pytest.MonkeyPatch):
     assert handler._tfidf.stop_words == STOPWORDS
 
 
-def test_load_tfidf_extractor_uses_tfidf_class_and_caches_default(monkeypatch: pytest.MonkeyPatch):
+def test_load_tfidf_extractor_uses_tfidf_class_and_caches_default(monkeypatch: pytest.MonkeyPatch) -> None:
     analyse_module = types.ModuleType("jieba.analyse")
-    analyse_module.default_tfidf = None
+    analyse_module.default_tfidf = None  # pyrefly: ignore[missing-attribute]
 
     class _TFIDFFactory(_DummyTFIDF):
         pass
 
-    analyse_module.TFIDF = _TFIDFFactory
+    analyse_module.TFIDF = _TFIDFFactory  # pyrefly: ignore[missing-attribute]
     _install_fake_jieba_modules(monkeypatch, analyse_module)
 
     handler = JiebaKeywordTableHandler()
@@ -69,16 +69,16 @@ def test_load_tfidf_extractor_uses_tfidf_class_and_caches_default(monkeypatch: p
     assert analyse_module.default_tfidf is handler._tfidf
 
 
-def test_load_tfidf_extractor_imports_from_tfidf_submodule(monkeypatch: pytest.MonkeyPatch):
+def test_load_tfidf_extractor_imports_from_tfidf_submodule(monkeypatch: pytest.MonkeyPatch) -> None:
     analyse_module = types.ModuleType("jieba.analyse")
-    analyse_module.default_tfidf = None
+    analyse_module.default_tfidf = None  # pyrefly: ignore[missing-attribute]
 
     tfidf_module = types.ModuleType("jieba.analyse.tfidf")
 
     class _ImportedTFIDF(_DummyTFIDF):
         pass
 
-    tfidf_module.TFIDF = _ImportedTFIDF
+    tfidf_module.TFIDF = _ImportedTFIDF  # pyrefly: ignore[missing-attribute]
     _install_fake_jieba_modules(monkeypatch, analyse_module, tfidf_module=tfidf_module)
 
     handler = JiebaKeywordTableHandler()
@@ -87,9 +87,9 @@ def test_load_tfidf_extractor_imports_from_tfidf_submodule(monkeypatch: pytest.M
     assert analyse_module.default_tfidf is handler._tfidf
 
 
-def test_load_tfidf_extractor_falls_back_when_tfidf_unavailable(monkeypatch: pytest.MonkeyPatch):
+def test_load_tfidf_extractor_falls_back_when_tfidf_unavailable(monkeypatch: pytest.MonkeyPatch) -> None:
     analyse_module = types.ModuleType("jieba.analyse")
-    analyse_module.default_tfidf = None
+    analyse_module.default_tfidf = None  # pyrefly: ignore[missing-attribute]
     _install_fake_jieba_modules(monkeypatch, analyse_module)
 
     handler = JiebaKeywordTableHandler()
@@ -98,7 +98,7 @@ def test_load_tfidf_extractor_falls_back_when_tfidf_unavailable(monkeypatch: pyt
     assert fallback_keywords == ["two"]
 
 
-def test_build_fallback_tfidf_uses_lcut_when_available(monkeypatch: pytest.MonkeyPatch):
+def test_build_fallback_tfidf_uses_lcut_when_available(monkeypatch: pytest.MonkeyPatch) -> None:
     analyse_module = types.ModuleType("jieba.analyse")
     _install_fake_jieba_modules(monkeypatch, analyse_module, jieba_attrs={"lcut": lambda _: ["x", "x", "y"]})
 
@@ -107,7 +107,7 @@ def test_build_fallback_tfidf_uses_lcut_when_available(monkeypatch: pytest.Monke
     assert tfidf.extract_tags("ignored", topK=1) == ["x"]
 
 
-def test_build_fallback_tfidf_uses_cut_when_lcut_is_missing(monkeypatch: pytest.MonkeyPatch):
+def test_build_fallback_tfidf_uses_cut_when_lcut_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     analyse_module = types.ModuleType("jieba.analyse")
     _install_fake_jieba_modules(
         monkeypatch,
@@ -120,7 +120,7 @@ def test_build_fallback_tfidf_uses_cut_when_lcut_is_missing(monkeypatch: pytest.
     assert tfidf.extract_tags("ignored", topK=1) == ["foo"]
 
 
-def test_extract_keywords_expands_subtokens():
+def test_extract_keywords_expands_subtokens() -> None:
     handler = JiebaKeywordTableHandler.__new__(JiebaKeywordTableHandler)
     handler._tfidf = SimpleNamespace(extract_tags=lambda *_args, **_kwargs: ["alpha-beta", "during", "gamma"])
 
@@ -133,7 +133,7 @@ def test_extract_keywords_expands_subtokens():
     assert "gamma" in keywords
 
 
-def test_expand_tokens_with_subtokens_filters_stopwords_from_subtokens():
+def test_expand_tokens_with_subtokens_filters_stopwords_from_subtokens() -> None:
     handler = JiebaKeywordTableHandler.__new__(JiebaKeywordTableHandler)
 
     expanded = handler._expand_tokens_with_subtokens({"alpha-during-beta"})
