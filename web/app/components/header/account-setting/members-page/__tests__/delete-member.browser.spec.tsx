@@ -2,12 +2,6 @@ import type { AccountWithRoleResponse } from '@dify/contracts/api/console/worksp
 import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { createContactsMockRepository } from '@/features/contacts/management/__tests__/fixtures/repository'
-import {
-  ContactsMockScenario,
-  createContactsMockScenario,
-} from '@/features/contacts/management/__tests__/fixtures/scenarios'
-import { ContactsManagementProvider } from '@/features/contacts/management/composition'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
@@ -67,7 +61,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-async function setup(ids: string[], contactRemoval = false) {
+async function setup(ids: string[]) {
   let accounts = ids.map(member)
   api.members.mockReset().mockImplementation(async () => ({ accounts }))
   api.remove.mockReset().mockImplementation(async ({ params }) => {
@@ -79,31 +73,9 @@ async function setup(ids: string[], contactRemoval = false) {
     workspacePermissionKeys: ['workspace.member.manage'],
   })
   api.features.mockResolvedValue(queryClient.getQueryData(consoleQuery.features.get.queryKey())!)
-  const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
-  const contactsRepository = createContactsMockRepository({ scenario })
-  const removeContactMember = vi
-    .spyOn(contactsRepository, 'removeMember')
-    .mockImplementation(async ({ memberId }) => {
-      accounts = accounts.filter((account) => account.id !== memberId)
-      return { kind: 'removed', contactId: null, contactOutcome: 'not_found' }
-    })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
-      {contactRemoval ? (
-        <ContactsManagementProvider
-          repository={contactsRepository}
-          context={{
-            deployment: scenario.deployment,
-            imCentrallyManaged: true,
-            permissions: scenario.permissions,
-            workspaceId: scenario.workspaceId,
-          }}
-        >
-          <MembersPage />
-        </ContactsManagementProvider>
-      ) : (
-        <MembersPage />
-      )}
+      <MembersPage />
     </QueryClientTestProvider>,
   )
   const open = async (id: string) => {
@@ -114,27 +86,18 @@ async function setup(ids: string[], contactRemoval = false) {
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
     await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
   }
-  return { screen, open, removeContactMember }
+  return { screen, open }
 }
 
-it('returns focus to the next member after contact-aware removal deletes the opening row', async () => {
+it('returns focus after deleting a member with Contacts enabled, using the supported member API', async () => {
   api.contactsEnabled.mockReturnValue(true)
-  const { screen, open, removeContactMember } = await setup(['Alpha', 'Beta'], true)
+  const { screen, open } = await setup(['Alpha', 'Beta'])
   await open('Alpha')
-  const retention = screen.getByRole('checkbox', { name: /memberRemoval\.keepPlatform/ })
-  await expect.element(retention).toBeChecked()
-  await retention.click()
+  await expect.element(screen.getByRole('checkbox')).not.toBeInTheDocument()
   await screen.getByRole('button', { name: 'contacts.memberRemoval.remove', exact: true }).click()
   await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
-  await expect
-    .element(screen.getByRole('button', { name: 'Alpha', exact: true }))
-    .not.toBeInTheDocument()
   await expect.element(screen.getByRole('button', { name: 'Beta', exact: true })).toHaveFocus()
-  expect(removeContactMember).toHaveBeenCalledExactlyOnceWith({
-    memberId: 'Alpha',
-    keepAsPlatformContact: false,
-  })
-  expect(api.remove).not.toHaveBeenCalled()
+  expect(api.remove).toHaveBeenCalledExactlyOnceWith({ params: { member_id: 'Alpha' } })
 })
 
 it('removes the member before a slow list refresh completes', async () => {

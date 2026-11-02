@@ -1,17 +1,14 @@
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { QueryClient } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
-import { ContactsManagementMockProvider } from '@/features/contacts/management/__tests__/fixtures/composition'
-import {
-  ContactsMockScenario,
-  createContactsMockScenario,
-} from '@/features/contacts/management/__tests__/fixtures/scenarios'
+import { consoleQuery } from '@/service/console'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createDeferred } from '@/test/deferred'
 import { InviteModal } from '../index'
 
 vi.mock('@/config', async (importOriginal) => ({
@@ -85,13 +82,11 @@ describe('InviteModal', () => {
     open = true,
     isEmailSetup = true,
     queryClient = createQueryClient(),
-    contactsScenario,
     workspaceMembers = { enabled: true, size: 5, limit: 10 },
   }: {
     open?: boolean
     isEmailSetup?: boolean
     queryClient?: QueryClient
-    contactsScenario?: ContactsMockScenario
     workspaceMembers?: GetFeaturesResponse['workspace_members']
   } = {}) => {
     seedCurrentWorkspaceQuery(queryClient)
@@ -101,13 +96,7 @@ describe('InviteModal', () => {
 
     const result = render(
       <QueryClientTestProvider queryClient={queryClient}>
-        {contactsScenario ? (
-          <ContactsManagementMockProvider scenario={createContactsMockScenario(contactsScenario)}>
-            <InviteModal isEmailSetup={isEmailSetup} onSend={onSend} />
-          </ContactsManagementMockProvider>
-        ) : (
-          <InviteModal isEmailSetup={isEmailSetup} onSend={onSend} />
-        )}
+        <InviteModal isEmailSetup={isEmailSetup} onSend={onSend} />
       </QueryClientTestProvider>,
     )
     if (open) {
@@ -128,82 +117,14 @@ describe('InviteModal', () => {
     await user.paste(value)
   }
 
-  it('asks for confirmation before inviting an email used by an External Contact', async () => {
+  it('uses the supported invitation endpoint directly when HITL is enabled', async () => {
     const user = userEvent.setup()
     inviteMember.mockResolvedValue({
       result: 'success',
       invitation_results: [],
       tenant_id: 'tenant-id',
     } satisfies MemberInviteResponse)
-    await renderModal({ contactsScenario: ContactsMockScenario.EeMixed })
-
-    await addRecipients(user, 'external@example.com')
-    await selectAdminRole(user)
-    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
-
-    const confirmation = await screen.findByRole('alertdialog', {
-      name: /contacts\.memberInviteUpgrade\.title/i,
-    })
-    expect(inviteMember).not.toHaveBeenCalled()
-
-    await user.click(
-      within(confirmation).getByRole('button', { name: /contacts\.action\.cancel/i }),
-    )
-
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('alertdialog', {
-          name: /contacts\.memberInviteUpgrade\.title/i,
-        }),
-      ).not.toBeInTheDocument()
-    })
-    expect(screen.getByText('external@example.com')).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: /members\.role/i })).toHaveTextContent('Admin')
-    expect(inviteMember).not.toHaveBeenCalled()
-  })
-
-  it('submits the pending invitation only after Add and upgrade is confirmed', async () => {
-    const user = userEvent.setup()
-    inviteMember.mockResolvedValue({
-      result: 'success',
-      invitation_results: [],
-      tenant_id: 'tenant-id',
-    } satisfies MemberInviteResponse)
-    await renderModal({ contactsScenario: ContactsMockScenario.EeMixed })
-
-    await addRecipients(user, 'external@example.com')
-    await selectAdminRole(user)
-    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
-
-    const confirmation = await screen.findByRole('alertdialog', {
-      name: /contacts\.memberInviteUpgrade\.title/i,
-    })
-    await user.click(
-      within(confirmation).getByRole('button', {
-        name: /contacts\.memberInviteUpgrade\.confirm/i,
-      }),
-    )
-
-    await waitFor(() => {
-      expect(inviteMember).toHaveBeenCalledOnce()
-      expect(inviteMember.mock.calls[0]?.[0]).toEqual({
-        body: {
-          emails: ['external@example.com'],
-          role: 'admin',
-          language: 'en-US',
-        },
-      })
-    })
-  })
-
-  it('submits directly when no invited email belongs to an External Contact', async () => {
-    const user = userEvent.setup()
-    inviteMember.mockResolvedValue({
-      result: 'success',
-      invitation_results: [],
-      tenant_id: 'tenant-id',
-    } satisfies MemberInviteResponse)
-    await renderModal({ contactsScenario: ContactsMockScenario.EeMixed })
+    await renderModal()
 
     await addRecipients(user, 'new-member@example.com')
     await selectAdminRole(user)
@@ -213,5 +134,27 @@ describe('InviteModal', () => {
     expect(
       screen.queryByRole('alertdialog', { name: /contacts\.memberInviteUpgrade\.title/i }),
     ).not.toBeInTheDocument()
+  })
+
+  it('keeps cache invalidation when the invitation owner unmounts before success', async () => {
+    const user = userEvent.setup()
+    const request = createDeferred<MemberInviteResponse>()
+    inviteMember.mockReturnValueOnce(request.promise)
+    const queryClient = createQueryClient()
+    const membersKey = consoleQuery.workspaces.current.members.get.queryKey()
+    queryClient.setQueryData(membersKey, { accounts: [] })
+    const view = await renderModal({ queryClient })
+    await addRecipients(user, 'new-member@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+    expect(inviteMember).toHaveBeenCalledOnce()
+    view.unmount()
+    request.resolve({ result: 'success', invitation_results: [], tenant_id: 'tenant-id' })
+    await waitFor(() => {
+      expect(queryClient.getQueryState(membersKey)?.isInvalidated).toBe(true)
+      expect(queryClient.getQueryState(consoleQuery.features.get.queryKey())?.isInvalidated).toBe(
+        true,
+      )
+    })
   })
 })
