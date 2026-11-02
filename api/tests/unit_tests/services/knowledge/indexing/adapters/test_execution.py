@@ -23,6 +23,7 @@ from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, DatasetKeywordTable, DatasetProcessRule, Document, DocumentSegment
 from models.enums import CreatorUserRole, IndexingStatus, ProcessRuleMode, SegmentStatus
 from models.model import UploadFile
+from models.vector import VectorConfiguration
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
@@ -50,10 +51,10 @@ BackendFixture = tuple[
 
 @pytest.fixture
 def backend(sqlite_session_factory: sessionmaker[Session]) -> Iterator[BackendFixture]:
+    dataset = _dataset("dataset-1", "workspace-1")
+    dataset.index_struct = json.dumps({"type": "qdrant"})
     with sqlite_session_factory.begin() as session:
-        session.add_all(
-            [_dataset("dataset-1", "workspace-1"), _document("document-1", status=IndexingStatus.SPLITTING)]
-        )
+        session.add_all([dataset, _document("document-1", status=IndexingStatus.SPLITTING)])
     documents = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
     segments = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
     sources = MagicMock()
@@ -121,6 +122,7 @@ def test_vector_io_releases_transactions_and_preserves_chunk_structure(
         assert document is not None
         dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
         dataset.is_multimodal = True
+        dataset.index_struct = None
         document.doc_form = doc_form
         session.add_all(files)
     child = ChildDocument(page_content="child", metadata={"doc_id": "child-node", "doc_hash": "child-hash"})
@@ -347,11 +349,11 @@ def test_hash_groups_load_worker_owned_inputs_before_completion(
     calls: list[tuple[Dataset, list[str]]] = []
     main_thread = threading.get_ident()
 
-    def vector(dataset: Dataset, *, session: Session | None, vector_type: str) -> MagicMock:
+    def vector(dataset: Dataset, *, session: Session | None, configuration: VectorConfiguration) -> MagicMock:
         assert threading.get_ident() != main_thread
         assert inspect(dataset).detached
         assert session is None
-        assert vector_type == "qdrant"
+        assert configuration == VectorConfiguration("qdrant")
 
         def create(group: list[IndexDocument]) -> None:
             with sqlite_session_factory() as reader:
@@ -368,8 +370,7 @@ def test_hash_groups_load_worker_owned_inputs_before_completion(
         backend.create.side_effect = create
         return backend
 
-    with Flask(__name__).app_context(), patch(f"{MODULE}.Vector", side_effect=vector) as factory:
-        factory.resolve_vector_type.return_value = "qdrant"
+    with Flask(__name__).app_context(), patch(f"{MODULE}.Vector", side_effect=vector):
         adapter.load(job, chunks)
     assert sum(group.count("same") for _, group in calls) == 2
     assert sum("same" in group for _, group in calls) == 1
@@ -582,15 +583,18 @@ def test_discard_deletes_the_vectors_load_writes(
         metadata={"doc_id": "node", "doc_hash": "hash"},
         children=[child] if doc_form == IndexStructureType.PARENT_CHILD_INDEX else None,
     )
+    configuration = VectorConfiguration(vector_type="qdrant", collection_name="bound-collection")
 
     with (
-        patch(f"{MODULE}.Vector.resolve_vector_type", return_value="qdrant"),
+        patch(f"{MODULE}.resolve_vector_configuration", return_value=configuration) as resolve_configuration,
         patch(f"{CLEANUP_MODULE}.Vector") as vector,
     ):
         adapter.discard(job, [chunk])
 
     expected = ["child-node"] if doc_form == IndexStructureType.PARENT_CHILD_INDEX else ["node"]
-    assert vector.call_args.kwargs["vector_type"] == "qdrant"
+    resolve_configuration.assert_called_once()
+    assert vector.call_args.kwargs == {"session": None, "configuration": configuration}
+    assert vector.call_args.kwargs["configuration"].collection_name == "bound-collection"
     vector.return_value.delete_by_ids.assert_called_once_with(expected)
 
 
@@ -705,11 +709,12 @@ def test_discard_touches_no_index_when_load_wrote_nothing(
     _delete_document_row(sqlite_session_factory)
 
     with (
-        patch(f"{MODULE}.Vector.resolve_vector_type", return_value="qdrant"),
+        patch(f"{MODULE}.resolve_vector_configuration") as resolve_configuration,
         patch(f"{CLEANUP_MODULE}.Vector") as vector,
         patch(f"{CLEANUP_MODULE}.redis_client", redis),
     ):
         adapter.discard(job, [chunk])
 
+    resolve_configuration.assert_not_called()
     vector.assert_not_called()
     redis.lock.assert_not_called()

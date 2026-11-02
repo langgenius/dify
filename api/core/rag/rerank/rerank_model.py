@@ -1,11 +1,11 @@
 import base64
+from collections.abc import Callable
 from typing import override
-
-from sqlalchemy.orm import Session
 
 from core.credit_usage import CreditUsageCreatedBy
 from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance
+from core.rag.extractor.entity.extract_setting import UploadFileExtractionInput
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
@@ -14,15 +14,14 @@ from extensions.ext_storage import storage
 from extensions.otel import trace_span
 from graphon.model_runtime.entities.model_entities import ModelFeature
 from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
-from models.model import UploadFile
 
 
 class RerankModelRunner(BaseRerankRunner):
-    _session: Session
-
-    def __init__(self, rerank_model_instance: ModelInstance, *, session: Session):
+    def __init__(
+        self, rerank_model_instance: ModelInstance, *, load_upload: Callable[[str], UploadFileExtractionInput | None]
+    ):
         self.rerank_model_instance = rerank_model_instance
-        self._session = session
+        self._load_upload = load_upload
 
     @override
     @trace_span()
@@ -140,7 +139,7 @@ class RerankModelRunner(BaseRerankRunner):
                 and document.metadata["doc_id"] not in doc_ids
             ):
                 if document.metadata.get("doc_type") == DocType.IMAGE:
-                    upload_file = self._session.get(UploadFile, document.metadata["doc_id"])
+                    upload_file = self._load_upload(document.metadata["doc_id"])
                     if upload_file:
                         blob = storage.load_once(upload_file.key)
                         document_file_base64 = base64.b64encode(blob).decode()
@@ -174,7 +173,7 @@ class RerankModelRunner(BaseRerankRunner):
             rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n)
             return rerank_result, unique_documents
         elif query_type == QueryType.IMAGE_QUERY:
-            upload_file = self._session.get(UploadFile, query)
+            upload_file = self._load_upload(query)
             if upload_file:
                 blob = storage.load_once(upload_file.key)
                 file_query = base64.b64encode(blob).decode()

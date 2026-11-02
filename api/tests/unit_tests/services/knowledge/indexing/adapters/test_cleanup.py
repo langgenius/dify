@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import ChildChunk, Dataset, DatasetKeywordTable, Document, DocumentSegment, DocumentSegmentSummary
 from models.enums import DataSourceType, DocumentCreatedFrom
+from models.vector import VectorConfiguration
 from services.knowledge.indexing.adapters import cleanup
 from services.knowledge.summaries import adapters as summaries
 from tasks.batch_clean_document_task import batch_clean_document_task
@@ -201,10 +202,17 @@ def test_cleanup_keeps_other_documents_and_datasets(
     sqlite_session.add_all(retained)
     sqlite_session.commit()
     backend = MagicMock()
-    monkeypatch.setattr(cleanup, "Vector", MagicMock(return_value=backend))
+    configuration = VectorConfiguration(vector_type="qdrant", collection_name="bound-collection")
+    resolve_configuration = MagicMock(return_value=configuration)
+    vector_factory = MagicMock(return_value=backend)
+    monkeypatch.setattr(cleanup, "resolve_vector_configuration", resolve_configuration)
+    monkeypatch.setattr(cleanup, "Vector", vector_factory)
     cleanup.clean_document_indexes(
         dataset_id=dataset.id, document_ids=[document.id], doc_form="text_model", new_session=sqlite_session_factory
     )
+    resolve_configuration.assert_called_once()
+    assert vector_factory.call_args.kwargs == {"session": None, "configuration": configuration}
+    assert vector_factory.call_args.kwargs["configuration"].collection_name == "bound-collection"
     backend.delete_by_ids.assert_called_once_with(["summary-node", "body-node"])
     sqlite_session.expire_all()
     assert sqlite_session.get(DocumentSegmentSummary, summary_id) is None

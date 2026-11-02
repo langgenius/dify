@@ -63,7 +63,7 @@ class SegmentIndexingGateway:
 
     @staticmethod
     def _vector(snapshot: SegmentIndexingSnapshot) -> Vector:
-        return Vector(snapshot.dataset, session=None, vector_type=snapshot.vector_type)
+        return Vector(snapshot.dataset, session=None, configuration=snapshot.vector_configuration)
 
     @staticmethod
     def _document(snapshot: SegmentIndexingSnapshot) -> Document:
