@@ -255,15 +255,15 @@ class AppPackageImportApi(Resource):
     """Import an app from a ``.ifpkg`` package: one file, or the unpacked folder with one part per file.
 
     Provide ``app_id`` to overwrite an existing workflow or advanced-chat app; omit it to create a new app.
-    With ``preserve_agent_bindings=true``, roster Agent nodes keep their links to the workspace's Agents and
-    inline Agents keep their links to the workspace's skills; without it every packaged Agent and skill is
-    imported as a copy. The root app's YAML goes through the same checks as ``import.console_app.dsl``:
+    With ``preserve_agent_bindings=true`` (the default), roster Agent nodes keep their links to the workspace's
+    Agents and inline Agents keep their links to the workspace's skills; with false every packaged Agent and
+    skill is imported as a copy. The root app's YAML goes through the same checks as ``import.console_app.dsl``:
     409 ``draft_changed`` when ``draft_hash`` no longer matches the draft, 422 ``dsl_invalid`` when the
     graph has errors.
 
     Returns 202 when the DSL version requires an explicit confirmation step; confirm it with the imports
     :confirm method. Returns 400 ``app_package_invalid`` for a package that cannot be read, that links
-    roster Agents without ``preserve_agent_bindings=true``, or that keeps links to skills this workspace does
+    roster Agents with ``preserve_agent_bindings=false``, or that keeps links to skills this workspace does
     not have or never published (each one is in details), and 413 for one over this server's limits.
     """
 

@@ -658,11 +658,12 @@ class AppPackageImportPayload(BaseModel):
     app_id: UUIDStr | None = Field(None, description=_OVERWRITTEN_APP_DESCRIPTION)
     draft_hash: str | None = Field(None, description=_IMPORT_DRAFT_HASH_DESCRIPTION)
     preserve_agent_bindings: bool = Field(
-        False,
+        True,
         description=(
             "true: keep the package's links to roster Agents and workspace skills, for a package exported "
-            "for editing and uploaded back to the same workspace. false: import every packaged Agent and "
-            "skill as a copy, for a full export; a package that links roster Agents is refused. "
+            "for editing and uploaded back to the same workspace; a linked skill this workspace lacks is "
+            "refused. false: import every packaged Agent and skill as a copy, for moving a full export to "
+            "another workspace; a package that links roster Agents is refused. "
             "Agent App packages always import their skills as copies; true is ignored for them."
         ),
     )
