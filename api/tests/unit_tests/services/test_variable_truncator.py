@@ -17,9 +17,12 @@ from graphon.variables.segments import (
     IntegerSegment,
     NoneSegment,
     ObjectSegment,
+    SecretSegment,
     StringSegment,
 )
 from graphon.variables.types import SegmentType
+from graphon.variables.variables import SecretVariable
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from services import variable_truncator as truncator_module
 from services.variable_truncator import (
     DummyVariableTruncator,
@@ -390,6 +393,31 @@ class TestVariableTruncatorCases:
             assert isinstance(result.result, StringSegment)
             assert len(result.result.value) < len(long_text)
             assert result.result.value.endswith("...")
+
+        @pytest.mark.parametrize(
+            "segment",
+            [
+                SecretSegment(value="private-value-that-exceeds-the-limit"),
+                SecretVariable(name="secret", value="private-value-that-exceeds-the-limit"),
+            ],
+        )
+        @pytest.mark.parametrize(("string_limit", "size_limit"), [(10, 100), (100, 10)])
+        def test_secret_truncation_preserves_type_and_masking(
+            self, segment: SecretSegment, string_limit: int, size_limit: int
+        ) -> None:
+            truncator = VariableTruncator(string_length_limit=string_limit, max_size_bytes=size_limit)
+
+            result = truncator.truncate(segment)
+
+            assert result.truncated
+            assert type(result.result) is type(segment)
+            assert result.result.value_type == SegmentType.SECRET
+            assert result.result.model_dump(exclude={"value"}) == segment.model_dump(exclude={"value"})
+            assert len(result.result.value) < len(segment.value)
+            assert result.result.log != result.result.value
+            assert WorkflowRuntimeTypeConverter().to_json_encodable({"secret": result.result}) == {
+                "secret": result.result.log
+            }
 
         def test_array_segment_small_no_truncation(self, truncator: VariableTruncator) -> None:
             """Test small array segments are not truncated."""

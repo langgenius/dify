@@ -16,6 +16,7 @@ from graphon.variables.segments import (
     IntegerSegment,
     NoneSegment,
     ObjectSegment,
+    SecretSegment,
     Segment,
     StringSegment,
 )
@@ -152,15 +153,19 @@ class VariableTruncator(BaseTruncator):
 
     @override
     def truncate(self, segment: Segment) -> TruncationResult:
-        if isinstance(segment, StringSegment):
+        """Truncate a runtime segment while preserving secret tags and textual variable metadata.
+
+        The input remains unchanged; unsupported segment types raise AssertionError.
+        """
+        if isinstance(segment, (StringSegment, SecretSegment)):
             result = self._truncate_segment(segment, self._string_length_limit)
         else:
             result = self._truncate_segment(segment, self._max_size_bytes)
 
         if result.value_size > self._max_size_bytes:
-            if isinstance(result.value, StringSegment):
+            if isinstance(result.value, (StringSegment, SecretSegment)):
                 fallback_result = self._truncate_string(result.value.value, self._max_size_bytes)
-                return TruncationResult(StringSegment(value=fallback_result.value), True)
+                return TruncationResult(segment.model_copy(update={"value": fallback_result.value}), True)
 
             # Apply final fallback - convert to JSON string and truncate
             json_str = dumps_with_segments(result.value)
@@ -191,7 +196,7 @@ class VariableTruncator(BaseTruncator):
         match segment:
             case ArraySegment():
                 result = self._truncate_array(segment.value, target_size)
-            case StringSegment():
+            case StringSegment() | SecretSegment():
                 result = self._truncate_string(segment.value, target_size)
             case ObjectSegment():
                 result = self._truncate_object(segment.value, target_size)

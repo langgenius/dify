@@ -30,6 +30,7 @@ from graphon.runtime import InitParams
 from graphon.variables import (
     ArrayFileSegment,
     FileSegment,
+    SecretSegment,
     StringSegment,
 )
 from graphon.variables.segments import ArrayObjectSegment
@@ -99,6 +100,10 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
 
     @override
     def _run(self) -> NodeRunResult:
+        """Retrieve configured datasets using a string or secret query and optional files.
+
+        Invalid query types return a failed result; the variable pool is unchanged.
+        """
         usage = LLMUsage.empty_usage()
         if not self._node_data.query_variable_selector and not self._node_data.query_attachment_selector:
             return NodeRunResult(
@@ -113,7 +118,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
         # extract variables
         if self._node_data.query_variable_selector:
             variable = self.runtime_state.variable_pool.get(self._node_data.query_variable_selector)
-            if not isinstance(variable, StringSegment):
+            if not isinstance(variable, (StringSegment, SecretSegment)):
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs={},

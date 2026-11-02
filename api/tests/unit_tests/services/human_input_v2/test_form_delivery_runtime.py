@@ -39,6 +39,7 @@ from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, 
 from enums import DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import VariablePool
+from graphon.variables import SecretVariable
 from libs.datetime_utils import naive_utc_now
 from models import CreatorUserRole
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
@@ -3189,7 +3190,9 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
         assert len(providers[1].messages) == len(recipient_outcomes)
 
 
-@pytest.mark.parametrize("recipient_kind", ["external_contact", "dynamic_email", "onetime_email"])
+@pytest.mark.parametrize(
+    "recipient_kind", ["external_contact", "dynamic_email", "secret_dynamic_email", "onetime_email"]
+)
 def test_public_email_links_use_the_v2_form_page(
     context: Context, providers: tuple[Mock, EmailOutbox], recipient_kind: str
 ) -> None:
@@ -3213,8 +3216,9 @@ def test_public_email_links_use_the_v2_form_page(
                 ),
             )
         recipient = Contact(contact_id=contact_id)
-    elif recipient_kind == "dynamic_email":
-        pool.add(["upstream", "email"], email)
+    elif recipient_kind in {"dynamic_email", "secret_dynamic_email"}:
+        value = SecretVariable(name="email", value=email) if recipient_kind == "secret_dynamic_email" else email
+        pool.add(["upstream", "email"], value)
         recipient = DynamicEmail(selector=["upstream", "email"])
     else:
         recipient = OnetimeEmail(email=email)
