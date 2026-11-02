@@ -23,7 +23,10 @@ import {
 } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { Markdown } from '@/app/components/base/markdown'
-import { isParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
+import {
+  isParagraphFormInput,
+  UserActionButtonType,
+} from '@/app/components/workflow/nodes/human-input/types'
 import BrandingFooter from './branding-footer'
 
 type LoadedFormContentProps = {
@@ -249,6 +252,11 @@ const FormBody = ({
   }
   const hasInvalidInput = compact ? hasInvalidSelectOrFileInput : hasInvalidRequiredHumanInput
   const busy = isSubmitting || pendingAction !== undefined
+  const [firstAction, ...otherActions] = definition.actions
+  const enterSubmitsFirstAction =
+    !otherActions.length ||
+    (firstAction?.button_style === UserActionButtonType.Primary &&
+      otherActions.every((action) => action.button_style !== UserActionButtonType.Primary))
   const submit = async (actionID: string) => {
     if (busy || actionsDisabled) return
     setAttempted(true)
@@ -278,11 +286,10 @@ const FormBody = ({
       onSubmit={(event) => {
         event.preventDefault()
         const submitter = event.nativeEvent.submitter
-        const actionID =
-          submitter instanceof HTMLButtonElement ? submitter.value : definition.actions[0]?.id
-        if (actionID) void submit(actionID)
+        if (submitter instanceof HTMLButtonElement && submitter.value) void submit(submitter.value)
       }}
     >
+      {!enterSubmitsFirstAction && <button type="submit" disabled hidden />}
       {contentList.map(({ key, content }, occurrenceIndex) => {
         const match = /\{\{#\$output\.([^#]+)#\}\}/.exec(content)
         if (!match) {

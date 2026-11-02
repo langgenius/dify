@@ -34,6 +34,33 @@ const createTransport = (overrides: Partial<HumanInputV2FormTransport> = {}) => 
   }
 }
 
+it('does not let Enter choose an action when the first action is not the only primary action', async () => {
+  const user = userEvent.setup()
+  const base = createTransport()
+  const transport: HumanInputV2FormTransport = {
+    ...base,
+    getForm: async (...args) => {
+      const definition = await base.getForm(...args)
+      return { ...definition, actions: [...definition.actions].reverse() }
+    },
+  }
+  const submit = vi.spyOn(transport, 'submit')
+  render(<HumanInputV2Form token="form-token" transport={transport} />)
+  const otp = await screen.findByRole('textbox', { name: 'share.humanInputV2.otpLabel' })
+  await user.type(otp, HUMAN_INPUT_V2_MOCK_OTP)
+  await user.keyboard('{Enter}')
+  expect(submit).not.toHaveBeenCalled()
+
+  await user.click(screen.getByRole('button', { name: 'Approve' }))
+  await waitFor(() =>
+    expect(submit).toHaveBeenCalledWith(
+      'form-token',
+      expect.objectContaining({ action: 'approve' }),
+      { signal: expect.any(AbortSignal) },
+    ),
+  )
+})
+
 it('keeps incomplete approval available, identifies the invalid OTP, and submits the real form with Enter', async () => {
   const user = userEvent.setup()
   const transport = createTransport()
