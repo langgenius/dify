@@ -57,7 +57,8 @@ class CeleryTraceEmitter(TraceEmitter):
     def __init__(self) -> None:
         self._closed = False
         self._reset_publisher()
-        os.register_at_fork(after_in_child=self._after_fork)
+        if hasattr(os, "register_at_fork"):
+            os.register_at_fork(after_in_child=self._after_fork)
         atexit.register(self.shutdown)
         worker_process_shutdown.connect(self.shutdown, dispatch_uid=f"trace-publisher-{id(self)}")
 

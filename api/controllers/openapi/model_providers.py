@@ -10,6 +10,7 @@ from typing import Any, Final
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
 
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
@@ -24,6 +25,7 @@ from controllers.openapi._models import (
     LlmModelBlock,
     ModelCredentialCreatePayload,
     ModelCredentialUpdatePayload,
+    ModelDeleteQuery,
     ModelListQuery,
     ModelListResponse,
     ModelProviderDetailResponse,
@@ -356,6 +358,37 @@ class ModelsApi(Resource):
         return page
 
 
+@openapi_ns.route(f"{_PROVIDER_PATH}/models")
+class ModelProviderModelsApi(Resource):
+    @endpoint(
+        op="delete.model",
+        kind=Kind.OBJECT,
+        summary="Delete a model added under a provider, along with its credentials",
+        examples=(
+            Example(
+                title="Delete a model",
+                input={
+                    "provider": _OLLAMA_EXAMPLE,
+                    "model": "llama3",
+                    "model_type": "llm",
+                },
+            ),
+        ),
+        requirements=_MANAGE,
+        query=ModelDeleteQuery,
+        returns=(HTTPStatus.OK, SimpleResultResponse, "Model deleted"),
+    )
+    def delete(self, ctx: Context, workspace_id: str, provider: str, *, query: ModelDeleteQuery):
+        with _model_provider_errors():
+            ModelProviderService().remove_model(
+                tenant_id=ctx.workspace.id,
+                provider=provider,
+                model_type=query.model_type.value,
+                model=query.model,
+            )
+        return SimpleResultResponse(result="success")
+
+
 @openapi_ns.route(f"{_PROVIDER_PATH}/models/credentials")
 class ModelCredentialsApi(Resource):
     @endpoint(
@@ -428,3 +461,33 @@ class ModelCredentialApi(Resource):
                 credential_name=body.name,
             )
         return _model_write_response(ctx.workspace.id, _provider(ctx.workspace.id, provider), body, credential_id)
+
+    @endpoint(
+        op="delete.model.credential",
+        kind=Kind.OBJECT,
+        summary="Delete a saved credential of one model",
+        examples=(
+            Example(
+                title="Delete one credential",
+                input={
+                    "provider": _OLLAMA_EXAMPLE,
+                    "credential_id": "<credential_id>",
+                    "model": "llama3",
+                    "model_type": "llm",
+                },
+            ),
+        ),
+        requirements=_MANAGE,
+        query=ModelDeleteQuery,
+        returns=(HTTPStatus.OK, SimpleResultResponse, "Credential deleted"),
+    )
+    def delete(self, ctx: Context, workspace_id: str, provider: str, credential_id: str, *, query: ModelDeleteQuery):
+        with _model_provider_errors():
+            ModelProviderService().remove_model_credential(
+                tenant_id=ctx.workspace.id,
+                provider=provider,
+                model_type=query.model_type.value,
+                model=query.model,
+                credential_id=credential_id,
+            )
+        return SimpleResultResponse(result="success")
