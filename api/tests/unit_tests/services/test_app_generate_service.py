@@ -16,10 +16,10 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_generator import MessageGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import rate_limit as rate_limit_module
-from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitGenerator
+from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitLeaseGenerator
 from core.errors.error import AppInvokeQuotaExceededError
 from enums import DeploymentEdition, QuotaType
-from models.account import Account
+from models.account import Account, Tenant
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
@@ -69,7 +69,7 @@ class _DummyRateLimit:
         return "dummy-request-id"
 
     def enter(self, request_id: str | None = None) -> str:
-        return request_id or "dummy-request-id"
+        return request_id or f"{self.client_id}-request-id"
 
     def exit(self, request_id: str) -> None:
         self._exited.append(request_id)
@@ -105,8 +105,10 @@ def _make_user() -> Account:
 
 class _RealSessionTest:
     @pytest.fixture(autouse=True)
-    def _bind_unbound_session(self, unbound_session: Session) -> None:
+    def _bind_unbound_session(self, unbound_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Bind the supplied real session and restore the workspace-read override after each test."""
         self.session = unbound_session
+        monkeypatch.setattr(AppGenerateService, "_get_workspace_max_active_requests", lambda *_args, **_kwargs: 0)
 
 
 def _make_workflow(
@@ -662,12 +664,14 @@ class TestAppGenerateServiceCases:
     class TestStreamingRateLimit(_RealSessionTest):
         @pytest.mark.parametrize("app_mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
         @pytest.mark.parametrize("termination", ["finish", "error", "close"])
+        @pytest.mark.parametrize("workspace_limit", [0, 1])
         def test_single_slot_is_held_until_stream_ends(
             self,
             monkeypatch: pytest.MonkeyPatch,
             config_overrides: Callable[..., None],
             app_mode: AppMode,
             termination: str,
+            workspace_limit: int,
         ) -> None:
             config_overrides(
                 DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
@@ -678,6 +682,9 @@ class TestAppGenerateServiceCases:
             redis = _RateLimitRedis()
             monkeypatch.setattr(rate_limit_module, "redis_client", redis)
             monkeypatch.setattr(RateLimit, "_instance_dict", {})
+            monkeypatch.setattr(
+                AppGenerateService, "_get_workspace_max_active_requests", lambda *_args, **_kwargs: workspace_limit
+            )
             workflow = _make_workflow()
             monkeypatch.setattr(AppGenerateService, "_get_workflow", lambda *_args, **_kwargs: workflow)
 
@@ -689,7 +696,7 @@ class TestAppGenerateServiceCases:
             monkeypatch.setattr(MessageBasedAppGenerator, "retrieve_events", retrieve_events)
             app = _make_app(app_mode, max_active_requests=1)
 
-            def generate() -> RateLimitGenerator:
+            def generate() -> RateLimitLeaseGenerator:
                 response = AppGenerateService.generate(
                     app_model=app,
                     user=_make_user(),
@@ -698,16 +705,19 @@ class TestAppGenerateServiceCases:
                     streaming=True,
                     session=self.session,
                 )
-                assert isinstance(response, RateLimitGenerator)
+                assert isinstance(response, RateLimitLeaseGenerator)
                 return response
 
             first = generate()
-            active_key = first.rate_limit.active_requests_key
-            assert set(redis.hgetall(active_key)) == {first.request_id}
+            active_keys = [RateLimit(app.id, 1).active_requests_key]
+            if workspace_limit:
+                active_keys.append(RateLimit(f"workspace:{app.tenant_id}", workspace_limit).active_requests_key)
+            first_ids = {key: set(redis.hgetall(key)) for key in active_keys}
+            assert all(len(request_ids) == 1 for request_ids in first_ids.values())
 
             with pytest.raises(AppInvokeQuotaExceededError, match="maximum concurrent requests allowed"):
                 generate()
-            assert set(redis.hgetall(active_key)) == {first.request_id}
+            assert {key: set(redis.hgetall(key)) for key in active_keys} == first_ids
 
             assert next(first) == "event: ping\n\n"
             if termination == "finish":
@@ -718,13 +728,14 @@ class TestAppGenerateServiceCases:
             else:
                 first.close()
                 first.close()
-            assert redis.hlen(active_key) == 0
+            assert all(redis.hlen(key) == 0 for key in active_keys)
 
             following = generate()
-            assert following.request_id != first.request_id
-            assert set(redis.hgetall(active_key)) == {following.request_id}
+            following_ids = {key: set(redis.hgetall(key)) for key in active_keys}
+            assert all(len(request_ids) == 1 for request_ids in following_ids.values())
+            assert all(following_ids[key] != first_ids[key] for key in active_keys)
             following.close()
-            assert redis.hlen(active_key) == 0
+            assert all(redis.hlen(key) == 0 for key in active_keys)
 
     # ---------------------------------------------------------------------------
     # generate – billing / quota
@@ -843,7 +854,7 @@ class TestAppGenerateServiceCases:
                 session=self.session,
             )
             # exit is called in finally block for non-streaming
-            assert exit_calls == ["dummy-request-id"]
+            assert exit_calls == ["app-id-request-id", "workspace:tenant-id-request-id"]
 
         def test_blocking_failure_exits_rate_limit_once(
             self, mocker: MockerFixture, config_overrides: Callable[..., None]
@@ -877,7 +888,7 @@ class TestAppGenerateServiceCases:
                 )
 
             quota_charge.refund.assert_called_once()
-            assert exit_calls == ["dummy-request-id"]
+            assert exit_calls == ["app-id-request-id", "workspace:tenant-id-request-id"]
 
         def test_streaming_failure_exits_rate_limit_once(
             self, mocker: MockerFixture, config_overrides: Callable[..., None]
@@ -911,7 +922,7 @@ class TestAppGenerateServiceCases:
                 )
 
             quota_charge.refund.assert_called_once()
-            assert exit_calls == ["dummy-request-id"]
+            assert exit_calls == ["app-id-request-id", "workspace:tenant-id-request-id"]
 
     # ---------------------------------------------------------------------------
     # _get_workflow
@@ -1122,6 +1133,24 @@ class TestAppGenerateServiceCases:
     # ---------------------------------------------------------------------------
     # generate_more_like_this
     # ---------------------------------------------------------------------------
+
+    class TestGetWorkspaceMaxActiveRequests:
+        def test_reads_limit_from_current_workspace(self, mocker: MockerFixture):
+            app = _make_app(AppMode.CHAT)
+            tenant = Tenant(name="Workspace")
+            tenant.max_active_requests = 9
+            with Session() as session:
+                get_tenant = mocker.patch.object(session, "get", return_value=tenant)
+
+                assert AppGenerateService._get_workspace_max_active_requests(app, session=session) == 9
+                get_tenant.assert_called_once_with(Tenant, "tenant-id")
+
+        def test_missing_workspace_is_unlimited(self, mocker: MockerFixture):
+            app = _make_app(AppMode.CHAT)
+            with Session() as session:
+                mocker.patch.object(session, "get", return_value=None)
+
+                assert AppGenerateService._get_workspace_max_active_requests(app, session=session) == 0
 
 
 # -----------------------------

@@ -606,6 +606,7 @@ describe('Human Input v2 Recipients', () => {
         role,
         plan: null,
         credits: null,
+        max_active_requests: 0,
       } satisfies CurrentWorkspaceSummaryResponse)
       render(
         <Recipients nodeId="runtime-node" value={[]} onChange={vi.fn()} readonly={false} />,

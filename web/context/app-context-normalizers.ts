@@ -43,6 +43,7 @@ export function normalizeCurrentWorkspaceSummary(
     plan: workspace.plan,
     credits: workspace.credits,
     role: resolveWorkspaceRole(workspace.role),
+    max_active_requests: workspace.max_active_requests,
   }
 }
 

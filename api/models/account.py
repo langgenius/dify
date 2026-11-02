@@ -184,6 +184,7 @@ class Tenant(TypeBase):
     plan: Mapped[str] = mapped_column(String(255), default="basic")
     status: Mapped[TenantStatus] = mapped_column(EnumText(TenantStatus, length=255), default=TenantStatus.NORMAL)
     custom_config: Mapped[str | None] = mapped_column(LongText, default=None)
+    max_active_requests: Mapped[int | None] = mapped_column(sa.Integer, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
     )
