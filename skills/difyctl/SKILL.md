@@ -1,6 +1,6 @@
 ---
 name: difyctl
-description: 'Operate a Dify server through difyctl: find and run any operation, and build, test, publish and change Workflow and Chatflow apps. Use when the task involves difyctl, a Dify server, or Dify apps.'
+description: 'Operate a Dify server through difyctl: find and run any operation, build, test, publish and change Workflow and Chatflow apps, and run and test Agents. Use when the task involves difyctl, a Dify server, Dify apps or Agents.'
 ---
 
 # difyctl
@@ -33,3 +33,4 @@ Not logged in, or the server unreachable, gives the local commands plus one line
 - Read [`references/build-workflow.md`](references/build-workflow.md) when asked to create, change, test or publish a Workflow or Chatflow app.
 - Read [`references/plugins.md`](references/plugins.md) to find tools, models and knowledge bases before building, when a plugin, model, tool or credential is missing, or when the human asks to install or remove a plugin.
 - Read [`references/workspace-skills.md`](references/workspace-skills.md) to list, read, create, change, roll back or publish a workspace skill.
+- Read [`references/agents.md`](references/agents.md) to find, run or test an Agent, or change who may use it.
