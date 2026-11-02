@@ -6,7 +6,7 @@ import json
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig
@@ -17,7 +17,9 @@ from graphon.entities.graph_config import NodeConfigDict
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.variables import VariableBase
 from graphon.variables.variables import RAGPipelineVariable
-from services.agent.publication_contracts import AgentPublicationState
+
+if TYPE_CHECKING:
+    from services.agent.publication_contracts import AgentPublicationState
 
 RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE = "source workflow must be published"
 MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS = 1000

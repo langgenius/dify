@@ -11,13 +11,6 @@ import pytest
 
 from core.helper.ssrf_proxy import graphon_ssrf_proxy
 from core.model_manager import ModelInstance
-from core.workflow.node_runtime import (
-    DifyPreparedLLM,
-    DifyPreparedPollingLLM,
-    DifyPromptMessageSerializer,
-    build_dify_llm_file_saver,
-    resolve_dify_run_context,
-)
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -27,6 +20,13 @@ from graphon.node_events import StreamCompletedEvent
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
 from graphon.runtime import RuntimeState, VariablePool
+from services.workflow.execution.adapters.node_runtime import (
+    DifyPreparedLLM,
+    DifyPreparedPollingLLM,
+    DifyPromptMessageSerializer,
+    build_dify_llm_file_saver,
+    resolve_dify_run_context,
+)
 from tests.helpers.unit.core.model_fixtures import make_model_config, make_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params
 

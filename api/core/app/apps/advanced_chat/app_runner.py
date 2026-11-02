@@ -27,7 +27,8 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
 )
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
-from core.db.session_factory import create_session
+from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
+from core.db.session_factory import create_session, session_factory
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.workflow.node_factory import get_default_root_node_id
@@ -49,6 +50,7 @@ from graphon.variables.variables import Variable
 from models import Workflow
 from models.model import App, Conversation, Message, MessageAnnotation
 from models.workflow import ConversationVariable
+from services.conversation_variable_updater import ConversationVariableUpdater
 
 logger = logging.getLogger(__name__)
 
@@ -249,7 +251,10 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         return PreparedWorkflowRun(
             entry=workflow_entry,
-            application_layers=self._graph_engine_layers,
+            application_layers=(
+                ConversationVariablePersistenceLayer(ConversationVariableUpdater(session_factory.get_session_maker())),
+                *self._graph_engine_layers,
+            ),
             generate_entity=self.application_generate_entity,
             workflow_type=WorkflowType(self._workflow.type),
             workflow_version=self._workflow.version,
