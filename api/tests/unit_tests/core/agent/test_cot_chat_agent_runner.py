@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pytest_mock import MockerFixture
 
-from core.agent.cot_chat_agent_runner import CotChatAgentRunner
 from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
+from services.agent.chat.cot_chat_runner import CotChatAgentRunner
 from tests.unit_tests.core.agent.conftest import (
     DummyAgentConfig,
     DummyAppConfig,
@@ -61,7 +61,7 @@ class TestOrganizeSystemPrompt:
         runner.app_config = DummyAppConfig(DummyAgentConfig(DummyPrompt(first_prompt)))
 
         mocker.patch(
-            "core.agent.cot_chat_agent_runner.jsonable_encoder",
+            "services.agent.chat.cot_chat_runner.jsonable_encoder",
             return_value=[{"name": "tool1"}, {"name": "tool2"}],
         )
 
@@ -91,8 +91,8 @@ class TestOrganizeUserQuery:
         assert len(result) == 1
         assert result[0].content == "query"
 
-    @patch("core.agent.cot_chat_agent_runner.UserPromptMessage")
-    @patch("core.agent.cot_chat_agent_runner.file_manager.to_prompt_message_content")
+    @patch("services.agent.chat.cot_chat_runner.UserPromptMessage")
+    @patch("services.agent.chat.cot_chat_runner.file_manager.to_prompt_message_content")
     def test_organize_user_query_with_image_file_default_config(self, mock_to_prompt, mock_user_prompt, runner):
         from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 
@@ -116,8 +116,8 @@ class TestOrganizeUserQuery:
             image_detail_config=ImagePromptMessageContent.DETAIL.LOW,
         )
 
-    @patch("core.agent.cot_chat_agent_runner.UserPromptMessage")
-    @patch("core.agent.cot_chat_agent_runner.file_manager.to_prompt_message_content")
+    @patch("services.agent.chat.cot_chat_runner.UserPromptMessage")
+    @patch("services.agent.chat.cot_chat_runner.file_manager.to_prompt_message_content")
     def test_organize_user_query_with_image_file_high_detail(self, mock_to_prompt, mock_user_prompt, runner):
         from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 
@@ -143,7 +143,7 @@ class TestOrganizeUserQuery:
             image_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
         )
 
-    @patch("core.agent.cot_chat_agent_runner.file_manager.to_prompt_message_content")
+    @patch("services.agent.chat.cot_chat_runner.file_manager.to_prompt_message_content")
     def test_organize_user_query_with_text_file_no_config(self, mock_to_prompt, runner):
         mock_to_prompt.return_value = TextPromptMessageContent(data="file_content")
         runner.files = ["file1"]

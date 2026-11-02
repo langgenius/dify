@@ -1,4 +1,8 @@
+from unittest.mock import MagicMock, create_autospec
+
 import pytest
+
+from services.agent.chat.ports import AgentToolInvoker
 
 
 class DummyTool:
@@ -78,3 +82,8 @@ def dummy_scratchpad_unit_factory():
         return DummyScratchpadUnit(**kwargs)
 
     return _factory
+
+
+@pytest.fixture
+def agent_tool_invoker() -> MagicMock:
+    return create_autospec(AgentToolInvoker, instance=True, spec_set=True)
