@@ -1,6 +1,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Popover,
+  PopoverArrow,
   PopoverContent,
   PopoverDescription,
   PopoverTitle,
@@ -8,7 +9,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useIsClient } from 'foxact/use-is-client'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import {
@@ -28,6 +29,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
   const setGuideDismissed = useSetNewKnowledgeGuideDismissed()
   const isClient = useIsClient()
   const [guideOpenOverride, setGuideOpenOverride] = useState<boolean | null>(null)
+  const gotItRef = useRef<HTMLButtonElement>(null)
   const guideOpen = isClient && (guideOpenOverride ?? !guideDismissed)
 
   const dismissGuide = () => {
@@ -73,14 +75,12 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
         />
         <PopoverContent
           sideOffset={13}
+          initialFocus={guideOpenOverride ? gotItRef : false}
           className="relative flex max-h-[calc(100dvh-2rem)] min-h-40.5 w-80 max-w-[calc(100vw-2rem)] flex-col"
         >
-          <span
-            aria-hidden
-            className="absolute top-[-9.59px] left-1/2 flex size-[19.456px] -translate-x-1/2 items-center justify-center"
-          >
+          <PopoverArrow className="flex size-[19.456px] items-center justify-center data-[side=bottom]:top-[-9.59px] data-[side=top]:bottom-[-9.59px] data-[side=top]:rotate-180">
             <span className="size-[13.757px] -rotate-45 rounded-tr-xs border-t border-r border-divider-subtle bg-components-panel-bg" />
-          </span>
+          </PopoverArrow>
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-3.5 pb-4">
             <PopoverTitle className="system-md-medium text-text-primary">
               {t(($) => $.guideTitle)}
@@ -97,7 +97,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
               >
                 {t(($) => $.learnMore)}
               </a>
-              <Button variant="primary" size="small" onClick={dismissGuide}>
+              <Button ref={gotItRef} variant="primary" size="small" onClick={dismissGuide}>
                 {t(($) => $.gotIt)}
               </Button>
             </div>
