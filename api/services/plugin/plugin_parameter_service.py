@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.dynamic_select import DynamicSelectClient
-from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.entities.entities import SubscriptionBuilder
@@ -15,6 +14,7 @@ from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
 from models.provider_ids import TriggerProviderID
 from models.tools import BuiltinToolProvider
+from services.tools.tool_manager import ToolManager
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 
