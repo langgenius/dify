@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from copy import deepcopy
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -11,6 +12,7 @@ import pytest
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants.model_template import default_app_templates
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant
@@ -308,7 +310,11 @@ class TestCreateAppTransactionBoundary:
         )
         model_manager = MagicMock()
         model_manager.get_default_model_instance.return_value = model_instance
-        model_manager.get_default_provider_model_name.return_value = ("openai", "gpt-4o")
+        model_manager.get_default_provider_model_name.return_value = (
+            "langgenius/anthropic/anthropic",
+            "claude-3-5-sonnet",
+        )
+        original_template_model = deepcopy(default_app_templates[AppMode.CHAT]["model_config"]["model"])
         with (
             patch("services.app_service.ModelManager.for_tenant", return_value=model_manager),
             patch("services.app_service.app_was_created.send"),
@@ -329,14 +335,38 @@ class TestCreateAppTransactionBoundary:
         assert app_model_config is not None
         assert app.mode == AppMode.CHAT
         assert app_model_config.model_dict == {
-            "provider": "openai",
-            "name": "gpt-4o",
+            "provider": "langgenius/anthropic/anthropic",
+            "name": "claude-3-5-sonnet",
             "mode": "chat",
             "completion_params": {},
         }
+        assert default_app_templates[AppMode.CHAT]["model_config"]["model"] == original_template_model
         model_manager.get_default_provider_model_name.assert_called_once_with(
             tenant_id=account.current_tenant_id, model_type=ModelType.LLM
         )
+
+    def test_prepare_creation_does_not_mutate_default_template(self) -> None:
+        model_manager = MagicMock()
+        model_manager.get_default_model_instance.return_value = None
+        model_manager.get_default_provider_model_name.return_value = (
+            "langgenius/anthropic/anthropic",
+            "claude-3-5-sonnet",
+        )
+        original_template_model = deepcopy(default_app_templates[AppMode.CHAT]["model_config"]["model"])
+
+        with patch("services.app_service.ModelManager.for_tenant", return_value=model_manager):
+            settings = AppService.prepare_creation(
+                "workspace-id",
+                CreateAppParams(name="Chat", mode=AppMode.CHAT.value),
+            )
+
+        assert settings.model_config is not None
+        assert json.loads(settings.model_config["model"]) == {
+            **original_template_model,
+            "provider": "langgenius/anthropic/anthropic",
+            "name": "claude-3-5-sonnet",
+        }
+        assert default_app_templates[AppMode.CHAT]["model_config"]["model"] == original_template_model
 
 
 class TestCreateAppRBACAccessInitialization:
