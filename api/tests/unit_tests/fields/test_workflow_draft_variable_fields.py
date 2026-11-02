@@ -32,7 +32,7 @@ _TEST_NODE_EXEC_ID = str(uuid.uuid4())
 
 
 class TestWorkflowDraftVariableFields:
-    def test_serialize_full_content(self):
+    def test_serialize_full_content(self) -> None:
         """Test that _serialize_full_content uses pre-loaded relationships."""
         # Create mock objects with relationships pre-loaded
         mock_variable = WorkflowDraftVariable(
@@ -65,7 +65,7 @@ class TestWorkflowDraftVariableFields:
             # Verify it used the pre-loaded relationships (no database queries)
             mock_file_helpers.get_signed_file_url.assert_called_once_with("test-upload-file-id", as_attachment=True)
 
-    def test_serialize_full_content_handles_none_cases(self):
+    def test_serialize_full_content_handles_none_cases(self) -> None:
         """Test that _serialize_full_content handles None cases properly."""
 
         # Test with no file_id
@@ -74,7 +74,7 @@ class TestWorkflowDraftVariableFields:
         result = _serialize_full_content(draft_var)
         assert result is None
 
-    def test_serialize_full_content_should_raises_when_file_id_exists_but_file_is_none(self):
+    def test_serialize_full_content_should_raises_when_file_id_exists_but_file_is_none(self) -> None:
         # Test with no file_id
         draft_var = WorkflowDraftVariable()
         draft_var.file_id = str(uuid.uuid4())
@@ -82,7 +82,7 @@ class TestWorkflowDraftVariableFields:
         with pytest.raises(AssertionError):
             _serialize_full_content(draft_var)
 
-    def test_conversation_variable(self):
+    def test_conversation_variable(self) -> None:
         conv_var = WorkflowDraftVariable.new_conversation_variable(
             app_id=_TEST_APP_ID, name="conv_var", value=build_segment(1)
         )
@@ -110,7 +110,7 @@ class TestWorkflowDraftVariableFields:
         expected_with_value["full_content"] = None
         assert dump_response(WorkflowDraftVariableResponse, conv_var) == expected_with_value
 
-    def test_create_sys_variable(self):
+    def test_create_sys_variable(self) -> None:
         sys_var = WorkflowDraftVariable.new_sys_variable(
             app_id=_TEST_APP_ID,
             name="sys_var",
@@ -123,7 +123,7 @@ class TestWorkflowDraftVariableFields:
         sys_var.last_edited_at = naive_utc_now()
         sys_var.visible = True
 
-        expected_without_value = OrderedDict(
+        expected_without_value: OrderedDict[str, object] = OrderedDict(
             {
                 "id": sys_var.id,
                 "type": sys_var.get_variable_type().value,
@@ -142,7 +142,7 @@ class TestWorkflowDraftVariableFields:
         expected_with_value["full_content"] = None
         assert dump_response(WorkflowDraftVariableResponse, sys_var) == expected_with_value
 
-    def test_node_variable(self):
+    def test_node_variable(self) -> None:
         node_var = WorkflowDraftVariable.new_node_variable(
             app_id=_TEST_APP_ID,
             node_id="test_node",
@@ -175,7 +175,7 @@ class TestWorkflowDraftVariableFields:
         expected_with_value["full_content"] = None
         assert dump_response(WorkflowDraftVariableResponse, node_var) == expected_with_value
 
-    def test_node_variable_with_file(self):
+    def test_node_variable_with_file(self) -> None:
         node_var = WorkflowDraftVariable.new_node_variable(
             app_id=_TEST_APP_ID,
             node_id="test_node",
@@ -229,11 +229,11 @@ class TestWorkflowDraftVariableFields:
 
 
 class TestWorkflowDraftVariableList:
-    def test_workflow_draft_variable_list(self):
+    def test_workflow_draft_variable_list(self) -> None:
         class TestCase(NamedTuple):
             name: str
             var_list: WorkflowDraftVariableList
-            expected: dict
+            expected: dict[str, object]
 
         node_var = WorkflowDraftVariable.new_node_variable(
             app_id=_TEST_APP_ID,
@@ -307,7 +307,7 @@ class TestWorkflowDraftVariableList:
             )
 
 
-def test_workflow_node_variables_fields():
+def test_workflow_node_variables_fields() -> None:
     conv_var = WorkflowDraftVariable.new_conversation_variable(
         app_id=_TEST_APP_ID, name="conv_var", value=build_segment(1)
     )
@@ -319,7 +319,7 @@ def test_workflow_node_variables_fields():
     assert item_dict["value"] == 1
 
 
-def test_workflow_file_variable_with_signed_url():
+def test_workflow_file_variable_with_signed_url() -> None:
     """Test that File type variables include signed URLs in API responses."""
     from graphon.file import File, FileTransferMethod, FileType
 
@@ -375,7 +375,7 @@ def test_workflow_file_variable_with_signed_url():
     assert "sign=" in remote_url
 
 
-def test_workflow_file_variable_remote_url():
+def test_workflow_file_variable_remote_url() -> None:
     """Test that File type variables with REMOTE_URL transfer method return the remote URL."""
     from graphon.file import File, FileTransferMethod, FileType
 
