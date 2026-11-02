@@ -150,6 +150,7 @@ export type AgentListRow = {
   name: string
   published: boolean
   role: string
+  service_api_enabled: boolean
   updated_at: string
 }
 

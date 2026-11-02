@@ -18,7 +18,7 @@ from controllers.openapi import agents
 from controllers.openapi._models import AgentDescribeInfo, AgentListRow
 from controllers.openapi.agents import AgentDescribeApi
 from controllers.openapi.auth.requirements import (
-    CheckAppApiEnabled,
+    CheckAppMode,
     CheckRBACPermission,
     CheckScope,
     CheckSubject,
@@ -126,6 +126,7 @@ def test_get_agent_returns_the_rows_of_the_workspace(admitted_bearer: AdmittedWo
         name="Support desk",
         description="Answers tickets",
         mode=AppMode.AGENT,
+        enable_api=False,
     )
     app.updated_at = UPDATED_AT
     sqlite_session.add_all(
@@ -156,6 +157,7 @@ def test_get_agent_returns_the_rows_of_the_workspace(admitted_bearer: AdmittedWo
         "role": "triage",
         "published": False,
         "updated_at": UPDATED_AT.isoformat(),
+        "service_api_enabled": False,
     }
     assert (body["total"], body["has_more"], body["hints"]) == (1, False, [])
 
@@ -243,7 +245,7 @@ def _describe(world: AdmittedWorld, query: str = "", agent_id: str = AGENT_ID) -
     )
 
 
-def _info(app_id: str, *, published: bool) -> dict[str, object]:
+def _info(app_id: str, *, published: bool, service_api_enabled: bool = True) -> dict[str, object]:
     return AgentDescribeInfo(
         agent_id=AGENT_ID,
         app_id=app_id,
@@ -252,7 +254,7 @@ def _info(app_id: str, *, published: bool) -> dict[str, object]:
         role="triage",
         published=published,
         updated_at=UPDATED_AT.isoformat(),
-        service_api_enabled=True,
+        service_api_enabled=service_api_enabled,
     ).model_dump()
 
 
@@ -293,11 +295,12 @@ def test_describe_agent_names_an_undashed_id_like_the_dashed_one(
 def test_describe_agent_without_a_published_version_hints_the_draft(
     admitted_bearer: AdmittedWorld, sqlite_session: Session
 ) -> None:
-    app_id = _persist_agent(admitted_bearer, sqlite_session, PublishState.NEVER)
+    # A never-published Agent always has its Service API off, and cannot turn it on.
+    app_id = _persist_agent(admitted_bearer, sqlite_session, PublishState.NEVER, enable_api=False)
 
     body = _describe(admitted_bearer).get_json()
 
-    assert body["info"] == _info(app_id, published=False)
+    assert body["info"] == _info(app_id, published=False, service_api_enabled=False)
     assert (body["parameters"], body["input_schema"]) == (None, None)
     assert [{key: hint[key] for key in ("op", "input")} for hint in body["hints"]] == _hints(
         admitted_bearer, "test.agent"
@@ -375,7 +378,7 @@ def test_describe_agent_of_another_workspace_is_not_found(
     assert (response.status_code, response.get_json()["message"]) == (404, "agent not found")
 
 
-def test_describe_agent_with_its_service_api_off_is_refused(
+def test_describe_a_published_agent_with_its_service_api_off_hints_turning_it_on(
     admitted_bearer: AdmittedWorld, sqlite_session: Session
 ) -> None:
     app_id = _persist_agent(admitted_bearer, sqlite_session, PublishState.CLEAN, enable_api=False)
@@ -383,12 +386,14 @@ def test_describe_agent_with_its_service_api_off_is_refused(
     response = _describe(admitted_bearer)
 
     body = response.get_json()
-    assert (response.status_code, body["code"]) == (403, "service_api_disabled")
+    assert response.status_code == 200
+    assert body["info"] == _info(app_id, published=True, service_api_enabled=False)
     assert body["hints"] == [
         {
             "summary": "Turn the Service API on",
             "op": "set.service_api.agent",
             "input": {"app_id": app_id, "enabled": True},
+            "form": None,
         }
     ]
 
@@ -399,7 +404,7 @@ def test_describe_agent_declares_its_guards() -> None:
     expected = (
         CheckSubject(allowed=(AccountSubject,)),
         CheckWorkspaceMember(),
-        CheckAppApiEnabled(),
+        CheckAppMode(AppMode.AGENT),
         CheckScope(Scope.APPS_READ),
         CheckRBACPermission(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())),
     )

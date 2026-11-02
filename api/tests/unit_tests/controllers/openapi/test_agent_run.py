@@ -22,7 +22,7 @@ from controllers.openapi.auth.loaders import load_app
 from controllers.openapi.auth.requirements import (
     EDITOR_ROLES,
     CheckAppAccess,
-    CheckAppApiEnabled,
+    CheckAppMode,
     CheckRBACPermission,
     CheckScope,
     CheckSubject,
@@ -46,6 +46,7 @@ from tests.helpers.unit.controllers.openapi.auth._world import (
     make_account,
     make_agent,
     make_app,
+    make_published_agent,
     make_tenant,
     persist,
 )
@@ -109,7 +110,7 @@ def _stub_generate(
 
 @pytest.fixture
 def agent_ctx(sqlite_session: Session) -> Context:
-    persist(sqlite_session, make_tenant(), make_app(app_id=AGENT_APP_ID, mode=AppMode.AGENT), make_agent())
+    persist(sqlite_session, make_tenant(), make_app(app_id=AGENT_APP_ID, mode=AppMode.AGENT), *make_published_agent())
     ctx = Context(account_subject(), sqlite_session, {"workspace_id": TENANT_ID, "agent_id": AGENT_ID})
     load_app(ctx)
     ctx._caller = make_account()
@@ -176,7 +177,9 @@ def test_agent_run_passes_the_conversation(app: Flask, monkeypatch: pytest.Monke
     assert "workspace_id" not in args
 
 
-def test_unpublished_agent_run_hints_the_draft(app: Flask, monkeypatch: pytest.MonkeyPatch, agent_ctx: Context) -> None:
+def test_an_agent_unpublished_as_the_run_starts_hints_the_draft(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, agent_ctx: Context
+) -> None:
     _stub_generate(monkeypatch, error=AgentAppNotPublishedError("Agent has not been published"))
 
     with pytest.raises(AgentNotPublished) as raised:
@@ -185,7 +188,7 @@ def test_unpublished_agent_run_hints_the_draft(app: Flask, monkeypatch: pytest.M
     assert raised.value.error_code == "agent_not_published"
     assert [hint.model_dump() for hint in raised.value.hints or []] == [
         {
-            "summary": "Run the draft instead",
+            "summary": "Run this Agent's draft",
             "op": "test.agent",
             "input": {"workspace_id": TENANT_ID, "agent_id": AGENT_ID},
             "form": None,
@@ -196,7 +199,7 @@ def test_unpublished_agent_run_hints_the_draft(app: Flask, monkeypatch: pytest.M
 _ACCOUNT_ONLY = CheckSubject(allowed=(AccountSubject,))
 _SHARED_GUARDS = (
     CheckWorkspaceMember(),
-    CheckAppApiEnabled(),
+    CheckAppMode(AppMode.AGENT),
     CheckScope(Scope.APPS_RUN),
     CheckRBACPermission(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())),
 )
@@ -236,10 +239,18 @@ def test_an_agent_of_another_workspace_is_not_found_and_runs_nothing(
     assert stub.calls == []
 
 
-@pytest.mark.parametrize("op", ["run", "test"])
-def test_an_agent_with_its_service_api_off_is_refused_and_runs_nothing(
-    admitted_bearer: AdmittedWorld, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, op: str
+def _post(world: AdmittedWorld, op: str, agent_id: str = AGENT_ID) -> TestResponse:
+    return world.client.post(
+        f"/openapi/v1/workspaces/{world.workspace_id}/agents/{agent_id}:{op}",
+        json={"query": "hi"},
+        headers=world.headers,
+    )
+
+
+def test_running_a_never_published_agent_names_publishing_not_the_service_api(
+    admitted_bearer: AdmittedWorld, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # A never-published Agent always has its Service API off, and cannot turn it on.
     persist(
         sqlite_session,
         make_app(app_id=AGENT_APP_ID, tenant_id=admitted_bearer.workspace_id, mode=AppMode.AGENT, enable_api=False),
@@ -247,11 +258,31 @@ def test_an_agent_with_its_service_api_off_is_refused_and_runs_nothing(
     )
     stub = _stub_generate(monkeypatch)
 
-    response = admitted_bearer.client.post(
-        f"/openapi/v1/workspaces/{admitted_bearer.workspace_id}/agents/{AGENT_ID}:{op}",
-        json={"query": "hi"},
-        headers=admitted_bearer.headers,
+    response = _post(admitted_bearer, "run")
+
+    body = response.get_json()
+    assert (response.status_code, body["code"]) == (400, "agent_not_published")
+    assert body["hints"] == [
+        {
+            "summary": "Run this Agent's draft",
+            "op": "test.agent",
+            "input": {"workspace_id": admitted_bearer.workspace_id, "agent_id": AGENT_ID},
+        }
+    ]
+    assert stub.calls == []
+
+
+def test_running_a_published_agent_with_its_service_api_off_is_refused_and_runs_nothing(
+    admitted_bearer: AdmittedWorld, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    persist(
+        sqlite_session,
+        make_app(app_id=AGENT_APP_ID, tenant_id=admitted_bearer.workspace_id, mode=AppMode.AGENT, enable_api=False),
+        *make_published_agent(tenant_id=admitted_bearer.workspace_id),
     )
+    stub = _stub_generate(monkeypatch)
+
+    response = _post(admitted_bearer, "run")
 
     body = response.get_json()
     assert (response.status_code, body["code"]) == (403, "service_api_disabled")
@@ -265,20 +296,33 @@ def test_an_agent_with_its_service_api_off_is_refused_and_runs_nothing(
     assert stub.calls == []
 
 
+def test_testing_a_never_published_agent_runs_its_draft_with_the_service_api_off(
+    admitted_bearer: AdmittedWorld, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    persist(
+        sqlite_session,
+        make_app(app_id=AGENT_APP_ID, tenant_id=admitted_bearer.workspace_id, mode=AppMode.AGENT, enable_api=False),
+        make_agent(tenant_id=admitted_bearer.workspace_id),
+    )
+    stub = _stub_generate(monkeypatch, chunks=[f"data: {json.dumps(_MESSAGE_END)}\n\n"])
+
+    response = _post(admitted_bearer, "test")
+
+    assert response.status_code == 200
+    assert [call.invoke_from for call in stub.calls] == [InvokeFrom.DEBUGGER]
+
+
 _UNDASHED_AGENT_ID = uuid.UUID(AGENT_ID).hex
 
 
-def _post_undashed(world: AdmittedWorld, sqlite_session: Session, op: str) -> TestResponse:
+def _post_undashed(world: AdmittedWorld, sqlite_session: Session, op: str, *, published: bool = True) -> TestResponse:
+    agent_rows = (
+        make_published_agent(tenant_id=world.workspace_id) if published else [make_agent(tenant_id=world.workspace_id)]
+    )
     persist(
-        sqlite_session,
-        make_app(app_id=AGENT_APP_ID, tenant_id=world.workspace_id, mode=AppMode.AGENT),
-        make_agent(tenant_id=world.workspace_id),
+        sqlite_session, make_app(app_id=AGENT_APP_ID, tenant_id=world.workspace_id, mode=AppMode.AGENT), *agent_rows
     )
-    return world.client.post(
-        f"/openapi/v1/workspaces/{world.workspace_id}/agents/{_UNDASHED_AGENT_ID}:{op}",
-        json={"query": "hi"},
-        headers=world.headers,
-    )
+    return _post(world, op, _UNDASHED_AGENT_ID)
 
 
 @pytest.mark.parametrize("op", ["run", "test"])
@@ -307,9 +351,9 @@ def test_an_undashed_agent_id_reaches_the_rbac_check_and_the_reply_hints_dashed(
 def test_an_undashed_agent_id_is_hinted_dashed_when_the_run_needs_the_draft(
     admitted_bearer: AdmittedWorld, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _stub_generate(monkeypatch, error=AgentAppNotPublishedError("Agent has not been published"))
+    _stub_generate(monkeypatch)
 
-    response = _post_undashed(admitted_bearer, sqlite_session, "run")
+    response = _post_undashed(admitted_bearer, sqlite_session, "run", published=False)
 
     [hint] = response.get_json()["hints"]
     assert (hint["op"], hint["input"]["agent_id"]) == ("test.agent", AGENT_ID)

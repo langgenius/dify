@@ -1396,7 +1396,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "plugins.install": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "skills.list": {**_ACCOUNT_MEMBER_NO_ROLE, Case.RBAC_ON_DENIED: DENY_RBAC},
     "agents.list": dict(_ACCOUNT_MEMBER_NO_ROLE),
-    "agents.describe": {**_ACCOUNT_READER_APP, **_AGENT_ROUTE_ANSWERS},
+    "agents.describe": {**_ACCOUNT_READER_APP, **_AGENT_ROUTE_ANSWERS, Case.APP_API_DISABLED: ADMIT},
     "skills.publish": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "skills.import": dict(_ACCOUNT_MEMBER_WITH_ROLE),
     "model_providers.credential.create": dict(_ACCOUNT_MEMBER_WITH_ROLE),
@@ -1418,8 +1418,14 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "app_dsl.export": dict(_ACCOUNT_EDITOR_APP),
     "app_dsl.package_export": dict(_ACCOUNT_EDITOR_APP),
     "app_run.draft.workflow": dict(_ACCOUNT_EDITOR_APP),
-    "agent_run.run": {**_DUAL_SUBJECT_RUN, Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT, **_AGENT_ROUTE_ANSWERS},
-    "agent_run.test": {**_ACCOUNT_EDITOR_APP, **_AGENT_ROUTE_ANSWERS},
+    # run.agent refuses an Agent with its Service API off in the handler, after publishing (test_agent_run.py).
+    "agent_run.run": {
+        **_DUAL_SUBJECT_RUN,
+        Case.WRONG_SUBJECT: DENY_WRONG_SUBJECT,
+        **_AGENT_ROUTE_ANSWERS,
+        Case.APP_API_DISABLED: ADMIT,
+    },
+    "agent_run.test": {**_ACCOUNT_EDITOR_APP, **_AGENT_ROUTE_ANSWERS, Case.APP_API_DISABLED: ADMIT},
     "app_workflow.run.list": dict(_ACCOUNT_READER_APP),
     "app_workflow.run.describe": dict(_ACCOUNT_READER_APP),
     "app_workflow.run.nodes": dict(_ACCOUNT_READER_APP),
@@ -1689,7 +1695,7 @@ def _settings_req(
 _REQ_AGENT_RUN = (
     CheckSubject(allowed=_ACCOUNT),
     CheckWorkspaceMember(),
-    CheckAppApiEnabled(),
+    CheckAppMode(_auth_matrix_AppMode.AGENT),
     CheckScope(Scope.APPS_RUN),
     CheckRBACPermission(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())),
     CheckAppAccess(),
@@ -1697,7 +1703,7 @@ _REQ_AGENT_RUN = (
 _REQ_AGENT_DESCRIBE = (
     CheckSubject(allowed=_ACCOUNT),
     CheckWorkspaceMember(),
-    CheckAppApiEnabled(),
+    CheckAppMode(_auth_matrix_AppMode.AGENT),
     CheckScope(Scope.APPS_READ),
     CheckRBACPermission(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())),
 )

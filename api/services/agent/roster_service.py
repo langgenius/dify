@@ -953,16 +953,18 @@ class AgentRosterService:
         published: bool | None,
         accessible_agent_ids: set[str] | None,
     ) -> tuple[list[RosterAgentEntry], int]:
-        """List the Agent Apps the OpenAPI caller can reach, with the console list's visibility rules.
+        """List the Agent Apps the OpenAPI caller can see, with the console list's visibility rules.
 
-        Read-only: it never touches the debug conversations the console list serializers create.
+        Every Agent is listed whatever its Service API says: it is the starting point
+        for describe and test, which do not need it, and an unpublished Agent cannot
+        turn it on. Read-only: it never touches the debug conversations the console
+        list serializers create.
         """
         params = AppListParams(
             page=page,
             limit=limit,
             mode="agent",
             status=AppStatus.NORMAL,
-            openapi_visible=True,
             name=name,
             agent_is_runnable=published,
         )
