@@ -3,11 +3,13 @@
 from sqlalchemy import and_, delete, exists, literal, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.dataset import Dataset, DatasetPermission, Document
+from models.dataset import Dataset, DatasetPermission, Document, Pipeline
+from models.workflow import Workflow
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form, pipeline_dataset_query
 from services.knowledge.dataset_access import DatasetAccessRecord, DatasetAccessSnapshot
 from services.knowledge.entities.datasets import DatasetCleanupRecord
 from services.knowledge.indexing.estimate import DatasetEstimateRecord
+from services.knowledge.model_dependencies import DatasetModelDependencyRecord, PipelineModelDependencyRecord
 from services.knowledge.resource_scope import DatasetRef
 from services.knowledge.segments.application import SegmentDatasetRecord, SegmentDocumentRecord, SegmentScope
 
@@ -46,6 +48,46 @@ class SQLAlchemyDatasetRepository:
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def collect_model_dependency_records(
+        self, tenant_id: str
+    ) -> list[DatasetModelDependencyRecord | PipelineModelDependencyRecord]:
+        documents: list[DatasetModelDependencyRecord | PipelineModelDependencyRecord] = []
+        with self._session_factory() as session:
+            for dataset, has_qa_documents in session.execute(
+                select(
+                    Dataset,
+                    exists().where(
+                        Document.dataset_id == Dataset.id,
+                        Document.tenant_id == tenant_id,
+                        Document.doc_form == "qa_model",
+                    ),
+                ).where(Dataset.tenant_id == tenant_id)
+            ):
+                documents.append(
+                    DatasetModelDependencyRecord(
+                        tenant_id,
+                        dataset.id,
+                        dataset.indexing_technique,
+                        dataset.embedding_model_provider,
+                        dataset.embedding_model,
+                        dataset.retrieval_model_dict,
+                        external=dataset.provider == "external",
+                        summary=dataset.summary_index_setting,
+                        has_qa_documents=has_qa_documents,
+                    )
+                )
+            # Pipeline workflow app_id is the Pipeline ID, not an App ID. Join
+            # the complete Dataset -> Pipeline -> Workflow tenant owner chain.
+            for row in session.execute(
+                select(Workflow.app_id, Workflow.id, Workflow.graph, Workflow._features)
+                .join(Pipeline, Pipeline.id == Workflow.app_id)
+                .join(Dataset, Dataset.pipeline_id == Pipeline.id)
+                .where(Dataset.tenant_id == tenant_id, Pipeline.tenant_id == tenant_id, Workflow.tenant_id == tenant_id)
+                .distinct()
+            ):
+                documents.append(PipelineModelDependencyRecord(tenant_id, row.app_id, row.id, row.graph, row._features))
+        return documents
 
     def get_maintainer_id(self, workspace_id: str, resource_id: str) -> str | None:
         with self._session_factory() as session:

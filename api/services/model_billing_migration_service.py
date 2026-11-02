@@ -41,6 +41,11 @@ from services.entities.model_billing_migration import (
     MigrationSourceProviderOwnership,
     OperationPayload,
     PrepareMigrationPayload,
+    StableMigrationSourceProviderOwnership,
+)
+from services.model_billing_migration_inventory import (
+    ModelBillingReadinessQuery,
+    dependency_inventory_uses_saved_policy,
 )
 
 logger = logging.getLogger(__name__)
@@ -316,7 +321,9 @@ class ModelBillingMigrationService:
         source_ownership: dict[str, Any],
         expected_credential_fingerprint: str,
     ) -> None:
-        ownership = TypeAdapter(dict[str, MigrationSourceProviderOwnership]).validate_python(source_ownership)
+        ownership = TypeAdapter(
+            dict[str, MigrationSourceProviderOwnership | StableMigrationSourceProviderOwnership]
+        ).validate_python(source_ownership)
         snapshot = {key: value.model_dump(mode="json") for key, value in ownership.items()}
         with session_factory.create_session() as session, session.begin():
             row = cls._row(session, tenant_id, migration_id)
@@ -763,7 +770,14 @@ class ModelBillingMigrationService:
         return repaired
 
     @classmethod
-    def activate(cls, tenant_id: str, migration_id: str, payload: ActivateMigrationPayload) -> dict[str, Any]:
+    def activate(
+        cls,
+        tenant_id: str,
+        migration_id: str,
+        payload: ActivateMigrationPayload,
+        *,
+        readiness_query: ModelBillingReadinessQuery | None = None,
+    ) -> dict[str, Any]:
         # Revalidate protocol/mapping outside the transaction, but never make a
         # committed transport replay dependent on today's runtime availability.
         with session_factory.create_session() as session:
@@ -777,7 +791,16 @@ class ModelBillingMigrationService:
             inventory_hash = row.state["inventory_hash"]
             ownership_hash = canonical_hash(row.state["source_ownership"])
             eligibility_policy = row.state.get("eligibility_policy_version")
-        if eligibility_policy == "free-legacy-v1":
+        if readiness_query is not None:
+            cls.validate_runtime_readiness(
+                tenant_id,
+                mapping_version,
+                inventory_hash,
+                ownership_hash,
+                eligibility_policy_version=eligibility_policy,
+                readiness_query=readiness_query,
+            )
+        elif eligibility_policy == "free-legacy-v1":
             cls.validate_runtime_readiness(
                 tenant_id,
                 mapping_version,
@@ -908,12 +931,23 @@ class ModelBillingMigrationService:
         ownership_hash: str,
         *,
         eligibility_policy_version: str | None = None,
+        readiness_query: ModelBillingReadinessQuery | None = None,
     ) -> None:
         """None preserves the paid gate; free is derived only from persisted policy."""
         from core.model_invocation_routing import validate_migration_readiness
 
         try:
-            if eligibility_policy_version is None:
+            if readiness_query is not None:
+                readiness = readiness_query.readiness(
+                    tenant_id, mapping_version, eligibility_policy_version=eligibility_policy_version
+                )
+            elif dependency_inventory_uses_saved_policy(
+                dify_config.TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON, mapping_version
+            ):
+                # A missed transport/worker wiring must never validate a new
+                # revision using the old full-HOSTED inventory by accident.
+                raise MigrationError("readiness_changed", retryable=True)
+            elif eligibility_policy_version is None:
                 readiness = validate_migration_readiness(tenant_id, mapping_version)
             else:
                 readiness = validate_migration_readiness(

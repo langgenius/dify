@@ -39,6 +39,22 @@ _REVIEWED_CONTRACT = OpenAIChatSourceContract(
     algorithm_revision=OPENAI_CHAT_SOURCE_ADAPTER_REVISION,
 )
 
+# Append-only: revision 1 above retains its original SDK-fixture boundary and
+# digest. This separately reviewed profile binds the actual daemon management
+# catalog and the actual immutable source model/schema RPC independently.
+_RUNTIME_REVIEWED_CONTRACT = OpenAIChatSourceContract(
+    profile_id="openai-042-chat-runtime-v2:gpt-4o-mini",
+    source_plugin_unique_identifier="langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+    source_model="gpt-4o-mini",
+    source_schema_digest="sha256:a6252c47636c0aa0b3c66327d3a512711abcd61cca079ac53a51c435a2d65771",
+    source_runtime_schema_digest="sha256:b068793d31c93e11b44e31374e24f62ce25b7c8744aae708213f7caa41be4783",
+    target_model="gpt-4o-mini",
+    rules_digest="sha256:e29241cc424a064f8d34a19f878a3bb71e853bd41c302037f400f11297c88835",
+    adapter_id=OPENAI_CHAT_SOURCE_ADAPTER_ID,
+    algorithm_revision="2",
+)
+_REVIEWED_CONTRACTS = (_REVIEWED_CONTRACT, _RUNTIME_REVIEWED_CONTRACT)
+
 
 def _require_chat_protocol(source_api_protocol: object) -> None:
     # None is meaningful: exact source runtime chooses Chat when the optional
@@ -57,7 +73,7 @@ def openai_chat_source_marker(
 ) -> dict[str, object]:
     """Revalidate the frozen source binding, not caller-supplied model settings."""
     if (
-        contract != _REVIEWED_CONTRACT
+        contract not in _REVIEWED_CONTRACTS
         or source_provider != OPENAI_CHAT_SOURCE_PROVIDER
         or source_model != contract.source_model
         or model_type != ModelType.LLM
@@ -89,11 +105,21 @@ def build_openai_chat_source_contract(
 ) -> OpenAIChatSourceContract:
     """Require fresh installed schema/UID, mapping and SYSTEM protocol evidence."""
     _require_chat_protocol(source_api_protocol)
-    contract = _REVIEWED_CONTRACT
     actual_digest = model_schema_digest(source_schema)
+    contract = next(
+        (
+            item
+            for item in _REVIEWED_CONTRACTS
+            if item.algorithm_revision == adapter_revision
+            and item.source_schema_digest == expected_source_schema_digest
+            and item.rules_digest == expected_rules_digest
+        ),
+        None,
+    )
     if (
-        adapter_id != OPENAI_CHAT_SOURCE_ADAPTER_ID
-        or adapter_revision != OPENAI_CHAT_SOURCE_ADAPTER_REVISION
+        contract is None
+        or adapter_id != contract.adapter_id
+        or adapter_revision != contract.algorithm_revision
         or source_plugin_unique_identifier != contract.source_plugin_unique_identifier
         or source_schema.model != source_model
         or source_schema.model_properties.get(ModelPropertyKey.MODE) != "chat"
@@ -138,7 +164,9 @@ def restore_openai_chat_source_contract(
         or any(not isinstance(value, str) for key, value in marker.items() if key != "schema_version")
     ):
         raise OpenAIChatSourceAdapterError("Invalid frozen OpenAI Chat source marker")
-    contract = _REVIEWED_CONTRACT
+    contract = next((item for item in _REVIEWED_CONTRACTS if item.profile_id == marker["profile_id"]), None)
+    if contract is None:
+        raise OpenAIChatSourceAdapterError("Invalid frozen OpenAI Chat source marker")
     expected = openai_chat_source_marker(
         contract,
         source_provider=source_provider,

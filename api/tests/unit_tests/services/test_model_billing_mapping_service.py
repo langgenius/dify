@@ -36,6 +36,66 @@ from services.model_billing_mapping_service import (
 )
 
 
+@pytest.mark.parametrize(
+    ("paid_used", "trial_used", "selected", "valid"),
+    [
+        (3, 0, ProviderQuotaType.PAID, True),
+        (100, 4, ProviderQuotaType.TRIAL, True),
+        (100, 20, ProviderQuotaType.PAID, False),
+    ],
+)
+def test_v2_availability_preserves_finite_noncredit_units_counters_and_scope_on_original_backend(
+    paid_used: int,
+    trial_used: int,
+    selected: ProviderQuotaType,
+    valid: bool,
+) -> None:
+    original = [
+        QuotaConfiguration(
+            quota_type=kind,
+            quota_unit=QuotaUnit.TOKENS,
+            quota_limit=limit,
+            quota_used=used,
+            is_valid=limit > used,
+            restrict_models=[
+                RestrictModel(model="original-only", model_type=ModelType.LLM, base_model_name="original-deployment")
+            ],
+        )
+        for kind, limit, used in ((ProviderQuotaType.PAID, 100, paid_used), (ProviderQuotaType.TRIAL, 20, trial_used))
+    ]
+    hosting = HostingProvider(
+        enabled=True, quota_unit=QuotaUnit.TOKENS, quotas=[PaidHostingQuota(), TrialHostingQuota()]
+    )
+    assert (
+        additional_hosted_availability(
+            provider="langgenius/openai/openai",
+            hosting=hosting,
+            installed_models=[],
+            original_quotas=original,
+            raw_registry="[]",
+            revision="new-v2",
+            published_balance=True,
+        )
+        is None
+    )
+    available = additional_hosted_availability(
+        provider="langgenius/openai/openai",
+        hosting=hosting,
+        installed_models=[],
+        original_quotas=original,
+        raw_registry="[]",
+        revision="new-v2",
+        published_balance=True,
+        preserve_independent_units=True,
+    )
+    assert available is not None
+    assert available.current_quota_type == selected
+    assert [quota.model_dump(mode="json") for quota in available.quotas] == [
+        quota.model_dump(mode="json") for quota in original
+    ]
+    assert next(quota for quota in available.quotas if quota.quota_type == selected).is_valid is valid
+
+
 @pytest.mark.parametrize("policy", [None, "", "paid-legacy-v1", "free-legacy-v2", " free-legacy-v1", "free-legacy-v1 "])
 def test_only_exact_free_policy_allows_an_empty_inventory(policy: str | None) -> None:
     assert migration_policy_allows_empty_sources(policy) is False

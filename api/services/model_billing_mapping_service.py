@@ -9,7 +9,7 @@ import hashlib
 import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal, cast
 
 from packaging.version import InvalidVersion, Version
 from pydantic import TypeAdapter
@@ -28,12 +28,14 @@ from models.provider_ids import ModelProviderID
 from services.entities.model_billing_mapping import ModelMapping
 from services.entities.model_billing_mapping import SourceParameterContract as SourceParameterContract  # noqa: PLC0414
 from services.entities.model_billing_mapping import model_schema_digest as model_schema_digest  # noqa: PLC0414
+from services.entities.model_billing_migration import StableMigrationSourceProviderOwnership
 from services.model_billing_anthropic_adapter import AnthropicSourceContract as AnthropicSourceContract  # noqa: PLC0414
 from services.model_billing_anthropic_adapter import anthropic_source_marker as anthropic_source_marker  # noqa: PLC0414
 from services.model_billing_anthropic_adapter import build_anthropic_source_contract
 from services.model_billing_anthropic_adapter import (
     restore_anthropic_source_contract as restore_anthropic_source_contract,  # noqa: PLC0414
 )
+from services.model_billing_migration_inventory import saved_dependency_inventory_policy
 from services.model_billing_openai_chat_adapter import (
     OpenAIChatSourceContract,
     build_openai_chat_source_contract,
@@ -196,6 +198,15 @@ def uses_published_tokener_balance(state: dict[str, Any] | None) -> bool:
     )
 
 
+def uses_stable_dependency_inventory(raw_policy: str, state: dict[str, Any] | None) -> bool:
+    """Exact revision dispatch for v2-only preservation; no runtime/root lookup."""
+    revision = state.get("model_mapping_version") if state else None
+    return (
+        isinstance(revision, str)
+        and saved_dependency_inventory_policy(raw_policy, revision) == "saved_system_dependencies_v2"
+    )
+
+
 def validate_prepared_provider_provenance(provider: str, state: dict[str, Any]) -> None:
     """Validate historical facts without treating their chosen pool as an ACL."""
     ownership = state.get("source_ownership")
@@ -205,6 +216,12 @@ def validate_prepared_provider_provenance(provider: str, state: dict[str, Any]) 
     if provider_id not in ownership:
         return
     record = ownership[provider_id]
+    if isinstance(record, dict) and "schema_version" in record:
+        try:
+            StableMigrationSourceProviderOwnership.model_validate(record)
+        except ValueError:
+            raise ValueError("Invalid stable source ownership") from None
+        return
     if not isinstance(record, dict) or record.get("current_quota_type") not in {"paid", "trial", "free"}:
         raise ValueError("Invalid source ownership")
     quotas = record.get("quotas")
@@ -369,6 +386,9 @@ def published_original_quotas(
     """Close old finite balances while preserving original independent owners."""
     validate_prepared_provider_provenance(provider, state)
     record = state["source_ownership"].get(str(ModelProviderID(provider)))
+    if isinstance(record, dict) and record.get("schema_version") == 2:
+        result = stable_owned_quotas(provider, quotas, state)
+        return result, first_valid_independent_quota(result)
     owned_quotas = record["quotas"] if record is not None else {}
     result = []
     for original in quotas:
@@ -387,6 +407,94 @@ def published_original_quotas(
     return result, preserve
 
 
+def first_valid_independent_quota(quotas: Sequence[QuotaConfiguration]) -> ProviderQuotaType | None:
+    """FREE, unlimited and non-credit-unit owners keep original settlement."""
+    return next(
+        (
+            kind
+            for kind in (ProviderQuotaType.PAID, ProviderQuotaType.FREE, ProviderQuotaType.TRIAL)
+            if any(
+                quota.quota_type == kind
+                and quota.is_valid
+                and (
+                    kind == ProviderQuotaType.FREE
+                    or quota.quota_limit == -1
+                    or quota.quota_unit not in {QuotaUnit.CREDITS, QuotaUnit.TIMES}
+                )
+                for quota in quotas
+            )
+        ),
+        None,
+    )
+
+
+def stable_owned_quotas(
+    provider: str, quotas: Sequence[QuotaConfiguration], state: dict[str, Any]
+) -> list[QuotaConfiguration]:
+    """Apply explicit v2 structural provenance without freezing consumption.
+
+    Shared finite metadata is closed only by the existing compatibility caller.
+    Independent FREE/non-credit live limit/usage and original unlimited authority
+    remain on their original backend, not rewritten into a managed paid owner.
+    """
+    validate_prepared_provider_provenance(provider, state)
+    raw = state["source_ownership"].get(str(ModelProviderID(provider)))
+    if not isinstance(raw, dict) or raw.get("schema_version") != 2:
+        raise ValueError("Stable source ownership required")
+    record = StableMigrationSourceProviderOwnership.model_validate(raw)
+    present = {quota.quota_type.value for quota in quotas}
+    if any(structure.unmetered and kind not in present for kind, structure in record.quotas.items()):
+        raise ValueError("Original unlimited source quota is missing")
+    result: list[QuotaConfiguration] = []
+    for original in quotas:
+        structure = record.quotas.get(cast(Literal["paid", "trial", "free"], original.quota_type.value))
+        if structure is None or structure.unit != original.quota_unit.value:
+            raise ValueError("Source quota structure changed")
+        quota = original.model_copy(deep=True)
+        if quota.quota_type != ProviderQuotaType.FREE and quota.quota_unit in {QuotaUnit.CREDITS, QuotaUnit.TIMES}:
+            quota.quota_limit = -1 if structure.unmetered else 0
+            quota.quota_used = 0
+            quota.is_valid = structure.unmetered
+        elif (quota.quota_limit == -1) != structure.unmetered:
+            raise ValueError("Independent quota structure changed")
+        else:
+            quota.is_valid = quota.quota_limit == -1 or quota.quota_limit > quota.quota_used
+        result.append(quota)
+    return result
+
+
+def stable_compatibility_quota_type(
+    provider: str, quotas: list[QuotaConfiguration], state: dict[str, Any]
+) -> ProviderQuotaType:
+    """Versioned selection adapter; old Core consumes no new DTO dependency."""
+    quotas[:] = stable_owned_quotas(provider, quotas, state)
+    record = StableMigrationSourceProviderOwnership.model_validate(
+        state["source_ownership"][str(ModelProviderID(provider))]
+    )
+    independent = first_valid_independent_quota(quotas)
+    if independent is not None:
+        return independent
+    for pool in record.shared_pool_types:
+        selected = ProviderQuotaType(pool)
+        if any(quota.quota_type == selected and quota.quota_limit != -1 for quota in quotas):
+            return selected
+    independent_quotas = [
+        quota
+        for quota in quotas
+        if quota.quota_type == ProviderQuotaType.FREE
+        or quota.quota_limit == -1
+        or quota.quota_unit not in {QuotaUnit.CREDITS, QuotaUnit.TIMES}
+    ]
+    if not record.shared_pool_types and independent_quotas:
+        # Exhaustion stays with the original source quota, never a new charge.
+        return next(
+            kind
+            for kind in (ProviderQuotaType.PAID, ProviderQuotaType.FREE, ProviderQuotaType.TRIAL)
+            if any(quota.quota_type == kind for quota in independent_quotas)
+        )
+    raise ValueError("Missing stable shared source pool")
+
+
 def additional_hosted_availability(
     *,
     provider: str,
@@ -397,6 +505,7 @@ def additional_hosted_availability(
     revision: str,
     published_balance: bool = False,
     preserve_independent_pool: ProviderQuotaType | None = None,
+    preserve_independent_units: bool = False,
 ) -> HostedCompatibilityAvailability | None:
     """Build trusted hosted availability using explicit, frozen contracts.
 
@@ -416,7 +525,10 @@ def additional_hosted_availability(
     independent = [
         quota.model_copy(deep=True)
         for quota in original_quotas
-        if quota.quota_type == ProviderQuotaType.FREE or quota.quota_limit == -1
+        if quota.quota_type == ProviderQuotaType.FREE
+        or quota.quota_limit == -1
+        or preserve_independent_units
+        and quota.quota_unit not in {QuotaUnit.CREDITS, QuotaUnit.TIMES}
     ]
     try:
         registry = mappings_for_revision(raw_registry, revision)
@@ -469,16 +581,27 @@ def additional_hosted_availability(
         union = {
             (restricted.model_type, restricted.model): restricted
             for quota in quotas
-            if quota.quota_type in {ProviderQuotaType.PAID, ProviderQuotaType.TRIAL} and quota.quota_limit != -1
+            if quota.quota_type in {ProviderQuotaType.PAID, ProviderQuotaType.TRIAL}
+            and quota.quota_limit != -1
+            and (not preserve_independent_units or quota.quota_unit in {QuotaUnit.CREDITS, QuotaUnit.TIMES})
             for restricted in quota.restrict_models
         }
         for quota in quotas:
-            if quota.quota_type in {ProviderQuotaType.PAID, ProviderQuotaType.TRIAL} and quota.quota_limit != -1:
+            if (
+                quota.quota_type in {ProviderQuotaType.PAID, ProviderQuotaType.TRIAL}
+                and quota.quota_limit != -1
+                and (not preserve_independent_units or quota.quota_unit in {QuotaUnit.CREDITS, QuotaUnit.TIMES})
+            ):
                 quota.restrict_models = [union[identity] for identity in sorted(union)]
         if preserve_independent_pool is not None and any(
             quota.quota_type == preserve_independent_pool
             and quota.is_valid
-            and (quota.quota_type == ProviderQuotaType.FREE or quota.quota_limit == -1)
+            and (
+                quota.quota_type == ProviderQuotaType.FREE
+                or quota.quota_limit == -1
+                or preserve_independent_units
+                and quota.quota_unit not in {QuotaUnit.CREDITS, QuotaUnit.TIMES}
+            )
             for quota in quotas
         ):
             return HostedCompatibilityAvailability(quotas, preserve_independent_pool)
@@ -491,8 +614,22 @@ def additional_hosted_availability(
                 return HostedCompatibilityAvailability(quotas, pool_type)
             return None
     for pool_type in (ProviderQuotaType.PAID, ProviderQuotaType.TRIAL):
-        if any(quota.quota_type == pool_type and quota.quota_limit != -1 for quota in quotas):
+        if any(
+            quota.quota_type == pool_type
+            and quota.quota_limit != -1
+            and (not preserve_independent_units or quota.quota_unit in {QuotaUnit.CREDITS, QuotaUnit.TIMES})
+            for quota in quotas
+        ):
             return HostedCompatibilityAvailability(quotas, pool_type)
+    if preserve_independent_units and quotas and not has_finite_hosted_credit_pool(hosting):
+        # Exhaustion without any managed fallback remains an ordinary original
+        # quota state. It must not manufacture a Tokener settlement owner.
+        selected = next(
+            kind
+            for kind in (ProviderQuotaType.PAID, ProviderQuotaType.FREE, ProviderQuotaType.TRIAL)
+            if any(quota.quota_type == kind for quota in quotas)
+        )
+        return HostedCompatibilityAvailability(quotas, selected)
     return None
 
 

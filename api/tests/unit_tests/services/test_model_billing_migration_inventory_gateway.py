@@ -1,0 +1,501 @@
+import json
+from collections.abc import Sequence
+from dataclasses import dataclass, replace
+from datetime import datetime
+from typing import cast
+
+import pytest
+from sqlalchemy.orm import Session, sessionmaker
+
+from core.entities.provider_entities import QuotaUnit
+from core.hosting_configuration import FreeHostingQuota, HostingProvider, PaidHostingQuota, TrialHostingQuota
+from core.model_invocation_routing import ModelRouteUnavailable, ModelRouteUnmapped, RoutedModelCredentials
+from core.plugin.entities.plugin import PluginInstallationSource
+from core.plugin.entities.plugin_daemon import (
+    PluginInstallTask,
+    PluginInstallTaskPluginStatus,
+    PluginInstallTaskStatus,
+    PluginModelProviderBinding,
+    PluginModelProviderEntity,
+)
+from core.tools.entities.common_entities import I18nObject as PluginI18nObject
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from repositories.model_billing_dependency_repository import ModelBillingDependencyRepository
+from services import model_billing_migration_inventory_gateway as module
+from services.model_billing_dependency_adapters import PluginAgentStrategySelectorQuery, TypedModelDependencyExtractor
+from services.model_billing_dependency_inventory import (
+    ClassicModelSelectors,
+    ModelBillingDependencyInventory,
+    ModelDependencyDocument,
+)
+from services.model_billing_dependency_provenance import (
+    ModelDependencyProviderState,
+    ModelDependencyQuota,
+    ModelDependencySelectionSnapshot,
+    SavedModelDependencyProvenance,
+    StableSavedModelMigrationIntent,
+)
+from services.model_billing_migration_inventory import (
+    ManagedModelReadinessBinding,
+    ModelBillingMigrationInventory,
+    RequiredSavedCreditModel,
+)
+from tests.unit_tests.services.test_model_billing_dependency_inventory import Documents
+from tests.unit_tests.services.test_model_billing_mapping_service import mapping, schema
+from tests.unit_tests.services.test_model_billing_migration_inventory import Historical
+
+PROVIDER = "langgenius/openai/openai"
+UID = "langgenius/openai:0.4.2@" + "a" * 64
+NOW = datetime(2026, 11, 2)
+
+
+@dataclass
+class Selections:
+    value: ModelDependencySelectionSnapshot
+
+    def selection_snapshot(self, tenant_id: str) -> ModelDependencySelectionSnapshot:
+        assert tenant_id == "tenant"
+        return self.value
+
+
+@dataclass
+class Metadata:
+    bindings: list[PluginModelProviderBinding]
+    catalogs: list[PluginModelProviderEntity]
+    dynamic: AIModelEntity | None = None
+    dynamic_uid: str | None = None
+    target: AIModelEntity | None = None
+
+    def fetch_model_provider_bindings(self, tenant_id: str) -> Sequence[PluginModelProviderBinding]:
+        assert tenant_id == "tenant"
+        return self.bindings
+
+    def fetch_model_providers(self, tenant_id: str) -> Sequence[PluginModelProviderEntity]:
+        assert tenant_id == "tenant"
+        return self.catalogs
+
+    def get_model_schema(
+        self,
+        tenant_id: str,
+        user_id: str | None,
+        plugin_id: str,
+        provider: str,
+        model_type: str,
+        model: str,
+        credentials: dict[str, object],
+        *,
+        plugin_unique_identifier: str | None = None,
+    ) -> AIModelEntity | None:
+        del tenant_id, user_id, plugin_id, provider, model_type, model
+        if isinstance(credentials, RoutedModelCredentials):
+            assert not dict(credentials)
+            return self.target
+        # Source metadata only receives platform SYSTEM settings; no BYOK lookup.
+        assert credentials.get("api_key") == "platform-test-boundary"
+        self.dynamic_uid = plugin_unique_identifier
+        return self.dynamic
+
+    def _request_with_plugin_daemon_response(self, *args: object, **kwargs: object) -> module.RedirectCapabilities:
+        del args, kwargs
+        return module.RedirectCapabilities(
+            protocols=["model-redirect/v1"], operations=["model/schema", "llm/invoke", "llm/num_tokens"]
+        )
+
+
+@dataclass
+class Installations:
+    tasks: tuple[PluginInstallTask, ...] = ()
+
+    def fetch_plugin_installation_tasks(self, tenant_id: str, page: int, page_size: int) -> Sequence[PluginInstallTask]:
+        assert tenant_id == "tenant"
+        assert page == 1
+        assert page_size == 100
+        return self.tasks
+
+
+def setup_gateway(
+    monkeypatch: pytest.MonkeyPatch, factory: sessionmaker[Session]
+) -> tuple[module.SavedDependencyMigrationEvidenceGateway, Metadata, Installations, Selections]:
+    source = schema("saved-model")
+    binding = PluginModelProviderBinding(
+        provider=PROVIDER,
+        installation_id="installed",
+        plugin_id="langgenius/openai",
+        plugin_unique_identifier=UID,
+        runtime_type="serverless",
+        source=PluginInstallationSource.Marketplace,
+        version="0.4.2",
+        verified=True,
+    )
+    catalog = PluginModelProviderEntity(
+        id="catalog",
+        created_at=NOW,
+        updated_at=NOW,
+        tenant_id="tenant",
+        provider=PROVIDER,
+        plugin_unique_identifier=UID,
+        plugin_id="langgenius/openai",
+        installation_source=PluginInstallationSource.Marketplace,
+        declaration=ProviderEntity(
+            provider=PROVIDER,
+            label=I18nObject(en_US="OpenAI"),
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+            models=[source],
+        ),
+    )
+    metadata, installations = Metadata([binding], [catalog]), Installations()
+    state = ModelDependencyProviderState(
+        PROVIDER,
+        True,
+        True,
+        False,
+        "system",
+        (ModelDependencyQuota("paid", "credits", 100, 0),),
+        "paid",
+        True,
+        source_plugin_unique_identifier=UID,
+    )
+    selections = Selections(ModelDependencySelectionSnapshot((state,), ()))
+    monkeypatch.setattr(module, "PluginModelClient", lambda: metadata)
+    monkeypatch.setattr(module, "PluginInstaller", lambda: installations)
+    monkeypatch.setattr(
+        module.dify_config, "TOKENER_LEGACY_MODEL_MAPPING_JSON", json.dumps([mapping(source, revision="new-v2")])
+    )
+    monkeypatch.setattr(module.dify_config, "TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON", "[]")
+    monkeypatch.setitem(
+        module.ext_hosting_provider.hosting_configuration.provider_map,
+        PROVIDER,
+        HostingProvider(
+            enabled=True,
+            credentials={"api_key": "platform-test-boundary"},
+            quota_unit="credits",
+            quotas=[PaidHostingQuota()],
+        ),
+    )
+    gateway = module.SavedDependencyMigrationEvidenceGateway(
+        selections=selections, records=ModelBillingDependencyRepository(session_factory=factory)
+    )
+    return gateway, metadata, installations, selections
+
+
+def test_only_saved_required_model_is_checked_even_if_other_catalog_models_have_no_mapping(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    gateway, metadata, _, _ = setup_gateway(monkeypatch, sqlite_session_factory)
+    metadata.catalogs[0].declaration.models.append(schema("unused-not-mapped"))
+    result = gateway.sources("tenant", "new-v2", (RequiredSavedCreditModel(PROVIDER, "llm", "saved-model", ("paid",)),))
+    assert [item["model"] for item in result.models] == ["saved-model"]
+    assert metadata.dynamic_uid is None
+
+
+def test_configured_dynamic_model_requires_positive_exact_uid_schema_not_whitelist_guess(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    gateway, metadata, _, _ = setup_gateway(monkeypatch, sqlite_session_factory)
+    metadata.catalogs[0].declaration.models = []
+    with pytest.raises(ModelRouteUnmapped):
+        gateway.sources("tenant", "new-v2", (RequiredSavedCreditModel(PROVIDER, "llm", "saved-model", ("paid",)),))
+    metadata.dynamic = schema("saved-model")
+    assert gateway.sources(
+        "tenant", "new-v2", (RequiredSavedCreditModel(PROVIDER, "llm", "saved-model", ("paid",)),)
+    ).models
+    assert metadata.dynamic_uid == UID
+
+
+@pytest.mark.parametrize("failure", ["duplicate", "remote", "changed", "unverified"])
+def test_source_binding_proof_cannot_be_satisfied_by_cached_or_mutable_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    failure: str,
+) -> None:
+    gateway, metadata, _, _ = setup_gateway(monkeypatch, sqlite_session_factory)
+    if failure == "duplicate":
+        metadata.bindings.append(metadata.bindings[0])
+    elif failure == "remote":
+        metadata.bindings[0].source = PluginInstallationSource.Remote
+    elif failure == "changed":
+        metadata.bindings[0].plugin_unique_identifier = UID[:-1] + "b"
+    else:
+        metadata.bindings[0].verified = False
+    with pytest.raises(ModelRouteUnavailable):
+        gateway.sources("tenant", "new-v2", (RequiredSavedCreditModel(PROVIDER, "llm", "saved-model", ("paid",)),))
+
+
+def test_fresh_byok_switch_between_inventory_and_source_evidence_does_not_pass_as_credits(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    gateway, _, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    selections.value = replace(
+        selections.value, providers=(replace(selections.value.providers[0], preferred="custom", custom_available=True),)
+    )
+    with pytest.raises(ModelRouteUnavailable):
+        gateway.sources("tenant", "new-v2", (RequiredSavedCreditModel(PROVIDER, "llm", "saved-model", ("paid",)),))
+
+
+@pytest.mark.parametrize("status", ["pending", "running"])
+def test_pending_source_or_managed_target_install_blocks_before_schema_export(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    status: str,
+) -> None:
+    gateway, _, installations, _ = setup_gateway(monkeypatch, sqlite_session_factory)
+    installations.tasks = (
+        PluginInstallTask(
+            id="task",
+            created_at=NOW,
+            updated_at=NOW,
+            status=PluginInstallTaskStatus(status),
+            total_plugins=1,
+            completed_plugins=0,
+            plugins=[
+                PluginInstallTaskPluginStatus(
+                    plugin_id="langgenius/openai",
+                    plugin_unique_identifier=UID,
+                    status=PluginInstallTaskStatus(status),
+                    message="",
+                    icon="",
+                    labels=PluginI18nObject(en_US="OpenAI"),
+                )
+            ],
+        ),
+    )
+    with pytest.raises(ModelRouteUnavailable):
+        gateway.sources("tenant", "new-v2", (RequiredSavedCreditModel(PROVIDER, "llm", "saved-model", ("paid",)),))
+
+
+@pytest.mark.parametrize("index", range(16))
+def test_private_source_profile_requires_full_source_schema_handshake_not_native_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+    index: int,
+) -> None:
+    from tests.unit_tests.services.test_model_billing_anthropic_adapter import binding, model_mapping, source_schema
+
+    gateway, metadata, _, _ = setup_gateway(monkeypatch, sqlite_session_factory)
+    rule, source = model_mapping(index), source_schema(index)
+    expected = "sha256:" + "b" * 64
+    monkeypatch.setattr(
+        module.dify_config, "TOKENER_LEGACY_MODEL_MAPPING_JSON", json.dumps([rule.model_dump(mode="json")])
+    )
+    monkeypatch.setattr(
+        gateway._records,
+        "managed_target_binding",
+        lambda _tenant: ManagedModelReadinessBinding("credential", "langgenius/tokener:9.9.9@" + "c" * 64, expected),
+    )
+    monkeypatch.setattr(
+        module,
+        "migration_routing_state",
+        lambda _tenant: {
+            "provisioned_binding": {
+                "tenant_id": "tenant",
+                "provider_name": "langgenius/tokener/tokener",
+                "provider_credential_id": "credential",
+                "credential_fingerprint": expected,
+            }
+        },
+    )
+    item = {
+        "provider": rule.source.provider_id,
+        "model_type": "llm",
+        "model": source.model,
+        "source_parameter_contract": binding(index)["marker"],
+    }
+    metadata.target = source.model_copy(update={"model": rule.target.model})
+    assert gateway.validate_target("tenant", rule.mapping_revision, {"models": [item]}) == expected
+    metadata.target = schema(rule.target.model)  # Native mode can match; full source contract does not.
+    with pytest.raises(ModelRouteUnmapped):
+        gateway.validate_target("tenant", rule.mapping_revision, {"models": [item]})
+
+
+def stable_facade(
+    gateway: module.SavedDependencyMigrationEvidenceGateway,
+    selections: Selections,
+) -> tuple[ModelBillingMigrationInventory, Documents]:
+    document = ModelDependencyDocument(
+        "tenant",
+        "classic_app",
+        "app",
+        "saved-version",
+        ClassicModelSelectors(
+            json.dumps({"provider": PROVIDER, "name": "saved-model", "mode": "chat"}), None, None, None, None, None
+        ),
+    )
+    documents = Documents((document,))
+    dependencies = ModelBillingDependencyInventory(
+        documents=documents,
+        extractor=TypedModelDependencyExtractor(strategies=PluginAgentStrategySelectorQuery()),
+        provenance=SavedModelDependencyProvenance(selections=selections),
+        stable_provenance=StableSavedModelMigrationIntent(selections=selections),
+    )
+    facade = ModelBillingMigrationInventory(
+        dependencies=dependencies,
+        evidence=gateway,
+        historical=Historical(),
+        policy_json=json.dumps(
+            [{"schema_version": 1, "mapping_revision": "new-v2", "inventory_policy": "saved_system_dependencies_v2"}]
+        ),
+    )
+    return facade, documents
+
+
+def test_v2_preparation_hash_survives_real_owner_pool_flips_and_unrelated_provider_consumption(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    gateway, _, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    module.ext_hosting_provider.hosting_configuration.provider_map[PROVIDER].quotas.append(TrialHostingQuota())
+    base = replace(
+        selections.value.providers[0],
+        custom_available=True,
+        quotas=(ModelDependencyQuota("paid", "credits", 100, 2), ModelDependencyQuota("trial", "credits", 20, 0)),
+    )
+    unrelated = replace(base, provider="langgenius/anthropic/anthropic", source_plugin_unique_identifier="unrelated")
+    selections.value = ModelDependencySelectionSnapshot((base, unrelated), ())
+    facade, documents = stable_facade(gateway, selections)
+    first = facade.inventory("tenant", "new-v2")
+    for current, paid_used, trial_used, actual_owner in (
+        ("paid", 17, 0, "shared_credit_pool"),
+        ("trial", 100, 3, "shared_credit_pool"),
+        ("trial", 100, 20, "custom"),
+    ):
+        changed = replace(
+            base,
+            current_quota_type=current,
+            quotas=(replace(base.quotas[0], used=paid_used), replace(base.quotas[1], used=trial_used)),
+        )
+        unrelated = replace(
+            unrelated,
+            current_quota_type="trial",
+            quotas=(replace(base.quotas[0], used=100), replace(base.quotas[1], used=19)),
+        )
+        selections.value = ModelDependencySelectionSnapshot((changed, unrelated), ())
+        result = facade.inventory("tenant", "new-v2")
+        assert result["inventory_hash"] == first["inventory_hash"]
+        assert result["source_ownership"] == first["source_ownership"]
+        assert set(cast(dict[str, object], result["source_ownership"])) == {PROVIDER}
+        assert cast(list[dict[str, object]], result["actual_runtime_ownership"])[0]["owner"] == actual_owner
+    selections.value = ModelDependencySelectionSnapshot((replace(base, preferred="custom"), unrelated), ())
+    changed_preference = facade.inventory("tenant", "new-v2")
+    assert changed_preference["inventory_hash"] != first["inventory_hash"]
+    assert changed_preference["model_count"] == 0
+    # An explicit selector configuration edit is not a normal balance change.
+    selections.value = ModelDependencySelectionSnapshot((base, unrelated), ())
+    old_document = documents.documents[0]
+    documents.documents = (
+        replace(
+            old_document,
+            payload=ClassicModelSelectors(
+                json.dumps(
+                    {
+                        "provider": PROVIDER,
+                        "name": "saved-model",
+                        "mode": "chat",
+                        "completion_params": {"temperature": 0.5},
+                    }
+                ),
+                None,
+                None,
+                None,
+                None,
+                None,
+            ),
+        ),
+    )
+    assert facade.inventory("tenant", "new-v2")["inventory_hash"] != first["inventory_hash"]
+
+
+def test_v2_free_fallback_model_is_validated_before_exhaustion_and_ownership_hash_stays_stable(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    gateway, _, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    module.ext_hosting_provider.hosting_configuration.provider_map[PROVIDER].quotas = [
+        FreeHostingQuota(),
+        TrialHostingQuota(),
+    ]
+    free = ModelDependencyQuota("free", "credits", 10, 1)
+    trial = ModelDependencyQuota("trial", "credits", 20, 0)
+    source = replace(selections.value.providers[0], quotas=(free, trial), current_quota_type="free")
+    selections.value = ModelDependencySelectionSnapshot((source,), ())
+    facade, _ = stable_facade(gateway, selections)
+    first = facade.inventory("tenant", "new-v2")
+    assert first["model_count"] == 1  # Managed fallback is checked even while the actual owner is independent FREE.
+    assert cast(list[dict[str, object]], first["actual_runtime_ownership"])[0]["owner"] == "provider_free"
+    selections.value = ModelDependencySelectionSnapshot(
+        (replace(source, current_quota_type="trial", quotas=(replace(free, used=10), trial)),), ()
+    )
+    second = facade.inventory("tenant", "new-v2")
+    assert cast(list[dict[str, object]], second["actual_runtime_ownership"])[0]["owner"] == "shared_credit_pool"
+    assert second["inventory_hash"] == first["inventory_hash"]
+
+
+def test_v2_referenced_finite_tokens_owner_is_captured_without_inventing_a_tokener_model_dependency(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    gateway, metadata, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    hosting = module.ext_hosting_provider.hosting_configuration.provider_map[PROVIDER]
+    hosting.quota_unit = QuotaUnit.TOKENS
+    hosting.quotas = [PaidHostingQuota(), TrialHostingQuota()]
+    source = replace(
+        selections.value.providers[0],
+        quotas=(ModelDependencyQuota("paid", "tokens", 100, 2), ModelDependencyQuota("trial", "tokens", 20, 0)),
+        current_quota_type="paid",
+    )
+    selections.value = ModelDependencySelectionSnapshot((source,), ())
+    facade, documents = stable_facade(gateway, selections)
+    first = facade.inventory("tenant", "new-v2")
+    assert first["model_count"] == 0
+    assert first["models"] == []
+    assert metadata.dynamic_uid is None
+    ownership = cast(dict[str, object], first["source_ownership"])
+    assert ownership[PROVIDER] == {
+        "schema_version": 2,
+        "shared_pool_types": [],
+        "quotas": {"paid": {"unit": "tokens", "unmetered": False}, "trial": {"unit": "tokens", "unmetered": False}},
+    }
+    selections.value = ModelDependencySelectionSnapshot(
+        (
+            replace(
+                source,
+                current_quota_type="trial",
+                quotas=(replace(source.quotas[0], used=100), replace(source.quotas[1], used=11)),
+            ),
+        ),
+        (),
+    )
+    assert facade.inventory("tenant", "new-v2")["inventory_hash"] == first["inventory_hash"]
+    documents.documents = ()  # No saved reference means no invented dependency/ownership from the global catalog.
+    empty = facade.inventory("tenant", "new-v2")
+    assert empty["model_count"] == 0
+    assert empty["source_ownership"] == {}
+
+
+def test_v2_missing_custom_configuration_keeps_required_system_model_across_processing_and_publication(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    gateway, _, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    source = replace(selections.value.providers[0], preferred="custom", custom_available=False)
+    selections.value = ModelDependencySelectionSnapshot((source,), ())
+    facade, _ = stable_facade(gateway, selections)
+    original = facade.inventory("tenant", "new-v2")
+    assert original["model_count"] == 1
+    for native_cohort in (False, True):
+        processing = replace(
+            source,
+            compatibility_route=True,
+            native_tokener=native_cohort,
+            managed_system_fallback=True,
+            quotas=tuple(replace(quota, limit=0, used=0) for quota in source.quotas),
+        )
+        selections.value = ModelDependencySelectionSnapshot((processing,), ())
+        current = facade.inventory("tenant", "new-v2")
+        assert current["inventory_hash"] == original["inventory_hash"]
+        assert cast(list[dict[str, object]], current["actual_runtime_ownership"])[0]["owner"] == "shared_credit_pool"

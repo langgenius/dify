@@ -14,6 +14,13 @@ from services.entities.model_billing_mapping import MappingSource, MappingTarget
         ("tts_source_voice_v1", "1", ModelType.TTS, ModelType.LLM, False),
         ("identity_v1", "old", ModelType.TTS, ModelType.TTS, True),
         ("identity_v1", "old", ModelType.LLM, ModelType.LLM, True),
+        ("openai_chat_source_v1", "1", ModelType.LLM, ModelType.LLM, True),
+        ("openai_chat_source_v1", "2", ModelType.LLM, ModelType.LLM, True),
+        ("openai_chat_source_v1", "3", ModelType.LLM, ModelType.LLM, False),
+        ("openai_chat_source_v1", "2", ModelType.TTS, ModelType.TTS, False),
+        ("anthropic_source_v1", "2", ModelType.LLM, ModelType.LLM, True),
+        ("anthropic_source_v1", "3", ModelType.LLM, ModelType.LLM, False),
+        ("anthropic_source_v1", "2", ModelType.TTS, ModelType.TTS, False),
         ("not-reviewed", "1", ModelType.TTS, ModelType.TTS, False),
     ],
 )

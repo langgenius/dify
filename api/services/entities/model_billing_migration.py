@@ -42,6 +42,39 @@ class MigrationSourceProviderOwnership(StrictPayload):
     quotas: dict[Literal["paid", "trial", "free"], MigrationSourceQuota]
 
 
+class StableMigrationSourceQuota(StrictPayload):
+    """`unmetered` preserves only the original -1 sentinel; unit also matters."""
+
+    unit: Literal["credits", "times", "tokens"]
+    unmetered: bool
+
+
+class StableMigrationSourceProviderOwnership(StrictPayload):
+    """V2 capability, not a snapshot of the currently selected wallet."""
+
+    schema_version: Literal[2]
+    shared_pool_types: list[Literal["paid", "trial"]]
+    quotas: dict[Literal["paid", "trial", "free"], StableMigrationSourceQuota] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def stable_shared_capabilities(self) -> Self:
+        if self.shared_pool_types != sorted(set(self.shared_pool_types)):
+            raise ValueError("shared pools must be canonical and unique")
+        priority = {"paid": 0, "free": 1, "trial": 2}
+        permanent = min((priority[kind] for kind, quota in self.quotas.items() if quota.unmetered), default=3)
+        expected = sorted(
+            kind
+            for kind, quota in self.quotas.items()
+            if kind in {"paid", "trial"}
+            and not quota.unmetered
+            and quota.unit in {"credits", "times"}
+            and priority[kind] < permanent
+        )
+        if self.shared_pool_types != expected:
+            raise ValueError("shared capability does not match stable quota structure")
+        return self
+
+
 class PrepareMigrationPayload(OperationPayload):
     migration_id: UUIDString
     batch_id: Reference

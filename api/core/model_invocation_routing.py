@@ -131,6 +131,15 @@ def compatibility_quota_type(
     ownership = source_ownership.get(str(ModelProviderID(provider)))
     if not isinstance(ownership, dict):
         raise ModelRouteUnavailable
+    if "schema_version" in ownership and ownership.get("schema_version") != 2:
+        raise ModelRouteUnavailable
+    if ownership.get("schema_version") == 2:
+        from services.model_billing_mapping_service import stable_compatibility_quota_type
+
+        try:
+            return stable_compatibility_quota_type(provider, quotas, state)
+        except (KeyError, TypeError, ValueError):
+            raise ModelRouteUnavailable from None
     try:
         selected = ProviderQuotaType(ownership["current_quota_type"])
         for quota in quotas:
@@ -227,6 +236,10 @@ class FrozenModelInvocation:
                     self.source_parameter_contract.rules_digest,
                 ]
             )
+            if self.source_parameter_contract.source_runtime_schema_digest is not None:
+                # Old contract tokens are unchanged; new reviewed split-boundary
+                # profiles additionally pin their exact source runtime schema.
+                identity.append(self.source_parameter_contract.source_runtime_schema_digest)
         return hashlib.sha256(json.dumps(identity, separators=(",", ":")).encode()).hexdigest()
 
 
@@ -387,13 +400,29 @@ def routed_credentials(
         source_uid = getattr(configuration.provider, "plugin_unique_identifier", None)
         if len(matching_sources) != 1 or not isinstance(source_uid, str):
             raise ModelRouteUnmapped
+        source_settings = configuration.system_configuration.credentials
+        if mapping.parameter_adapter.id == "openai_chat_source_v1":
+            fact = configuration.system_configuration._tokener_source_protocol_fact
+            if (
+                fact is None
+                or fact.provider != provider
+                or fact.plugin_unique_identifier != source_uid
+                or [digest for kind, name, digest in fact.catalog_schema_digests if (kind, name) == (model_type, model)]
+                != [model_schema_digest(matching_sources[0])]
+                or fact.selector not in {"absent", "chat", "responses"}
+            ):
+                raise ModelRouteUnmapped
+            # The original hosted key remains inaccessible on this managed
+            # route. Only positively captured, package-bound public protocol
+            # settings reach the pure source adapter.
+            source_settings = {"api_protocol": None if fact.selector == "absent" else fact.selector}
         try:
             contract = build_source_adapter_contract(
                 mapping,
                 source_provider=provider,
                 source_plugin_unique_identifier=source_uid,
                 source_schema=matching_sources[0],
-                source_credentials=configuration.system_configuration.credentials,
+                source_credentials=source_settings,
             )
         except ValueError:
             raise ModelRouteUnmapped from None
@@ -658,7 +687,15 @@ def migration_inventory(
             credentials: dict[str, Any],
             *,
             source_id: ModelProviderID = source_id,
+            source_plugin_unique_identifier: str | None = getattr(
+                configuration.provider, "plugin_unique_identifier", None
+            ),
         ) -> AIModelEntity | None:
+            profile_uid = None
+            if str(source_id) in parameter_profile_providers:
+                profile_uid = source_plugin_unique_identifier
+                if not isinstance(profile_uid, str) or parameter_profile_bindings.get(str(source_id)) != profile_uid:
+                    raise ModelRouteUnavailable
             return client.get_model_schema(
                 tenant_id,
                 None,
@@ -667,6 +704,7 @@ def migration_inventory(
                 model_type.value,
                 model,
                 credentials,
+                plugin_unique_identifier=profile_uid,
             )
 
         try:
@@ -782,6 +820,33 @@ def migration_inventory(
                     raise ModelRouteUnmapped
                 item["source_adapter_rules_digest"] = contract.rules_digest
                 if isinstance(contract, SourceParameterContract):
+                    if contract.source_runtime_schema_digest is not None:
+                        # Management catalogs and SDK-rendered model/schema RPCs
+                        # are distinct owners. Verify the actual original source
+                        # runtime under its fresh immutable UID before funding;
+                        # a static catalog cannot stand in for this evidence.
+                        if system.credentials is None:
+                            raise ModelRouteUnmapped
+                        runtime_schema = client.get_model_schema(
+                            tenant_id,
+                            None,
+                            source_id.plugin_id,
+                            source_id.provider_name,
+                            model_type.value,
+                            model,
+                            system.credentials,
+                            plugin_unique_identifier=source_uid,
+                        )
+                        if (
+                            runtime_schema is None
+                            or runtime_schema.model != model
+                            or runtime_schema.model_type != model_type
+                            or not hmac.compare_digest(
+                                model_schema_digest(runtime_schema), contract.source_runtime_schema_digest
+                            )
+                        ):
+                            raise ModelRouteUnmapped
+                        item["source_runtime_schema_digest"] = contract.source_runtime_schema_digest
                     item["source_parameter_contract"] = source_parameter_marker(
                         contract,
                         source_provider=str(source_id),
@@ -916,6 +981,11 @@ def validate_migration_readiness(
             model_type.value,
             source["model"],
             RoutedModelCredentials(plan),
+            plugin_unique_identifier=(
+                source_parameter_contract.source_plugin_unique_identifier
+                if source_parameter_contract is not None
+                else None
+            ),
         )
         if target_schema is None or target_schema.model_type != model_type:
             raise ModelRouteUnmapped
@@ -925,9 +995,15 @@ def validate_migration_readiness(
             # must fail before funds are issued. The target may report its
             # physical model ID, but every other source field must match.
             logical_schema = target_schema.model_copy(update={"model": source["model"]})
-            if not hmac.compare_digest(
-                model_schema_digest(logical_schema), source_parameter_contract.source_schema_digest
+            expected_schema_digest = (
+                source_parameter_contract.source_runtime_schema_digest or source_parameter_contract.source_schema_digest
+            )
+            if (
+                source_parameter_contract.source_runtime_schema_digest is not None
+                and source.get("source_runtime_schema_digest") != source_parameter_contract.source_runtime_schema_digest
             ):
+                raise ModelRouteUnmapped
+            if not hmac.compare_digest(model_schema_digest(logical_schema), expected_schema_digest):
                 raise ModelRouteUnmapped
         if (
             model_type == ModelType.LLM

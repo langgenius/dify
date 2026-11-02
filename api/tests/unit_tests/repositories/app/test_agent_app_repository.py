@@ -7,13 +7,46 @@ import pytest
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
+from models.agent import (
+    Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentConfigSnapshot,
+    AgentKind,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+)
 from models.model import App, AppModelConfig
 from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.roster_service import AgentRosterService
 from services.app.agent_app_contracts import AgentAppNotFoundError
+from services.model_billing_dependency_inventory import AgentModelSelectors
 
 type Resolver = Literal["repository", "roster"]
+
+
+@pytest.mark.usefixtures("_inline_agent")
+def test_model_dependency_documents_include_every_owned_agent_snapshot_and_draft_without_materializing_app(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            AgentConfigDraft(
+                tenant_id="tenant-1", agent_id="inline-agent", draft_type=AgentConfigDraftType.DRAFT, config_snapshot={}
+            )
+        )
+        session.add_all(
+            [
+                AgentConfigSnapshot(tenant_id=tenant, agent_id="inline-agent", version=version, config_snapshot={})
+                for tenant, version in (("tenant-1", 1), ("tenant-1", 2), ("other", 3))
+            ]
+        )
+    result = AgentAppRepository(session_factory=sqlite_session_factory).collect_model_dependency_documents("tenant-1")
+    assert len(result) == 3
+    assert all(isinstance(item.payload, AgentModelSelectors) and item.owner_id == "inline-agent" for item in result)
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(App)) is None
 
 
 @pytest.mark.usefixtures("_inline_agent")

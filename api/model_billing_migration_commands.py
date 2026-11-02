@@ -7,9 +7,19 @@ import click
 from flask.cli import with_appcontext
 
 from configs import dify_config
-from core.model_invocation_routing import migration_inventory
+from extensions.ext_application_services import application_services
 from services.billing_service import BillingService, _BillingHTTPStatusError
 from services.model_billing_migration_service import ModelBillingMigrationService
+
+
+def migration_inventory(
+    tenant_id: str, mapping_version: str, *, eligibility_policy_version: str | None = None
+) -> dict[str, object]:
+    return application_services().model_billing_migration_inventory.inventory(
+        tenant_id,
+        mapping_version,
+        eligibility_policy_version=eligibility_policy_version,
+    )
 
 
 @click.group("tokener-migration")

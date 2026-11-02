@@ -1,6 +1,6 @@
 """Exact source Anthropic semantics for opt-in managed Tokener redirects.
 
-Only sixteen reviewed immutable source bindings are supported. Schema validation
+Sixteen original and eight appended 0.3.39 runtime-bound profiles are supported. Schema validation
 occurs before a plan is frozen; transport validates the frozen binding again
 before adding its private marker to managed target credentials. No provider,
 App, parameter dictionary or BYOK credential can opt itself into routing here.
@@ -16,6 +16,7 @@ from services.entities.model_billing_mapping import SourceParameterContract, mod
 
 ANTHROPIC_SOURCE_ADAPTER_ID = "anthropic_source_v1"
 ANTHROPIC_SOURCE_ADAPTER_REVISION = "1"
+ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION = "2"
 ANTHROPIC_SOURCE_PROVIDER = "langgenius/anthropic/anthropic"
 ANTHROPIC_SOURCE_CREDENTIAL_KEY = "_dify_source_contract"
 
@@ -165,6 +166,175 @@ _REVIEWED_CONTRACTS = (
 )
 
 
+# Append-only revision 2: the original inventory/catalog boundary is unchanged.
+# The additional exact source RPC digest is verified separately during runtime
+# readiness. Both source versions have independent exact-UID metadata evidence;
+# only provenance is excluded from the NEWv2 semantic hash, not runtime/schema facts.
+_REVIEWED_RUNTIME_CONTRACTS = (
+    AnthropicSourceContract(
+        "anthropic-0339-runtime-v2:claude-sonnet-4-5",
+        "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "claude-sonnet-4-5",
+        "sha256:a82c389002c5199fa70eb48898e5b3ab0278af4d5a9a9bb72c0c37c57dfff147",
+        "claude-sonnet-4-5-20250929",
+        "sha256:d7b23bc7b5d9f0c69385eb92e2979ab30c041fbfaef2b491f0630b4b4758b511",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:8bdc14027d318e5a2bc8b7a8cd76a68224256d2e96d7fe1c666d6d83f966e6fb",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0339-runtime-v2:claude-sonnet-4-5-20250929",
+        "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "claude-sonnet-4-5-20250929",
+        "sha256:ff24aa6c4cacc289a0cd1197b1c537aefcca44c21c8cb945045f4997c8d856a9",
+        "claude-sonnet-4-5-20250929",
+        "sha256:602379f1807fe98282b58eb1c8ca45bbcd0af2d07af383aabfccecbbefff4ba6",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:a645c26feb0864911f5de896386398d08837d26669a4fe8af74bfb8c988fc17f",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0339-runtime-v2:claude-opus-4-5",
+        "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "claude-opus-4-5",
+        "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+        "claude-opus-4-5-20251101",
+        "sha256:f9654f9c32eb3004cf6ead27e61bceb64b7ca4a3157f88b33c27f328edb44b3a",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0339-runtime-v2:claude-opus-4-5-20251101",
+        "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "claude-opus-4-5-20251101",
+        "sha256:f89c0708afb2d34c0b381b16e3778c3cbb752aaa6d4a25bfe63b77db6e9dd60b",
+        "claude-opus-4-5-20251101",
+        "sha256:80faf0fb56d9b9b2f54fb9ae00201bf8bff79e37e6d663fca4857e703078aeff",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:ab353ea271addf68943da588224b15ce64dacf9b8f69d1b82c329d6c60d5fbe7",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0339-runtime-v2:claude-haiku-4-5-20251001",
+        "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "claude-haiku-4-5-20251001",
+        "sha256:c7e5b0f9602431161db734959e149350afb0090ade9897c09528033aea7b5815",
+        "claude-haiku-4-5-20251001",
+        "sha256:aa97f5150279dcb045f81bc91557db05dc260355c641aa618f0e57972c57d2f9",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:f769655ca3d7838c4f4f7fd66c81a7473001cea03f9154393041160127efc4df",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0339-runtime-v2:claude-opus-4-6",
+        "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "claude-opus-4-6",
+        "sha256:e2fda6b4a05d8df82fe295b51837ef605647e573c87d7a8e9f618fd7e1d41dd1",
+        "claude-opus-4-6",
+        "sha256:9b4ccc77746502e2dd9c3e663740e42a76328feb8e04756dde7866c4dfb42953",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:bf40780b013430cb096cd3ad9cf5f28948f51fd142765a0b644161a842497da6",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0339-runtime-v2:claude-opus-4-7",
+        "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "claude-opus-4-7",
+        "sha256:5a65c61e12cd10e7e834200930f46795f5b22bf2022f2927366b2b9c787bd1c5",
+        "claude-opus-4-7",
+        "sha256:36e969647e20288b099a1e5c9b9a71131894a40814b0bfc13dea1aa950e93c27",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:278d50b9b3ff92540ad5e32fcfec9423fd20b3746a8081bba7f9019a30a74965",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0339-runtime-v2:claude-sonnet-4-6",
+        "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "claude-sonnet-4-6",
+        "sha256:36e251b82da35664ba5e90fbf9e4738f7a15a2dd1158a36bbfccc287d3167fd4",
+        "claude-sonnet-4-6",
+        "sha256:b86f364904fff8122c74e28add831bb0d98597388c8d5b25a6a059b191635657",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:1ac0fea1adc86b9667e1ba1fce687bf586ba345a1a8078d02c6fd65f58e03a92",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0338-runtime-v2:claude-sonnet-4-5",
+        "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "claude-sonnet-4-5",
+        "sha256:a82c389002c5199fa70eb48898e5b3ab0278af4d5a9a9bb72c0c37c57dfff147",
+        "claude-sonnet-4-5-20250929",
+        "sha256:d7b23bc7b5d9f0c69385eb92e2979ab30c041fbfaef2b491f0630b4b4758b511",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:8bdc14027d318e5a2bc8b7a8cd76a68224256d2e96d7fe1c666d6d83f966e6fb",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0338-runtime-v2:claude-sonnet-4-5-20250929",
+        "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "claude-sonnet-4-5-20250929",
+        "sha256:ff24aa6c4cacc289a0cd1197b1c537aefcca44c21c8cb945045f4997c8d856a9",
+        "claude-sonnet-4-5-20250929",
+        "sha256:602379f1807fe98282b58eb1c8ca45bbcd0af2d07af383aabfccecbbefff4ba6",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:a645c26feb0864911f5de896386398d08837d26669a4fe8af74bfb8c988fc17f",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0338-runtime-v2:claude-opus-4-5",
+        "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "claude-opus-4-5",
+        "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+        "claude-opus-4-5-20251101",
+        "sha256:f9654f9c32eb3004cf6ead27e61bceb64b7ca4a3157f88b33c27f328edb44b3a",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0338-runtime-v2:claude-opus-4-5-20251101",
+        "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "claude-opus-4-5-20251101",
+        "sha256:f89c0708afb2d34c0b381b16e3778c3cbb752aaa6d4a25bfe63b77db6e9dd60b",
+        "claude-opus-4-5-20251101",
+        "sha256:80faf0fb56d9b9b2f54fb9ae00201bf8bff79e37e6d663fca4857e703078aeff",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:ab353ea271addf68943da588224b15ce64dacf9b8f69d1b82c329d6c60d5fbe7",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0338-runtime-v2:claude-haiku-4-5-20251001",
+        "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "claude-haiku-4-5-20251001",
+        "sha256:c7e5b0f9602431161db734959e149350afb0090ade9897c09528033aea7b5815",
+        "claude-haiku-4-5-20251001",
+        "sha256:aa97f5150279dcb045f81bc91557db05dc260355c641aa618f0e57972c57d2f9",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:f769655ca3d7838c4f4f7fd66c81a7473001cea03f9154393041160127efc4df",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0338-runtime-v2:claude-opus-4-6",
+        "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "claude-opus-4-6",
+        "sha256:e2fda6b4a05d8df82fe295b51837ef605647e573c87d7a8e9f618fd7e1d41dd1",
+        "claude-opus-4-6",
+        "sha256:9b4ccc77746502e2dd9c3e663740e42a76328feb8e04756dde7866c4dfb42953",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:bf40780b013430cb096cd3ad9cf5f28948f51fd142765a0b644161a842497da6",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0338-runtime-v2:claude-opus-4-7",
+        "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "claude-opus-4-7",
+        "sha256:5a65c61e12cd10e7e834200930f46795f5b22bf2022f2927366b2b9c787bd1c5",
+        "claude-opus-4-7",
+        "sha256:36e969647e20288b099a1e5c9b9a71131894a40814b0bfc13dea1aa950e93c27",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:278d50b9b3ff92540ad5e32fcfec9423fd20b3746a8081bba7f9019a30a74965",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0338-runtime-v2:claude-sonnet-4-6",
+        "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "claude-sonnet-4-6",
+        "sha256:36e251b82da35664ba5e90fbf9e4738f7a15a2dd1158a36bbfccc287d3167fd4",
+        "claude-sonnet-4-6",
+        "sha256:b86f364904fff8122c74e28add831bb0d98597388c8d5b25a6a059b191635657",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:1ac0fea1adc86b9667e1ba1fce687bf586ba345a1a8078d02c6fd65f58e03a92",
+    ),
+)
+_ALL_REVIEWED_CONTRACTS = _REVIEWED_CONTRACTS + _REVIEWED_RUNTIME_CONTRACTS
+
+
 def anthropic_source_marker(
     contract: AnthropicSourceContract,
     *,
@@ -175,7 +345,7 @@ def anthropic_source_marker(
 ) -> dict[str, Any]:
     """Validate a frozen binding and emit only the six reviewed private fields."""
     if (
-        contract not in _REVIEWED_CONTRACTS
+        contract not in _ALL_REVIEWED_CONTRACTS
         or source_provider != ANTHROPIC_SOURCE_PROVIDER
         or model_type != ModelType.LLM
         or source_model != contract.source_model
@@ -207,7 +377,7 @@ def build_anthropic_source_contract(
     """Bind actual source schema and mapping to one exact reviewed profile."""
     if (
         adapter_id != ANTHROPIC_SOURCE_ADAPTER_ID
-        or adapter_revision != ANTHROPIC_SOURCE_ADAPTER_REVISION
+        or adapter_revision not in {ANTHROPIC_SOURCE_ADAPTER_REVISION, ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION}
         or source_schema.model_type != ModelType.LLM
         or source_schema.model != source_model
         or source_schema.model_properties.get(ModelPropertyKey.MODE) != "chat"
@@ -217,10 +387,13 @@ def build_anthropic_source_contract(
     contract = next(
         (
             item
-            for item in _REVIEWED_CONTRACTS
+            for item in _ALL_REVIEWED_CONTRACTS
             if item.source_plugin_unique_identifier == source_plugin_unique_identifier
             and item.source_model == source_model
             and item.target_model == target_model
+            and item.algorithm_revision == adapter_revision
+            and hmac.compare_digest(item.source_schema_digest, expected_source_schema_digest)
+            and hmac.compare_digest(item.rules_digest, expected_rules_digest)
         ),
         None,
     )
@@ -257,7 +430,7 @@ def restore_anthropic_source_contract(
         or any(not isinstance(value, str) for key, value in marker.items() if key != "schema_version")
     ):
         raise AnthropicSourceAdapterError("Invalid frozen Anthropic source marker")
-    for contract in _REVIEWED_CONTRACTS:
+    for contract in _ALL_REVIEWED_CONTRACTS:
         expected = anthropic_source_marker(
             contract,
             source_provider=ANTHROPIC_SOURCE_PROVIDER,

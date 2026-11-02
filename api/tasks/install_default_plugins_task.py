@@ -8,8 +8,10 @@ from configs import dify_config
 from core.helper import marketplace
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.plugin_service import PluginService
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.entities.model_entities import ModelType
 from services.model_provider.service import ModelProviderService
+from services.plugin.installation_service import AdmittedPluginInstallationCaller
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +96,9 @@ def install_default_plugins_task(tenant_id: str, plugin_ids: list[str]) -> None:
         if not plugin_identifiers:
             return
 
-        response = PluginService.install_from_marketplace_pkg(tenant_id, plugin_identifiers)
+        response = application_services().plugin_installations.install_from_marketplace_pkg(
+            AdmittedPluginInstallationCaller(tenant_id), plugin_identifiers
+        )
         configure_default_models_task.delay(
             tenant_id,
             None if response.all_installed else response.task_id,

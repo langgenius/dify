@@ -1123,7 +1123,9 @@ class RagPipelineTransformApi(Resource):
         try:
             return dump_response(
                 RagPipelineTransformResponse,
-                RagPipelineTransformService().transform_dataset(dataset, current_user.id, session),
+                RagPipelineTransformService(
+                    installations=application_services().plugin_installations
+                ).transform_dataset(dataset, current_user.id, session),
             )
         except RagPipelineResourceNotFoundError as exc:
             raise NotFound(str(exc)) from exc

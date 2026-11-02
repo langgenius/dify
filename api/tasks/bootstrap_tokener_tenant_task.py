@@ -19,6 +19,7 @@ from core.model_billing_profile import (
 )
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.plugin_service import PluginService
+from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.account import Tenant
@@ -27,6 +28,7 @@ from models.provider import Provider, ProviderCredential, ProviderType
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from services.billing_service import BillingService, TokenerBootstrapUpstreamError
 from services.model_provider.service import ModelProviderService
+from services.plugin.installation_service import AdmittedPluginInstallationCaller
 
 logger = logging.getLogger(__name__)
 
@@ -191,9 +193,13 @@ def _ensure_plugin_installed(snapshot: _IntegrationSnapshot) -> None:
             return
 
     if dify_config.TOKENER_PLUGIN_INSTALL_SOURCE == "package":
-        response = PluginService.install_from_local_pkg(snapshot.tenant_id, [plugin_unique_identifier])
+        response = application_services().plugin_installations.install_from_local_pkg(
+            AdmittedPluginInstallationCaller(snapshot.tenant_id), [plugin_unique_identifier]
+        )
     else:
-        response = PluginService.install_from_marketplace_pkg(snapshot.tenant_id, [plugin_unique_identifier])
+        response = application_services().plugin_installations.install_from_marketplace_pkg(
+            AdmittedPluginInstallationCaller(snapshot.tenant_id), [plugin_unique_identifier]
+        )
     if response.all_installed:
         return
     if not response.task_id:
@@ -449,7 +455,7 @@ def bootstrap_tokener_tenant_task(self, tenant_id: str) -> None:
                 self.request.retries + 1,
                 _MAX_RETRIES,
             )
-            raise self.retry(exc=step_error, countdown=countdown)
+            raise self.retry(exc=step_error, countdown=countdown) from None
 
         # Deliberately omit exception serialization from this secret-adjacent task.
         logger.error(  # noqa: TRY400

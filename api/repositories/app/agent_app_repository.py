@@ -7,16 +7,39 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from events.app_event import app_model_config_was_updated
 from libs.datetime_utils import naive_utc_now
+from models.agent import Agent, AgentConfigDraft, AgentConfigSnapshot
 from models.enums import AppStatus
 from models.model import App, AppMode, AppModelConfig, AppModelConfigDict
 from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
 from services.app.agent_app_contracts import AgentAppNotFoundError, AgentReferencingWorkflow
+from services.model_billing_dependency_inventory import AgentModelSelectors, ModelDependencyDocument
 
 
 class AgentAppRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def collect_model_dependency_documents(self, tenant_id: str) -> list[ModelDependencyDocument]:
+        """Include inactive snapshots and partial drafts without changing bindings."""
+        documents: list[ModelDependencyDocument] = []
+        with self._session_factory() as session:
+            for model, prefix in ((AgentConfigDraft, "draft:"), (AgentConfigSnapshot, "snapshot:")):
+                for record in session.scalars(
+                    select(model)
+                    .join(Agent, Agent.id == model.agent_id)
+                    .where(Agent.tenant_id == tenant_id, model.tenant_id == tenant_id)
+                ):
+                    documents.append(
+                        ModelDependencyDocument(
+                            tenant_id,
+                            "agent",
+                            record.agent_id,
+                            prefix + record.id,
+                            AgentModelSelectors(record.config_snapshot_dict),
+                        )
+                    )
+        return documents
 
     def resolve_roster_app_id(self, *, tenant_id: str, agent_id: str) -> str:
         """Resolve a roster Agent's configuration owner without materializing inline Apps."""

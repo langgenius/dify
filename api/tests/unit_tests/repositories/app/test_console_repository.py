@@ -25,6 +25,7 @@ from services.entities.app_entities import (
     StarredAppListParams,
     UpdateAppParams,
 )
+from services.model_billing_dependency_inventory import ClassicModelSelectors, WorkflowModelSelectors
 
 WORKSPACE = str(uuid4())
 ACTOR = str(uuid4())
@@ -57,6 +58,47 @@ def persist_app(session: Session, **changes: object) -> App:
 @pytest.fixture
 def repository(sqlite_session_factory: sessionmaker[Session]) -> ConsoleAppRepository:
     return ConsoleAppRepository(session_factory=sqlite_session_factory)
+
+
+def test_model_dependency_documents_include_all_owned_versions_not_only_current_published_pointer(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    owned = persist_app(sqlite_session)
+    foreign = persist_app(sqlite_session, tenant_id="foreign-workspace")
+    current, dormant, foreign_config = (
+        AppModelConfig(app_id=app.id, model=json.dumps({"provider": "openai", "name": model}))
+        for app, model in ((owned, "current"), (owned, "dormant"), (foreign, "foreign"))
+    )
+    sqlite_session.add_all([current, dormant, foreign_config])
+    for app_id, tenant_id, version in (
+        (owned.id, WORKSPACE, "draft"),
+        (owned.id, WORKSPACE, "old-published"),
+        (foreign.id, WORKSPACE, "mismatched-owner"),
+        (foreign.id, "foreign-workspace", "draft"),
+    ):
+        sqlite_session.add(
+            Workflow(
+                app_id=app_id,
+                tenant_id=tenant_id,
+                type=WorkflowType.CHAT,
+                version=version,
+                graph='{"nodes":[]}',
+                _features="{}",
+                created_by=ACTOR,
+            )
+        )
+    sqlite_session.flush()
+    owned.app_model_config_id = current.id
+    sqlite_session.commit()
+    result = ConsoleAppRepository(session_factory=sqlite_session_factory).collect_model_dependency_documents(WORKSPACE)
+    assert {item.revision for item in result if isinstance(item.payload, ClassicModelSelectors)} == {
+        current.id,
+        dormant.id,
+    }
+    assert len([item for item in result if isinstance(item.payload, WorkflowModelSelectors)]) == 2
+    assert {item.owner_id for item in result} == {owned.id}
+    assert owned.app_model_config_id == current.id
 
 
 @pytest.mark.parametrize("case", ["visible", "missing", "disabled_api", "disabled_status", "foreign_workspace"])

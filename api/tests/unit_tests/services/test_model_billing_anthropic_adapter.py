@@ -257,3 +257,182 @@ def test_mapping_contract_rejects_anthropic_adapter_on_non_llm(kind: ModelType) 
     data["target"]["model_type"] = kind.value
     with pytest.raises(ValidationError, match="LLM"):
         ModelMapping.model_validate(data)
+
+
+class _RuntimeBinding(_Binding):
+    adapter_revision: str
+    source_runtime_schema_digest: str
+
+
+def runtime_binding(index: int = 0) -> _RuntimeBinding:
+    return json.loads((FIXTURES / "model_billing_anthropic_runtime_v2_bindings.json").read_text())["bindings"][index]
+
+
+def runtime_schema(index: int = 0) -> AIModelEntity:
+    schemas = json.loads((FIXTURES / "model_billing_anthropic_runtime_v2_schemas.json").read_text())["schemas"]
+    return AIModelEntity.model_validate(schemas[runtime_binding(index)["source_runtime_schema_digest"]])
+
+
+def runtime_mapping(index: int = 0) -> ModelMapping:
+    data = model_mapping(runtime_legacy_index(index)).model_dump(mode="json")
+    data["mapping_revision"] = "anthropic-runtime-v2-unpublished-test"
+    data["parameter_adapter"] = {
+        "id": ANTHROPIC_SOURCE_ADAPTER_ID,
+        "revision": "2",
+        "rules_digest": runtime_binding(index)["marker"]["rules_digest"],
+    }
+    data["target"]["minimum_plugin_version"] = "0.4.3-dev9"
+    return ModelMapping.model_validate(data)
+
+
+def runtime_contract(index: int = 0) -> AnthropicSourceContract:
+    contract = build_source_adapter_contract(
+        runtime_mapping(index),
+        source_provider=ANTHROPIC_SOURCE_PROVIDER,
+        source_plugin_unique_identifier=runtime_binding(index)["marker"]["source_plugin_uid"],
+        source_schema=source_schema(runtime_legacy_index(index)),
+        source_credentials=None,
+    )
+    assert isinstance(contract, AnthropicSourceContract)
+    return contract
+
+
+def runtime_legacy_index(index: int) -> int:
+    return index + 8 if index < 8 else index - 8
+
+
+@pytest.mark.parametrize("index", range(16))
+def test_runtime_v2_exact_profile_keeps_inventory_and_runtime_boundaries_distinct(index: int) -> None:
+    evidence = runtime_binding(index)
+    contract = runtime_contract(index)
+    assert contract.algorithm_revision == "2"
+    assert contract.source_schema_digest == model_schema_digest(source_schema(runtime_legacy_index(index)))
+    assert contract.source_schema_digest == evidence["marker"]["source_schema_digest"]
+    assert contract.source_runtime_schema_digest == model_schema_digest(runtime_schema(index))
+    assert contract.source_runtime_schema_digest == evidence["source_runtime_schema_digest"]
+    if index % 8 == 2:
+        assert contract.source_schema_digest == contract.source_runtime_schema_digest
+    else:
+        assert contract.source_schema_digest != contract.source_runtime_schema_digest
+    marker = anthropic_source_marker(
+        contract,
+        source_provider=ANTHROPIC_SOURCE_PROVIDER,
+        source_model=contract.source_model,
+        model_type=ModelType.LLM,
+        target_model=contract.target_model,
+    )
+    assert marker == evidence["marker"]
+    assert len(marker) == 6
+    assert (
+        restore_anthropic_source_contract(
+            marker,
+            source_provider=ANTHROPIC_SOURCE_PROVIDER,
+            source_model=contract.source_model,
+            model_type=ModelType.LLM,
+            target_model=contract.target_model,
+        )
+        == contract
+    )
+    assert (
+        restore_source_parameter_contract(marker, mapping=runtime_mapping(index), source_public_settings=None)
+        == contract
+    )
+
+
+@pytest.mark.parametrize("index", range(16))
+def test_v1_and_v2_same_uid_model_select_exact_revision_rules_and_inventory_hash(index: int) -> None:
+    old = contract_for(runtime_legacy_index(index))
+    new = runtime_contract(index)
+    assert old.source_plugin_unique_identifier == new.source_plugin_unique_identifier
+    assert old.source_model == new.source_model
+    assert old.source_schema_digest == new.source_schema_digest
+    assert old.rules_digest != new.rules_digest
+    assert old.source_runtime_schema_digest is None
+    assert new.source_runtime_schema_digest is not None
+    assert old.algorithm_revision == "1"
+    assert new.algorithm_revision == "2"
+    for revision, rules in (("1", new.rules_digest), ("2", old.rules_digest)):
+        data = runtime_mapping(index).model_dump(mode="json")
+        data["parameter_adapter"] = {"id": ANTHROPIC_SOURCE_ADAPTER_ID, "revision": revision, "rules_digest": rules}
+        with pytest.raises(AnthropicSourceAdapterError):
+            build_source_adapter_contract(
+                ModelMapping.model_validate(data),
+                source_provider=ANTHROPIC_SOURCE_PROVIDER,
+                source_plugin_unique_identifier=new.source_plugin_unique_identifier,
+                source_schema=source_schema(runtime_legacy_index(index)),
+                source_credentials=None,
+            )
+
+
+@pytest.mark.parametrize("index", range(8))
+def test_unattested_source_uid_never_reuses_shared_runtime_rules(index: int) -> None:
+    with pytest.raises(AnthropicSourceAdapterError):
+        build_source_adapter_contract(
+            runtime_mapping(index),
+            source_provider=ANTHROPIC_SOURCE_PROVIDER,
+            source_plugin_unique_identifier="langgenius/anthropic:0.3.37@" + "0" * 64,
+            source_schema=source_schema(index),
+            source_credentials=None,
+        )
+
+
+@pytest.mark.parametrize("index", [0, 1, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15])
+def test_predefined_runtime_schema_is_not_relabeled_as_inventory_evidence(index: int) -> None:
+    # The exact runtime schema belongs to the distinct RPC boundary. The
+    # factory still accepts only actual inventory/catalog evidence here.
+    with pytest.raises(AnthropicSourceAdapterError):
+        build_source_adapter_contract(
+            runtime_mapping(index),
+            source_provider=ANTHROPIC_SOURCE_PROVIDER,
+            source_plugin_unique_identifier=runtime_binding(index)["marker"]["source_plugin_uid"],
+            source_schema=runtime_schema(index),
+            source_credentials=None,
+        )
+
+
+def test_runtime_marker_never_accepts_caller_supplied_runtime_digest_or_rewritten_contract() -> None:
+    contract = runtime_contract()
+    forged = replace(contract, source_runtime_schema_digest="sha256:" + "f" * 64)
+    with pytest.raises(AnthropicSourceAdapterError):
+        anthropic_source_marker(
+            forged,
+            source_provider=ANTHROPIC_SOURCE_PROVIDER,
+            source_model=forged.source_model,
+            model_type=ModelType.LLM,
+            target_model=forged.target_model,
+        )
+    marker: dict[str, object] = {
+        **runtime_binding()["marker"],
+        "source_runtime_schema_digest": contract.source_runtime_schema_digest,
+    }
+    with pytest.raises(AnthropicSourceAdapterError):
+        restore_anthropic_source_contract(
+            marker,
+            source_provider=ANTHROPIC_SOURCE_PROVIDER,
+            source_model=contract.source_model,
+            model_type=ModelType.LLM,
+            target_model=contract.target_model,
+        )
+
+
+def test_runtime_binding_and_schema_fixture_share_exact_source_rpc_evidence() -> None:
+    bindings = json.loads((FIXTURES / "model_billing_anthropic_runtime_v2_bindings.json").read_text())
+    schemas = json.loads((FIXTURES / "model_billing_anthropic_runtime_v2_schemas.json").read_text())
+    assert len(bindings["bindings"]) == 16
+    assert len(schemas["schemas"]) == 8
+    assert bindings["runtime_artifact_sha256_by_source_uid"] == schemas["evidence_sha256_by_source_uid"]
+    assert len(bindings["runtime_artifact_sha256_by_source_uid"]) == 2
+    assert len(bindings["shared_semantic_contracts"]) == 8
+    assert {item["adapter_revision"] for item in bindings["bindings"]} == {"2"}
+
+
+@pytest.mark.parametrize("index", range(8))
+def test_independent_0338_0339_runtime_profiles_share_logical_mapping_not_identity(index: int) -> None:
+    left, right = runtime_contract(index), runtime_contract(index + 8)
+    assert left.rules_digest == right.rules_digest
+    assert left.source_model == right.source_model
+    assert left.source_schema_digest == right.source_schema_digest
+    assert left.source_runtime_schema_digest == right.source_runtime_schema_digest
+    assert left.source_plugin_unique_identifier != right.source_plugin_unique_identifier
+    assert left.profile_id != right.profile_id
+    assert runtime_mapping(index).model_dump(mode="json") == runtime_mapping(index + 8).model_dump(mode="json")

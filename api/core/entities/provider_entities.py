@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import StrEnum, auto
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
@@ -80,6 +81,21 @@ class CredentialConfiguration(BaseModel):
     credential_name: str
 
 
+@dataclass(frozen=True, slots=True)
+class HostedSourceProtocolFact:
+    """Non-secret SYSTEM settings captured before managed credentials replace them.
+
+    ``absent`` is positive evidence from an existing source credential dict,
+    not a fallback for missing settings. Catalog digests and the immutable
+    installation bind this request-local fact to the original provider.
+    """
+
+    provider: str
+    plugin_unique_identifier: str
+    catalog_schema_digests: tuple[tuple[ModelType, str, str], ...]
+    selector: Literal["absent", "chat", "responses"]
+
+
 class SystemConfiguration(BaseModel):
     """
     Model class for provider system configuration.
@@ -93,6 +109,7 @@ class SystemConfiguration(BaseModel):
     # provider configuration or persisted into the source catalog.
     _tokener_source_schemas: tuple[AIModelEntity, ...] = PrivateAttr(default=())
     _tokener_source_plugin_unique_identifier: str | None = PrivateAttr(default=None)
+    _tokener_source_protocol_fact: HostedSourceProtocolFact | None = PrivateAttr(default=None)
 
 
 class CustomProviderConfiguration(BaseModel):

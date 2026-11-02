@@ -4,16 +4,19 @@ import json
 from contextlib import nullcontext
 from copy import deepcopy
 from dataclasses import replace
+from pathlib import Path
 from types import SimpleNamespace
 from typing import cast, override
 from unittest.mock import Mock
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations, ProviderModelBundle
 from core.entities.provider_entities import (
     CustomConfiguration,
+    HostedSourceProtocolFact,
     ProviderQuotaType,
     QuotaConfiguration,
     QuotaUnit,
@@ -824,6 +827,208 @@ def test_missing_source_ownership_never_guesses_pool() -> None:
         compatibility_quota_type("openai", configuration().system_configuration.quota_configurations, {})
 
 
+@pytest.mark.parametrize(
+    ("free_used", "expected"), [(1, SettlementOwner.PROVIDER_FREE), (10, SettlementOwner.SHARED_CREDIT_POOL)]
+)
+def test_v2_ownership_uses_live_free_allowance_then_the_prevalidated_managed_fallback(
+    free_used: int,
+    expected: SettlementOwner,
+) -> None:
+    quotas = [
+        QuotaConfiguration(
+            quota_type=kind,
+            quota_unit=QuotaUnit.CREDITS,
+            quota_limit=limit,
+            quota_used=used,
+            is_valid=True,
+            restrict_models=[RestrictModel(model="gpt-4o", model_type=ModelType.LLM)],
+        )
+        for kind, limit, used in (
+            (ProviderQuotaType.PAID, 100, 5),
+            (ProviderQuotaType.FREE, 10, free_used),
+            (ProviderQuotaType.TRIAL, 20, 3),
+        )
+    ]
+    stable = {
+        "schema_version": 2,
+        "shared_pool_types": ["paid", "trial"],
+        "quotas": {kind: {"unit": "credits", "unmetered": False} for kind in ("paid", "free", "trial")},
+    }
+    system = SystemConfiguration(enabled=True, quota_configurations=quotas)
+    system.current_quota_type = compatibility_quota_type(
+        "openai", system.quota_configurations, {"source_ownership": {"langgenius/openai/openai": stable}}
+    )
+    assert settlement_owner(system, ProviderType.SYSTEM) == expected
+    assert system.quota_configurations[0].quota_limit == 0  # Metadata closure, not an issued quota/grant.
+    assert system.quota_configurations[1].quota_used == free_used
+    assert system.quota_configurations[1].quota_limit == 10
+
+
+def test_v2_shared_fallback_keeps_processing_pause_and_never_forces_byok_or_unlimited(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from core import model_invocation_routing as module
+
+    config = configuration()
+    stable = {
+        "schema_version": 2,
+        "shared_pool_types": ["paid"],
+        "quotas": {"paid": {"unit": "credits", "unmetered": False}, "trial": {"unit": "credits", "unmetered": True}},
+    }
+    config.system_configuration.quota_configurations.append(
+        QuotaConfiguration(
+            quota_type=ProviderQuotaType.TRIAL,
+            quota_unit=QuotaUnit.CREDITS,
+            quota_limit=-1,
+            quota_used=700,
+            is_valid=True,
+        )
+    )
+    config.system_configuration.current_quota_type = compatibility_quota_type(
+        "openai",
+        config.system_configuration.quota_configurations,
+        {"source_ownership": {"langgenius/openai/openai": stable}},
+    )
+    assert config.system_configuration.current_quota_type == ProviderQuotaType.TRIAL
+    assert settlement_owner(config.system_configuration, ProviderType.SYSTEM) == SettlementOwner.UNMETERED
+    assert routed_credentials(config, ModelType.LLM, "gpt-4o") is None
+    config.using_provider_type = ProviderType.CUSTOM
+    assert routed_credentials(config, ModelType.LLM, "gpt-4o") is None
+    config = configuration()
+    shared_only = {
+        "schema_version": 2,
+        "shared_pool_types": ["paid"],
+        "quotas": {"paid": {"unit": "credits", "unmetered": False}},
+    }
+    config.system_configuration.current_quota_type = compatibility_quota_type(
+        "openai",
+        config.system_configuration.quota_configurations,
+        {"source_ownership": {"langgenius/openai/openai": shared_only}},
+    )
+    monkeypatch.setattr(module, "migration_routing_state", lambda _tenant: {"phase": "claimed", "route_epoch": 1})
+    with pytest.raises(ModelMigrationProcessing):
+        routed_credentials(config, ModelType.LLM, "gpt-4o")
+
+
+def test_v2_free_exhaustion_builds_original_provider_redirect_after_publication(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    from core import model_invocation_routing as module
+    from models.account import Tenant
+    from models.provider import ProviderCredential
+    from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
+    from tests.unit_tests.services.test_model_billing_mapping_service import mapping, schema
+
+    config = configuration()
+    with sqlite_session_factory.begin() as session:
+        tenant = Tenant(name="v2 fallback")
+        tenant.id = config.tenant_id
+        session.add(tenant)
+        credential = ProviderCredential(
+            tenant_id=tenant.id,
+            provider_name="langgenius/tokener/tokener",
+            credential_name="managed",
+            encrypted_config=TEST_ENCRYPTED_CONFIG,
+        )
+        session.add(credential)
+        session.flush()
+        session.add(
+            TenantTokenerIntegration(
+                tenant_id=tenant.id,
+                status=TenantTokenerIntegrationStatus.READY,
+                provider_credential_id=credential.id,
+                plugin_unique_identifier="langgenius/tokener:9.0.0@" + "a" * 64,
+            )
+        )
+    state = {
+        "phase": "active",
+        "route_epoch": 4,
+        "model_mapping_version": "stable-v2",
+        "persisted_model_billing_source": "tokener",
+        "source_ownership": {
+            "langgenius/openai/openai": {
+                "schema_version": 2,
+                "shared_pool_types": ["paid"],
+                "quotas": {
+                    "paid": {"unit": "credits", "unmetered": False},
+                    "free": {"unit": "credits", "unmetered": False},
+                },
+            }
+        },
+        "preparation": {
+            "tenant_id": tenant.id,
+            "provider_name": "langgenius/tokener/tokener",
+            "provider_credential_id": credential.id,
+            "credential_fingerprint": canonical_hash({"encrypted_config": TEST_ENCRYPTED_CONFIG}),
+        },
+    }
+    config.system_configuration.quota_configurations.append(
+        QuotaConfiguration(
+            quota_type=ProviderQuotaType.FREE,
+            quota_unit=QuotaUnit.CREDITS,
+            quota_limit=10,
+            quota_used=10,
+            is_valid=False,
+        )
+    )
+    config.system_configuration.current_quota_type = compatibility_quota_type(
+        "openai", config.system_configuration.quota_configurations, state
+    )
+    monkeypatch.setattr(module, "migration_routing_state", lambda _tenant: state)
+    monkeypatch.setattr(module.session_factory, "create_session", sqlite_session_factory)
+    monkeypatch.setattr(
+        module.dify_config,
+        "TOKENER_LEGACY_MODEL_MAPPING_JSON",
+        json.dumps([mapping(schema(), revision="stable-v2", target="managed-fallback")]),
+    )
+    credentials = routed_credentials(config, ModelType.LLM, "gpt-4o")
+    assert isinstance(credentials, RoutedModelCredentials)
+    assert credentials.plan.logical_provider == "langgenius/openai/openai"
+    assert credentials.plan.logical_model == "gpt-4o"
+    assert credentials.plan.target_model == "managed-fallback"
+
+
+@pytest.mark.parametrize(
+    ("paid_used", "trial_used", "selected", "valid"),
+    [
+        (1, 0, ProviderQuotaType.PAID, True),
+        (100, 4, ProviderQuotaType.TRIAL, True),
+        (100, 20, ProviderQuotaType.PAID, False),
+    ],
+)
+def test_v2_finite_tokens_consumption_and_exhaustion_never_create_managed_payment_authority(
+    paid_used: int,
+    trial_used: int,
+    selected: ProviderQuotaType,
+    valid: bool,
+) -> None:
+    config = configuration(unit=QuotaUnit.TOKENS)
+    config.system_configuration.quota_configurations = [
+        QuotaConfiguration(
+            quota_type=kind, quota_unit=QuotaUnit.TOKENS, quota_limit=limit, quota_used=used, is_valid=limit > used
+        )
+        for kind, limit, used in ((ProviderQuotaType.PAID, 100, paid_used), (ProviderQuotaType.TRIAL, 20, trial_used))
+    ]
+    stable = {
+        "schema_version": 2,
+        "shared_pool_types": list[str](),
+        "quotas": {"paid": {"unit": "tokens", "unmetered": False}, "trial": {"unit": "tokens", "unmetered": False}},
+    }
+    system = config.system_configuration
+    system.current_quota_type = compatibility_quota_type(
+        "openai", system.quota_configurations, {"source_ownership": {"langgenius/openai/openai": stable}}
+    )
+    assert system.current_quota_type == selected
+    assert next(quota for quota in system.quota_configurations if quota.quota_type == selected).is_valid is valid
+    assert [(quota.quota_limit, quota.quota_used) for quota in system.quota_configurations] == [
+        (100, paid_used),
+        (20, trial_used),
+    ]
+    assert settlement_owner(system, ProviderType.SYSTEM) == SettlementOwner.UNMETERED
+    assert routed_credentials(config, ModelType.LLM, "gpt-4o") is None
+
+
 def test_free_provider_ownership_survives_cutover() -> None:
     quota = configuration(pool=ProviderQuotaType.FREE).system_configuration.quota_configurations[0]
     quota.is_valid = True
@@ -1160,7 +1365,7 @@ def test_tts_route_and_preparation_bind_the_same_verified_source_contract(
     ("index", "case"),
     [
         (index, case)
-        for index in range(17)
+        for index in range(26)
         for case in [
             "valid",
             "identity",
@@ -1179,7 +1384,17 @@ def test_tts_route_and_preparation_bind_the_same_verified_source_contract(
             "binding_unknown",
         ]
     ]
-    + [(16, "explicit_chat"), (16, "explicit_responses"), (16, "missing_system_settings")],
+    + [
+        (index, case)
+        for index in (16, 17)
+        for case in ("explicit_chat", "explicit_responses", "missing_system_settings")
+    ]
+    + [(index, case) for index in range(17, 26) for case in ("runtime_schema_drift", "runtime_schema_missing")]
+    + [
+        (index, case)
+        for index in (17, 18, 19, 21, 22, 23, 24, 25)
+        for case in ("runtime_target_catalog", "runtime_target_codec")
+    ],
 )
 def test_source_profile_inventory_route_readiness_and_private_marker_use_same_exact_contract(
     monkeypatch: pytest.MonkeyPatch, index: int, case: str
@@ -1205,18 +1420,62 @@ def test_source_profile_inventory_route_readiness_and_private_marker_use_same_ex
     )
     from tests.unit_tests.services.test_model_billing_mapping_service import mapping, system
 
-    if index == 16:
+    runtime_source_schema: AIModelEntity | None = None
+    if index in {16, 17}:
         from services.entities.model_billing_mapping import ModelMapping
         from services.model_billing_openai_chat_adapter import (
             OPENAI_CHAT_SOURCE_PROVIDER,
             build_openai_chat_source_contract,
         )
-        from tests.unit_tests.services.test_model_billing_openai_chat_adapter import PROFILE, build_inputs
+        from tests.unit_tests.services.test_model_billing_openai_chat_adapter import (
+            PROFILE,
+            RUNTIME_PROFILE,
+            build_inputs,
+        )
 
-        source = AIModelEntity.model_validate(PROFILE["source_schema"])
-        contract = build_openai_chat_source_contract(**build_inputs())
+        source = AIModelEntity.model_validate(
+            RUNTIME_PROFILE["source_catalog_schema"] if index == 17 else PROFILE["source_schema"]
+        )
+        contract = build_openai_chat_source_contract(**build_inputs(runtime=index == 17))
+        if index == 17:
+            runtime_source_schema = AIModelEntity.model_validate(RUNTIME_PROFILE["source_schema"])
         provider_id = OPENAI_CHAT_SOURCE_PROVIDER
         initial_record = mapping(source, revision="anthropic-profile-v1", target=contract.target_model)
+        initial_record["parameter_adapter"] = {
+            "id": contract.adapter_id,
+            "revision": contract.algorithm_revision,
+            "rules_digest": contract.rules_digest,
+        }
+        record = ModelMapping.model_validate(initial_record).model_dump(mode="json")
+    elif index >= 18:
+        from services.entities.model_billing_mapping import ModelMapping
+        from services.model_billing_anthropic_adapter import build_anthropic_source_contract
+        from tests.unit_tests.services.test_model_billing_mapping_service import section
+
+        fixture_root = Path(__file__).resolve().parents[1] / "services/fixtures"
+        evidence = json.loads((fixture_root / "model_billing_anthropic_runtime_v2_bindings.json").read_text())[
+            "bindings"
+        ][index - 18]
+        marker = evidence["marker"]
+        source = source_schema(8 + index - 18)
+        runtime_schemas = json.loads((fixture_root / "model_billing_anthropic_runtime_v2_schemas.json").read_text())[
+            "schemas"
+        ]
+        runtime_source_schema = AIModelEntity.model_validate(runtime_schemas[evidence["source_runtime_schema_digest"]])
+        contract = build_anthropic_source_contract(
+            adapter_id="anthropic_source_v1",
+            adapter_revision="2",
+            expected_rules_digest=marker["rules_digest"],
+            source_provider=ANTHROPIC_SOURCE_PROVIDER,
+            source_model=marker["source_model"],
+            source_plugin_unique_identifier=marker["source_plugin_uid"],
+            source_schema=source,
+            expected_source_schema_digest=marker["source_schema_digest"],
+            target_model=evidence["target_model"],
+        )
+        provider_id = ANTHROPIC_SOURCE_PROVIDER
+        initial_record = mapping(source, revision="anthropic-profile-v1", target=contract.target_model)
+        section(initial_record, "source")["provider_id"] = provider_id
         initial_record["parameter_adapter"] = {
             "id": contract.adapter_id,
             "revision": contract.algorithm_revision,
@@ -1267,6 +1526,16 @@ def test_source_profile_inventory_route_readiness_and_private_marker_use_same_ex
         ),
         model_settings=[],
     )
+    if index == 20 and case != "identity":
+        # The real short Opus alias is NOT in0339's management catalog. Model
+        # availability carries only the actual immutable dynamic RPC schema;
+        # migration_inventory must perform the real source lookup, not invent
+        # a catalog row or substitute the dated model's declaration.
+        provider.provider.models = []
+        provider.system_configuration._tokener_source_schemas = (source,)
+        provider.system_configuration._tokener_source_plugin_unique_identifier = (
+            contract.source_plugin_unique_identifier
+        )
     if case == "explicit_chat":
         assert provider.system_configuration.credentials is not None
         provider.system_configuration.credentials["api_protocol"] = "chat"
@@ -1275,6 +1544,15 @@ def test_source_profile_inventory_route_readiness_and_private_marker_use_same_ex
         provider.system_configuration.credentials["api_protocol"] = "responses"
     elif case == "missing_system_settings":
         provider.system_configuration.credentials = None
+    if index in {16, 17} and provider.system_configuration.credentials is not None:
+        source_uid = getattr(provider.provider, "plugin_unique_identifier", None)
+        assert isinstance(source_uid, str)
+        provider.system_configuration._tokener_source_protocol_fact = HostedSourceProtocolFact(
+            provider=provider_id,
+            plugin_unique_identifier=source_uid,
+            catalog_schema_digests=((source.model_type, source.model, contract.source_schema_digest),),
+            selector="chat" if case == "explicit_chat" else "responses" if case == "explicit_responses" else "absent",
+        )
     configurations = ProviderConfigurations(tenant_id=provider.tenant_id)
     configurations.configurations[provider_id] = provider
     manager = InventoryProviderManager(configurations)
@@ -1316,6 +1594,25 @@ def test_source_profile_inventory_route_readiness_and_private_marker_use_same_ex
         return [fresh, fresh] if case == "binding_duplicate" else [fresh]
 
     monkeypatch.setattr(PluginModelClient, "fetch_model_provider_bindings", source_bindings)
+    source_runtime_reads: list[str] = []
+
+    def actual_source_runtime_schema(
+        _client: PluginModelClient, *args: object, **kwargs: object
+    ) -> AIModelEntity | None:
+        assert runtime_source_schema is not None
+        assert args[6] == provider.system_configuration.credentials
+        assert not isinstance(args[6], RoutedModelCredentials)
+        assert kwargs["plugin_unique_identifier"] == contract.source_plugin_unique_identifier
+        source_runtime_reads.append("exact_immutable_original_source_schema")
+        if case == "runtime_schema_missing":
+            return None
+        result = runtime_source_schema.model_copy(deep=True)
+        if case == "runtime_schema_drift":
+            result.model_properties[ModelPropertyKey.CONTEXT_SIZE] = 42
+        return result
+
+    if index >= 17:
+        monkeypatch.setattr(PluginModelClient, "get_model_schema", actual_source_runtime_schema)
     state: dict[str, object] = {
         "phase": "active",
         "persisted_model_billing_source": "tokener",
@@ -1344,6 +1641,12 @@ def test_source_profile_inventory_route_readiness_and_private_marker_use_same_ex
             migration_inventory(provider.tenant_id, "anthropic-profile-v1")
         with pytest.raises(ModelRouteUnmapped):
             routed_credentials(provider, ModelType.LLM, source.model)
+        assert provider.model_dump() == before
+        return
+    if case in {"runtime_schema_drift", "runtime_schema_missing"}:
+        with pytest.raises(ModelRouteUnmapped):
+            migration_inventory(provider.tenant_id, "anthropic-profile-v1")
+        assert source_runtime_reads == ["exact_immutable_original_source_schema"]
         assert provider.model_dump() == before
         return
     inventory = migration_inventory(provider.tenant_id, "anthropic-profile-v1")
@@ -1410,7 +1713,7 @@ def test_source_profile_inventory_route_readiness_and_private_marker_use_same_ex
     else:
         assert frozen.source_parameter_contract == contract
         assert inventory["models"][0]["source_parameter_contract"] == expected_marker
-        if index == 16:
+        if index in {16, 17}:
             assert inventory["models"][0]["source_parameter_settings"] == {
                 "api_protocol": "chat" if case == "explicit_chat" else "default_chat"
             }
@@ -1418,7 +1721,8 @@ def test_source_profile_inventory_route_readiness_and_private_marker_use_same_ex
         assert (
             frozen.cache_identity
             != replace(
-                frozen, source_parameter_contract=contract_for(0 if index == 16 else peer_binding_index(index))
+                frozen,
+                source_parameter_contract=contract_for(0 if index >= 16 else peer_binding_index(index)),
             ).cache_identity
         )
     payload = PluginModelClient._dispatch_payload(
@@ -1444,16 +1748,31 @@ def test_source_profile_inventory_route_readiness_and_private_marker_use_same_ex
 
     def target_schema(_client: PluginModelClient, *args: object, **_kwargs: object) -> AIModelEntity:
         prepared = args[6]
+        if not isinstance(prepared, RoutedModelCredentials) and index >= 17:
+            result = actual_source_runtime_schema(_client, *args, **_kwargs)
+            assert result is not None
+            return result
         assert isinstance(prepared, RoutedModelCredentials)
         assert prepared.plan.source_parameter_contract == frozen.source_parameter_contract
-        result = source.model_copy(deep=True, update={"model": contract.target_model})
+        original_schema = runtime_source_schema if index >= 17 and case != "identity" else source
+        assert original_schema is not None
+        result = original_schema.model_copy(deep=True, update={"model": contract.target_model})
+        if case == "runtime_target_catalog":
+            result = source.model_copy(deep=True)
+        elif case == "runtime_target_codec":
+            if index == 17:
+                from tests.unit_tests.services.test_model_billing_openai_chat_adapter import PROFILE
+
+                result = AIModelEntity.model_validate(PROFILE["source_schema"])
+            else:
+                result = source.model_copy(deep=True)
         if case == "native_schema_fallback":
             result.model_properties[ModelPropertyKey.CONTEXT_SIZE] = 42
         return result
 
     monkeypatch.setattr(PluginModelClient, "_request_with_plugin_daemon_response", capabilities)
     monkeypatch.setattr(PluginModelClient, "get_model_schema", target_schema)
-    if case == "native_schema_fallback":
+    if case in {"native_schema_fallback", "runtime_target_catalog", "runtime_target_codec"}:
         with pytest.raises(ModelRouteUnmapped):
             validate_migration_readiness(provider.tenant_id, "anthropic-profile-v1")
         assert provider.model_dump() == before
@@ -1463,6 +1782,9 @@ def test_source_profile_inventory_route_readiness_and_private_marker_use_same_ex
     assert readiness["inventory_hash"] == inventory["inventory_hash"]
     assert readiness["credential_fingerprint"] == frozen.expected_credential_fingerprint
     assert provider.model_dump() == before
+    if index >= 17 and case != "identity":
+        assert source_runtime_reads
+        assert inventory["models"][0]["source_runtime_schema_digest"] == contract.source_runtime_schema_digest
     with Session(engine) as session:
         session.execute(
             update(ProviderCredential)
@@ -1495,6 +1817,27 @@ def test_invalid_frozen_source_profile_fails_before_managed_key_lookup(monkeypat
     monkeypatch.setattr("core.model_invocation_routing.managed_credentials", forbidden_key_lookup)
     with pytest.raises(ModelRouteUnavailable):
         redirect_payload(frozen, {"provider": "anthropic", "model": contract.source_model, "model_type": "llm"})
+
+
+def test_invalid_frozen_runtime_schema_fails_before_managed_key_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
+    from services.model_billing_openai_chat_adapter import build_openai_chat_source_contract
+    from tests.unit_tests.services.test_model_billing_openai_chat_adapter import build_inputs
+
+    contract = build_openai_chat_source_contract(**build_inputs(runtime=True))
+    frozen = replace(
+        plan(),
+        logical_provider="langgenius/openai/openai",
+        logical_model=contract.source_model,
+        target_model=contract.target_model,
+        source_parameter_contract=replace(contract, source_runtime_schema_digest=contract.source_schema_digest),
+    )
+
+    def forbidden_key_lookup(_plan: FrozenModelInvocation) -> dict[str, object]:
+        raise AssertionError("A substituted runtime boundary must fail before managed-key lookup")
+
+    monkeypatch.setattr("core.model_invocation_routing.managed_credentials", forbidden_key_lookup)
+    with pytest.raises(ModelRouteUnavailable):
+        redirect_payload(frozen, {"provider": "openai", "model": contract.source_model, "model_type": "llm"})
 
 
 def test_llm_inventory_is_real_strict_canonical_json_without_null_dimension(mocker: MockerFixture) -> None:

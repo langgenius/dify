@@ -12,14 +12,22 @@ from libs.datetime_utils import naive_utc_now
 from models.account import Tenant
 from models.model_billing import TenantModelBillingProfile
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
+from services.plugin.installation_service import AdmittedPluginInstallationCaller, PluginInstallationService
 from tasks import bootstrap_tokener_tenant_task as task_module
 from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.plugin_installation import InstallationServices, legacy_installations
 
 
 class _CeleryTaskOptions(Protocol):
     queue: str
     acks_late: bool
     reject_on_worker_lost: bool
+
+
+@pytest.fixture(autouse=True)
+def _admitted_installation_owner(monkeypatch: pytest.MonkeyPatch) -> None:
+    services = InstallationServices(plugin_installations=legacy_installations())
+    monkeypatch.setattr(task_module, "application_services", lambda: services)
 
 
 def _persist_integration(
@@ -215,14 +223,16 @@ def test_package_install_persists_daemon_task_id_for_retry(
     monkeypatch.setattr(task_module.PluginService, "list", MagicMock(return_value=[]))
     local_install = MagicMock(return_value=SimpleNamespace(all_installed=False, task_id="plugin-task-1"))
     marketplace_install = MagicMock()
-    monkeypatch.setattr(task_module.PluginService, "install_from_local_pkg", local_install)
-    monkeypatch.setattr(task_module.PluginService, "install_from_marketplace_pkg", marketplace_install)
+    monkeypatch.setattr(PluginInstallationService, "install_from_local_pkg", local_install)
+    monkeypatch.setattr(PluginInstallationService, "install_from_marketplace_pkg", marketplace_install)
 
     with pytest.raises(task_module._BootstrapStepError) as exc_info:
         task_module._ensure_plugin_installed(_snapshot(integration))
 
     assert exc_info.value.error_code == "tokener_plugin_install_pending"
-    local_install.assert_called_once_with(integration.tenant_id, [integration.plugin_unique_identifier])
+    local_install.assert_called_once_with(
+        AdmittedPluginInstallationCaller(integration.tenant_id), [integration.plugin_unique_identifier]
+    )
     marketplace_install.assert_not_called()
     sqlite_session.expire_all()
     persisted = sqlite_session.get(TenantTokenerIntegration, integration.id)
@@ -343,7 +353,7 @@ def test_successful_plugin_install_task_rechecks_installed_plugin(
         MagicMock(return_value=SimpleNamespace(status=task_module.PluginInstallTaskStatus.Success)),
     )
     install_from_package = MagicMock()
-    monkeypatch.setattr(task_module.PluginService, "install_from_local_pkg", install_from_package)
+    monkeypatch.setattr(PluginInstallationService, "install_from_local_pkg", install_from_package)
 
     task_module._ensure_plugin_installed(_snapshot(integration))
 
@@ -364,11 +374,13 @@ def test_successful_plugin_task_without_installed_plugin_starts_fresh_install(
         MagicMock(return_value=SimpleNamespace(status=task_module.PluginInstallTaskStatus.Success)),
     )
     install_from_package = MagicMock(return_value=SimpleNamespace(all_installed=True, task_id=None))
-    monkeypatch.setattr(task_module.PluginService, "install_from_local_pkg", install_from_package)
+    monkeypatch.setattr(PluginInstallationService, "install_from_local_pkg", install_from_package)
 
     task_module._ensure_plugin_installed(_snapshot(integration))
 
-    install_from_package.assert_called_once_with(integration.tenant_id, [integration.plugin_unique_identifier])
+    install_from_package.assert_called_once_with(
+        AdmittedPluginInstallationCaller(integration.tenant_id), [integration.plugin_unique_identifier]
+    )
 
 
 @pytest.mark.parametrize(
@@ -388,7 +400,7 @@ def test_marketplace_plugin_install_handles_terminal_response_without_task_id(
     apply_config_overrides(monkeypatch, TOKENER_PLUGIN_INSTALL_SOURCE="marketplace")
     monkeypatch.setattr(task_module.PluginService, "list", MagicMock(return_value=[]))
     marketplace_install = MagicMock(return_value=SimpleNamespace(all_installed=all_installed, task_id=None))
-    monkeypatch.setattr(task_module.PluginService, "install_from_marketplace_pkg", marketplace_install)
+    monkeypatch.setattr(PluginInstallationService, "install_from_marketplace_pkg", marketplace_install)
 
     if expected_error is None:
         task_module._ensure_plugin_installed(_snapshot(integration))
@@ -397,7 +409,9 @@ def test_marketplace_plugin_install_handles_terminal_response_without_task_id(
             task_module._ensure_plugin_installed(_snapshot(integration))
         assert exc_info.value.error_code == expected_error
 
-    marketplace_install.assert_called_once_with(integration.tenant_id, [integration.plugin_unique_identifier])
+    marketplace_install.assert_called_once_with(
+        AdmittedPluginInstallationCaller(integration.tenant_id), [integration.plugin_unique_identifier]
+    )
 
 
 def test_existing_managed_credential_skips_remote_bootstrap(

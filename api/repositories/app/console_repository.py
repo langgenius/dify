@@ -7,6 +7,7 @@ existing use cases that still need attached models.
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Sequence
 from dataclasses import replace
@@ -35,8 +36,9 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
+from models.dataset import DatasetCollectionBinding
 from models.enums import AppStatus
-from models.model import App, AppMode, AppModelConfig, AppStar, IconType
+from models.model import App, AppAnnotationSetting, AppMode, AppModelConfig, AppStar, Conversation, IconType
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
 from repositories.app.response import app_record, app_summary
@@ -74,6 +76,11 @@ from services.entities.app_entities import (
 )
 from services.errors.app import AppDiscoveryNotFoundError
 from services.errors.base import NoPermissionError
+from services.model_billing_dependency_inventory import (
+    ClassicModelSelectors,
+    ModelDependencyDocument,
+    WorkflowModelSelectors,
+)
 from services.openapi.visibility import apply_openapi_gate
 
 logger = logging.getLogger(__name__)
@@ -159,6 +166,127 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         """List every App row in the workspace, ignoring console visibility and status."""
         with self._session_factory() as session:
             return list(session.scalars(select(App.id).where(App.tenant_id == tenant_id)).all())
+
+    def collect_model_dependency_documents(self, tenant_id: str) -> list[ModelDependencyDocument]:
+        """All owned versions, not just published/current/recently used Apps.
+
+        Read only selector-bearing columns; never materialize prompts/messages.
+        Every child joins its App owner (Conversation has no tenant column).
+        Detached records leave this short Session before metadata RPCs run.
+        """
+        documents: list[ModelDependencyDocument] = []
+        with self._session_factory() as session:
+            configurations = session.execute(
+                select(
+                    AppModelConfig.app_id,
+                    AppModelConfig.id,
+                    AppModelConfig.model,
+                    AppModelConfig.dataset_configs,
+                    AppModelConfig.agent_mode,
+                    AppModelConfig.suggested_questions_after_answer,
+                    AppModelConfig.speech_to_text,
+                    AppModelConfig.text_to_speech,
+                )
+                .join(App, App.id == AppModelConfig.app_id)
+                .where(App.tenant_id == tenant_id)
+            )
+            for row in configurations:
+                documents.append(
+                    ModelDependencyDocument(
+                        tenant_id,
+                        "classic_app",
+                        row.app_id,
+                        row.id,
+                        ClassicModelSelectors(
+                            row.model,
+                            row.dataset_configs,
+                            row.agent_mode,
+                            row.suggested_questions_after_answer,
+                            row.speech_to_text,
+                            row.text_to_speech,
+                        ),
+                    )
+                )
+            for row in session.execute(
+                select(Workflow.app_id, Workflow.id, Workflow.graph, Workflow._features)
+                .join(App, App.id == Workflow.app_id)
+                .where(App.tenant_id == tenant_id, Workflow.tenant_id == tenant_id)
+            ):
+                documents.append(
+                    ModelDependencyDocument(
+                        tenant_id,
+                        "workflow",
+                        row.app_id,
+                        row.id,
+                        WorkflowModelSelectors(row.graph, row._features),
+                    )
+                )
+            for row in session.execute(
+                select(
+                    Conversation.app_id,
+                    Conversation.id,
+                    Conversation.override_model_configs,
+                    Conversation.model_provider,
+                    Conversation.model_id,
+                )
+                .join(App, App.id == Conversation.app_id)
+                .where(
+                    App.tenant_id == tenant_id,
+                    Conversation.is_deleted.is_(False),
+                    Conversation.override_model_configs.is_not(None),
+                )
+            ):
+                documents.append(
+                    ModelDependencyDocument(
+                        tenant_id,
+                        "conversation_override",
+                        row.app_id,
+                        row.id,
+                        ClassicModelSelectors(
+                            json.dumps({"provider": row.model_provider, "name": row.model_id}),
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            override=row.override_model_configs,
+                        ),
+                    )
+                )
+            for row in session.execute(
+                select(
+                    AppAnnotationSetting.app_id,
+                    AppAnnotationSetting.id,
+                    AppAnnotationSetting.collection_binding_id,
+                    DatasetCollectionBinding.provider_name,
+                    DatasetCollectionBinding.model_name,
+                )
+                .join(App, App.id == AppAnnotationSetting.app_id)
+                .outerjoin(
+                    DatasetCollectionBinding, DatasetCollectionBinding.id == AppAnnotationSetting.collection_binding_id
+                )
+                .where(App.tenant_id == tenant_id)
+            ):
+                documents.append(
+                    ModelDependencyDocument(
+                        tenant_id,
+                        "classic_app",
+                        row.app_id,
+                        "annotation:" + row.id,
+                        ClassicModelSelectors(
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            annotation_provider=row.provider_name,
+                            annotation_model=row.model_name,
+                            annotation_binding_id=row.collection_binding_id,
+                        ),
+                    )
+                )
+        return documents
 
     @override
     def find_visible_app(self, app_id: str, tenant_id: str) -> AppSummary | None:

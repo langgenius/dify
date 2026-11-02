@@ -1580,6 +1580,98 @@ def provider_case(mocker: MockerFixture) -> Iterator[ProviderCase]:
         )
 
 
+def test_v2_independent_tokens_provider_retains_original_hosted_credentials_not_managed_key(
+    provider_case: ProviderCase,
+) -> None:
+    from models.enums import ProviderQuotaType as StoredQuotaType
+
+    with config_overrides_context(
+        TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=json.dumps(
+            [{"schema_version": 1, "mapping_revision": "old", "inventory_policy": "saved_system_dependencies_v2"}]
+        )
+    ):
+        provider_case.hosting[provider_case.provider.provider].quota_unit = QuotaUnit.TOKENS
+        original = Provider(
+            tenant_id=TENANT_ID,
+            provider_name=provider_case.provider.provider,
+            provider_type=ProviderType.SYSTEM,
+            quota_type=StoredQuotaType.PAID,
+            quota_limit=100,
+            quota_used=7,
+        )
+        result = provider_case.manager._to_system_configuration(TENANT_ID, provider_case.provider, [original])
+        assert result.enabled
+        assert result.current_quota_type == ProviderQuotaType.PAID
+        assert result.credentials == {"api_key": "SOURCE_SECRET"}
+        assert result.quota_configurations[0].quota_limit == 100
+        assert result.quota_configurations[0].quota_used == 7
+
+
+@pytest.mark.parametrize("phase", ["claimed", "active"])
+@pytest.mark.parametrize("has_custom", [False, True])
+def test_v2_custom_preference_without_custom_configuration_keeps_system_fallback_but_real_byok_does_not_forward(
+    provider_case: ProviderCase,
+    mocker: MockerFixture,
+    phase: str,
+    has_custom: bool,
+) -> None:
+    from core.model_invocation_routing import ModelMigrationProcessing
+
+    preferred = TenantPreferredModelProvider(
+        tenant_id=TENANT_ID, provider_name=provider_case.provider.provider, preferred_provider_type=ProviderType.CUSTOM
+    )
+    mocker.patch.object(
+        provider_case.manager,
+        "_get_all_preferred_model_providers",
+        return_value={provider_case.provider.provider: preferred},
+    )
+    mocker.patch.object(
+        provider_case.manager,
+        "_to_custom_configuration",
+        return_value=CustomConfiguration(
+            provider=CustomProviderConfiguration(credentials={"api_key": "USER_SECRET"}) if has_custom else None
+        ),
+    )
+    provider_case.state["phase"] = phase
+    with config_overrides_context(
+        TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=json.dumps(
+            [{"schema_version": 1, "mapping_revision": "old", "inventory_policy": "saved_system_dependencies_v2"}]
+        )
+    ):
+        result = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+        assert result is not None
+        assert result.preferred_provider_type == ProviderType.CUSTOM
+        if has_custom:
+            assert result.using_provider_type == ProviderType.CUSTOM
+            assert result.get_current_credentials(ModelType.LLM, "gpt-4o") == {"api_key": "USER_SECRET"}
+        else:
+            assert result.using_provider_type == ProviderType.SYSTEM
+            if phase == "claimed":
+                with pytest.raises(ModelMigrationProcessing):
+                    result.get_current_credentials(ModelType.LLM, "gpt-4o")
+            else:
+                assert isinstance(result.get_current_credentials(ModelType.LLM, "gpt-4o"), RoutedModelCredentials)
+
+
+def test_v1_custom_preference_metadata_fallback_remains_unchanged(
+    provider_case: ProviderCase, mocker: MockerFixture
+) -> None:
+    preferred = TenantPreferredModelProvider(
+        tenant_id=TENANT_ID, provider_name=provider_case.provider.provider, preferred_provider_type=ProviderType.CUSTOM
+    )
+    mocker.patch.object(
+        provider_case.manager,
+        "_get_all_preferred_model_providers",
+        return_value={provider_case.provider.provider: preferred},
+    )
+    mocker.patch.object(
+        provider_case.manager, "_to_custom_configuration", return_value=CustomConfiguration(provider=None)
+    )
+    result = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+    assert result is not None
+    assert result.using_provider_type == ProviderType.CUSTOM
+
+
 def test_new_provider_without_rows_can_route_without_rewriting_financial_state(provider_case: ProviderCase) -> None:
     original_state = deepcopy(provider_case.state)
     configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)

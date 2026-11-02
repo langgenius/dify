@@ -266,6 +266,7 @@ ignore_imports =
     repositories.knowledge.dataset_repository -> services.knowledge.dataset_access
     repositories.knowledge.dataset_repository -> services.knowledge.entities.datasets
     repositories.knowledge.dataset_repository -> services.knowledge.indexing.estimate
+    repositories.knowledge.dataset_repository -> services.knowledge.model_dependencies
     repositories.knowledge.dataset_repository -> services.knowledge.resource_scope
     repositories.knowledge.document_repository -> services.knowledge.document_sync
     repositories.knowledge.document_repository -> services.knowledge.indexing.estimate
@@ -1401,4 +1402,53 @@ forbidden_modules =
     repositories
     sqlalchemy
 # The composition root constructs the adapters; old paid use cases retain their owner.
+allow_indirect_imports = True
+
+[importlinter:contract:model-billing-source-plugin-admission-boundary]
+name = Source plugin upgrade admission is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.model_billing_source_plugin_admission
+    services.plugin.installation_service
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:model-billing-dependency-inventory-boundary]
+name = Saved SYSTEM dependency inventory and knowledge records are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.model_billing_dependency_inventory
+    services.model_billing_dependency_provenance
+    services.model_billing_migration_inventory
+    services.knowledge.model_dependencies
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:plugin-installation-transport-persistence-boundary]
+name = Plugin mutation transport reaches new persistence through the composition root
+type = forbidden
+source_modules =
+    controllers.console.workspace.plugin
+    controllers.openapi.plugins
+forbidden_modules =
+    repositories
+    sqlalchemy
 allow_indirect_imports = True

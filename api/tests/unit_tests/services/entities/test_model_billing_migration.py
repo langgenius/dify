@@ -1,12 +1,65 @@
 """The free manifest retains exact signup grant identity and millisecond bytes."""
 
 import copy
+from typing import cast
 
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from dev.generate_model_billing_migration_contract import free_fixture
-from services.entities.model_billing_migration import ClaimFreeMigrationPayload, FreeGrantManifest, canonical_hash
+from services.entities.model_billing_migration import (
+    ClaimFreeMigrationPayload,
+    FreeGrantManifest,
+    MigrationSourceProviderOwnership,
+    StableMigrationSourceProviderOwnership,
+    canonical_hash,
+)
+
+
+def test_v2_source_ownership_union_keeps_old_record_bytes_and_hash_exact() -> None:
+    provider = "langgenius/openai/openai"
+    old = {"current_quota_type": "trial", "quotas": {"paid": {"unmetered": False}, "trial": {"unmetered": True}}}
+    parsed = TypeAdapter(
+        dict[str, MigrationSourceProviderOwnership | StableMigrationSourceProviderOwnership]
+    ).validate_python({provider: old})
+    rendered = {key: value.model_dump(mode="json") for key, value in parsed.items()}
+    assert rendered == {provider: old}
+    assert canonical_hash(rendered) == canonical_hash({provider: old})
+    assert "schema_version" not in rendered[provider]
+
+
+def test_v2_source_ownership_has_structural_fields_without_current_wallet_or_counters() -> None:
+    raw = {
+        "schema_version": 2,
+        "shared_pool_types": ["paid", "trial"],
+        "quotas": {
+            "paid": {"unit": "credits", "unmetered": False},
+            "free": {"unit": "tokens", "unmetered": False},
+            "trial": {"unit": "credits", "unmetered": False},
+        },
+    }
+    record = StableMigrationSourceProviderOwnership.model_validate(raw)
+    assert record.model_dump(mode="json") == raw
+    assert not hasattr(record, "current_quota_type")
+    changed = copy.deepcopy(raw)
+    cast(dict[str, dict[str, object]], changed["quotas"])["paid"]["usage"] = 3
+    with pytest.raises(ValidationError):
+        StableMigrationSourceProviderOwnership.model_validate(changed)
+
+
+@pytest.mark.parametrize("shared", [["trial", "paid"], ["paid", "paid"], ["free"], ["trial"]])
+def test_v2_source_ownership_rejects_noncanonical_or_unmetered_masked_shared_capability(shared: list[str]) -> None:
+    with pytest.raises(ValidationError):
+        StableMigrationSourceProviderOwnership.model_validate(
+            {
+                "schema_version": 2,
+                "shared_pool_types": shared,
+                "quotas": {
+                    "paid": {"unit": "credits", "unmetered": True},
+                    "trial": {"unit": "credits", "unmetered": False},
+                },
+            }
+        )
 
 
 def test_free_manifest_matches_cross_language_grant_trial_payload_hash() -> None:

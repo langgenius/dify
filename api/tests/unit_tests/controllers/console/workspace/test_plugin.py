@@ -1,5 +1,6 @@
 import io
 from datetime import datetime
+from importlib import import_module
 from inspect import unwrap
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -85,6 +86,13 @@ from models.account import (
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.controllers.error_body import raised_error
 from tests.helpers.unit.model_factories import make_account
+from tests.helpers.unit.plugin_installation import InstallationServices, legacy_installations
+
+
+@pytest.fixture(autouse=True)
+def _admitted_installation_owner(monkeypatch: pytest.MonkeyPatch) -> None:
+    services = InstallationServices(plugin_installations=legacy_installations())
+    monkeypatch.setattr(import_module("controllers.console.workspace.plugin"), "application_services", lambda: services)
 
 
 def _plugin_category_list_item(category: str = "tool") -> dict[str, Any]:
@@ -673,7 +681,8 @@ class TestPluginInstallFromPkgApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.plugin.PluginService.install_from_local_pkg", return_value={"ok": True}
+                "services.plugin.installation_service.PluginInstallationService.install_from_local_pkg",
+                return_value={"ok": True},
             ),
         ):
             result = method(api, ParserPluginIdentifiers.model_validate(payload), "t1")
@@ -964,7 +973,10 @@ class TestPluginInstallFromGithubApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.PluginService.install_from_github", return_value={"ok": True}),
+            patch(
+                "services.plugin.installation_service.PluginInstallationService.install_from_github",
+                return_value={"ok": True},
+            ),
         ):
             result = method(api, ParserGithubInstall.model_validate(payload), "t1")
 
@@ -984,7 +996,7 @@ class TestPluginInstallFromGithubApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.plugin.PluginService.install_from_github",
+                "services.plugin.installation_service.PluginInstallationService.install_from_github",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
@@ -1002,7 +1014,7 @@ class TestPluginInstallFromMarketplaceApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.plugin.PluginService.install_from_marketplace_pkg",
+                "services.plugin.installation_service.PluginInstallationService.install_from_marketplace_pkg",
                 return_value={"ok": True},
             ),
         ):
@@ -1019,7 +1031,7 @@ class TestPluginInstallFromMarketplaceApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.plugin.PluginService.install_from_marketplace_pkg",
+                "services.plugin.installation_service.PluginInstallationService.install_from_marketplace_pkg",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
@@ -1250,7 +1262,7 @@ class TestPluginUpgradeFromMarketplaceApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.plugin.PluginService.upgrade_plugin_with_marketplace",
+                "services.plugin.installation_service.PluginInstallationService.upgrade_plugin_with_marketplace",
                 return_value={"ok": True},
             ),
         ):
@@ -1270,7 +1282,7 @@ class TestPluginUpgradeFromMarketplaceApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.plugin.PluginService.upgrade_plugin_with_marketplace",
+                "services.plugin.installation_service.PluginInstallationService.upgrade_plugin_with_marketplace",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):
@@ -1294,7 +1306,7 @@ class TestPluginUpgradeFromGithubApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.plugin.PluginService.upgrade_plugin_with_github",
+                "services.plugin.installation_service.PluginInstallationService.upgrade_plugin_with_github",
                 return_value={"ok": True},
             ),
         ):
@@ -1317,7 +1329,7 @@ class TestPluginUpgradeFromGithubApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.plugin.PluginService.upgrade_plugin_with_github",
+                "services.plugin.installation_service.PluginInstallationService.upgrade_plugin_with_github",
                 side_effect=PluginDaemonClientSideError("error"),
             ),
         ):

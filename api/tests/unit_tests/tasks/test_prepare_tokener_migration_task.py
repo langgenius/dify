@@ -20,6 +20,15 @@ from services.model_billing_migration_service import ModelBillingMigrationServic
 from tasks import prepare_tokener_migration_task as module
 
 
+class HistoricalReadinessQuery:
+    def readiness(
+        self, tenant_id: str, revision: str, *, eligibility_policy_version: str | None = None
+    ) -> dict[str, object]:
+        from core.model_invocation_routing import validate_migration_readiness
+
+        return validate_migration_readiness(tenant_id, revision, eligibility_policy_version=eligibility_policy_version)
+
+
 @pytest.mark.parametrize("policy", ["paid-legacy-v1", "free-legacy-v1", "unknown-policy"])
 def test_prepare_worker_passes_only_persisted_eligibility_policy(monkeypatch: pytest.MonkeyPatch, policy: str) -> None:
     from core import model_invocation_routing
@@ -51,7 +60,7 @@ def test_prepare_worker_passes_only_persisted_eligibility_policy(monkeypatch: py
     monkeypatch.setattr(model_invocation_routing, "validate_migration_readiness", readiness)
     complete = MagicMock()
     monkeypatch.setattr(ModelBillingMigrationService, "complete_preparation", complete)
-    module._run_preparation(tenant_id, migration_id)
+    module._run_preparation(tenant_id, migration_id, readiness_query=HistoricalReadinessQuery())
     readiness.assert_called_once_with(tenant_id, "mapping-v1", eligibility_policy_version=policy)
     complete.assert_called_once_with(
         tenant_id,
@@ -297,13 +306,13 @@ def test_real_prepare_worker_publishes_binding_without_trial_or_active_provider(
             module, "_update_integration", MagicMock(side_effect=RuntimeError("crash after credential commit"))
         )
         with pytest.raises(RuntimeError, match="crash after credential commit"):
-            module._run_preparation(tenant.id, payload.migration_id)
+            module._run_preparation(tenant.id, payload.migration_id, readiness_query=HistoricalReadinessQuery())
         crash_bound_id = module._find_bound_credential(tenant.id)
         assert crash_bound_id is not None
         assert fake_credential is not None
         assert crash_bound_id != fake_credential.id
         monkeypatch.setattr(module, "_update_integration", update)
-    module._run_preparation(tenant.id, payload.migration_id)
+    module._run_preparation(tenant.id, payload.migration_id, readiness_query=HistoricalReadinessQuery())
     status = ModelBillingMigrationService.status(tenant.id)
     assert status["phase"] == "prepared"
     assert status["preparation_binding_hash"].startswith("sha256:")

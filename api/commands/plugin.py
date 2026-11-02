@@ -13,8 +13,8 @@ from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.plugin import PluginInstaller
-from core.plugin.plugin_service import PluginService
 from core.tools.utils.system_encryption import encrypt_system_params
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from models import Tenant
 from models.account import TenantPluginAutoUpgradeCategory, TenantPluginAutoUpgradeStrategy
@@ -23,6 +23,7 @@ from models.provider_ids import DatasourceProviderID, ToolProviderID
 from models.source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from models.tools import ToolOAuthSystemClient
 from services.plugin.data_migration import PluginDataMigration
+from services.plugin.installation_service import AdmittedPluginInstallationCaller
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_migration import PluginMigration
 
@@ -222,7 +223,9 @@ def transform_datasource_credentials(environment: str):
                     if notion_plugin_id not in installed_plugins_ids:
                         if notion_package_identifier:
                             # install notion plugin
-                            PluginService.install_from_marketplace_pkg(tenant_id, [notion_package_identifier])
+                            application_services().plugin_installations.install_from_marketplace_pkg(
+                                AdmittedPluginInstallationCaller(tenant_id), [notion_package_identifier]
+                            )
                     for auth_count, notion_tenant_credential in enumerate(notion_tenant_credentials, start=1):
                         # get credential oauth params
                         access_token = notion_tenant_credential.access_token
@@ -280,7 +283,9 @@ def transform_datasource_credentials(environment: str):
                     if firecrawl_plugin_id not in installed_plugins_ids:
                         if firecrawl_package_identifier:
                             # install firecrawl plugin
-                            PluginService.install_from_marketplace_pkg(tenant_id, [firecrawl_package_identifier])
+                            application_services().plugin_installations.install_from_marketplace_pkg(
+                                AdmittedPluginInstallationCaller(tenant_id), [firecrawl_package_identifier]
+                            )
 
                     auth_count = 0
                     for firecrawl_tenant_credential in firecrawl_tenant_credentials:
@@ -345,7 +350,9 @@ def transform_datasource_credentials(environment: str):
                         if jina_package_identifier:
                             # install jina plugin
                             logger.debug("Installing Jina plugin %s", jina_package_identifier)
-                            PluginService.install_from_marketplace_pkg(tenant_id, [jina_package_identifier])
+                            application_services().plugin_installations.install_from_marketplace_pkg(
+                                AdmittedPluginInstallationCaller(tenant_id), [jina_package_identifier]
+                            )
 
                     auth_count = 0
                     for jina_tenant_credential in jina_tenant_credentials:
@@ -558,7 +565,9 @@ def install_plugins(input_file: str, output_file: str, workers: int):
     """
     click.echo(click.style("Starting install plugins.", fg="white"))
 
-    PluginMigration.install_plugins(input_file, output_file, workers)
+    PluginMigration.install_plugins(
+        input_file, output_file, workers, installations=application_services().plugin_installations
+    )
 
     click.echo(click.style("Install plugins completed.", fg="green"))
 
@@ -578,5 +587,7 @@ def install_rag_pipeline_plugins(input_file, output_file, workers):
     click.echo(click.style("Installing rag pipeline plugins", fg="yellow"))
     plugin_migration = PluginMigration()
     with session_factory.create_session() as session:
-        plugin_migration.install_rag_pipeline_plugins(input_file, output_file, workers, session=session)
+        plugin_migration.install_rag_pipeline_plugins(
+            input_file, output_file, workers, session=session, installations=application_services().plugin_installations
+        )
     click.echo(click.style("Installing rag pipeline plugins successfully", fg="green"))

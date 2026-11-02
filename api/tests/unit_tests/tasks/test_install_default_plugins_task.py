@@ -7,11 +7,19 @@ import pytest
 from celery.exceptions import Retry
 
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStartResponse
+from services.plugin.installation_service import AdmittedPluginInstallationCaller, PluginInstallationService
 from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.plugin_installation import InstallationServices, legacy_installations
 
 
 class _TaskWithQueue(Protocol):
     queue: str
+
+
+@pytest.fixture(autouse=True)
+def _admitted_installation_owner(monkeypatch: pytest.MonkeyPatch) -> None:
+    services = InstallationServices(plugin_installations=legacy_installations())
+    monkeypatch.setattr("tasks.install_default_plugins_task.application_services", lambda: services)
 
 
 def test_install_default_plugins_task_uses_plugin_queue() -> None:
@@ -40,13 +48,13 @@ def test_install_default_plugins_task_installs_latest_identifiers(monkeypatch: p
     )
     install = MagicMock()
     monkeypatch.setattr(task_module.marketplace, "batch_fetch_plugin_manifests", fetch)
-    monkeypatch.setattr(task_module.PluginService, "install_from_marketplace_pkg", install)
+    monkeypatch.setattr(PluginInstallationService, "install_from_marketplace_pkg", install)
 
     with patch.object(task_module.configure_default_models_task, "delay") as configure:
         install_default_plugins_task.run("tenant-1", plugin_ids)
 
     fetch.assert_called_once_with(plugin_ids)
-    install.assert_called_once_with("tenant-1", plugin_identifiers)
+    install.assert_called_once_with(AdmittedPluginInstallationCaller("tenant-1"), plugin_identifiers)
     configure.assert_called_once_with("tenant-1", None)
 
 
@@ -64,7 +72,7 @@ def test_install_default_plugins_task_skips_missing_plugins(
     )
     install = MagicMock()
     monkeypatch.setattr(task_module.marketplace, "batch_fetch_plugin_manifests", fetch)
-    monkeypatch.setattr(task_module.PluginService, "install_from_marketplace_pkg", install)
+    monkeypatch.setattr(PluginInstallationService, "install_from_marketplace_pkg", install)
 
     with (
         caplog.at_level(logging.WARNING, logger=task_module.logger.name),
@@ -72,7 +80,7 @@ def test_install_default_plugins_task_skips_missing_plugins(
     ):
         install_default_plugins_task.run("tenant-1", ["langgenius/openai", "missing/plugin"])
 
-    install.assert_called_once_with("tenant-1", ["langgenius/openai:1.0.0@aaa"])
+    install.assert_called_once_with(AdmittedPluginInstallationCaller("tenant-1"), ["langgenius/openai:1.0.0@aaa"])
     assert "Default plugins not found in marketplace: missing/plugin" in caplog.text
 
 
@@ -96,7 +104,7 @@ def test_install_default_plugins_task_queues_model_configuration_after_daemon_in
     )
     with (
         patch.object(
-            task_module.PluginService,
+            PluginInstallationService,
             "install_from_marketplace_pkg",
             return_value=PluginInstallTaskStartResponse(all_installed=all_installed, task_id="install-task-1"),
         ),

@@ -1,0 +1,1652 @@
+{
+  "kind": "actual_0338_0339_catalog_runtime_split_bindings_v2",
+  "bindings": [
+    {
+      "target_model": "claude-sonnet-4-5-20250929",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:8bdc14027d318e5a2bc8b7a8cd76a68224256d2e96d7fe1c666d6d83f966e6fb",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0339-runtime-v2:claude-sonnet-4-5",
+        "source_plugin_uid": "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "source_model": "claude-sonnet-4-5",
+        "source_schema_digest": "sha256:a82c389002c5199fa70eb48898e5b3ab0278af4d5a9a9bb72c0c37c57dfff147",
+        "rules_digest": "sha256:d7b23bc7b5d9f0c69385eb92e2979ab30c041fbfaef2b491f0630b4b4758b511"
+      }
+    },
+    {
+      "target_model": "claude-sonnet-4-5-20250929",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:a645c26feb0864911f5de896386398d08837d26669a4fe8af74bfb8c988fc17f",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0339-runtime-v2:claude-sonnet-4-5-20250929",
+        "source_plugin_uid": "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "source_model": "claude-sonnet-4-5-20250929",
+        "source_schema_digest": "sha256:ff24aa6c4cacc289a0cd1197b1c537aefcca44c21c8cb945045f4997c8d856a9",
+        "rules_digest": "sha256:602379f1807fe98282b58eb1c8ca45bbcd0af2d07af383aabfccecbbefff4ba6"
+      }
+    },
+    {
+      "target_model": "claude-opus-4-5-20251101",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0339-runtime-v2:claude-opus-4-5",
+        "source_plugin_uid": "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "source_model": "claude-opus-4-5",
+        "source_schema_digest": "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+        "rules_digest": "sha256:f9654f9c32eb3004cf6ead27e61bceb64b7ca4a3157f88b33c27f328edb44b3a"
+      }
+    },
+    {
+      "target_model": "claude-opus-4-5-20251101",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:ab353ea271addf68943da588224b15ce64dacf9b8f69d1b82c329d6c60d5fbe7",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0339-runtime-v2:claude-opus-4-5-20251101",
+        "source_plugin_uid": "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "source_model": "claude-opus-4-5-20251101",
+        "source_schema_digest": "sha256:f89c0708afb2d34c0b381b16e3778c3cbb752aaa6d4a25bfe63b77db6e9dd60b",
+        "rules_digest": "sha256:80faf0fb56d9b9b2f54fb9ae00201bf8bff79e37e6d663fca4857e703078aeff"
+      }
+    },
+    {
+      "target_model": "claude-haiku-4-5-20251001",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:f769655ca3d7838c4f4f7fd66c81a7473001cea03f9154393041160127efc4df",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0339-runtime-v2:claude-haiku-4-5-20251001",
+        "source_plugin_uid": "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "source_model": "claude-haiku-4-5-20251001",
+        "source_schema_digest": "sha256:c7e5b0f9602431161db734959e149350afb0090ade9897c09528033aea7b5815",
+        "rules_digest": "sha256:aa97f5150279dcb045f81bc91557db05dc260355c641aa618f0e57972c57d2f9"
+      }
+    },
+    {
+      "target_model": "claude-opus-4-6",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:bf40780b013430cb096cd3ad9cf5f28948f51fd142765a0b644161a842497da6",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0339-runtime-v2:claude-opus-4-6",
+        "source_plugin_uid": "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "source_model": "claude-opus-4-6",
+        "source_schema_digest": "sha256:e2fda6b4a05d8df82fe295b51837ef605647e573c87d7a8e9f618fd7e1d41dd1",
+        "rules_digest": "sha256:9b4ccc77746502e2dd9c3e663740e42a76328feb8e04756dde7866c4dfb42953"
+      }
+    },
+    {
+      "target_model": "claude-opus-4-7",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:278d50b9b3ff92540ad5e32fcfec9423fd20b3746a8081bba7f9019a30a74965",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0339-runtime-v2:claude-opus-4-7",
+        "source_plugin_uid": "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "source_model": "claude-opus-4-7",
+        "source_schema_digest": "sha256:5a65c61e12cd10e7e834200930f46795f5b22bf2022f2927366b2b9c787bd1c5",
+        "rules_digest": "sha256:36e969647e20288b099a1e5c9b9a71131894a40814b0bfc13dea1aa950e93c27"
+      }
+    },
+    {
+      "target_model": "claude-sonnet-4-6",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:1ac0fea1adc86b9667e1ba1fce687bf586ba345a1a8078d02c6fd65f58e03a92",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0339-runtime-v2:claude-sonnet-4-6",
+        "source_plugin_uid": "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58",
+        "source_model": "claude-sonnet-4-6",
+        "source_schema_digest": "sha256:36e251b82da35664ba5e90fbf9e4738f7a15a2dd1158a36bbfccc287d3167fd4",
+        "rules_digest": "sha256:b86f364904fff8122c74e28add831bb0d98597388c8d5b25a6a059b191635657"
+      }
+    },
+    {
+      "target_model": "claude-sonnet-4-5-20250929",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:8bdc14027d318e5a2bc8b7a8cd76a68224256d2e96d7fe1c666d6d83f966e6fb",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0338-runtime-v2:claude-sonnet-4-5",
+        "source_plugin_uid": "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "source_model": "claude-sonnet-4-5",
+        "source_schema_digest": "sha256:a82c389002c5199fa70eb48898e5b3ab0278af4d5a9a9bb72c0c37c57dfff147",
+        "rules_digest": "sha256:d7b23bc7b5d9f0c69385eb92e2979ab30c041fbfaef2b491f0630b4b4758b511"
+      }
+    },
+    {
+      "target_model": "claude-sonnet-4-5-20250929",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:a645c26feb0864911f5de896386398d08837d26669a4fe8af74bfb8c988fc17f",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0338-runtime-v2:claude-sonnet-4-5-20250929",
+        "source_plugin_uid": "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "source_model": "claude-sonnet-4-5-20250929",
+        "source_schema_digest": "sha256:ff24aa6c4cacc289a0cd1197b1c537aefcca44c21c8cb945045f4997c8d856a9",
+        "rules_digest": "sha256:602379f1807fe98282b58eb1c8ca45bbcd0af2d07af383aabfccecbbefff4ba6"
+      }
+    },
+    {
+      "target_model": "claude-opus-4-5-20251101",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0338-runtime-v2:claude-opus-4-5",
+        "source_plugin_uid": "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "source_model": "claude-opus-4-5",
+        "source_schema_digest": "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+        "rules_digest": "sha256:f9654f9c32eb3004cf6ead27e61bceb64b7ca4a3157f88b33c27f328edb44b3a"
+      }
+    },
+    {
+      "target_model": "claude-opus-4-5-20251101",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:ab353ea271addf68943da588224b15ce64dacf9b8f69d1b82c329d6c60d5fbe7",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0338-runtime-v2:claude-opus-4-5-20251101",
+        "source_plugin_uid": "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "source_model": "claude-opus-4-5-20251101",
+        "source_schema_digest": "sha256:f89c0708afb2d34c0b381b16e3778c3cbb752aaa6d4a25bfe63b77db6e9dd60b",
+        "rules_digest": "sha256:80faf0fb56d9b9b2f54fb9ae00201bf8bff79e37e6d663fca4857e703078aeff"
+      }
+    },
+    {
+      "target_model": "claude-haiku-4-5-20251001",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:f769655ca3d7838c4f4f7fd66c81a7473001cea03f9154393041160127efc4df",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0338-runtime-v2:claude-haiku-4-5-20251001",
+        "source_plugin_uid": "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "source_model": "claude-haiku-4-5-20251001",
+        "source_schema_digest": "sha256:c7e5b0f9602431161db734959e149350afb0090ade9897c09528033aea7b5815",
+        "rules_digest": "sha256:aa97f5150279dcb045f81bc91557db05dc260355c641aa618f0e57972c57d2f9"
+      }
+    },
+    {
+      "target_model": "claude-opus-4-6",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:bf40780b013430cb096cd3ad9cf5f28948f51fd142765a0b644161a842497da6",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0338-runtime-v2:claude-opus-4-6",
+        "source_plugin_uid": "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "source_model": "claude-opus-4-6",
+        "source_schema_digest": "sha256:e2fda6b4a05d8df82fe295b51837ef605647e573c87d7a8e9f618fd7e1d41dd1",
+        "rules_digest": "sha256:9b4ccc77746502e2dd9c3e663740e42a76328feb8e04756dde7866c4dfb42953"
+      }
+    },
+    {
+      "target_model": "claude-opus-4-7",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:278d50b9b3ff92540ad5e32fcfec9423fd20b3746a8081bba7f9019a30a74965",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0338-runtime-v2:claude-opus-4-7",
+        "source_plugin_uid": "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "source_model": "claude-opus-4-7",
+        "source_schema_digest": "sha256:5a65c61e12cd10e7e834200930f46795f5b22bf2022f2927366b2b9c787bd1c5",
+        "rules_digest": "sha256:36e969647e20288b099a1e5c9b9a71131894a40814b0bfc13dea1aa950e93c27"
+      }
+    },
+    {
+      "target_model": "claude-sonnet-4-6",
+      "adapter_revision": "2",
+      "source_runtime_schema_digest": "sha256:1ac0fea1adc86b9667e1ba1fce687bf586ba345a1a8078d02c6fd65f58e03a92",
+      "marker": {
+        "schema_version": 1,
+        "profile_id": "anthropic-0338-runtime-v2:claude-sonnet-4-6",
+        "source_plugin_uid": "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd",
+        "source_model": "claude-sonnet-4-6",
+        "source_schema_digest": "sha256:36e251b82da35664ba5e90fbf9e4738f7a15a2dd1158a36bbfccc287d3167fd4",
+        "rules_digest": "sha256:b86f364904fff8122c74e28add831bb0d98597388c8d5b25a6a059b191635657"
+      }
+    }
+  ],
+  "model_calls": 0,
+  "runtime_artifact_sha256_by_source_uid": {
+    "langgenius/anthropic:0.3.39@a9b013a5d1617da8db039acc0e0e1fb491832cd050aaa7d6acadf4fc06fe4c58": "75028ab6b1f822a76483f21ed8069b96bb15358c93bd26c63b4f049dbafe216c",
+    "langgenius/anthropic:0.3.38@fd7fad98a670b4c3c4af699da12bbfba143482519a97c438d6bdea4e247b83dd": "ac25b49c24436779efa01ed007060c390f59f6d2827827afba0c9359e8ce1d72"
+  },
+  "shared_semantic_contracts": {
+    "sha256:d7b23bc7b5d9f0c69385eb92e2979ab30c041fbfaef2b491f0630b4b4758b511": {
+      "source_sdk_version": "0.10.2",
+      "implementation": {
+        "adapter_id": "anthropic_source_v1",
+        "adapter_revision": "1",
+        "native_protocol": "anthropic-messages-v1",
+        "native_codec_version": "0.3.39",
+        "source_codec_archive_sha256": "d42f03a7fac55665f0100e0dcf8d9bde5103f5d41e33b242cf4ba794de2f4fc6",
+        "source_parameter_defaults": "sdk-0.10.2-required-only",
+        "auth_policy": "managed-tokener-key-x-api-key-only",
+        "controlled_headers": [
+          "anthropic-version",
+          "anthropic-beta"
+        ],
+        "native_path": "/v1/messages",
+        "model_retries": 0,
+        "follow_redirects": false,
+        "telemetry": false,
+        "codec_state_scope": "invocation",
+        "token_count": "fixed-native-messages-count-tokens",
+        "token_count_path": "/v1/messages/count_tokens",
+        "token_count_approximation_fallback": false
+      },
+      "source": {
+        "source_model": "claude-sonnet-4-5",
+        "source_schema_digest": "sha256:a82c389002c5199fa70eb48898e5b3ab0278af4d5a9a9bb72c0c37c57dfff147",
+        "target_model": "claude-sonnet-4-5-20250929",
+        "context_size": 1000000,
+        "parameter_rules": [
+          {
+            "name": "thinking",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": false,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "thinking_budget",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": 1024,
+            "min": 0.0,
+            "max": 64000.0,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "type": "float",
+            "required": false,
+            "default": 0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "type": "float",
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_k",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "type": "int",
+            "required": true,
+            "default": 64000,
+            "min": 1.0,
+            "max": 64000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": "response_format",
+            "type": "string",
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "JSON",
+              "XML"
+            ]
+          },
+          {
+            "name": "prompt_caching_message_flow",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": 0,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_system_message",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_images",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_documents",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_tool_definitions",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_tool_results",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "context_1m",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "schema_boundary_revision": 2,
+        "source_runtime_schema_digest": "sha256:8bdc14027d318e5a2bc8b7a8cd76a68224256d2e96d7fe1c666d6d83f966e6fb",
+        "source_inventory_schema_origin": "daemon_management_catalog",
+        "source_codec_rules_digest": "sha256:756c32402d6966b6ccd37e606ec63ba5da53fea2d79237e20752461e1973a10b"
+      }
+    },
+    "sha256:602379f1807fe98282b58eb1c8ca45bbcd0af2d07af383aabfccecbbefff4ba6": {
+      "source_sdk_version": "0.10.2",
+      "implementation": {
+        "adapter_id": "anthropic_source_v1",
+        "adapter_revision": "1",
+        "native_protocol": "anthropic-messages-v1",
+        "native_codec_version": "0.3.39",
+        "source_codec_archive_sha256": "d42f03a7fac55665f0100e0dcf8d9bde5103f5d41e33b242cf4ba794de2f4fc6",
+        "source_parameter_defaults": "sdk-0.10.2-required-only",
+        "auth_policy": "managed-tokener-key-x-api-key-only",
+        "controlled_headers": [
+          "anthropic-version",
+          "anthropic-beta"
+        ],
+        "native_path": "/v1/messages",
+        "model_retries": 0,
+        "follow_redirects": false,
+        "telemetry": false,
+        "codec_state_scope": "invocation",
+        "token_count": "fixed-native-messages-count-tokens",
+        "token_count_path": "/v1/messages/count_tokens",
+        "token_count_approximation_fallback": false
+      },
+      "source": {
+        "source_model": "claude-sonnet-4-5-20250929",
+        "source_schema_digest": "sha256:ff24aa6c4cacc289a0cd1197b1c537aefcca44c21c8cb945045f4997c8d856a9",
+        "target_model": "claude-sonnet-4-5-20250929",
+        "context_size": 1000000,
+        "parameter_rules": [
+          {
+            "name": "thinking",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": false,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "thinking_budget",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": 1024,
+            "min": 0.0,
+            "max": 64000.0,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "type": "float",
+            "required": false,
+            "default": 0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "type": "float",
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_k",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "type": "int",
+            "required": true,
+            "default": 64000,
+            "min": 1.0,
+            "max": 64000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": "response_format",
+            "type": "string",
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "JSON",
+              "XML"
+            ]
+          },
+          {
+            "name": "prompt_caching_message_flow",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": 0,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_system_message",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_images",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_documents",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_tool_definitions",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_tool_results",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "context_1m",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "schema_boundary_revision": 2,
+        "source_runtime_schema_digest": "sha256:a645c26feb0864911f5de896386398d08837d26669a4fe8af74bfb8c988fc17f",
+        "source_inventory_schema_origin": "daemon_management_catalog",
+        "source_codec_rules_digest": "sha256:dc0fd1d158f6847bce92b3c2491d09a610ff424afdeb4b9f36dadf2771cb0d58"
+      }
+    },
+    "sha256:f9654f9c32eb3004cf6ead27e61bceb64b7ca4a3157f88b33c27f328edb44b3a": {
+      "source_sdk_version": "0.10.2",
+      "implementation": {
+        "adapter_id": "anthropic_source_v1",
+        "adapter_revision": "1",
+        "native_protocol": "anthropic-messages-v1",
+        "native_codec_version": "0.3.39",
+        "source_codec_archive_sha256": "d42f03a7fac55665f0100e0dcf8d9bde5103f5d41e33b242cf4ba794de2f4fc6",
+        "source_parameter_defaults": "sdk-0.10.2-required-only",
+        "auth_policy": "managed-tokener-key-x-api-key-only",
+        "controlled_headers": [
+          "anthropic-version",
+          "anthropic-beta"
+        ],
+        "native_path": "/v1/messages",
+        "model_retries": 0,
+        "follow_redirects": false,
+        "telemetry": false,
+        "codec_state_scope": "invocation",
+        "token_count": "fixed-native-messages-count-tokens",
+        "token_count_path": "/v1/messages/count_tokens",
+        "token_count_approximation_fallback": false
+      },
+      "source": {
+        "source_model": "claude-opus-4-5",
+        "source_schema_digest": "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+        "target_model": "claude-opus-4-5-20251101",
+        "context_size": 200000,
+        "parameter_rules": [
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "type": "int",
+            "required": false,
+            "default": 4096,
+            "min": 1.0,
+            "max": 128000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "thinking",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": false,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "type": "float",
+            "required": false,
+            "default": 0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "type": "float",
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_k",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "thinking_budget",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": 1024,
+            "min": 1024.0,
+            "max": 128000.0,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "schema_boundary_revision": 2,
+        "source_runtime_schema_digest": "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+        "source_inventory_schema_origin": "exact_dynamic_source_runtime_schema_rpc",
+        "source_codec_rules_digest": "sha256:2f37ae72233892d9eedd2984b5755a1a8fbbf156c0f8744fa829360d58212a50"
+      }
+    },
+    "sha256:80faf0fb56d9b9b2f54fb9ae00201bf8bff79e37e6d663fca4857e703078aeff": {
+      "source_sdk_version": "0.10.2",
+      "implementation": {
+        "adapter_id": "anthropic_source_v1",
+        "adapter_revision": "1",
+        "native_protocol": "anthropic-messages-v1",
+        "native_codec_version": "0.3.39",
+        "source_codec_archive_sha256": "d42f03a7fac55665f0100e0dcf8d9bde5103f5d41e33b242cf4ba794de2f4fc6",
+        "source_parameter_defaults": "sdk-0.10.2-required-only",
+        "auth_policy": "managed-tokener-key-x-api-key-only",
+        "controlled_headers": [
+          "anthropic-version",
+          "anthropic-beta"
+        ],
+        "native_path": "/v1/messages",
+        "model_retries": 0,
+        "follow_redirects": false,
+        "telemetry": false,
+        "codec_state_scope": "invocation",
+        "token_count": "fixed-native-messages-count-tokens",
+        "token_count_path": "/v1/messages/count_tokens",
+        "token_count_approximation_fallback": false
+      },
+      "source": {
+        "source_model": "claude-opus-4-5-20251101",
+        "source_schema_digest": "sha256:f89c0708afb2d34c0b381b16e3778c3cbb752aaa6d4a25bfe63b77db6e9dd60b",
+        "target_model": "claude-opus-4-5-20251101",
+        "context_size": 200000,
+        "parameter_rules": [
+          {
+            "name": "thinking",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": false,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "thinking_budget",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": 1024,
+            "min": 1024.0,
+            "max": 64000.0,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "type": "float",
+            "required": false,
+            "default": 0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "type": "float",
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_k",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "type": "int",
+            "required": true,
+            "default": 64000,
+            "min": 1.0,
+            "max": 64000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": "response_format",
+            "type": "string",
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "JSON",
+              "XML"
+            ]
+          },
+          {
+            "name": "prompt_caching_message_flow",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": 0,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_system_message",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_images",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_documents",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_tool_definitions",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_tool_results",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "schema_boundary_revision": 2,
+        "source_runtime_schema_digest": "sha256:ab353ea271addf68943da588224b15ce64dacf9b8f69d1b82c329d6c60d5fbe7",
+        "source_inventory_schema_origin": "daemon_management_catalog",
+        "source_codec_rules_digest": "sha256:b053f09c9cd1c4f0bc95be7808a59ae8e725d4fefc8a21504553b3a2f00c3778"
+      }
+    },
+    "sha256:aa97f5150279dcb045f81bc91557db05dc260355c641aa618f0e57972c57d2f9": {
+      "source_sdk_version": "0.10.2",
+      "implementation": {
+        "adapter_id": "anthropic_source_v1",
+        "adapter_revision": "1",
+        "native_protocol": "anthropic-messages-v1",
+        "native_codec_version": "0.3.39",
+        "source_codec_archive_sha256": "d42f03a7fac55665f0100e0dcf8d9bde5103f5d41e33b242cf4ba794de2f4fc6",
+        "source_parameter_defaults": "sdk-0.10.2-required-only",
+        "auth_policy": "managed-tokener-key-x-api-key-only",
+        "controlled_headers": [
+          "anthropic-version",
+          "anthropic-beta"
+        ],
+        "native_path": "/v1/messages",
+        "model_retries": 0,
+        "follow_redirects": false,
+        "telemetry": false,
+        "codec_state_scope": "invocation",
+        "token_count": "fixed-native-messages-count-tokens",
+        "token_count_path": "/v1/messages/count_tokens",
+        "token_count_approximation_fallback": false
+      },
+      "source": {
+        "source_model": "claude-haiku-4-5-20251001",
+        "source_schema_digest": "sha256:c7e5b0f9602431161db734959e149350afb0090ade9897c09528033aea7b5815",
+        "target_model": "claude-haiku-4-5-20251001",
+        "context_size": 200000,
+        "parameter_rules": [
+          {
+            "name": "thinking",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": false,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "thinking_budget",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": 1024,
+            "min": 1024.0,
+            "max": 64000.0,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "type": "float",
+            "required": false,
+            "default": 0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "type": "float",
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_k",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "type": "int",
+            "required": true,
+            "default": 64000,
+            "min": 1.0,
+            "max": 64000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": "response_format",
+            "type": "string",
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "JSON",
+              "XML"
+            ]
+          },
+          {
+            "name": "prompt_caching_message_flow",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": 0,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_system_message",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_images",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_documents",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_tool_definitions",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_tool_results",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "schema_boundary_revision": 2,
+        "source_runtime_schema_digest": "sha256:f769655ca3d7838c4f4f7fd66c81a7473001cea03f9154393041160127efc4df",
+        "source_inventory_schema_origin": "daemon_management_catalog",
+        "source_codec_rules_digest": "sha256:c78dbf70bfdfcd6d753253ce5bfe61c3facd139e57aa3fff855d9e8f32d5efd0"
+      }
+    },
+    "sha256:9b4ccc77746502e2dd9c3e663740e42a76328feb8e04756dde7866c4dfb42953": {
+      "source_sdk_version": "0.10.2",
+      "implementation": {
+        "adapter_id": "anthropic_source_v1",
+        "adapter_revision": "1",
+        "native_protocol": "anthropic-messages-v1",
+        "native_codec_version": "0.3.39",
+        "source_codec_archive_sha256": "d42f03a7fac55665f0100e0dcf8d9bde5103f5d41e33b242cf4ba794de2f4fc6",
+        "source_parameter_defaults": "sdk-0.10.2-required-only",
+        "auth_policy": "managed-tokener-key-x-api-key-only",
+        "controlled_headers": [
+          "anthropic-version",
+          "anthropic-beta"
+        ],
+        "native_path": "/v1/messages",
+        "model_retries": 0,
+        "follow_redirects": false,
+        "telemetry": false,
+        "codec_state_scope": "invocation",
+        "token_count": "fixed-native-messages-count-tokens",
+        "token_count_path": "/v1/messages/count_tokens",
+        "token_count_approximation_fallback": false
+      },
+      "source": {
+        "source_model": "claude-opus-4-6",
+        "source_schema_digest": "sha256:e2fda6b4a05d8df82fe295b51837ef605647e573c87d7a8e9f618fd7e1d41dd1",
+        "target_model": "claude-opus-4-6",
+        "context_size": 1000000,
+        "parameter_rules": [
+          {
+            "name": "thinking",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": false,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "thinking_budget",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": 1024,
+            "min": 1024.0,
+            "max": 128000.0,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "type": "float",
+            "required": false,
+            "default": 0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "type": "float",
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_k",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "type": "int",
+            "required": true,
+            "default": 64000,
+            "min": 1.0,
+            "max": 128000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": "response_format",
+            "type": "string",
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "JSON",
+              "XML"
+            ]
+          },
+          {
+            "name": "prompt_caching_message_flow",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": 0,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_system_message",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_images",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_documents",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_tool_definitions",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_tool_results",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "context_1m",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "schema_boundary_revision": 2,
+        "source_runtime_schema_digest": "sha256:bf40780b013430cb096cd3ad9cf5f28948f51fd142765a0b644161a842497da6",
+        "source_inventory_schema_origin": "daemon_management_catalog",
+        "source_codec_rules_digest": "sha256:2446acf4f2fec87cf4921b63ed920926641ba57ec52098a5829ff43cac6ffdf4"
+      }
+    },
+    "sha256:36e969647e20288b099a1e5c9b9a71131894a40814b0bfc13dea1aa950e93c27": {
+      "source_sdk_version": "0.10.2",
+      "implementation": {
+        "adapter_id": "anthropic_source_v1",
+        "adapter_revision": "1",
+        "native_protocol": "anthropic-messages-v1",
+        "native_codec_version": "0.3.39",
+        "source_codec_archive_sha256": "d42f03a7fac55665f0100e0dcf8d9bde5103f5d41e33b242cf4ba794de2f4fc6",
+        "source_parameter_defaults": "sdk-0.10.2-required-only",
+        "auth_policy": "managed-tokener-key-x-api-key-only",
+        "controlled_headers": [
+          "anthropic-version",
+          "anthropic-beta"
+        ],
+        "native_path": "/v1/messages",
+        "model_retries": 0,
+        "follow_redirects": false,
+        "telemetry": false,
+        "codec_state_scope": "invocation",
+        "token_count": "fixed-native-messages-count-tokens",
+        "token_count_path": "/v1/messages/count_tokens",
+        "token_count_approximation_fallback": false
+      },
+      "source": {
+        "source_model": "claude-opus-4-7",
+        "source_schema_digest": "sha256:5a65c61e12cd10e7e834200930f46795f5b22bf2022f2927366b2b9c787bd1c5",
+        "target_model": "claude-opus-4-7",
+        "context_size": 1000000,
+        "parameter_rules": [
+          {
+            "name": "thinking",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": false,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "thinking_display",
+            "use_template": null,
+            "type": "string",
+            "required": false,
+            "default": "summarized",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "omitted",
+              "summarized"
+            ]
+          },
+          {
+            "name": "effort",
+            "use_template": null,
+            "type": "string",
+            "required": false,
+            "default": "high",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max"
+            ]
+          },
+          {
+            "name": "task_budget",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": 0,
+            "min": 0.0,
+            "max": 1000000.0,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "type": "int",
+            "required": true,
+            "default": 128000,
+            "min": 1.0,
+            "max": 128000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": "response_format",
+            "type": "string",
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "JSON",
+              "XML"
+            ]
+          },
+          {
+            "name": "prompt_caching_message_flow",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": 0,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_ttl",
+            "use_template": null,
+            "type": "string",
+            "required": true,
+            "default": "5m",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "5m",
+              "1h"
+            ]
+          },
+          {
+            "name": "prompt_caching_system_message",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_images",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_documents",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_tool_definitions",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_tool_results",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "schema_boundary_revision": 2,
+        "source_runtime_schema_digest": "sha256:278d50b9b3ff92540ad5e32fcfec9423fd20b3746a8081bba7f9019a30a74965",
+        "source_inventory_schema_origin": "daemon_management_catalog",
+        "source_codec_rules_digest": "sha256:a8ae968ad01095117fe4b2e54578a9ff5c132c23ca7b942591555df91f4f40aa"
+      }
+    },
+    "sha256:b86f364904fff8122c74e28add831bb0d98597388c8d5b25a6a059b191635657": {
+      "source_sdk_version": "0.10.2",
+      "implementation": {
+        "adapter_id": "anthropic_source_v1",
+        "adapter_revision": "1",
+        "native_protocol": "anthropic-messages-v1",
+        "native_codec_version": "0.3.39",
+        "source_codec_archive_sha256": "d42f03a7fac55665f0100e0dcf8d9bde5103f5d41e33b242cf4ba794de2f4fc6",
+        "source_parameter_defaults": "sdk-0.10.2-required-only",
+        "auth_policy": "managed-tokener-key-x-api-key-only",
+        "controlled_headers": [
+          "anthropic-version",
+          "anthropic-beta"
+        ],
+        "native_path": "/v1/messages",
+        "model_retries": 0,
+        "follow_redirects": false,
+        "telemetry": false,
+        "codec_state_scope": "invocation",
+        "token_count": "fixed-native-messages-count-tokens",
+        "token_count_path": "/v1/messages/count_tokens",
+        "token_count_approximation_fallback": false
+      },
+      "source": {
+        "source_model": "claude-sonnet-4-6",
+        "source_schema_digest": "sha256:36e251b82da35664ba5e90fbf9e4738f7a15a2dd1158a36bbfccc287d3167fd4",
+        "target_model": "claude-sonnet-4-6",
+        "context_size": 1000000,
+        "parameter_rules": [
+          {
+            "name": "thinking",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": false,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "thinking_budget",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": 1024,
+            "min": 0.0,
+            "max": 64000.0,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "type": "float",
+            "required": false,
+            "default": 0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "type": "float",
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_k",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "type": "int",
+            "required": true,
+            "default": 64000,
+            "min": 1.0,
+            "max": 64000.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": "response_format",
+            "type": "string",
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "JSON",
+              "XML"
+            ]
+          },
+          {
+            "name": "prompt_caching_message_flow",
+            "use_template": null,
+            "type": "int",
+            "required": false,
+            "default": 0,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_system_message",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_images",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_documents",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_tool_definitions",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "prompt_caching_tool_results",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "context_1m",
+            "use_template": null,
+            "type": "boolean",
+            "required": false,
+            "default": true,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "schema_boundary_revision": 2,
+        "source_runtime_schema_digest": "sha256:1ac0fea1adc86b9667e1ba1fce687bf586ba345a1a8078d02c6fd65f58e03a92",
+        "source_inventory_schema_origin": "daemon_management_catalog",
+        "source_codec_rules_digest": "sha256:1382ec5c640ab3297cef22f28fc3ade3a3d63c7aa03b49ac619247b5619058ac"
+      }
+    }
+  }
+}

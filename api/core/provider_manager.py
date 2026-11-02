@@ -23,6 +23,7 @@ from core.entities.provider_entities import (
     CustomConfiguration,
     CustomModelConfiguration,
     CustomProviderConfiguration,
+    HostedSourceProtocolFact,
     ModelLoadBalancingConfiguration,
     ModelSettings,
     ProviderQuotaType,
@@ -719,10 +720,14 @@ class ProviderManager:
             has_finite_hosted_credit_pool,
             provider_has_prepared_ownership,
             uses_published_tokener_balance,
+            uses_stable_dependency_inventory,
         )
 
         routing_state = migration_routing_state(tenant_id)
         compatibility_route = has_compatibility_route(routing_state)
+        stable_inventory = uses_stable_dependency_inventory(
+            dify_config.TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON, routing_state
+        )
 
         # Construct ProviderConfiguration objects for each provider
         for provider_entity in provider_entities:
@@ -835,7 +840,7 @@ class ProviderManager:
 
             else:
                 if not custom_configuration.provider and not custom_configuration.models:
-                    if system_configuration.enabled and has_valid_quota:
+                    if system_configuration.enabled and (has_valid_quota or stable_inventory and managed_shared_pool):
                         using_provider_type = ProviderType.SYSTEM
 
             # Get provider load balancing configs
@@ -1572,15 +1577,20 @@ class ProviderManager:
             additional_hosted_availability,
             has_finite_hosted_credit_pool,
             mapped_dynamic_source_candidates,
+            model_schema_digest,
             provider_has_prepared_ownership,
             published_original_quotas,
             source_schema_matches_mapping,
             uses_published_tokener_balance,
+            uses_stable_dependency_inventory,
         )
 
         routing_state = migration_routing_state(tenant_id)
         compatibility_route = has_compatibility_route(routing_state)
         # Get hosting configuration
+        stable_inventory = uses_stable_dependency_inventory(
+            dify_config.TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON, routing_state
+        )
         hosting_configuration = ext_hosting_provider.hosting_configuration
 
         provider_hosting_configuration = hosting_configuration.provider_map.get(provider_entity.provider)
@@ -1736,6 +1746,7 @@ class ProviderManager:
                 revision=routing_state.get("model_mapping_version", "") if routing_state is not None else "",
                 published_balance=published_balance,
                 preserve_independent_pool=preserve_independent_pool,
+                preserve_independent_units=stable_inventory,
             )
             if availability is None:
                 return SystemConfiguration(enabled=False)
@@ -1748,11 +1759,27 @@ class ProviderManager:
         else:
             current_quota_type = self._choice_current_using_quota_type(quota_configurations)
 
+        source_protocol_fact = None
         current_using_credentials = provider_hosting_configuration.credentials
+        if str(ModelProviderID(provider_entity.provider)) == "langgenius/openai/openai" and isinstance(
+            current_using_credentials, dict
+        ):
+            protocol = current_using_credentials.get("api_protocol")
+            if protocol is None or protocol in ("chat", "responses"):
+                source_protocol_fact = HostedSourceProtocolFact(
+                    provider=str(ModelProviderID(provider_entity.provider)),
+                    plugin_unique_identifier=plugin_provider_entity.plugin_unique_identifier,
+                    catalog_schema_digests=tuple(
+                        (item.model_type, item.model, model_schema_digest(item))
+                        for item in [*provider_entity.models, *resolved_source_schemas]
+                    ),
+                    selector="absent" if protocol is None else protocol,
+                )
         if (additional_provider or published_balance) and any(
             quota.quota_type == current_quota_type
             and quota.quota_type != ProviderQuotaType.FREE
             and quota.quota_limit != -1
+            and (not stable_inventory or quota.quota_unit in {QuotaUnit.CREDITS, QuotaUnit.TIMES})
             for quota in quota_configurations
         ):
             # New shared-credit entries can only invoke the managed route; do
@@ -1813,6 +1840,7 @@ class ProviderManager:
         )
         result._tokener_source_schemas = tuple(resolved_source_schemas)
         result._tokener_source_plugin_unique_identifier = plugin_provider_entity.plugin_unique_identifier
+        result._tokener_source_protocol_fact = source_protocol_fact
         return result
 
     @staticmethod

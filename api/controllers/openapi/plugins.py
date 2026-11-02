@@ -51,7 +51,9 @@ from core.plugin.entities.plugin import PluginEntity
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginDaemonInternalError
 from core.plugin.plugin_service import PluginService
+from extensions.ext_application_services import application_services
 from services.errors.plugin import PluginInstallationForbiddenError
+from services.plugin.installation_service import AdmittedPluginInstallationCaller
 
 _IN_FLIGHT: Final = frozenset({PluginInstallTaskStatus.Pending, PluginInstallTaskStatus.Running})
 
@@ -242,7 +244,9 @@ class PluginInstallApi(Resource):
     def post(self, ctx: Context, workspace_id: str, *, body: PluginInstallPayload):
         _require_marketplace()
         with _plugin_errors():
-            started = PluginService.install_from_marketplace_pkg(ctx.workspace.id, body.identifiers)
+            started = application_services().plugin_installations.install_from_marketplace_pkg(
+                AdmittedPluginInstallationCaller(ctx.workspace.id), body.identifiers
+            )
         plugin_ids = [_plugin_id_of(identifier) for identifier in body.identifiers]
         return _start_response(ctx.workspace.id, started.task_id, started.all_installed, plugin_ids)
 

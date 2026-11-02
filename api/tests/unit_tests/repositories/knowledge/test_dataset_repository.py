@@ -1,7 +1,9 @@
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.dataset import Dataset, DatasetPermission
+from models.dataset import Dataset, DatasetPermission, Pipeline
+from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
+from services.knowledge.model_dependencies import DatasetModelDependencyRecord, PipelineModelDependencyRecord
 from services.knowledge.resource_scope import DatasetRef
 
 
@@ -24,6 +26,43 @@ def _dataset(
         data_source_type=data_source_type,
         indexing_technique="economy",
     )
+
+
+def test_model_dependency_documents_include_dormant_pipeline_versions_with_complete_owner_chain(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        dataset = _dataset("dataset", "workspace")
+        dataset.pipeline_id = "pipeline"
+        dataset.embedding_model_provider, dataset.embedding_model = "openai", "text-embedding-3-small"
+        session.add(dataset)
+        pipeline = Pipeline(tenant_id="workspace", name="pipeline", created_by="account")
+        pipeline.id = "pipeline"
+        other = Pipeline(tenant_id="other", name="other", created_by="account")
+        other.id = "foreign-pipeline"
+        session.add_all([pipeline, other])
+        for pipeline_id, tenant, version in (
+            ("pipeline", "workspace", "draft"),
+            ("pipeline", "workspace", "historical"),
+            ("pipeline", "other", "forged"),
+            ("foreign-pipeline", "workspace", "forged"),
+        ):
+            session.add(
+                Workflow(
+                    app_id=pipeline_id,
+                    tenant_id=tenant,
+                    type=WorkflowType.WORKFLOW,
+                    version=version,
+                    graph='{"nodes":[]}',
+                    _features="{}",
+                    created_by="account",
+                )
+            )
+    result = SQLAlchemyDatasetRepository(session_factory=sqlite_session_factory).collect_model_dependency_records(
+        "workspace"
+    )
+    assert len([item for item in result if isinstance(item, DatasetModelDependencyRecord)]) == 1
+    assert len([item for item in result if isinstance(item, PipelineModelDependencyRecord)]) == 2
 
 
 def test_rbac_maintainer_lookup_requires_owning_workspace(sqlite_session_factory: sessionmaker[Session]) -> None:

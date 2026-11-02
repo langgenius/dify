@@ -3,6 +3,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from core.plugin.entities.marketplace import MarketplacePluginSnapshot
 from core.plugin.entities.plugin import PluginCategory, PluginInstallationSource
 from models.account import (
@@ -10,8 +12,16 @@ from models.account import (
     TenantPluginAutoUpgradeMode,
     TenantPluginAutoUpgradeStrategySetting,
 )
+from services.plugin.installation_service import AdmittedPluginInstallationCaller
+from tests.helpers.unit.plugin_installation import InstallationServices, legacy_installations
 
 MODULE = "tasks.process_tenant_plugin_autoupgrade_check_task"
+
+
+@pytest.fixture(autouse=True)
+def _admitted_installation_owner(monkeypatch: pytest.MonkeyPatch) -> None:
+    services = InstallationServices(plugin_installations=legacy_installations())
+    monkeypatch.setattr("tasks.process_tenant_plugin_autoupgrade_check_task.application_services", lambda: services)
 
 
 def _make_plugin(
@@ -61,14 +71,14 @@ def _run_task(
 
     upgrade_calls: list[tuple[str, str, str]] = []
 
-    def _record_upgrade(tenant_id: str, original: str, new: str) -> None:
-        upgrade_calls.append((tenant_id, original, new))
+    def _record_upgrade(caller: AdmittedPluginInstallationCaller, original: str, new: str) -> None:
+        upgrade_calls.append((caller.tenant_id, original, new))
 
     with (
         patch(f"{MODULE}.PluginInstaller", return_value=fake_manager),
         patch(f"{MODULE}.marketplace_batch_fetch_plugin_manifests", return_value=manifests),
         patch(
-            f"{MODULE}.PluginService.upgrade_plugin_with_marketplace",
+            "services.plugin.installation_service.PluginInstallationService.upgrade_plugin_with_marketplace",
             side_effect=_record_upgrade,
         ) as upgrade_mock,
     ):
@@ -117,7 +127,7 @@ class TestUpgradeCallsMarketplaceService:
         with (
             patch(f"{MODULE}.PluginInstaller", return_value=fake_manager),
             patch(f"{MODULE}.marketplace_batch_fetch_plugin_manifests", return_value=[manifest]),
-            patch(f"{MODULE}.PluginService.upgrade_plugin_with_marketplace"),
+            patch("services.plugin.installation_service.PluginInstallationService.upgrade_plugin_with_marketplace"),
         ):
             from tasks.process_tenant_plugin_autoupgrade_check_task import (
                 process_tenant_plugin_autoupgrade_check_task,
@@ -302,7 +312,10 @@ class TestErrorIsolation:
         with (
             patch(f"{MODULE}.PluginInstaller", return_value=fake_manager),
             patch(f"{MODULE}.marketplace_batch_fetch_plugin_manifests", return_value=manifests),
-            patch(f"{MODULE}.PluginService.upgrade_plugin_with_marketplace", side_effect=_upgrade),
+            patch(
+                "services.plugin.installation_service.PluginInstallationService.upgrade_plugin_with_marketplace",
+                side_effect=_upgrade,
+            ),
         ):
             from tasks.process_tenant_plugin_autoupgrade_check_task import (
                 process_tenant_plugin_autoupgrade_check_task,

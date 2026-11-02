@@ -12,9 +12,11 @@ from models.enums import DataSourceType, DocumentCreatedFrom
 from models.model import UploadFile
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
+from services.plugin.installation_service import AdmittedPluginInstallationCaller
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_upload_file
+from tests.helpers.unit.plugin_installation import legacy_installations
 
 
 def _dataset(**overrides: object) -> Dataset:
@@ -85,7 +87,7 @@ def _upload_file(*, file_id: str = "file-1", tenant_id: str = "tenant-1") -> Upl
     ],
 )
 def test_get_transform_yaml_returns_workflow(doc_form: str, datasource_type: str, indexing_technique: str | None):
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
 
     result = service._get_transform_yaml(doc_form, datasource_type, indexing_technique)
 
@@ -94,7 +96,7 @@ def test_get_transform_yaml_returns_workflow(doc_form: str, datasource_type: str
 
 
 def test_get_transform_yaml_raises_for_unsupported_doc_form() -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
 
     with pytest.raises(ValueError, match="Unsupported doc form"):
         service._get_transform_yaml("unknown", "upload_file", "high_quality")
@@ -102,14 +104,14 @@ def test_get_transform_yaml_raises_for_unsupported_doc_form() -> None:
 
 @pytest.mark.parametrize("doc_form", ["text_model", "hierarchical_model"])
 def test_get_transform_yaml_raises_for_unsupported_datasource_type(doc_form: str) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
 
     with pytest.raises(ValueError, match="Unsupported datasource type"):
         service._get_transform_yaml(doc_form, "unsupported", "high_quality")
 
 
 def test_deal_file_extensions_filters_and_normalizes_extensions() -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
     node = {"data": {"fileExtensions": ["pdf", "TXT", "exe"]}}
 
     result = service._deal_file_extensions(node)
@@ -118,7 +120,7 @@ def test_deal_file_extensions_filters_and_normalizes_extensions() -> None:
 
 
 def test_deal_file_extensions_returns_original_when_empty() -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
     node = {"data": {"fileExtensions": []}}
 
     result = service._deal_file_extensions(node)
@@ -127,7 +129,7 @@ def test_deal_file_extensions_returns_original_when_empty() -> None:
 
 
 def test_deal_dependencies_installs_missing_marketplace_plugins(mocker: MockerFixture) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
 
     installer_cls = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginInstaller")
     installer_cls.return_value.list_plugins.return_value = [SimpleNamespace(plugin_id="installed-plugin")]
@@ -136,7 +138,7 @@ def test_deal_dependencies_installs_missing_marketplace_plugins(mocker: MockerFi
     migration_cls.return_value._fetch_latest_package_identifier.return_value = "missing-plugin:1.0.0"
 
     install_mock = mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.PluginService.install_from_marketplace_pkg"
+        "services.plugin.installation_service.PluginInstallationService.install_from_marketplace_pkg"
     )
 
     pipeline_yaml = {
@@ -148,12 +150,12 @@ def test_deal_dependencies_installs_missing_marketplace_plugins(mocker: MockerFi
 
     service._deal_dependencies(pipeline_yaml, "tenant-1")
 
-    install_mock.assert_called_once_with("tenant-1", ["missing-plugin:1.0.0"])
+    install_mock.assert_called_once_with(AdmittedPluginInstallationCaller("tenant-1"), ["missing-plugin:1.0.0"])
 
 
 @pytest.mark.parametrize("sqlite_session", [(Dataset, Pipeline)], indirect=True)
 def test_transform_to_empty_pipeline_updates_dataset_and_commits(sqlite_session: Session) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
 
     dataset = _dataset()
     sqlite_session.add(dataset)
@@ -174,7 +176,7 @@ def test_transform_to_empty_pipeline_updates_dataset_and_commits(sqlite_session:
 
 
 def test_transform_dataset_returns_early_when_pipeline_exists(sqlite_session: Session) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
     dataset = _dataset(id="d1", pipeline_id="p1", runtime_mode="rag_pipeline")
     pipeline = Pipeline(tenant_id="tenant-1", name="Pipeline", description="")
     pipeline.id = "p1"
@@ -191,7 +193,7 @@ def test_transform_dataset_rejects_missing_or_foreign_pipeline_before_side_effec
     sqlite_session: Session,
     pipeline_tenant_id: str | None,
 ) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
     dataset = _dataset(id="d1", pipeline_id="p1", runtime_mode="rag_pipeline")
     sqlite_session.add(dataset)
     if pipeline_tenant_id is not None:
@@ -199,7 +201,7 @@ def test_transform_dataset_rejects_missing_or_foreign_pipeline_before_side_effec
         pipeline.id = "p1"
         sqlite_session.add(pipeline)
     install_plugins = mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.PluginService.install_from_marketplace_pkg"
+        "services.plugin.installation_service.PluginInstallationService.install_from_marketplace_pkg"
     )
     create_pipeline = mocker.patch.object(service, "_create_pipeline")
     transform_empty = mocker.patch.object(service, "_transform_to_empty_pipeline")
@@ -214,7 +216,7 @@ def test_transform_dataset_rejects_missing_or_foreign_pipeline_before_side_effec
 
 @pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
 def test_transform_dataset_raises_for_external_dataset(sqlite_session: Session) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
     dataset = _dataset(id="d1", provider="external")
     sqlite_session.add(dataset)
     sqlite_session.commit()
@@ -227,7 +229,7 @@ def test_transform_dataset_raises_for_external_dataset(sqlite_session: Session) 
 def test_transform_dataset_calls_empty_pipeline_when_no_datasource(
     mocker: MockerFixture, sqlite_session: Session
 ) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
     dataset = _dataset(id="d1", data_source_type=None, indexing_technique=None)
     sqlite_session.add(dataset)
     sqlite_session.commit()
@@ -244,7 +246,7 @@ def test_transform_dataset_calls_empty_pipeline_when_no_datasource(
 def test_transform_dataset_calls_empty_pipeline_when_no_doc_form(
     mocker: MockerFixture, sqlite_session: Session
 ) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
     dataset = _dataset(id="d1", data_source_type="upload_file", indexing_technique="high_quality", chunk_structure=None)
     sqlite_session.add(dataset)
     sqlite_session.commit()
@@ -261,7 +263,7 @@ def test_transform_dataset_calls_empty_pipeline_when_no_doc_form(
 
 
 def test_deal_knowledge_index_high_quality_sets_embedding(mocker: MockerFixture) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
     dataset = _dataset(
         embedding_model="text-embedding-ada-002",
         embedding_model_provider="openai",
@@ -311,7 +313,7 @@ def test_deal_knowledge_index_high_quality_sets_embedding(mocker: MockerFixture)
 
 @pytest.mark.parametrize("sqlite_session", [(Document, DocumentPipelineExecutionLog)], indirect=True)
 def test_deal_document_data_notion(sqlite_session: Session) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
     dataset = _dataset(id="d1", pipeline_id="p1")
     doc = _document(
         id="doc1",
@@ -339,7 +341,7 @@ def test_deal_document_data_notion(sqlite_session: Session) -> None:
 @pytest.mark.parametrize(("provider", "node_id"), [("firecrawl", "1752565402678"), ("jinareader", "1752491761974")])
 @pytest.mark.parametrize("sqlite_session", [(Document, DocumentPipelineExecutionLog)], indirect=True)
 def test_deal_document_data_website(sqlite_session: Session, provider: str, node_id: str) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
     dataset = _dataset(id="d1", pipeline_id="p1")
     doc = _document(
         id="doc1",
@@ -366,7 +368,7 @@ def test_deal_document_data_website(sqlite_session: Session, provider: str, node
 
 @pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
 def test_transform_dataset_full_flow(mocker: MockerFixture, sqlite_session: Session) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
     dataset = _dataset(
         id="d1",
         tenant_id="t1",
@@ -409,7 +411,7 @@ def test_transform_dataset_full_flow(mocker: MockerFixture, sqlite_session: Sess
 def test_transform_dataset_raises_for_unsupported_doc_form_after_pipeline_create(
     mocker: MockerFixture, sqlite_session: Session
 ) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
     dataset = _dataset(
         id="d1",
         tenant_id="t1",
@@ -437,7 +439,7 @@ def test_transform_dataset_raises_for_unsupported_doc_form_after_pipeline_create
 def test_transform_dataset_raises_when_transform_yaml_missing_workflow(
     mocker: MockerFixture, sqlite_session: Session
 ) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
     dataset = _dataset(
         id="d1",
         tenant_id="t1",
@@ -462,7 +464,7 @@ def test_transform_dataset_raises_when_transform_yaml_missing_workflow(
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_create_pipeline_raises_when_workflow_data_missing(sqlite_session: Session) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
 
     with pytest.raises(ValueError, match="Missing workflow data for rag pipeline"):
         service._create_pipeline(
@@ -475,7 +477,7 @@ def test_create_pipeline_raises_when_workflow_data_missing(sqlite_session: Sessi
 
 @pytest.mark.parametrize("sqlite_session", [(Document, DocumentPipelineExecutionLog, UploadFile)], indirect=True)
 def test_deal_document_data_upload_file_with_existing_file(sqlite_session: Session) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
     dataset = _dataset(id="d1", pipeline_id="p1")
     document = _document(
         id="doc-1",
@@ -507,7 +509,7 @@ def test_deal_document_data_scopes_documents_and_upload_files_to_dataset_tenant(
     document_tenant_id: str,
     upload_file_tenant_id: str,
 ) -> None:
-    service = RagPipelineTransformService()
+    service = RagPipelineTransformService(installations=legacy_installations())
     dataset = _dataset(id="d1", tenant_id="tenant-1", pipeline_id="p1")
     document = _document(
         id="doc-1",
@@ -526,8 +528,8 @@ def test_deal_document_data_scopes_documents_and_upload_files_to_dataset_tenant(
     assert sqlite_session.scalar(select(DocumentPipelineExecutionLog)) is None
 
 
-def _make_service():
-    return RagPipelineTransformService.__new__(RagPipelineTransformService)
+def _make_service() -> RagPipelineTransformService:
+    return RagPipelineTransformService(installations=legacy_installations())
 
 
 def test_deal_dependencies_skips_marketplace_when_disabled(
@@ -538,7 +540,7 @@ def test_deal_dependencies_skips_marketplace_when_disabled(
     installer.list_plugins.return_value = []
     mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginMigration")
     install_call = mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.PluginService.install_from_marketplace_pkg"
+        "services.plugin.installation_service.PluginInstallationService.install_from_marketplace_pkg"
     )
 
     pipeline_yaml = {
@@ -565,7 +567,7 @@ def test_deal_dependencies_installs_when_enabled(mocker: MockerFixture, monkeypa
     migration = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginMigration").return_value
     migration._fetch_latest_package_identifier.return_value = "langgenius/openai:1.0.0@abc"
     install_call = mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.PluginService.install_from_marketplace_pkg"
+        "services.plugin.installation_service.PluginInstallationService.install_from_marketplace_pkg"
     )
 
     pipeline_yaml = {
@@ -580,4 +582,4 @@ def test_deal_dependencies_installs_when_enabled(mocker: MockerFixture, monkeypa
     service = _make_service()
     service._deal_dependencies(pipeline_yaml, "tenant-1")
 
-    install_call.assert_called_once_with("tenant-1", ["langgenius/openai:1.0.0@abc"])
+    install_call.assert_called_once_with(AdmittedPluginInstallationCaller("tenant-1"), ["langgenius/openai:1.0.0@abc"])

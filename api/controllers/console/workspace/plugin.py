@@ -50,6 +50,7 @@ from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -68,6 +69,7 @@ from models.account import (
 )
 from models.provider_ids import ToolProviderID
 from services.entities.model_provider_entities import ProviderEntityResponse
+from services.plugin.installation_service import AdmittedPluginInstallationCaller
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
@@ -838,7 +840,9 @@ class PluginInstallFromPkgApi(Resource):
     @model_validate(ParserPluginIdentifiers)
     def post(self, req_data: ParserPluginIdentifiers, tenant_id: str):
         try:
-            response = PluginService.install_from_local_pkg(tenant_id, req_data.plugin_unique_identifiers)
+            response = application_services().plugin_installations.install_from_local_pkg(
+                AdmittedPluginInstallationCaller(tenant_id), req_data.plugin_unique_identifiers
+            )
         except PluginDaemonClientSideError as e:
             raise PluginOperationError(e.description) from e
 
@@ -859,8 +863,8 @@ class PluginInstallFromGithubApi(Resource):
     @model_validate(ParserGithubInstall)
     def post(self, req_data: ParserGithubInstall, tenant_id: str):
         try:
-            response = PluginService.install_from_github(
-                tenant_id,
+            response = application_services().plugin_installations.install_from_github(
+                AdmittedPluginInstallationCaller(tenant_id),
                 req_data.plugin_unique_identifier,
                 req_data.repo,
                 req_data.version,
@@ -886,7 +890,9 @@ class PluginInstallFromMarketplaceApi(Resource):
     @model_validate(ParserPluginIdentifiers)
     def post(self, req_data: ParserPluginIdentifiers, tenant_id: str):
         try:
-            response = PluginService.install_from_marketplace_pkg(tenant_id, req_data.plugin_unique_identifiers)
+            response = application_services().plugin_installations.install_from_marketplace_pkg(
+                AdmittedPluginInstallationCaller(tenant_id), req_data.plugin_unique_identifiers
+            )
         except PluginDaemonClientSideError as e:
             raise PluginOperationError(e.description) from e
 
@@ -1043,8 +1049,10 @@ class PluginUpgradeFromMarketplaceApi(Resource):
     def post(self, req_data: ParserMarketplaceUpgrade, tenant_id: str):
         try:
             return jsonable_encoder(
-                PluginService.upgrade_plugin_with_marketplace(
-                    tenant_id, req_data.original_plugin_unique_identifier, req_data.new_plugin_unique_identifier
+                application_services().plugin_installations.upgrade_plugin_with_marketplace(
+                    AdmittedPluginInstallationCaller(tenant_id),
+                    req_data.original_plugin_unique_identifier,
+                    req_data.new_plugin_unique_identifier,
                 )
             )
         except PluginDaemonClientSideError as e:
@@ -1066,8 +1074,8 @@ class PluginUpgradeFromGithubApi(Resource):
     def post(self, req_data: ParserGithubUpgrade, tenant_id: str):
         try:
             return jsonable_encoder(
-                PluginService.upgrade_plugin_with_github(
-                    tenant_id,
+                application_services().plugin_installations.upgrade_plugin_with_github(
+                    AdmittedPluginInstallationCaller(tenant_id),
                     req_data.original_plugin_unique_identifier,
                     req_data.new_plugin_unique_identifier,
                     req_data.repo,

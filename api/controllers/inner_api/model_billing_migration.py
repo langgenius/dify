@@ -280,6 +280,9 @@ class ActivateModelBillingMigrationApi(Resource):
     def post(self, tenant_id, migration_id):
         return _respond(
             lambda: ModelBillingMigrationService.activate(
-                str(tenant_id), str(migration_id), ActivateMigrationPayload.model_validate(inner_api_ns.payload or {})
+                str(tenant_id),
+                str(migration_id),
+                ActivateMigrationPayload.model_validate(inner_api_ns.payload or {}),
+                readiness_query=application_services().model_billing_migration_inventory,
             )
         )

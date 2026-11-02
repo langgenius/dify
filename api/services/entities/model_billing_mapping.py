@@ -26,6 +26,10 @@ class SourceParameterContract:
     rules_digest: str
     adapter_id: str
     algorithm_revision: str
+    # New reviewed profiles may separate daemon management/catalog metadata
+    # from the exact source SDK's model/schema RPC. None preserves all prior
+    # contracts; it is never an invitation to infer a runtime digest.
+    source_runtime_schema_digest: str | None = None
 
 
 def model_schema_digest(schema: AIModelEntity) -> str:
@@ -88,11 +92,11 @@ class ModelMapping(_StrictModel):
         if self.parameter_adapter.id == "anthropic_source_v1":
             if self.source.model_type != ModelType.LLM or self.target.model_type != ModelType.LLM:
                 raise ValueError("Anthropic source adapter requires LLM source and target")
-            if self.parameter_adapter.revision != "1":
+            if self.parameter_adapter.revision not in {"1", "2"}:
                 raise ValueError("Unsupported Anthropic source adapter revision")
         if self.parameter_adapter.id == "openai_chat_source_v1":
             if self.source.model_type != ModelType.LLM or self.target.model_type != ModelType.LLM:
                 raise ValueError("OpenAI Chat source adapter requires LLM source and target")
-            if self.parameter_adapter.revision != "1":
+            if self.parameter_adapter.revision not in {"1", "2"}:
                 raise ValueError("Unsupported OpenAI Chat source adapter revision")
         return self

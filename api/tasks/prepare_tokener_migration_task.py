@@ -3,7 +3,7 @@
 import json
 import logging
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
 
 from celery import shared_task
 from sqlalchemy import select
@@ -19,6 +19,7 @@ from models.provider import ProviderCredential
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from services.billing_service import BillingService
 from services.entities.model_billing_migration import canonical_hash
+from services.model_billing_migration_inventory import ModelBillingReadinessQuery
 from services.model_billing_migration_service import ModelBillingMigrationService
 from services.model_provider.service import ModelProviderService
 from tasks.bootstrap_tokener_tenant_task import (
@@ -198,7 +199,7 @@ def _prepare_resources(tenant_id: str, request: dict[str, Any]) -> str | None:
         response.clear()
 
 
-def _run_preparation(tenant_id: str, migration_id: str) -> None:
+def _run_preparation(tenant_id: str, migration_id: str, *, readiness_query: ModelBillingReadinessQuery) -> None:
     with session_factory.create_session() as session:
         row = session.get(TenantModelBillingMigration, tenant_id)
         tenant = session.get(Tenant, tenant_id)
@@ -237,9 +238,7 @@ def _run_preparation(tenant_id: str, migration_id: str) -> None:
         plugin_install_task_id=None,
         ready=True,
     )
-    from core.model_invocation_routing import validate_migration_readiness
-
-    readiness = validate_migration_readiness(
+    readiness = readiness_query.readiness(
         tenant_id,
         state["model_mapping_version"],
         eligibility_policy_version=state["eligibility_policy_version"],
@@ -249,8 +248,8 @@ def _run_preparation(tenant_id: str, migration_id: str) -> None:
     ModelBillingMigrationService.complete_preparation(
         tenant_id,
         migration_id,
-        source_ownership=readiness["source_ownership"],
-        expected_credential_fingerprint=readiness["credential_fingerprint"],
+        source_ownership=cast(dict[str, Any], readiness["source_ownership"]),
+        expected_credential_fingerprint=cast(str, readiness["credential_fingerprint"]),
     )
 
 
@@ -263,7 +262,11 @@ def prepare_tokener_migration_task(self, tenant_id: str, migration_id: str) -> N
         acquired = lock.acquire(blocking=False)
         if not acquired:
             raise PreparationStepError("migration_prepare_locked")
-        _run_preparation(tenant_id, migration_id)
+        from extensions.ext_application_services import application_services
+
+        _run_preparation(
+            tenant_id, migration_id, readiness_query=application_services().model_billing_migration_inventory
+        )
     except Exception:
         ModelBillingMigrationService.preparation_error(tenant_id, migration_id, "migration_prepare_pending")
         logger.warning("Migration preparation pending tenant=%s migration=%s", tenant_id, migration_id)

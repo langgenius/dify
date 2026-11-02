@@ -24,6 +24,9 @@ from services.model_billing_openai_chat_adapter import (
 PROFILE = json.loads(
     Path(__file__).with_name("fixtures").joinpath("model_billing_openai_chat_profile.json").read_text()
 )
+RUNTIME_PROFILE = json.loads(
+    Path(__file__).with_name("fixtures").joinpath("model_billing_openai_chat_runtime_profile.json").read_text()
+)
 RULES_DIGEST = (
     "sha256:"
     + hashlib.sha256(
@@ -60,17 +63,26 @@ class _RestoreInputs(TypedDict, closed=True):
     source_api_protocol: object
 
 
-def build_inputs(protocol: object = None) -> _BuildInputs:
+def build_inputs(protocol: object = None, *, runtime: bool = False) -> _BuildInputs:
+    profile = RUNTIME_PROFILE if runtime else PROFILE
+    rules_digest = (
+        "sha256:"
+        + hashlib.sha256(
+            json.dumps(profile, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+        ).hexdigest()
+    )
     return {
         "adapter_id": OPENAI_CHAT_SOURCE_ADAPTER_ID,
-        "adapter_revision": "1",
-        "expected_rules_digest": RULES_DIGEST,
+        "adapter_revision": "2" if runtime else "1",
+        "expected_rules_digest": rules_digest,
         "source_provider": OPENAI_CHAT_SOURCE_PROVIDER,
-        "source_model": PROFILE["source_model"],
-        "source_plugin_unique_identifier": PROFILE["source_plugin_uid"],
-        "source_schema": AIModelEntity.model_validate(PROFILE["source_schema"]),
-        "expected_source_schema_digest": PROFILE["source_schema_digest"],
-        "target_model": PROFILE["target_model"],
+        "source_model": profile["source_model"],
+        "source_plugin_unique_identifier": profile["source_plugin_uid"],
+        "source_schema": AIModelEntity.model_validate(
+            profile["source_catalog_schema"] if runtime else profile["source_schema"]
+        ),
+        "expected_source_schema_digest": profile["source_schema_digest"],
+        "target_model": profile["target_model"],
         "source_api_protocol": protocol,
     }
 
@@ -188,3 +200,42 @@ def test_changed_frozen_contract_cannot_emit_a_private_marker() -> None:
     contract = build_openai_chat_source_contract(**build_inputs())
     with pytest.raises(OpenAIChatSourceAdapterError):
         openai_chat_source_marker(replace(contract, algorithm_revision="2"), **marker_fields())
+
+
+def test_catalog_runtime_profile_is_append_only_and_never_conflates_three_boundaries() -> None:
+    old = build_openai_chat_source_contract(**build_inputs())
+    current = build_openai_chat_source_contract(**build_inputs(runtime=True))
+    assert old.rules_digest == RULES_DIGEST
+    assert old.source_runtime_schema_digest is None
+    assert old.algorithm_revision == "1"
+    assert current.algorithm_revision == "2"
+    assert current.source_schema_digest == model_schema_digest(
+        AIModelEntity.model_validate(RUNTIME_PROFILE["source_catalog_schema"])
+    )
+    assert current.source_runtime_schema_digest == model_schema_digest(
+        AIModelEntity.model_validate(RUNTIME_PROFILE["source_schema"])
+    )
+    assert len({current.source_schema_digest, current.source_runtime_schema_digest, old.source_schema_digest}) == 3
+    marker = openai_chat_source_marker(current, **marker_fields())
+    assert len(marker) == 6
+    assert marker["source_schema_digest"] == current.source_schema_digest
+    assert restore_openai_chat_source_contract(marker, **marker_inputs()) == current
+    with pytest.raises(OpenAIChatSourceAdapterError):
+        openai_chat_source_marker(
+            replace(current, source_runtime_schema_digest=old.source_schema_digest), **marker_fields()
+        )
+
+
+@pytest.mark.parametrize("change", ["runtime_as_catalog", "codec_as_catalog", "old_rules", "old_revision"])
+def test_runtime_profile_cannot_relabel_or_substitute_schema_boundaries(change: str) -> None:
+    inputs = build_inputs(runtime=True)
+    if change == "runtime_as_catalog":
+        inputs["source_schema"] = AIModelEntity.model_validate(RUNTIME_PROFILE["source_schema"])
+    elif change == "codec_as_catalog":
+        inputs["source_schema"] = AIModelEntity.model_validate(PROFILE["source_schema"])
+    elif change == "old_rules":
+        inputs["expected_rules_digest"] = RULES_DIGEST
+    else:
+        inputs["adapter_revision"] = "1"
+    with pytest.raises(OpenAIChatSourceAdapterError):
+        build_openai_chat_source_contract(**inputs)

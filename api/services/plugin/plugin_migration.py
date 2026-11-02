@@ -31,6 +31,7 @@ from models.model import App, AppMode, AppModelConfig
 from models.provider_ids import ModelProviderID, ToolProviderID
 from models.tools import BuiltinToolProvider
 from models.workflow import Workflow
+from services.plugin.installation_service import AdmittedPluginInstallationCaller, PluginInstallationService
 
 logger = logging.getLogger(__name__)
 
@@ -358,7 +359,9 @@ class PluginMigration:
         return {"plugins": package_identifier_by_plugin_id, "plugin_not_exist": plugin_not_exist}
 
     @classmethod
-    def install_plugins(cls, extracted_plugins: str, output_file: str, workers: int = 100):
+    def install_plugins(
+        cls, extracted_plugins: str, output_file: str, workers: int = 100, *, installations: PluginInstallationService
+    ):
         """
         Install plugins.
         """
@@ -379,7 +382,9 @@ class PluginMigration:
 
         thread_pool = ThreadPoolExecutor(max_workers=workers)
 
-        response = cls.handle_plugin_instance_install(fake_tenant_id, package_identifier_by_plugin_id)
+        response = cls.handle_plugin_instance_install(
+            fake_tenant_id, package_identifier_by_plugin_id, installations=installations
+        )
         if response.get("failed"):
             plugin_install_failed.extend(response.get("failed", []))
 
@@ -397,6 +402,9 @@ class PluginMigration:
                     if plugin_id not in installed_plugins_ids and plugin_id in package_identifier_by_plugin_id
                 ]
                 if batch_package_identifiers:
+                    installations.assert_installable(
+                        AdmittedPluginInstallationCaller(tenant_id), batch_package_identifiers
+                    )
                     manager.install_from_identifiers(
                         tenant_id,
                         batch_package_identifiers,
@@ -458,7 +466,13 @@ class PluginMigration:
 
     @classmethod
     def install_rag_pipeline_plugins(
-        cls, extracted_plugins: str, output_file: str, workers: int = 100, *, session: Session
+        cls,
+        extracted_plugins: str,
+        output_file: str,
+        workers: int = 100,
+        *,
+        session: Session,
+        installations: PluginInstallationService,
     ) -> None:
         """
         Install rag pipeline plugins.
@@ -479,7 +493,9 @@ class PluginMigration:
 
         thread_pool = ThreadPoolExecutor(max_workers=workers)
 
-        response = cls.handle_plugin_instance_install(fake_tenant_id, package_identifier_by_plugin_id)
+        response = cls.handle_plugin_instance_install(
+            fake_tenant_id, package_identifier_by_plugin_id, installations=installations
+        )
         if response.get("failed"):
             plugin_install_failed.extend(response.get("failed", []))
 
@@ -502,7 +518,9 @@ class PluginMigration:
                         for plugin_id in batch_plugin_ids
                         if plugin_id not in installed_plugins_ids and plugin_id in package_identifier_by_plugin_id
                     ]
-                    PluginService.install_from_marketplace_pkg(tenant_id, batch_package_identifiers)
+                    installations.install_from_marketplace_pkg(
+                        AdmittedPluginInstallationCaller(tenant_id), batch_package_identifiers
+                    )
 
                 total_success_tenant += 1
             except Exception:
@@ -558,7 +576,11 @@ class PluginMigration:
 
     @classmethod
     def handle_plugin_instance_install(
-        cls, tenant_id: str, package_identifier_by_plugin_id: Mapping[str, str]
+        cls,
+        tenant_id: str,
+        package_identifier_by_plugin_id: Mapping[str, str],
+        *,
+        installations: PluginInstallationService,
     ) -> PluginInstallResultDict:
         """
         Install plugins for a tenant.
@@ -568,6 +590,9 @@ class PluginMigration:
                 "Marketplace disabled in offline mode; cannot bulk-install plugins. "
                 "Pre-upload plugin packages via Console first."
             )
+        installations.assert_installable(
+            AdmittedPluginInstallationCaller(tenant_id), tuple(package_identifier_by_plugin_id.values())
+        )
         manager = PluginInstaller()
 
         # download all the plugins and upload

@@ -363,6 +363,15 @@ class PluginConfig(BaseSettings):
         ),
         default="[]",
     )
+    TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON: str = Field(
+        description=(
+            "Append-only exact mapping-revision inventory policies. saved_system_dependencies_v1 validates owned "
+            "references using actual selection; v2 uses stable SYSTEM capability/fallback intent "
+            "without wallet counters. "
+            "Empty preserves all historical inventory hashes."
+        ),
+        default="[]",
+    )
     TOKENER_LEGACY_RETIRED_MODELS_JSON: str = Field(
         description=(
             "Exact retired source identities by immutable mapping revision; only skips migration readiness, "

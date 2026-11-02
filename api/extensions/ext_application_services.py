@@ -18,6 +18,7 @@ from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
 from core.ops.base_trace_instance import bind_application_tracing_hooks
+from core.plugin.impl.model import PluginModelClient
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
@@ -36,6 +37,10 @@ from extensions.application_services.knowledge import (
     KnowledgeServices,
     build_dataset_api_key_service,
     build_knowledge_services,
+)
+from extensions.application_services.model_billing import (
+    build_model_billing_dependencies,
+    build_model_billing_migration_inventory,
 )
 from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.resource_access_token import build_resource_access_token_service
@@ -79,6 +84,7 @@ from repositories.installation_state_repository import InstallationStateReposito
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.message_repository import MessageRepository
 from repositories.model_billing_free_migration_repository import ModelBillingFreeMigrationRepository
+from repositories.model_billing_source_plugin_repository import ModelBillingSourcePluginRepository
 from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
@@ -171,7 +177,10 @@ from services.message_query_service import MessageQueryService
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import MessageSuggestedQuestions, MessageSuggestedQuestionsService
+from services.model_billing_dependency_inventory import ModelBillingDependencyInventory
 from services.model_billing_free_migration_service import ModelBillingFreeMigrationService
+from services.model_billing_migration_inventory import ModelBillingMigrationInventory
+from services.model_billing_source_plugin_admission import ModelBillingSourcePluginAdmission
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
     NetworkAccessGroupGateway,
@@ -193,6 +202,9 @@ from services.oauth_device_application_service import (
 )
 from services.oauth_device_flow import DeviceFlowRedis
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
+from services.plugin.installation_gateway import LegacyPluginInstallationGateway
+from services.plugin.installation_service import PluginInstallationService
+from services.plugin.source_plugin_contract_gateway import SourcePluginContractGateway
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.recommended_app_catalog_gateway import (
@@ -321,6 +333,8 @@ class ApplicationServices:
     agent_tracing_configs: AgentTracingConfigService
     billing_portal: BillingPortalService
     model_billing_free_migration: ModelBillingFreeMigrationService
+    model_billing_dependencies: ModelBillingDependencyInventory
+    model_billing_migration_inventory: ModelBillingMigrationInventory
     compliance_downloads: ComplianceDownloadService
     conversation_names: ConversationNameService
     conversation_commands: ConversationCommandService
@@ -344,6 +358,7 @@ class ApplicationServices:
     message_suggested_questions: MessageSuggestedQuestions
     message_more_like_this: MessageMoreLikeThisService
     plugin_file_uploads: PluginFileUploadService
+    plugin_installations: PluginInstallationService
     tool_file_downloads: ToolFileDownloadService
     upload_file_delivery: UploadFileDeliveryService
     oauth_server: OAuthServerService
@@ -600,6 +615,7 @@ def build_application_services(
         repository=messages,
     )
 
+    model_billing_dependencies = build_model_billing_dependencies(database_client=database_client)
     return ApplicationServices(
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
@@ -669,6 +685,29 @@ def build_application_services(
             get_invoices=BillingService.get_invoices,
         ),
         model_billing_free_migration=ModelBillingFreeMigrationService(store=ModelBillingFreeMigrationRepository()),
+        model_billing_dependencies=model_billing_dependencies,
+        model_billing_migration_inventory=build_model_billing_migration_inventory(
+            database_client=database_client,
+            dependencies=model_billing_dependencies,
+        ),
+        plugin_installations=PluginInstallationService(
+            admission=ModelBillingSourcePluginAdmission(
+                routes=ModelBillingSourcePluginRepository(session_factory=database_client),
+                dependencies=model_billing_dependencies,
+                candidates=SourcePluginContractGateway(
+                    metadata=PluginModelClient(),
+                    managed_target_plugin_id=dify_config.TOKENER_PROVIDER_NAME.rsplit("/", 1)[0],
+                ),
+                pre_admitted_tenants=frozenset(
+                    tenant.strip()
+                    for tenant in dify_config.TOKENER_LEGACY_MIGRATION_ALLOWLIST.split(",")
+                    if tenant.strip()
+                )
+                if dify_config.TOKENER_LEGACY_MIGRATION_ENABLED
+                else frozenset(),
+            ),
+            mutations=LegacyPluginInstallationGateway(),
+        ),
         compliance_downloads=ComplianceDownloadService(
             fetch_link=BillingService.get_compliance_download_link,
             rate_limiter=RateLimiter(

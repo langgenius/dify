@@ -10,13 +10,14 @@ from core.helper.marketplace import batch_fetch_plugin_manifests, get_plugin_pkg
 from core.plugin.entities.marketplace import MarketplacePluginDeclaration, MarketplacePluginSnapshot
 from core.plugin.entities.plugin import PluginInstallation, PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
-from core.plugin.plugin_service import PluginService
+from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from models.account import (
     TenantPluginAutoUpgradeCategory,
     TenantPluginAutoUpgradeMode,
     TenantPluginAutoUpgradeStrategySetting,
 )
+from services.plugin.installation_service import AdmittedPluginInstallationCaller
 
 logger = logging.getLogger(__name__)
 
@@ -269,8 +270,8 @@ def process_tenant_plugin_autoupgrade_check_task(
                         # Use the service that downloads and uploads the package to the daemon
                         # first; calling manager.upgrade_plugin directly skips that step and the
                         # daemon fails because the package never reaches its local bucket.
-                        _ = PluginService.upgrade_plugin_with_marketplace(
-                            tenant_id,
+                        _ = application_services().plugin_installations.upgrade_plugin_with_marketplace(
+                            AdmittedPluginInstallationCaller(tenant_id),
                             original_unique_identifier,
                             new_unique_identifier,
                         )
