@@ -234,15 +234,17 @@ it('adds selected IDs through the real generated mutation shape', async () => {
   expect(api.add).toHaveBeenCalledWith({ body: { candidate_ids: [alice.id] } })
 })
 
-it('retains the selection on conflict and clears it only after closing the content session', async () => {
+it('refreshes candidates and retains the selection on conflict, clearing it only after closing the session', async () => {
   const user = userEvent.setup()
   api.add.mockRejectedValueOnce(Object.assign(new Error('Conflict'), { status: 409 }))
   setup()
   await open(user)
   await user.click(await screen.findByRole('checkbox', { name: /selectContact.*Alice/ }))
+  const candidateRequests = api.candidates.mock.calls.length
   await user.click(screen.getByRole('button', { name: 'contacts.platformPicker.add' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('contacts.platformPicker.addConflict')
   expect(screen.getByRole('checkbox', { name: /selectContact.*Alice/ })).toBeChecked()
+  await waitFor(() => expect(api.candidates.mock.calls.length).toBeGreaterThan(candidateRequests))
   await user.click(screen.getByRole('button', { name: 'contacts.action.cancel' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   await open(user)

@@ -359,7 +359,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 platform: {
                   post: {
                     mutationOptions: {
-                      onSuccess: (_data, _variables, _onMutateResult, context) =>
+                      onSettled: (_data, _error, _variables, _onMutateResult, context) =>
                         invalidateHumanInputContactQueries(consoleQuery, context.client),
                     },
                   },
