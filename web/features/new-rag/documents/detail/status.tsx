@@ -1,3 +1,4 @@
+import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
@@ -58,28 +59,25 @@ export function DocumentTaskNotices({ onViewTasks }: { onViewTasks: () => void }
         </div>
       )}
       {latestTask?.state === 'failed' && (
-        <div
-          className="mt-4 flex items-center gap-2 rounded-lg bg-state-destructive-hover px-3 py-2 system-xs-regular text-text-destructive"
-          role="alert"
-        >
-          <span aria-hidden className="i-ri-error-warning-fill size-4 shrink-0" />
-          <span className="min-w-0 flex-1">
-            {t(($) => $.documentReindexFailed, { ns: 'knowledgeDocuments' })}
-          </span>
-          <Button size="small" variant="ghost" onClick={onViewTasks}>
-            {t(($) => $.viewTask, { ns: 'knowledgeDocuments' })}
-          </Button>
-        </div>
+        <Alert type="error" className="mt-4">
+          <AlertTitle>{t(($) => $.documentReindexFailed, { ns: 'knowledgeDocuments' })}</AlertTitle>
+          <AlertActions>
+            <Button size="small" onClick={onViewTasks}>
+              {t(($) => $.viewTask, { ns: 'knowledgeDocuments' })}
+            </Button>
+          </AlertActions>
+        </Alert>
       )}
 
       {tasksError && (
-        <div
-          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
-          role="alert"
-        >
-          <span>{t(($) => $.tasksErrorDescription)}</span>
-          <Button onClick={() => void retryTasks()}>{tCommon(($) => $['operation.retry'])}</Button>
-        </div>
+        <Alert type="warning" role="alert" className="mt-4">
+          <AlertTitle>{t(($) => $.tasksErrorDescription)}</AlertTitle>
+          <AlertActions>
+            <Button size="small" onClick={() => void retryTasks()}>
+              {tCommon(($) => $['operation.retry'])}
+            </Button>
+          </AlertActions>
+        </Alert>
       )}
     </>
   )
@@ -104,23 +102,23 @@ export function DocumentPermissionRecoveryNotice() {
   if (!permissionRecoveryNeeded) return null
 
   return (
-    <div
-      className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
-      role="alert"
-    >
-      <span>{t(($) => $.documentPermissionRestricted)}</span>
-      <Button
-        ref={permissionRetryRef}
-        loading={permissionRecoveryBusy}
-        onClick={() =>
-          void retryWritePermission(refreshWritePermission).then((recovered) => {
-            if (recovered) focusDocumentDetailTitle()
-            else permissionRetryRef.current?.focus()
-          })
-        }
-      >
-        {tCommon(($) => $['operation.retry'])}
-      </Button>
-    </div>
+    <Alert type="warning" role="alert" className="mt-4">
+      <AlertTitle>{t(($) => $.documentPermissionRestricted)}</AlertTitle>
+      <AlertActions>
+        <Button
+          size="small"
+          ref={permissionRetryRef}
+          loading={permissionRecoveryBusy}
+          onClick={() =>
+            void retryWritePermission(refreshWritePermission).then((recovered) => {
+              if (recovered) focusDocumentDetailTitle()
+              else permissionRetryRef.current?.focus()
+            })
+          }
+        >
+          {tCommon(($) => $['operation.retry'])}
+        </Button>
+      </AlertActions>
+    </Alert>
   )
 }

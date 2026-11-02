@@ -148,6 +148,7 @@ describe('HumanInputFormList', () => {
         reason: 'updated reason',
       },
       action: 'approve',
+      form_version: undefined,
     })
   })
 
@@ -176,6 +177,7 @@ describe('HumanInputFormList', () => {
     expect(onSubmit).toHaveBeenCalledWith('token-1', {
       inputs: { reason: 'first decision' },
       action: 'approve',
+      form_version: undefined,
     })
 
     rerender(
@@ -186,6 +188,7 @@ describe('HumanInputFormList', () => {
     expect(onSubmit).toHaveBeenLastCalledWith('token-2', {
       inputs: { reason: 'second decision' },
       action: 'approve',
+      form_version: undefined,
     })
   })
 
@@ -238,6 +241,7 @@ describe('HumanInputFormList', () => {
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith('token-1', {
       inputs: { reason: 'prefill' },
       action: 'approve',
+      form_version: '1',
     })
   })
 })

@@ -206,7 +206,7 @@ it('opens pending human input on pause and submits the token with the entered re
   })
   expect(screen.getByText('Need Approval')).toBeInTheDocument()
   expect(await screen.findByText('Already approved', {}, { timeout: 5000 })).toBeInTheDocument()
-  await user.type(screen.getByRole('textbox', { name: 'reason' }), 'Looks good')
+  await user.type(screen.getByRole('textbox', { name: 'Before' }), 'Looks good')
   await user.click(screen.getByRole('button', { name: 'Approve' }))
   await waitFor(() =>
     expect(mockSubmitHumanInputForm).toHaveBeenCalledWith(
@@ -214,6 +214,7 @@ it('opens pending human input on pause and submits the token with the entered re
       {
         inputs: { reason: 'Looks good' },
         action: 'approve',
+        form_version: undefined,
       },
       undefined,
     ),

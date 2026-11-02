@@ -1,6 +1,7 @@
 import json
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
+from typing import Literal
 from unittest.mock import patch
 
 import httpx
@@ -93,7 +94,7 @@ def _tts_schema(audio_type: str) -> AIModelEntity:
     )
 
 
-def test_system_model_helpers_forward_user_id():
+def test_system_model_helpers_forward_user_id() -> None:
     with (
         patch(
             "core.plugin.backwards_invocation.model.ModelInvocationUtils.get_max_llm_context_tokens",
@@ -122,7 +123,7 @@ def test_system_model_helpers_forward_user_id():
     )
 
 
-def test_invoke_summary_uses_same_user_scope_for_token_helpers():
+def test_invoke_summary_uses_same_user_scope_for_token_helpers() -> None:
     tenant = Tenant(name="Test Workspace")
     tenant.id = "tenant-1"
     payload = RequestInvokeSummary(text="short", instruction="keep it concise")
@@ -239,7 +240,7 @@ class _SchemaModelInstance:
         return self.schema
 
 
-def test_invoke_text_embedding_forwards_input_type_to_bound_model_instance():
+def test_invoke_text_embedding_forwards_input_type_to_bound_model_instance() -> None:
     tenant = _backwards_invocation_model_tenant()
     payload = RequestInvokeTextEmbedding(
         provider="langgenius/openai/openai",
@@ -270,7 +271,7 @@ def test_invoke_text_embedding_forwards_input_type_to_bound_model_instance():
     ]
 
 
-def test_invoke_multimodal_embedding_uses_bound_model_instance():
+def test_invoke_multimodal_embedding_uses_bound_model_instance() -> None:
     tenant = _backwards_invocation_model_tenant()
     documents = [{"content": "AQID", "content_type": "image", "file_id": "asset.png"}]
     payload = RequestInvokeMultimodalEmbedding(
@@ -305,7 +306,7 @@ def test_invoke_multimodal_embedding_uses_bound_model_instance():
     ]
 
 
-def test_invoke_rerank_accepts_omitted_threshold_and_top_n():
+def test_invoke_rerank_accepts_omitted_threshold_and_top_n() -> None:
     tenant = _backwards_invocation_model_tenant()
     payload = RequestInvokeRerank(
         provider="langgenius/cohere/cohere",
@@ -335,7 +336,9 @@ def test_invoke_rerank_accepts_omitted_threshold_and_top_n():
     ("model_type", "selected"),
     [(ModelType.TEXT_EMBEDDING, False), (ModelType.LLM, False), (ModelType.LLM, True)],
 )
-def test_list_models_returns_only_active_tenant_models_with_installed_identity(model_type, selected):
+def test_list_models_returns_only_active_tenant_models_with_installed_identity(
+    model_type: Literal[ModelType.LLM, ModelType.TEXT_EMBEDDING], selected: bool
+) -> None:
     model_name = "selected-model"
     payload = RequestListModels(model_type=model_type, model=model_name if selected else None, limit=10)
     provider = _ModelProvider(provider="langgenius/openai/openai")
@@ -395,7 +398,7 @@ def test_list_models_returns_only_active_tenant_models_with_installed_identity(m
 
 
 @pytest.mark.parametrize("parameter", ["max_tokens", "max_completion_tokens", "maxtoken", "custom_limit"])
-def test_model_token_limits_use_schema_maximum_not_default(parameter):
+def test_model_token_limits_use_schema_maximum_not_default(parameter: str) -> None:
     schema = _ModelSchema(
         model_properties={"context_size": 131072},
         parameter_rules=[_ParameterRule(name=parameter, use_template="max_tokens", max=32768.0, default=1024)],
@@ -405,6 +408,7 @@ def test_model_token_limits_use_schema_maximum_not_default(parameter):
         limits = PluginModelBackwardsInvocation._model_token_limits(
             tenant_id="tenant-1", user_id="user-1", provider="plugin/provider", model="selected-model"
         )
+    assert limits is not None
     assert limits.context_tokens == 131072
     assert limits.max_output_tokens == 32768
     assert limits.output_parameter == parameter
@@ -418,7 +422,7 @@ def test_model_token_limits_use_schema_maximum_not_default(parameter):
 
 
 @pytest.mark.parametrize("maximum", [None, 0, -1, True, float("inf"), float("nan"), 10**400, 12.5, "32768"])
-def test_model_token_limits_do_not_invent_unknown_output_capacity(maximum):
+def test_model_token_limits_do_not_invent_unknown_output_capacity(maximum: object) -> None:
     schema = _ModelSchema(
         model_properties={"context_size": 8192},
         parameter_rules=[_ParameterRule(name="max_tokens", use_template=None, max=maximum, default=4096)],
@@ -431,11 +435,12 @@ def test_model_token_limits_do_not_invent_unknown_output_capacity(maximum):
         limits = PluginModelBackwardsInvocation._model_token_limits(
             tenant_id="tenant-1", user_id="user-1", provider="plugin/provider", model="selected-model"
         )
+    assert limits is not None
     assert limits.context_tokens == 8192
     assert limits.max_output_tokens is None
 
 
-def test_model_token_limits_respect_the_tighter_declared_alias():
+def test_model_token_limits_respect_the_tighter_declared_alias() -> None:
     schema = _ModelSchema(
         model_properties={},
         parameter_rules=[
@@ -451,11 +456,12 @@ def test_model_token_limits_respect_the_tighter_declared_alias():
         limits = PluginModelBackwardsInvocation._model_token_limits(
             tenant_id="tenant-1", user_id="user-1", provider="plugin/provider", model="selected-model"
         )
+    assert limits is not None
     assert limits.max_output_tokens == 8192
     assert limits.output_parameter == "max_output_tokens"
 
 
-def test_invoke_tts_emits_the_verified_mime_type_for_backwards_invocation():
+def test_invoke_tts_emits_the_verified_mime_type_for_backwards_invocation() -> None:
     tenant = Tenant(name="Test Workspace")
     tenant.id = "tenant-1"
     model_instance = _tts_model_instance()
@@ -485,7 +491,7 @@ def test_invoke_tts_emits_the_verified_mime_type_for_backwards_invocation():
     ]
 
 
-def test_invoke_tts_defers_provider_errors_until_the_response_generator_is_consumed():
+def test_invoke_tts_defers_provider_errors_until_the_response_generator_is_consumed() -> None:
     tenant = Tenant(name="Test Workspace")
     tenant.id = "tenant-1"
     model_instance = _tts_model_instance()
@@ -509,7 +515,7 @@ def test_invoke_tts_defers_provider_errors_until_the_response_generator_is_consu
             next(response)
 
 
-def test_backwards_event_stream_serializes_a_deferred_mime_error():
+def test_backwards_event_stream_serializes_a_deferred_mime_error() -> None:
     tenant = Tenant(name="Test Workspace")
     tenant.id = "tenant-1"
     model_instance = _tts_model_instance()
