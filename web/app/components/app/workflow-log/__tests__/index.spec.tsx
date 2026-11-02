@@ -255,6 +255,11 @@ describe('Logs Container', () => {
         vi.setSystemTime(new Date(2027, 0, 1, 9))
         await selectPeriod('last3months', 'yearToDate')
         await expectStart(new Date(2027, 0, 1))
+        
+        // Twelve months before February 29 is the last day of the shorter February.
+        vi.setSystemTime(new Date(2028, 1, 29, 9))
+        await selectPeriod('yearToDate', 'last12months')
+        await expectStart(new Date(2027, 1, 28))
       } finally {
         vi.useRealTimers()
       }
