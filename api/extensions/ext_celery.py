@@ -220,12 +220,6 @@ def init_app(app: DifyApp) -> Celery:
             "task": "tasks.workflow_debug_reservation_tasks.recover_workflow_debug_reservations",
             "schedule": timedelta(minutes=1),
         }
-    if dify_config.ENABLE_WORKFLOW_DRAFT_FILE_CLEANUP_TASK:
-        imports.append("tasks.workflow_draft_var_tasks")
-        beat_schedule["workflow_draft_file_cleanup"] = {
-            "task": "tasks.workflow_draft_var_tasks.recover_draft_variable_file_cleanup_task",
-            "schedule": timedelta(minutes=5),
-        }
     if dify_config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED is True:
         from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATION_TASK
 
@@ -288,6 +282,12 @@ def init_app(app: DifyApp) -> Celery:
                 "schedule": collection_schedule,
                 "options": {"expires": interval},
             }
+    if dify_config.ENABLE_WORKFLOW_DRAFT_FILE_CLEANUP_TASK:
+        imports.append("tasks.workflow_draft_var_tasks")
+        beat_schedule["workflow_draft_file_cleanup"] = {
+            "task": "tasks.workflow_draft_var_tasks.recover_draft_variable_file_cleanup_task",
+            "schedule": timedelta(minutes=dify_config.WORKFLOW_DRAFT_FILE_CLEANUP_INTERVAL),
+        }
     if dify_config.ENABLE_CONVERSATION_CLEANUP_TASK:
         imports.append("tasks.delete_conversation_task")
         beat_schedule["conversation_cleanup_sweeper"] = {

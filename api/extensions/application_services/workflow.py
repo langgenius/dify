@@ -304,9 +304,7 @@ def build_console_workflow_service(
         ),
         apps=apps,
         presence=WorkflowCollaborationRepository(redis=redis),
-        access=WorkflowAccessGateway(
-            session_factory=database_client, apps=EnterpriseConsoleAppAccess(members=rbac_members)
-        ),
+        access=WorkflowAccessGateway(apps=EnterpriseConsoleAppAccess(members=rbac_members), members=rbac_members),
     )
 
 
