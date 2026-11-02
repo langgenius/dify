@@ -6,6 +6,7 @@ import type {
 import type { Role } from '@/models/access-control'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
@@ -313,9 +314,9 @@ const MembersPageContent = () => {
                   }}
                 >
                   <>
-                    <AlertDialogHeader>
-                      {showContactsRemovalDesign && payload ? (
-                        <>
+                    {showContactsRemovalDesign && payload ? (
+                      <>
+                        <AlertDialogHeader>
                           <AlertDialogTitle>
                             {t(
                               ($) =>
@@ -331,6 +332,8 @@ const MembersPageContent = () => {
                               },
                             )}
                           </AlertDialogTitle>
+                        </AlertDialogHeader>
+                        <AlertDialogBody className="flex flex-col gap-2">
                           <div className="flex items-center gap-2.5 rounded-xl bg-background-section-burn py-2 ps-3 pe-2">
                             <Avatar size="md">
                               <AvatarImage src={payload.member.avatar_url || undefined} alt="" />
@@ -356,9 +359,16 @@ const MembersPageContent = () => {
                             </p>
                             <p>{t(($) => $['memberRemoval.contentImpact'], { ns: 'contacts' })}</p>
                           </AlertDialogDescription>
-                        </>
-                      ) : (
-                        <>
+                          {removal.isError && (
+                            <p role="alert" className="text-text-destructive">
+                              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+                            </p>
+                          )}
+                        </AlertDialogBody>
+                      </>
+                    ) : (
+                      <>
+                        <AlertDialogHeader>
                           <AlertDialogTitle>
                             {t(($) => $['members.removeFromTeamConfirmTitle'], {
                               ns: 'workspaceMembers',
@@ -370,14 +380,16 @@ const MembersPageContent = () => {
                               ns: 'workspaceMembers',
                             })}
                           </AlertDialogDescription>
-                        </>
-                      )}
-                      {removal.isError && (
-                        <p role="alert" className="text-text-destructive">
-                          {t(($) => $['api.actionFailed'], { ns: 'common' })}
-                        </p>
-                      )}
-                    </AlertDialogHeader>
+                        </AlertDialogHeader>
+                        {removal.isError && (
+                          <AlertDialogBody>
+                            <p role="alert" className="text-text-destructive">
+                              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+                            </p>
+                          </AlertDialogBody>
+                        )}
+                      </>
+                    )}
                     <AlertDialogFooter>
                       <AlertDialogCancelButton disabled={removal.isPending}>
                         {t(($) => $['operation.cancel'], { ns: 'common' })}
