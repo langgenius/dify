@@ -4,8 +4,10 @@ from unittest.mock import create_autospec
 from uuid import UUID
 
 import pytest
+from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
+from configs import dify_config
 from controllers.console.datasets import external as controller
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from machinery.context import RequestContext
@@ -19,6 +21,28 @@ from services.knowledge.external.application import (
 
 CONTEXT = RequestContext("request-1", None, "actor-1", "tenant-1")
 ID = UUID(int=1)
+
+
+def test_external_dataset_description_respects_configured_limit() -> None:
+    limit = dify_config.DATASET_DESCRIPTION_MAX_LENGTH
+    description = "知" * limit
+    payload = {
+        "name": "Dataset",
+        "external_knowledge_api_id": "api",
+        "external_knowledge_id": "knowledge",
+        "description": description,
+    }
+    assert controller.ExternalDatasetCreatePayload.model_validate(payload).description == description
+
+    with pytest.raises(ValidationError) as exc_info:
+        controller.ExternalDatasetCreatePayload.model_validate({**payload, "description": description + "识"})
+
+    error = exc_info.value.errors()[0]
+    assert error["loc"] == ("description",)
+    assert error["type"] == "string_too_long"
+    assert error["ctx"]["max_length"] == limit
+    schema = controller.ExternalDatasetCreatePayload.model_json_schema()["properties"]["description"]
+    assert schema["anyOf"][0]["maxLength"] == limit
 
 
 @pytest.fixture

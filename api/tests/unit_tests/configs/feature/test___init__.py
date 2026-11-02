@@ -1,11 +1,38 @@
 import pytest
+from pydantic import ValidationError
 
-from configs.feature import AuthConfig, FileUploadConfig
+from configs.feature import AuthConfig, DataSetConfig, FileUploadConfig
 from tests.helpers.unit.configs._isolated_settings import InitSettingsOnly
 
 
 class _IsolatedAuthConfig(InitSettingsOnly, AuthConfig):
     pass
+
+
+class _IsolatedDataSetConfig(InitSettingsOnly, DataSetConfig):
+    pass
+
+
+def test_dataset_description_max_length_defaults_to_400() -> None:
+    assert _IsolatedDataSetConfig().DATASET_DESCRIPTION_MAX_LENGTH == 400
+
+
+@pytest.mark.parametrize("limit", [100, 2000])
+def test_dataset_description_max_length_reads_environment(monkeypatch: pytest.MonkeyPatch, limit: int) -> None:
+    monkeypatch.setenv("DATASET_DESCRIPTION_MAX_LENGTH", str(limit))
+
+    config = DataSetConfig(_env_file=None)
+    assert limit == config.DATASET_DESCRIPTION_MAX_LENGTH
+
+
+@pytest.mark.parametrize("limit", ["0", "-1", "invalid"])
+def test_dataset_description_max_length_rejects_invalid_environment(
+    monkeypatch: pytest.MonkeyPatch, limit: str
+) -> None:
+    monkeypatch.setenv("DATASET_DESCRIPTION_MAX_LENGTH", limit)
+
+    with pytest.raises(ValidationError, match="DATASET_DESCRIPTION_MAX_LENGTH"):
+        DataSetConfig(_env_file=None)
 
 
 def test_oauth_ttl_days_defaults_to_fourteen() -> None:
