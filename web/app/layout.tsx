@@ -76,7 +76,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale} dir={dir(locale)} {...datasetMap} suppressHydrationWarning>
       <head>{!errorDocument && <ReactScanLoader />}</head>
-      <body className="bg-background-body" {...datasetMap}>
+      <body className="bg-background-body">
         {!errorDocument && <CloudAnalytics />}
         <div className="isolate">
           <JotaiProvider>

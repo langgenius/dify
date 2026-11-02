@@ -68,7 +68,7 @@ describe('Root layout System Features bootstrap', () => {
     },
   )
 
-  it('makes runtime configuration available on html before head scripts and keeps body attributes', async () => {
+  it('makes runtime configuration available on html before head scripts', async () => {
     const dataset = {
       'data-api-prefix': 'https://runtime.example.com/console/api',
       'data-enable-hitl-im': 'true',
@@ -80,7 +80,7 @@ describe('Root layout System Features bootstrap', () => {
     const document = new DOMParser().parseFromString(html, 'text/html')
     for (const [key, value] of Object.entries(dataset)) {
       expect(document.documentElement).toHaveAttribute(key, value)
-      expect(document.body).toHaveAttribute(key, value)
+      expect(document.body).not.toHaveAttribute(key)
     }
   })
 

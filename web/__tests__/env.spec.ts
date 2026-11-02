@@ -19,8 +19,8 @@ describe('env runtime transport', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.doUnmock('../utils/client')
-    previousAttributes = attributes.map((name) => document.body.getAttribute(name))
-    attributes.forEach((name) => document.body.removeAttribute(name))
+    previousAttributes = attributes.map((name) => document.documentElement.getAttribute(name))
+    attributes.forEach((name) => document.documentElement.removeAttribute(name))
     envKeys.forEach((name) => vi.stubEnv(name, undefined))
   })
 
@@ -29,8 +29,8 @@ describe('env runtime transport', () => {
     vi.doUnmock('../utils/client')
     attributes.forEach((name, index) => {
       const value = previousAttributes[index]
-      if (value == null) document.body.removeAttribute(name)
-      else document.body.setAttribute(name, value)
+      if (value == null) document.documentElement.removeAttribute(name)
+      else document.documentElement.setAttribute(name, value)
     })
   })
 
@@ -50,7 +50,10 @@ describe('env runtime transport', () => {
       const dataset = getDatasetMap()
       expect(dataset['data-enable-hitl-im']).toBe(enabled)
 
-      document.body.setAttribute('data-enable-hitl-im', String(dataset['data-enable-hitl-im']))
+      document.documentElement.setAttribute(
+        'data-enable-hitl-im',
+        String(dataset['data-enable-hitl-im']),
+      )
       vi.stubEnv('NEXT_PUBLIC_ENABLE_HITL_IM', String(!enabled))
       vi.resetModules()
       vi.doMock('../utils/client', () => ({ isClient: true, isServer: false }))
@@ -95,21 +98,18 @@ describe('env runtime transport', () => {
     }
   })
 
-  it('keeps body configuration authoritative after the body is available', async () => {
-    const previous = document.documentElement.getAttribute('data-enable-hitl-im')
-    document.documentElement.setAttribute('data-enable-hitl-im', 'true')
-    document.body.setAttribute('data-enable-hitl-im', 'false')
+  it('reads runtime configuration stamped on body by the standalone Marketplace host', async () => {
+    document.body.setAttribute('data-turnstile-site-key', 'marketplace-site-key')
     try {
       const { env } = await import('../env')
-      expect(env.NEXT_PUBLIC_ENABLE_HITL_IM).toBe(false)
+      expect(env.NEXT_PUBLIC_TURNSTILE_SITE_KEY).toBe('marketplace-site-key')
     } finally {
-      if (previous === null) document.documentElement.removeAttribute('data-enable-hitl-im')
-      else document.documentElement.setAttribute('data-enable-hitl-im', previous)
+      document.body.removeAttribute('data-turnstile-site-key')
     }
   })
 
   it('should read NEXT_PUBLIC_ENABLE_AGENT_V2 from the browser runtime dataset key', async () => {
-    document.body.setAttribute('data-enable-agent-v2', 'true')
+    document.documentElement.setAttribute('data-enable-agent-v2', 'true')
 
     const { env } = await import('../env')
 
@@ -132,7 +132,10 @@ describe('env runtime transport', () => {
   })
 
   it('should read Markdown form field name extra characters from the browser runtime dataset', async () => {
-    document.body.setAttribute('data-markdown-form-field-name-extra-chars', '()!*&（）！＊＆－')
+    document.documentElement.setAttribute(
+      'data-markdown-form-field-name-extra-chars',
+      '()!*&（）！＊＆－',
+    )
 
     const { env } = await import('../env')
 
@@ -160,7 +163,7 @@ describe('env runtime transport', () => {
   })
 
   it('should read the Markdown form field name maximum length from the browser runtime dataset', async () => {
-    document.body.setAttribute('data-markdown-form-field-name-max-length', '64')
+    document.documentElement.setAttribute('data-markdown-form-field-name-max-length', '64')
 
     const { env } = await import('../env')
 
@@ -182,7 +185,7 @@ describe('env runtime transport', () => {
   })
 
   it('should read the Turnstile site key from the browser runtime dataset', async () => {
-    document.body.setAttribute('data-turnstile-site-key', 'site-key-for-tests')
+    document.documentElement.setAttribute('data-turnstile-site-key', 'site-key-for-tests')
 
     const { env } = await import('../env')
 
