@@ -4,20 +4,32 @@ Comments belong to an app rather than to a workflow version. Every read and writ
 workspace -> app -> comment -> reply owner chain. The service orchestrates and makes no business decisions: reads
 return records from the query port; writes turn input into the domain model's value objects before any database work,
 so malformed input fails first, then let a `WorkflowCommentAgg` apply the thread's rules inside one change of the thread
-repository. After the change commits, the service handles the aggregate's domain events by sending mention
-notifications. Use cases return records, so the transport layer never receives an aggregate.
+repository. The domain model's refusals become this slice's errors with their messages unchanged. After the change
+commits, the service handles the aggregate's domain events by sending mention notifications. Use cases return records,
+so the transport layer never receives an aggregate.
 """
 
-from collections.abc import Callable, Sequence
-from contextlib import AbstractContextManager
+from collections.abc import Callable, Generator, Sequence
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
+from domain.workflow_comments.errors import InvalidContentError, InvalidMentionError, NotCreatorError, UnknownReplyError
+from domain.workflow_comments.workflow_comment_agg import (
+    WorkflowCommentAgg,
+    WorkflowCommentContent,
+    WorkflowCommentMentions,
+)
 from libs.uuid_utils import uuidv7
 from machinery.context import RequestContext
-from services.app.workflow_comment_agg import WorkflowCommentAgg, WorkflowCommentContent, WorkflowCommentMentions
-from services.app.workflow_comment_errors import WorkflowCommentAppNotFoundError
+from services.app.workflow_comment_errors import (
+    InvalidMentionedUserIdError,
+    InvalidWorkflowCommentContentError,
+    WorkflowCommentAppNotFoundError,
+    WorkflowCommentPermissionError,
+    WorkflowCommentReplyNotFoundError,
+)
 
 MENTION_EXCERPT_LENGTH = 200
 
@@ -262,8 +274,9 @@ class WorkflowCommentService:
         self, context: RequestContext, app_id: str, draft: WorkflowCommentDraft
     ) -> WorkflowCommentCreated:
         self.ensure_app(context, app_id)
-        content = WorkflowCommentContent(draft.content)
-        mentions = self._members_only(context, WorkflowCommentMentions.parse(draft.mentioned_user_ids))
+        with _application_errors():
+            content = WorkflowCommentContent(draft.content)
+            mentions = self._members_only(context, WorkflowCommentMentions.parse(draft.mentioned_user_ids))
         comment = WorkflowCommentAgg.start(
             comment_id=str(uuidv7()),
             workspace_id=context.active_workspace_id,
@@ -283,21 +296,22 @@ class WorkflowCommentService:
         self, context: RequestContext, app_id: str, comment_id: str, edit: WorkflowCommentEdit
     ) -> WorkflowCommentUpdated:
         self.ensure_app(context, app_id)
-        content = WorkflowCommentContent(edit.content)
-        mentions = (
-            None
-            if edit.mentioned_user_ids is None
-            else self._members_only(context, WorkflowCommentMentions.parse(edit.mentioned_user_ids))
-        )
-        with self._change(context, app_id, comment_id) as comment:
-            comment.edit(
-                actor_id=context.account_id,
-                content=content,
-                position_x=edit.position_x,
-                position_y=edit.position_y,
-                mentions=mentions,
-                now=self._now(),
+        with _application_errors():
+            content = WorkflowCommentContent(edit.content)
+            mentions = (
+                None
+                if edit.mentioned_user_ids is None
+                else self._members_only(context, WorkflowCommentMentions.parse(edit.mentioned_user_ids))
             )
+            with self._change(context, app_id, comment_id) as comment:
+                comment.edit(
+                    actor_id=context.account_id,
+                    content=content,
+                    position_x=edit.position_x,
+                    position_y=edit.position_y,
+                    mentions=mentions,
+                    now=self._now(),
+                )
         self._handle_events(context, app_id, comment)
         return WorkflowCommentUpdated(id=comment.id, updated_at=comment.updated_at)
 
@@ -306,7 +320,8 @@ class WorkflowCommentService:
         comment = self._threads.load_comment(
             workspace_id=context.active_workspace_id, app_id=app_id, comment_id=comment_id
         )
-        comment.ensure_removable_by(context.account_id)
+        with _application_errors():
+            comment.ensure_removable_by(context.account_id)
         self._threads.delete_comment(comment=comment)
 
     def resolve_comment(self, context: RequestContext, app_id: str, comment_id: str) -> WorkflowCommentResolved:
@@ -324,8 +339,9 @@ class WorkflowCommentService:
         self, context: RequestContext, app_id: str, comment_id: str, draft: WorkflowCommentReplyDraft
     ) -> WorkflowCommentCreated:
         self.ensure_app(context, app_id)
-        content = WorkflowCommentContent(draft.content)
-        mentions = self._members_only(context, WorkflowCommentMentions.parse(draft.mentioned_user_ids))
+        with _application_errors():
+            content = WorkflowCommentContent(draft.content)
+            mentions = self._members_only(context, WorkflowCommentMentions.parse(draft.mentioned_user_ids))
         reply_id = str(uuidv7())
         with self._change(context, app_id, comment_id) as comment:
             comment.add_reply(
@@ -343,18 +359,19 @@ class WorkflowCommentService:
         draft: WorkflowCommentReplyDraft,
     ) -> WorkflowCommentUpdated:
         self.ensure_app(context, app_id)
-        content = WorkflowCommentContent(draft.content)
-        mentions = self._members_only(context, WorkflowCommentMentions.parse(draft.mentioned_user_ids))
-        with self._change(context, app_id, comment_id) as comment:
-            comment.edit_reply(
-                reply_id=reply_id, actor_id=context.account_id, content=content, mentions=mentions, now=self._now()
-            )
+        with _application_errors():
+            content = WorkflowCommentContent(draft.content)
+            mentions = self._members_only(context, WorkflowCommentMentions.parse(draft.mentioned_user_ids))
+            with self._change(context, app_id, comment_id) as comment:
+                comment.edit_reply(
+                    reply_id=reply_id, actor_id=context.account_id, content=content, mentions=mentions, now=self._now()
+                )
         self._handle_events(context, app_id, comment)
         return WorkflowCommentUpdated(id=reply_id, updated_at=comment.reply(reply_id).updated_at)
 
     def delete_reply(self, context: RequestContext, app_id: str, comment_id: str, reply_id: str) -> None:
         self.ensure_app(context, app_id)
-        with self._change(context, app_id, comment_id) as comment:
+        with _application_errors(), self._change(context, app_id, comment_id) as comment:
             comment.remove_reply(reply_id=reply_id, actor_id=context.account_id)
 
     def _change(
@@ -404,6 +421,21 @@ class WorkflowCommentService:
                 for recipient in mentions.recipients
             ]
         )
+
+
+@contextmanager
+def _application_errors() -> Generator[None]:
+    """Raise the domain model's refusals as this slice's errors, which keep the public messages."""
+    try:
+        yield
+    except NotCreatorError as error:
+        raise WorkflowCommentPermissionError(str(error)) from error
+    except InvalidContentError as error:
+        raise InvalidWorkflowCommentContentError(str(error)) from error
+    except InvalidMentionError as error:
+        raise InvalidMentionedUserIdError(error.user_id) from error
+    except UnknownReplyError as error:
+        raise WorkflowCommentReplyNotFoundError from error
 
 
 def format_comment_excerpt(content: str, max_length: int = MENTION_EXCERPT_LENGTH) -> str:

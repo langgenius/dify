@@ -5,19 +5,14 @@ from collections.abc import Callable
 
 import pytest
 
-from services.app.workflow_comment_agg import (
+from domain.workflow_comments.errors import InvalidContentError, InvalidMentionError, NotCreatorError, UnknownReplyError
+from domain.workflow_comments.workflow_comment_agg import (
     MAX_COMMENT_CONTENT_LENGTH,
     WorkflowCommentAgg,
     WorkflowCommentContent,
     WorkflowCommentMentions,
     WorkflowCommentReply,
     WorkflowCommentUsersMentioned,
-)
-from services.app.workflow_comment_errors import (
-    InvalidMentionedUserIdError,
-    InvalidWorkflowCommentContentError,
-    WorkflowCommentPermissionError,
-    WorkflowCommentReplyNotFoundError,
 )
 
 CREATOR = "33333333-3333-3333-3333-333333333333"
@@ -80,7 +75,7 @@ def _edit(comment: WorkflowCommentAgg, *, actor_id: str = CREATOR, mentions: Wor
     ids=["blank", "too-long"],
 )
 def test_content_rejects_blank_and_too_long_text(text: str, message: str) -> None:
-    with pytest.raises(InvalidWorkflowCommentContentError, match=message):
+    with pytest.raises(InvalidContentError, match=message):
         WorkflowCommentContent(text)
 
 
@@ -95,7 +90,7 @@ def test_mentions_parse_skips_empty_ids_and_keeps_each_once_in_order() -> None:
 
 
 def test_mentions_reject_malformed_ids() -> None:
-    with pytest.raises(InvalidMentionedUserIdError, match="not-a-uuid is not a valid uuid."):
+    with pytest.raises(InvalidMentionError, match="not-a-uuid is not a valid uuid."):
         WorkflowCommentMentions.parse((USER_A, "not-a-uuid"))
 
 
@@ -182,9 +177,9 @@ def test_edit_replaces_the_comment_mentions_but_not_reply_mentions() -> None:
 def test_only_the_comment_creator_edits_or_removes_it() -> None:
     comment = _thread()
 
-    with pytest.raises(WorkflowCommentPermissionError, match="Only the comment creator can update it"):
+    with pytest.raises(NotCreatorError, match="Only the comment creator can update it"):
         _edit(comment, actor_id=OTHER, mentions=_mentions(USER_B))
-    with pytest.raises(WorkflowCommentPermissionError, match="Only the comment creator can delete it"):
+    with pytest.raises(NotCreatorError, match="Only the comment creator can delete it"):
         comment.ensure_removable_by(OTHER)
     comment.ensure_removable_by(CREATOR)
     # A refused edit leaves the thread and its events as they were.
@@ -235,9 +230,9 @@ def test_edit_reply_replaces_content_and_mentions_of_that_reply_only() -> None:
 def test_only_the_reply_creator_edits_or_removes_it() -> None:
     comment = _with_reply(created_by=OTHER)
 
-    with pytest.raises(WorkflowCommentPermissionError, match="Only the reply creator can update it"):
+    with pytest.raises(NotCreatorError, match="Only the reply creator can update it"):
         comment.edit_reply(reply_id="reply-1", actor_id=CREATOR, content=_content("x"), mentions=_mentions(), now=NOW)
-    with pytest.raises(WorkflowCommentPermissionError, match="Only the reply creator can delete it"):
+    with pytest.raises(NotCreatorError, match="Only the reply creator can delete it"):
         comment.remove_reply(reply_id="reply-1", actor_id=CREATOR)
     assert comment.reply("reply-1").content == "reply"
 
@@ -264,7 +259,7 @@ type ReplyLookup = Callable[[WorkflowCommentAgg], object]
     ],
 )
 def test_unknown_reply_is_not_found(lookup: ReplyLookup) -> None:
-    with pytest.raises(WorkflowCommentReplyNotFoundError):
+    with pytest.raises(UnknownReplyError):
         lookup(_with_reply())
 
 

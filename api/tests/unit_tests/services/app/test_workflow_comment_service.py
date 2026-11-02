@@ -7,8 +7,12 @@ from contextlib import contextmanager
 
 import pytest
 
+from domain.workflow_comments.workflow_comment_agg import (
+    WorkflowCommentAgg,
+    WorkflowCommentContent,
+    WorkflowCommentMentions,
+)
 from machinery.context import RequestContext
-from services.app.workflow_comment_agg import WorkflowCommentAgg, WorkflowCommentContent, WorkflowCommentMentions
 from services.app.workflow_comment_errors import (
     InvalidMentionedUserIdError,
     InvalidWorkflowCommentContentError,

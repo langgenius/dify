@@ -13,6 +13,7 @@ from typing import override
 from sqlalchemy import Select, delete, desc, insert, select, update
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
+from domain.workflow_comments.workflow_comment_agg import WorkflowCommentAgg, WorkflowCommentReply
 from models.account import Account, TenantAccountJoin
 from models.base import gen_uuidv7_string
 from models.comment import WorkflowComment, WorkflowCommentMention
@@ -20,7 +21,6 @@ from models.comment import WorkflowCommentReply as WorkflowCommentReplyModel
 from models.enums import AppStatus
 from models.model import App
 from repositories.app.console_visibility import console_visible_condition
-from services.app.workflow_comment_agg import WorkflowCommentAgg, WorkflowCommentReply
 from services.app.workflow_comment_errors import WorkflowCommentNotFoundError
 from services.app.workflow_comment_service import (
     MentionContext,

@@ -11,17 +11,21 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql import ClauseElement
 
+from domain.workflow_comments.errors import UnknownReplyError
+from domain.workflow_comments.workflow_comment_agg import (
+    WorkflowCommentAgg,
+    WorkflowCommentContent,
+    WorkflowCommentMentions,
+)
 from machinery.context import RequestContext
 from models import App, TenantAccountJoin, WorkflowComment, WorkflowCommentMention, WorkflowCommentReply
 from models.account import Account, TenantAccountRole
 from models.model import AppMode
 from repositories.app.workflow_comment_repository import WorkflowCommentRepository
 from services.app import workflow_comment_mention_gateway
-from services.app.workflow_comment_agg import WorkflowCommentAgg, WorkflowCommentContent, WorkflowCommentMentions
 from services.app.workflow_comment_errors import (
     WorkflowCommentNotFoundError,
     WorkflowCommentPermissionError,
-    WorkflowCommentReplyNotFoundError,
 )
 from services.app.workflow_comment_mention_gateway import CeleryWorkflowCommentMentionNotifier
 from services.app.workflow_comment_service import (
@@ -721,7 +725,7 @@ def test_a_failed_change_writes_nothing(sqlite_session: Session, repository: Wor
             _add_reply(changed, reply_id="reply-1", actor_id=OWNER_ID, mentioned_user_ids=())
             changed.remove_reply(reply_id="missing", actor_id=OWNER_ID)
 
-    with pytest.raises(WorkflowCommentReplyNotFoundError):
+    with pytest.raises(UnknownReplyError):
         fail_after_changing()
 
     sqlite_session.expire_all()

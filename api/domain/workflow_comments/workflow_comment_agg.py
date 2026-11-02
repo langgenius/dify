@@ -6,10 +6,11 @@ changes in place through the root's behaviors, which enforce the thread's rules.
 may edit or delete it. Resolving is one-way, and the first resolution is kept. A change that newly mentions users
 records a `WorkflowCommentUsersMentioned` event, without the actor.
 
-Content and mention lists are value objects that check their own rules when they are built. The model is business
-logic only: it performs no I/O, keeps no persistence state, and receives new identifiers and the current time from the
-application service. Workspace membership belongs to another aggregate, so the service reads which mentioned users are
-members before a change, and the mention list keeps only those.
+Content and mention lists are value objects that check their own rules when they are built, and refused changes raise
+the errors in `domain.workflow_comments.errors`. The model is business logic only: it performs no I/O, keeps no
+persistence state, and receives new identifiers and the current time from the application service. Workspace
+membership belongs to another aggregate, so the service reads which mentioned users are members before a change, and
+the mention list keeps only those.
 """
 
 import uuid
@@ -18,12 +19,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Self
 
-from services.app.workflow_comment_errors import (
-    InvalidMentionedUserIdError,
-    InvalidWorkflowCommentContentError,
-    WorkflowCommentPermissionError,
-    WorkflowCommentReplyNotFoundError,
-)
+from domain.workflow_comments.errors import InvalidContentError, InvalidMentionError, NotCreatorError, UnknownReplyError
 
 MAX_COMMENT_CONTENT_LENGTH = 1000
 
@@ -36,11 +32,9 @@ class WorkflowCommentContent:
 
     def __post_init__(self) -> None:
         if len(self.text.strip()) == 0:
-            raise InvalidWorkflowCommentContentError("Comment content cannot be empty")
+            raise InvalidContentError("Comment content cannot be empty")
         if len(self.text) > MAX_COMMENT_CONTENT_LENGTH:
-            raise InvalidWorkflowCommentContentError(
-                f"Comment content cannot exceed {MAX_COMMENT_CONTENT_LENGTH} characters"
-            )
+            raise InvalidContentError(f"Comment content cannot exceed {MAX_COMMENT_CONTENT_LENGTH} characters")
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,7 +48,7 @@ class WorkflowCommentMentions:
             try:
                 uuid.UUID(user_id)
             except ValueError as error:
-                raise InvalidMentionedUserIdError(user_id) from error
+                raise InvalidMentionError(user_id) from error
 
     @classmethod
     def parse(cls, user_ids: Sequence[str]) -> Self:
@@ -164,7 +158,7 @@ class WorkflowCommentAgg:
     ) -> None:
         """Edit as the creator; None positions are kept, and None mentions leave the comment's mentions untouched."""
         if actor_id != self.created_by:
-            raise WorkflowCommentPermissionError("Only the comment creator can update it")
+            raise NotCreatorError("Only the comment creator can update it")
         if mentions is not None:
             self._record_mentions(
                 actor_id=actor_id, mentions=mentions, earlier=self.mentioned_user_ids, content=content
@@ -180,7 +174,7 @@ class WorkflowCommentAgg:
     def ensure_removable_by(self, actor_id: str) -> None:
         """Deleting the thread removes its replies and mentions too, so only the comment creator may do it."""
         if actor_id != self.created_by:
-            raise WorkflowCommentPermissionError("Only the comment creator can delete it")
+            raise NotCreatorError("Only the comment creator can delete it")
 
     def resolve(self, *, actor_id: str, now: datetime) -> None:
         """Resolve on behalf of any member; an already resolved thread keeps its first resolution."""
@@ -195,7 +189,7 @@ class WorkflowCommentAgg:
         for reply in self.replies:
             if reply.id == reply_id:
                 return reply
-        raise WorkflowCommentReplyNotFoundError
+        raise UnknownReplyError(reply_id)
 
     def add_reply(
         self,
@@ -230,7 +224,7 @@ class WorkflowCommentAgg:
         """Edit a reply as its creator; the mention list always replaces the reply's mentions."""
         reply = self.reply(reply_id)
         if actor_id != reply.created_by:
-            raise WorkflowCommentPermissionError("Only the reply creator can update it")
+            raise NotCreatorError("Only the reply creator can update it")
         self._record_mentions(actor_id=actor_id, mentions=mentions, earlier=reply.mentioned_user_ids, content=content)
         reply.content = content.text
         reply.mentioned_user_ids = mentions.user_ids
@@ -240,7 +234,7 @@ class WorkflowCommentAgg:
         """Remove a reply with its mentions as the reply creator."""
         reply = self.reply(reply_id)
         if actor_id != reply.created_by:
-            raise WorkflowCommentPermissionError("Only the reply creator can delete it")
+            raise NotCreatorError("Only the reply creator can delete it")
         self.replies.remove(reply)
 
     def pull_events(self) -> tuple[WorkflowCommentUsersMentioned, ...]:

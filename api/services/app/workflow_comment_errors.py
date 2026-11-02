@@ -1,4 +1,4 @@
-"""Framework-neutral failures of Console workflow comments, shared by the aggregate, the service, and adapters."""
+"""Application errors of Console workflow comments, raised by the service and its adapters."""
 
 
 class WorkflowCommentError(Exception):
