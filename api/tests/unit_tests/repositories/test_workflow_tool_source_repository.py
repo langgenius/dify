@@ -2,20 +2,47 @@ import json
 from functools import partial
 
 import pytest
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, object_session, sessionmaker
 
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.workflow_tool_container_types import WorkflowToolContainerPayload
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
+from services.workflow.execution.ports import WorkflowRuntime
+from services.workflow_tool_source_service import WorkflowToolSourceService
+
+
+def _repository(
+    sessions: sessionmaker[Session],
+    workflow_runtime: WorkflowRuntime | None,
+) -> SQLAlchemyWorkflowToolSourceRepository:
+    return SQLAlchemyWorkflowToolSourceRepository(
+        sessions,
+        workflow_runtime=workflow_runtime,
+        draft_variable_saver=None,
+    )
+
+
+def _source_service(
+    sessions: sessionmaker[Session],
+    workflow_runtime: WorkflowRuntime,
+) -> WorkflowToolSourceService:
+    repository = _repository(sessions, workflow_runtime)
+    return WorkflowToolSourceService(
+        repository,
+        workflow_runtime=workflow_runtime,
+        draft_variable_saver=None,
+    )
 
 
 def test_materialized_tool_sources_keep_the_published_version_and_tenant(
     sqlite_session_factory: sessionmaker[Session],
+    workflow_runtime: WorkflowExecutionDependencies,
 ) -> None:
-    from services.workflow_tool_source_service import WorkflowToolSourceService
+    from services.workflow_tool_source_service import WorkflowToolSnapshot
 
     _save_source(sqlite_session_factory)
     with sqlite_session_factory.begin() as session:
@@ -33,7 +60,7 @@ def test_materialized_tool_sources_keep_the_published_version_and_tenant(
         session.flush()
         provider_id = provider.id
     graph = {"nodes": [{"data": {"type": "tool", "provider_type": "workflow", "provider_id": provider_id}}]}
-    service = WorkflowToolSourceService(SQLAlchemyWorkflowToolSourceRepository(sqlite_session_factory))
+    service = _source_service(sqlite_session_factory, workflow_runtime)
 
     sources = service.load(tenant_id=_TENANT_ID, graph_config=graph).sources
     assert set(sources) == {_PUBLISHED_WORKFLOW_ID}
@@ -56,14 +83,23 @@ def test_materialized_tool_sources_keep_the_published_version_and_tenant(
     resumed = service.load(tenant_id=_TENANT_ID, graph_config=graph, suspended_tools=[suspended]).sources
     assert set(resumed) == {_PUBLISHED_WORKFLOW_ID, _LATEST_WORKFLOW_ID}
     assert resumed[_PUBLISHED_WORKFLOW_ID].graph_config == _GRAPH
+    pinned = service.load(
+        tenant_id=_TENANT_ID,
+        graph_config=graph,
+        suspended_tools=[suspended],
+        snapshot=WorkflowToolSnapshot(tools={}),
+    )
+    assert set(pinned.sources) == {_PUBLISHED_WORKFLOW_ID}
+    assert pinned.sources[_PUBLISHED_WORKFLOW_ID].graph_config == _GRAPH
     with pytest.raises(ValueError, match="source was not found"):
         service.load(tenant_id=_OTHER_TENANT_ID, graph_config=graph, suspended_tools=[suspended])
 
 
 def test_serialized_tool_snapshot_preserves_definitions_without_current_providers(
     sqlite_session_factory: sessionmaker[Session],
+    workflow_runtime: WorkflowExecutionDependencies,
 ) -> None:
-    from services.workflow_tool_source_service import WorkflowToolSnapshot, WorkflowToolSourceService
+    from services.workflow_tool_source_service import WorkflowToolSnapshot
 
     _save_source(sqlite_session_factory)
     variables = [
@@ -96,7 +132,7 @@ def test_serialized_tool_snapshot_preserves_definitions_without_current_provider
         session.flush()
         provider_id = provider.id
     graph = {"nodes": [{"data": {"type": "tool", "provider_type": "workflow", "provider_id": provider_id}}]}
-    service = WorkflowToolSourceService(SQLAlchemyWorkflowToolSourceRepository(sqlite_session_factory))
+    service = _source_service(sqlite_session_factory, workflow_runtime)
     original = service.load(tenant_id=_TENANT_ID, graph_config=graph)
     snapshot = WorkflowToolSnapshot.model_validate_json(original.snapshot().model_dump_json())
     with sqlite_session_factory.begin() as session:
@@ -109,7 +145,9 @@ def test_serialized_tool_snapshot_preserves_definitions_without_current_provider
     latest = service.load(tenant_id=_TENANT_ID, graph_config=graph)
     assert latest.tools[provider_id].workflow_id == _LATEST_WORKFLOW_ID
     assert latest.tools[provider_id].entity.parameters == []
-    assert service.load(tenant_id=_TENANT_ID, graph_config=graph, snapshot=WorkflowToolSnapshot(tools={})).tools == {}
+    empty = service.load(tenant_id=_TENANT_ID, graph_config=graph, snapshot=WorkflowToolSnapshot(tools={}))
+    assert empty.tools == {}
+    assert empty.sources == {}
 
     for remove_provider in (False, True):
         if remove_provider:
@@ -141,13 +179,13 @@ def test_serialized_tool_snapshot_preserves_definitions_without_current_provider
 
 def test_saved_provider_aliases_keep_distinct_definitions_for_the_same_source(
     sqlite_session_factory: sessionmaker[Session],
+    workflow_runtime: WorkflowExecutionDependencies,
 ) -> None:
     from core.tools.entities.common_entities import I18nObject
     from core.tools.entities.tool_entities import ToolEntity, ToolIdentity
     from services.workflow_tool_source_service import (
         WorkflowToolDefinition,
         WorkflowToolSnapshot,
-        WorkflowToolSourceService,
     )
 
     _save_source(sqlite_session_factory)
@@ -170,7 +208,7 @@ def test_saved_provider_aliases_keep_distinct_definitions_for_the_same_source(
             for provider_id in ("first-provider", "second-provider")
         }
     )
-    restored = WorkflowToolSourceService(SQLAlchemyWorkflowToolSourceRepository(sqlite_session_factory)).load(
+    restored = _source_service(sqlite_session_factory, workflow_runtime).load(
         tenant_id=_TENANT_ID,
         graph_config={},
         snapshot=WorkflowToolSnapshot.model_validate_json(snapshot.model_dump_json()),
@@ -245,11 +283,51 @@ def _save_source(session_factory: sessionmaker[Session]) -> None:
         session.add_all((app, *workflows))
 
 
+def test_provider_materialization_happens_after_repository_session_closes(
+    sqlite_session_factory: sessionmaker[Session],
+    workflow_runtime: WorkflowExecutionDependencies,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from services.tools.workflow.tool import WorkflowTool
+
+    _save_source(sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        provider = WorkflowToolProvider(
+            tenant_id=_TENANT_ID,
+            app_id=_APP_ID,
+            version=_PUBLISHED_VERSION,
+            name="source",
+            label="Source",
+            icon="{}",
+            user_id=_ACCOUNT_ID,
+            description="Source",
+        )
+        session.add(provider)
+        session.flush()
+        provider_id = provider.id
+
+    repository = _repository(sqlite_session_factory, workflow_runtime)
+    build_tool = repository._build_tool
+    materialization_sessions: list[Session | None] = []
+
+    def build_detached_tool(provider: WorkflowToolProvider) -> WorkflowTool:
+        materialization_sessions.append(object_session(provider))
+        return build_tool(provider)
+
+    monkeypatch.setattr(repository, "_build_tool", build_detached_tool)
+
+    sources = repository.get_by_provider_ids(tenant_id=_TENANT_ID, provider_ids=(provider_id,))
+
+    assert materialization_sessions == [None]
+    assert len(sources) == 1
+    assert isinstance(sources[0].tool, WorkflowTool)
+
+
 def test_get_source_returns_requested_workflow_after_a_new_version_is_published(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     _save_source(sqlite_session_factory)
-    repository = SQLAlchemyWorkflowToolSourceRepository(sqlite_session_factory)
+    repository = _repository(sqlite_session_factory, None)
 
     source = repository.get_source(
         tenant_id=_TENANT_ID,
@@ -283,7 +361,7 @@ def test_get_source_rejects_unavailable_source(
     version: str,
 ) -> None:
     _save_source(sqlite_session_factory)
-    repository = SQLAlchemyWorkflowToolSourceRepository(sqlite_session_factory)
+    repository = _repository(sqlite_session_factory, None)
 
     assert (
         repository.get_source(
@@ -309,7 +387,7 @@ def test_get_source_returns_workflow_kind_enum(
         assert workflow is not None
         workflow.kind = None if stored_kind is None else WorkflowKind.value_of(stored_kind)
 
-    source = SQLAlchemyWorkflowToolSourceRepository(sqlite_session_factory).get_source(
+    source = _repository(sqlite_session_factory, None).get_source(
         tenant_id=_TENANT_ID,
         app_id=_APP_ID,
         workflow_id=_PUBLISHED_WORKFLOW_ID,
@@ -323,9 +401,9 @@ def test_get_source_returns_workflow_kind_enum(
 @pytest.mark.parametrize("allow_human_input", [False, True])
 def test_materialize_recursive_tools_checks_nested_human_input(
     sqlite_session_factory: sessionmaker[Session],
+    workflow_runtime: WorkflowExecutionDependencies,
     allow_human_input: bool,
 ) -> None:
-    from services.workflow_tool_source_service import WorkflowToolSourceService
 
     _save_source(sqlite_session_factory)
     with sqlite_session_factory.begin() as session:
@@ -370,7 +448,7 @@ def test_materialize_recursive_tools_checks_nested_human_input(
         child.app_id = child_app_id
         parent.graph = json.dumps(graph(child_id))
         child.graph = json.dumps({"nodes": [*graph(parent_id)["nodes"], {"data": {"type": "human-input"}}]})
-    service = WorkflowToolSourceService(SQLAlchemyWorkflowToolSourceRepository(sqlite_session_factory))
+    service = _source_service(sqlite_session_factory, workflow_runtime)
     if allow_human_input:
         materialized = service.load(tenant_id=_TENANT_ID, graph_config=graph(parent_id), allow_human_input=True)
         assert set(materialized.sources) == {_PUBLISHED_WORKFLOW_ID, _LATEST_WORKFLOW_ID}
@@ -389,17 +467,18 @@ def test_materialize_recursive_tools_checks_nested_human_input(
 @pytest.mark.parametrize("resuming", [False, True])
 def test_running_tool_keeps_materialized_definition_after_republication(
     sqlite_session_factory: sessionmaker[Session],
+    workflow_runtime: WorkflowExecutionDependencies,
     resuming: bool,
 ) -> None:
-    from core.workflow.node_factory import DifyNodeFactory
-    from core.workflow.workflow_tool_container_handler import WorkflowToolContainerHandler
     from graphon.engine import Engine
     from graphon.engine_events import NodeRunSucceededEvent
     from graphon.engine_events.graph import GraphRunSucceededEvent
     from graphon.graph import Graph
     from graphon.nodes.tool.entities import ToolNodeData
     from graphon.runtime import RuntimeState, VariablePool
-    from services.workflow_tool_source_service import WorkflowToolSourceService
+    from services.tools.workflow.tool import WorkflowTool
+    from services.workflow.execution.adapters.node_factory import DifyNodeFactory
+    from services.workflow.execution.adapters.workflow_tool_container_handler import WorkflowToolContainerHandler
     from tests.workflow_test_utils import build_test_graph_init_params
 
     _save_source(sqlite_session_factory)
@@ -446,33 +525,31 @@ def test_running_tool_keeps_materialized_definition_after_republication(
         ],
         "edges": [{"source": "start", "target": "loop"}, {"source": "loop-start", "target": "tool"}],
     }
-    sources = (
-        WorkflowToolSourceService(SQLAlchemyWorkflowToolSourceRepository(sqlite_session_factory))
-        .load(
-            tenant_id=_TENANT_ID,
-            graph_config=graph,
-            suspended_tools=[
-                WorkflowToolContainerPayload(
-                    source_app_id=_APP_ID,
-                    source_workflow_id=_PUBLISHED_WORKFLOW_ID,
-                    source_workflow_version=_PUBLISHED_VERSION,
-                    call_depth=1,
-                )
-            ]
-            if resuming
-            else (),
-        )
-        .sources
+    materialized = _source_service(sqlite_session_factory, workflow_runtime).load(
+        tenant_id=_TENANT_ID,
+        graph_config=graph,
+        suspended_tools=[
+            WorkflowToolContainerPayload(
+                source_app_id=_APP_ID,
+                source_workflow_id=_PUBLISHED_WORKFLOW_ID,
+                source_workflow_version=_PUBLISHED_VERSION,
+                call_depth=1,
+            )
+        ]
+        if resuming
+        else (),
     )
+    sources = materialized.sources
     source = sources[_PUBLISHED_WORKFLOW_ID]
-    assert source.tool is not None
+    assert isinstance(source.tool, WorkflowTool)
     state = RuntimeState(workflow_id="caller", variable_pool=VariablePool(), start_at=1)
     factory = DifyNodeFactory(
         init_params=build_test_graph_init_params(
             workflow_id="caller", graph_config=graph, tenant_id=_TENANT_ID, app_id=_APP_ID
         ),
         runtime_state=state,
-        workflow_tools={provider_id: source.tool},
+        workflow_runtime=workflow_runtime,
+        workflow_tools=materialized.tools,
     )
     completed_nodes = []
     engine = Engine(

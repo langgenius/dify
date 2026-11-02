@@ -1,19 +1,16 @@
 import logging
 from io import BytesIO
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine as _webhook_service_relationships_Engine
 from sqlalchemy import select
 from sqlalchemy.engine import Engine as _webhook_service_Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import RequestEntityTooLarge
 
-from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     WebhookBodyParameter,
@@ -26,10 +23,11 @@ from models.model import App, AppMode, EndUser
 from models.tools import ToolFile
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
+from repositories.trigger.workflow_repository import WorkflowTriggerRepository
 from services.errors.app import QuotaExceededError
-from services.trigger import webhook_service
 from services.trigger import webhook_service as service_module
 from services.trigger import webhook_service as webhook_service_module
+from services.trigger.errors import WebhookBodyTooLargeError
 from services.trigger.webhook_service import WebhookService
 from tests.helpers.unit.model_factories import make_app, make_end_user, make_workflow
 
@@ -1028,7 +1026,7 @@ class TestWebhookServiceAdditionalCases:
             apply_config_overrides(monkeypatch, WEBHOOK_REQUEST_BODY_MAX_SIZE=1)
 
             with flask_app.test_request_context("/webhook", method="POST", data="ab"):
-                with pytest.raises(RequestEntityTooLarge):
+                with pytest.raises(WebhookBodyTooLargeError):
                     WebhookService.extract_webhook_data(_workflow_trigger())
 
         def test_extract_octet_stream_body_should_return_none_when_empty_payload(self, flask_app: Flask) -> None:
@@ -1257,7 +1255,7 @@ class TestWebhookServiceAdditionalCases:
             assert "message" in body
 
         def test_generate_webhook_id_should_return_24_character_identifier(self) -> None:
-            webhook_id = WebhookService.generate_webhook_id()
+            webhook_id = WorkflowTriggerRepository.generate_webhook_id()
 
             assert isinstance(webhook_id, str)
             assert len(webhook_id) == 24
@@ -1270,81 +1268,65 @@ class TestWebhookServiceAdditionalCases:
 class TestWebhookServiceRelationshipsCases:
     @staticmethod
     def test_draft_sync_preserves_webhook_id_when_deleted_node_is_restored(
-        monkeypatch: pytest.MonkeyPatch, sqlite_engine: _webhook_service_relationships_Engine
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
-        session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-        app = cast(
-            App,
-            SimpleNamespace(id="00000000-0000-0000-0000-000000000001", tenant_id="tenant-1", created_by="user-1"),
-        )
+        app = make_app(created_by="account-1")
         assert app.created_by is not None
-        webhook_trigger = WorkflowWebhookTrigger(
+        trigger = WorkflowWebhookTrigger(
             app_id=app.id,
             tenant_id=app.tenant_id,
             node_id="webhook-node",
             webhook_id="stable-webhook-id",
             created_by=app.created_by,
         )
-        with session_maker.begin() as session:
-            session.add(webhook_trigger)
-        original_record_id = webhook_trigger.id
-
-        redis = MagicMock()
-        redis.get.return_value = None
-        redis.lock.return_value.acquire.return_value = True
-        monkeypatch.setattr(webhook_service, "db", SimpleNamespace(engine=sqlite_engine))
-        monkeypatch.setattr(webhook_service, "redis_client", redis)
-
-        deleted_draft = cast(Workflow, SimpleNamespace(walk_nodes=lambda _node_type: iter(())))
-        WebhookService.sync_webhook_relationships(app, deleted_draft, remove_stale=False)
-
-        restored_draft = cast(
-            Workflow,
-            SimpleNamespace(
-                walk_nodes=lambda _node_type: iter([("webhook-node", {"type": TRIGGER_WEBHOOK_NODE_TYPE})])
-            ),
+        with sqlite_session_factory.begin() as session:
+            session.add_all([app, trigger])
+        original_id = trigger.id
+        WebhookService.sync_webhook_relationships(
+            app,
+            make_workflow(),
+            remove_stale=False,
+            session_factory=sqlite_session_factory,
         )
-        WebhookService.sync_webhook_relationships(app, restored_draft, remove_stale=False)
-
-        with Session(sqlite_engine) as session:
+        restored = make_workflow(
+            graph={"nodes": [{"id": "webhook-node", "data": {"type": "trigger-webhook"}}], "edges": []}
+        )
+        WebhookService.sync_webhook_relationships(
+            app,
+            restored,
+            remove_stale=False,
+            session_factory=sqlite_session_factory,
+        )
+        with sqlite_session_factory() as session:
             records = session.scalars(select(WorkflowWebhookTrigger)).all()
-
-        assert len(records) == 1
-        assert records[0].id == original_record_id
-        assert records[0].webhook_id == "stable-webhook-id"
+            assert len(records) == 1
+            assert records[0].id == original_id
+            assert records[0].webhook_id == "stable-webhook-id"
 
     @staticmethod
     def test_published_sync_removes_stale_webhook_relationships(
-        monkeypatch: pytest.MonkeyPatch, sqlite_engine: _webhook_service_relationships_Engine
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
-        session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-        app = cast(
-            App,
-            SimpleNamespace(id="00000000-0000-0000-0000-000000000001", tenant_id="tenant-1", created_by="user-1"),
-        )
+        app = make_app(created_by="account-1")
         assert app.created_by is not None
-        webhook_trigger = WorkflowWebhookTrigger(
-            app_id=app.id,
-            tenant_id=app.tenant_id,
-            node_id="deleted-webhook-node",
-            webhook_id="deleted-webhook-id",
-            created_by=app.created_by,
+        with sqlite_session_factory.begin() as session:
+            session.add_all(
+                [
+                    app,
+                    WorkflowWebhookTrigger(
+                        app_id=app.id,
+                        tenant_id=app.tenant_id,
+                        node_id="deleted-webhook-node",
+                        webhook_id="deleted-webhook-id",
+                        created_by=app.created_by,
+                    ),
+                ]
+            )
+        WebhookService.sync_webhook_relationships(
+            app,
+            make_workflow(),
+            remove_stale=True,
+            session_factory=sqlite_session_factory,
         )
-        with session_maker.begin() as session:
-            session.add(webhook_trigger)
-
-        redis = MagicMock()
-        redis.get.return_value = None
-        redis.lock.return_value.acquire.return_value = True
-        monkeypatch.setattr(webhook_service, "db", SimpleNamespace(engine=sqlite_engine))
-        monkeypatch.setattr(webhook_service, "redis_client", redis)
-
-        published_workflow = cast(Workflow, SimpleNamespace(walk_nodes=lambda _node_type: iter(())))
-        WebhookService.sync_webhook_relationships(app, published_workflow, remove_stale=True)
-
-        with session_maker() as session:
-            records = session.scalars(select(WorkflowWebhookTrigger)).all()
-        assert records == []
-        redis.delete.assert_called_once_with(
-            f"{WebhookService.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:deleted-webhook-node"
-        )
+        with sqlite_session_factory() as session:
+            assert session.scalars(select(WorkflowWebhookTrigger)).all() == []

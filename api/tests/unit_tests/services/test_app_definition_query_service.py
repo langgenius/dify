@@ -5,10 +5,10 @@ from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 import services.app_definition_query_service as module
-from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from models.account import Tenant
 from models.model import App, AppMode
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
+from services.app.generation.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from services.app_definition_query_service import (
     AppDefinitionNotPublishedError,
     AppDefinitionQuery,

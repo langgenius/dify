@@ -1,11 +1,16 @@
 """Composition of App use cases."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from extensions.application_services.workflow import build_app_dsl_service
 from libs.datetime_utils import naive_utc_now
+from models.tool_runtime_contracts import WorkflowToolStore
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.api_key_repository import AppApiKeyRepository
 from repositories.app.console_repository import ConsoleAppRepository
@@ -33,8 +38,12 @@ from services.app_tracing_config_service import AppTracingConfigService
 from services.oauth_server_service import OAuthServerService
 from services.rbac.members import MemberService
 from services.recommended_app_package_service import RecommendedAppPackageService
+from services.tools.provider_queries import ToolProviders
 from services.trigger.app_trigger_store import AppTriggerStore
 from services.workflow.dsl_import import DslImportService
+
+if TYPE_CHECKING:
+    from services.data_migration.import_service import WorkflowPublisher
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +61,9 @@ def build_app_services(
     *,
     database_client: sessionmaker[Session],
     oauth: OAuthServerService,
+    tool_providers: ToolProviders,
+    workflow_tools: WorkflowToolStore,
+    workflow_publisher: WorkflowPublisher,
     recommended_packages: RecommendedAppPackageService,
     repository: ConsoleAppRepository,
     rbac_members: MemberService,
@@ -59,11 +71,13 @@ def build_app_services(
 ) -> AppServices:
     transfers = AppTransferGateway(
         session_factory=database_client,
-        dsl_factory=AppDslService,
+        dsl_factory=build_app_dsl_service,
         packages=AppPackageService(),
         agent_packages=RosterAgentPackageExporter(),
         agent_importer=RosterAgentPackageImporter(),
         recommended_packages=recommended_packages,
+        workflow_tools=workflow_tools,
+        workflow_publisher=workflow_publisher,
     )
     return AppServices(
         imports=AppImportService(accounts=SQLAlchemyAccountRepository(database_client), definitions=transfers),
@@ -81,8 +95,10 @@ def build_app_services(
             access=EnterpriseConsoleAppAccess(members=rbac_members),
             transfers=transfers,
             creators=CreatorsPlatformGateway(oauth=oauth),
+            lifecycle=AppLifecycleGateway(
+                session_factory=database_client, tool_providers=tool_providers, workflow_queries=workflow_tools
+            ),
             tracing=tracing_configs,
-            lifecycle=AppLifecycleGateway(session_factory=database_client),
         ),
         enterprise=EnterpriseAppService(
             apps=EnterpriseAppRepository(

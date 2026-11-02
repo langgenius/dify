@@ -2301,11 +2301,14 @@ class TestNodeRuntimeCases:
         get_runtime.assert_called_once()
 
     @staticmethod
-    def test_dify_tool_node_runtime_builds_workflow_tool_container_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_dify_tool_node_runtime_builds_workflow_tool_container_payload(
+        monkeypatch: pytest.MonkeyPatch,
+        workflow_runtime: WorkflowExecutionDependencies,
+    ) -> None:
         from core.tools.__base.tool_runtime import ToolRuntime
         from core.tools.entities.common_entities import I18nObject
         from core.tools.entities.tool_entities import ToolEntity, ToolIdentity
-        from core.tools.workflow_as_tool.tool import WorkflowTool
+        from services.tools.workflow.tool import WorkflowTool
 
         tool = WorkflowTool(
             workflow_app_id=str(uuid4()),
@@ -2325,6 +2328,9 @@ class TestNodeRuntimeCases:
                 has_runtime_parameters=False,
             ),
             runtime=ToolRuntime(tenant_id="tenant-id", invoke_from=InvokeFrom.DEBUGGER),
+            queries=workflow_runtime.tools,
+            draft_variable_saver=None,
+            workflow_runtime=workflow_runtime,
         )
         prepared_parameters: list[Mapping[str, object]] = []
 
@@ -2335,7 +2341,7 @@ class TestNodeRuntimeCases:
             return {"amount": Decimal("1.25")}, [{"id": "file-id", "name": "input.txt"}]
 
         monkeypatch.setattr(tool, "prepare_container_inputs", prepare_container_inputs)
-        runtime = core_node_runtime.DifyToolNodeRuntime(_build_run_context())
+        runtime = DifyToolNodeRuntime(_build_run_context(), workflow_runtime=workflow_runtime)
 
         payload = runtime.build_workflow_tool_container_payload(
             tool_runtime=ToolRuntimeHandle(raw=tool),
@@ -2357,8 +2363,10 @@ class TestNodeRuntimeCases:
         assert prepared_parameters == [{"amount": "1.25"}]
 
     @staticmethod
-    def test_dify_tool_node_runtime_rejects_non_workflow_tool_container_payload() -> None:
-        runtime = core_node_runtime.DifyToolNodeRuntime(_build_run_context())
+    def test_dify_tool_node_runtime_rejects_non_workflow_tool_container_payload(
+        workflow_runtime: WorkflowExecutionDependencies,
+    ) -> None:
+        runtime = DifyToolNodeRuntime(_build_run_context(), workflow_runtime=workflow_runtime)
         with pytest.raises(ToolRuntimeResolutionError, match="resolved tool is not a Workflow Tool"):
             runtime.build_workflow_tool_container_payload(
                 tool_runtime=ToolRuntimeHandle(raw=object()),

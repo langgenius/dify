@@ -8,13 +8,16 @@ from sqlalchemy import Engine, inspect, select, update
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
-from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from models import Account, App, AppMode, Conversation
 from models.enums import ConversationFromSource
 from models.model import AccountTrialAppRecord
 from repositories.trial_app_repository import TrialAppRepository
 from services.account_errors import AccountNotFoundError
+from services.app.generation.adapters.chat import ChatAppGenerator
+from services.app.generation.response import convert_to_event_stream
+from services.app.generation.runtime import AppGenerationRuntime
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_generate_service import AppGenerateService
 from services.errors.app_model_config import AppModelConfigBrokenError
@@ -22,6 +25,7 @@ from services.errors.conversation import ConversationNotExistsError
 from services.trial_app_access_service import TrialAppRef
 from services.trial_app_generation_adapters import AppGenerateServiceRuntime
 from services.trial_app_generation_service import GenerationResponse, TrialAppGenerationService
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 
 _ARGS: dict[str, object] = {"inputs": {"count": 0}, "query": "hello", "auto_generate_name": False}
 
@@ -36,7 +40,13 @@ class _Harness:
 
 
 @pytest.fixture
-def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]) -> _Harness:
+def harness(
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+    *,
+    workflow_variables: WorkflowExecutionVariables,
+    workflow_runtime: WorkflowExecutionDependencies,
+) -> _Harness:
     with sqlite_session_factory.begin() as session:
         app = App(tenant_id=str(uuid4()), name="Trial app", mode=AppMode.CHAT, enable_site=True, enable_api=False)
         account = Account(name="Viewer", email="viewer@example.com")
@@ -64,7 +74,9 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
 
     factory = sessionmaker(bind=sqlite_engine, class_=TrackedSession, expire_on_commit=True)
     return _Harness(
-        runtime=AppGenerateServiceRuntime(session_factory=cast(sessionmaker[Session], factory)),
+        runtime=AppGenerateServiceRuntime(
+            session_factory=cast(sessionmaker[Session], factory), variables=workflow_variables, runtime=workflow_runtime
+        ),
         app=TrialAppRef(app_id=app.id, tenant_id=app.tenant_id, app_mode=app.mode),
         account_id=account.id,
         closed_sessions=closed_sessions,
@@ -103,8 +115,10 @@ def _patch_generation(
     expected_streaming = streaming
     expected_args = args
 
-    def legacy_generate(
+    def boundary_generate(
         *,
+        variables: WorkflowExecutionVariables,
+        runtime: AppGenerationRuntime,
         session: Session,
         app_model: App,
         user: Account,
@@ -112,6 +126,8 @@ def _patch_generation(
         invoke_from: InvokeFrom,
         streaming: bool,
     ) -> GenerationResponse:
+        assert runtime is harness.runtime._runtime
+        assert variables is harness.runtime._variables
         assert len(harness.closed_sessions) == 1
         read_session = harness.closed_sessions[0]
         assert not read_session.in_transaction()
@@ -131,7 +147,7 @@ def _patch_generation(
         assert args == expected_args
         return generate(session)
 
-    monkeypatch.setattr(AppGenerateService, "generate", legacy_generate)
+    monkeypatch.setattr(AppGenerateService, "generate", boundary_generate)
 
 
 def test_mapping_result_is_unchanged_and_generation_writes_are_committed(
@@ -351,8 +367,10 @@ def _add_conversation(harness: _Harness, session_factory: sessionmaker[Session])
 
 
 def _patch_chat_generation(monkeypatch: pytest.MonkeyPatch, harness: _Harness) -> None:
-    def legacy_generate(
+    def boundary_generate(
         *,
+        variables: WorkflowExecutionVariables,
+        runtime: AppGenerationRuntime,
         session: Session,
         app_model: App,
         user: Account,
@@ -360,16 +378,22 @@ def _patch_chat_generation(monkeypatch: pytest.MonkeyPatch, harness: _Harness) -
         invoke_from: InvokeFrom,
         streaming: bool,
     ) -> GenerationResponse:
+        assert runtime is harness.runtime._runtime
+        assert variables is harness.runtime._variables
         assert len(harness.closed_sessions) == 1
         assert not harness.closed_sessions[0].in_transaction()
         assert session is not harness.closed_sessions[0]
         assert not session.in_transaction()
-        response = ChatAppGenerator().generate(
+        response = ChatAppGenerator(
+            retrieval=runtime.retrieval,
+            annotations=runtime.annotation_replies,
+            records=runtime.chat_records,
+        ).generate(
             app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming, session=session
         )
-        return cast(GenerationResponse, ChatAppGenerator.convert_to_event_stream(response))
+        return cast(GenerationResponse, convert_to_event_stream(response))
 
-    monkeypatch.setattr(AppGenerateService, "generate", legacy_generate)
+    monkeypatch.setattr(AppGenerateService, "generate", boundary_generate)
 
 
 @pytest.mark.parametrize("mismatch", ["missing", "app", "account", "source", "end-user", "deleted"])

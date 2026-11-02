@@ -11,7 +11,7 @@ import pytest
 from flask import Flask, Response
 from flask.testing import FlaskClient
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.plugin.entities.request import TriggerInvokeEventResponse
@@ -39,6 +39,7 @@ from models.trigger import (
     WorkflowWebhookTrigger,
 )
 from models.workflow import Workflow
+from repositories.credentials.query_repository import CredentialQueryRepository
 from schedule import workflow_schedule_task
 from schedule.workflow_schedule_task import poll_workflow_schedules
 from services.system_feature_service import SystemFeatureService
@@ -121,7 +122,13 @@ def test_publish_blocks_start_and_trigger_coexistence(
     )
 
     with pytest.raises(ValueError, match="Start node and trigger nodes cannot coexist"):
-        workflow_service.publish_workflow(session=db_session_with_containers, app_model=app_model, account=account)
+        workflow_service.validate_publication(
+            app_model,
+            draft_workflow,
+            credentials=CredentialQueryRepository(
+                session_factory=sessionmaker(bind=db_session_with_containers.get_bind())
+            ),
+        )
 
 
 def test_trigger_url_uses_config_base(monkeypatch: pytest.MonkeyPatch) -> None:

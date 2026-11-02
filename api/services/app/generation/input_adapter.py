@@ -1,8 +1,7 @@
 import logging
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager, nullcontext
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ClassVar, final
+from typing import TYPE_CHECKING, Any, final
 
 from core.app.apps.draft_variable_saver import (
     DraftVariableSaver,
@@ -28,13 +27,20 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@dataclass(kw_only=True)
-class AppInputAdapter:
-    _file_access_controller: ClassVar[DatabaseFileAccessController] = DatabaseFileAccessController()
+# This behavior-rich base is subclassed by generators; dataclass equality and repr would alter their semantics.
+class AppInputAdapter:  # noqa: B903
+    _file_access_controller: DatabaseFileAccessController = DatabaseFileAccessController()
 
-    draft_variable_loader: Callable[[WorkflowSnapshot, str], VariableLoader] | None = None
-    draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None
-    workflow_runtime: WorkflowRuntime | None = None
+    def __init__(
+        self,
+        *,
+        draft_variable_loader: Callable[[WorkflowSnapshot, str], VariableLoader] | None = None,
+        draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
+        workflow_runtime: WorkflowRuntime | None = None,
+    ) -> None:
+        self.draft_variable_loader = draft_variable_loader
+        self.draft_variable_saver = draft_variable_saver
+        self.workflow_runtime = workflow_runtime
 
     @staticmethod
     def _bind_file_access_scope(

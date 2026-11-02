@@ -10,6 +10,7 @@ from functools import partial
 from threading import Event, get_ident
 from types import TracebackType
 from typing import override
+from unittest.mock import create_autospec
 
 import pytest
 from flask import current_app, g
@@ -41,25 +42,18 @@ from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
-from core.tools.workflow_as_tool.tool import WorkflowTool
 from core.workflow.node_execution_process_data import (
     WORKFLOW_TOOL_INVOCATION_ID_KEY,
 )
-from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
-from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
 from core.workflow.nodes.human_input.boundary import resolve_human_input_node_id
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.system_variables import SystemVariableKey, system_variable_selector
 from core.workflow.workflow_entry import WorkflowEntry
-from core.workflow.workflow_tool_container_handler import (
-    WorkflowToolContainerHandler,
-    WorkflowToolNestedContainerHandler,
-)
 from core.workflow.workflow_tool_container_types import WorkflowToolContainerPayload
 from core.workflow.workflow_tool_node import DifyWorkflowToolNode
 from dify_app import DifyApp
 from enums import WorkflowKind
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from extensions.storage.storage_type import StorageType
 from graphon.engine import Engine
 from graphon.engine.command import AbortCommand, InMemoryChannel
@@ -139,7 +133,16 @@ from models import Account, ToolFile, UploadFile, WorkflowRun
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input_entities import HumanInputNodeData, UserActionConfig
 from models.model import AppMode
+from models.tool_runtime_contracts import WorkflowToolQueries
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from repositories.agent.runtime_repository import WorkflowAgentBindingResolver
+from services.tools.workflow.tool import WorkflowTool
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory
+from services.workflow.execution.adapters.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
+from services.workflow.execution.adapters.workflow_tool_container_handler import (
+    WorkflowToolContainerHandler,
+    WorkflowToolNestedContainerHandler,
+)
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -212,6 +215,8 @@ def _workflow_tool_container_workflow_tool_node(
             has_runtime_parameters=False,
         ),
         runtime=ToolRuntime(tenant_id="tenant", invoke_from=InvokeFrom.DEBUGGER),
+        queries=create_autospec(WorkflowToolQueries, instance=True, spec_set=True),
+        draft_variable_saver=None,
     )
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(tool, "prepare_container_inputs", lambda *_args, **_kwargs: (payload.inputs, []))
@@ -900,7 +905,9 @@ class TestWorkflowToolContainerCases:
                 raise CodeExecutionError("source code failed")
             return {"output": "retried output"}
 
-        monkeypatch.setattr("core.workflow.node_factory.CodeExecutor.execute_workflow_code_template", execute)
+        monkeypatch.setattr(
+            "services.workflow.execution.adapters.node_factory.CodeExecutor.execute_workflow_code_template", execute
+        )
         source = _workflow_tool_container_workflow_tool_source()
         source_graph = dict(source.graph_config)
         source_graph["nodes"].insert(
@@ -1045,7 +1052,7 @@ class TestWorkflowToolContainerCases:
             node_data: HumanInputNodeData,
             execution_id_getter: Callable[[], str | None],
         ) -> DifyHITLCallback:
-            human_input_app_ids.append(factory._human_input_runtime._run_context.app_id)
+            human_input_app_ids.append(factory.human_input_run_context.app_id)
             return DifyHITLCallback(
                 form_repository=form_repository,
                 node_data=node_data,
@@ -1417,7 +1424,9 @@ class TestWorkflowToolEventDeliveryCases:
             return {"id": f"{source}-{target}", "source": source, "target": target, "sourceHandle": handle}
 
         tool_node, runtime, _ = _workflow_tool_event_delivery_workflow_tool_node()
-        monkeypatch.setattr("core.workflow.node_factory.DifyToolNodeRuntime", lambda _, **_kwargs: runtime)
+        monkeypatch.setattr(
+            "services.workflow.execution.adapters.node_factory.DifyToolNodeRuntime", lambda _, **_kwargs: runtime
+        )
         outer_graph = {
             "nodes": [
                 node("start", "start", variables=[]),
@@ -1661,9 +1670,10 @@ class TestWorkflowToolEventDeliveryCases:
     def test_workflow_tool_agent_finds_its_persisted_caller_before_resolving_binding(
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session_factory: sessionmaker[Session],
+        workflow_runtime: WorkflowExecutionDependencies,
         caller_save_fails: bool,
     ) -> None:
-        binding_resolver = WorkflowAgentBindingResolver()
+        binding_resolver = WorkflowAgentBindingResolver(sqlite_session_factory)
         resolution_calls: list[dict[str, object]] = []
         if caller_save_fails:
 
@@ -1672,7 +1682,6 @@ class TestWorkflowToolEventDeliveryCases:
                 pytest.fail("Binding resolution must wait for a persisted caller")
 
             monkeypatch.setattr(binding_resolver, "resolve", reject_resolution)
-            monkeypatch.setattr("core.workflow.node_factory.WorkflowAgentBindingResolver", lambda: binding_resolver)
             save = SQLAlchemyWorkflowNodeExecutionRepository.save
 
             def fail_caller_save(
@@ -1759,8 +1768,15 @@ class TestWorkflowToolEventDeliveryCases:
         index.seed_source(source.app_id, source.workflow_id, ())
         layer.set_node_run_indices(index.indices)
         node.runtime_state.variable_pool.add(("sys", "workflow_run_id"), "outer-run")
+        graph = _workflow_tool_event_delivery_outer_graph(node)
+        graph.node_factory = DifyNodeFactory(
+            node.init_params,
+            node.runtime_state,
+            agent_binding_resolver=binding_resolver,
+            workflow_runtime=workflow_runtime,
+        )
         engine = Engine(
-            graph=_workflow_tool_event_delivery_outer_graph(node),
+            graph=graph,
             runtime_state=node.runtime_state,
             command_channel=InMemoryChannel(),
             workers=1,
@@ -1882,7 +1898,9 @@ class TestWorkflowToolFileAccessCases:
                 start_at=1,
             )
         template_node, runtime, payload = _workflow_tool_file_access_workflow_tool_node(runtime_state)
-        monkeypatch.setattr("core.workflow.node_factory.DifyToolNodeRuntime", lambda _, **_kwargs: runtime)
+        monkeypatch.setattr(
+            "services.workflow.execution.adapters.node_factory.DifyToolNodeRuntime", lambda _, **_kwargs: runtime
+        )
         tool_data = template_node.node_data.model_dump(mode="python")
         nodes = [
             {"id": "start", "data": {"type": "start", "title": "Start", "variables": list[object]()}},

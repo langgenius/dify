@@ -411,7 +411,7 @@ class TestDatasetServiceUpdateDataset:
             patch("services.knowledge.dataset_service.current_user", user),
             patch("services.knowledge.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch(
-                "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
+                "services.knowledge.dataset_service.DatasetCollectionBindingRepository.get_dataset_collection_binding"
             ) as mock_get_binding,
             patch("services.knowledge.dataset_service.deal_dataset_vector_index_task") as mock_task,
         ):
@@ -506,7 +506,7 @@ class TestDatasetServiceUpdateDataset:
             patch("services.knowledge.dataset_service.current_user", user),
             patch("services.knowledge.dataset_service.ModelManager.for_tenant") as mock_model_manager,
             patch(
-                "services.knowledge.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
+                "services.knowledge.dataset_service.DatasetCollectionBindingRepository.get_dataset_collection_binding"
             ) as mock_get_binding,
             patch("services.knowledge.dataset_service.deal_dataset_vector_index_task") as mock_task,
             patch("services.knowledge.dataset_service.regenerate_summary_index_task") as mock_regenerate_task,

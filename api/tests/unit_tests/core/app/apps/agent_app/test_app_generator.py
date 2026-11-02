@@ -282,6 +282,32 @@ class TestGenerateSuccess:
         assert generator._agent_configs.resolve.call_args.kwargs["conversation_id"] == "conv"
         assert "session" not in generator._init_generate_records.call_args.kwargs
 
+    def test_record_initialization_failure_does_not_capture_a_worker_terminal(
+        self, generator: AgentAppGenerator, mocker: MockerFixture
+    ) -> None:
+        generator._prepare_user_inputs = mocker.MagicMock(return_value={})
+        generator._init_generate_records = mocker.MagicMock(side_effect=ValueError("record initialization failed"))
+        mocker.patch(
+            f"{MODULE}.AgentAppConfigManager.get_app_config",
+            return_value=mocker.MagicMock(variables=[], tenant_id="tenant", app_id="app1"),
+        )
+        mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock(model="gpt-4o-mini"))
+        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock())
+        thread_constructor = mocker.patch(f"{MODULE}.threading.Thread")
+        tracing_hooks = mocker.patch("core.ops.base_trace_instance.application_tracing_hooks")
+
+        with pytest.raises(ValueError, match="record initialization failed"):
+            generator.generate(
+                app_model=_app(),
+                user=_account(),
+                args={"query": "query", "inputs": {}},
+                invoke_from=InvokeFrom.DEBUGGER,
+            )
+
+        thread_constructor.assert_not_called()
+        tracing_hooks.assert_not_called()
+
     def test_generate_does_not_include_trace_session_id_in_extras(
         self, generator: AgentAppGenerator, mocker: MockerFixture
     ):
@@ -467,8 +493,22 @@ class TestGenerateWorker:
         self._call(generator, mocker, queue_manager)
         queue_manager.publish_error.assert_not_called()
 
-    def test_unexpected_error_is_published(self, generator: AgentAppGenerator, mocker: MockerFixture):
-        self._wire(generator, mocker, run_side_effect=ValueError("boom"))
+    @pytest.mark.parametrize("failure_stage", ["record_load", "runner"])
+    def test_unexpected_error_is_published_and_captures_failed_terminal(
+        self, generator: AgentAppGenerator, mocker: MockerFixture, failure_stage: str
+    ) -> None:
+        self._wire(generator, mocker, run_side_effect=ValueError("boom") if failure_stage == "runner" else None)
+        if failure_stage == "record_load":
+            generator._records.load.side_effect = ValueError("boom")
+        hooks = mocker.MagicMock()
+        mocker.patch("core.ops.base_trace_instance.application_tracing_hooks", return_value=hooks)
         queue_manager = mocker.MagicMock()
         self._call(generator, mocker, queue_manager)
-        assert queue_manager.publish_error.called
+        hooks.capture_agent_app_terminal.assert_called_once_with(
+            tenant_id="tenant",
+            app_id="app1",
+            message_id="msg",
+            outcome="failed",
+            output=None,
+        )
+        queue_manager.publish_error.assert_called_once()

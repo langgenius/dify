@@ -9,9 +9,10 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom as _agent_observability_service_InvokeFrom
 from core.workflow.node_execution_process_data import WORKFLOW_AGENT_BINDING_ID_KEY
+from enums.agent import WorkflowAgentBindingType
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
-from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent import WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.enums import (
     ConversationFromSource,

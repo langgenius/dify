@@ -25,6 +25,7 @@ from models.agent import (
     AgentWorkingResourceStatus,
     AgentWorkspaceOwnerType,
 )
+from repositories.agent_workspace_repository import AgentWorkspaceRepository
 from services.agent.errors import (
     AgentBuildSandboxNotFoundError,
     AgentHomeSnapshotCreateFailedError,
@@ -40,7 +41,7 @@ class AgentHomeSnapshotUnavailableError(RuntimeError):
 
 
 class AgentHomeSnapshotService:
-    """Create, retire, and collect Agent-owned immutable Home Snapshots."""
+    """Create and collect Agent-owned immutable Home Snapshots."""
 
     @classmethod
     def create_for_build_apply(
@@ -80,7 +81,7 @@ class AgentHomeSnapshotService:
         )
         if binding is None or binding.agent_id != build_draft.agent_id:
             raise AgentBuildSandboxNotFoundError()
-        AgentWorkspaceService.validate_binding_generation(
+        AgentWorkspaceRepository.validate_binding_generation(
             binding,
             base_home_snapshot_id=build_draft.home_snapshot_id,
             agent_config_version_id=build_draft.id,
@@ -120,21 +121,6 @@ class AgentHomeSnapshotService:
         )
         session.add(home_snapshot)
         return home_snapshot
-
-    @classmethod
-    def retire_all_for_agent(cls, *, session: Session, tenant_id: str, agent_id: str) -> list[str]:
-        rows = session.scalars(
-            select(AgentHomeSnapshot).where(
-                AgentHomeSnapshot.tenant_id == tenant_id,
-                AgentHomeSnapshot.agent_id == agent_id,
-            )
-        ).all()
-        now = naive_utc_now()
-        for row in rows:
-            if row.status == AgentWorkingResourceStatus.ACTIVE:
-                row.status = AgentWorkingResourceStatus.RETIRED
-                row.retired_at = now
-        return [row.id for row in rows]
 
     @classmethod
     def retire_all_for_tenant(cls, *, session: Session, tenant_id: str) -> list[str]:

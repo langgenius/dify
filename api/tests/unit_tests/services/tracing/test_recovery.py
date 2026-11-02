@@ -125,9 +125,9 @@ def save_agent_stop(
     )
     from core.app.entities.app_invoke_entities import InvokeFrom
     from core.app.entities.queue_entities import QueueStopEvent
-    from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
     from core.ops import ops_trace_manager
     from core.ops.base_trace_instance import bind_application_tracing_hooks
+    from services.app.generation.adapters.message_pipeline import EasyUIBasedGenerateTaskPipeline
     from services.tracing import runtime_bridge
     from tests.helpers.unit.config_override import apply_config_overrides
     from tests.helpers.unit.core.model_fixtures import make_model_config
@@ -145,9 +145,9 @@ def save_agent_stop(
         if notify is not None:
             notify(message, application_generate_entity)
 
-    monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.message_was_created.send", send)
+    monkeypatch.setattr("services.app.generation.adapters.message_pipeline.message_was_created.send", send)
     monkeypatch.setattr(
-        "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.naive_utc_now",
+        "repositories.app.generation_repository.naive_utc_now",
         lambda: case.now - timedelta(seconds=10),
     )
     with case.collection.sessions.begin() as session:
@@ -179,7 +179,14 @@ def save_agent_stop(
         invoke_from=InvokeFrom.DEBUGGER,
     )
     queue_manager = _QueueManager()
-    pipeline = EasyUIBasedGenerateTaskPipeline(entity, queue_manager, conversation, message, stream=True)
+    pipeline = EasyUIBasedGenerateTaskPipeline(
+        entity,
+        queue_manager,
+        conversation,
+        message,
+        stream=True,
+        records=AppGenerationRepository(case.collection.sessions),
+    )
     pipeline._task_state.llm_result.message.content = answer
     application = Flask(__name__)
     bind_application_tracing_hooks(application, runtime_bridge.RuntimeApplicationTracingHooks())
@@ -192,11 +199,9 @@ def save_agent_stop(
             monkeypatch.setattr(pipeline, "_handle_stop", lambda _event: None)
             monkeypatch.setattr(pipeline, "handle_output_moderation_when_task_finished", lambda _answer: None)
             list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
-        elif consumer_session is None:
-            with case.collection.sessions.begin() as session:
-                pipeline._save_message(session=session, trace_manager=trace_manager, preserve_existing_usage=True)
         else:
-            pipeline._save_message(session=consumer_session, trace_manager=trace_manager, preserve_existing_usage=True)
+            pipeline._save_message(trace_manager=trace_manager, preserve_existing_usage=True)
+        if consumer_session is not None:
             consumer_session.commit()
         return trace_manager.collect_tasks()
 
@@ -370,10 +375,13 @@ def test_classic_stopped_consumer_keeps_its_existing_trace_notification(
 
 
 def test_worker_usage_flush_preserves_stop_intent_from_a_newer_consumer_save(
-    case: RecoveryCase, monkeypatch: pytest.MonkeyPatch
+    case: RecoveryCase, monkeypatch: pytest.MonkeyPatch, app_records: AppGenerationRepository
 ) -> None:
-    from core.app.apps.agent_app.app_runner import AgentAppRunner
+    from clients.agent_backend import FakeAgentBackendRunClient
     from graphon.model_runtime.entities.llm_entities import LLMUsage
+    from services.app.generation.adapters.agent_runner import AgentAppRunner
+    from services.app.generation.ports import MessageIdentity
+    from tests.unit_tests.core.app.apps.agent_app.test_app_runner import _FakeSessionStore, _runner
 
     # The worker's scoped session may already have loaded this Message before
     # the consumer commits its independent stop transaction.
@@ -381,8 +389,14 @@ def test_worker_usage_flush_preserves_stop_intent_from_a_newer_consumer_save(
     assert cached_message is not None
     assert cached_message.message_metadata is None
     save_agent_stop(case, monkeypatch, "partial answer")
-    AgentAppRunner._persist_message_usage(
-        message_id=cached_message.id,
+    runner: AgentAppRunner = _runner(FakeAgentBackendRunClient(), _FakeSessionStore(), app_records=app_records)
+    runner._persist_message_usage(
+        identity=MessageIdentity(
+            case.collection.run.tenant_id,
+            case.collection.run.app_id,
+            cached_message.conversation_id,
+            cached_message.id,
+        ),
         usage=LLMUsage.from_metadata({"prompt_tokens": 13, "completion_tokens": 8, "total_price": "0.21"}),
     )
     with case.collection.sessions() as session:
@@ -396,10 +410,13 @@ def test_worker_usage_flush_preserves_stop_intent_from_a_newer_consumer_save(
 
 
 def test_stop_save_preserves_worker_usage_committed_after_its_cached_message_read(
-    case: RecoveryCase, monkeypatch: pytest.MonkeyPatch
+    case: RecoveryCase, monkeypatch: pytest.MonkeyPatch, app_records: AppGenerationRepository
 ) -> None:
-    from core.app.apps.agent_app.app_runner import AgentAppRunner
+    from clients.agent_backend import FakeAgentBackendRunClient
     from graphon.model_runtime.entities.llm_entities import LLMUsage
+    from services.app.generation.adapters.agent_runner import AgentAppRunner
+    from services.app.generation.ports import MessageIdentity
+    from tests.unit_tests.core.app.apps.agent_app.test_app_runner import _FakeSessionStore, _runner
 
     with case.collection.sessions.begin() as session:
         initial = session.get(Message, case.collection.run.source_id)
@@ -410,8 +427,14 @@ def test_stop_save_preserves_worker_usage_committed_after_its_cached_message_rea
         cached = consumer.get(Message, case.collection.run.source_id)
         assert cached is not None
         assert cached.message_tokens == 0
-        AgentAppRunner._persist_message_usage(
-            message_id=cached.id,
+        runner: AgentAppRunner = _runner(FakeAgentBackendRunClient(), _FakeSessionStore(), app_records=app_records)
+        runner._persist_message_usage(
+            identity=MessageIdentity(
+                case.collection.run.tenant_id,
+                case.collection.run.app_id,
+                cached.conversation_id,
+                cached.id,
+            ),
             usage=LLMUsage.from_metadata({"prompt_tokens": 13, "completion_tokens": 8, "total_price": "0.21"}),
         )
         save_agent_stop(case, monkeypatch, "partial answer", consumer_session=consumer)

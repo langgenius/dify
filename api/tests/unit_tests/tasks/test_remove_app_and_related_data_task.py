@@ -11,12 +11,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import tasks.remove_app_and_related_data_task as remove_app_task_module
 from enums import DeploymentEdition
+from enums.agent import WorkflowAgentBindingType
 from extensions.ext_application_services import ApplicationServices
 from graphon.enums import WorkflowExecutionStatus
 from graphon.variables.segments import StringSegment
 from libs.archive_storage import ArchiveStorageNotConfiguredError
 from models import AppStar
-from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent import WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowArchiveLog, WorkflowDraftVariable
 from services.network_access_group_service import NetworkAccessGroupUpstreamError

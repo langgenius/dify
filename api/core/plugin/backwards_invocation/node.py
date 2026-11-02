@@ -34,7 +34,6 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         :param query: str
         :return: dict
         """
-        # FIXME(-LAN-): Avoid import service into core
         workflow_service = WorkflowService()
         node_id = "1919810"
         node_data = ParameterExtractorNodeData(
@@ -85,7 +84,6 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         :param query: str
         :return: dict
         """
-        # FIXME(-LAN-): Avoid import service into core
         workflow_service = WorkflowService()
         node_id = "1919810"
         node_data = QuestionClassifierNodeData(

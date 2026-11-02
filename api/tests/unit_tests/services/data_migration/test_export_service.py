@@ -98,10 +98,13 @@ def test_export_config_parser_rejects_unsupported_app_modes():
         )
 
 
-def test_secret_free_api_tool_export_uses_masking_and_omits_credentials(monkeypatch: pytest.MonkeyPatch):
+def test_secret_free_api_tool_export_uses_masking_and_omits_credentials(
+    monkeypatch: pytest.MonkeyPatch, *, workflow_tools, tool_providers
+):
     calls = []
 
-    def fake_get_api_provider(provider: str, tenant_id: str, mask: bool = True):
+    def fake_get_api_provider(provider: str, tenant_id: str, mask: bool = True, *, tool_providers):
+        assert tool_providers is service._tool_providers
         calls.append((provider, tenant_id, mask))
         return {"credentials": {"api_key": "masked"}, "schema": {"openapi": "3.0.0"}, "tools": ["unused"]}
 
@@ -109,7 +112,7 @@ def test_secret_free_api_tool_export_uses_masking_and_omits_credentials(monkeypa
         "services.data_migration.export_service.ToolManager.user_get_api_provider",
         fake_get_api_provider,
     )
-    service = MigrationExportService()
+    service = MigrationExportService(workflow_tools=workflow_tools, tool_providers=tool_providers)
     tools: list[dict] = []
     report_items = []
 
@@ -127,8 +130,8 @@ def test_secret_free_api_tool_export_uses_masking_and_omits_credentials(monkeypa
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_secret_free_mcp_dependencies_are_dependency_only(sqlite_session: Session):
-    service = MigrationExportService()
+def test_secret_free_mcp_dependencies_are_dependency_only(sqlite_session: Session, *, workflow_tools, tool_providers):
+    service = MigrationExportService(workflow_tools=workflow_tools, tool_providers=tool_providers)
     dependencies: list[dict] = []
     mcp_tools: list[dict] = []
     report_items = []
@@ -158,7 +161,9 @@ def test_secret_free_mcp_dependencies_are_dependency_only(sqlite_session: Sessio
 
 
 @pytest.mark.parametrize("sqlite_session", [(MCPToolProvider,)], indirect=True)
-def test_get_mcp_provider_does_not_compare_non_uuid_identifier_to_uuid_id(sqlite_session: Session):
+def test_get_mcp_provider_does_not_compare_non_uuid_identifier_to_uuid_id(
+    sqlite_session: Session, *, workflow_tools, tool_providers
+):
     sqlite_session.add(
         MCPToolProvider(
             name="Other tenant provider",
@@ -184,7 +189,9 @@ def test_get_mcp_provider_does_not_compare_non_uuid_identifier_to_uuid_id(sqlite
 
     try:
         with pytest.raises(MigrationDataError, match="MCP provider not found"):
-            MigrationExportService()._get_mcp_provider(_TENANT_ID, "my-test-mcp", session=sqlite_session)
+            MigrationExportService(workflow_tools=workflow_tools, tool_providers=tool_providers)._get_mcp_provider(
+                _TENANT_ID, "my-test-mcp", session=sqlite_session
+            )
     finally:
         event.remove(bind, "before_cursor_execute", capture_statement)
 
@@ -193,8 +200,8 @@ def test_get_mcp_provider_does_not_compare_non_uuid_identifier_to_uuid_id(sqlite
     assert "tool_mcp_providers.server_identifier =" in statements[0]
 
 
-def test_dependency_ids_are_deduplicated_with_manual_selection_first():
-    service = MigrationExportService()
+def test_dependency_ids_are_deduplicated_with_manual_selection_first(*, workflow_tools, tool_providers):
+    service = MigrationExportService(workflow_tools=workflow_tools, tool_providers=tool_providers)
     provider_ids = service._provider_ids(
         manual_provider_ids=["weather", "weather", "manual"],
         discovered_dependencies=[
@@ -208,8 +215,8 @@ def test_dependency_ids_are_deduplicated_with_manual_selection_first():
     assert provider_ids == ["weather", "manual", "forecast"]
 
 
-def test_api_provider_ids_use_provider_name_from_discovered_dependencies():
-    service = MigrationExportService()
+def test_api_provider_ids_use_provider_name_from_discovered_dependencies(*, workflow_tools, tool_providers):
+    service = MigrationExportService(workflow_tools=workflow_tools, tool_providers=tool_providers)
     provider_ids = service._provider_ids(
         manual_provider_ids=[],
         discovered_dependencies=[
@@ -221,8 +228,8 @@ def test_api_provider_ids_use_provider_name_from_discovered_dependencies():
     assert provider_ids == ["weather"]
 
 
-def test_mcp_authentication_export_omits_runtime_header_shape():
-    service = MigrationExportService()
+def test_mcp_authentication_export_omits_runtime_header_shape(*, workflow_tools, tool_providers):
+    service = MigrationExportService(workflow_tools=workflow_tools, tool_providers=tool_providers)
 
     assert service._serialize_mcp_authentication({"Authorization": "Bearer token"}) is None
     assert service._serialize_mcp_authentication({"client_id": "id", "client_secret": "secret"}) == {

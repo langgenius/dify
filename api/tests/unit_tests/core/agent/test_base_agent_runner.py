@@ -22,6 +22,7 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     InvokeFrom,
+    UserFrom,
 )
 from core.model_manager import ModelInstance
 from core.tools.__base.tool import Tool
@@ -720,6 +721,36 @@ def test_convert_tool_to_prompt_message_tool(runner: BaseAgentRunner, mocker: Mo
 
     assert entity is tool_entity
     assert prompt_tool.parameters == schema
+
+
+@pytest.mark.parametrize(
+    ("invoke_from", "expected_user_from"),
+    [
+        (InvokeFrom.DEBUGGER, UserFrom.ACCOUNT),
+        (InvokeFrom.SERVICE_API, UserFrom.END_USER),
+    ],
+)
+def test_convert_tool_to_prompt_message_tool_attaches_run_context(
+    runner: BaseAgentRunner,
+    mocker: MockerFixture,
+    invoke_from: InvokeFrom,
+    expected_user_from: UserFrom,
+) -> None:
+    runner.application_generate_entity.invoke_from = invoke_from
+    tool_entity = _tool("tool1", [])
+    mocker.patch.object(module.ToolManager, "get_agent_tool_runtime", return_value=tool_entity)
+
+    _, converted = runner._convert_tool_to_prompt_message_tool(_agent_tool("tool1"))
+
+    run_context = converted.runtime.dify_run_context
+    assert run_context is not None
+    assert (
+        run_context.tenant_id,
+        run_context.app_id,
+        run_context.user_id,
+        run_context.user_from,
+        run_context.invoke_from,
+    ) == ("tenant", "app1", "user", expected_user_from, invoke_from)
 
 
 def test_convert_dataset_retriever_tool(

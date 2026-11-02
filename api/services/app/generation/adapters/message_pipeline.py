@@ -324,9 +324,19 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
                     # A cancelled Agent can report authoritative usage after the SSE
                     # stream stops. The repository preserves it atomically with the answer.
-                    self._save_message(
+                    saved_message = self._save_message(
                         trace_manager=trace_manager, preserve_existing_usage=isinstance(event, QueueStopEvent)
                     )
+                    if (
+                        isinstance(event, QueueStopEvent)
+                        and self._application_generate_entity.app_config.app_mode == AppMode.AGENT
+                    ):
+                        # Provider/billing subscribers may perform external I/O.
+                        # The repository has released the stop-save row lock before this notification.
+                        message_was_created.send(
+                            saved_message,
+                            application_generate_entity=self._application_generate_entity,
+                        )
                     message_end_resp = self._message_end_to_stream_response()
                     yield message_end_resp
                 case QueueRetrieverResourcesEvent():
@@ -423,11 +433,19 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         *,
         trace_manager: TraceQueueManager | None = None,
         preserve_existing_usage: bool = False,
-    ):
+    ) -> Message:
         llm_result = self._task_state.llm_result
         usage = llm_result.usage
         usage.latency = time.perf_counter() - self.start_at
         self._task_state.metadata.usage = usage
+        agent_stop_requested = (
+            preserve_existing_usage and self._application_generate_entity.app_config.app_mode == AppMode.AGENT
+        )
+        metadata = self._task_state.metadata.model_dump(mode="json")
+        if agent_stop_requested:
+            # Closing the consumer records a request, not a runtime outcome.
+            # The Agent worker owns the terminal after cancellation/cleanup.
+            metadata["agent_stop_requested"] = True
         saved = self._records.save_message(
             self._identity,
             MessageUpdate(
@@ -437,7 +455,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     else ""
                 ),
                 latency=usage.latency,
-                metadata=self._task_state.metadata.model_dump(mode="json"),
+                metadata=metadata,
                 files=[],
                 usage=usage,
                 prompt=PromptMessageUtil.prompt_messages_to_prompt_for_saving(
@@ -449,7 +467,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         metadata = json.loads(saved.message_metadata) if saved.message_metadata else {}
         if "usage" in metadata:
             self._task_state.llm_result.usage = LLMUsage.from_metadata(metadata["usage"])
-        if trace_manager:
+        if trace_manager and not agent_stop_requested:
             trace_manager.add_trace_task(
                 TraceTask(
                     TraceTaskName.MESSAGE_TRACE,
@@ -459,7 +477,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 )
             )
         # Consumers observe a committed, detached message.
-        message_was_created.send(saved, application_generate_entity=self._application_generate_entity)
+        if not agent_stop_requested:
+            message_was_created.send(saved, application_generate_entity=self._application_generate_entity)
+        return saved
 
     def _handle_stop(self, event: QueueStopEvent):
         """

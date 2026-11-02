@@ -2,28 +2,34 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager
-from unittest.mock import MagicMock, patch
+from dataclasses import dataclass
+from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
 from flask import Flask
 from redis.exceptions import LockNotOwnedError, RedisError
 from redis.lock import Lock
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.inner_api import bp as inner_api_bp
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
 from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.tool_manager import ToolManager
 from extensions.application_services.tools import resolve_tool_credentials
+from extensions.application_services.workflow import build_workflow_execution_dependencies
 from extensions.ext_redis import RedisClientWrapper
 from models.model import App, AppMode
 from models.tools import BuiltinToolProvider
+from repositories.app.agent_app_repository import AgentAppRepository
+from services.agent.tool_invocation_service import AgentToolInnerService
 from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.credentials.tool_runtime import ToolCredentialRefreshError
 from services.credentials.tool_runtime_adapters import ProviderToolCredentialRuntime
-from services.entities.agent_tool_inner import AgentToolInvokeResponse
+from services.entities.agent_tool_inner import AgentToolInvokeRequest, AgentToolInvokeResponse
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
+from services.tools.agent_invocation_gateway import AgentToolInvocationGateway
+from services.tools.tool_manager import ToolManager
+from services.workflow.variable_contracts import WorkflowExecutionVariables
 from tests.helpers.unit.config_override import config_overrides_context
 
 
@@ -35,6 +41,7 @@ def _headers(api_key: str | None = "inner-key") -> dict[str, str]:
 
 
 def _payload(*, provider_type: str = "plugin", credential_id: str | None = "credential-1") -> dict[str, object]:
+    """Accept a provider selection and return a valid trusted-caller request payload without external effects."""
     return {
         "caller": {
             "tenant_id": "tenant-1",
@@ -69,6 +76,24 @@ def _agent_inner_auth() -> Generator[None]:
         yield
 
 
+@dataclass(frozen=True)
+class _AgentApps:
+    tools: AgentToolInnerService
+
+
+@dataclass(frozen=True)
+class _ApplicationServices:
+    agent_apps: _AgentApps
+
+
+@contextmanager
+def _tool_service() -> Generator[Mock]:
+    service = create_autospec(AgentToolInnerService, instance=True, spec_set=True)
+    services = _ApplicationServices(agent_apps=_AgentApps(tools=service))
+    with patch("controllers.inner_api.agent.tools.application_services", return_value=services):
+        yield service.invoke
+
+
 def test_post_returns_service_response() -> None:
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -76,7 +101,7 @@ def test_post_returns_service_response() -> None:
 
     with (
         _agent_inner_auth(),
-        patch("controllers.inner_api.agent.tools.AgentToolInnerService.invoke") as mock_invoke,
+        _tool_service() as mock_invoke,
     ):
         mock_invoke.return_value = AgentToolInvokeResponse(
             messages=[{"type": "text", "message": {"text": "ok"}}],
@@ -94,6 +119,7 @@ def test_post_returns_service_response() -> None:
     body = response.get_json()
     assert body["observation"] == "ok"
     assert body["metadata"]["provider_type"] == "plugin"
+    mock_invoke.assert_called_once_with(request=AgentToolInvokeRequest.model_validate(_payload()))
 
 
 def test_post_returns_400_for_invalid_body() -> None:
@@ -120,7 +146,7 @@ def test_post_preserves_service_error_status_code_and_description() -> None:
 
     with (
         _agent_inner_auth(),
-        patch("controllers.inner_api.agent.tools.AgentToolInnerService.invoke") as mock_invoke,
+        _tool_service() as mock_invoke,
     ):
         mock_invoke.side_effect = AgentToolInnerServiceError(
             error_code="app_tenant_mismatch",
@@ -139,15 +165,28 @@ def test_post_preserves_service_error_status_code_and_description() -> None:
     assert body["message"] == "App does not belong to the caller tenant."
 
 
+@pytest.mark.parametrize("api_key", [None, "incorrect-key"])
+def test_post_rejects_untrusted_callers_before_service_invocation(api_key: str | None) -> None:
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.register_blueprint(inner_api_bp)
+    with _agent_inner_auth(), _tool_service() as invoke:
+        response = app.test_client().post("/inner/api/agent/tools/invoke", json=_payload(), headers=_headers(api_key))
+    assert response.status_code == 404
+    invoke.assert_not_called()
+
+
 @pytest.mark.parametrize("credential_id", [None, "1a1db43c-e9d8-4ef2-af8f-38b25424a4ad"])
 @pytest.mark.parametrize("failure", ["busy", "redis", "lost", "rejected"])
-def test_post_preserves_refresh_error_classification_through_real_credential_resolution(
+def test_post_preserves_refresh_error_classification_through_runtime_ports(
     sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
     redis_transport: tuple[RedisClientWrapper, MagicMock],
     monkeypatch: pytest.MonkeyPatch,
     credential_id: str | None,
     failure: str,
 ) -> None:
+    """Given an admitted Agent caller, preserve credential errors and stored credentials through the runtime ports."""
     provider_id = "langgenius/search/search"
     credential = BuiltinToolProvider(
         tenant_id="tenant-1",
@@ -209,6 +248,15 @@ def test_post_preserves_refresh_error_classification_through_real_credential_res
         plugin_unique_identifier="langgenius/search:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         tenant_id="tenant-1",
     )
+    variables = create_autospec(WorkflowExecutionVariables, instance=True, spec_set=True)
+    service = AgentToolInnerService(
+        apps=AgentAppRepository(session_factory=sqlite_session_factory),
+        tools=AgentToolInvocationGateway(
+            variables=variables,
+            runtime=build_workflow_execution_dependencies(sqlite_session_factory),
+        ),
+    )
+    services = _ApplicationServices(agent_apps=_AgentApps(tools=service))
     redis, _ = redis_transport
     monkeypatch.setattr("extensions.application_services.tools.redis_client", redis)
     monkeypatch.setattr("core.helper.provider_cache.redis_client", redis)
@@ -220,8 +268,9 @@ def test_post_preserves_refresh_error_classification_through_real_credential_res
 
     with (
         _agent_inner_auth(),
+        patch("controllers.inner_api.agent.tools.application_services", return_value=services),
         patch.object(ToolManager, "get_builtin_provider", return_value=controller),
-        patch("core.helper.credential_utils.check_credential_policy_compliance"),
+        patch("services.credentials.tool_runtime_adapters.runtime_check_credential_policy_compliance"),
         patch.object(
             Lock,
             "acquire",
