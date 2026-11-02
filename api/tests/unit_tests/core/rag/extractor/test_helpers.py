@@ -1,4 +1,3 @@
-import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -10,6 +9,49 @@ from core.rag.extractor.helpers import detect_file_encodings
 
 
 class TestHelpers:
+    @pytest.mark.parametrize("encoding", ["gbk", "gb18030", "big5", "utf-8"])
+    @pytest.mark.parametrize("sample_size", [4096, 1024 * 1024])
+    def test_detect_encoding_with_incomplete_sample_character(
+        self, tmp_path: Path, encoding: str, sample_size: int
+    ) -> None:
+        text = "知識文件需要正確保留文字內容。" * (sample_size // 10 + 1)
+        data = text.encode(encoding)
+        # End the sample after the first byte of a multibyte character.
+        prefix_size = (sample_size - 1) % len("知".encode(encoding))
+        data = b"\n" * prefix_size + data
+        file_path = tmp_path / "sample.txt"
+        file_path.write_bytes(data)
+
+        encodings = detect_file_encodings(str(file_path), sample_size=sample_size)
+
+        detected_encoding = encodings[0].encoding
+        assert detected_encoding is not None
+        assert data.decode(detected_encoding) == "\n" * prefix_size + text
+
+    def test_incomplete_character_at_file_end_is_not_repaired(self, tmp_path: Path) -> None:
+        file_path = tmp_path / "incomplete.txt"
+        file_path.write_bytes(("知識文件需要正確保留文字內容。\n" * 300).encode("utf-8") + b"\xe4")
+
+        with pytest.raises(RuntimeError, match="Could not detect encoding"):
+            detect_file_encodings(str(file_path))
+
+    @pytest.mark.parametrize("encoding", ["gb18030", "utf-8"])
+    @pytest.mark.parametrize("incomplete_bytes", [1, 2, 3])
+    def test_sample_ending_inside_four_byte_character(
+        self, tmp_path: Path, encoding: str, incomplete_bytes: int
+    ) -> None:
+        prefix = "知識文件需要正確保留文字內容。" * 300
+        text = prefix + "😀" + prefix
+        data = text.encode(encoding)
+        file_path = tmp_path / "four-byte.txt"
+        file_path.write_bytes(data)
+
+        encodings = detect_file_encodings(str(file_path), sample_size=len(prefix.encode(encoding)) + incomplete_bytes)
+
+        detected_encoding = encodings[0].encoding
+        assert detected_encoding is not None
+        assert data.decode(detected_encoding) == text
+
     @pytest.mark.parametrize(("sample_size", "file_size"), [(None, 1_200_000), (4096, 140_000), (4096, 12)])
     def test_detect_file_encodings_bounds_read(self, tmp_path: Path, sample_size: int | None, file_size: int):
         file_path = tmp_path / "sample.txt"
@@ -44,12 +86,10 @@ class TestHelpers:
         assert byte_counts == [min(file_size, expected_limit)]
         assert encodings[0].encoding == "ascii"
 
-    def test_detect_file_encodings(self) -> None:
-        with tempfile.NamedTemporaryFile(mode="w+t", suffix=".txt") as temp:
-            temp.write("Shared data")
-            temp.flush()
-            temp_path = temp.name
-            encodings = detect_file_encodings(temp_path)
+    def test_detect_file_encodings(self, tmp_path: Path) -> None:
+        file_path = tmp_path / "sample.txt"
+        file_path.write_text("Shared data", encoding="utf-8")
+        encodings = detect_file_encodings(str(file_path))
 
         assert len(encodings) == 1
         assert encodings[0].encoding in {"utf_8", "ascii"}

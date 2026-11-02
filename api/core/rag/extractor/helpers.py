@@ -28,13 +28,23 @@ def detect_file_encodings(file_path: str, timeout: int = 5, sample_size: int = 1
         timeout: The timeout in seconds for the encoding detection.
         sample_size: The number of bytes to read for encoding detection. Default is 1MB.
                     For large files, reading only a sample is sufficient and prevents timeout.
+
+    The sample size must be positive. If a bounded sample has no match, retry
+    without up to three trailing bytes that may belong to an incomplete character.
+    Never trim a sample that reaches EOF. File and detection failures propagate;
+    no match raises RuntimeError and a detection timeout raises TimeoutError.
     """
 
     def read_and_detect(filename: str):
         with open(filename, "rb") as file:
             sample = file.read(sample_size)
+            truncated = file.seek(0, 2) > len(sample)
         rst = charset_normalizer.from_bytes(sample)
         best = rst.best()
+        trimmed = 0
+        while best is None and truncated and trimmed < min(3, len(sample) - 1):
+            trimmed += 1
+            best = charset_normalizer.from_bytes(sample[:-trimmed]).best()
         if best is None:
             return []
         file_encoding = FileEncoding(encoding=best.encoding, confidence=best.coherence, language=best.language)

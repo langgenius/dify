@@ -8,6 +8,19 @@ from core.rag.extractor.text_extractor import TextExtractor
 
 
 class TestTextExtractor:
+    @pytest.mark.parametrize("encoding", ["gbk", "gb18030", "big5"])
+    def test_extract_autodetect_with_incomplete_sample_character(self, tmp_path: Path, encoding: str) -> None:
+        file_path = tmp_path / "multibyte.txt"
+        content = "\n" + "知識文件需要正確保留文字內容。" * 50_000
+        file_path.write_bytes(content.encode(encoding))
+        assert file_path.stat().st_size > 1024 * 1024
+
+        docs = TextExtractor(str(file_path), encoding="utf-8", autodetect_encoding=True).extract()
+
+        assert len(docs) == 1
+        assert docs[0].page_content == content
+        assert docs[0].metadata == {"source": str(file_path)}
+
     def test_extract_autodetect_preserves_full_file_beyond_sample(self, tmp_path: Path) -> None:
         file_path = tmp_path / "large.txt"
         content = "Document text\n" * 50_000 + "End of document"
