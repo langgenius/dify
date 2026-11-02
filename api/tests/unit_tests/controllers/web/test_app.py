@@ -110,12 +110,26 @@ class TestAppParameterApi:
 
         def get_web_parameters(app_id: str, tenant_id: str) -> WebAppParametersDict:
             calls.append((app_id, tenant_id))
-            return {
-                **get_parameters_from_feature_dict(features_dict={"opening_statement": "Hello"}, user_input_form=[]),
-                "connection_revision": None,
-                "requires_end_user_connections": False,
-                "connection_requirements": (),
-            }
+            parameters = get_parameters_from_feature_dict(
+                features_dict={"opening_statement": "Hello"}, user_input_form=[]
+            )
+            return WebAppParametersDict(
+                opening_statement=parameters["opening_statement"],
+                suggested_questions=parameters["suggested_questions"],
+                suggested_questions_after_answer=parameters["suggested_questions_after_answer"],
+                speech_to_text=parameters["speech_to_text"],
+                text_to_speech=parameters["text_to_speech"],
+                retriever_resource=parameters["retriever_resource"],
+                annotation_reply=parameters["annotation_reply"],
+                more_like_this=parameters["more_like_this"],
+                user_input_form=parameters["user_input_form"],
+                sensitive_word_avoidance=parameters["sensitive_word_avoidance"],
+                file_upload=parameters["file_upload"],
+                system_parameters=parameters["system_parameters"],
+                connection_revision=None,
+                requires_end_user_connections=False,
+                connection_requirements=(),
+            )
 
         monkeypatch.setattr(
             real_application_services.app_definitions,

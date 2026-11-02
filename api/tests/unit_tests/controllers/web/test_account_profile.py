@@ -3,15 +3,18 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskClient
 
 from controllers.web import bp, login, wraps
 from machinery.context import AccountRequestContext
 from models.model import App, EndUser
 from services.account_errors import AccountNotFoundError
 
+type ProfileClient = tuple[FlaskClient, EndUser, Mock]
+
 
 @pytest.fixture
-def profile_client(monkeypatch: pytest.MonkeyPatch):
+def profile_client(monkeypatch: pytest.MonkeyPatch) -> ProfileClient:
     app_model = App(tenant_id="tenant-1")
     end_user = EndUser(account_id="account-1")
     profile = Mock()
@@ -25,7 +28,9 @@ def profile_client(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.parametrize("avatar", [None, "https://example.com/avatar.png", "file-id"])
-def test_profile_returns_console_avatar_fields(profile_client, monkeypatch: pytest.MonkeyPatch, avatar: str | None):
+def test_profile_returns_console_avatar_fields(
+    profile_client: ProfileClient, monkeypatch: pytest.MonkeyPatch, avatar: str | None
+) -> None:
     client, _, profile = profile_client
     profile.get.return_value = SimpleNamespace(name="Alice", avatar=avatar, email="private@example.com")
     monkeypatch.setattr(login, "build_avatar_url", lambda value: f"signed:{value}" if value == "file-id" else value)
@@ -44,7 +49,7 @@ def test_profile_returns_console_avatar_fields(profile_client, monkeypatch: pyte
     assert context.account_id == "account-1"
 
 
-def test_anonymous_profile_requires_account(profile_client):
+def test_anonymous_profile_requires_account(profile_client: ProfileClient) -> None:
     client, end_user, profile = profile_client
     end_user.account_id = None
 
@@ -52,7 +57,7 @@ def test_anonymous_profile_requires_account(profile_client):
     profile.get.assert_not_called()
 
 
-def test_deleted_account_requires_login(profile_client):
+def test_deleted_account_requires_login(profile_client: ProfileClient) -> None:
     client, _, profile = profile_client
     profile.get.side_effect = AccountNotFoundError
 
