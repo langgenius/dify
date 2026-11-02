@@ -132,6 +132,85 @@ def load_document_read_batch(documents: Sequence[Document], *, session: Session)
     )
 
 
+@dataclass(frozen=True)
+class SegmentReadBatch:
+    child_chunks: dict[str, list[ChildChunk]] = field(default_factory=dict)
+    attachments: dict[str, list[UploadFile]] = field(default_factory=dict)
+
+
+def load_segment_read_batch(segments: Sequence[DocumentSegment], *, session: Session) -> SegmentReadBatch:
+    if not segments:
+        return SegmentReadBatch()
+    document_owners = list({(s.tenant_id, s.dataset_id, s.document_id) for s in segments})
+    documents = {
+        document.id: document
+        for document in session.scalars(
+            select(Document).where(tuple_(Document.tenant_id, Document.dataset_id, Document.id).in_(document_owners))
+        )
+    }
+    rule_owners = {
+        (doc.dataset_process_rule_id, doc.dataset_id) for doc in documents.values() if doc.dataset_process_rule_id
+    }
+    process_rules = (
+        {
+            rule.id: rule
+            for rule in session.scalars(
+                select(DatasetProcessRule).where(
+                    tuple_(DatasetProcessRule.id, DatasetProcessRule.dataset_id).in_(rule_owners)
+                )
+            )
+        }
+        if rule_owners
+        else {}
+    )
+    child_document_ids: set[str] = set()
+    for document in documents.values():
+        if not document.dataset_process_rule_id:
+            continue
+        process_rule = process_rules.get(document.dataset_process_rule_id)
+        if process_rule and process_rule.mode == "hierarchical":
+            rules_dict = process_rule.rules_dict
+            if rules_dict:
+                rules = Rule.model_validate(rules_dict)
+                if rules.parent_mode and rules.parent_mode != ParentMode.FULL_DOC:
+                    child_document_ids.add(document.id)
+
+    child_owners = [
+        (s.tenant_id, s.dataset_id, s.document_id, s.id) for s in segments if s.document_id in child_document_ids
+    ]
+    child_chunks: dict[str, list[ChildChunk]] = {}
+    if child_owners:
+        for chunk in session.scalars(
+            select(ChildChunk)
+            .where(
+                tuple_(ChildChunk.tenant_id, ChildChunk.dataset_id, ChildChunk.document_id, ChildChunk.segment_id).in_(
+                    child_owners
+                )
+            )
+            .order_by(ChildChunk.position.asc())
+        ):
+            child_chunks.setdefault(chunk.segment_id, []).append(chunk)
+
+    attachment_owners = [(s.tenant_id, s.dataset_id, s.document_id, s.id) for s in segments]
+    attachments: dict[str, list[UploadFile]] = {}
+    for segment_id, file in session.execute(
+        select(SegmentAttachmentBinding.segment_id, UploadFile)
+        .join(SegmentAttachmentBinding, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+        .where(
+            tuple_(
+                SegmentAttachmentBinding.tenant_id,
+                SegmentAttachmentBinding.dataset_id,
+                SegmentAttachmentBinding.document_id,
+                SegmentAttachmentBinding.segment_id,
+            ).in_(attachment_owners),
+            UploadFile.tenant_id == SegmentAttachmentBinding.tenant_id,
+        )
+    ):
+        attachments.setdefault(segment_id, []).append(file)
+
+    return SegmentReadBatch(child_chunks=child_chunks, attachments=attachments)
+
+
 def get_segment_content_file_ids(
     segment: DocumentSegment, *, upload_ids: set[str], tool_ids: set[str], session: Session
 ) -> tuple[set[str], set[str]]:

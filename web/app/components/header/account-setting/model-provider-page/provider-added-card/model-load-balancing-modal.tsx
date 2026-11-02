@@ -178,7 +178,9 @@ const ModelLoadBalancingModal = ({
     [extendedSecretFormSchemas, originalConfigMap],
   )
   const { mutateAsync: updateModelLoadBalancingConfig } = useMutation(
-    consoleQuery.workspaces.current.modelProviders.byProvider.models.post.mutationOptions(),
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const initialCustomModelCredential = useMemo(() => {
     if (!current_credential_id) return undefined

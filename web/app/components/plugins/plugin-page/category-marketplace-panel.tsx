@@ -3,6 +3,7 @@
 import type { PluginsSearchParams } from '@dify/contracts/marketplace'
 import type { Plugin } from '../types'
 import type { EmbeddedMarketplaceCategory } from './category-marketplace'
+import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -13,7 +14,6 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import List from '@/app/components/plugins/marketplace/list'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
-import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import ProviderCard from '@/app/components/plugins/provider-card'
 import Link from '@/next/link'
@@ -23,10 +23,12 @@ import { getCategoryMarketplaceId } from './category-marketplace'
 const MARKETPLACE_PAGE_SIZE = 30
 
 const CategoryMarketplacePanel = ({
+  marketplace,
   category,
   searchText,
   tags = [],
 }: {
+  marketplace: MarketplaceLinks
   category: EmbeddedMarketplaceCategory
   searchText: string
   tags?: string[]
@@ -72,14 +74,24 @@ const CategoryMarketplacePanel = ({
     [data, installedPluginIds],
   )
 
-  const marketplaceLink = getMarketplaceCategoryUrl(category, { theme })
+  const marketplaceLink = marketplace.category(category, { theme })
   const showInstalledPluginIdsError = hasInstalledPluginIdsError && !hasLoadedInstalledPluginIds
   const showLoading = isLoadingInstalledPluginIds || !!(marketplaceSearchParams && isPending)
-  const cardRender = useCallback((plugin: Plugin) => {
-    if (plugin.type === 'bundle') return null
+  const cardRender = useCallback(
+    (plugin: Plugin) => {
+      if (plugin.type === 'bundle') return null
 
-    return <ProviderCard key={plugin.plugin_id} className="h-36.5" payload={plugin} />
-  }, [])
+      return (
+        <ProviderCard
+          key={plugin.plugin_id}
+          className="h-36.5"
+          marketplace={marketplace}
+          payload={plugin}
+        />
+      )
+    },
+    [marketplace],
+  )
 
   return (
     <section

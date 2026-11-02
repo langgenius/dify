@@ -16,6 +16,7 @@ from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from tests.e2e_tests.containers.controllers.console.helpers import ensure_dify_setup
 
 
@@ -86,7 +87,7 @@ def _create_workflow_run(db_session: Session, app_id: str, tenant_id: str, accou
         tenant_id=tenant_id,
         app_id=app_id,
         workflow_id=str(uuid.uuid4()),
-        type="chat",
+        type=ModelWorkflowType("chat"),
         triggered_from="app-run",
         version="1.0.0",
         graph=json.dumps({"nodes": [], "edges": []}),
@@ -98,8 +99,8 @@ def _create_workflow_run(db_session: Session, app_id: str, tenant_id: str, accou
         total_steps=0,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=account_id,
-        created_at=naive_utc_now(),
     )
+    workflow_run.created_at = naive_utc_now()
     db_session.add(workflow_run)
     db_session.commit()
     return workflow_run

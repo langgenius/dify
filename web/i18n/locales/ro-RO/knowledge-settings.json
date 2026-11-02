@@ -16,6 +16,8 @@
   "settings.membersRequired": "Selectează cel puțin un membru al echipei.",
   "settings.nameRequired": "Numele bazei de cunoștințe Agent este obligatoriu.",
   "settings.pageDescription": "Gestionați informațiile de bază, accesul API și regăsirea.",
+  "settings.reasoningChangeConfirm": "Confirmați schimbarea",
+  "settings.reasoningChangeWarning": "Schimbarea modelului de raționament al sistemului va duce la reprocesarea documentelor indexate și la actualizarea indexurilor lor de recuperare. Acest proces durează și generează costuri suplimentare de utilizare a modelului.",
   "settings.reloadLatest": "Reîncărcați setările actuale",
   "settings.rerankModelRequired": "Selectați un model de rerangare.",
   "settings.retrievalDepth": "Adâncimea regăsirii",

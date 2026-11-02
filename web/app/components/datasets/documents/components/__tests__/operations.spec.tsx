@@ -445,7 +445,7 @@ describe('Operations', () => {
       })
       await user.click(archiveButton)
       await waitFor(() => {
-        expect(screen.getByText('common.actionMsg.modifiedUnsuccessfully')).toBeInTheDocument()
+        expect(screen.getByText('API Error')).toBeInTheDocument()
         expect(mockOnUpdate).not.toHaveBeenCalled()
       })
     })
@@ -460,7 +460,7 @@ describe('Operations', () => {
       })
       await user.click(downloadButton)
       await waitFor(() => {
-        expect(screen.getByText('common.actionMsg.downloadUnsuccessfully')).toBeInTheDocument()
+        expect(screen.getByText('Download Error')).toBeInTheDocument()
         expect(downloads).toEqual([])
       })
     })

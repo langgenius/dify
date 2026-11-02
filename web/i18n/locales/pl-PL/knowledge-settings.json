@@ -16,6 +16,8 @@
   "settings.membersRequired": "Wybierz co najmniej jednego członka zespołu.",
   "settings.nameRequired": "Nazwa bazy wiedzy Agent jest wymagana.",
   "settings.pageDescription": "Zarządzaj podstawowymi informacjami, dostępem do API i pobieraniem.",
+  "settings.reasoningChangeConfirm": "Potwierdź zmianę",
+  "settings.reasoningChangeWarning": "Zmiana modelu wnioskowania systemowego spowoduje ponowne przetworzenie zindeksowanych dokumentów i aktualizację ich indeksów wyszukiwania. Zajmuje to czas i wiąże się z dodatkowymi kosztami korzystania z modelu.",
   "settings.reloadLatest": "Wczytaj aktualne ustawienia",
   "settings.rerankModelRequired": "Wybierz model ponownego rankingu.",
   "settings.retrievalDepth": "Głębokość wyszukiwania",

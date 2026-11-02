@@ -16,6 +16,8 @@
   "settings.membersRequired": "اختر عضوًا واحدًا على الأقل من الفريق.",
   "settings.nameRequired": "اسم قاعدة معرفة Agent مطلوب.",
   "settings.pageDescription": "إدارة المعلومات الأساسية والوصول إلى API والاسترجاع.",
+  "settings.reasoningChangeConfirm": "تأكيد التغيير",
+  "settings.reasoningChangeWarning": "سيؤدي تغيير نموذج الاستدلال للنظام إلى إعادة معالجة المستندات المفهرسة وتحديث فهارس الاسترجاع الخاصة بها. يستغرق ذلك وقتًا وتترتب عليه تكاليف إضافية لاستخدام النموذج.",
   "settings.reloadLatest": "إعادة تحميل أحدث الإعدادات",
   "settings.rerankModelRequired": "اختر نموذج إعادة ترتيب.",
   "settings.retrievalDepth": "عمق الاسترجاع",

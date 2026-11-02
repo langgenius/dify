@@ -1,6 +1,7 @@
 import type { ESLint } from 'eslint'
 import consistentPlaceholders from './rules/consistent-placeholders.ts'
 import i18nFlatKey from './rules/i18n-flat-key.ts'
+import marketplaceBoundary from './rules/marketplace-boundary.ts'
 import noExtraKeys from './rules/no-extra-keys.ts'
 import noFileWideDisable from './rules/no-file-wide-disable.ts'
 import preferTailwindIcons from './rules/prefer-tailwind-icons.ts'
@@ -17,6 +18,7 @@ const plugin: ESLint.Plugin = {
   rules: {
     'consistent-placeholders': consistentPlaceholders,
     'i18n-flat-key': i18nFlatKey,
+    'marketplace-boundary': marketplaceBoundary,
     'no-extra-keys': noExtraKeys,
     'no-file-wide-disable': noFileWideDisable,
     'prefer-tailwind-icons': preferTailwindIcons,

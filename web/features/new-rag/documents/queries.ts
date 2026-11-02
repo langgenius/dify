@@ -1,14 +1,20 @@
+import type { DocumentFilter } from './query-state'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { taskGraphIsActive } from './model'
 import { backgroundTaskFromApi } from './models'
 import { TASK_PAGE_SIZE } from './tasks/recovery'
 
-export function logicalDocumentsInfiniteOptions(knowledgeSpaceId: string) {
+export function logicalDocumentsInfiniteOptions(
+  knowledgeSpaceId: string,
+  { search = '', filter = 'all' }: { search?: string; filter?: DocumentFilter } = {},
+) {
   return consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.infiniteOptions({
     input: (pageParam) => ({
       params: { control_space_id: knowledgeSpaceId },
       query: {
+        ...(search.trim() ? { query: search.trim() } : {}),
+        ...(filter !== 'all' ? { status: filter } : {}),
         ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
       },
     }),

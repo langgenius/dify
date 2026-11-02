@@ -9,8 +9,8 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from redis import Redis
+from sqlalchemy import Connection, ExecutionContext, event
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Unauthorized
 
 import services.api_token_service as api_token_service_module
 from extensions.ext_redis import RedisClientWrapper
@@ -22,6 +22,7 @@ from services.api_token_service import (
     CACHE_NULL_TTL_SECONDS,
     CACHE_TTL_SECONDS,
     ApiTokenCache,
+    ApiTokenInvalidError,
     CachedApiToken,
 )
 
@@ -335,18 +336,16 @@ class TestApiTokenServiceCases:
             mock_cache_set.assert_called_once()
             mock_record_usage.assert_called_once_with(token_value, "app")
 
-        def test_should_cache_null_and_raise_unauthorized_when_token_not_found(self, api_token_db: Session) -> None:
-            with (
-                patch.object(api_token_service_module.ApiTokenCache, "set") as mock_cache_set,
-                patch.object(api_token_service_module, "record_token_usage") as mock_record_usage,
-            ):
-                with pytest.raises(Unauthorized, match="Access token is invalid"):
-                    api_token_service_module.query_token_from_db(f"missing-{uuid4()}", "app")
+        def test_should_cache_null_and_raise_domain_error_when_token_not_found(
+            self, api_token_db: Session, single_flight_redis: tuple[Redis, list[tuple[object, ...]]]
+        ) -> None:
+            _client, commands = single_flight_redis
+            token_value = f"missing-{uuid4()}"
 
-            mock_cache_set.assert_called_once()
-            call_args = mock_cache_set.call_args[0]
-            assert call_args[2] is None  # cached None
-            mock_record_usage.assert_not_called()
+            with pytest.raises(ApiTokenInvalidError, match="Access token is invalid"):
+                api_token_service_module.query_token_from_db(token_value, "app")
+
+            assert commands == [("SETEX", f"api_token:app:{token_value}", CACHE_NULL_TTL_SECONDS, b"null")]
 
     class TestRecordTokenUsage:
         def test_should_write_active_key_with_iso_timestamp_and_ttl(self):
@@ -419,7 +418,9 @@ class TestApiTokenServiceCases:
 
         def execute(*args: object, **_kwargs: object) -> object:
             commands.append(args)
-            assert args[0] in {"SET", "EVALSHA"}
+            if args[0] == "GET":
+                return None
+            assert args[0] in {"SET", "SETEX", "EVALSHA"}
             return True
 
         with Redis() as client:
@@ -501,25 +502,48 @@ class TestApiTokenServiceCases:
             assert commands
             assert all(command[0] == "SET" for command in commands)
 
-        def test_should_reraise_unauthorized_from_db_query(
-            self, single_flight_redis: tuple[Redis, list[tuple[object, ...]]]
+        @pytest.mark.parametrize("stored_scope", [None, ApiTokenType.DATASET])
+        def test_invalid_token_should_release_lock_without_fallback_or_usage(
+            self,
+            api_token_db: Session,
+            single_flight_redis: tuple[Redis, list[tuple[object, ...]]],
+            stored_scope: ApiTokenType | None,
         ) -> None:
             auth_token = "token-123"
-            scope = "app"
             _client, commands = single_flight_redis
+            if stored_scope is not None:
+                token = _api_token(token_id=str(uuid4()), app_id=str(uuid4()), tenant_id=str(uuid4()), token=auth_token)
+                token.type = stored_scope
+                api_token_db.add(token)
+                api_token_db.commit()
 
-            with (
-                patch.object(api_token_service_module.ApiTokenCache, "get", return_value=None),
-                patch.object(
-                    api_token_service_module,
-                    "query_token_from_db",
-                    side_effect=Unauthorized("Access token is invalid"),
-                ),
-            ):
-                with pytest.raises(Unauthorized, match="Access token is invalid"):
-                    api_token_service_module.fetch_token_with_single_flight(auth_token, scope)
+            statements: list[str] = []
 
-            _assert_lock_released(commands)
+            def record_statement(
+                _connection: Connection,
+                _cursor: object,
+                statement: str,
+                _parameters: object,
+                _context: ExecutionContext,
+                _executemany: bool,
+            ) -> None:
+                statements.append(statement)
+
+            engine = db.engine
+            event.listen(engine, "before_cursor_execute", record_statement)
+            try:
+                with pytest.raises(ApiTokenInvalidError, match="Access token is invalid"):
+                    api_token_service_module.fetch_token_with_single_flight(auth_token, "app")
+            finally:
+                event.remove(engine, "before_cursor_execute", record_statement)
+
+            assert len(statements) == 1  # An invalid credential must not trigger the Redis failure DB fallback.
+            assert "FROM api_tokens" in statements[0]
+            assert [command[0] for command in commands] == ["SET", "GET", "SETEX", "EVALSHA"]
+            assert commands[2] == ("SETEX", f"api_token:app:{auth_token}", CACHE_NULL_TTL_SECONDS, b"null")
+            _assert_lock_released([commands[0], commands[-1]])
+            active_key = ApiTokenCache.make_active_key(auth_token, "app")
+            assert all(active_key not in command for command in commands)
 
         def test_should_fallback_to_db_query_when_lock_raises_exception(
             self, single_flight_redis: tuple[Redis, list[tuple[object, ...]]], monkeypatch: pytest.MonkeyPatch

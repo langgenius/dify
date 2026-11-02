@@ -1,5 +1,6 @@
 import type { FileEntity } from '../../file-uploader/types'
 import type { SpeechToTextTarget } from '../../voice-input/types'
+import type { HumanInputFormSubmitData } from '../chat/answer/human-input-content/type'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -19,8 +20,8 @@ import {
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
-  submitHumanInputForm,
 } from '@/service/share'
+import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -120,7 +121,12 @@ const ChatWrapper = () => {
         if (fileIsUploading) return
 
         const inputValue = inputsFormValue?.[variable]
-        if (inputValue === undefined || inputValue === null || inputValue === '')
+        if (
+          inputValue === undefined ||
+          inputValue === null ||
+          inputValue === '' ||
+          (Array.isArray(inputValue) && inputValue.length === 0)
+        )
           hasEmptyInput = label as string
 
         if (
@@ -282,13 +288,16 @@ const ChatWrapper = () => {
   }, [chatList, currentConversationId])
 
   const handleSubmitHumanInputForm = useCallback(
-    async (formToken: string, formData: any) => {
+    async (formToken: string, formData: HumanInputFormSubmitData) => {
       if (!(await prepareHumanInputSubmission())) return
 
-      if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
-      else await submitHumanInputForm(formToken, formData)
+      const form = chatList
+        .flatMap((item) => item.humanInputFormDataList ?? [])
+        .find((item) => item.form_token === formToken)
+      if (isInstalledApp) await submitHumanInputFormService(formToken, formData, form?.form_version)
+      else await submitWebAppHumanInputForm(formToken, formData, form?.form_version)
     },
-    [isInstalledApp, prepareHumanInputSubmission],
+    [chatList, isInstalledApp, prepareHumanInputSubmission],
   )
 
   const [collapsed, setCollapsed] = useState(!!currentConversationId)

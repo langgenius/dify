@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
+import { setTimeout as delay } from 'node:timers/promises'
 import { pathToFileURL } from 'node:url'
 import { build, createServer } from 'vite'
 import loader from '../dist/tooling/loader.js'
@@ -31,7 +32,7 @@ console.error('Exporter diagnostic');
 console.log(JSON.stringify({openapi:'3.1.0',info:{title:'Pets',version:'1'},paths:{
   '/pets':{get:{'x-source-location':{file:'./backend.py',line:7},responses:{200:{description:'OK',content:{'application/json':{schema:{type:readFileSync('schema.txt','utf8')}}}}}}},
   '/unused':{get:{responses:{204:{description:'OK'}}}}
-}}));
+},components:{schemas:{Pet:{type:readFileSync('schema.txt','utf8')}}}}));
 `,
   )
   const content = JSON.stringify({
@@ -119,7 +120,12 @@ test('TS incremental checks invalidate when backend input changes without touchi
   const { directory, schema, config } = fixture(t)
   writeFileSync(
     join(directory, 'index.ts'),
-    "import { api } from './pets.openapi-source'; const result: string = await api.pets.get();",
+    `import { api } from './pets.openapi-source';
+import type { Schemas, Inputs, Outputs } from './pets.openapi-source';
+const input: Inputs['pets']['get'] = undefined;
+const result: string = await api.pets.get(input);
+const schema: string = null! as Schemas['Pet'];
+const output: string = null! as Outputs['pets']['get'];`,
   )
   const compile = () =>
     spawnSync(process.execPath, [compiler, '--runExternalCode', '-p', directory], {
@@ -200,53 +206,82 @@ if (await load(undefined, {client: (await import('@dify/openapi-content-mapper')
   assert(!after.includes('"pets"'))
 })
 
-test('Vite refreshes command sources when a new backend input is added', async (t) => {
-  const { directory, file, content } = fixture(t)
-  writeFileSync(file, JSON.stringify({ ...JSON.parse(content), optionalInputs: ['.env'] }))
-  const exporter = join(directory, 'export.mjs')
-  writeFileSync(
-    exporter,
-    readFileSync(exporter, 'utf8')
-      .replace('readFileSync, appendFileSync', 'readFileSync, appendFileSync, existsSync')
-      .replace("'/pets':", "[existsSync('extra.txt') ? '/animals' : '/pets']:"),
-  )
-  writeFileSync(join(directory, 'entry.ts'), "export { api } from './pets.openapi-source'")
-  const server = await createServer({
-    configFile: false,
-    root: directory,
-    logLevel: 'silent',
-    plugins: [openapi()],
-    server: { port: 0 },
-  })
-  t.after(() => server.close())
-  // A new file created during Chokidar's initial scan is not an `add` event
-  // when ignoreInitial is enabled (notably on Linux).
-  const watcherReady = new Promise((resolve) => server.watcher.once('ready', resolve))
-  await server.listen()
-  await watcherReady
-  await server.transformRequest('/entry.ts')
-  await server.transformRequest('/pets.openapi-source')
-  const url = '/pets.openapi-source?openapi-router=%5B%5D'
-  assert.match((await server.transformRequest(url)).code, /pets/)
-  const extra = join(directory, 'extra.txt')
-  const refreshed = new Promise((resolve, reject) => {
-    const timeout = setTimeout(
-      () => reject(new Error('No Vite reload after adding a backend input')),
-      10000,
+for (const external of [false, true]) {
+  test(`Vite refreshes command sources for input additions and removals (${external ? 'outside' : 'inside'} root)`, async (t) => {
+    const { directory, file, content } = fixture(t)
+    writeFileSync(file, JSON.stringify({ ...JSON.parse(content), optionalInputs: ['backend.env'] }))
+    const exporter = join(directory, 'export.mjs')
+    writeFileSync(
+      exporter,
+      readFileSync(exporter, 'utf8')
+        .replace('readFileSync, appendFileSync', 'readFileSync, appendFileSync, existsSync')
+        .replace(
+          "'/pets':",
+          "[existsSync('backend.env') ? '/configured' : existsSync('extra.txt') ? '/animals' : '/pets']:",
+        ),
     )
-    const send = server.ws.send.bind(server.ws)
-    server.ws.send = (...args) => {
-      if (args[0]?.type === 'full-reload' && args[0].triggeredBy === extra) {
-        clearTimeout(timeout)
-        resolve()
+    const frontend = external ? join(directory, 'frontend') : directory
+    mkdirSync(frontend, { recursive: true })
+    writeFileSync(
+      join(frontend, 'entry.ts'),
+      `export { api } from '${external ? '..' : '.'}/pets.openapi-source'`,
+    )
+    const server = await createServer({
+      configFile: false,
+      root: frontend,
+      logLevel: 'silent',
+      plugins: [openapi()],
+      server: { port: 0, fs: { allow: [directory] } },
+    })
+    t.after(() => server.close())
+    // New files created during the initial scan are ignored by Chokidar.
+    const watcherReady = new Promise((resolve) => server.watcher.once('ready', resolve))
+    await server.listen()
+    await watcherReady
+    await server.transformRequest('/entry.ts')
+    const specUrl = external ? `/@fs${file}` : '/pets.openapi-source'
+    await server.transformRequest(specUrl)
+    const url = `${specUrl}?openapi-router=%5B%5D`
+    assert.match((await server.transformRequest(url)).code, /pets/)
+    if (external) {
+      // External dependencies are discovered on first import, after root readiness.
+      // Wait until the recursively watched child has actually been scanned.
+      const deadline = Date.now() + 10000
+      while (!server.watcher.getWatched()[join(directory, 'unwatched')]?.includes('calls')) {
+        assert(Date.now() < deadline, 'External dependency watcher did not become ready')
+        await delay(10)
       }
-      return send(...args)
     }
+    async function changeInput(input, mutate, expected) {
+      const send = server.ws.send.bind(server.ws)
+      let timeout
+      const refreshed = new Promise((resolve, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error(`No Vite reload after changing ${input}`)),
+          10000,
+        )
+        server.ws.send = (...args) => {
+          if (args[0]?.type === 'full-reload' && args[0].triggeredBy === input) resolve()
+          return send(...args)
+        }
+      })
+      try {
+        mutate()
+        await refreshed
+        assert.match((await server.transformRequest(url)).code, expected)
+      } finally {
+        clearTimeout(timeout)
+        server.ws.send = send
+      }
+    }
+    const extra = join(directory, 'extra.txt')
+    await changeInput(extra, () => writeFileSync(extra, 'new backend route'), /animals/)
+    await changeInput(extra, () => rmSync(extra), /pets/)
+    const env = join(directory, 'backend.env')
+    await changeInput(env, () => writeFileSync(env, 'SETTING=value'), /configured/)
+    await changeInput(env, () => rmSync(env), /pets/)
   })
-  writeFileSync(extra, 'new backend route')
-  await refreshed
-  assert.match((await server.transformRequest(url)).code, /animals/)
-})
+}
 
 test('the language server refreshes command-source hover types after backend changes', async (t) => {
   const { directory, schema } = fixture(t)

@@ -121,10 +121,7 @@ export function KnowledgeUpgradeDialog({
               </li>
             </ul>
             <a
-              href={docLink(
-                // @ts-expect-error Cloud-only page not yet in the generated doc paths.
-                '/cloud/use-dify/knowledge-base/upgrade-from-classic',
-              )}
+              href={docLink('/cloud/use-dify/knowledge-base/upgrade-from-classic')}
               target="_blank"
               rel="noreferrer"
               className="mt-3 inline-block text-text-accent underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"

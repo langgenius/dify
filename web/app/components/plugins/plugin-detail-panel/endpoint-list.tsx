@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import EndpointCard from './endpoint-card'
 import EndpointModal from './endpoint-modal'
 
@@ -34,11 +35,14 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
   )
   const [isShowEndpointModal, { setTrue: showEndpointModal, setFalse: hideEndpointModal }] =
     useBoolean(false)
-  const showSaveError = () => {
-    toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+  const showSaveError = (error: unknown) => {
+    toast.error(
+      getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+    )
   }
   const { mutate: createEndpoint, isPending } = useMutation(
     consoleQuery.workspaces.current.endpoints.post.mutationOptions({
+      context: { silent: true },
       onSuccess: hideEndpointModal,
       onError: showSaveError,
     }),

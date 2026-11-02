@@ -14,6 +14,14 @@ import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import HumanInputFormList from '../human-input-form-list'
 
+const releaseGate = vi.hoisted(() => ({ enabled: true }))
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return releaseGate.enabled
+  },
+}))
+
 const mockNodes: Array<{
   id: string
   type: string
@@ -70,6 +78,7 @@ const createFormData = (overrides: Partial<HumanInputFormData> = {}): HumanInput
 
 describe('HumanInputFormList', () => {
   beforeEach(() => {
+    releaseGate.enabled = true
     vi.clearAllMocks()
     mockNodes.splice(0, mockNodes.length)
   })
@@ -209,5 +218,26 @@ describe('HumanInputFormList', () => {
     )
 
     expect(screen.getByRole('textbox')).toHaveValue('prefill')
+  })
+  it('keeps legacy form submission and blocks V2 forms when disabled', async () => {
+    releaseGate.enabled = false
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    render(
+      <HumanInputFormList
+        humanInputFormDataList={[
+          createFormData({ form_version: '1' }),
+          createFormData({ form_version: '2', form_id: 'v2-form', form_token: 'v2-token' }),
+        ]}
+        onHumanInputFormSubmit={onSubmit}
+      />,
+    )
+    expect(screen.getByText('share.humanInputV2.unavailable')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Approve' })).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith('token-1', {
+      inputs: { reason: 'prefill' },
+      action: 'approve',
+    })
   })
 })

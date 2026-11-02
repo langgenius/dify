@@ -2,10 +2,12 @@ import datetime
 
 import pytest
 
-from services.retention.conversation.message_export_service import AppMessageExportService
+from services.retention.conversation.message_export_service import (
+    AppMessageExportService,
+)
 
 
-def test_validate_export_filename_accepts_relative_path():
+def test_validate_export_filename_accepts_relative_path() -> None:
     assert AppMessageExportService.validate_export_filename("exports/2026/test01") == "exports/2026/test01"
 
 
@@ -22,7 +24,7 @@ def test_validate_export_filename_accepts_relative_path():
         "a" * 1025,
     ],
 )
-def test_validate_export_filename_rejects_invalid_values(filename: str):
+def test_validate_export_filename_rejects_invalid_values(filename: str) -> None:
     with pytest.raises(
         ValueError,
         match=(
@@ -37,7 +39,7 @@ def test_validate_export_filename_rejects_invalid_values(filename: str):
         AppMessageExportService.validate_export_filename(filename)
 
 
-def test_service_derives_output_names_from_filename_base():
+def test_service_derives_output_names_from_filename_base() -> None:
     service = AppMessageExportService(
         app_id="736b9b03-20f2-4697-91da-8d00f6325900",
         start_from=None,

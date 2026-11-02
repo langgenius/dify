@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "ستتم إزالة جهات الاتصال المحددة نهائيًا من مساحة العمل هذه. لا يمكن التراجع عن هذا الإجراء.",
+  "directory.removalTitle": "إزالة جهات الاتصال؟",
+  "imPlatform.bindingDialog.clearSavedCredential": "مسح القيمة المحفوظة",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "سيتم مسح هذه القيمة المحفوظة عند الحفظ.",
+  "imPlatform.bindingDialog.replacementRequired": "بيانات الاعتماد هذه تخص مستأجر IM آخر، ولا يمكن حفظها مباشرةً. يتطلب تبديل المستأجر استبدال قناة IM الحالية، مما يمسح جميع عمليات ربط IM التلقائية واليدوية. أعد مزامنة جهات الاتصال بعد الاستبدال.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "تم حفظ الإعدادات، لكن تعذّر تحميل تفاصيلها. أغلق مربع الحوار هذا وأعد فتحه.",
+  "imPlatform.bindingDialog.undoClearCredential": "التراجع عن المسح"
+}

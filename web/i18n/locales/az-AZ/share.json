@@ -49,6 +49,7 @@
   "generation.tabs.saved": "Yadda saxlanıldı",
   "generation.title": "Süni intellektlə tamamlama",
   "humanInput.completed": "Görünür, bu sorğu başqa yerdə həll edilib.",
+  "humanInput.currentAccount": "Cari hesab: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "Bu əməliyyatın vaxtı {{relativeTime}} bitəcək.",
   "humanInput.expired": "Görünür, bu sorğunun vaxtı bitib.",
   "humanInput.expiredTip": "Bu əməliyyatın vaxtı bitib.",
@@ -57,6 +58,9 @@
   "humanInput.recorded": "Daxil etdiyiniz məlumat qeydə alındı.",
   "humanInput.sorry": "Üzr istəyirik!",
   "humanInput.submissionID": "Göndəriş ID-si: {{id}}",
+  "humanInput.switchAccount": "Hesabı dəyiş",
   "humanInput.thanks": "Təşəkkürlər!",
+  "humanInput.unavailableDescription": "Link əlçatan olmaya və ya daxil olduğunuz hesaba uyğun gəlməyə bilər. Formanı aldığınız bildirişdən açın və ya hesabı dəyişməyi sınayın.",
+  "humanInput.unavailableTitle": "Bu formanı açmaq mümkün deyil",
   "login.backToHome": "Əsas səhifəyə qayıt"
 }

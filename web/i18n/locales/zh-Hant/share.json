@@ -49,6 +49,7 @@
   "generation.tabs.saved": "已儲存",
   "generation.title": "AI 智慧書寫",
   "humanInput.completed": "似乎這個請求已在別處處理。",
+  "humanInput.currentAccount": "目前帳戶：{{name}}",
   "humanInput.expirationTimeNowOrFuture": "此操作將在{{relativeTime}}過期。",
   "humanInput.expired": "似乎這個請求已過期。",
   "humanInput.expiredTip": "此操作已過期。",
@@ -57,6 +58,9 @@
   "humanInput.recorded": "您的輸入已記錄。",
   "humanInput.sorry": "抱歉!",
   "humanInput.submissionID": "提交 ID: {{id}}",
+  "humanInput.switchAccount": "切換帳戶",
   "humanInput.thanks": "謝謝!",
+  "humanInput.unavailableDescription": "連結可能無法使用，或與你目前登入的帳戶不符。請從你收到的通知中開啟表單，或嘗試切換帳戶",
+  "humanInput.unavailableTitle": "無法開啟此表單",
   "login.backToHome": "返回首頁"
 }

@@ -16,6 +16,8 @@
   "settings.membersRequired": "Chọn ít nhất một thành viên trong nhóm.",
   "settings.nameRequired": "Tên cơ sở tri thức Agent là bắt buộc.",
   "settings.pageDescription": "Quản lý thông tin cơ bản, quyền truy cập API và truy xuất.",
+  "settings.reasoningChangeConfirm": "Xác nhận thay đổi",
+  "settings.reasoningChangeWarning": "Việc thay đổi mô hình lập luận hệ thống sẽ xử lý lại các tài liệu đã được lập chỉ mục và cập nhật các chỉ mục truy xuất của chúng. Quá trình này cần thời gian và phát sinh thêm chi phí sử dụng mô hình.",
   "settings.reloadLatest": "Tải lại cài đặt mới nhất",
   "settings.rerankModelRequired": "Chọn một mô hình xếp hạng lại.",
   "settings.retrievalDepth": "Độ sâu truy xuất",

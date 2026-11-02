@@ -49,6 +49,7 @@
   "generation.tabs.saved": "Enregistré",
   "generation.title": "Complétion IA",
   "humanInput.completed": "Il semble que cette demande ait été traitée ailleurs.",
+  "humanInput.currentAccount": "Compte actuel : {{name}}",
   "humanInput.expirationTimeNowOrFuture": "Cette action expirera {{relativeTime}}.",
   "humanInput.expired": "Il semble que cette demande ait expiré.",
   "humanInput.expiredTip": "Cette action a expiré.",
@@ -57,6 +58,9 @@
   "humanInput.recorded": "Votre saisie a été enregistrée.",
   "humanInput.sorry": "Désolé !",
   "humanInput.submissionID": "submission_id : {{id}}",
+  "humanInput.switchAccount": "Changer de compte",
   "humanInput.thanks": "Merci !",
+  "humanInput.unavailableDescription": "Le lien est peut-être indisponible ou ne correspond pas au compte avec lequel vous êtes connecté. Ouvrez le formulaire depuis la notification que vous avez reçue ou essayez de changer de compte.",
+  "humanInput.unavailableTitle": "Impossible d’ouvrir ce formulaire",
   "login.backToHome": "Retour à l'accueil"
 }

@@ -49,6 +49,7 @@
   "generation.tabs.saved": "Saved",
   "generation.title": "AI Completion",
   "humanInput.completed": "Seems like this request was dealt with elsewhere.",
+  "humanInput.currentAccount": "Huidig account: {{name}}",
   "humanInput.expirationTimeNowOrFuture": "This action will expire {{relativeTime}}.",
   "humanInput.expired": "Seems like this request has expired.",
   "humanInput.expiredTip": "This action has expired.",
@@ -57,6 +58,9 @@
   "humanInput.recorded": "Your input has been recorded.",
   "humanInput.sorry": "Sorry!",
   "humanInput.submissionID": "submission_id: {{id}}",
+  "humanInput.switchAccount": "Van account wisselen",
   "humanInput.thanks": "Thanks!",
+  "humanInput.unavailableDescription": "De link is mogelijk niet beschikbaar of hoort niet bij het account waarmee je bent aangemeld. Open het formulier vanuit de melding die je hebt ontvangen of probeer van account te wisselen.",
+  "humanInput.unavailableTitle": "Dit formulier kan niet worden geopend",
   "login.backToHome": "Back to Home"
 }

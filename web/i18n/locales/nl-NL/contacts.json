@@ -1,0 +1,9 @@
+{
+  "directory.removalDescription": "De geselecteerde contacten worden permanent uit deze werkruimte verwijderd. Deze actie kan niet ongedaan worden gemaakt.",
+  "directory.removalTitle": "Contacten verwijderen?",
+  "imPlatform.bindingDialog.clearSavedCredential": "Opgeslagen waarde wissen",
+  "imPlatform.bindingDialog.credentialWillBeCleared": "Deze opgeslagen waarde wordt gewist wanneer je opslaat.",
+  "imPlatform.bindingDialog.replacementRequired": "Deze inloggegevens horen bij een andere IM-tenant en kunnen niet rechtstreeks worden opgeslagen. Om van tenant te wisselen, moet je het huidige IM-kanaal vervangen. Daarbij worden alle automatische en handmatige IM-koppelingen verwijderd. Synchroniseer de contacten opnieuw na de vervanging.",
+  "imPlatform.bindingDialog.savedDetailsUnavailable": "De configuratie is opgeslagen, maar de details konden niet worden geladen. Sluit dit dialoogvenster en open het opnieuw.",
+  "imPlatform.bindingDialog.undoClearCredential": "Wissen ongedaan maken"
+}

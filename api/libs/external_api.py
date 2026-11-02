@@ -1,3 +1,4 @@
+import json
 import pkgutil
 import re
 from collections.abc import Callable, Iterable, Mapping
@@ -285,10 +286,12 @@ def _explicit_json_schema(response: Mapping[str, Any]) -> object | None:
 
 
 def _comparable_schema(schema: object) -> object:
-    """``schema`` with order-insensitive parts (``required``) normalized, for equality checks."""
+    """``schema`` with order-insensitive parts (``required``, ``enum``) normalized for equality checks."""
     if isinstance(schema, dict):
         return {
-            key: sorted(value) if key == "required" and isinstance(value, list) else _comparable_schema(value)
+            key: sorted(value, key=lambda item: json.dumps(item, sort_keys=True))
+            if key in {"required", "enum"} and isinstance(value, list)
+            else _comparable_schema(value)
             for key, value in schema.items()
         }
     if isinstance(schema, list):
@@ -567,11 +570,11 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
 
         return _finalize(e, data, status_code), status_code
 
-    api.errorhandler(HTTPException)(handle_http_exception)
-    api.errorhandler(ValueError)(handle_value_error)
-    api.errorhandler(AppInvokeQuotaExceededError)(handle_quota_exceeded)
-    api.errorhandler(PluginRuntimeError)(handle_plugin_runtime_error)
-    api.errorhandler(Exception)(handle_general_exception)
+    api.errorhandler(HTTPException)(handle_http_exception)  # pyrefly: ignore[not-callable] - Flask-RESTX typing
+    api.errorhandler(ValueError)(handle_value_error)  # pyrefly: ignore[not-callable] - Flask-RESTX typing
+    api.errorhandler(AppInvokeQuotaExceededError)(handle_quota_exceeded)  # pyrefly: ignore[not-callable] - Flask-RESTX typing
+    api.errorhandler(PluginRuntimeError)(handle_plugin_runtime_error)  # pyrefly: ignore[not-callable] - Flask-RESTX typing
+    api.errorhandler(Exception)(handle_general_exception)  # pyrefly: ignore[not-callable] - Flask-RESTX typing
 
 
 class ExternalApi(Api):
