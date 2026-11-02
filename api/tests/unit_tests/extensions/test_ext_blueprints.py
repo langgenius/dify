@@ -298,33 +298,6 @@ def _build_app() -> DifyApp:
 
 class TestExtBlueprintsOpenapiCases:
     @staticmethod
-    @pytest.fixture
-    def fresh_blueprints(monkeypatch: pytest.MonkeyPatch) -> dict[str, Blueprint]:
-        """Replace each production blueprint singleton with a fresh, unregistered copy.
-
-        Mirrors the production `name` and `url_prefix` so the gate can still
-        be asserted via `app.blueprints[...]` and url_map prefix checks. The
-        openapi replacement gets a dummy `/_probe` rule so the test can
-        observe at least one `/openapi/v1/*` rule after registration.
-        """
-        fresh: dict[str, Blueprint] = {}
-        for module_name in _BLUEPRINT_MODULES:
-            module = importlib.import_module(module_name)
-            original = module.bp
-            replacement = Blueprint(
-                original.name,
-                original.import_name,
-                url_prefix=original.url_prefix,
-            )
-            if module_name == "controllers.openapi":
-                replacement.add_url_rule("/_probe", endpoint="_probe", view_func=_probe_view)
-            if module_name == "controllers.console":
-                replacement.add_url_rule("/_download", endpoint="_download", view_func=_download_probe_view)
-            monkeypatch.setattr(module, "bp", replacement)
-            fresh[module_name] = replacement
-        return fresh
-
-    @staticmethod
     def test_openapi_blueprint_registered_with_cors_when_enabled(
         monkeypatch: pytest.MonkeyPatch,
         fresh_blueprints: dict[str, Blueprint],
@@ -389,3 +362,30 @@ class TestExtBlueprintsOpenapiCases:
             header.strip().lower() for header in response.headers["Access-Control-Expose-Headers"].split(",")
         }
         assert "content-disposition" in exposed_headers
+
+
+@pytest.fixture
+def fresh_blueprints(monkeypatch: pytest.MonkeyPatch) -> dict[str, Blueprint]:
+    """Replace each production blueprint singleton with a fresh, unregistered copy.
+
+    Mirrors the production `name` and `url_prefix` so the gate can still
+    be asserted via `app.blueprints[...]` and url_map prefix checks. The
+    openapi replacement gets a dummy `/_probe` rule so the test can
+    observe at least one `/openapi/v1/*` rule after registration.
+    """
+    fresh: dict[str, Blueprint] = {}
+    for module_name in _BLUEPRINT_MODULES:
+        module = importlib.import_module(module_name)
+        original = module.bp
+        replacement = Blueprint(
+            original.name,
+            original.import_name,
+            url_prefix=original.url_prefix,
+        )
+        if module_name == "controllers.openapi":
+            replacement.add_url_rule("/_probe", endpoint="_probe", view_func=_probe_view)
+        if module_name == "controllers.console":
+            replacement.add_url_rule("/_download", endpoint="_download", view_func=_download_probe_view)
+        monkeypatch.setattr(module, "bp", replacement)
+        fresh[module_name] = replacement
+    return fresh

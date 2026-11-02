@@ -106,6 +106,7 @@ def test_every_guarded_route_declares_catalog_meta_once(app: Flask, ops: dict[st
         ("restore.console_app.version", Effect.DESTRUCTIVE),
         ("import.console_app.dsl", Effect.DESTRUCTIVE),
         ("confirm.console_app.dsl_import", Effect.DESTRUCTIVE),
+        ("import.skill", Effect.DESTRUCTIVE),
         ("stop.run", Effect.DESTRUCTIVE),
         ("stop.task", Effect.DESTRUCTIVE),
         ("check.console_app.dsl", Effect.READ),

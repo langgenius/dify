@@ -1,5 +1,6 @@
 'use client'
 import type { MenuContentProps } from '@langgenius/dify-ui/menu'
+import type { MarketplacePluginRef } from '@/features/marketplace/links'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
@@ -10,19 +11,21 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useLocale } from '#i18n'
+import { useMarketplace } from '@/features/marketplace/client'
+import useTheme from '@/hooks/use-theme'
 import { PluginSource } from '../types'
 
 type OperationMenuProps = Readonly<
   Pick<MenuContentProps, 'side' | 'align'> & {
     source: PluginSource
+    marketplacePlugin?: MarketplacePluginRef
+    repo?: string
     onInfo: () => void
     onCheckVersion: () => void
     onRemove: () => void
     onViewReadme?: () => void
-    detailUrl: string
     popupClassName?: string
     triggerSize?: 'm' | 'xs'
     triggerAriaLabel?: string
@@ -34,7 +37,8 @@ type OperationMenuProps = Readonly<
 
 export function OperationMenu({
   source,
-  detailUrl,
+  marketplacePlugin,
+  repo,
   onInfo,
   onCheckVersion,
   onRemove,
@@ -49,24 +53,22 @@ export function OperationMenu({
   showRemove = true,
 }: OperationMenuProps) {
   const { t } = useTranslation(['plugin'])
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const marketplace = useMarketplace()
+  const locale = useLocale()
+  const { theme } = useTheme()
   const showInfo = source === PluginSource.github
   const showCheckVersionAction = showCheckVersion && source === PluginSource.github
-  const showMarketplaceDetail =
-    (source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace
+  const detailUrl = !marketplace
+    ? undefined
+    : source === PluginSource.marketplace && marketplacePlugin
+      ? marketplace.plugin(marketplacePlugin, { language: locale, theme })
+      : source === PluginSource.github && repo
+        ? `https://github.com/${repo}`
+        : undefined
   const showRemoveAction = showRemove
-  const showSeparator = showRemoveAction && (showMarketplaceDetail || !!onViewReadme)
+  const showSeparator = showRemoveAction && (!!detailUrl || !!onViewReadme)
 
-  if (
-    !showInfo &&
-    !showCheckVersionAction &&
-    !showMarketplaceDetail &&
-    !onViewReadme &&
-    !showRemoveAction
-  )
+  if (!showInfo && !showCheckVersionAction && !detailUrl && !onViewReadme && !showRemoveAction)
     return null
 
   return (
@@ -102,7 +104,7 @@ export function OperationMenu({
             </span>
           </MenuItem>
         )}
-        {showMarketplaceDetail && (
+        {detailUrl && (
           <MenuLinkItem
             className="px-2 py-1 system-md-regular text-text-secondary"
             href={detailUrl}

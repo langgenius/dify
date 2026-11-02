@@ -23,11 +23,12 @@ from controllers.console.workflow_run_archive import (
     WorkflowRunArchiveMonthApi,
     WorkflowRunArchivesApi,
 )
-from enums import CloudPlan, DeploymentEdition
+from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models import Account, TenantAccountRole
+from services.billing_client import billing
 from services.retention.workflow_run.archive_deletion_task import (
     WorkflowRunArchiveDeletionStatus,
     WorkflowRunArchiveDeletionTask,
@@ -39,6 +40,7 @@ from services.retention.workflow_run.archive_log_service import (
     WorkflowRunArchiveNotFoundError,
     WorkflowRunArchiveService,
 )
+from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account
 
@@ -162,12 +164,10 @@ def test_workflow_run_archive_endpoint_allows_admitted_role_when_rbac_is_enabled
     monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: account_with_tenant)
     monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: account_with_tenant)
 
-    def get_billing_info(tenant_id: str, *, exclude_vector_space: bool) -> dict[str, object]:
+    def get_billing_info(tenant_id: str, *, exclude_vector_space: bool) -> billing.GetSubscriptionInfoReply:
         assert tenant_id == "tenant-1"
         assert exclude_vector_space
-        return {
-            "subscription": {"plan": CloudPlan.TEAM},
-        }
+        return builders.subscription_info("team")
 
     monkeypatch.setattr(
         "controllers.console.wraps.BillingService.get_info",
@@ -203,7 +203,7 @@ def test_workflow_run_archive_role_permissions_when_rbac_is_disabled(
     monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", lambda: identity)
     monkeypatch.setattr(
         "controllers.console.wraps.BillingService.get_info",
-        lambda _tenant_id, **_kwargs: {"subscription": {"plan": CloudPlan.TEAM}},
+        lambda _tenant_id, **_kwargs: builders.subscription_info("team"),
     )
     task = object()
     archives = object()

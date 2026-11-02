@@ -69,6 +69,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSDurableDeletionJobResponse,
     KnowledgeFSIdempotencyHeader,
+    KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSProfileMigrationResponse,
@@ -168,6 +169,7 @@ register_schema_models(
     KnowledgeFSDocumentDeletePayload,
     KnowledgeFSDocumentMetadataPayload,
     KnowledgeFSDocumentReindexPayload,
+    KnowledgeFSLogicalDocumentDeletePayload,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSResearchTaskPartialsQuery,
     KnowledgeFSResearchTaskCreatePayload,
@@ -1416,6 +1418,38 @@ class KnowledgeFSServiceLogicalDocumentApi(Resource):
             path_parameters=(("documentId", document_id),),
         )
         return _dump_response(KnowledgeFSLogicalDocumentResponse, raw)
+
+    @error_responses(
+        *_SERVICE_CALL_ERRORS,
+        KnowledgeFSServiceResourceNotFoundHTTPError,
+        KnowledgeFSServiceConflictHTTPError,
+    )
+    @service_api_ns.expect(service_api_ns.models[KnowledgeFSLogicalDocumentDeletePayload.__name__])
+    @service_api_ns.doc(
+        description=(
+            "Delete a logical document and its historical revisions. Use the logical document ID and its rowVersion "
+            "as expectedRevision; the accepted deletion job runs asynchronously."
+        ),
+        params={
+            "Idempotency-Key": {"in": "header", "required": True, "type": "string", "minLength": 8, "maxLength": 255}
+        },
+    )
+    @service_api_ns.response(
+        HTTPStatus.ACCEPTED,
+        "Agent Knowledge Base logical document deletion accepted",
+        service_api_ns.models[KnowledgeFSDurableDeletionAcceptedResponse.__name__],
+    )
+    @_service_api_errors
+    def delete(self, control_space_id: str, document_id: str):
+        raw = _execute_service_operation(
+            control_space_id=control_space_id,
+            operation_id="deleteLogicalDocument",
+            resource_id=document_id,
+            path_parameters=(("documentId", document_id),),
+            payload=_payload(KnowledgeFSLogicalDocumentDeletePayload),
+            headers=(("Idempotency-Key", _idempotency_key()),),
+        )
+        return _deletion_accepted(control_space_id, raw)
 
 
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/document-references/resolve")
