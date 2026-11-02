@@ -288,6 +288,10 @@ def test_variable_api_patch_success(
     assert payload["id"] == variable.id
     assert payload["name"] == "renamed_var"
 
+    # The request updates the variable through an independently scoped repository
+    # session, so invalidate the fixture session's cached instance before verifying
+    # the committed database state.
+    db_session_with_containers.expire(variable)
     refreshed = db_session_with_containers.scalar(
         select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == variable.id)
     )

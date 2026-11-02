@@ -15,6 +15,7 @@ from controllers.common.errors import (
     UnauthorizedError,
     register_credential_refresh_error_handler,
     register_permission_error_handler,
+    register_resource_error_handlers,
 )
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
@@ -26,6 +27,7 @@ from services.retention.workflow_run.archive_log_service import (
     WorkflowRunArchiveInvalidMonthError,
     WorkflowRunArchiveNotFoundError,
 )
+from services.workflow.variable_contracts import DraftVariableChangedError
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
 register_app_access_error_metadata(bp, surface="console")
@@ -37,6 +39,7 @@ api = ExternalApi(
     description="Console management APIs for app configuration, monitoring, and administration",
 )
 register_permission_error_handler(api)
+register_resource_error_handlers(api)
 register_credential_refresh_error_handler(api)
 # Errors the Console client handles centrally (bootstrap redirects, forced logout, malformed
 # input); any operation may answer with them, so no operation lists them. The shared
@@ -115,6 +118,26 @@ api.document_error_handler(WorkflowRunArchiveInvalidMonthError, status=HTTPStatu
 api.document_error_handler(WorkflowRunArchiveNotFoundError, status=HTTPStatus.NOT_FOUND, code="not_found")
 api.document_error_handler(WorkflowRunArchiveDownloadTaskNotFoundError, status=HTTPStatus.NOT_FOUND, code="not_found")
 api.document_error_handler(WorkflowRunArchiveDownloadNotReadyError, status=HTTPStatus.CONFLICT, code="conflict")
+
+
+@api.errorhandler(DraftVariableChangedError)
+def _handle_draft_variable_changed_error(error: DraftVariableChangedError):
+    """Expose a concurrent variable edit consistently across Console use cases."""
+    got_request_exception.send(current_app, exception=error)
+    status = HTTPStatus.CONFLICT
+    return {
+        "code": "draft_variable_changed",
+        "message": "Variable changed; refresh and retry with the current value.",
+        "status": status.value,
+    }, status.value
+
+
+cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(DraftVariableChangedError, last=False)
+api.document_error_handler(
+    DraftVariableChangedError,
+    status=HTTPStatus.CONFLICT,
+    code="draft_variable_changed",
+)
 
 
 console_ns = Namespace("console", description="Console management API operations", path="/")
