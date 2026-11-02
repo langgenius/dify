@@ -5,7 +5,7 @@
 # ==================================================================
 
 # Shared configuration using YAML anchors and env_file
-x-shared-api-worker-config: &shared-api-worker-config
+x-shared-api-config: &shared-api-config
   env_file:
     - path: ./envs/core-services/shared.env
       required: false
@@ -278,7 +278,7 @@ services:
 
   # API service
   api:
-    <<: *shared-api-worker-config
+    <<: *shared-api-config
     image: langgenius/dify-api:1.18.0
     environment:
       MODE: api
@@ -316,7 +316,7 @@ services:
 
   # WebSocket service for workflow collaboration.
   api_websocket:
-    <<: *shared-api-worker-config
+    <<: *shared-api-config
     image: langgenius/dify-api:1.18.0
     profiles:
       - collaboration
