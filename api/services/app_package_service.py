@@ -331,9 +331,8 @@ class AppPackageService(RosterAgentPackageReader):
                     if cls._is_roster_reference(binding_type, binding):
                         cls._validate_roster_reference(binding, node_data)
                         continue
-                    if binding_type == WorkflowAgentBindingType.ROSTER_AGENT:
-                        if binding.get(_AGENT_ID_KEY) is not None:
-                            raise ValueError("Agent binding cannot be both packaged and a roster reference")
+                    if binding_type == WorkflowAgentBindingType.ROSTER_AGENT and binding.get(_AGENT_ID_KEY) is not None:
+                        raise ValueError("Agent binding cannot be both packaged and a roster reference")
                 reference = binding[AGENT_PACKAGE_REF_KEY]
                 if not isinstance(reference, str):
                     raise ValueError("Agent package reference must be a string")

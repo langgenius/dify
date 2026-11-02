@@ -67,9 +67,8 @@ class RedisForgotPasswordTokenGateway(ForgotPasswordTokenGateway):
         token_data = self._deserialize(raw_payload) if isinstance(raw_payload, str | bytes | bytearray) else None
         if not isinstance(token_data, ForgotPasswordVerificationToken):
             return None
-        if token_data.account_id is not None:
-            if not self._is_current(token_data.account_id, token):
-                return None
+        if token_data.account_id is not None and not self._is_current(token_data.account_id, token):
+            return None
         return token_data
 
     @override

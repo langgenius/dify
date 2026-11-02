@@ -331,9 +331,8 @@ class ApiBasedToolSchemaParser:
                 if "operationId" not in operation:
                     raise ToolApiSchemaError(f"No operationId found in operation {method} {path}.")
 
-                if not operation.get("summary") and not operation.get("description"):
-                    if warning is not None:
-                        warning["missing_summary"] = f"No summary or description found in operation {method} {path}."
+                if not operation.get("summary") and not operation.get("description") and warning is not None:
+                    warning["missing_summary"] = f"No summary or description found in operation {method} {path}."
 
                 converted_openapi["paths"][path][method] = {
                     "operationId": operation["operationId"],
