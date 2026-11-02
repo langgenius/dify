@@ -579,7 +579,7 @@ it('keeps an IM draft after management permission is revoked without displaying 
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
 })
 
-it('retains a channel after a conflicted deletion and uses its refreshed version when retrying', async () => {
+it('retains a channel after a conflicted deletion and retries with the automatically refreshed version', async () => {
   let version = channel.config_version
   let removed = false
   let attempts = 0
@@ -599,7 +599,7 @@ it('retains a channel after a conflicted deletion and uses its refreshed version
     return defaultResponse(request)
   })
   const user = userEvent.setup()
-  const client = renderSurface()
+  renderSurface()
   await user.click(
     await screen.findByRole('button', { name: /contacts\.imPlatform\.action\.deleteChannel/ }),
   )
@@ -613,11 +613,6 @@ it('retains a channel after a conflicted deletion and uses its refreshed version
   await user.click(within(first).getByRole('button', { name: 'common.operation.cancel' }))
   await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
   expect(screen.getByRole('group', { name: 'Feishu' })).toHaveTextContent('saved-tenant')
-  await act(async () => {
-    await client.refetchQueries({
-      queryKey: consoleQuery.workspaces.current.humanInput.v2.channels.get.queryKey(),
-    })
-  })
   await user.click(
     screen.getByRole('button', { name: /contacts\.imPlatform\.action\.deleteChannel/ }),
   )

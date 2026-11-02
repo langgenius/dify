@@ -446,13 +446,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   byChannelId: {
                     put: {
                       mutationOptions: {
-                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
                           invalidateHumanInputChannelQueries(consoleQuery, context.client),
                       },
                     },
                     delete: {
                       mutationOptions: {
-                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
                           invalidateHumanInputChannelQueries(consoleQuery, context.client),
                       },
                     },
@@ -468,20 +468,20 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   byChannelId: {
                     put: {
                       mutationOptions: {
-                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
                           invalidateHumanInputChannelQueries(consoleQuery, context.client),
                       },
                     },
                     delete: {
                       mutationOptions: {
-                        onSuccess: (_data, _variables, _onMutateResult, context) =>
+                        onSettled: (_data, _error, _variables, _onMutateResult, context) =>
                           invalidateHumanInputChannelQueries(consoleQuery, context.client),
                       },
                     },
                     replacement: {
                       post: {
                         mutationOptions: {
-                          onSuccess: (_data, _variables, _onMutateResult, context) =>
+                          onSettled: (_data, _error, _variables, _onMutateResult, context) =>
                             invalidateHumanInputChannelQueries(consoleQuery, context.client),
                         },
                       },
