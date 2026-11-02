@@ -644,6 +644,13 @@ class TraceRecordRepository(TraceRecordSource):
             end_time=payload.ended_at,
             metadata=metadata,
             tenant_id=event.tenant_id,
+            model_provider=payload.model_provider,
+            model_name=payload.model_name,
+            prompt_tokens=payload.prompt_tokens,
+            completion_tokens=payload.completion_tokens,
+            total_tokens=payload.total_tokens,
+            total_price=payload.total_price,
+            currency=payload.currency,
         )
 
     def _prompt_generation(self, event: TraceEvent, payload: PromptGenerated) -> PromptGenerationTraceInfo:

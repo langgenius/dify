@@ -162,10 +162,16 @@ class CanonicalTraceBuilder:
                 return self._auxiliary(
                     record,
                     name="generate_name",
-                    kind=SpanKind.TOOL,
+                    kind=SpanKind.LLM,
                     inputs=record.inputs,
                     outputs=record.outputs,
                     error=None,
+                    # Naming outside a message (the explore rename) still belongs to its conversation.
+                    conversation_id=record.conversation_id,
+                    model_name=record.model_name,
+                    model_provider=record.model_provider,
+                    usage=_usage(record.prompt_tokens, record.completion_tokens, record.total_tokens),
+                    cost=_cost(record.total_price, record.currency),
                 )
             case _:
                 return None
@@ -401,6 +407,11 @@ class CanonicalTraceBuilder:
         inputs: object,
         outputs: object,
         error: str | None,
+        conversation_id: str | None = None,
+        model_name: str | None = None,
+        model_provider: str | None = None,
+        usage: TokenUsage | None = None,
+        cost: Cost | None = None,
     ) -> Trace | None:
         message = record.message_data
         operation_id = record.metadata.get("trace_event_id")
@@ -422,7 +433,7 @@ class CanonicalTraceBuilder:
         return Trace(
             trace_id=trace_id,
             external_trace_id=record.trace_id,
-            session_id=_session_id(record, message.conversation_id if message is not None else None),
+            session_id=_session_id(record, message.conversation_id if message is not None else conversation_id),
             user_id=_user_id(record),
             parent=parent,
             spans=(
@@ -437,6 +448,10 @@ class CanonicalTraceBuilder:
                     error=error,
                     inputs=json_safe(inputs),
                     outputs=json_safe(outputs),
+                    model_name=model_name,
+                    model_provider=model_provider,
+                    usage=usage,
+                    cost=cost,
                     attributes=_attributes(record.metadata),
                 ),
             ),

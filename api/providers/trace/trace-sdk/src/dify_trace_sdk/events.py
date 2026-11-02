@@ -106,6 +106,14 @@ class ConversationNamed(BaseModel):
     name: str
     started_at: datetime
     ended_at: datetime
+    # The naming model call's usage; defaulted so events queued before it was reported still validate.
+    model_provider: str | None = None
+    model_name: str | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+    total_price: float | None = None
+    currency: str | None = None
 
     model_config = _EVENT_CONFIG
 

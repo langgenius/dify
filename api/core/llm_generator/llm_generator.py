@@ -237,6 +237,7 @@ class LLMGenerator:
             name = name[:75] + "..."
 
         if trace_scope is not None:
+            usage = response.usage
             trace_scope.emit(
                 ConversationNamed(
                     conversation_id=conversation_id,
@@ -245,6 +246,13 @@ class LLMGenerator:
                     name=name,
                     started_at=timer.started_at,
                     ended_at=timer.ended_at,
+                    model_provider=model_instance.provider,
+                    model_name=model_instance.model_name,
+                    prompt_tokens=usage.prompt_tokens,
+                    completion_tokens=usage.completion_tokens,
+                    total_tokens=usage.total_tokens,
+                    total_price=float(usage.total_price),
+                    currency=usage.currency,
                 )
             )
 
