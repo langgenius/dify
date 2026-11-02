@@ -18,6 +18,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginModelProviderBinding,
     PluginModelProviderEntity,
 )
+from core.plugin.impl.model import PluginModelClient
 from core.tools.entities.common_entities import I18nObject as PluginI18nObject
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
@@ -27,6 +28,8 @@ from services import model_billing_migration_inventory_gateway as module
 from services.model_billing_dependency_adapters import PluginAgentStrategySelectorQuery, TypedModelDependencyExtractor
 from services.model_billing_dependency_inventory import (
     ClassicModelSelectors,
+    DatasetModelSelectors,
+    DefaultModelSelector,
     ModelBillingDependencyInventory,
     ModelDependencyDocument,
 )
@@ -43,6 +46,8 @@ from services.model_billing_migration_inventory import (
     RequiredSavedCreditModel,
 )
 from tests.unit_tests.services.test_model_billing_dependency_inventory import Documents
+from tests.unit_tests.services.test_model_billing_dependency_runtime import TENANT as RAW_TENANT
+from tests.unit_tests.services.test_model_billing_dependency_runtime import RuntimeFacts, runtime_facts
 from tests.unit_tests.services.test_model_billing_mapping_service import mapping, schema
 from tests.unit_tests.services.test_model_billing_migration_inventory import Historical
 
@@ -179,6 +184,219 @@ def setup_gateway(
         selections=selections, records=ModelBillingDependencyRepository(session_factory=factory)
     )
     return gateway, metadata, installations, selections
+
+
+def raw_management_facade(
+    monkeypatch: pytest.MonkeyPatch,
+    factory: sessionmaker[Session],
+    *,
+    byok: bool = False,
+) -> tuple[ModelBillingMigrationInventory, RuntimeFacts, str, list[str]]:
+    """Real snapshot→saved selectors→source evidence; mock only external IO."""
+    from services.model_billing_mapping_service import source_mapping_revision
+    from tests.unit_tests.services.test_model_billing_openai_chat_adapter import RUNTIME_PROFILE, build_inputs
+    from tests.unit_tests.services.test_model_billing_source_variants import REVISION, full_variant_record
+
+    facts = runtime_facts(monkeypatch, preferred="custom" if byok else None, custom_available=byok)
+    catalog = build_inputs(runtime=True)["source_schema"]
+    source_runtime = AIModelEntity.model_validate(RUNTIME_PROFILE["source_schema"])
+    embedding = schema("text-embedding-3-small", ModelType.TEXT_EMBEDDING)
+    # The raw DTO was parsed from a dict that genuinely omitted the optional
+    # source enrichment. Source catalog schemas are reviewed fixture objects.
+    declaration = facts.declarations[0]
+    assert "installation_source" not in declaration.model_fields_set
+    assert declaration.installation_source is None
+    declaration.declaration.models = [catalog, embedding]
+    declaration.declaration.supported_model_types = [ModelType.LLM, ModelType.TEXT_EMBEDDING]
+    source_uid = facts.bindings[0].plugin_unique_identifier
+    assert declaration.plugin_unique_identifier == source_uid
+    records = [full_variant_record(), mapping(embedding, revision=REVISION, target=embedding.model)]
+    raw = json.dumps(records)
+    monkeypatch.setattr(module.dify_config, "TOKENER_LEGACY_MODEL_MAPPING_JSON", raw)
+    monkeypatch.setattr(module.dify_config, "TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON", "[]")
+    policy = json.dumps(
+        [{"schema_version": 1, "mapping_revision": REVISION, "inventory_policy": "saved_system_dependencies_v2"}]
+    )
+    monkeypatch.setattr(module.dify_config, "TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON", policy)
+    hosting = facts.hosting[PROVIDER]
+    hosting.credentials = {"api_key": "platform-test-boundary"}
+    hosting.quotas[0].restrict_models = [
+        module.RestrictModel(model=item.model, model_type=item.model_type) for item in (catalog, embedding)
+    ]
+    schema_calls: list[str] = []
+
+    def original_schema(
+        _self: PluginModelClient,
+        tenant: str,
+        user_id: str | None,
+        plugin_id: str,
+        provider: str,
+        model_type: str,
+        model: str,
+        credentials: dict[str, object],
+        *,
+        plugin_unique_identifier: str | None = None,
+    ) -> AIModelEntity:
+        assert (tenant, user_id, plugin_id, provider, model_type, model) == (
+            RAW_TENANT,
+            None,
+            "langgenius/openai",
+            "openai",
+            "llm",
+            "gpt-4o-mini",
+        )
+        assert not isinstance(credentials, RoutedModelCredentials), "no ready target has been provisioned"
+        assert credentials == {"api_key": "platform-test-boundary"}
+        assert plugin_unique_identifier == source_uid
+        schema_calls.append(model)
+        return source_runtime
+
+    monkeypatch.setattr(PluginModelClient, "get_model_schema", original_schema)
+    monkeypatch.setattr(module.PluginInstaller, "fetch_plugin_installation_tasks", lambda *_: [])
+    monkeypatch.setattr(
+        PluginModelClient,
+        "_request_with_plugin_daemon_response",
+        lambda *_a, **_k: module.RedirectCapabilities(protocols=["model-redirect/v1"], operations=[]),
+    )
+    target_records = ModelBillingDependencyRepository(session_factory=factory)
+    monkeypatch.setattr(target_records, "managed_target_binding", lambda _: None)
+    monkeypatch.setattr(module, "migration_routing_state", lambda _: None)
+    evidence = module.SavedDependencyMigrationEvidenceGateway(selections=facts.query, records=target_records)
+    documents = Documents(
+        (
+            ModelDependencyDocument(
+                RAW_TENANT,
+                "classic_app",
+                "app",
+                "dormant-app-config",
+                ClassicModelSelectors(
+                    json.dumps({"provider": PROVIDER, "name": catalog.model, "mode": "chat"}),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                ),
+            ),
+            ModelDependencyDocument(
+                RAW_TENANT,
+                "dataset",
+                "knowledge-base",
+                "saved-kb-config",
+                DatasetModelSelectors("high_quality", PROVIDER, embedding.model, {}),
+            ),
+            ModelDependencyDocument(
+                RAW_TENANT,
+                "tenant_default",
+                RAW_TENANT,
+                "default-record",
+                DefaultModelSelector(PROVIDER, "llm", catalog.model),
+            ),
+        )
+    )
+    dependencies = ModelBillingDependencyInventory(
+        documents=documents,
+        extractor=TypedModelDependencyExtractor(strategies=PluginAgentStrategySelectorQuery()),
+        provenance=SavedModelDependencyProvenance(selections=facts.query),
+        stable_provenance=StableSavedModelMigrationIntent(selections=facts.query),
+    )
+    facade = ModelBillingMigrationInventory(
+        dependencies=dependencies, evidence=evidence, historical=Historical(), policy_json=policy
+    )
+    return facade, facts, source_mapping_revision(raw, REVISION).digest, schema_calls
+
+
+def test_whole_v2_facade_accepts_raw_missing_source_for_app_kb_and_default_but_not_missing_target(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    from tests.unit_tests.services.test_model_billing_source_variants import REVISION
+
+    facade, facts, expected_registry, calls = raw_management_facade(monkeypatch, sqlite_session_factory)
+    result = facade.inventory(RAW_TENANT, REVISION)
+    assert result["inventory_policy"] == "saved_system_dependencies_v2"
+    assert result["model_count"] == 2
+    models = cast(list[dict[str, object]], result["models"])
+    assert {(item["model_type"], item["model"]) for item in models} == {
+        ("llm", "gpt-4o-mini"),
+        ("text-embedding", "text-embedding-3-small"),
+    }
+    assert result["source_variant_registry_digest"] == expected_registry
+    assert len(cast(list[object], result["prospective_variants"])) == 5
+    assert set(cast(dict[str, object], result["source_ownership"])) == {PROVIDER}
+    assert calls == ["gpt-4o-mini"]
+    assert facts.declarations[0].installation_source is None
+    assert "installation_source" not in facts.declarations[0].model_fields_set
+    # Collecting source evidence is not target readiness, and must not create
+    # an org/key/intent or treat missing target bindings as ready.
+    assert "credential_fingerprint" not in result
+    assert "daemon_protocol" not in result
+    with pytest.raises(ModelRouteUnavailable):
+        facade.readiness(RAW_TENANT, REVISION)
+
+
+@pytest.mark.parametrize("drift", ["signature", "conflict", "uid", "remote"])
+def test_whole_v2_facade_rechecks_fresh_source_authority_after_valid_snapshot(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session], drift: str
+) -> None:
+    from tests.unit_tests.services.test_model_billing_source_variants import REVISION
+
+    facade, facts, _, schema_calls = raw_management_facade(monkeypatch, sqlite_session_factory)
+    original_bindings = facts.bindings[0]
+    original_catalog = facts.declarations[0]
+    binding_reads = 0
+    catalog_reads = 0
+
+    def bindings(_self: PluginModelClient, tenant: str) -> list[PluginModelProviderBinding]:
+        nonlocal binding_reads
+        assert tenant == RAW_TENANT
+        binding_reads += 1
+        value = original_bindings.model_copy(deep=True)
+        # Both normal snapshot reads remain trusted. Drift happens at the
+        # evidence boundary, after collect has already identified SYSTEM deps.
+        if binding_reads > 2:
+            if drift == "signature":
+                value.verified = False
+            elif drift == "uid":
+                value.plugin_unique_identifier = value.plugin_unique_identifier.replace("0.4.2", "1.1.0")
+            elif drift == "remote":
+                value.source = PluginInstallationSource.Remote
+        return [value]
+
+    def catalogs(_self: PluginModelClient, tenant: str) -> list[PluginModelProviderEntity]:
+        nonlocal catalog_reads
+        assert tenant == RAW_TENANT
+        catalog_reads += 1
+        value = original_catalog.model_copy(deep=True)
+        if catalog_reads > 2 and drift == "conflict":
+            value.installation_source = PluginInstallationSource.Github
+        return [value]
+
+    monkeypatch.setattr(PluginModelClient, "fetch_model_provider_bindings", bindings)
+    monkeypatch.setattr(PluginModelClient, "fetch_model_providers", catalogs)
+    with pytest.raises(ModelRouteUnavailable):
+        facade.inventory(RAW_TENANT, REVISION)
+    assert binding_reads >= 4
+    assert catalog_reads == 3
+    assert schema_calls == []
+
+
+def test_whole_v2_facade_does_not_admit_actual_custom_dependencies_as_system(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    from tests.unit_tests.services.test_model_billing_source_variants import REVISION
+
+    facade, _, _, calls = raw_management_facade(monkeypatch, sqlite_session_factory, byok=True)
+    result = facade.inventory(RAW_TENANT, REVISION)
+    assert result["models"] == []
+    assert result["model_count"] == 0
+    assert result["source_ownership"] == {}
+    assert all(
+        item["owner"] == item["migration_intent"] == "custom"
+        for item in cast(list[dict[str, object]], result["actual_runtime_ownership"])
+    )
+    assert calls == []
+    with pytest.raises(ModelRouteUnavailable):
+        facade.readiness(RAW_TENANT, REVISION)
 
 
 @pytest.mark.parametrize(

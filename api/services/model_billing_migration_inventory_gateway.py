@@ -184,7 +184,9 @@ class SavedDependencyMigrationEvidenceGateway:
                     or binding.source != PluginInstallationSource.Marketplace
                     or binding.runtime_type not in {"local", "serverless"}
                     or len(catalogs) != 1
-                    or catalogs[0].installation_source != PluginInstallationSource.Marketplace
+                    # Raw management catalogs may omit optional installation
+                    # enrichment; the verified fresh binding owns its source.
+                    or catalogs[0].installation_source not in {None, PluginInstallationSource.Marketplace}
                     or binding.plugin_unique_identifier != catalogs[0].plugin_unique_identifier
                     or source.source_plugin_unique_identifier != binding.plugin_unique_identifier
                 ):
@@ -212,7 +214,7 @@ class SavedDependencyMigrationEvidenceGateway:
                 or not binding.verified
                 or binding.source != PluginInstallationSource.Marketplace
                 or binding.runtime_type not in {"local", "serverless"}
-                or catalogs[0].installation_source != PluginInstallationSource.Marketplace
+                or catalogs[0].installation_source not in {None, PluginInstallationSource.Marketplace}
                 or binding.plugin_unique_identifier != catalogs[0].plugin_unique_identifier
                 or source_state is None
                 or source_state.source_plugin_unique_identifier != binding.plugin_unique_identifier
