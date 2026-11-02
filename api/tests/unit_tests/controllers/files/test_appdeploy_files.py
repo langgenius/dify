@@ -12,6 +12,7 @@ from uuid import UUID
 import jwt
 import pytest
 from flask import Flask
+from pydantic import TypeAdapter
 from sqlalchemy import null, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -160,9 +161,15 @@ def _post_with_file_grant(resource: GrantedFileResolveApi) -> _ResolveResult: ..
 
 
 def _post_with_file_grant(resource: _UploadResource | GrantedFileResolveApi) -> _UploadResult | _ResolveResult:
-    """Call the decorated method, which supplies its own grant argument."""
+    """Call the grant decorator and validate its raw response.
 
-    return cast(Callable[[], _UploadResult | _ResolveResult], resource.post)()
+    Preconditions: The resource owns a callable grant-decorated POST method.
+    Postconditions: Return its validated upload tuple or resolution dictionary.
+    Invalid response shapes raise a validation error. Grant admission is preserved.
+    """
+    post: Callable[..., object] = resource.post
+    result = post()
+    return TypeAdapter(_UploadResult | _ResolveResult).validate_python(result, strict=True)
 
 
 def _content_token(*, file_id: str, kind: FileKind, expires_in: int = 300) -> str:

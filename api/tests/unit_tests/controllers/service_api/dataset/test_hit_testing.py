@@ -15,12 +15,12 @@ Strategy:
 """
 
 import uuid
-from collections.abc import Callable
-from typing import Protocol, TypedDict, cast
+from typing import TypedDict
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask, g
+from pydantic import TypeAdapter
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services.errors.base
@@ -28,6 +28,7 @@ from controllers.service_api.dataset.hit_testing import HitTestingApi, HitTestin
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import Dataset
 from services.knowledge.entities.knowledge_entities import RetrievalModel
+from tests.helpers.unit.controllers.knowledge_fs_controller_fakes import narrowed
 
 # ---------------------------------------------------------------------------
 # HitTestingPayload Model Tests
@@ -80,10 +81,6 @@ class _HitRecord(TypedDict):
     score: float
     tsne_position: list[float] | None
     summary: str | None
-
-
-class _BillingWrappedPost(Protocol):
-    __wrapped__: Callable[..., dict[str, object]]
 
 
 class TestHitTestingPayload:
@@ -166,7 +163,10 @@ class TestHitTestingApiPost:
         mock_ns: MagicMock,
         app: Flask,
     ) -> None:
-        """Test successful hit testing request."""
+        """Preconditions: The dataset exists and the account is admitted.
+
+        Postconditions: The handler returns the query and invokes retrieval.
+        """
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
 
@@ -186,7 +186,7 @@ class TestHitTestingApiPost:
             g._login_user = account
             api = HitTestingApi()
             # Skip billing decorator via __wrapped__
-            response = cast(_BillingWrappedPost, HitTestingApi.post).__wrapped__(api, tenant_id, dataset_id)
+            response = vars(HitTestingApi.post)["__wrapped__"](api, tenant_id, dataset_id)
 
         assert response["query"] == {"content": "test query"}
         mock_hit_svc.retrieve.assert_called_once()
@@ -201,7 +201,10 @@ class TestHitTestingApiPost:
         mock_ns: MagicMock,
         app: Flask,
     ) -> None:
-        """Test hit testing with custom retrieval model."""
+        """Preconditions: The request supplies a valid retrieval model for an accessible dataset.
+
+        Postconditions: The handler passes that model to retrieval and returns its response.
+        """
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
 
@@ -232,7 +235,7 @@ class TestHitTestingApiPost:
             # TODO: the service APIs are NOT migrated yet, so we have to do the very dirty hack
             g._login_user = account
             api = HitTestingApi()
-            response = cast(_BillingWrappedPost, HitTestingApi.post).__wrapped__(api, tenant_id, dataset_id)
+            response = vars(HitTestingApi.post)["__wrapped__"](api, tenant_id, dataset_id)
 
         assert response["query"] == {"content": "complex query"}
         call_kwargs = mock_hit_svc.retrieve.call_args
@@ -252,7 +255,10 @@ class TestHitTestingApiPost:
         mock_ns: MagicMock,
         app: Flask,
     ) -> None:
-        """Service API retrieval payload should not drop metadata filters."""
+        """Preconditions: The retrieval model includes metadata filters.
+
+        Postconditions: The handler preserves those filters in the retrieval request.
+        """
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
 
@@ -289,7 +295,7 @@ class TestHitTestingApiPost:
             # TODO: the service APIs are NOT migrated yet, so we have to do the very dirty hack
             g._login_user = account
             api = HitTestingApi()
-            cast(_BillingWrappedPost, HitTestingApi.post).__wrapped__(api, tenant_id, dataset_id)
+            vars(HitTestingApi.post)["__wrapped__"](api, tenant_id, dataset_id)
 
         passed_retrieval_model = mock_hit_svc.retrieve.call_args.kwargs.get("retrieval_model")
         assert passed_retrieval_model is not None
@@ -305,7 +311,10 @@ class TestHitTestingApiPost:
         mock_ns: MagicMock,
         app: Flask,
     ) -> None:
-        """Test service API prepares nullable list fields from retrieval records."""
+        """Preconditions: The retrieval result contains nullable list fields.
+
+        Postconditions: The serialized record contains empty lists and preserves its remaining fields.
+        """
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
 
@@ -327,10 +336,10 @@ class TestHitTestingApiPost:
             # TODO: the service APIs are NOT migrated yet, so we have to do the very dirty hack
             g._login_user = account
             api = HitTestingApi()
-            response = cast(_BillingWrappedPost, HitTestingApi.post).__wrapped__(api, tenant_id, dataset_id)
+            response = vars(HitTestingApi.post)["__wrapped__"](api, tenant_id, dataset_id)
 
         assert response["query"] == {"content": "legacy query"}
-        record = cast(list[_HitRecord], response["records"])[0]
+        record = TypeAdapter(_HitRecord).validate_python(narrowed(response["records"], list)[0], strict=True)
         assert record["segment"]["id"] == "segment-1"
         assert record["segment"]["keywords"] == []
         assert record["child_chunks"] == []
@@ -347,7 +356,10 @@ class TestHitTestingApiPost:
         mock_ns: MagicMock,
         app: Flask,
     ) -> None:
-        """Test hit testing with non-existent dataset."""
+        """Preconditions: The dataset lookup reports a missing dataset.
+
+        Postconditions: The handler raises NotFound.
+        """
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
         account = self._account(tenant_id)
@@ -360,7 +372,7 @@ class TestHitTestingApiPost:
             g._login_user = account
             api = HitTestingApi()
             with pytest.raises(NotFound):
-                cast(_BillingWrappedPost, HitTestingApi.post).__wrapped__(api, tenant_id, dataset_id)
+                vars(HitTestingApi.post)["__wrapped__"](api, tenant_id, dataset_id)
 
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
@@ -370,7 +382,10 @@ class TestHitTestingApiPost:
         mock_ns: MagicMock,
         app: Flask,
     ) -> None:
-        """Test hit testing when user lacks dataset permission."""
+        """Preconditions: The account has no permission for the dataset.
+
+        Postconditions: The handler raises Forbidden.
+        """
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
 
@@ -386,4 +401,4 @@ class TestHitTestingApiPost:
             g._login_user = account
             api = HitTestingApi()
             with pytest.raises(Forbidden):
-                cast(_BillingWrappedPost, HitTestingApi.post).__wrapped__(api, tenant_id, dataset_id)
+                vars(HitTestingApi.post)["__wrapped__"](api, tenant_id, dataset_id)

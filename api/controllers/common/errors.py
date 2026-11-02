@@ -185,9 +185,16 @@ def register_permission_error_handler(api: ExternalApi) -> None:
 
 
 def register_credential_refresh_error_handler(api: ExternalApi) -> None:
-    """Give temporary refresh failures the same retryable response on each API surface."""
+    """Give temporary refresh failures the same retryable response on each API surface.
 
-    @api.errorhandler(CredentialRefreshUnavailableError)
+    Preconditions: The API supports exception-specific error registration.
+    Postconditions: Refresh failures return HTTP 503 before the generic handler.
+    Existing exception handlers and public error documentation remain registered.
+    """
+    register_handler = api.errorhandler(CredentialRefreshUnavailableError)
+    assert callable(register_handler)
+
+    @register_handler
     def handle_refresh_unavailable(error: CredentialRefreshUnavailableError) -> tuple[dict[str, str | int], int]:
         got_request_exception.send(current_app, exception=error)
         status = HTTPStatus.SERVICE_UNAVAILABLE

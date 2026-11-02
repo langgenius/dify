@@ -1,20 +1,15 @@
 from inspect import unwrap
 from types import SimpleNamespace
-from typing import Protocol, cast
 from unittest.mock import create_autospec, patch
 
 from flask import Response
-from flask_restx import Model
 
 import controllers.console.spec as spec_module
 from dify_app import DifyApp
 from extensions import ext_login
 from machinery.context import RequestContext
 from services.schema_definition_service import SchemaDefinitionService
-
-
-class _DocumentedHandler(Protocol):
-    __apidoc__: dict[str, dict[str, tuple[str, Model]]]
+from tests.helpers.unit.controllers.knowledge_fs_controller_fakes import narrowed
 
 
 class TestSpecSchemaDefinitionsApi:
@@ -55,7 +50,11 @@ class TestSpecSchemaDefinitionsApi:
         service.list.assert_called_once_with()
 
     def test_get_documents_tight_response_model(self) -> None:
-        response = cast(_DocumentedHandler, spec_module.SpecSchemaDefinitionsApi.get).__apidoc__["responses"]["200"]
+        """Preconditions: The endpoint response schema is registered.
+
+        Postconditions: Its HTTP 200 documentation names the schema-definition response model.
+        """
+        response = vars(spec_module.SpecSchemaDefinitionsApi.get)["__apidoc__"]["responses"]["200"]
 
         assert response[1].name == spec_module.SchemaDefinitionsResponse.__name__
 
@@ -82,6 +81,10 @@ class TestSpecSchemaDefinitionsApi:
         assert resp == []
 
     def test_get_rejects_unauthenticated_request_before_service_call(self) -> None:
+        """Preconditions: The request has no authenticated account.
+
+        Postconditions: The handler returns HTTP 401 without calling the schema service.
+        """
         app = DifyApp(__name__)
         app.config["TESTING"] = True
         ext_login.init_app(app)
@@ -98,7 +101,7 @@ class TestSpecSchemaDefinitionsApi:
                 return_value=SimpleNamespace(schema_definitions=service),
             ),
         ):
-            response = cast(Response, api.get())
+            response = narrowed(api.get(), Response)
 
         assert response.status_code == 401
         service.list.assert_not_called()
