@@ -325,7 +325,7 @@ describe('RenameDatasetModal', () => {
       })
 
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+        expect(mockToast.error).toHaveBeenCalledWith('API Error')
       })
       expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
       expect(defaultProps.onSuccess).not.toHaveBeenCalled()

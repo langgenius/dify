@@ -26,6 +26,7 @@ import Badge from '@/app/components/base/badge'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
 import { GoldenQuestionDialog } from './golden-question-dialog'
 import { GoldenQuestionImportDialog } from './golden-question-import-dialog'
@@ -126,10 +127,16 @@ function GoldenQuestionEditorDialog({
   const [error, setError] = useState<string>()
   const [submitting, setSubmitting] = useState(false)
   const createMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const updateMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.patch.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.patch.mutationOptions(
+      {
+        context: { silent: true },
+      },
+    ),
   )
 
   const close = () => {
@@ -158,8 +165,8 @@ function GoldenQuestionEditorDialog({
         queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
       })
       close()
-    } catch {
-      setError(t(($) => $.unknownError, { ns: 'dataset' }))
+    } catch (error) {
+      setError(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
     } finally {
       setSubmitting(false)
     }
@@ -210,7 +217,9 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
     })
   const query = useInfiniteQuery(queryOptions)
   const deleteMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(
+      { context: { silent: true } },
+    ),
   )
   const items = query.data?.pages.flatMap((page) => page.data) ?? []
   const allSelected = items.length > 0 && selected.size === items.length
@@ -287,8 +296,8 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
       )
       setDeleteIds(undefined)
       return true
-    } catch {
-      toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
       return false
     } finally {
       setDeleteSubmitting(false)

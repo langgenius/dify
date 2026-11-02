@@ -556,7 +556,7 @@ class TestAppGenerateServiceCases:
                     args={"inputs": {}},
                     invoke_from=invoke_from,
                     streaming=False,
-                    session=MagicMock(),
+                    session=self.session,
                 )
 
             generate.assert_not_called()
@@ -579,7 +579,7 @@ class TestAppGenerateServiceCases:
                 args={"inputs": {}},
                 invoke_from=InvokeFrom.TRIGGER,
                 streaming=False,
-                session=MagicMock(),
+                session=self.session,
             )
 
             assert result == {"result": "trigger"}
@@ -598,7 +598,7 @@ class TestAppGenerateServiceCases:
                 side_effect=lambda value: value,
             )
             app = _make_app(AppMode.WORKFLOW)
-            session = MagicMock()
+            session = self.session
 
             result = AppGenerateService.generate(
                 app_model=app,

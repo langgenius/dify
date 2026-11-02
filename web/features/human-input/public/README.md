@@ -7,18 +7,17 @@ test injection.
 
 ## Internal Modules
 
-| Module               | Responsibility                                                                     |
-| -------------------- | ---------------------------------------------------------------------------------- |
-| `types`              | Defines v2 definition, challenge, submit, upload, and transport contracts.         |
-| `errors`             | Normalizes transport failures into redacted UI categories.                         |
-| `transport-selector` | Selects real or mock transport without URL or failure-based fallback.              |
-| `upload`             | Adapts the v2 transport to the generic upload strategy at the form owner.          |
-| `legacy-upload`      | Adapts legacy form-scoped uploads for the existing `/form/[token]` route.          |
-| `real-transport`     | Maps generated public v2 definition, challenge, submission, and upload-token APIs. |
-| `mock-transport`     | Provides deterministic, explicitly injected test behavior.                         |
-| `session-reducer`    | Enforces the local OTP and Challenge session lifecycle.                            |
-| `use-form-session`   | Owns route-session effects, deadlines, stale-response protection, and mutations.   |
-| `form`               | Composes shared form presentation with v2 verification UI and status states.       |
+| Module                              | Responsibility                                                                     |
+| ----------------------------------- | ---------------------------------------------------------------------------------- |
+| `types`                             | Defines v2 definition, challenge, submit, upload, and transport contracts.         |
+| `errors`                            | Normalizes transport failures into redacted UI categories.                         |
+| `upload`                            | Adapts the v2 transport to the generic upload strategy at the form owner.          |
+| `legacy-upload`                     | Adapts legacy form-scoped uploads for the existing `/form/[token]` route.          |
+| `real-transport`                    | Maps generated public v2 definition, challenge, submission, and upload-token APIs. |
+| `__tests__/fixtures/mock-transport` | Provides deterministic, explicitly injected test behavior.                         |
+| `session-reducer`                   | Enforces the local OTP and Challenge session lifecycle.                            |
+| `use-form-session`                  | Owns route-session effects, deadlines, stale-response protection, and mutations.   |
+| `form`                              | Composes shared form presentation with v2 verification UI and status states.       |
 
 ## External Modules
 

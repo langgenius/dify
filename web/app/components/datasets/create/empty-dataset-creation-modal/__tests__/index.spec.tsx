@@ -90,7 +90,7 @@ it('creates a name at the length limit, invalidates the list and opens its docum
   await user.type(field(), name)
   await user.click(confirm())
   await waitFor(() => expect(onHide).toHaveBeenCalledOnce())
-  expect(mockCreate).toHaveBeenCalledExactlyOnceWith({ name })
+  expect(mockCreate).toHaveBeenCalledExactlyOnceWith({ name }, { silent: true })
   expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true)
   expect(mockPush).toHaveBeenCalledExactlyOnceWith('/datasets/created-dataset/documents')
 })
@@ -103,7 +103,7 @@ it('submits with Enter and prevents duplicate requests until creation completes'
   await user.type(field(), 'New Dataset{Enter}')
   await user.keyboard('{Enter}')
   await user.click(confirm())
-  expect(mockCreate).toHaveBeenCalledExactlyOnceWith({ name: 'New Dataset' })
+  expect(mockCreate).toHaveBeenCalledExactlyOnceWith({ name: 'New Dataset' }, { silent: true })
   expect(onHide).not.toHaveBeenCalled()
   await act(async () => pending.resolve(dataset))
   await waitFor(() => expect(onHide).toHaveBeenCalledOnce())
@@ -118,7 +118,7 @@ it('keeps a failed draft available for retry without navigating or invalidating 
   await waitFor(() =>
     expect(mockNotify).toHaveBeenCalledWith({
       type: 'error',
-      message: 'datasetCreation.stepOne.modal.failed',
+      message: 'offline',
     }),
   )
   expect(field()).toHaveValue('Retry me')

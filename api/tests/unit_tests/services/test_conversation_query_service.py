@@ -17,7 +17,7 @@ from pydantic import JsonValue
 from sqlalchemy import Connection, Engine, event, select
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
-from core.helper.http_client_pooling import close_all_pooled_clients
+from core.helper import http_client_pooling
 from core.tools.signature import verify_tool_file_signature
 from core.workflow.file_reference import build_file_reference, resolve_file_record_id
 from extensions.storage.storage_type import StorageType
@@ -376,7 +376,7 @@ def test_console_invalid_file_metadata_fails_after_connection_release(
 
 
 @pytest.fixture
-def _file_configuration(config_overrides: Callable[..., None]) -> Iterator[None]:
+def _file_configuration(config_overrides: Callable[..., None], monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     config_overrides(
         FILES_URL="https://files.example.test",
         SECRET_KEY="conversation-detail-file-test",
@@ -384,9 +384,11 @@ def _file_configuration(config_overrides: Callable[..., None]) -> Iterator[None]
         SSRF_PROXY_HTTPS_URL="",
         SSRF_PROXY_ALL_URL="",
     )
-    close_all_pooled_clients()
+    # A private pool picks up the overrides without closing clients other modules hold at import time.
+    http_pool = http_client_pooling.HttpClientPoolFactory()
+    monkeypatch.setattr(http_client_pooling, "_factory", http_pool)
     yield
-    close_all_pooled_clients()
+    http_pool.close_all()
 
 
 @dataclass(frozen=True)

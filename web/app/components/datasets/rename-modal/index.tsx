@@ -24,6 +24,7 @@ import {
 } from '@/app/components/base/icon-picker'
 import { toast } from '@/app/notifications'
 import { updateDatasetSetting } from '@/service/datasets'
+import { getErrorMessage } from '@/utils/error-message'
 
 type RenameDatasetModalProps = {
   open: boolean
@@ -130,14 +131,19 @@ function RenameDatasetForm({
         body.external_knowledge_id = externalKnowledgeId
         body.external_knowledge_api_id = externalKnowledgeApiId
       }
-      await updateDatasetSetting({
-        datasetId: dataset.id,
-        body,
-      })
+      await updateDatasetSetting(
+        {
+          datasetId: dataset.id,
+          body,
+        },
+        { silent: true },
+      )
       if (onSuccess) onSuccess()
       onClose()
-    } catch {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
     } finally {
       onLoadingChange(false)
     }

@@ -21,12 +21,13 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Collection
-from typing import Any, Final
+from typing import Any, BinaryIO, Final, cast
 
 from flask import request
 from werkzeug.datastructures import FileStorage
 
 from controllers.openapi._errors import InvalidFilePart
+from controllers.openapi._upload import UploadParts
 
 LIST_SUFFIX: Final = "[]"
 _PART_NAME_RE: Final = re.compile(r"^(?P<field>[^\[\]]+)(?:\[(?P<key>[^\[\]]+)\])?(?P<many>\[\])?$")
@@ -66,3 +67,12 @@ def body_from_request(*, file_fields: Collection[str] = ()) -> dict[str, Any]:
     for name in request.files:
         _place(body, name, request.files.getlist(name), file_fields=file_fields)
     return body
+
+
+def folder_streams(parts: UploadParts) -> dict[str, BinaryIO]:
+    streams: dict[str, BinaryIO] = {}
+    for path, part in parts.items():
+        if isinstance(part, list):
+            raise InvalidFilePart(f"{path}: given more than once")
+        streams[path] = cast(BinaryIO, part.stream)
+    return streams

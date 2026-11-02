@@ -280,7 +280,7 @@ describe('useChildSegmentData', () => {
     expect(queryClient.getQueryData(parentKey)).toEqual(original)
     expect(mockNotify).toHaveBeenCalledWith({
       type: 'error',
-      message: 'common.actionMsg.modifiedUnsuccessfully',
+      message: 'Delete failed',
     })
   })
 

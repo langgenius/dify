@@ -19,7 +19,6 @@ from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetMetadata, DatasetPermissionEnum, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.knowledge_fs import (
-    KnowledgeFSAppSpaceJoinType,
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpacePermissionRole,
     KnowledgeFSControlSpaceState,
@@ -53,7 +52,6 @@ from services.knowledge_fs.initial_source_import import (
     KnowledgeFSInitialSourceSubmission,
 )
 from services.knowledge_fs.product_dto import (
-    KnowledgeFSAppBindingPayload,
     KnowledgeFSBackgroundTaskListResponse,
     KnowledgeFSBackgroundTaskResponse,
     KnowledgeFSDocumentAvailabilityPayload,
@@ -1078,7 +1076,7 @@ def test_configuration_fails_when_workspace_default_reasoning_model_is_missing(
         upgrade_module._resolve_configuration(job)
 
 
-def test_access_migration_maps_visibility_members_apps_api_and_tags(
+def test_access_migration_maps_visibility_members_channels_api_and_tags_without_app_bindings(
     sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     viewer_id = "00000000-0000-0000-0000-000000000030"
@@ -1129,12 +1127,7 @@ def test_access_migration_maps_visibility_members_apps_api_and_tags(
     assert external_access.agent_enabled is True
     assert external_access.workflow_enabled is True
     assert external_access.mcp_enabled is False
-    binding_payloads = [call.kwargs["payload"] for call in app_bindings.upsert.calls]
-    assert all(isinstance(payload, KnowledgeFSAppBindingPayload) for payload in binding_payloads)
-    assert [cast(KnowledgeFSAppBindingPayload, payload).caller_kind for payload in binding_payloads] == [
-        KnowledgeFSAppSpaceJoinType.AGENT,
-        KnowledgeFSAppSpaceJoinType.WORKFLOW,
-    ]
+    assert app_bindings.upsert.calls == []
     assert space_tags.replace_tags.last.kwargs["tag_ids"] == job.tag_ids_snapshot
     with sqlite_session_factory() as session:
         persisted = session.get(KnowledgeFSUpgradeJob, job.id)
