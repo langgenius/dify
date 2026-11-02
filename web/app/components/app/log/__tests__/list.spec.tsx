@@ -594,7 +594,7 @@ it('loads the selected agent trace using its conversation and message ids', asyn
   })
   const user = userEvent.setup()
   renderConversationList({
-    appDetail: createAppDetailFixture({ id: 'app-1', mode: 'advanced-chat' }),
+    appDetail: createAppDetailFixture({ id: 'app-1', mode: 'agent-chat' }),
     searchParams: '?conversation_id=conversation-1',
   })
   await user.click(await screen.findByRole('button', { name: 'common.operation.log' }))
