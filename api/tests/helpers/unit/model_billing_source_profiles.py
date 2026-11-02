@@ -9,6 +9,8 @@ from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelTy
 
 GPT55_REVISION = "source-variants-gpt55-new-v1"
 EMBEDDING_REVISION = "source-variants-embedding-new-v1"
+GPT55_DAEMON_REVISION = "source-variants-gpt55-daemon-new-v1"
+DAEMON_REVISION = "source-variants-daemon-new-v1"
 SOURCE_PROVIDER = "langgenius/openai/openai"
 GPT55_IDENTITY = (SOURCE_PROVIDER, ModelType.LLM, "gpt-5.5")
 EMBEDDING_MODELS = ("text-embedding-3-large", "text-embedding-3-small", "text-embedding-ada-002")
@@ -23,6 +25,7 @@ class SourceProfile(TypedDict):
     source_runtime_schema_digest: str
     source_catalog_schema: dict[str, object]
     source_schema: dict[str, object]
+    source_daemon_schema: dict[str, object]
     source_settings: dict[str, bool]
     source_protocol_selectors: list[str]
     source_endpoint_class: str
@@ -204,3 +207,53 @@ def full_embedding_registry() -> list[dict[str, object]]:
     for item in records:
         item["mapping_revision"] = EMBEDDING_REVISION
     return [*records, *(embedding_variant_record(model) for model in EMBEDDING_MODELS)]
+
+
+def gpt55_daemon_profiles() -> list[SourceProfile]:
+    profiles = cast(list[SourceProfile], _document("model_billing_openai_provider042_daemon_profiles.json")["profiles"])
+    return [profile for profile in profiles if profile["adapter_revision"] == "2"]
+
+
+def gpt55_daemon_schemas() -> tuple[AIModelEntity, AIModelEntity]:
+    profile = gpt55_daemon_profiles()[0]
+    return (
+        AIModelEntity.model_validate(profile["source_catalog_schema"]),
+        AIModelEntity.model_validate(profile["source_daemon_schema"]),
+    )
+
+
+def gpt55_daemon_variant_record() -> dict[str, object]:
+    rows = []
+    for profile in gpt55_daemon_profiles():
+        official = profile["source_endpoint_class"] == "official_root"
+        for selector in profile["source_protocol_selectors"]:
+            item = _row(
+                profile,
+                variant_id="openai042-gpt55-" + ("official-root-" if official else "") + selector,
+                settings={"protocol_selector": selector, **profile["source_settings"]},
+                adapter=profile["adapter_id"],
+                revision=profile["adapter_revision"],
+                kind=ModelType.LLM,
+            )
+            target = cast(dict[str, object], item["target"])
+            target["minimum_plugin_version"] = "0.4.3-dev13"
+            rows.append(item)
+    return _envelope("gpt-5.5", ModelType.LLM, GPT55_DAEMON_REVISION, rows)
+
+
+def full_gpt55_daemon_registry() -> list[dict[str, object]]:
+    mini = _mini_record()
+    mini["mapping_revision"] = GPT55_DAEMON_REVISION
+    for row in cast(list[dict[str, object]], mini["variants"]):
+        cast(dict[str, object], row["target"])["minimum_plugin_version"] = "0.4.3-dev13"
+    return [mini, gpt55_daemon_variant_record()]
+
+
+def full_daemon_registry() -> list[dict[str, object]]:
+    records = full_embedding_registry()
+    records[1] = gpt55_daemon_variant_record()
+    for record in records:
+        record["mapping_revision"] = DAEMON_REVISION
+        for row in cast(list[dict[str, object]], record["variants"]):
+            cast(dict[str, object], row["target"])["minimum_plugin_version"] = "0.4.3-dev13"
+    return records

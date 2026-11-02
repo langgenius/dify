@@ -2,7 +2,8 @@
 
 import hashlib
 import json
-from dataclasses import FrozenInstanceError, replace
+from dataclasses import FrozenInstanceError, asdict, replace
+from decimal import Decimal
 from pathlib import Path
 from typing import Literal, TypedDict, Unpack, cast
 
@@ -11,6 +12,8 @@ import pytest
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from services.entities.model_billing_mapping import model_schema_digest
 from services.model_billing_openai_provider042_adapter import (
+    _ALL_REVIEWED_CONTRACTS,
+    _DAEMON_REVIEWED_CONTRACTS,
     _REVIEWED_CONTRACTS,
     OPENAI_PROVIDER042_SOURCE_ADAPTER_ID,
     OPENAI_PROVIDER042_SOURCE_PROVIDER,
@@ -222,6 +225,145 @@ def test_arbitrary_contract_or_marker_type_is_not_authority() -> None:
 def test_malformed_source_schema_is_not_a_catalog_or_runtime_proof() -> None:
     with pytest.raises(OpenAIProvider042SourceAdapterError, match="source schema is not reviewed"):
         _build(0, "absent", source_schema=cast(AIModelEntity, None))
+
+
+_DAEMON_FIXTURE = Path(__file__).parent / "fixtures/model_billing_openai_provider042_daemon_profiles.json"
+_DAEMON_DOCUMENT = json.loads(_DAEMON_FIXTURE.read_text())
+_DAEMON_PROFILES = _DAEMON_DOCUMENT["profiles"][4:]
+
+
+def _daemon_marker(index: int) -> dict[str, object]:
+    return openai_provider042_source_marker(
+        _DAEMON_REVIEWED_CONTRACTS[index],
+        source_provider=OPENAI_PROVIDER042_SOURCE_PROVIDER,
+        source_model="gpt-5.5",
+        model_type=ModelType.LLM,
+        target_model="gpt-5.5",
+    )
+
+
+def _build_daemon(
+    index: int, selector: Selector, **overrides: Unpack[BuildOverrides]
+) -> OpenAIProvider042SourceContract:
+    arguments: BuildOverrides = {
+        "adapter_revision": "2",
+        "expected_rules_digest": _DAEMON_REVIEWED_CONTRACTS[index].rules_digest,
+        "source_schema": AIModelEntity.model_validate(_DAEMON_PROFILES[index]["source_catalog_schema"]),
+    }
+    arguments.update(overrides)
+    return _build(index, selector, **arguments)
+
+
+@pytest.mark.parametrize(
+    ("index", "selector"), [(0, "absent"), (0, "chat"), (1, "absent"), (1, "chat"), (2, "responses"), (3, "responses")]
+)
+def test_daemon_revision2_build_restore_preserves_the_exact_source_transport_boundary(
+    index: int, selector: Selector
+) -> None:
+    contract = _DAEMON_REVIEWED_CONTRACTS[index]
+    assert _build_daemon(index, selector) == contract
+    assert (
+        restore_openai_provider042_source_contract(
+            _daemon_marker(index),
+            source_provider=OPENAI_PROVIDER042_SOURCE_PROVIDER,
+            source_model="gpt-5.5",
+            model_type=ModelType.LLM,
+            target_model="gpt-5.5",
+            source_settings=OpenAI042SourceSettings(selector, index in {1, 3}, False),
+        )
+        == contract
+    )
+
+
+@pytest.mark.parametrize("index", range(4))
+def test_new_rules_bind_sdk_and_actual_daemon_as_separate_exact_schema_layers(index: int) -> None:
+    profile, contract = _DAEMON_PROFILES[index], _DAEMON_REVIEWED_CONTRACTS[index]
+    assert (
+        hashlib.sha256(_DAEMON_FIXTURE.read_bytes()).hexdigest()
+        == "13c496d9aef7382f146a1e09a854427bfb3c51a046a7fda568527b71cbd19680"
+    )
+    assert (
+        contract.rules_digest
+        == "sha256:"
+        + hashlib.sha256(
+            json.dumps(profile, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+        ).hexdigest()
+    )
+    sdk = AIModelEntity.model_validate(profile["source_schema"])
+    daemon = AIModelEntity.model_validate(profile["source_daemon_schema"])
+    assert (
+        model_schema_digest(sdk)
+        == profile["source_sdk_core_schema_digest"]
+        == _REVIEWED_CONTRACTS[index].source_runtime_schema_digest
+    )
+    assert (
+        model_schema_digest(daemon)
+        == contract.source_runtime_schema_digest
+        == "sha256:4fc3c5dbd760487f02c45818ff75ddc97e778c488837441e32e85220f11e33ae"
+    )
+    sdk_dump, daemon_dump = sdk.model_dump(mode="json"), daemon.model_dump(mode="json")
+    assert sdk_dump["pricing"]["input"] == "5.00"
+    assert sdk_dump["pricing"]["output"] == "30.00"
+    assert daemon_dump["pricing"]["input"] == "5"
+    assert daemon_dump["pricing"]["output"] == "30"
+    sdk_dump["pricing"] = daemon_dump["pricing"]
+    assert sdk_dump == daemon_dump
+    with pytest.raises(OpenAIProvider042SourceAdapterError):
+        _build_daemon(index, "responses" if index >= 2 else "chat", source_schema=daemon)
+
+
+def test_old_four_rules_and_contract_tuple_are_not_rewritten_or_relabelled() -> None:
+    assert len(_REVIEWED_CONTRACTS) == len(_DAEMON_REVIEWED_CONTRACTS) == 4
+    assert len(_ALL_REVIEWED_CONTRACTS) == 8
+    assert _DAEMON_DOCUMENT["profiles"][:4] == _PROFILES
+    assert (
+        hashlib.sha256(
+            json.dumps(
+                [asdict(c) for c in _REVIEWED_CONTRACTS], sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            ).encode()
+        ).hexdigest()
+        == "849c5019db18e44416512daaaf2f52d3349ee55927d11333a1a4067fbdb418a8"
+    )
+
+
+@pytest.mark.parametrize("index", range(4))
+@pytest.mark.parametrize("change", ["revision", "rules", "protocol", "base", "metadata"])
+def test_new_transport_profiles_cannot_mix_old_rules_or_settings(index: int, change: str) -> None:
+    selector: Selector = "responses" if index >= 2 else "chat"
+    overrides: BuildOverrides = {}
+    if change == "revision":
+        overrides["adapter_revision"] = "1"
+    elif change == "rules":
+        overrides["expected_rules_digest"] = _REVIEWED_CONTRACTS[index].rules_digest
+    else:
+        overrides["source_settings"] = OpenAI042SourceSettings(
+            ("chat" if selector == "responses" else "responses") if change == "protocol" else selector,
+            index not in {1, 3} if change == "base" else index in {1, 3},
+            change == "metadata",
+        )
+    with pytest.raises(OpenAIProvider042SourceAdapterError):
+        _build_daemon(index, selector, **overrides)
+
+
+def test_no_global_price_equivalence_or_digest_normalization_is_admitted() -> None:
+    profile = _DAEMON_PROFILES[0]
+    alternative = AIModelEntity.model_validate(profile["source_daemon_schema"])
+    assert alternative.pricing is not None
+    # This is a negative metadata fixture, not a source profile or a price
+    # conversion. The unchanged digest must still distinguish its spelling.
+    alternative.pricing.input = Decimal("5.0")
+    assert model_schema_digest(alternative) != _DAEMON_REVIEWED_CONTRACTS[0].source_runtime_schema_digest
+    forged = replace(
+        _DAEMON_REVIEWED_CONTRACTS[0], source_runtime_schema_digest=_REVIEWED_CONTRACTS[0].source_runtime_schema_digest
+    )
+    with pytest.raises(OpenAIProvider042SourceAdapterError):
+        openai_provider042_source_marker(
+            forged,
+            source_provider=OPENAI_PROVIDER042_SOURCE_PROVIDER,
+            source_model="gpt-5.5",
+            model_type=ModelType.LLM,
+            target_model="gpt-5.5",
+        )
 
 
 @pytest.mark.parametrize(("selector", "expected"), [("absent", "chat"), ("chat", "chat"), ("responses", "responses")])

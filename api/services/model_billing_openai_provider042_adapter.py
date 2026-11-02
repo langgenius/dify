@@ -95,6 +95,58 @@ _REVIEWED_CONTRACTS = (
 )
 
 
+# Append-only revision 2 binds the real daemon-observable schema boundary.
+# The original SDK/codec projection remains separately recorded in each rules
+# body. Never normalize prices in the global digest or rewrite revision 1.
+_DAEMON_REVIEWED_CONTRACTS = (
+    OpenAIProvider042SourceContract(
+        profile_id="openai-042-chat-daemon-runtime-v1:gpt-5.5",
+        source_plugin_unique_identifier=OPENAI_PROVIDER042_SOURCE_UID,
+        source_model="gpt-5.5",
+        source_schema_digest="sha256:ff2991e8c7fa82e2ce383a8f556d6f449a48e2c23604e1b30fe508729ac29ae6",
+        source_runtime_schema_digest="sha256:4fc3c5dbd760487f02c45818ff75ddc97e778c488837441e32e85220f11e33ae",
+        target_model="gpt-5.5",
+        rules_digest="sha256:b6de2f492a375917343b18d8292e2a0834c72c1c193233c7b52a7e85a9729e19",
+        adapter_id=OPENAI_PROVIDER042_SOURCE_ADAPTER_ID,
+        algorithm_revision="2",
+    ),
+    OpenAIProvider042SourceContract(
+        profile_id="openai-042-chat-official-root-daemon-runtime-v1:gpt-5.5",
+        source_plugin_unique_identifier=OPENAI_PROVIDER042_SOURCE_UID,
+        source_model="gpt-5.5",
+        source_schema_digest="sha256:ff2991e8c7fa82e2ce383a8f556d6f449a48e2c23604e1b30fe508729ac29ae6",
+        source_runtime_schema_digest="sha256:4fc3c5dbd760487f02c45818ff75ddc97e778c488837441e32e85220f11e33ae",
+        target_model="gpt-5.5",
+        rules_digest="sha256:d57e7c004b79d44f488df82ab45a5f6e7ed35d53997e4b0c110ffbda0a317517",
+        adapter_id=OPENAI_PROVIDER042_SOURCE_ADAPTER_ID,
+        algorithm_revision="2",
+    ),
+    OpenAIProvider042SourceContract(
+        profile_id="openai-042-responses-daemon-runtime-v1:gpt-5.5",
+        source_plugin_unique_identifier=OPENAI_PROVIDER042_SOURCE_UID,
+        source_model="gpt-5.5",
+        source_schema_digest="sha256:ff2991e8c7fa82e2ce383a8f556d6f449a48e2c23604e1b30fe508729ac29ae6",
+        source_runtime_schema_digest="sha256:4fc3c5dbd760487f02c45818ff75ddc97e778c488837441e32e85220f11e33ae",
+        target_model="gpt-5.5",
+        rules_digest="sha256:76d7387a8c579e487ea0d78474c3b15a7431cc6d11d60027a91579a257b22f6b",
+        adapter_id=OPENAI_PROVIDER042_SOURCE_ADAPTER_ID,
+        algorithm_revision="2",
+    ),
+    OpenAIProvider042SourceContract(
+        profile_id="openai-042-responses-official-root-daemon-runtime-v1:gpt-5.5",
+        source_plugin_unique_identifier=OPENAI_PROVIDER042_SOURCE_UID,
+        source_model="gpt-5.5",
+        source_schema_digest="sha256:ff2991e8c7fa82e2ce383a8f556d6f449a48e2c23604e1b30fe508729ac29ae6",
+        source_runtime_schema_digest="sha256:4fc3c5dbd760487f02c45818ff75ddc97e778c488837441e32e85220f11e33ae",
+        target_model="gpt-5.5",
+        rules_digest="sha256:41e3cd094c9cf686d5a600b8f2c1bb118ca4570ec23da49cbe62c4976a4d4006",
+        adapter_id=OPENAI_PROVIDER042_SOURCE_ADAPTER_ID,
+        algorithm_revision="2",
+    ),
+)
+_ALL_REVIEWED_CONTRACTS = (*_REVIEWED_CONTRACTS, *_DAEMON_REVIEWED_CONTRACTS)
+
+
 def openai_provider042_protocol(settings: OpenAI042SourceSettings) -> Literal["chat", "responses"]:
     if (
         type(settings) is not OpenAI042SourceSettings
@@ -130,7 +182,12 @@ def validate_openai_provider042_identity(
 
 def _matches_settings(contract: OpenAIProvider042SourceContract, settings: OpenAI042SourceSettings) -> bool:
     protocol = openai_provider042_protocol(settings)
-    family = "official-root-runtime-v1" if settings.source_base_is_set else "runtime-v1"
+    if contract.algorithm_revision == "1":
+        family = "official-root-runtime-v1" if settings.source_base_is_set else "runtime-v1"
+    elif contract.algorithm_revision == "2":
+        family = "official-root-daemon-runtime-v1" if settings.source_base_is_set else "daemon-runtime-v1"
+    else:
+        return False
     return contract.profile_id == f"openai-042-{protocol}-{family}:gpt-5.5"
 
 
@@ -142,7 +199,7 @@ def openai_provider042_source_marker(
     model_type: ModelType,
     target_model: str,
 ) -> dict[str, object]:
-    if contract not in _REVIEWED_CONTRACTS:
+    if contract not in _ALL_REVIEWED_CONTRACTS:
         raise OpenAIProvider042SourceAdapterError("Unreviewed frozen OpenAI0.4.2 source contract")
     validate_openai_provider042_identity(
         source_provider=source_provider,
@@ -181,7 +238,7 @@ def build_openai_provider042_source_contract(
     contract = next(
         (
             item
-            for item in _REVIEWED_CONTRACTS
+            for item in _ALL_REVIEWED_CONTRACTS
             if _matches_settings(item, source_settings)
             and item.algorithm_revision == adapter_revision
             and item.source_schema_digest == expected_source_schema_digest
@@ -231,7 +288,7 @@ def restore_openai_provider042_source_contract(
     contract = next(
         (
             item
-            for item in _REVIEWED_CONTRACTS
+            for item in _ALL_REVIEWED_CONTRACTS
             if item.profile_id == marker["profile_id"] and _matches_settings(item, source_settings)
         ),
         None,

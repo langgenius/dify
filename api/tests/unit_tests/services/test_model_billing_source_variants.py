@@ -42,6 +42,7 @@ from services.model_billing_openai_provider110_adapter import _REVIEWED_CONTRACT
 from services.model_billing_openai_provider110_adapter import _REVIEWED_CONTRACTS as CURRENT_SOURCE_CONTRACTS
 from services.model_billing_source_variants import SourceVariantContext, selection_payload, source_endpoint_class
 from tests.helpers.unit.model_billing_source_profiles import (
+    DAEMON_REVISION,
     EMBEDDING_MODELS,
     EMBEDDING_REVISION,
     GPT55_IDENTITY,
@@ -49,8 +50,10 @@ from tests.helpers.unit.model_billing_source_profiles import (
     SOURCE_PROVIDER,
     embedding_profiles,
     embedding_schemas,
+    full_daemon_registry,
     full_embedding_registry,
     full_gpt55_registry,
+    gpt55_daemon_schemas,
     gpt55_schemas,
     gpt55_variant_record,
     profile_digest,
@@ -1151,3 +1154,63 @@ def test_saved_dependency_selection_uses_the_same_independent_embedding_fact(
         assert provider.quotas[0].models == (("text-embedding", EMBEDDING_MODELS[0]),)
     assert original == before
     assert facts.calls == [("declarations", TENANT), ("bindings", TENANT)]
+
+
+def test_append_only_daemon_revision_keeps_sdk_profiles_and_old_selected_revision_bytes() -> None:
+    old = full_embedding_registry()
+    fresh = full_daemon_registry()
+    old_registry = source_mapping_revision(json.dumps(old), EMBEDDING_REVISION)
+    combined = json.dumps([*old, *fresh])
+    assert source_mapping_revision(combined, EMBEDDING_REVISION).digest == old_registry.digest
+    assert [
+        r.model_dump_json() for r in source_mapping_revision(combined, EMBEDDING_REVISION).declarations.values()
+    ] == [r.model_dump_json() for r in old_registry.declarations.values()]
+    new_registry = source_mapping_revision(combined, DAEMON_REVISION)
+    selected = new_registry.selected_prospective()
+    assert len(selected) == 28
+    assert len(new_registry.declarations) == 5
+    for item in selected:
+        restored = restore_variant_source_contract(item)
+        assert item.target.minimum_plugin_version == "0.4.3-dev13"
+        if item.source.model == "gpt-5.5":
+            assert restored.algorithm_revision == "2"
+            assert "-daemon-runtime-v1:" in restored.profile_id
+            assert (
+                restored.source_runtime_schema_digest
+                == "sha256:4fc3c5dbd760487f02c45818ff75ddc97e778c488837441e32e85220f11e33ae"
+            )
+        assert (
+            new_registry.restore_selection(
+                (SOURCE_PROVIDER, item.source.model_type, item.source.model),
+                selection_payload(item).model_dump(mode="json"),
+            )
+            == item
+        )
+
+
+@pytest.mark.parametrize("change", ["sdk_runtime_digest", "old_profile", "old_rules", "old_revision"])
+def test_daemon_revision_cannot_be_downgraded_to_the_old_direct_sdk_projection(change: str) -> None:
+    old = full_embedding_registry()
+    fresh = full_daemon_registry()
+    old_row = variants(old[1])[0]
+    row = variants(fresh[1])[0]
+    if change == "sdk_runtime_digest":
+        row["source_runtime_schema_digest"] = old_row["source_runtime_schema_digest"]
+    elif change == "old_profile":
+        row["source_profile_id"] = old_row["source_profile_id"]
+    elif change == "old_rules":
+        section(row, "parameter_adapter")["rules_digest"] = section(old_row, "parameter_adapter")["rules_digest"]
+    else:
+        section(row, "parameter_adapter")["revision"] = "1"
+    catalog, _ = gpt55_daemon_schemas()
+    fact = hosted_source_variant_fact(
+        provider=SOURCE_PROVIDER, source_uid=OPENAI_PROVIDER042_SOURCE_UID, models=[catalog], credentials={}
+    )
+    with pytest.raises(ValueError, match="[Ss]ource|profile|OpenAI"):
+        resolve_source_mapping(
+            source_mapping_revision(json.dumps(fresh), DAEMON_REVISION),
+            GPT55_IDENTITY,
+            source_uid=OPENAI_PROVIDER042_SOURCE_UID,
+            fact=fact,
+            schema=catalog,
+        )

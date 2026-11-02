@@ -54,14 +54,17 @@ from services.entities.model_billing_migration import canonical_hash
 from services.model_billing_mapping_service import source_mapping_revision
 from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
 from tests.helpers.unit.model_billing_source_profiles import (
+    DAEMON_REVISION,
     EMBEDDING_MODELS,
     EMBEDDING_REVISION,
     GPT55_REVISION,
     SOURCE_PROVIDER,
     embedding_profiles,
     embedding_schemas,
+    full_daemon_registry,
     full_embedding_registry,
     full_gpt55_registry,
+    gpt55_daemon_schemas,
     gpt55_schemas,
 )
 from tests.unit_tests.core.test_provider_manager import TENANT_ID, ProviderCase
@@ -2039,22 +2042,25 @@ def test_missing_pin_never_retrusts_the_current_edited_row() -> None:
         _pinned_credential_fingerprint({}, plan().tenant_id, plan().credential_id, allow_provisioned=True)
 
 
-def _configure_gpt55_case(case: ProviderCase) -> tuple[str, str]:
-    catalog, _ = gpt55_schemas()
+def _configure_gpt55_case(case: ProviderCase, *, daemon_profile: bool = False) -> tuple[str, str]:
+    catalog, _ = gpt55_daemon_schemas() if daemon_profile else gpt55_schemas()
     case.provider.models = [catalog]
     case.provider.plugin_unique_identifier = (
         "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468"
     )
-    case.integration.plugin_unique_identifier = "langgenius/tokener:0.4.3-dev12@" + "c" * 64
-    raw = json.dumps(full_gpt55_registry())
-    digest = source_mapping_revision(raw, GPT55_REVISION).digest
-    case.state["model_mapping_version"] = GPT55_REVISION
+    case.integration.plugin_unique_identifier = (
+        "langgenius/tokener:0.4.3-dev13@" if daemon_profile else "langgenius/tokener:0.4.3-dev12@"
+    ) + "c" * 64
+    revision = DAEMON_REVISION if daemon_profile else GPT55_REVISION
+    raw = json.dumps(full_daemon_registry() if daemon_profile else full_gpt55_registry())
+    digest = source_mapping_revision(raw, revision).digest
+    case.state["model_mapping_version"] = revision
     case.state["source_variant_registry_digest"] = digest
     preparation = case.state["preparation"]
     assert isinstance(preparation, dict)
     preparation["source_variant_registry_digest"] = digest
     policy = json.dumps(
-        [{"schema_version": 1, "mapping_revision": GPT55_REVISION, "inventory_policy": "saved_system_dependencies_v2"}]
+        [{"schema_version": 1, "mapping_revision": revision, "inventory_policy": "saved_system_dependencies_v2"}]
     )
     return raw, policy
 
@@ -2066,11 +2072,12 @@ def gpt55_case(request: pytest.FixtureRequest) -> ProviderCase:
 
 @pytest.mark.parametrize("selector", ["absent", "chat", "responses"])
 @pytest.mark.parametrize("official", [False, True])
+@pytest.mark.parametrize("daemon_profile", [False, True])
 def test_exact_gpt55_source_routes_without_rewriting_original_settings_and_admits_fresh_facts(
-    selector: str, official: bool, gpt55_case: ProviderCase, monkeypatch: pytest.MonkeyPatch
+    selector: str, official: bool, daemon_profile: bool, gpt55_case: ProviderCase, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     case = gpt55_case
-    raw, policy = _configure_gpt55_case(case)
+    raw, policy = _configure_gpt55_case(case, daemon_profile=daemon_profile)
     hosting = case.hosting[case.provider.provider]
     original = {"api_key": "ORIGINAL_SYSTEM_NEVER_FORWARD"}
     if selector != "absent":
@@ -2097,8 +2104,9 @@ def test_exact_gpt55_source_routes_without_rewriting_original_settings_and_admit
         assert contract is not None
         assert contract.adapter_id == "openai_provider042_source_v1"
         protocol = "responses" if selector == "responses" else "chat"
-        family = "official-root-runtime-v1" if official else "runtime-v1"
+        family = ("official-root-" if official else "") + ("daemon-runtime-v1" if daemon_profile else "runtime-v1")
         assert contract.profile_id == f"openai-042-{protocol}-{family}:gpt-5.5"
+        assert contract.algorithm_revision == ("2" if daemon_profile else "1")
 
         def admit(credentials: RoutedModelCredentials = routed) -> None:
             validate_invocation_admission(

@@ -45,15 +45,21 @@ from services.model_billing_migration_inventory import (
     ModelBillingMigrationInventory,
     RequiredSavedCreditModel,
 )
+from services.model_billing_openai_provider042_adapter import _DAEMON_REVIEWED_CONTRACTS as GPT55_DAEMON_CONTRACTS
 from services.model_billing_openai_provider042_adapter import _REVIEWED_CONTRACTS as GPT55_CONTRACTS
 from tests.helpers.unit.model_billing_source_profiles import (
+    DAEMON_REVISION,
     EMBEDDING_MODELS,
     EMBEDDING_REVISION,
+    GPT55_DAEMON_REVISION,
     GPT55_REVISION,
     embedding_profiles,
     embedding_schemas,
+    full_daemon_registry,
     full_embedding_registry,
+    full_gpt55_daemon_registry,
     full_gpt55_registry,
+    gpt55_daemon_schemas,
     gpt55_schemas,
 )
 from tests.unit_tests.services.test_model_billing_dependency_inventory import Documents
@@ -961,16 +967,19 @@ def test_v2_missing_custom_configuration_keeps_required_system_model_across_proc
         assert cast(list[dict[str, object]], current["actual_runtime_ownership"])[0]["owner"] == "shared_credit_pool"
 
 
+@pytest.mark.parametrize("daemon_profile", [False, True])
 @pytest.mark.parametrize("selector", ["absent", "chat", "responses"])
 @pytest.mark.parametrize("selected", [False, True])
 def test_gpt55_actual_source_rpc_and_all_sixteen_prospective_handshakes_cannot_substitute_each_other(
     selector: str,
     selected: bool,
+    daemon_profile: bool,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
+    revision = GPT55_DAEMON_REVISION if daemon_profile else GPT55_REVISION
     gateway, metadata, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
-    catalog, runtime = gpt55_schemas()
+    catalog, runtime = gpt55_daemon_schemas() if daemon_profile else gpt55_schemas()
     uid = GPT55_CONTRACTS[0].source_plugin_unique_identifier
     metadata.bindings[0].plugin_unique_identifier = uid
     metadata.catalogs[0].plugin_unique_identifier = uid
@@ -984,9 +993,13 @@ def test_gpt55_actual_source_rpc_and_all_sixteen_prospective_handshakes_cannot_s
     assert hosting.credentials is not None
     if selector != "absent":
         hosting.credentials["api_protocol"] = selector
-    monkeypatch.setattr(module.dify_config, "TOKENER_LEGACY_MODEL_MAPPING_JSON", json.dumps(full_gpt55_registry()))
+    monkeypatch.setattr(
+        module.dify_config,
+        "TOKENER_LEGACY_MODEL_MAPPING_JSON",
+        json.dumps(full_gpt55_daemon_registry() if daemon_profile else full_gpt55_registry()),
+    )
     required = (RequiredSavedCreditModel(PROVIDER, "llm", "gpt-5.5", ("paid",)),) if selected else ()
-    evidence = gateway.sources("tenant", GPT55_REVISION, required, inventory_policy="saved_system_dependencies_v2")
+    evidence = gateway.sources("tenant", revision, required, inventory_policy="saved_system_dependencies_v2")
     assert len(evidence.models) == int(selected)
     assert len(evidence.prospective_variants) == 16
     assert all(item["evidence"] == "reviewed_target_profile_only" for item in evidence.prospective_variants)
@@ -1052,30 +1065,33 @@ def test_gpt55_actual_source_rpc_and_all_sixteen_prospective_handshakes_cannot_s
         return runtime110 if "openai-110-" in contract.profile_id else runtime042
 
     monkeypatch.setattr(metadata, "get_model_schema", target_schema)
-    assert gateway.validate_target("tenant", GPT55_REVISION, inventory) == expected
+    assert gateway.validate_target("tenant", revision, inventory) == expected
     assert len(seen) == 16 + int(selected)
-    expected_gpt55 = {contract.profile_id for contract in GPT55_CONTRACTS}
+    expected_gpt55 = {
+        contract.profile_id for contract in (GPT55_DAEMON_CONTRACTS if daemon_profile else GPT55_CONTRACTS)
+    }
     assert expected_gpt55 <= set(seen)
     for profile in expected_gpt55:
         blocked[:] = [profile]
         with pytest.raises(ModelRouteUnmapped):
-            gateway.validate_target("tenant", GPT55_REVISION, inventory)
+            gateway.validate_target("tenant", revision, inventory)
     blocked.clear()
     with pytest.raises(ModelRouteUnmapped):
-        gateway.validate_target("tenant", GPT55_REVISION, {**inventory, "prospective_variants": []})
+        gateway.validate_target("tenant", revision, {**inventory, "prospective_variants": []})
     with pytest.raises(ModelRouteUnmapped):
         gateway.validate_target(
-            "tenant", GPT55_REVISION, {**inventory, "source_variant_registry_digest": "sha256:" + "f" * 64}
+            "tenant", revision, {**inventory, "source_variant_registry_digest": "sha256:" + "f" * 64}
         )
     if selected:
         with pytest.raises(ModelRouteUnmapped):
             gateway.validate_target(
                 "tenant",
-                GPT55_REVISION,
+                revision,
                 {**inventory, "models": [{**evidence.models[0], "source_plugin_uid": "untrusted"}]},
             )
 
 
+@pytest.mark.parametrize("daemon_profile", [False, True])
 @pytest.mark.parametrize("model", EMBEDDING_MODELS)
 @pytest.mark.parametrize("version", ["042", "110"])
 @pytest.mark.parametrize("selected", [False, True])
@@ -1083,9 +1099,11 @@ def test_actual_embedding_source_is_not_invented_from_twelve_prospective_variant
     model: str,
     version: str,
     selected: bool,
+    daemon_profile: bool,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
+    revision = DAEMON_REVISION if daemon_profile else EMBEDDING_REVISION
     gateway, metadata, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
     profile = next(p for p in embedding_profiles() if (p["source_model"], p["source_version"]) == (model, version))
     uid = profile["source_plugin_uid"]
@@ -1103,9 +1121,13 @@ def test_actual_embedding_source_is_not_invented_from_twelve_prospective_variant
     hosting = module.ext_hosting_provider.hosting_configuration.provider_map[PROVIDER]
     assert hosting.credentials is not None
     hosting.credentials.update({"api_protocol": {"ignored": True}, "enable_request_metadata": "enabled"})
-    monkeypatch.setattr(module.dify_config, "TOKENER_LEGACY_MODEL_MAPPING_JSON", json.dumps(full_embedding_registry()))
+    monkeypatch.setattr(
+        module.dify_config,
+        "TOKENER_LEGACY_MODEL_MAPPING_JSON",
+        json.dumps(full_daemon_registry() if daemon_profile else full_embedding_registry()),
+    )
     required = (RequiredSavedCreditModel(PROVIDER, "text-embedding", model, ("paid",)),) if selected else ()
-    evidence = gateway.sources("tenant", EMBEDDING_REVISION, required, inventory_policy="saved_system_dependencies_v2")
+    evidence = gateway.sources("tenant", revision, required, inventory_policy="saved_system_dependencies_v2")
     assert len(evidence.models) == int(selected)
     assert len(evidence.prospective_variants) == 28
     assert sum(item["model_type"] == "text-embedding" for item in evidence.prospective_variants) == 12
@@ -1126,7 +1148,11 @@ def test_actual_embedding_source_is_not_invented_from_twelve_prospective_variant
     monkeypatch.setattr(
         gateway._records,
         "managed_target_binding",
-        lambda _: ManagedModelReadinessBinding("credential", "langgenius/tokener:0.4.3-dev12@" + "c" * 64, expected),
+        lambda _: ManagedModelReadinessBinding(
+            "credential",
+            ("langgenius/tokener:0.4.3-dev13@" if daemon_profile else "langgenius/tokener:0.4.3-dev12@") + "c" * 64,
+            expected,
+        ),
     )
     monkeypatch.setattr(
         module,
@@ -1161,7 +1187,7 @@ def test_actual_embedding_source_is_not_invented_from_twelve_prospective_variant
     }
     runtime042 = AIModelEntity.model_validate(RUNTIME_PROFILE["source_schema"])
     _, runtime110 = current_source_schemas()
-    _, runtime55 = gpt55_schemas()
+    _, runtime55 = gpt55_daemon_schemas() if daemon_profile else gpt55_schemas()
     seen: list[str] = []
     blocked: list[str] = []
 
@@ -1191,17 +1217,17 @@ def test_actual_embedding_source_is_not_invented_from_twelve_prospective_variant
         return runtime110 if "openai-110-" in contract.profile_id else runtime042
 
     monkeypatch.setattr(metadata, "get_model_schema", target_schema)
-    assert gateway.validate_target("tenant", EMBEDDING_REVISION, inventory) == expected
+    assert gateway.validate_target("tenant", revision, inventory) == expected
     assert len(seen) == 28 + int(selected)
     expected_profiles = {p["profile_id"] for p in embedding_profiles()}
     assert expected_profiles <= set(seen)
     for profile_id in expected_profiles:
         blocked[:] = [profile_id]
         with pytest.raises(ModelRouteUnmapped):
-            gateway.validate_target("tenant", EMBEDDING_REVISION, inventory)
+            gateway.validate_target("tenant", revision, inventory)
     blocked.clear()
     with pytest.raises(ModelRouteUnmapped):
-        gateway.validate_target("tenant", EMBEDDING_REVISION, {**inventory, "prospective_variants": []})
+        gateway.validate_target("tenant", revision, {**inventory, "prospective_variants": []})
     if selected:
         for key, value in (
             ("source_plugin_uid", "unreviewed"),
@@ -1211,5 +1237,81 @@ def test_actual_embedding_source_is_not_invented_from_twelve_prospective_variant
         ):
             with pytest.raises(ModelRouteUnmapped):
                 gateway.validate_target(
-                    "tenant", EMBEDDING_REVISION, {**inventory, "models": [{**evidence.models[0], key: value}]}
+                    "tenant", revision, {**inventory, "models": [{**evidence.models[0], key: value}]}
                 )
+
+
+def test_actual_gpt55_daemon_schema_does_not_pass_the_old_sdk_only_readiness_pin(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    gateway, metadata, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    catalog, actual_runtime = gpt55_daemon_schemas()
+    uid = GPT55_CONTRACTS[0].source_plugin_unique_identifier
+    metadata.bindings[0].plugin_unique_identifier = uid
+    metadata.catalogs[0].plugin_unique_identifier = uid
+    metadata.catalogs[0].declaration.models = [catalog]
+    metadata.dynamic = actual_runtime
+    selections.value = replace(
+        selections.value, providers=(replace(selections.value.providers[0], source_plugin_unique_identifier=uid),)
+    )
+    monkeypatch.setattr(module.dify_config, "TOKENER_LEGACY_MODEL_MAPPING_JSON", json.dumps(full_gpt55_registry()))
+    required = (RequiredSavedCreditModel(PROVIDER, "llm", "gpt-5.5", ("paid",)),)
+    with pytest.raises(ModelRouteUnmapped):
+        gateway.sources("tenant", GPT55_REVISION, required, inventory_policy="saved_system_dependencies_v2")
+    assert metadata.dynamic_uid == uid
+
+
+def test_new_revision_collects_both_saved_original042_mini_and_gpt55_runtime_boundaries(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    from tests.unit_tests.services.test_model_billing_openai_chat_adapter import build_inputs
+
+    gateway, metadata, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
+    mini_catalog = build_inputs(runtime=True)["source_schema"]
+    mini_runtime = AIModelEntity.model_validate(RUNTIME_PROFILE["source_schema"])
+    gpt55_catalog, gpt55_runtime = gpt55_daemon_schemas()
+    uid = GPT55_DAEMON_CONTRACTS[0].source_plugin_unique_identifier
+    metadata.bindings[0].plugin_unique_identifier = uid
+    metadata.catalogs[0].plugin_unique_identifier = uid
+    metadata.catalogs[0].declaration.models = [mini_catalog, gpt55_catalog]
+    selections.value = replace(
+        selections.value, providers=(replace(selections.value.providers[0], source_plugin_unique_identifier=uid),)
+    )
+    monkeypatch.setattr(module.dify_config, "TOKENER_LEGACY_MODEL_MAPPING_JSON", json.dumps(full_daemon_registry()))
+    seen: list[str] = []
+
+    def original_schema(
+        _tenant: str,
+        _user: str | None,
+        _plugin: str,
+        _provider: str,
+        kind: str,
+        model: str,
+        credentials: dict[str, object],
+        *,
+        plugin_unique_identifier: str | None = None,
+    ) -> AIModelEntity:
+        assert plugin_unique_identifier == uid
+        assert kind == "llm"
+        assert credentials == {"api_key": "platform-test-boundary"}
+        seen.append(model)
+        return {"gpt-4o-mini": mini_runtime, "gpt-5.5": gpt55_runtime}[model]
+
+    monkeypatch.setattr(metadata, "get_model_schema", original_schema)
+    required = tuple(
+        RequiredSavedCreditModel(PROVIDER, "llm", model, ("paid",)) for model in ("gpt-4o-mini", "gpt-5.5")
+    )
+    evidence = gateway.sources("tenant", DAEMON_REVISION, required, inventory_policy="saved_system_dependencies_v2")
+    assert seen == ["gpt-4o-mini", "gpt-5.5"]
+    assert len(evidence.models) == 2
+    assert len(evidence.prospective_variants) == 28
+    for item in evidence.models:
+        assert item["source_plugin_uid"] == uid
+        marker = item["source_parameter_contract"]
+        assert isinstance(marker, dict)
+        profile_id = marker["profile_id"]
+        assert isinstance(profile_id, str)
+        assert ("-daemon-runtime-v1:" in profile_id) == (item["model"] == "gpt-5.5")
+    assert module.ext_hosting_provider.hosting_configuration.provider_map[PROVIDER].credentials == {
+        "api_key": "platform-test-boundary"
+    }

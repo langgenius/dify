@@ -30,7 +30,10 @@ class HistoricalReadinessQuery:
 
 
 @pytest.mark.parametrize("pin_kind", ["valid", "missing", "wrong"])
-@pytest.mark.parametrize(("official_variants", "embedding_variants"), [(False, False), (True, False), (False, True)])
+@pytest.mark.parametrize(
+    ("official_variants", "embedding_variants", "daemon_variants"),
+    [(False, False, False), (True, False, False), (False, True, False), (False, False, True)],
+)
 def test_variant_readiness_pin_flows_internally_worker_sql_claim_and_narrow_runtime_projection(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
@@ -38,6 +41,7 @@ def test_variant_readiness_pin_flows_internally_worker_sql_claim_and_narrow_runt
     pin_kind: str,
     official_variants: bool,
     embedding_variants: bool,
+    daemon_variants: bool,
 ) -> None:
     from core.repositories import model_billing_migration_repository
     from services.model_billing_mapping_service import source_mapping_revision
@@ -57,6 +61,11 @@ def test_variant_readiness_pin_flows_internally_worker_sql_claim_and_narrow_runt
 
         revision = EMBEDDING_REVISION
         records = full_embedding_registry()
+    if daemon_variants:
+        from tests.helpers.unit.model_billing_source_profiles import DAEMON_REVISION, full_daemon_registry
+
+        revision = DAEMON_REVISION
+        records = full_daemon_registry()
     tenant = Tenant(name="New source-variant internal preparation")
     sqlite_session.add(tenant)
     sqlite_session.commit()
