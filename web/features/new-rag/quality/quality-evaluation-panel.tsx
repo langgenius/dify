@@ -5,6 +5,7 @@ import type {
   KnowledgeFsQualityReplayResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { RetrievalMode } from '../components/retrieval-mode-segmented-control'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -175,9 +176,11 @@ export function EvaluationReport({
       </div>
 
       {run.error && (
-        <div className="mt-4 rounded-lg border border-state-destructive-border bg-state-destructive-hover p-3 system-xs-regular text-text-destructive">
-          {t(($) => $['qualityPage.evaluation.executionFailed'], { ns: 'knowledgeQuality' })}
-        </div>
+        <Alert type="error" className="mt-4">
+          <AlertTitle>
+            {t(($) => $['qualityPage.evaluation.executionFailed'], { ns: 'knowledgeQuality' })}
+          </AlertTitle>
+        </Alert>
       )}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
