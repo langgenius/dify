@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.orm import Session
 
-from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
+from domain.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
 from fields.workflow_run_fields import WorkflowRunNodeExecutionListResponse
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.account import Account

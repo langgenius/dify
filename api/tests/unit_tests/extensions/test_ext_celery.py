@@ -2,11 +2,14 @@ import ssl
 from collections.abc import Iterator
 from datetime import timedelta
 from importlib import import_module
+from queue import Empty
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from celery import Celery
 from celery.contrib.testing.app import TestApp, setup_default_app
+from celery.exceptions import Retry
 
 from dify_app import DifyApp
 from enums import DeploymentEdition
@@ -15,11 +18,93 @@ from extensions.ext_celery import (
     get_celery_broker_transport_options,
     init_app,
 )
+from schedule.collect_agent_sandbox_usage import collect_agent_sandbox_usage
 from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATION_TASK
 from services.knowledge_fs.lifecycle_readiness import KnowledgeFSLifecycleWorkerReadiness
-from tests.helpers.unit.config_override import apply_config_overrides
+from tasks.application_trace_task import export_application_trace
+from tasks.trace_delivery_task import deliver_trace_event, retry_trace_export
+from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
 
 """Tests for Celery SSL configuration."""
+
+
+@pytest.fixture
+def tracing_celery(request: pytest.FixtureRequest) -> Iterator[Celery]:
+    with (
+        setup_default_app(TestApp()),
+        config_overrides_context(
+            CELERY_BROKER_URL="memory://",
+            CELERY_BACKEND="disabled",
+            OPS_TRACE_QUEUE=request.param,
+            OPS_AGENT_TRACE_ENABLED=True,
+            ENABLE_APPLICATION_TRACE_RECONCILE_TASK=True,
+            ENABLE_TRACE_PAYLOAD_SWEEP_TASK=True,
+            DISABLE_TELEMETRY=True,
+        ),
+    ):
+        app = init_app(DifyApp(__name__))
+        try:
+            yield app
+        finally:
+            app.close()
+
+
+@pytest.mark.parametrize("tracing_celery", ["ops_trace_v2", "ops_trace", "tracing-upgrade"], indirect=True)
+def test_tracing_dispatch_and_beat_use_configured_queue(tracing_celery: Celery) -> None:
+    queue = tracing_celery.conf.task_routes["tasks.trace_delivery_task.*"]["queue"]
+    calls = {
+        deliver_trace_event.name: ({"event": "{}"},),
+        retry_trace_export.name: ("trace_payloads/job.json",),
+        export_application_trace.name: ("run-1",),
+        tracing_celery.conf.beat_schedule["sweep_trace_payloads"]["task"]: (),
+        tracing_celery.conf.beat_schedule["reconcile_application_traces"]["task"]: (),
+        collect_agent_sandbox_usage.name: (),
+    }
+    with tracing_celery.connection_for_write() as connection:
+        if queue != "ops_trace":
+            tracing_celery.send_task("tasks.ops_trace_task.process_trace_tasks", args=({},), queue="ops_trace")
+        for name, args in calls.items():
+            tracing_celery.tasks[name].apply_async(args=args)
+        with connection.SimpleQueue(queue) as inbox:
+            for name, args in calls.items():
+                message = inbox.get(block=False)
+                assert message.headers["task"] == name
+                assert message.payload[0] == list(args)
+                message.ack()
+            with pytest.raises(Empty):
+                inbox.get(block=False)
+        if queue != "ops_trace":
+            with connection.SimpleQueue("ops_trace") as legacy:
+                message = legacy.get(block=False)
+                assert message.headers["task"] == "tasks.ops_trace_task.process_trace_tasks"
+                message.ack()
+
+
+@pytest.mark.parametrize("tracing_celery", ["ops_trace"], indirect=True)
+def test_redelivery_stays_on_original_queue_during_switchback(tracing_celery: Celery) -> None:
+    task = tracing_celery.tasks["tasks.trace_delivery_task.deliver_trace_event"]
+    task.push_request(
+        id="trace-redelivery",
+        args=({"event": "{}"},),
+        kwargs={},
+        retries=0,
+        called_directly=False,
+        delivery_info={"exchange": "", "routing_key": "ops_trace_v2"},
+    )
+    try:
+        with pytest.raises(Retry):
+            task.retry(countdown=5)
+        with tracing_celery.connection_for_read() as connection:
+            with connection.SimpleQueue("ops_trace_v2") as original:
+                message = original.get(block=False)
+                assert message.headers["task"] == task.name
+                assert message.headers["retries"] == 1
+                message.ack()
+            with connection.SimpleQueue("ops_trace") as restored:
+                with pytest.raises(Empty):
+                    restored.get(block=False)
+    finally:
+        task.pop_request()
 
 
 class TestCelerySslCases:

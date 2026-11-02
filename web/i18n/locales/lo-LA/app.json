@@ -268,6 +268,7 @@
   "tracing.config": "ຕັ້ງຄ່າ",
   "tracing.configProvider.clientId": "OAuth Client ID",
   "tracing.configProvider.clientSecret": "OAuth Client Secret",
+  "tracing.configProvider.configuredSecretPlaceholder": "ຕັ້ງຄ່າແລ້ວ. ປະຫວ່າງໄວ້ເພື່ອຮັກສາຄ່າທີ່ບັນທຶກໄວ້.",
   "tracing.configProvider.databricksHost": "Databricks Workspace URL",
   "tracing.configProvider.experimentId": "Experiment ID",
   "tracing.configProvider.password": "ລະຫັດຜ່ານ",

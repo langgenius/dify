@@ -1,39 +1,62 @@
-"""Application tracing orchestration; secrets and vendor I/O stay in the API worker."""
+"""Agent trace collection for Agent-managed executions.
+
+Agent apps and workflows with Agent nodes produce spans that the Dify Agent
+runtime reports separately. Their traces freeze a destination and a capture
+policy when they start, collect runtime batches in a ledger, and are sent
+once complete through the same provider interface as every other trace.
+"""
 
 import json
 import logging
 import threading
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from datetime import UTC, datetime, timedelta
-from typing import Any, Literal, cast
+from datetime import UTC, datetime
+from typing import Any, Literal, override
+from uuid import uuid4
 
 from dify_agent.layers.execution_context import ApplicationTracingContext
 from dify_agent.protocol.tracing import AgentTraceBatch
-from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from dify_trace_sdk.egress import Egress
+from dify_trace_sdk.errors import ExportOutcomeUnknownError, ExportRejectedError, ExportRetryableError
+from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent
+from dify_trace_sdk.provider import TraceProvider
+from pydantic import ValidationError
 
-from configs import dify_config
-from core.ops.entities.trace_entity import BaseTraceInfo, MessageTraceInfo, TraceTaskName, WorkflowTraceInfo
-from core.ops.exceptions import RetryableTraceDispatchError
-from core.ops.ops_trace_manager import OpsTraceManager, TraceTask
-from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
-from core.ops.unified_trace.trace_builder import CanonicalTraceBuilder, RepositoryWorkflowExecutionLoader
-from extensions.ext_database import db
-from models import Account, App, AppMode, Conversation, Message, Workflow, WorkflowNodeExecutionModel, WorkflowRun
-from models.application_trace import ApplicationTraceRun
-from models.model import MessageDict
-from repositories.application_trace_repository import ApplicationTraceRepository, TraceCollectionError
-from services.tracing.normalization import normalize_agent_span, order_spans, remap_outer_trace, sanitize
-from services.tracing.provider_dispatch import (
-    TraceExportUncertainError,
-    export_trace,
-    frozen_project_url,
-    provider_capabilities,
+from domain.tracing.errors import TraceRunConflictError, TraceRunError, TraceRunLimitError, TraceRunNotFoundError
+from domain.tracing.sources import SourceNodeExecution
+from domain.tracing.trace_run_agg import TraceRunAgg, TraceRunState, TraceSourceKind
+from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import uuidv7
+from services.tracing.canonical import CanonicalTraceBuilder
+from services.tracing.collection import (
+    AgentTraceSettings,
+    SourceMessage,
+    TraceApp,
+    TraceAppMode,
+    TraceRun,
+    TraceRunStatus,
+    TraceSource,
+    workflow_has_agent_v2,
 )
-from services.tracing.runtime_bridge import workflow_has_agent_v2
+from services.tracing.collection_ports import ScheduleTraceExport, TraceRunQuery, TraceRunRepository, TraceSourceQuery
+from services.tracing.delivery import TraceCollector, TraceRecordSource
+from services.tracing.errors import (
+    ProviderConfigUnreadableError,
+    TraceCollectionConflictError,
+    TraceCollectionError,
+    TraceCollectionLimitError,
+    TraceCollectionNotFoundError,
+    TraceProviderUnavailableError,
+    UnknownTraceProviderError,
+)
+from services.tracing.providers import ProviderConfigCodec, TraceProviderCatalog, TraceProviderSupport, support_of
+from services.tracing.records import BaseTraceInfo, MessageTraceInfo, TraceMessage, WorkflowTraceInfo
+from services.tracing.recovery import recover_terminal
 
 logger = logging.getLogger(__name__)
+
+_RECONCILE_BATCH = 100
 
 
 def _message_inputs_are_empty(inputs: object) -> bool:
@@ -47,23 +70,91 @@ def _message_inputs_are_empty(inputs: object) -> bool:
     return inputs is None or isinstance(inputs, (str, dict, list)) and not inputs
 
 
-class ApplicationTracingService:
-    def __init__(self, repository: ApplicationTraceRepository) -> None:
-        self.repository = repository
+@contextmanager
+def _collection_errors() -> Generator[None]:
+    """Report a run's rejection as the collection error its handlers map."""
+    try:
+        yield
+    except TraceRunNotFoundError as error:
+        raise TraceCollectionNotFoundError(error.code) from error
+    except TraceRunConflictError as error:
+        raise TraceCollectionConflictError(error.code) from error
+    except TraceRunLimitError as error:
+        raise TraceCollectionLimitError(error.code) from error
+    except TraceRunError as error:
+        raise TraceCollectionError(error.code) from error
+
+
+def _record(run: TraceRunAgg) -> TraceRun:
+    return TraceRun(
+        id=run.id,
+        tenant_id=run.tenant_id,
+        app_id=run.app_id,
+        source_kind=run.source_kind,
+        source_id=run.source_id,
+        provider=run.provider,
+        config_revision=run.config_revision,
+        provider_config=run.provider_config,
+        trace_id=run.trace_id,
+        root_span_id=run.root_span_id,
+        session_id=run.session_id,
+        capture_content=run.capture_content,
+        capture_agent=run.capture_agent,
+        state=run.state,
+        outer_trace=run.outer_trace,
+        span_count=run.span_count,
+        attempts=run.attempts,
+        error_code=run.error_code,
+        trace_url=run.trace_url,
+        provider_trace_id=run.provider_trace_id,
+        span_urls=run.span_urls,
+        accepted_at=run.accepted_at,
+    )
+
+
+class ApplicationTracingService(TraceCollector):
+    def __init__(
+        self,
+        *,
+        runs: TraceRunRepository,
+        run_query: TraceRunQuery,
+        sources: TraceSourceQuery,
+        records: TraceRecordSource,
+        builder: CanonicalTraceBuilder,
+        providers: TraceProviderCatalog,
+        codec: ProviderConfigCodec,
+        egress: Egress,
+        schedule_export: ScheduleTraceExport,
+        settings: AgentTraceSettings,
+    ) -> None:
+        self._runs = runs
+        self._run_query = run_query
+        self._sources = sources
+        self._records = records
+        self._builder = builder
+        self._providers = providers
+        self._codec = codec
+        self._egress = egress
+        self._schedule_export = schedule_export
+        self._settings = settings
 
     def start(
         self,
         *,
         tenant_id: str,
         app_id: str,
-        source_kind: Literal["message", "workflow", "node"],
+        source_kind: TraceSourceKind,
         source_id: str,
         session_id: str,
-        workflow_id: str | None = None,
-    ) -> ApplicationTraceRun | None:
-        if not dify_config.OPS_AGENT_TRACE_ENABLED:
+        workflow_id: str | None,
+    ) -> TraceRun | None:
+        """Freeze collection for a source once; ``None`` when the source is not collected.
+
+        ``workflow_id`` lets a trusted workflow builder reserve a run before its source row is saved.
+        """
+        if not self._settings.enabled:
             return None
-        run = self.repository.start(
+        run = self._freeze(
             tenant_id=tenant_id,
             app_id=app_id,
             source_kind=source_kind,
@@ -71,7 +162,84 @@ class ApplicationTracingService:
             session_id=session_id,
             workflow_id=workflow_id,
         )
-        return run if run is not None and run.state != "not_collected" else None
+        return run if run is not None and run.state is not TraceRunState.NOT_COLLECTED else None
+
+    def _freeze(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        source_kind: TraceSourceKind,
+        source_id: str,
+        session_id: str,
+        workflow_id: str | None,
+    ) -> TraceRun | None:
+        """The source's frozen run; ``None`` when the source or its owner does not exist."""
+        # Re-entry uses the already validated, frozen source. It must not depend
+        # on LogStore availability or indexing latency after collection began.
+        if self._sources.app(tenant_id=tenant_id, app_id=app_id) is None:
+            return None
+        frozen = self._run_query.source_run(
+            tenant_id=tenant_id, app_id=app_id, source_kind=source_kind, source_id=source_id
+        )
+        if frozen is not None:
+            return frozen
+        if self._source(tenant_id=tenant_id, app_id=app_id, kind=source_kind, source_id=source_id) is None:
+            # A single-node preview allocates its execution ID before the node row
+            # is saved. Only the trusted workflow builder may reserve it, after
+            # its persisted owner workflow is checked.
+            if source_kind not in {"node", "workflow"} or workflow_id is None:
+                return None
+            if self._sources.app_workflow_graph(tenant_id=tenant_id, app_id=app_id, workflow_id=workflow_id) is None:
+                return None
+        tracing = self._sources.app_tracing(tenant_id=tenant_id, app_id=app_id)
+        if tracing is None:
+            return None
+        return self._add(
+            TraceRunAgg.freeze(
+                run_id=str(uuidv7()),
+                trace_id=uuidv7().hex,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                source_kind=source_kind,
+                source_id=source_id,
+                session_id=session_id,
+                policy=tracing.policy,
+                stored_config=tracing.config,
+                now=naive_utc_now(),
+            )
+        )
+
+    def _add(self, run: TraceRunAgg) -> TraceRun | None:
+        if self._runs.add(run):
+            return _record(run)
+        # The first frozen destination wins, so one execution never exports to two providers.
+        return self._run_query.source_run(
+            tenant_id=run.tenant_id, app_id=run.app_id, source_kind=run.source_kind, source_id=run.source_id
+        )
+
+    def _fail_initialization(
+        self, *, tenant_id: str, app_id: str, source_kind: TraceSourceKind, source_id: str
+    ) -> TraceRun | None:
+        """Close a source whose start snapshot is missing; ``None`` when the source does not exist."""
+        if self._source(tenant_id=tenant_id, app_id=app_id, kind=source_kind, source_id=source_id) is None:
+            return None
+        frozen = self._run_query.source_run(
+            tenant_id=tenant_id, app_id=app_id, source_kind=source_kind, source_id=source_id
+        )
+        if frozen is not None:
+            return frozen
+        return self._add(
+            TraceRunAgg.initialization_failed(
+                run_id=str(uuidv7()),
+                trace_id=uuidv7().hex,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                source_kind=source_kind,
+                source_id=source_id,
+                now=naive_utc_now(),
+            )
+        )
 
     def prepare_invocation(
         self,
@@ -79,13 +247,13 @@ class ApplicationTracingService:
         tenant_id: str,
         app_id: str,
         agent_id: str,
-        source_kind: Literal["message", "workflow", "node"],
+        source_kind: TraceSourceKind,
         source_id: str,
         session_id: str,
         node_execution_id: str | None,
         attempt: int,
         call_key: str,
-        workflow_id: str | None = None,
+        workflow_id: str | None,
     ) -> ApplicationTracingContext | None:
         run = self.start(
             tenant_id=tenant_id,
@@ -97,9 +265,12 @@ class ApplicationTracingService:
         )
         if run is None or not run.capture_agent:
             return None
-        invocation = self.repository.invocation(
-            run_id=run.id, agent_id=agent_id, node_execution_id=node_execution_id, attempt=attempt, call_key=call_key
-        )
+        with _collection_errors(), self._runs.change(run.id, tenant_id=tenant_id) as locked:
+            if locked is None:
+                raise TraceCollectionConflictError("tracing_run_not_collecting")
+            invocation = locked.run.open_invocation(
+                agent_id=agent_id, node_execution_id=node_execution_id, attempt=attempt, call_key=call_key
+            )
         return ApplicationTracingContext(
             run_id=run.id,
             invocation_id=invocation.id,
@@ -110,13 +281,30 @@ class ApplicationTracingService:
         )
 
     def ingest(self, batch: AgentTraceBatch) -> int:
-        accepted, run_id = self.repository.ingest(
-            batch,
-            max_spans=dify_config.OPS_AGENT_TRACE_MAX_SPANS,
-            max_bytes=dify_config.OPS_AGENT_TRACE_MAX_BYTES,
-        )
+        """Store a runtime batch and return how many spans the run accepted.
+
+        Raises:
+            TraceCollectionNotFoundError: The run, its owner, or the invocation does not exist.
+            TraceCollectionConflictError: The batch conflicts with the run or the run stopped collecting.
+            TraceCollectionLimitError: The batch exceeds the run's limits.
+        """
+        run_id = str(batch.run_id)
+        run = self._run_query.get(run_id)
+        if run is None:
+            raise TraceCollectionNotFoundError("tracing_run_not_found")
+        with _collection_errors(), self._runs.change(run_id, tenant_id=run.tenant_id) as locked:
+            if locked is None:
+                raise TraceCollectionNotFoundError("tracing_run_not_found")
+            if not locked.owner_exists:
+                raise TraceCollectionNotFoundError("tracing_owner_not_found")
+            accepted = locked.run.ingest(
+                batch,
+                max_spans=self._settings.max_spans,
+                max_bytes=self._settings.max_bytes,
+                now=naive_utc_now(),
+            )
         # Persistence commits before scheduling. Beat reconciles a broker outage.
-        self.schedule(run_id)
+        self._schedule(run_id)
         return accepted
 
     def capture_agent_app_terminal(
@@ -134,212 +322,129 @@ class ApplicationTracingService:
         This handoff is made only after the runner observes a terminal result or
         finishes handling an explicit stop, and it does not rewrite Message data.
         """
-        source = self.repository._source(tenant_id=tenant_id, app_id=app_id, kind="message", source_id=message_id)
-        if not isinstance(source, Message):
-            raise TraceCollectionError("tracing_source_not_found", 404)
-        conversation_id = source.conversation_id
-        run = self.repository.source_run(
+        source = self._sources.message(tenant_id=tenant_id, app_id=app_id, message_id=message_id)
+        if source is None:
+            raise TraceCollectionNotFoundError("tracing_source_not_found")
+        run = self._run_query.source_run(
             tenant_id=tenant_id, app_id=app_id, source_kind="message", source_id=message_id
         )
-        if run is not None and run.state == "not_collected":
+        if run is not None and run.state is TraceRunState.NOT_COLLECTED:
             return
-        info = TraceTask(
-            TraceTaskName.MESSAGE_TRACE,
-            message_id=message_id,
-            conversation_id=conversation_id,
-            trace_session_id=run.session_id if run else conversation_id,
-        ).execute()
+        info = self._records.assemble(
+            TraceEvent(
+                event_id=uuid4().hex,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                user_id=None,
+                occurred_at=datetime.now(UTC),
+                correlation=TraceCorrelation(
+                    external_trace_id=None,
+                    session_id=run.session_id if run else source.conversation_id,
+                    parent_workflow_run_id=None,
+                    parent_node_execution_id=None,
+                ),
+                payload=MessageCompleted(message_id=message_id, conversation_id=source.conversation_id),
+            )
+        )
         if not isinstance(info, MessageTraceInfo):
             raise TraceCollectionError("tracing_terminal_not_supported")
-        if isinstance(info.message_data, dict):
-            info.message_data = Message.from_dict(cast(MessageDict, info.message_data))
-        if (
-            isinstance(info.message_data, Message)
-            and _message_inputs_are_empty(info.inputs)
-            and info.message_data.query
-        ):
+        inputs = info.inputs
+        if _message_inputs_are_empty(inputs) and info.message_data.query:
             # Early errors may precede formatted-message persistence. Preserve only
             # the known user query on the root; this is not an inferred LLM prompt.
-            info.inputs = {"query": info.message_data.query}
-        if output is not None and isinstance(info.message_data, Message):
-            # This is a detached trace snapshot, not a write to the business row.
-            info.message_data.answer = output
-        info.outputs = output if output is not None else info.outputs
-        info.end_time = datetime.now(UTC)
-        info.metadata = {**info.metadata, "message_execution_state": outcome}
-        if outcome != "succeeded":
-            info.error = f"Agent message {outcome}"
-        self.capture_terminal(info)
+            inputs = {"query": info.message_data.query}
+        message = info.message_data if output is None else info.message_data.model_copy(update={"answer": output})
+        self.capture_terminal(
+            tenant_id=tenant_id,
+            info=info.model_copy(
+                update={
+                    "message_data": message,
+                    "inputs": inputs,
+                    "outputs": output if output is not None else info.outputs,
+                    "end_time": datetime.now(UTC).replace(tzinfo=None),
+                    "metadata": {**info.metadata, "message_execution_state": outcome},
+                    "error": info.error if outcome == "succeeded" else f"Agent message {outcome}",
+                }
+            ),
+        )
 
-    @staticmethod
-    def schedule(run_id: str) -> None:
-        from tasks.application_trace_task import export_application_trace
+    def reconcile(self) -> None:
+        """Schedule unfinished runs again, behind a broker outage, and purge runs past their retention."""
+        for run_id in self._run_query.pending_ids(_RECONCILE_BATCH):
+            self._schedule(run_id)
+        self._runs.purge(retention_days=self._settings.retention_days, limit=_RECONCILE_BATCH)
 
+    def _schedule(self, run_id: str) -> None:
         try:
-            export_application_trace.delay(run_id)
+            self._schedule_export(run_id)
         except Exception:
             logger.warning("Application trace is persisted; scheduling deferred: run_id=%s", run_id)
 
-    def _service_account(self, run: ApplicationTraceRun, app_id: str) -> Account:
-        with self.repository.sessions() as session:
-            app = session.scalar(
-                select(App).where(App.id == app_id, App.id == run.app_id, App.tenant_id == run.tenant_id)
-            )
-            if app is None or not app.created_by:
-                raise TraceCollectionError("tracing_owner_not_found", 404)
-            account = session.get(Account, app.created_by)
-            if account is None:
-                raise TraceCollectionError("tracing_owner_not_found", 404)
-            account.set_tenant_id_with_session(run.tenant_id, session=session)
-            return account
+    def _change(self, run: TraceRun | TraceRunAgg, change: Callable[[TraceRunAgg], object]) -> None:
+        """Apply ``change`` to a run that may have been purged since it was read."""
+        with self._runs.change(run.id, tenant_id=run.tenant_id) as locked:
+            if locked is not None:
+                change(locked.run)
 
     def _run_for_source(
-        self, *, tenant_id: str, app_id: str, source_kind: str, source_id: str
-    ) -> ApplicationTraceRun | None:
-        run = self.repository.source_run(
+        self, *, tenant_id: str, app_id: str, source_kind: TraceSourceKind, source_id: str
+    ) -> TraceRun | None:
+        run = self._run_query.source_run(
             tenant_id=tenant_id, app_id=app_id, source_kind=source_kind, source_id=source_id
         )
         if run is None and source_kind == "message":
-            with self.repository.sessions() as session:
-                workflow_run_id = session.scalar(
-                    select(Message.workflow_run_id)
-                    .join(App, App.id == Message.app_id)
-                    .where(
-                        Message.id == source_id,
-                        Message.app_id == app_id,
-                        App.tenant_id == tenant_id,
-                    )
-                )
-            if workflow_run_id:
-                run = self.repository.source_run(
-                    tenant_id=tenant_id, app_id=app_id, source_kind="workflow", source_id=workflow_run_id
+            message = self._sources.message(tenant_id=tenant_id, app_id=app_id, message_id=source_id)
+            if message is not None and message.workflow_run_id:
+                run = self._run_query.source_run(
+                    tenant_id=tenant_id, app_id=app_id, source_kind="workflow", source_id=message.workflow_run_id
                 )
         return run
 
-    def _managed_owner(self, app: App, message: Message | None = None, workflow_run_id: str | None = None) -> bool:
-        """Honor frozen owners first; ordinary workflows retain legacy tracing."""
+    def _managed_owner(
+        self, app: TraceApp, message: SourceMessage | TraceMessage | None, workflow_run_id: str | None
+    ) -> bool:
+        """Agent apps and workflows with Agent nodes are collected here; frozen runs win."""
         if message is not None:
             if self._run_for_source(
                 tenant_id=app.tenant_id, app_id=app.id, source_kind="message", source_id=message.id
             ):
                 return True
             workflow_run_id = message.workflow_run_id or workflow_run_id
-        if app.mode == AppMode.AGENT:
+        if app.mode is TraceAppMode.AGENT:
             return True
         if workflow_run_id:
-            if self.repository.source_run(
+            if self._run_query.source_run(
                 tenant_id=app.tenant_id, app_id=app.id, source_kind="workflow", source_id=workflow_run_id
             ):
                 return True
-            workflow = self.repository._source(
-                tenant_id=app.tenant_id, app_id=app.id, kind="workflow", source_id=workflow_run_id
+            workflow = self._sources.workflow_run(
+                tenant_id=app.tenant_id, app_id=app.id, workflow_run_id=workflow_run_id
             )
-            if isinstance(workflow, WorkflowRun):
+            if workflow is not None:
                 return workflow_has_agent_v2(workflow.graph)
-        if app.mode == AppMode.ADVANCED_CHAT or (app.mode == AppMode.WORKFLOW and workflow_run_id):
+        if app.mode is TraceAppMode.ADVANCED_CHAT or (app.mode is TraceAppMode.WORKFLOW and workflow_run_id):
             # Naming may run before Message.workflow_run_id is populated. Use
             # the owned app workflow; an unknown snapshot fails closed. The same
             # applies to a Workflow whose run is not yet indexed by LogStore.
-            with self.repository.sessions() as session:
-                definition = (
-                    session.scalar(
-                        select(Workflow).where(
-                            Workflow.id == app.workflow_id,
-                            Workflow.app_id == app.id,
-                            Workflow.tenant_id == app.tenant_id,
-                        )
-                    )
-                    if app.workflow_id
-                    else None
-                )
-                return definition is None or workflow_has_agent_v2(definition.graph)
+            graph = (
+                self._sources.app_workflow_graph(tenant_id=app.tenant_id, app_id=app.id, workflow_id=app.workflow_id)
+                if app.workflow_id
+                else None
+            )
+            return graph is None or workflow_has_agent_v2(graph)
         return False
 
-    def _capture_auxiliary(self, info: BaseTraceInfo) -> bool:
-        """Resolve real business owners even when message_id is a workflow-log ID."""
-        actual_message_id = info.message_data.id if isinstance(info.message_data, Message) else None
-        message_ids = [actual_message_id, info.metadata.get("message_id"), info.message_id]
-        message: Message | None = None
-        app: App | None = None
-        with self.repository.sessions() as session:
-            for message_id in message_ids:
-                if not isinstance(message_id, str):
-                    continue
-                owner = session.execute(
-                    select(Message, App).join(App, App.id == Message.app_id).where(Message.id == message_id)
-                ).first()
-                if owner is not None:
-                    message, app = owner
-                    break
-            conversation_id = info.metadata.get("conversation_id")
-            if app is None and isinstance(conversation_id, str):
-                app = session.scalar(
-                    select(App)
-                    .join(Conversation, Conversation.app_id == App.id)
-                    .where(Conversation.id == conversation_id)
-                )
-                if app is not None:
-                    message = session.scalar(
-                        select(Message)
-                        .where(Message.conversation_id == conversation_id, Message.app_id == app.id)
-                        .order_by(Message.created_at.desc())
-                        .limit(1)
-                    )
-        if app is not None:
-            return self._managed_owner(app, message)
-        workflow_run_id = info.metadata.get("workflow_run_id")
-        if isinstance(workflow_run_id, str):
-            with self.repository.sessions() as session:
-                # A durable managed owner already passed the trusted start boundary.
-                # Suppress auxiliary content even before LogStore indexing catches up.
-                managed_app = session.scalar(
-                    select(App)
-                    .join(ApplicationTraceRun, ApplicationTraceRun.app_id == App.id)
-                    .where(
-                        ApplicationTraceRun.source_kind == "workflow",
-                        ApplicationTraceRun.source_id == workflow_run_id,
-                        ApplicationTraceRun.tenant_id == App.tenant_id,
-                    )
-                )
-                if managed_app is not None:
-                    return True
-                app_id = info.metadata.get("app_id")
-                app = (
-                    session.scalar(select(App).where(App.id == app_id))
-                    if isinstance(app_id, str)
-                    else session.scalar(
-                        select(App)
-                        .join(WorkflowRun, WorkflowRun.app_id == App.id)
-                        .where(WorkflowRun.id == workflow_run_id, WorkflowRun.tenant_id == App.tenant_id)
-                    )
-                )
-            if app is not None:
-                return self._managed_owner(app, workflow_run_id=workflow_run_id)
-        return False
-
-    def _link_managed_parent(self, info: WorkflowTraceInfo, tenant_id: str) -> None:
-        """A legacy child cannot await a parent exported by a different pipeline."""
+    @override
+    def link_managed_parent(self, *, tenant_id: str, info: WorkflowTraceInfo) -> WorkflowTraceInfo:
+        """A provider-exported nested workflow names the Agent-collected parent it cannot attach to."""
         parent_run_id, parent_node_id = info.resolved_parent_context
         if not parent_run_id:
-            return
-        with self.repository.sessions() as session:
-            parent = session.scalar(
-                select(ApplicationTraceRun)
-                .join(App, App.id == ApplicationTraceRun.app_id)
-                .where(
-                    ApplicationTraceRun.source_kind == "workflow",
-                    ApplicationTraceRun.source_id == parent_run_id,
-                    ApplicationTraceRun.tenant_id == tenant_id,
-                    App.tenant_id == tenant_id,
-                )
-            )
+            return info
+        parent = self._run_query.workflow_run_trace(tenant_id=tenant_id, workflow_run_id=parent_run_id)
         if parent is None:
-            return
-        if (
-            self.repository._source(tenant_id=tenant_id, app_id=parent.app_id, kind="workflow", source_id=parent_run_id)
-            is None
-        ):
-            return
+            return info
+        if self._sources.workflow_run(tenant_id=tenant_id, app_id=parent.app_id, workflow_run_id=parent_run_id) is None:
+            return info
         metadata = dict(info.metadata)
         metadata.pop("parent_trace_context", None)
         metadata["linked_parent_workflow_run_id"] = parent_run_id
@@ -347,27 +452,37 @@ class ApplicationTracingService:
             metadata["linked_parent_node_execution_id"] = parent_node_id
         metadata["linked_parent_application_trace_id"] = parent.id
         metadata["linked_parent_trace_id"] = parent.trace_id
-        info.metadata = metadata
+        return info.model_copy(update={"metadata": metadata})
 
-    def capture_terminal(self, info: BaseTraceInfo) -> bool:
-        """Hand managed traces to durable collection while preserving legacy scope."""
+    @override
+    def capture_terminal(self, *, tenant_id: str, info: BaseTraceInfo) -> bool:
+        """Take records of Agent-managed executions; ``False`` leaves the record to its provider."""
+        source_kind: TraceSourceKind
         if isinstance(info, WorkflowTraceInfo):
             app_id = str(info.metadata.get("app_id", ""))
             source_id, source_kind = info.workflow_run_id, "workflow"
-        elif isinstance(info, MessageTraceInfo) and isinstance(info.message_data, Message):
+        elif isinstance(info, MessageTraceInfo):
             app_id = info.message_data.app_id
             source_id, source_kind = info.message_data.id, "message"
         else:
-            return self._capture_auxiliary(info)
-        with self.repository.sessions() as session:
-            app = session.scalar(select(App).where(App.id == app_id))
-            if app is None:
-                return False
-            message = (
-                session.scalar(select(Message).where(Message.id == source_id, Message.app_id == app_id))
-                if source_kind == "message"
+            # Auxiliary operations of a managed execution belong to its Agent trace. Naming may
+            # report no message, so the record's own app decides then.
+            message_data = info.message_data
+            owner_app_id = message_data.app_id if message_data is not None else info.metadata.get("app_id")
+            owner = (
+                self._sources.app(tenant_id=tenant_id, app_id=owner_app_id)
+                if isinstance(owner_app_id, str) and owner_app_id
                 else None
             )
+            return owner is not None and self._managed_owner(owner, message_data, None)
+        app = self._sources.app(tenant_id=tenant_id, app_id=app_id)
+        if app is None:
+            return False
+        message = (
+            self._sources.message(tenant_id=tenant_id, app_id=app_id, message_id=source_id)
+            if source_kind == "message"
+            else None
+        )
         managed = self._managed_owner(app, message, source_id if source_kind == "workflow" else None)
         run = self._run_for_source(tenant_id=app.tenant_id, app_id=app.id, source_kind=source_kind, source_id=source_id)
         if run is not None and source_kind == "message" and run.source_kind == "workflow":
@@ -375,154 +490,75 @@ class ApplicationTracingService:
             return True
         if run is None:
             if not managed:
-                if isinstance(info, WorkflowTraceInfo):
-                    self._link_managed_parent(info, app.tenant_id)
                 return False
-            run = self.repository.record_initialization_failure(
-                tenant_id=app.tenant_id,
-                app_id=app.id,
-                source_kind=source_kind,
-                source_id=source_id,
+            run = self._fail_initialization(
+                tenant_id=app.tenant_id, app_id=app.id, source_kind=source_kind, source_id=source_id
             )
+            # A missing start snapshot must never fall back to an exporter without its capture policy.
             logger.warning(
-                "Application trace snapshot missing; legacy export suppressed: app_id=%s source_id=%s",
-                app_id,
-                source_id,
+                "Application trace snapshot missing; export suppressed: app_id=%s source_id=%s", app_id, source_id
             )
             if run is None:
                 return True
-        if run.state in {"not_collected", "failed", "uncertain", "accepted", "exporting"}:
+        if not run.state.accepts_terminal:
             return True
         if (
-            app.mode == AppMode.AGENT
+            app.mode is TraceAppMode.AGENT
             and message is not None
             and info.metadata.get("message_execution_state") not in ("succeeded", "failed", "cancelled")
+            and message.agent_stop_requested
         ):
-            from services.tracing.recovery import agent_stop_requested
-
-            if agent_stop_requested(message):
-                # An already queued consumer notification may arrive after a
-                # stop. Its ordinary Message snapshot cannot own the runtime
-                # outcome, even if span finalization has already completed.
-                return True
-        loader = RepositoryWorkflowExecutionLoader(lambda requested_app: self._service_account(run, requested_app))
-        trace = CanonicalTraceBuilder(loader).build(info)
+            # An already queued consumer notification may arrive after a
+            # stop. Its ordinary Message snapshot cannot own the runtime
+            # outcome, even if span finalization has already completed.
+            return True
+        trace = self._builder.build(info)
         if trace is None:
             raise TraceCollectionError("tracing_terminal_not_supported")
-        trace = remap_outer_trace(
-            trace, trace_id=run.trace_id, capture_content=run.capture_content, agent_message=source_kind == "message"
-        )
-        trace = trace.model_copy(update={"session_id": run.session_id})
-        self.repository.terminal(run.id, trace.model_dump(mode="json"), trace.root_span_id)
-        self.schedule(run.id)
+        self._change(run, lambda current: current.capture_terminal(trace, now=naive_utc_now()))
+        self._schedule(run.id)
         return True
 
-    def settle_preview(self, run: ApplicationTraceRun) -> None:
-        if run.source_kind != "node" or run.outer_trace is not None:
+    def _settle_preview(self, run: TraceRunAgg) -> None:
+        if run.source_kind != "node" or not run.awaits_terminal:
             return
-        node = self.repository._source(tenant_id=run.tenant_id, app_id=run.app_id, kind="node", source_id=run.source_id)
-        if not isinstance(node, WorkflowNodeExecutionModel) or str(node.status) in {"running", "pending", "paused"}:
-            return
-        error = node.error
-        started_at = node.created_at.replace(tzinfo=UTC)
-        ended_at = started_at + timedelta(seconds=node.elapsed_time or 0)
-        span = CanonicalSpan(
-            id=run.root_span_id,
-            parent_id=None,
-            name=node.title or "Agent preview",
-            kind=CanonicalSpanKind.AGENT,
-            start_time=started_at,
-            end_time=ended_at,
-            inputs=sanitize(node.inputs) if run.capture_content else None,
-            outputs=sanitize(node.outputs) if run.capture_content else None,
-            status=CanonicalSpanStatus.ERROR if error else CanonicalSpanStatus.OK,
-            error=error if run.capture_content else "Node execution failed" if error else None,
-            metadata={"node_execution_id": node.id, "node_id": node.node_id, "source": "single_step"},
-        )
-        trace = CanonicalTrace(
-            trace_id=run.trace_id, session_id=run.session_id, root_span_id=run.root_span_id, spans=(span,)
-        )
-        self.repository.terminal(run.id, trace.model_dump(mode="json"), run.root_span_id)
+        node = self._sources.node_execution(tenant_id=run.tenant_id, app_id=run.app_id, node_execution_id=run.source_id)
+        if node is not None:
+            self._change(run, lambda current: current.settle_preview(node, now=naive_utc_now()))
 
-    def assemble(self, run: ApplicationTraceRun) -> CanonicalTrace:
-        if run.outer_trace is None:
-            raise TraceCollectionError("tracing_terminal_missing")
-        outer = CanonicalTrace.model_validate(run.outer_trace)
-        invocations, batches = self.repository.collected(run.id)
-        invocation_by_id = {inv.id: inv for inv in invocations}
-        spans = list(outer.spans)
-        internal_by_invocation: dict[str, dict[str, CanonicalSpan]] = {inv.id: {} for inv in invocations}
-        for batch in batches:
-            if batch.invocation_id not in invocation_by_id:
-                raise TraceCollectionError("tracing_invocation_not_found")
-            for data in batch.spans:
-                span = normalize_agent_span(data, capture_content=run.capture_content)
-                current = internal_by_invocation[batch.invocation_id].get(span.id)
-                if current is not None and current != span:
-                    raise TraceCollectionError("tracing_span_conflict")
-                internal_by_invocation[batch.invocation_id][span.id] = span
-        for invocation in invocations:
-            children = list(internal_by_invocation[invocation.id].values())
-            if not children:
-                raise TraceCollectionError("tracing_invocation_empty")
-            valid_ids = {child.id for child in children}
-            if any(child.parent_id not in valid_ids and child.parent_id != invocation.span_id for child in children):
-                raise TraceCollectionError("tracing_invocation_parent_invalid")
-            root_children = [child for child in children if child.parent_id == invocation.span_id]
-            if not root_children:
-                raise TraceCollectionError("tracing_invocation_root_missing")
-            errors = [child.error for child in root_children if child.status == CanonicalSpanStatus.ERROR]
-            spans.append(
-                CanonicalSpan(
-                    id=invocation.span_id,
-                    parent_id=invocation.parent_span_id,
-                    name=f"Agent attempt {invocation.attempt + 1}",
-                    kind=CanonicalSpanKind.AGENT,
-                    start_time=min(child.start_time for child in children),
-                    end_time=max(child.end_time or child.start_time for child in children),
-                    status=CanonicalSpanStatus.ERROR if errors else CanonicalSpanStatus.OK,
-                    error=errors[0] if errors else None,
-                    metadata={
-                        "agent_id": invocation.agent_id,
-                        "attempt": invocation.attempt,
-                        "node_execution_id": invocation.node_execution_id,
-                        "invocation_id": invocation.id,
-                    },
-                )
-            )
-            spans.extend(children)
-        trusted = {
-            "tenant_id": run.tenant_id,
-            "app_id": run.app_id,
-            "session_id": run.session_id,
-            "dify.tenant_id": run.tenant_id,
-            "dify.app_id": run.app_id,
-            "dify.tracing.run_id": run.id,
-            "dify.source.id": run.source_id,
-        }
-        spans = [span.model_copy(update={"metadata": {**span.metadata, **trusted}}) for span in spans]
-        return CanonicalTrace(
-            trace_id=run.trace_id,
-            session_id=run.session_id,
-            root_span_id=outer.root_span_id,
-            spans=order_spans(outer.root_span_id, spans),
-        )
+    def _claim(self, run: TraceRunAgg) -> tuple[TraceRunAgg, str] | None:
+        token = str(uuidv7())
+        with self._runs.change(run.id, tenant_id=run.tenant_id) as locked:
+            if locked is None or not locked.run.claim_export(
+                token=token,
+                owner_exists=locked.owner_exists,
+                collection_timeout=self._settings.collection_timeout_seconds,
+                lease_seconds=self._settings.export_lease_seconds,
+                now=naive_utc_now(),
+            ):
+                return None
+            return locked.run, token
+
+    def _renew_export_lease(self, run: TraceRunAgg, token: str) -> bool:
+        with self._runs.change(run.id, tenant_id=run.tenant_id) as locked:
+            return locked is not None and locked.run.renew_export_lease(token, now=naive_utc_now())
 
     @contextmanager
-    def _export_lease_heartbeat(self, run_id: str, token: str) -> Generator[None]:
+    def _export_lease_heartbeat(self, run: TraceRunAgg, token: str) -> Generator[None]:
         """Keep slow exporters leased without holding a transaction across vendor I/O.
 
         A lost database connection is not proof that the exporter stopped. The
         attempt continues; the token-checked completion can reconcile a late ACK
         after lease expiry unless a manual retry has already replaced its token.
         """
+        run_id = run.id
         stopped = threading.Event()
-        interval = dify_config.OPS_AGENT_TRACE_EXPORT_LEASE_SECONDS / 3
+        interval = self._settings.export_lease_seconds / 3
 
         def heartbeat() -> None:
             while not stopped.wait(interval):
                 try:
-                    if not self.repository.renew_export_lease(run_id, token):
+                    if not self._renew_export_lease(run, token):
                         return
                 except Exception as error:
                     logger.warning(
@@ -550,50 +586,51 @@ class ApplicationTracingService:
                     logger.warning("Application trace heartbeat shutdown pending: run_id=%s", run_id)
 
     def deliver(self, run_id: str) -> None:
-        record = self.repository.get(run_id)
-        if record is None:
+        run = self._runs.load(run_id)
+        if run is None:
             return
-        from services.tracing.recovery import recover_terminal
-
-        recover_terminal(self, record)
-        record = self.repository.get(run_id)
-        if record is None:
-            return
-        self.settle_preview(record)
-        claim = self.repository.claim(
-            run_id,
-            collection_timeout=dify_config.OPS_AGENT_TRACE_COLLECTION_TIMEOUT,
-            lease_seconds=dify_config.OPS_AGENT_TRACE_EXPORT_LEASE_SECONDS,
+        recover_terminal(
+            run,
+            runs=self._runs,
+            sources=self._sources,
+            records=self._records,
+            collector=self,
+            collection_timeout=self._settings.collection_timeout_seconds,
+            now=naive_utc_now(),
         )
+        run = self._runs.load(run_id)
+        if run is None:
+            return
+        self._settle_preview(run)
+        claim = self._claim(run)
         if claim is None:
             return
         run, token = claim
-        with self._export_lease_heartbeat(run_id, token):
+        with self._export_lease_heartbeat(run, token):
             try:
                 try:
-                    trace = self.assemble(run)
-                except ValueError as error:
+                    trace = run.exported_trace(self._run_query.batches(run.id))
+                except (ValueError, KeyError, TypeError) as error:
                     # Invalid persisted trees cannot be repaired by retrying a
                     # provider request. ValidationError also inherits ValueError.
                     raise TraceCollectionError("tracing_payload_invalid") from error
-                config = dict(run.provider_config)
-                config.update(OpsTraceManager.decrypt_tracing_config(run.tenant_id, run.provider, run.provider_config))
-                result = export_trace(run.provider, config, trace)
-            except TraceExportUncertainError:
-                self.repository.complete(run_id, token, state="uncertain", error_code="provider_acceptance_unknown")
-            except RetryableTraceDispatchError:
-                if run.attempts >= dify_config.OPS_AGENT_TRACE_MAX_ATTEMPTS:
-                    self.repository.complete(run_id, token, state="failed", error_code="provider_retry_exhausted")
-                else:
-                    self.repository.complete(
-                        run_id,
-                        token,
-                        state="retrying",
-                        error_code="provider_temporarily_unavailable",
-                        retry_delay=min(300, 5 * 2 ** min(run.attempts - 1, 6)),
-                    )
-            except TraceCollectionError as error:
-                self.repository.complete(run_id, token, state="failed", error_code=error.code)
+                provider = self._frozen_provider(run.provider)
+                result = provider.send(self._codec.decode(run.tenant_id, type(provider), run.provider_config), trace)
+            except ExportOutcomeUnknownError:
+                self._change(run, lambda current: current.export_uncertain(token, now=naive_utc_now()))
+            except ExportRetryableError:
+                self._change(
+                    run,
+                    lambda current: current.export_deferred(
+                        token, max_attempts=self._settings.max_export_attempts, now=naive_utc_now()
+                    ),
+                )
+            except (TraceCollectionError, TraceRunError) as error:
+                self._export_failed(run, token, error.code)
+            except ProviderConfigUnreadableError:
+                self._export_failed(run, token, "tracing_config_unreadable")
+            except ExportRejectedError:
+                self._export_failed(run, token, "provider_export_rejected")
             except Exception as error:
                 logger.warning(
                     "Application trace export failed: run_id=%s provider=%s error_type=%s",
@@ -601,13 +638,51 @@ class ApplicationTracingService:
                     run.provider,
                     type(error).__name__,
                 )
-                self.repository.complete(run_id, token, state="failed", error_code="provider_export_rejected")
+                self._export_failed(run, token, "provider_export_rejected")
             else:
-                self.repository.complete(run_id, token, state="accepted", result=result)
+                self._change(
+                    run,
+                    lambda current: current.export_accepted(
+                        token,
+                        provider_trace_id=result.trace_id,
+                        trace_url=result.trace_url,
+                        span_urls=result.span_urls,
+                        now=naive_utc_now(),
+                    ),
+                )
+
+    def _export_failed(self, run: TraceRunAgg, token: str, error_code: str) -> None:
+        self._change(run, lambda current: current.export_failed(token, error_code, now=naive_utc_now()))
+
+    def _frozen_provider(self, provider_id: str) -> TraceProvider[Any]:
+        try:
+            return self._providers.resolve(provider_id)(self._egress)
+        except (UnknownTraceProviderError, TraceProviderUnavailableError):
+            raise TraceCollectionError("tracing_provider_unavailable") from None
+
+    def _frozen_capabilities(self, provider_id: str) -> TraceProviderSupport | None:
+        try:
+            return support_of(self._providers.resolve(provider_id))
+        except (UnknownTraceProviderError, TraceProviderUnavailableError):
+            return None
+
+    def _frozen_project_url(self, run: TraceRun) -> str | None:
+        """Present the run's own destination, never the app's current one."""
+        try:
+            provider = self._providers.resolve(run.provider)
+            return provider(self._egress).project_url(provider.config_model.model_validate(run.provider_config))
+        except (UnknownTraceProviderError, TraceProviderUnavailableError, ValidationError):
+            return None
 
     def status(
-        self, *, tenant_id: str, app_id: str, source_kind: str, source_id: str, node_execution_id: str | None = None
-    ) -> dict[str, Any]:
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        source_kind: TraceSourceKind,
+        source_id: str,
+        node_execution_id: str | None,
+    ) -> TraceRunStatus:
         run, node_execution_id = self._resolve_status_source(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -617,75 +692,102 @@ class ApplicationTracingService:
         )
         return self._status_for_run(run, source_kind, source_id, node_execution_id)
 
+    def _source(self, *, tenant_id: str, app_id: str, kind: TraceSourceKind, source_id: str) -> TraceSource | None:
+        match kind:
+            case "message":
+                return self._sources.message(tenant_id=tenant_id, app_id=app_id, message_id=source_id)
+            case "workflow":
+                return self._sources.workflow_run(tenant_id=tenant_id, app_id=app_id, workflow_run_id=source_id)
+            case "node":
+                return self._sources.node_execution(tenant_id=tenant_id, app_id=app_id, node_execution_id=source_id)
+
     def _resolve_status_source(
-        self, *, tenant_id: str, app_id: str, source_kind: str, source_id: str, node_execution_id: str | None
-    ) -> tuple[ApplicationTraceRun | None, str | None]:
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        source_kind: TraceSourceKind,
+        source_id: str,
+        node_execution_id: str | None,
+    ) -> tuple[TraceRun | None, str | None]:
         """Resolve node log aliases through their owned workflow, outside SQL transactions."""
-        source = self.repository._source(tenant_id=tenant_id, app_id=app_id, kind=source_kind, source_id=source_id)
+        source = self._source(tenant_id=tenant_id, app_id=app_id, kind=source_kind, source_id=source_id)
         if source is None:
-            raise TraceCollectionError("tracing_source_not_found", 404)
+            raise TraceCollectionNotFoundError("tracing_source_not_found")
         if source_kind == "node" and node_execution_id is not None and node_execution_id != source_id:
-            raise TraceCollectionError("tracing_node_not_found", 404)
+            raise TraceCollectionNotFoundError("tracing_node_not_found")
         run = self._run_for_source(tenant_id=tenant_id, app_id=app_id, source_kind=source_kind, source_id=source_id)
         # A standalone preview (including a frozen disabled decision) owns its
         # status even if its source later carries a workflow run reference.
-        if run is None and isinstance(source, WorkflowNodeExecutionModel) and source.workflow_run_id:
-            workflow = self.repository._source(
-                tenant_id=tenant_id, app_id=app_id, kind="workflow", source_id=source.workflow_run_id
+        if run is None and isinstance(source, SourceNodeExecution) and source.workflow_run_id:
+            workflow = self._sources.workflow_run(
+                tenant_id=tenant_id, app_id=app_id, workflow_run_id=source.workflow_run_id
             )
-            if (
-                not isinstance(workflow, WorkflowRun)
-                or not source.workflow_id
-                or workflow.workflow_id != source.workflow_id
-            ):
-                raise TraceCollectionError("tracing_source_not_found", 404)
-            run = self.repository.source_run(
+            if workflow is None or not source.workflow_id or workflow.workflow_id != source.workflow_id:
+                raise TraceCollectionNotFoundError("tracing_source_not_found")
+            run = self._run_query.source_run(
                 tenant_id=tenant_id, app_id=app_id, source_kind="workflow", source_id=workflow.id
             )
             node_execution_id = source.id
         return run, node_execution_id
 
     def _status_for_run(
-        self, run: ApplicationTraceRun | None, source_kind: str, source_id: str, node_execution_id: str | None
-    ) -> dict[str, Any]:
-        if run is None or run.state == "not_collected":
-            return {"status": "not_collected", "source_kind": source_kind, "source_id": source_id}
-        invocations, _ = self.repository.collected(run.id)
+        self, run: TraceRun | None, source_kind: TraceSourceKind, source_id: str, node_execution_id: str | None
+    ) -> TraceRunStatus:
+        if run is None or run.state is TraceRunState.NOT_COLLECTED:
+            return TraceRunStatus(
+                status=TraceRunState.NOT_COLLECTED,
+                source_kind=source_kind,
+                source_id=source_id,
+                provider=None,
+                trace_id=None,
+                trace_url=None,
+                span_url=None,
+                project_url=None,
+                config_revision=None,
+                capture_content=None,
+                capture_agent=None,
+                span_count=None,
+                attempts=None,
+                error_code=None,
+                accepted_at=None,
+                capabilities=None,
+            )
+        invocations = self._run_query.invocations(run.id)
         selected = (
             [inv for inv in invocations if inv.node_execution_id == node_execution_id] if node_execution_id else []
         )
         if node_execution_id and not selected and not (source_kind == "node" and run.source_kind == "workflow"):
-            raise TraceCollectionError("tracing_node_not_found", 404)
-        return {
-            "status": run.state,
-            "source_kind": source_kind,
-            "source_id": source_id,
-            "provider": run.provider or None,
-            "trace_id": run.provider_trace_id or run.trace_id,
-            "trace_url": run.trace_url,
-            "span_url": run.span_urls.get(selected[-1].span_id) if selected else None,
-            "project_url": frozen_project_url(run.provider, run.provider_config),
-            "config_revision": run.config_revision or None,
-            "capture_content": run.capture_content,
-            "capture_agent": run.capture_agent,
-            "span_count": run.span_count,
-            "attempts": run.attempts,
-            "error_code": run.error_code,
-            "accepted_at": run.accepted_at,
-            "queryable": None,
-            "capabilities": provider_capabilities(run.provider) if run.provider else None,
-        }
+            raise TraceCollectionNotFoundError("tracing_node_not_found")
+        return TraceRunStatus(
+            status=run.state,
+            source_kind=source_kind,
+            source_id=source_id,
+            provider=run.provider or None,
+            trace_id=run.provider_trace_id or run.trace_id,
+            trace_url=run.trace_url,
+            span_url=run.span_urls.get(selected[-1].span_id) if selected else None,
+            project_url=self._frozen_project_url(run) if run.provider else None,
+            config_revision=run.config_revision or None,
+            capture_content=run.capture_content,
+            capture_agent=run.capture_agent,
+            span_count=run.span_count,
+            attempts=run.attempts,
+            error_code=run.error_code,
+            accepted_at=run.accepted_at,
+            capabilities=self._frozen_capabilities(run.provider) if run.provider else None,
+        )
 
     def retry(
         self,
         *,
         tenant_id: str,
         app_id: str,
-        source_kind: str,
+        source_kind: TraceSourceKind,
         source_id: str,
         acknowledge_possible_duplicates: bool,
-        node_execution_id: str | None = None,
-    ) -> dict[str, Any]:
+        node_execution_id: str | None,
+    ) -> TraceRunStatus:
         run, node_execution_id = self._resolve_status_source(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -694,12 +796,13 @@ class ApplicationTracingService:
             node_execution_id=node_execution_id,
         )
         if run is None:
-            raise TraceCollectionError("tracing_run_not_found", 404)
+            raise TraceCollectionNotFoundError("tracing_run_not_found")
         self._status_for_run(run, source_kind, source_id, node_execution_id)
-        self.repository.retry(run_id=run.id, acknowledge_possible_duplicates=acknowledge_possible_duplicates)
-        self.schedule(run.id)
-        return self._status_for_run(self.repository.get(run.id), source_kind, source_id, node_execution_id)
-
-
-def application_tracing_service() -> ApplicationTracingService:
-    return ApplicationTracingService(ApplicationTraceRepository(sessionmaker(bind=db.engine, expire_on_commit=False)))
+        with _collection_errors(), self._runs.change(run.id, tenant_id=tenant_id) as locked:
+            if locked is None:
+                raise TraceCollectionNotFoundError("tracing_run_not_found")
+            locked.run.release_for_retry(
+                acknowledge_possible_duplicates=acknowledge_possible_duplicates, now=naive_utc_now()
+            )
+        self._schedule(run.id)
+        return self._status_for_run(self._run_query.get(run.id), source_kind, source_id, node_execution_id)

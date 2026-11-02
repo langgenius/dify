@@ -2,9 +2,13 @@
 name = "dify-trace-arize-phoenix"
 version = "0.0.1"
 dependencies = [
-    "arize-phoenix-otel==0.15.0",
+    "dify-trace-sdk",
 ]
 description = "Dify ops tracing provider (Arize / Phoenix)."
+
+[project.entry-points."dify.trace_providers"]
+arize = "dify_trace_arize_phoenix.provider:ArizeProvider"
+phoenix = "dify_trace_arize_phoenix.provider:PhoenixProvider"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -1,29 +1,74 @@
 import json
-from dataclasses import dataclass
+import threading
+from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
+from contextlib import contextmanager
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import NoReturn, override
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 import pytest
+from aliyun.log.logclient import LogClient
 from dify_agent.protocol.tracing import AgentTraceBatch, AgentTraceEvent, AgentTraceSpan
-from sqlalchemy import func, select
+from dify_trace_langfuse.config import LangfuseConfig
+from dify_trace_sdk.egress import Egress, EgressResponse
+from dify_trace_sdk.errors import EgressError, ExportOutcomeUnknownError, ExportRejectedError, ExportRetryableError
+from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent, TracePayload
+from dify_trace_sdk.exporting import send_export_request
+from dify_trace_sdk.model import Span, SpanKind, SpanStatus, Trace
+from dify_trace_sdk.provider import ProviderCapabilities, SendResult, TraceProvider
+from dify_trace_sdk.testing import RecordingEgress, response
+from sqlalchemy import Connection, Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
+from typing_extensions import TypedDict
 
-from core.ops.entities.trace_entity import MessageTraceInfo
-from core.ops.exceptions import RetryableTraceDispatchError
-from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
+from core.helper.encrypter import obfuscated_token
+from domain.tracing.errors import TraceRunConflictError
+from domain.tracing.trace_run_agg import TraceInvocation, TraceRunAgg, TraceRunState, TraceSourceKind
+from extensions.logstore.aliyun_logstore import AliyunLogStore
+from extensions.logstore.repositories.logstore_api_workflow_node_execution_repository import (
+    _dict_to_workflow_node_execution_model,
+)
+from extensions.logstore.repositories.logstore_api_workflow_run_repository import _dict_to_workflow_run
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
-from models.application_trace import ApplicationTraceBatch, ApplicationTraceInvocation, ApplicationTraceRun
+from machinery.context import RequestContext
+from models.account import Tenant, TenantAccountJoin, TenantAccountRole
+from models.application_trace import ApplicationTraceBatch, ApplicationTraceRun
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Message, TraceAppConfig
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
-from repositories.application_trace_repository import ApplicationTraceRepository, TraceCollectionError
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+from repositories.application_trace_repository import ApplicationTraceRepository
+from repositories.factory import DifyAPIRepositoryFactory
+from repositories.trace_record_repository import TraceRecordRepository
+from services.app_tracing_config_service import AppTracingConfigService
 from services.tracing import service as service_module
-from services.tracing.provider_dispatch import TraceExportResult, TraceExportUncertainError
+from services.tracing.canonical import CanonicalTraceBuilder
+from services.tracing.collection import AgentTraceSettings, TraceRun, TraceRunStatus
+from services.tracing.collection_ports import LockedTraceRun
+from services.tracing.errors import (
+    TraceCollectionConflictError,
+    TraceCollectionLimitError,
+    TraceCollectionNotFoundError,
+    TracingStoreUnavailableError,
+)
+from services.tracing.provider_configs import ProviderConfigGateway
+from services.tracing.providers import ProviderConfigCodec, TraceProviderCatalog, TracingSecretCipher
+from services.tracing.records import GenerateNameTraceInfo, MessageTraceInfo
+from services.tracing.registry import EntryPointTraceProviderCatalog
 from services.tracing.service import ApplicationTracingService
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_app, make_message, make_workflow
+from tests.helpers.unit.model_factories import (
+    make_account,
+    make_app,
+    make_conversation,
+    make_message,
+    make_tenant,
+    make_workflow,
+)
+from tests.helpers.unit.services.tracing_ports import AGENT_TRACE_SETTINGS, InstalledTraceProviders
 
 """Exercise collection transactions and delivery state against real SQLite rows."""
 
@@ -36,16 +81,176 @@ def _application_trace_collection_identifier(value: str) -> str:
 class _ApplicationTraceCollectionCollection:
     repository: ApplicationTraceRepository
     sessions: sessionmaker[Session]
-    run: ApplicationTraceRun
+    run: TraceRun
 
-    def invocation(self, name: str = "first") -> ApplicationTraceInvocation:
-        return self.repository.invocation(
-            run_id=self.run.id,
+    @contextmanager
+    def change(self) -> Generator[TraceRunAgg]:
+        """The run under its row lock, in its own transaction; it is saved when the block exits without an error."""
+        with self.repository.change(self.run.id, tenant_id=self.run.tenant_id) as locked:
+            assert locked is not None
+            yield locked.run
+
+    def invocation(self, name: str = "first") -> TraceInvocation:
+        return self.open_invocation(
             agent_id=_application_trace_collection_identifier("agent"),
             node_execution_id=None,
             attempt=0,
             call_key=name,
         )
+
+    def open_invocation(
+        self, *, agent_id: str, node_execution_id: str | None, attempt: int, call_key: str
+    ) -> TraceInvocation:
+        with self.change() as run:
+            return run.open_invocation(
+                agent_id=agent_id, node_execution_id=node_execution_id, attempt=attempt, call_key=call_key
+            )
+
+
+class ScriptedProvider(TraceProvider[LangfuseConfig]):
+    """Sends each trace as one JSON request through the egress, whose script decides the outcome."""
+
+    id = "langfuse"
+    config_model = LangfuseConfig
+    capabilities = ProviderCapabilities(native_cost=True, trace_url=True, span_url=True)
+
+    @override
+    def verify(self, config: LangfuseConfig) -> LangfuseConfig:
+        return config
+
+    @override
+    def project_url(self, config: LangfuseConfig) -> str | None:
+        return f"{config.host}/project/{config.project_key}"
+
+    @override
+    def send(self, config: LangfuseConfig, trace: Trace) -> SendResult:
+        reply = send_export_request(
+            self.egress,
+            "POST",
+            f"{config.host}/traces",
+            destination="Scripted",
+            headers={"Authorization": f"{config.public_key}:{config.secret_key}"},
+            content=trace.model_dump_json().encode(),
+            sensitive_url=False,
+        )
+        body = reply.json()
+        assert isinstance(body, dict)
+        return SendResult(
+            trace_id=str(body["trace_id"]), trace_url=body.get("trace_url"), span_urls=body.get("span_urls", {})
+        )
+
+
+SCRIPTED_PROVIDERS = InstalledTraceProviders(ScriptedProvider)
+"""Agent traces are delivered through ``ScriptedProvider``; no other provider is installed."""
+
+
+class ForbiddenTraceProviders(TraceProviderCatalog):
+    """Fails the test when the service resolves any provider."""
+
+    def __init__(self, reason: str) -> None:
+        self._reason = reason
+
+    @override
+    def resolve(self, provider_id: str) -> NoReturn:
+        pytest.fail(self._reason)
+
+
+class StoredSecretCipher(TracingSecretCipher):
+    """A stored ``encrypted-x`` secret decrypts to ``plaintext-x``; ``decrypted`` lists the ciphertexts read."""
+
+    def __init__(self) -> None:
+        self.decrypted: list[str] = []
+
+    @override
+    def encrypt(self, tenant_id: str, value: str) -> str:
+        return f"encrypted-{value.removeprefix('plaintext-')}"
+
+    @override
+    def decrypt(self, tenant_id: str, tokens: Sequence[str]) -> list[str]:
+        self.decrypted.extend(tokens)
+        return [token.replace("encrypted-", "plaintext-", 1) for token in tokens]
+
+    @override
+    def mask(self, value: str) -> str:
+        return obfuscated_token(value)
+
+
+class ForbiddenSecretCipher(StoredSecretCipher):
+    """Fails the test when the service reads any credential."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__()
+        self._reason = reason
+
+    @override
+    def decrypt(self, tenant_id: str, tokens: Sequence[str]) -> NoReturn:
+        pytest.fail(self._reason)
+
+
+class UnreadableSecretCipher(StoredSecretCipher):
+    """No stored secret can be decrypted, as when the workspace key is lost."""
+
+    @override
+    def decrypt(self, tenant_id: str, tokens: Sequence[str]) -> NoReturn:
+        raise ValueError("private-ciphertext")
+
+
+def trace_records(sessions: sessionmaker[Session]) -> TraceRecordRepository:
+    return TraceRecordRepository(
+        sessions,
+        workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(sessions),
+        node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(sessions),
+        files_url="https://files.test",
+        enterprise_details=False,
+    )
+
+
+@dataclass
+class ServicePorts:
+    """The service's collaborators besides its repository; a test replaces those it constrains.
+
+    ``scheduled`` lists the runs the service scheduled for export.
+    """
+
+    egress: Egress
+    providers: TraceProviderCatalog = SCRIPTED_PROVIDERS
+    cipher: TracingSecretCipher = field(default_factory=StoredSecretCipher)
+    settings: AgentTraceSettings = AGENT_TRACE_SETTINGS
+    scheduled: list[str] = field(default_factory=list[str])
+
+    def service(self, case: _ApplicationTraceCollectionCollection) -> ApplicationTracingService:
+        return self.service_on(case.repository, case.sessions)
+
+    def service_on(
+        self, repository: ApplicationTraceRepository, sessions: sessionmaker[Session]
+    ) -> ApplicationTracingService:
+        """The service whose runs, run queries, and source queries all go through ``repository``."""
+        return ApplicationTracingService(
+            runs=repository,
+            run_query=repository,
+            sources=repository,
+            records=trace_records(sessions),
+            builder=CanonicalTraceBuilder(),
+            providers=self.providers,
+            codec=ProviderConfigCodec(self.cipher),
+            egress=self.egress,
+            schedule_export=self.scheduled.append,
+            settings=self.settings,
+        )
+
+
+def _application_trace_collection_accepted(trace_id: str) -> RecordingEgress:
+    """An egress whose destination acknowledges exactly one trace."""
+    return RecordingEgress([response(200, {"trace_id": trace_id})], grpc_target=None)
+
+
+def _application_trace_collection_no_egress() -> RecordingEgress:
+    """An egress that fails any request the test did not script."""
+    return RecordingEgress([], grpc_target=None)
+
+
+def sent_traces(egress: RecordingEgress) -> list[Trace]:
+    return [Trace.model_validate_json(request.content or b"") for request in egress.requests]
 
 
 def _application_trace_collection_seed(
@@ -97,23 +302,88 @@ def _application_trace_collection_seed(
                 app_id=app_id,
                 tracing_provider="langfuse",
                 tracing_config={
-                    "host": "https://langfuse.test",
+                    "public_key": "encrypted-public",
                     "secret_key": "encrypted-original",
-                    "project_url": "https://langfuse.test/project/original",
+                    "host": "https://langfuse.test",
+                    "project_key": "original",
                 },
             )
         )
     repository = ApplicationTraceRepository(sessions)
-    run = repository.start(
-        tenant_id=tenant_id, app_id=app_id, source_kind="message", source_id=message_id, session_id="session-original"
+    ServicePorts(_application_trace_collection_no_egress()).service_on(repository, sessions).start(
+        tenant_id=tenant_id,
+        app_id=app_id,
+        source_kind="message",
+        source_id=message_id,
+        session_id="session-original",
+        workflow_id=None,
     )
+    # ``start`` returns no run for a source frozen as not collected, so read the frozen run itself.
+    run = repository.source_run(tenant_id=tenant_id, app_id=app_id, source_kind="message", source_id=message_id)
     assert run is not None
     return _ApplicationTraceCollectionCollection(repository, sessions, run)
 
 
+def attach_conversation(case: _ApplicationTraceCollectionCollection, mode: AppMode) -> None:
+    """Message records are assembled only for a message whose conversation belongs to its app."""
+    with case.sessions.begin() as session:
+        message = session.get(Message, case.run.source_id)
+        assert message is not None
+        session.add(
+            make_conversation(
+                conversation_id=message.conversation_id,
+                app_id=case.run.app_id,
+                mode=mode,
+                inputs={},
+                from_source=ConversationFromSource.CONSOLE,
+            )
+        )
+
+
+def add_app_owner(case: _ApplicationTraceCollectionCollection, name: str) -> str:
+    """Workflow records are read as the app creator, who must be a member of the app's workspace."""
+    owner_id = _application_trace_collection_identifier(f"owner-{name}")
+    with case.sessions.begin() as session:
+        if session.get(Tenant, case.run.tenant_id) is None:
+            session.add(make_tenant(tenant_id=case.run.tenant_id))
+        session.add(make_account(account_id=owner_id, email=f"{name}@example.com"))
+        session.add(TenantAccountJoin(tenant_id=case.run.tenant_id, account_id=owner_id, role=TenantAccountRole.OWNER))
+        app = session.get(App, case.run.app_id)
+        assert app is not None
+        app.created_by = owner_id
+    return owner_id
+
+
+def trace_event(case: _ApplicationTraceCollectionCollection, payload: TracePayload) -> TraceEvent:
+    return TraceEvent(
+        event_id=uuid4().hex,
+        tenant_id=case.run.tenant_id,
+        app_id=case.run.app_id,
+        user_id=None,
+        occurred_at=datetime.now(UTC),
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+        payload=payload,
+    )
+
+
+def message_record(case: _ApplicationTraceCollectionCollection) -> MessageTraceInfo:
+    """The record the delivery worker assembles when the message reports its end."""
+    with case.sessions() as session:
+        message = session.get(Message, case.run.source_id)
+        assert message is not None
+        conversation_id = message.conversation_id
+    record = trace_records(case.sessions).assemble(
+        trace_event(case, MessageCompleted(message_id=case.run.source_id, conversation_id=conversation_id))
+    )
+    assert isinstance(record, MessageTraceInfo)
+    return record
+
+
 def _application_trace_collection_batch_for(
-    run: ApplicationTraceRun,
-    invocation: ApplicationTraceInvocation,
+    run: TraceRun,
+    invocation: TraceInvocation,
     *,
     final: bool = True,
     batch_id: UUID | None = None,
@@ -141,29 +411,64 @@ def _application_trace_collection_batch_for(
 
 def _application_trace_collection_ingest(
     collection: _ApplicationTraceCollectionCollection, batch: AgentTraceBatch
-) -> tuple[int, str]:
-    return collection.repository.ingest(batch, max_spans=100, max_bytes=1_000_000)
+) -> tuple[int, list[str]]:
+    """Ingest through the service; returns the spans it accepted and the runs it then scheduled for export."""
+    ports = ServicePorts(_application_trace_collection_no_egress())
+    return ports.service(collection).ingest(batch), ports.scheduled
 
 
 def _application_trace_collection_terminal(collection: _ApplicationTraceCollectionCollection) -> None:
     run = collection.run
-    root = CanonicalSpan(
-        id=run.root_span_id,
-        parent_id=None,
+    root = Span(
+        span_id=run.root_span_id,
+        parent_span_id=None,
         name="Agent turn",
-        kind=CanonicalSpanKind.CHAIN,
+        kind=SpanKind.CHAIN,
         start_time=datetime.fromtimestamp(0, UTC),
         end_time=datetime.fromtimestamp(3, UTC),
-        status=CanonicalSpanStatus.OK,
+        status=SpanStatus.OK,
     )
-    trace = CanonicalTrace(trace_id=run.trace_id, session_id=run.session_id, root_span_id=root.id, spans=(root,))
-    collection.repository.terminal(run.id, trace.model_dump(mode="json"), root.id)
+    trace = Trace(
+        trace_id=run.trace_id,
+        external_trace_id=None,
+        session_id=run.session_id,
+        user_id=None,
+        parent=None,
+        spans=(root,),
+    )
+    with collection.change() as current:
+        current.capture_terminal(trace, now=naive_utc_now())
+
+
+def _claim_at(
+    collection: _ApplicationTraceCollectionCollection, *, lease_seconds: int, now: datetime
+) -> tuple[TraceRunAgg, str] | None:
+    """Lease the run for one export attempt; returns the claimed run and the token that fences the attempt."""
+    token = str(uuid4())
+    with collection.repository.change(collection.run.id, tenant_id=collection.run.tenant_id) as locked:
+        assert locked is not None
+        claimed = locked.run.claim_export(
+            token=token, owner_exists=locked.owner_exists, collection_timeout=60, lease_seconds=lease_seconds, now=now
+        )
+        return (locked.run, token) if claimed else None
 
 
 def _application_trace_collection_claim(
     collection: _ApplicationTraceCollectionCollection,
-) -> tuple[ApplicationTraceRun, str] | None:
-    return collection.repository.claim(collection.run.id, collection_timeout=60, lease_seconds=30)
+) -> tuple[TraceRunAgg, str] | None:
+    return _claim_at(collection, lease_seconds=30, now=naive_utc_now())
+
+
+def _accept_export(collection: _ApplicationTraceCollectionCollection, token: str, accepted: SendResult) -> None:
+    """Record the destination's acceptance of the export attempt ``token``."""
+    with collection.change() as run:
+        run.export_accepted(
+            token,
+            provider_trace_id=accepted.trace_id,
+            trace_url=accepted.trace_url,
+            span_urls=accepted.span_urls,
+            now=naive_utc_now(),
+        )
 
 
 class TestApplicationTraceCollectionCases:
@@ -178,15 +483,13 @@ class TestApplicationTraceCollectionCases:
     ) -> None:
         invocation = collection.invocation()
         batch = _application_trace_collection_batch_for(collection.run, invocation)
-        assert _application_trace_collection_ingest(collection, batch) == (1, collection.run.id)
-        assert _application_trace_collection_ingest(collection, batch) == (1, collection.run.id)
+        assert _application_trace_collection_ingest(collection, batch) == (1, [collection.run.id])
+        assert _application_trace_collection_ingest(collection, batch) == (1, [collection.run.id])
         _application_trace_collection_terminal(collection)
         leased = _application_trace_collection_claim(collection)
         assert leased is not None
-        collection.repository.complete(
-            collection.run.id, leased[1], state="accepted", result=TraceExportResult("provider-id")
-        )
-        assert _application_trace_collection_ingest(collection, batch) == (1, collection.run.id)
+        _accept_export(collection, leased[1], SendResult(trace_id="provider-id", trace_url=None, span_urls={}))
+        assert _application_trace_collection_ingest(collection, batch) == (1, [collection.run.id])
         stored = collection.repository.get(collection.run.id)
         assert stored is not None
         assert stored.span_count == 1
@@ -200,18 +503,19 @@ class TestApplicationTraceCollectionCases:
         batch = _application_trace_collection_batch_for(collection.run, collection.invocation(), final=False)
         _application_trace_collection_ingest(collection, batch)
         changed = batch.model_copy(update={"final": True})
-        with pytest.raises(TraceCollectionError, match="tracing_batch_conflict"):
+        with pytest.raises(TraceCollectionConflictError, match="tracing_batch_conflict"):
             _application_trace_collection_ingest(collection, changed)
-        invocations, batches = collection.repository.collected(collection.run.id)
+        invocations = collection.repository.invocations(collection.run.id)
         assert invocations[0].finalized is False
-        assert batches[0].final is False
+        with collection.sessions() as session:
+            assert session.scalar(select(ApplicationTraceBatch.final)) is False
 
     @staticmethod
     def test_run_cannot_ingest_another_runs_invocation(collection: _ApplicationTraceCollectionCollection) -> None:
         other = _application_trace_collection_seed(collection.sessions, "other")
         foreign = other.invocation()
         forged = _application_trace_collection_batch_for(collection.run, foreign)
-        with pytest.raises(TraceCollectionError, match="tracing_invocation_not_found"):
+        with pytest.raises(TraceCollectionNotFoundError, match="tracing_invocation_not_found"):
             _application_trace_collection_ingest(collection, forged)
         with collection.sessions() as session:
             assert session.scalar(select(func.count()).select_from(ApplicationTraceBatch)) == 0
@@ -219,11 +523,12 @@ class TestApplicationTraceCollectionCases:
     @staticmethod
     def test_payload_limits_reject_whole_transaction(collection: _ApplicationTraceCollectionCollection) -> None:
         batch = _application_trace_collection_batch_for(collection.run, collection.invocation())
-        with pytest.raises(TraceCollectionError, match="tracing_payload_limit"):
-            collection.repository.ingest(batch, max_spans=100, max_bytes=1)
-        invocations, batches = collection.repository.collected(collection.run.id)
-        assert not batches
-        assert invocations[0].finalized is False
+        limits = replace(AGENT_TRACE_SETTINGS, max_spans=100, max_bytes=1)
+        limited = ServicePorts(_application_trace_collection_no_egress(), settings=limits).service(collection)
+        with pytest.raises(TraceCollectionLimitError, match="tracing_payload_limit"):
+            limited.ingest(batch)
+        assert not collection.repository.batches(collection.run.id)
+        assert collection.repository.invocations(collection.run.id)[0].finalized is False
         stored = collection.repository.get(collection.run.id)
         assert stored is not None
         assert stored.span_count == 0
@@ -232,10 +537,9 @@ class TestApplicationTraceCollectionCases:
     def test_wrong_trace_id_is_rejected_before_persistence(collection: _ApplicationTraceCollectionCollection) -> None:
         batch = _application_trace_collection_batch_for(collection.run, collection.invocation())
         altered = batch.model_copy(update={"spans": [batch.spans[0].model_copy(update={"trace_id": "f" * 32})]})
-        with pytest.raises(TraceCollectionError, match="tracing_trace_id_mismatch"):
+        with pytest.raises(TraceCollectionConflictError, match="tracing_trace_id_mismatch"):
             _application_trace_collection_ingest(collection, altered)
-        _, batches = collection.repository.collected(collection.run.id)
-        assert not batches
+        assert not collection.repository.batches(collection.run.id)
 
     @staticmethod
     def test_content_off_cleans_the_durable_batch_not_only_the_export(
@@ -263,7 +567,7 @@ class TestApplicationTraceCollectionCases:
         )
         batch = original.model_copy(update={"spans": [observation]})
         _application_trace_collection_ingest(collection, batch)
-        _, batches = collection.repository.collected(collection.run.id)
+        batches = collection.repository.batches(collection.run.id)
         assert "private" not in json.dumps(batches[0].spans)
         assert batches[0].spans[0]["events"] == []
         assert batches[0].spans[0]["status"] == "error"
@@ -273,7 +577,7 @@ class TestApplicationTraceCollectionCases:
         changed = batch.model_copy(
             update={"spans": [observation.model_copy(update={"status_message": "different private error"})]}
         )
-        with pytest.raises(TraceCollectionError, match="tracing_batch_conflict"):
+        with pytest.raises(TraceCollectionConflictError, match="tracing_batch_conflict"):
             _application_trace_collection_ingest(collection, changed)
 
     @staticmethod
@@ -283,9 +587,8 @@ class TestApplicationTraceCollectionCases:
         original = collection.invocation()
         repeated = collection.invocation()
         assert original.id == repeated.id
-        with pytest.raises(TraceCollectionError, match="tracing_invocation_conflict"):
-            collection.repository.invocation(
-                run_id=collection.run.id,
+        with pytest.raises(TraceRunConflictError, match="tracing_invocation_conflict"):
+            collection.open_invocation(
                 agent_id=_application_trace_collection_identifier("different-agent"),
                 node_execution_id=_application_trace_collection_identifier("different-node"),
                 attempt=2,
@@ -326,14 +629,14 @@ class TestApplicationTraceCollectionCases:
         assert _application_trace_collection_claim(collection) is None
         current = collection.repository.get(collection.run.id)
         assert current is not None
-        assert current.state == "uncertain"
-        collection.repository.complete(collection.run.id, leased[1], state="accepted", result=TraceExportResult("late"))
-        stored = collection.repository.get(collection.run.id)
-        assert stored is not None
-        assert stored.state == "accepted"
-        assert stored.error_code is None
-        assert stored.accepted_at is not None
-        assert stored.provider_trace_id == "late"
+        assert current.state is TraceRunState.UNCERTAIN
+        _accept_export(collection, leased[1], SendResult(trace_id="late", trace_url=None, span_urls={}))
+        accepted = collection.repository.get(collection.run.id)
+        assert accepted is not None
+        assert accepted.state is TraceRunState.ACCEPTED
+        assert accepted.error_code is None
+        assert accepted.accepted_at is not None
+        assert accepted.provider_trace_id == "late"
         assert _application_trace_collection_claim(collection) is None
 
     @staticmethod
@@ -341,13 +644,13 @@ class TestApplicationTraceCollectionCases:
         collection.invocation()
         _application_trace_collection_terminal(collection)
         with collection.sessions.begin() as session:
-            stored = session.get(ApplicationTraceRun, collection.run.id)
-            assert stored is not None
-            stored.terminal_at = naive_utc_now() - timedelta(seconds=120)
+            row = session.get(ApplicationTraceRun, collection.run.id)
+            assert row is not None
+            row.terminal_at = naive_utc_now() - timedelta(seconds=120)
         assert _application_trace_collection_claim(collection) is None
         stored = collection.repository.get(collection.run.id)
         assert stored is not None
-        assert stored.state == "failed"
+        assert stored.state is TraceRunState.FAILED
         assert stored.error_code == "agent_trace_collection_incomplete"
 
     @staticmethod
@@ -362,12 +665,14 @@ class TestApplicationTraceCollectionCases:
             config = session.scalar(select(TraceAppConfig).where(TraceAppConfig.app_id == original.app_id))
             assert config is not None
             config.tracing_config = {"secret_key": "encrypted-new"}
-        repeated = collection.repository.start(
+        service = ServicePorts(_application_trace_collection_no_egress()).service(collection)
+        repeated = service.start(
             tenant_id=original.tenant_id,
             app_id=original.app_id,
             source_kind="message",
             source_id=original.source_id,
             session_id="changed",
+            workflow_id=None,
         )
         assert repeated is not None
         assert repeated.provider == "langfuse"
@@ -377,82 +682,96 @@ class TestApplicationTraceCollectionCases:
         assert repeated.session_id == "session-original"
 
     @staticmethod
-    @pytest.mark.parametrize("outcome", ["accepted", "uncertain", "retrying"])
+    @pytest.mark.parametrize(
+        ("outcome", "reply"),
+        [
+            (
+                TraceRunState.ACCEPTED,
+                response(200, {"trace_id": "vendor-trace", "trace_url": "https://trace.test/example"}),
+            ),
+            (TraceRunState.UNCERTAIN, EgressError("acknowledgement lost", request_sent=True)),
+            (TraceRunState.RETRYING, response(503, {})),
+        ],
+    )
     def test_delivery_checkpoint_controls_replays(
-        collection: _ApplicationTraceCollectionCollection, monkeypatch: pytest.MonkeyPatch, outcome: str
+        collection: _ApplicationTraceCollectionCollection,
+        outcome: TraceRunState,
+        reply: EgressResponse | Exception,
     ) -> None:
         _application_trace_collection_ingest(
             collection, _application_trace_collection_batch_for(collection.run, collection.invocation())
         )
         _application_trace_collection_terminal(collection)
-        exports: list[tuple[str, dict[str, object], CanonicalTrace]] = []
-        decryptions: list[dict[str, object]] = []
-
-        def decrypt(_tenant: str, _provider: str, config: dict[str, object]) -> dict[str, object]:
-            decryptions.append(config)
-            return {"secret_key": "plaintext-only-in-worker"}
-
-        def export(provider: str, config: dict[str, object], trace: CanonicalTrace) -> TraceExportResult:
-            exports.append((provider, config, trace))
-            if outcome == "uncertain":
-                raise TraceExportUncertainError("ack lost")
-            if outcome == "retrying":
-                raise RetryableTraceDispatchError("busy")
-            return TraceExportResult("vendor-trace", "https://trace.test/example")
-
-        monkeypatch.setattr(service_module.OpsTraceManager, "decrypt_tracing_config", decrypt)
-        monkeypatch.setattr(service_module, "export_trace", export)
-        service = ApplicationTracingService(collection.repository)
+        cipher = StoredSecretCipher()
+        egress = RecordingEgress([reply], grpc_target=None)
+        service = ServicePorts(egress, cipher=cipher).service(collection)
         service.deliver(collection.run.id)
         service.deliver(collection.run.id)
-        assert len(exports) == 1
-        assert decryptions[0]["secret_key"] == "encrypted-original"
+        assert len(egress.requests) == 1
+        request = egress.requests[0]
+        assert request.url == "https://langfuse.test/traces"
+        assert request.headers["Authorization"] == "plaintext-public:plaintext-original"
+        assert cipher.decrypted == ["encrypted-public", "encrypted-original"]
         stored = collection.repository.get(collection.run.id)
         assert stored is not None
-        assert stored.state == outcome
+        assert stored.state is outcome
         assert stored.provider_config["secret_key"] == "encrypted-original"
-        assert "plaintext-only-in-worker" not in json.dumps(stored.outer_trace)
-        assert exports[0][1]["host"] == "https://langfuse.test"
+        assert "plaintext" not in json.dumps(stored.outer_trace)
 
     @staticmethod
     def test_source_owner_checks_app_and_tenant(collection: _ApplicationTraceCollectionCollection) -> None:
         run = collection.run
+        service = ServicePorts(_application_trace_collection_no_egress()).service(collection)
+        foreign_tenant = _application_trace_collection_identifier("foreign-tenant")
         assert (
-            collection.repository.start(
-                tenant_id=_application_trace_collection_identifier("foreign-tenant"),
+            service.start(
+                tenant_id=foreign_tenant,
                 app_id=run.app_id,
                 source_kind="message",
                 source_id=run.source_id,
                 session_id="x",
+                workflow_id=None,
+            )
+            is None
+        )
+        # ``start`` also returns no run for a source frozen as not collected; no run may be frozen at all.
+        assert (
+            collection.repository.source_run(
+                tenant_id=foreign_tenant, app_id=run.app_id, source_kind="message", source_id=run.source_id
             )
             is None
         )
         other = _application_trace_collection_seed(collection.sessions, "second-app")
         assert (
-            collection.repository.start(
+            service.start(
                 tenant_id=run.tenant_id,
                 app_id=other.run.app_id,
                 source_kind="message",
                 source_id=run.source_id,
                 session_id="x",
+                workflow_id=None,
+            )
+            is None
+        )
+        assert (
+            collection.repository.source_run(
+                tenant_id=run.tenant_id, app_id=other.run.app_id, source_kind="message", source_id=run.source_id
             )
             is None
         )
 
     @staticmethod
     def test_disabled_source_decision_stays_disabled_after_config_enable(
-        sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
-        apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
         case = _application_trace_collection_seed(sqlite_session_factory, "initially-disabled", enabled=False)
-        service = ApplicationTracingService(case.repository)
-        assert case.run.state == "not_collected"
+        attach_conversation(case, AppMode.AGENT)
+        service = ServicePorts(_application_trace_collection_no_egress()).service(case)
+        assert case.run.state is TraceRunState.NOT_COLLECTED
         with case.sessions.begin() as session:
             app = session.get(App, case.run.app_id)
             assert app is not None
             app.tracing = json.dumps({"enabled": True, "tracing_provider": "langfuse", "capture_content": True})
-            message = session.get(Message, case.run.source_id)
-            assert message is not None
         assert (
             service.start(
                 tenant_id=case.run.tenant_id,
@@ -460,35 +779,25 @@ class TestApplicationTraceCollectionCases:
                 source_kind="message",
                 source_id=case.run.source_id,
                 session_id="later-session",
+                workflow_id=None,
             )
             is None
         )
-        info = MessageTraceInfo(
-            metadata={},
-            message_data=message,
-            message_id=message.id,
-            conversation_model="agent",
-            conversation_mode="agent",
-            message_tokens=1,
-            answer_tokens=1,
-            total_tokens=2,
-        )
-        assert service.capture_terminal(info) is True
+        assert service.capture_terminal(tenant_id=case.run.tenant_id, info=message_record(case)) is True
         stored = case.repository.get(case.run.id)
         assert stored is not None
-        assert stored.state == "not_collected"
+        assert stored.state is TraceRunState.NOT_COLLECTED
         assert stored.provider_config == {}
         assert stored.outer_trace is None
 
     @staticmethod
     def test_capture_agent_disabled_preserves_outer_only_content_policy(
-        sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
-        apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
         case = _application_trace_collection_seed(sqlite_session_factory, "outer-only", capture_agent=False)
-        service = ApplicationTracingService(case.repository)
-        scheduled: list[str] = []
-        monkeypatch.setattr(service, "schedule", scheduled.append)
+        attach_conversation(case, AppMode.AGENT)
+        ports = ServicePorts(_application_trace_collection_no_egress())
+        service = ports.service(case)
         assert (
             service.prepare_invocation(
                 tenant_id=case.run.tenant_id,
@@ -500,53 +809,39 @@ class TestApplicationTraceCollectionCases:
                 node_execution_id=None,
                 attempt=0,
                 call_key="call",
+                workflow_id=None,
             )
             is None
         )
-        with case.sessions() as session:
-            message = session.get(Message, case.run.source_id)
-            assert message is not None
-        info = MessageTraceInfo(
-            metadata={},
-            message_data=message,
-            message_id=message.id,
-            conversation_model="agent",
-            conversation_mode="agent",
-            message_tokens=1,
-            answer_tokens=1,
-            total_tokens=2,
-            inputs="private input",
-            outputs="private output",
-        )
-        assert service.capture_terminal(info) is True
-        assert scheduled == [case.run.id]
+        info = message_record(case).model_copy(update={"inputs": "private input", "outputs": "private output"})
+        assert service.capture_terminal(tenant_id=case.run.tenant_id, info=info) is True
+        assert ports.scheduled == [case.run.id]
         stored = case.repository.get(case.run.id)
         assert stored is not None
         assert stored.outer_trace is not None
         assert "private" not in json.dumps(stored.outer_trace)
+        # The message's synthetic model call is left to the Agent runtime, which reports none here.
         assert len(stored.outer_trace["spans"]) == 1
-        invocations, _ = case.repository.collected(case.run.id)
-        assert invocations == []
+        assert case.repository.invocations(case.run.id) == []
 
     @staticmethod
     def test_deleting_selected_configuration_keeps_historical_destination(
         collection: _ApplicationTraceCollectionCollection,
     ) -> None:
-        from machinery.context import RequestContext
-        from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
-        from services.app_tracing_config_gateway import OpsTraceManagerGateway
-        from services.app_tracing_config_service import AppTracingConfigService
-
         original = collection.run
         service = AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=collection.sessions),
-            provider=OpsTraceManagerGateway(),
+            provider=ProviderConfigGateway(
+                providers=SCRIPTED_PROVIDERS,
+                codec=ProviderConfigCodec(StoredSecretCipher()),
+                egress=_application_trace_collection_no_egress(),
+            ),
         )
         service.delete(RequestContext("request", None, "account", original.tenant_id), original.app_id, "langfuse")
         stored = collection.repository.get(original.id)
         assert stored is not None
         assert stored.provider_config == original.provider_config
-        assert stored.provider_config["project_url"] == "https://langfuse.test/project/original"
+        assert stored.provider_config["project_key"] == "original"
         assert stored.config_revision == original.config_revision
         with collection.sessions() as session:
             assert session.scalar(select(TraceAppConfig).where(TraceAppConfig.app_id == original.app_id)) is None
@@ -561,31 +856,74 @@ class TestApplicationTraceCollectionCases:
 
 
 _ApplicationTraceServiceBoundariesCollection = _ApplicationTraceCollectionCollection
+_application_trace_service_boundaries_accepted = _application_trace_collection_accepted
 _application_trace_service_boundaries_batch_for = _application_trace_collection_batch_for
 _application_trace_service_boundaries_claim = _application_trace_collection_claim
 _application_trace_service_boundaries_identifier = _application_trace_collection_identifier
 _application_trace_service_boundaries_ingest = _application_trace_collection_ingest
+_application_trace_service_boundaries_no_egress = _application_trace_collection_no_egress
 _application_trace_service_boundaries_seed = _application_trace_collection_seed
 _application_trace_service_boundaries_terminal = _application_trace_collection_terminal
 
 
-def source(case: _ApplicationTraceServiceBoundariesCollection) -> dict[str, str]:
-    return {
-        "tenant_id": case.run.tenant_id,
-        "app_id": case.run.app_id,
-        "source_kind": "message",
-        "source_id": case.run.source_id,
-    }
+FROZEN_LANGFUSE: dict[str, object] = {
+    "public_key": "encrypted-public",
+    "secret_key": "encrypted-original",
+    "host": "https://langfuse.test",
+    "project_key": "original",
+}
+
+
+class RunSource(TypedDict, closed=True):
+    """The source a caller names to read or retry the status of a run."""
+
+    tenant_id: str
+    app_id: str
+    source_kind: TraceSourceKind
+    source_id: str
+
+
+def source(run: TraceRun) -> RunSource:
+    return RunSource(tenant_id=run.tenant_id, app_id=run.app_id, source_kind=run.source_kind, source_id=run.source_id)
+
+
+def not_collected(source_kind: TraceSourceKind, source_id: str) -> TraceRunStatus:
+    """The status of a source nothing is collected for: it names no destination or delivery detail."""
+    return TraceRunStatus(
+        status=TraceRunState.NOT_COLLECTED,
+        source_kind=source_kind,
+        source_id=source_id,
+        provider=None,
+        trace_id=None,
+        trace_url=None,
+        span_url=None,
+        project_url=None,
+        config_revision=None,
+        capture_content=None,
+        capture_agent=None,
+        span_count=None,
+        attempts=None,
+        error_code=None,
+        accepted_at=None,
+        capabilities=None,
+    )
+
+
+def freeze_config(case: _ApplicationTraceServiceBoundariesCollection, provider: str, config: dict[str, object]) -> None:
+    with case.sessions.begin() as session:
+        run = session.get(ApplicationTraceRun, case.run.id)
+        assert run is not None
+        run.provider = provider
+        run.provider_config = config
 
 
 class TestApplicationTraceServiceBoundariesCases:
     @staticmethod
     def test_prepare_invocation_returns_only_opaque_context_and_respects_capture_gate(
-        sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
-        apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
         case = _application_trace_service_boundaries_seed(sqlite_session_factory, "prepare", capture_content=True)
-        service = ApplicationTracingService(case.repository)
+        service = ServicePorts(_application_trace_service_boundaries_no_egress()).service(case)
         context = service.prepare_invocation(
             tenant_id=case.run.tenant_id,
             app_id=case.run.app_id,
@@ -596,20 +934,24 @@ class TestApplicationTraceServiceBoundariesCases:
             node_execution_id=None,
             attempt=0,
             call_key="call",
+            workflow_id=None,
         )
         assert context is not None
         assert context.run_id == UUID(case.run.id)
         assert context.capture_content is True
         assert context.session_id == "session-original"
         assert "encrypted-original" not in context.model_dump_json()
-        apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
+        disabled = ServicePorts(
+            _application_trace_service_boundaries_no_egress(), settings=replace(AGENT_TRACE_SETTINGS, enabled=False)
+        ).service(case)
         assert (
-            service.start(
+            disabled.start(
                 tenant_id=case.run.tenant_id,
                 app_id=case.run.app_id,
                 source_kind="message",
                 source_id=case.run.source_id,
                 session_id="new",
+                workflow_id=None,
             )
             is None
         )
@@ -620,35 +962,30 @@ class TestApplicationTraceServiceBoundariesCases:
         sqlite_session_factory: sessionmaker[Session], missing: str
     ) -> None:
         case = _application_trace_service_boundaries_seed(sqlite_session_factory, "scope")
-        identity = source(case)
-        identity[{"tenant": "tenant_id", "app": "app_id", "message": "source_id"}[missing]] = (
-            _application_trace_service_boundaries_identifier("foreign")
-        )
-        with pytest.raises(TraceCollectionError) as caught:
-            ApplicationTracingService(case.repository).status(**identity)
+        foreign = _application_trace_service_boundaries_identifier("foreign")
+        service = ServicePorts(_application_trace_service_boundaries_no_egress()).service(case)
+        with pytest.raises(TraceCollectionNotFoundError) as caught:
+            service.status(
+                tenant_id=foreign if missing == "tenant" else case.run.tenant_id,
+                app_id=foreign if missing == "app" else case.run.app_id,
+                source_kind="message",
+                source_id=foreign if missing == "message" else case.run.source_id,
+                node_execution_id=None,
+            )
         assert caught.value.code == "tracing_source_not_found"
-        assert caught.value.status == 404
         assert "encrypted-original" not in str(caught.value)
 
     @staticmethod
     def test_status_uses_frozen_destination_and_selects_latest_node_attempt(
         sqlite_session_factory: sessionmaker[Session],
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         case = _application_trace_service_boundaries_seed(sqlite_session_factory, "status")
         with case.sessions.begin() as session:
             config = session.scalar(select(TraceAppConfig).where(TraceAppConfig.app_id == case.run.app_id))
             assert config is not None
-            config.tracing_config = {"project_url": "https://new.example/project/new", "secret_key": "encrypted-new"}
-
-        def forbidden(*_args: object, **_kwargs: object) -> None:
-            pytest.fail("status must not decrypt credentials or resolve current provider metadata")
-
-        monkeypatch.setattr(service_module.OpsTraceManager, "decrypt_tracing_config", forbidden)
-        monkeypatch.setattr(service_module.OpsTraceManager, "get_trace_config_project_url", forbidden)
+            config.tracing_config = {**FROZEN_LANGFUSE, "host": "https://new.example", "project_key": "new"}
         node_id = _application_trace_service_boundaries_identifier("selected-node")
-        invocation = case.repository.invocation(
-            run_id=case.run.id,
+        invocation = case.open_invocation(
             agent_id=_application_trace_service_boundaries_identifier("agent"),
             node_execution_id=node_id,
             attempt=1,
@@ -660,30 +997,33 @@ class TestApplicationTraceServiceBoundariesCases:
         _application_trace_service_boundaries_terminal(case)
         lease = _application_trace_service_boundaries_claim(case)
         assert lease is not None
-        case.repository.complete(
-            case.run.id,
+        _accept_export(
+            case,
             lease[1],
-            state="accepted",
-            result=TraceExportResult(
-                "provider-trace",
+            SendResult(
+                trace_id="provider-trace",
                 trace_url="https://frozen.example/trace",
                 span_urls={invocation.span_id: "https://frozen.example/span"},
             ),
         )
-        service = ApplicationTracingService(case.repository)
-        result = service.status(**source(case), node_execution_id=node_id)
-        assert result["status"] == "accepted"
-        assert result["trace_id"] == "provider-trace"
-        assert result["span_url"] == "https://frozen.example/span"
-        assert result["project_url"] == "https://langfuse.test/project/original"
-        assert result["config_revision"] == case.run.config_revision
-        assert result["queryable"] is None
-        assert result["capture_content"] is False
-        assert "provider_config" not in result
+        service = ServicePorts(
+            _application_trace_service_boundaries_no_egress(),
+            cipher=ForbiddenSecretCipher("status must not decrypt credentials"),
+        ).service(case)
+        result = service.status(**source(case.run), node_execution_id=node_id)
+        assert result.status is TraceRunState.ACCEPTED
+        assert result.provider == "langfuse"
+        assert result.trace_id == "provider-trace"
+        assert result.span_url == "https://frozen.example/span"
+        assert result.project_url == "https://langfuse.test/project/original"
+        assert result.config_revision == case.run.config_revision
+        assert result.capture_content is False
+        assert result.capabilities is not None
+        assert result.capabilities.provider == "langfuse"
         assert "encrypted-original" not in str(result)
-        with pytest.raises(TraceCollectionError, match="tracing_node_not_found"):
+        with pytest.raises(TraceCollectionNotFoundError, match="tracing_node_not_found"):
             service.status(
-                **source(case), node_execution_id=_application_trace_service_boundaries_identifier("another-node")
+                **source(case.run), node_execution_id=_application_trace_service_boundaries_identifier("another-node")
             )
 
     @staticmethod
@@ -695,7 +1035,7 @@ class TestApplicationTraceServiceBoundariesCases:
         with case.sessions.begin() as session:
             config = session.scalar(select(TraceAppConfig).where(TraceAppConfig.app_id == case.run.app_id))
             assert config is not None
-            config.tracing_config = {"project_url": "https://new.example/project/new", "secret_key": "encrypted-new"}
+            config.tracing_config = {**FROZEN_LANGFUSE, "host": "https://new.example", "project_key": "new"}
             message = session.get(Message, case.run.source_id)
             assert message is not None
             session.add(
@@ -713,64 +1053,80 @@ class TestApplicationTraceServiceBoundariesCases:
                     from_source=message.from_source,
                 )
             )
-        new_run = case.repository.start(
+        service = ServicePorts(_application_trace_service_boundaries_no_egress()).service(case)
+        new_run = service.start(
             tenant_id=case.run.tenant_id,
             app_id=case.run.app_id,
             source_kind="message",
             source_id=new_id,
             session_id="new-session",
+            workflow_id=None,
         )
         assert new_run is not None
-        service = ApplicationTracingService(case.repository)
-        assert service.status(**source(case))["project_url"] == "https://langfuse.test/project/original"
+        previous = service.status(**source(case.run), node_execution_id=None)
+        assert previous.project_url == "https://langfuse.test/project/original"
         assert (
-            service.status(**{**source(case), "source_id": new_id})["project_url"] == "https://new.example/project/new"
+            service.status(**source(new_run), node_execution_id=None).project_url == "https://new.example/project/new"
         )
 
     @staticmethod
     @pytest.mark.parametrize(
-        "project_url",
+        "frozen",
         [
-            None,
-            "",
-            1,
-            "javascript:alert(1)",
-            "//example.com/project",
-            "https://user:secret@example.com/project",
-            "https://@example.com",
-            "https://example.com\\@other.test",
-            "https://example.com:invalid/project",
-            "https://[invalid/project",
-            "https://example.com/\nproject",
+            {key: value for key, value in FROZEN_LANGFUSE.items() if key != "public_key"},
+            {**FROZEN_LANGFUSE, "host": 1},
+            {**FROZEN_LANGFUSE, "host": "javascript:alert(1)"},
+            {**FROZEN_LANGFUSE, "host": "//example.com/project"},
+            {**FROZEN_LANGFUSE, "host": "https://user:secret@example.com/project"},
+            {**FROZEN_LANGFUSE, "host": "https://@example.com"},
+            {**FROZEN_LANGFUSE, "host": "https://example.com\\@other.test"},
+            {**FROZEN_LANGFUSE, "host": "https://[invalid/project"},
         ],
     )
     def test_status_hides_unavailable_or_unsafe_frozen_project_urls(
-        sqlite_session_factory: sessionmaker[Session], project_url: object
+        sqlite_session_factory: sessionmaker[Session], frozen: dict[str, object]
     ) -> None:
         case = _application_trace_service_boundaries_seed(sqlite_session_factory, "invalid-project")
-        with case.sessions.begin() as session:
-            run = session.get(ApplicationTraceRun, case.run.id)
-            assert run is not None
-            run.provider_config = {
-                "secret_key": "encrypted-original",
-                **({"project_url": project_url} if project_url is not None else {}),
-            }
-        result = ApplicationTracingService(case.repository).status(**source(case))
-        assert result["project_url"] is None
+        freeze_config(case, "langfuse", frozen)
+        result = (
+            ServicePorts(_application_trace_service_boundaries_no_egress())
+            .service(case)
+            .status(**source(case.run), node_execution_id=None)
+        )
+        assert result.project_url is None
         assert "encrypted-original" not in str(result)
 
     @staticmethod
-    @pytest.mark.parametrize("provider", ["aliyun", "tencent"])
-    def test_status_does_not_present_platform_console_as_project(
-        sqlite_session_factory: sessionmaker[Session], provider: str
+    @pytest.mark.parametrize(
+        ("provider", "frozen"),
+        [
+            ("langfuse", FROZEN_LANGFUSE),
+            ("aliyun", {"license_key": "encrypted-license", "endpoint": "https://tracing.aliyun.example"}),
+            (
+                "tencent",
+                {"token": "encrypted-token", "endpoint": "https://apm.tencent.example", "service_name": "dify-app"},
+            ),
+        ],
+    )
+    def test_status_derives_project_link_from_frozen_provider_not_stored_urls(
+        sqlite_session_factory: sessionmaker[Session], provider: str, frozen: dict[str, object]
     ) -> None:
         case = _application_trace_service_boundaries_seed(sqlite_session_factory, "platform-console")
-        with case.sessions.begin() as session:
-            run = session.get(ApplicationTraceRun, case.run.id)
-            assert run is not None
-            run.provider = provider
-            run.provider_config = {"project_url": "https://console.example.com"}
-        assert ApplicationTracingService(case.repository).status(**source(case))["project_url"] is None
+        freeze_config(case, provider, {**frozen, "project_url": "https://stored.example/project"})
+        installed = EntryPointTraceProviderCatalog()
+        destination = installed.resolve(provider)
+        expected = destination(_application_trace_service_boundaries_no_egress()).project_url(
+            destination.config_model.model_validate(frozen)
+        )
+        result = (
+            ServicePorts(_application_trace_service_boundaries_no_egress(), providers=installed)
+            .service(case)
+            .status(**source(case.run), node_execution_id=None)
+        )
+        assert expected is not None
+        assert result.project_url == expected
+        assert result.capabilities is not None
+        assert result.capabilities.provider == provider
 
     @staticmethod
     @pytest.mark.parametrize("disabled", [True, False])
@@ -783,19 +1139,20 @@ class TestApplicationTraceServiceBoundariesCases:
                 stored = session.get(ApplicationTraceRun, case.run.id)
                 assert stored is not None
                 session.delete(stored)
-        service = ApplicationTracingService(case.repository)
-        assert service.status(**source(case)) == {
-            "status": "not_collected",
-            "source_kind": "message",
-            "source_id": case.run.source_id,
-        }
+        service = ServicePorts(
+            _application_trace_service_boundaries_no_egress(),
+            providers=ForbiddenTraceProviders("an uncollected source has no destination to construct"),
+        ).service(case)
+        assert service.status(**source(case.run), node_execution_id=None) == not_collected(
+            "message", case.run.source_id
+        )
         if not disabled:
-            with pytest.raises(TraceCollectionError, match="tracing_run_not_found"):
-                service.retry(**source(case), acknowledge_possible_duplicates=True)
+            with pytest.raises(TraceCollectionNotFoundError, match="tracing_run_not_found"):
+                service.retry(**source(case.run), acknowledge_possible_duplicates=True, node_execution_id=None)
 
     @staticmethod
     def test_retry_acknowledgement_guards_schedule_and_keeps_frozen_snapshot(
-        sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+        sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         case = _application_trace_service_boundaries_seed(sqlite_session_factory, "retry")
         _application_trace_service_boundaries_ingest(
@@ -804,56 +1161,116 @@ class TestApplicationTraceServiceBoundariesCases:
         _application_trace_service_boundaries_terminal(case)
         lease = _application_trace_service_boundaries_claim(case)
         assert lease is not None
-        case.repository.complete(case.run.id, lease[1], state="uncertain", error_code="provider_acceptance_unknown")
-        scheduled: list[str] = []
-        service = ApplicationTracingService(case.repository)
-        monkeypatch.setattr(service, "schedule", scheduled.append)
-        with pytest.raises(TraceCollectionError, match="tracing_duplicate_acknowledgement_required"):
-            service.retry(**source(case), acknowledge_possible_duplicates=False)
-        assert scheduled == []
-        result = service.retry(**source(case), acknowledge_possible_duplicates=True)
-        assert scheduled == [case.run.id]
-        assert result["status"] == "ready"
-        assert result["config_revision"] == case.run.config_revision
+        with case.change() as run:
+            run.export_uncertain(lease[1], now=naive_utc_now())
+        ports = ServicePorts(_application_trace_service_boundaries_no_egress())
+        service = ports.service(case)
+        with pytest.raises(TraceCollectionConflictError, match="tracing_duplicate_acknowledgement_required"):
+            service.retry(**source(case.run), acknowledge_possible_duplicates=False, node_execution_id=None)
+        assert ports.scheduled == []
+        result = service.retry(**source(case.run), acknowledge_possible_duplicates=True, node_execution_id=None)
+        assert ports.scheduled == [case.run.id]
+        assert result.status is TraceRunState.READY
+        assert result.config_revision == case.run.config_revision
         current = case.repository.get(case.run.id)
         assert current is not None
         assert current.provider_config == case.run.provider_config
 
     @staticmethod
     @pytest.mark.parametrize(
-        ("failure", "code"),
+        ("failure", "max_attempts", "state", "code"),
         [
-            (RetryableTraceDispatchError("private-transport-error"), "provider_retry_exhausted"),
-            (ValueError("private-credential-error"), "provider_export_rejected"),
+            (ExportRetryableError("private-transport-error"), 1, TraceRunState.FAILED, "provider_retry_exhausted"),
+            (
+                ExportRetryableError("private-transport-error"),
+                2,
+                TraceRunState.RETRYING,
+                "provider_temporarily_unavailable",
+            ),
+            (ExportRejectedError("private-rejection"), 2, TraceRunState.FAILED, "provider_export_rejected"),
+            (
+                ExportOutcomeUnknownError("private-acknowledgement"),
+                2,
+                TraceRunState.UNCERTAIN,
+                "provider_acceptance_unknown",
+            ),
+            (ValueError("private-credential-error"), 2, TraceRunState.FAILED, "provider_export_rejected"),
         ],
     )
-    def test_delivery_exhaustion_and_rejection_never_log_vendor_details(
+    def test_delivery_maps_provider_failures_to_stable_codes_without_vendor_details(
         sqlite_session_factory: sessionmaker[Session],
-        monkeypatch: pytest.MonkeyPatch,
         caplog: pytest.LogCaptureFixture,
         failure: Exception,
+        max_attempts: int,
+        state: TraceRunState,
         code: str,
     ) -> None:
-        apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_MAX_ATTEMPTS=1)
         case = _application_trace_service_boundaries_seed(sqlite_session_factory, "delivery")
         _application_trace_service_boundaries_ingest(
             case, _application_trace_service_boundaries_batch_for(case.run, case.invocation())
         )
         _application_trace_service_boundaries_terminal(case)
-
-        def export(*_args: object) -> TraceExportResult:
-            raise failure
-
-        monkeypatch.setattr(service_module.OpsTraceManager, "decrypt_tracing_config", lambda *_args: {})
-        monkeypatch.setattr(service_module, "export_trace", export)
-        service = ApplicationTracingService(case.repository)
+        destination = RecordingEgress([failure], grpc_target=None)
+        service = ServicePorts(
+            destination, settings=replace(AGENT_TRACE_SETTINGS, max_export_attempts=max_attempts)
+        ).service(case)
         service.deliver(case.run.id)
         current = case.repository.get(case.run.id)
         assert current is not None
-        assert current.state == "failed"
-        assert current.error_code == code
+        assert (current.state, current.error_code) == (state, code)
+        assert current.attempts == 1
+        with case.sessions() as session:
+            next_attempt_at = session.scalar(
+                select(ApplicationTraceRun.next_attempt_at).where(ApplicationTraceRun.id == case.run.id)
+            )
+        assert (next_attempt_at is not None) is (state is TraceRunState.RETRYING)
+        assert len(destination.requests) == 1
         assert "private-" not in caplog.text
         service.deliver(_application_trace_service_boundaries_identifier("missing-run"))
+
+    @staticmethod
+    @pytest.mark.parametrize("unreadable", ["decryption", "validation"])
+    def test_unreadable_frozen_configuration_fails_before_provider_io(
+        sqlite_session_factory: sessionmaker[Session],
+        caplog: pytest.LogCaptureFixture,
+        unreadable: str,
+    ) -> None:
+        case = _application_trace_service_boundaries_seed(sqlite_session_factory, "unreadable")
+        _application_trace_service_boundaries_ingest(
+            case, _application_trace_service_boundaries_batch_for(case.run, case.invocation())
+        )
+        _application_trace_service_boundaries_terminal(case)
+        if unreadable == "validation":
+            freeze_config(case, "langfuse", {**FROZEN_LANGFUSE, "host": "private-host-without-scheme"})
+        cipher = UnreadableSecretCipher() if unreadable == "decryption" else StoredSecretCipher()
+        destination = RecordingEgress([], grpc_target=None)
+        service = ServicePorts(destination, cipher=cipher).service(case)
+        service.deliver(case.run.id)
+        current = case.repository.get(case.run.id)
+        assert current is not None
+        assert (current.state, current.error_code) == (TraceRunState.FAILED, "tracing_config_unreadable")
+        assert destination.requests == []
+        assert "private-" not in caplog.text
+        with pytest.raises(TraceCollectionConflictError, match="tracing_retry_not_allowed"):
+            service.retry(**source(case.run), acknowledge_possible_duplicates=True, node_execution_id=None)
+
+    @staticmethod
+    def test_unavailable_frozen_provider_fails_before_decryption(
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        case = _application_trace_service_boundaries_seed(sqlite_session_factory, "retired-provider")
+        _application_trace_service_boundaries_ingest(
+            case, _application_trace_service_boundaries_batch_for(case.run, case.invocation())
+        )
+        _application_trace_service_boundaries_terminal(case)
+        freeze_config(case, "retired-provider", FROZEN_LANGFUSE)
+        ServicePorts(
+            _application_trace_service_boundaries_no_egress(),
+            cipher=ForbiddenSecretCipher("an unavailable provider must not decrypt credentials"),
+        ).service(case).deliver(case.run.id)
+        current = case.repository.get(case.run.id)
+        assert current is not None
+        assert (current.state, current.error_code) == (TraceRunState.FAILED, "tracing_provider_unavailable")
 
     @staticmethod
     @pytest.mark.parametrize("capture_content", [False, True])
@@ -897,7 +1314,9 @@ class TestApplicationTraceServiceBoundariesCases:
             )
             node_record.created_at = datetime(2026, 1, 1)
             session.add(node_record)
-        run = case.repository.start(
+        destination = _application_trace_service_boundaries_accepted("preview-trace")
+        service = ServicePorts(destination).service(case)
+        run = service.start(
             tenant_id=case.run.tenant_id,
             app_id=case.run.app_id,
             source_kind="node",
@@ -906,44 +1325,25 @@ class TestApplicationTraceServiceBoundariesCases:
             session_id="preview-session",
         )
         assert run is not None
-        ApplicationTracingService(case.repository).settle_preview(run)
+        service.deliver(run.id)
         current = case.repository.get(run.id)
         assert current is not None
         if status == WorkflowNodeExecutionStatus.RUNNING:
             assert current.outer_trace is None
+            assert current.state is TraceRunState.COLLECTING
+            assert destination.requests == []
         else:
             assert current.outer_trace is not None
-            trace = service_module.CanonicalTrace.model_validate(current.outer_trace)
-            root = trace.spans[0]
+            assert current.state is TraceRunState.ACCEPTED
+            trace = Trace.model_validate(current.outer_trace)
+            root = trace.root
+            assert root.span_id == run.root_span_id
             assert root.status.value == ("error" if status == WorkflowNodeExecutionStatus.FAILED else "ok")
             assert ("private-" in trace.model_dump_json()) is capture_content
-            assert root.metadata["node_execution_id"] == node_id
+            assert root.attributes["node_execution_id"] == node_id
+            assert (root.end_time - root.start_time).total_seconds() == 2
             if not capture_content and status == WorkflowNodeExecutionStatus.FAILED:
                 assert root.error == "Node execution failed"
-
-    @staticmethod
-    @pytest.mark.parametrize("owner_state", ["no_creator", "missing_account", "wrong_app"])
-    def test_missing_owner_identity_cannot_authorize_trace_expansion(
-        sqlite_session_factory: sessionmaker[Session], owner_state: str
-    ) -> None:
-        from models.model import App
-
-        case = _application_trace_service_boundaries_seed(sqlite_session_factory, "owner")
-        with case.sessions.begin() as session:
-            app = session.get(App, case.run.app_id)
-            assert app is not None
-            app.created_by = (
-                None
-                if owner_state == "no_creator"
-                else _application_trace_service_boundaries_identifier("missing-owner")
-            )
-        app_id = (
-            _application_trace_service_boundaries_identifier("another-app")
-            if owner_state == "wrong_app"
-            else case.run.app_id
-        )
-        with pytest.raises(TraceCollectionError, match="tracing_owner_not_found"):
-            ApplicationTracingService(case.repository)._service_account(case.run, app_id)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -952,11 +1352,12 @@ class TestApplicationTraceServiceBoundariesCases:
             ("empty", "tracing_invocation_empty"),
             ("foreign_parent", "tracing_invocation_parent_invalid"),
             ("no_invocation_root", "tracing_invocation_root_missing"),
+            ("self_parent", "tracing_payload_invalid"),
             ("conflicting_span", "tracing_span_conflict"),
         ],
     )
     def test_invalid_runtime_tree_is_rejected_before_provider_credentials_or_io(
-        sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, invalid: str, code: str
+        sqlite_session_factory: sessionmaker[Session], invalid: str, code: str
     ) -> None:
         case = _application_trace_service_boundaries_seed(sqlite_session_factory, "invalid-runtime")
         batch = _application_trace_service_boundaries_batch_for(case.run, case.invocation())
@@ -965,11 +1366,15 @@ class TestApplicationTraceServiceBoundariesCases:
         elif invalid == "foreign_parent":
             batch.spans[0] = batch.spans[0].model_copy(update={"parent_span_id": "f" * 16})
         elif invalid == "no_invocation_root":
+            # Every parent is a collected span, but none of them hangs from the invocation.
+            batch.spans = [
+                batch.spans[0].model_copy(update={"parent_span_id": "b" * 16}),
+                batch.spans[0].model_copy(update={"span_id": "b" * 16, "parent_span_id": "a" * 16}),
+            ]
+        elif invalid == "self_parent":
             batch.spans[0] = batch.spans[0].model_copy(update={"parent_span_id": batch.spans[0].span_id})
         else:
             _application_trace_service_boundaries_ingest(case, batch.model_copy(update={"final": False}))
-            from uuid import uuid4
-
             batch = batch.model_copy(
                 update={
                     "batch_id": uuid4(),
@@ -978,24 +1383,57 @@ class TestApplicationTraceServiceBoundariesCases:
             )
         _application_trace_service_boundaries_ingest(case, batch)
         _application_trace_service_boundaries_terminal(case)
-
-        def forbidden(*_args: object, **_kwargs: object) -> None:
-            pytest.fail("invalid trees must fail before credentials or provider requests")
-
-        monkeypatch.setattr(service_module.OpsTraceManager, "decrypt_tracing_config", forbidden)
-        monkeypatch.setattr(service_module, "export_trace", forbidden)
-        service = ApplicationTracingService(case.repository)
-        service.deliver(case.run.id)
+        reason = "invalid trees must fail before credentials or provider requests"
+        ServicePorts(
+            _application_trace_service_boundaries_no_egress(),
+            providers=ForbiddenTraceProviders(reason),
+            cipher=ForbiddenSecretCipher(reason),
+        ).service(case).deliver(case.run.id)
         current = case.repository.get(case.run.id)
         assert current is not None
-        assert current.state == "failed"
+        assert current.state is TraceRunState.FAILED
         assert current.error_code == code
 
     @staticmethod
-    def test_assemble_requires_a_persisted_business_terminal(sqlite_session_factory: sessionmaker[Session]) -> None:
+    def test_delivery_requires_a_persisted_business_terminal(sqlite_session_factory: sessionmaker[Session]) -> None:
         case = _application_trace_service_boundaries_seed(sqlite_session_factory, "no-terminal")
-        with pytest.raises(TraceCollectionError, match="tracing_terminal_missing"):
-            ApplicationTracingService(case.repository).assemble(case.run)
+        attach_conversation(case, AppMode.AGENT)
+        destination = _application_trace_service_boundaries_no_egress()
+        ServicePorts(destination).service(case).deliver(case.run.id)
+        current = case.repository.get(case.run.id)
+        assert current is not None
+        assert current.state is TraceRunState.COLLECTING
+        assert current.outer_trace is None
+        assert destination.requests == []
+
+    @staticmethod
+    def test_assembled_trace_nests_runtime_spans_under_their_invocation_with_trusted_identity(
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        case = _application_trace_service_boundaries_seed(sqlite_session_factory, "assembled")
+        invocation = case.invocation()
+        _application_trace_service_boundaries_ingest(
+            case, _application_trace_service_boundaries_batch_for(case.run, invocation)
+        )
+        _application_trace_service_boundaries_terminal(case)
+        destination = _application_trace_service_boundaries_accepted("assembled-trace")
+        ServicePorts(destination).service(case).deliver(case.run.id)
+        [trace] = sent_traces(destination)
+        assert trace.trace_id == case.run.trace_id
+        assert trace.session_id == "session-original"
+        assert [(span.span_id, span.parent_span_id) for span in trace.spans] == [
+            (case.run.root_span_id, None),
+            (invocation.span_id, case.run.root_span_id),
+            ("a" * 16, invocation.span_id),
+        ]
+        attempt = trace.spans[1]
+        assert attempt.name == "Agent attempt 1"
+        assert attempt.attributes["invocation_id"] == invocation.id
+        assert (attempt.start_time, attempt.end_time) == (trace.spans[2].start_time, trace.spans[2].end_time)
+        for span in trace.spans:
+            assert span.attributes["dify.tracing.run_id"] == case.run.id
+            assert span.attributes["dify.source.id"] == case.run.source_id
+            assert span.attributes["tenant_id"] == case.run.tenant_id
 
 
 """Malformed durable traces must never be sent or offered for provider retry."""
@@ -1003,6 +1441,7 @@ class TestApplicationTraceServiceBoundariesCases:
 
 _invalid_trace_delivery_batch_for = _application_trace_collection_batch_for
 _invalid_trace_delivery_ingest = _application_trace_collection_ingest
+_invalid_trace_delivery_no_egress = _application_trace_collection_no_egress
 _invalid_trace_delivery_seed = _application_trace_collection_seed
 _invalid_trace_delivery_terminal = _application_trace_collection_terminal
 
@@ -1011,7 +1450,7 @@ class TestInvalidTraceDeliveryCases:
     @staticmethod
     @pytest.mark.parametrize("invalid", ["cycle", "invalid_envelope"])
     def test_invalid_tree_is_permanent_before_decryption_or_provider_io(
-        sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, invalid: str
+        sqlite_session_factory: sessionmaker[Session], invalid: str
     ) -> None:
         case = _invalid_trace_delivery_seed(sqlite_session_factory, str(uuid4()))
         batch = _invalid_trace_delivery_batch_for(case.run, case.invocation())
@@ -1035,17 +1474,735 @@ class TestInvalidTraceDeliveryCases:
                 row = session.get(ApplicationTraceRun, case.run.id)
                 assert row is not None
                 row.outer_trace = {"corrupt": True}
-
-        def forbidden(*_args: object, **_kwargs: object) -> None:
-            pytest.fail("invalid traces must fail before credentials or provider I/O")
-
-        monkeypatch.setattr(service_module.OpsTraceManager, "decrypt_tracing_config", forbidden)
-        monkeypatch.setattr(service_module, "export_trace", forbidden)
-        ApplicationTracingService(case.repository).deliver(case.run.id)
+        reason = "invalid traces must fail before credentials or provider I/O"
+        ServicePorts(
+            _invalid_trace_delivery_no_egress(),
+            providers=ForbiddenTraceProviders(reason),
+            cipher=ForbiddenSecretCipher(reason),
+        ).service(case).deliver(case.run.id)
         current = case.repository.get(case.run.id)
         assert current is not None
-        assert current.state == "failed"
+        assert current.state is TraceRunState.FAILED
         assert current.error_code == "tracing_payload_invalid"
         assert current.attempts == 1
-        with pytest.raises(TraceCollectionError, match="tracing_retry_not_allowed"):
-            case.repository.retry(run_id=case.run.id, acknowledge_possible_duplicates=True)
+        # A retry reports the run's status, which resolves its frozen provider; the forbidden ports guard only delivery.
+        with pytest.raises(TraceCollectionConflictError, match="tracing_retry_not_allowed"):
+            ServicePorts(_invalid_trace_delivery_no_egress()).service(case).retry(
+                **source(case.run), acknowledge_possible_duplicates=True, node_execution_id=None
+            )
+
+
+"""Node logs resolve the caller's trace using SQL or configured LogStore ownership."""
+
+
+_ApplicationTraceNodeAliasCollection = _ApplicationTraceCollectionCollection
+_application_trace_node_alias_batch_for = _application_trace_collection_batch_for
+_application_trace_node_alias_claim = _application_trace_collection_claim
+_application_trace_node_alias_identifier = _application_trace_collection_identifier
+_application_trace_node_alias_ingest = _application_trace_collection_ingest
+_application_trace_node_alias_no_egress = _application_trace_collection_no_egress
+_application_trace_node_alias_seed = _application_trace_collection_seed
+_application_trace_node_alias_terminal = _application_trace_collection_terminal
+
+
+@dataclass
+class NodeAlias:
+    case: _ApplicationTraceNodeAliasCollection
+    node: dict[str, object]
+    workflow: dict[str, object]
+    requests: list[str]
+    logstore: bool
+    ports: ServicePorts
+
+    def service(self) -> ApplicationTracingService:
+        return self.ports.service(self.case)
+
+    def status(self, node_execution_id: str | None = None) -> TraceRunStatus:
+        return self.service().status(
+            tenant_id=self.case.run.tenant_id,
+            app_id=self.case.run.app_id,
+            source_kind="node",
+            source_id=str(self.node["id"]),
+            node_execution_id=node_execution_id,
+        )
+
+    def accept(self, *, spans: bool = True) -> tuple[str, str]:
+        span_urls: dict[str, str] = {}
+        for attempt in (0, 1):
+            invocation = self.case.open_invocation(
+                agent_id=_application_trace_node_alias_identifier("referenced-agent"),
+                node_execution_id=str(self.node["id"]),
+                attempt=attempt,
+                call_key=f"attempt-{attempt}",
+            )
+            _application_trace_node_alias_ingest(
+                self.case,
+                _application_trace_node_alias_batch_for(self.case.run, invocation, span_id=str(attempt + 1) * 16),
+            )
+            span_urls[invocation.span_id] = f"https://provider.test/span/{attempt}"
+        _application_trace_node_alias_terminal(self.case)
+        lease = _application_trace_node_alias_claim(self.case)
+        assert lease is not None
+        _accept_export(
+            self.case,
+            lease[1],
+            SendResult(
+                trace_id="provider-trace",
+                trace_url="https://provider.test/trace",
+                span_urls=span_urls if spans else {},
+            ),
+        )
+        return "https://provider.test/trace", "https://provider.test/span/1"
+
+
+class TestApplicationTraceNodeAliasCases:
+    @staticmethod
+    @pytest.fixture(params=["sql", "logstore"])
+    def alias(
+        request: pytest.FixtureRequest,
+        sqlite_engine: Engine,
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> Iterator[NodeAlias]:
+        case = _application_trace_node_alias_seed(sqlite_session_factory, "node-alias")
+        with case.sessions.begin() as session:
+            app = session.get(App, case.run.app_id)
+            assert app is not None
+            app.mode = AppMode.WORKFLOW
+        common: dict[str, object] = {
+            "tenant_id": case.run.tenant_id,
+            "app_id": case.run.app_id,
+            "workflow_id": _application_trace_node_alias_identifier("definition"),
+            "created_by": _application_trace_node_alias_identifier("actor"),
+            "created_at": naive_utc_now().isoformat(),
+            "status": "succeeded",
+        }
+        workflow = {
+            **common,
+            "id": _application_trace_node_alias_identifier("workflow-source"),
+            "graph": json.dumps({"nodes": []}),
+        }
+        node = {
+            **common,
+            "id": _application_trace_node_alias_identifier("node-source"),
+            "workflow_run_id": workflow["id"],
+            "node_id": "reference-agent",
+            "node_type": "agent",
+            "title": "Reference Agent",
+        }
+        requests: list[str] = []
+        transactions: set[Connection] = set()
+
+        def begun(connection: Connection) -> None:
+            transactions.add(connection)
+
+        def ended(connection: Connection) -> None:
+            transactions.discard(connection)
+
+        if request.param == "sql":
+            with case.sessions.begin() as session:
+                session.add(_dict_to_workflow_run(workflow))
+                session.add(_dict_to_workflow_node_execution_model(node))
+        else:
+            apply_config_overrides(
+                monkeypatch,
+                LOGSTORE_DUAL_WRITE_ENABLED=False,
+                API_WORKFLOW_RUN_REPOSITORY=(
+                    "extensions.logstore.repositories.logstore_api_workflow_run_repository.LogstoreAPIWorkflowRunRepository"
+                ),
+                API_WORKFLOW_NODE_EXECUTION_REPOSITORY=(
+                    "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository."
+                    "LogstoreAPIWorkflowNodeExecutionRepository"
+                ),
+            )
+            for key, value in {
+                "LOGSTORE_DUAL_READ_ENABLED": "false",
+                "LOGSTORE_PG_MODE_ENABLED": "false",
+                "ALIYUN_SLS_ACCESS_KEY_ID": "test-access-key",
+                "ALIYUN_SLS_ACCESS_KEY_SECRET": "test-secret",
+                "ALIYUN_SLS_ENDPOINT": "https://sls.example.test",
+                "ALIYUN_SLS_REGION": "test-region",
+            }.items():
+                monkeypatch.setenv(key, value)
+            monkeypatch.setattr(AliyunLogStore, "_instance", None)
+            monkeypatch.setattr(AliyunLogStore, "_initialized", False)
+            monkeypatch.setattr(
+                AliyunLogStore, "_check_endpoint_connectivity", staticmethod(lambda _endpoint, _timeout: None)
+            )
+
+            def reject_http_transport(*_args: object, **_kwargs: object) -> None:
+                pytest.fail("Configured LogStore test escaped its isolated transport boundary")
+
+            monkeypatch.setattr(LogClient, "_getHttpResponse", reject_http_transport)
+
+            def get_logs(
+                _client: AliyunLogStore, *, query: str, logstore: str, **_kwargs: object
+            ) -> list[dict[str, object]]:
+                assert not transactions, "Configured source reads must not hold a SQL transaction"
+                assert f'tenant_id:"{case.run.tenant_id}"' in query.replace(": ", ":")
+                assert logstore in {
+                    AliyunLogStore.workflow_execution_logstore,
+                    AliyunLogStore.workflow_node_execution_logstore,
+                }
+                is_workflow = logstore == AliyunLogStore.workflow_execution_logstore
+                if is_workflow:
+                    assert f'app_id:"{case.run.app_id}"' in query
+                requests.append("workflow" if is_workflow else "node")
+                row = workflow if is_workflow else node
+                return [dict(row)] if row else []
+
+            monkeypatch.setattr(AliyunLogStore, "get_logs", get_logs)
+
+            def execute_sql(
+                client: AliyunLogStore, *, sql: str, query: str, logstore: str, **_kwargs: object
+            ) -> list[dict[str, object]]:
+                # Node lookups use the SQL transport in SDK mode too; the real
+                # service still validates the returned node-to-workflow owner chain.
+                assert logstore == AliyunLogStore.workflow_node_execution_logstore
+                assert f'id:"{_application_trace_node_alias_identifier("node-source")}"' in query.replace(": ", ":")
+                assert f"tenant_id = '{case.run.tenant_id}'" in sql
+                assert f"id = '{_application_trace_node_alias_identifier('node-source')}'" in sql
+                assert f'FROM "{logstore}"' in sql
+                assert "ORDER BY log_version DESC LIMIT 1" in sql
+                return get_logs(client, query=query, logstore=logstore)
+
+            monkeypatch.setattr(AliyunLogStore, "execute_sql", execute_sql)
+            with case.sessions() as session:
+                assert session.scalar(select(WorkflowRun)) is None
+                assert session.scalar(select(WorkflowNodeExecutionModel)) is None
+        event.listen(sqlite_engine, "begin", begun)
+        event.listen(sqlite_engine, "commit", ended)
+        event.listen(sqlite_engine, "rollback", ended)
+        try:
+            service = ServicePorts(_application_trace_node_alias_no_egress()).service(case)
+            run = service.start(
+                tenant_id=case.run.tenant_id,
+                app_id=case.run.app_id,
+                source_kind="workflow",
+                source_id=str(workflow["id"]),
+                session_id="caller-session",
+                workflow_id=None,
+            )
+            assert run is not None
+            requests.clear()
+            yield NodeAlias(
+                _ApplicationTraceNodeAliasCollection(case.repository, case.sessions, run),
+                node,
+                workflow,
+                requests,
+                request.param == "logstore",
+                ServicePorts(_application_trace_node_alias_no_egress()),
+            )
+        finally:
+            event.remove(sqlite_engine, "begin", begun)
+            event.remove(sqlite_engine, "commit", ended)
+            event.remove(sqlite_engine, "rollback", ended)
+
+    @staticmethod
+    @pytest.mark.parametrize("spans", [True, False])
+    def test_alias_returns_parent_trace_and_latest_owned_invocation(alias: NodeAlias, spans: bool) -> None:
+        trace_url, span_url = alias.accept(spans=spans)
+        status = alias.status()
+        assert status.status is TraceRunState.ACCEPTED
+        assert status.source_kind == "node"
+        assert status.source_id == alias.node["id"]
+        assert status.trace_id == "provider-trace"
+        assert status.trace_url == trace_url
+        assert status.span_url == (span_url if spans else None)
+        assert status.config_revision == alias.case.run.config_revision
+        if alias.logstore:
+            assert alias.requests == ["node", "workflow"]
+
+    @staticmethod
+    @pytest.mark.parametrize("capture_agent", [True, False])
+    @pytest.mark.parametrize("accepted", [True, False])
+    def test_alias_without_internal_invocation_returns_parent_status(
+        alias: NodeAlias, capture_agent: bool, accepted: bool
+    ) -> None:
+        with alias.case.sessions.begin() as session:
+            run = session.get(ApplicationTraceRun, alias.case.run.id)
+            assert run is not None
+            run.capture_agent = capture_agent
+        if accepted:
+            _application_trace_node_alias_terminal(alias.case)
+            lease = _application_trace_node_alias_claim(alias.case)
+            assert lease is not None
+            _accept_export(
+                alias.case,
+                lease[1],
+                SendResult(trace_id="outer-only", trace_url="https://provider.test/outer", span_urls={}),
+            )
+        status = alias.status()
+        assert status.status is (TraceRunState.ACCEPTED if accepted else TraceRunState.COLLECTING)
+        assert status.span_url is None
+        assert status.capture_agent is capture_agent
+        assert status.trace_url == ("https://provider.test/outer" if accepted else None)
+
+    @staticmethod
+    @pytest.mark.parametrize("state", [TraceRunState.COLLECTING, TraceRunState.NOT_COLLECTED])
+    def test_standalone_node_snapshot_wins_over_parent(alias: NodeAlias, state: TraceRunState) -> None:
+        alias.accept()
+        node_run = alias.service().start(
+            tenant_id=alias.case.run.tenant_id,
+            app_id=alias.case.run.app_id,
+            source_kind="node",
+            source_id=str(alias.node["id"]),
+            session_id="preview-session",
+            workflow_id=None,
+        )
+        assert node_run is not None
+        with alias.case.sessions.begin() as session:
+            run = session.get(ApplicationTraceRun, node_run.id)
+            assert run is not None
+            run.state = state
+        alias.requests.clear()
+        status = alias.status()
+        assert status.status is state
+        assert status.trace_url is None
+        if alias.logstore:
+            assert alias.requests == ["node"]
+
+    @staticmethod
+    def test_explicit_other_node_filter_cannot_select_sibling_span(alias: NodeAlias) -> None:
+        sibling = alias.case.open_invocation(
+            agent_id=_application_trace_node_alias_identifier("referenced-agent"),
+            node_execution_id=_application_trace_node_alias_identifier("sibling-node"),
+            attempt=0,
+            call_key="sibling",
+        )
+        _application_trace_node_alias_ingest(
+            alias.case, _application_trace_node_alias_batch_for(alias.case.run, sibling, span_id="f" * 16)
+        )
+        alias.accept()
+        with pytest.raises(TraceCollectionNotFoundError, match="tracing_node_not_found"):
+            alias.status(_application_trace_node_alias_identifier("sibling-node"))
+        with pytest.raises(TraceCollectionNotFoundError, match="tracing_node_not_found"):
+            alias.service().retry(
+                tenant_id=alias.case.run.tenant_id,
+                app_id=alias.case.run.app_id,
+                source_kind="node",
+                source_id=str(alias.node["id"]),
+                node_execution_id=_application_trace_node_alias_identifier("sibling-node"),
+                acknowledge_possible_duplicates=True,
+            )
+        assert not alias.ports.scheduled
+
+    @staticmethod
+    @pytest.mark.parametrize("state", [TraceRunState.FAILED, TraceRunState.UNCERTAIN, TraceRunState.ACCEPTED])
+    def test_alias_retry_uses_parent_guards_and_resolves_sources_once(alias: NodeAlias, state: TraceRunState) -> None:
+        alias.accept()
+        with alias.case.sessions.begin() as session:
+            run = session.get(ApplicationTraceRun, alias.case.run.id)
+            assert run is not None
+            run.state = state
+        service = alias.service()
+
+        def retry(acknowledge: bool) -> TraceRunStatus:
+            alias.requests.clear()
+            return service.retry(
+                tenant_id=alias.case.run.tenant_id,
+                app_id=alias.case.run.app_id,
+                source_kind="node",
+                source_id=str(alias.node["id"]),
+                acknowledge_possible_duplicates=acknowledge,
+                node_execution_id=None,
+            )
+
+        if state is TraceRunState.ACCEPTED:
+            with pytest.raises(TraceCollectionConflictError, match="tracing_already_accepted"):
+                retry(True)
+            assert not alias.ports.scheduled
+        else:
+            if state is TraceRunState.UNCERTAIN:
+                with pytest.raises(TraceCollectionConflictError, match="tracing_duplicate_acknowledgement_required"):
+                    retry(False)
+                assert not alias.ports.scheduled
+            assert retry(state is TraceRunState.UNCERTAIN).status is TraceRunState.READY
+            assert alias.ports.scheduled == [alias.case.run.id]
+        if alias.logstore:
+            assert alias.requests == ["node", "workflow"]
+
+    @staticmethod
+    @pytest.mark.parametrize("source", ["node", "workflow"])
+    @pytest.mark.parametrize("field", ["tenant_id", "app_id", "workflow_id"])
+    def test_alias_rejects_broken_owner_chain(alias: NodeAlias, source: str, field: str) -> None:
+        alias.accept()
+        row = alias.node if source == "node" else alias.workflow
+        if alias.logstore:
+            row[field] = _application_trace_node_alias_identifier("foreign")
+        else:
+            with alias.case.sessions.begin() as session:
+                model = session.get(WorkflowNodeExecutionModel if source == "node" else WorkflowRun, str(row["id"]))
+                assert model is not None
+                # Keep field assignments explicit so ownership failures are visible.
+                if field == "tenant_id":
+                    model.tenant_id = _application_trace_node_alias_identifier("foreign")
+                elif field == "app_id":
+                    model.app_id = _application_trace_node_alias_identifier("foreign")
+                else:
+                    model.workflow_id = _application_trace_node_alias_identifier("foreign")
+        with pytest.raises(TraceCollectionNotFoundError, match="tracing_source_not_found"):
+            alias.status()
+
+    @staticmethod
+    def test_alias_missing_parent_business_source_is_not_a_durable_owner_bypass(alias: NodeAlias) -> None:
+        if alias.logstore:
+            alias.workflow.clear()
+        else:
+            with alias.case.sessions.begin() as session:
+                parent = session.get(WorkflowRun, str(alias.workflow["id"]))
+                assert parent is not None
+                session.delete(parent)
+        with pytest.raises(TraceCollectionNotFoundError, match="tracing_source_not_found"):
+            alias.status()
+
+    @staticmethod
+    def test_owned_alias_without_parent_trace_is_not_collected(alias: NodeAlias) -> None:
+        with alias.case.sessions.begin() as session:
+            run = session.get(ApplicationTraceRun, alias.case.run.id)
+            assert run is not None
+            session.delete(run)
+        assert alias.status() == not_collected("node", str(alias.node["id"]))
+
+
+"""Real SQLite state transitions and background renewal for delivery leases.
+
+PostgreSQL row-lock scheduling and the deployed Celery pool still need dev
+validation; these tests establish token and acknowledgement semantics.
+"""
+
+
+_ExportLeaseCollection = _ApplicationTraceCollectionCollection
+_export_lease_accepted = _application_trace_collection_accepted
+_export_lease_batch_for = _application_trace_collection_batch_for
+_export_lease_claim = _application_trace_collection_claim
+_export_lease_ingest = _application_trace_collection_ingest
+_export_lease_seed = _application_trace_collection_seed
+_export_lease_terminal = _application_trace_collection_terminal
+
+
+class _SlowDestination(RecordingEgress):
+    """Runs ``during_request`` while the export request is in flight."""
+
+    def __init__(self, replies: list[EgressResponse | Exception], during_request: Callable[[], None]) -> None:
+        super().__init__(replies, grpc_target=None)
+        self._during_request = during_request
+
+    @override
+    def request(
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        content: bytes | None,
+        timeout: float,
+        sensitive_url: bool,
+    ) -> EgressResponse:
+        self._during_request()
+        return super().request(
+            method, url, headers=headers, content=content, timeout=timeout, sensitive_url=sensitive_url
+        )
+
+
+def _export_lease(locked: LockedTraceRun | None) -> str | None:
+    """The token of the export attempt that holds the run; ``None`` when no attempt holds it."""
+    if locked is None or locked.run.state is not TraceRunState.EXPORTING:
+        return None
+    return locked.run.export_token
+
+
+class _RenewalRecordingRepository(ApplicationTraceRepository):
+    """Records the thread of every lease renewal; the first one can fail like a dropped connection.
+
+    A renewal is a change after which the export attempt that held the run still holds it.
+    """
+
+    def __init__(self, sessions: sessionmaker[Session], *, transient_failure: bool) -> None:
+        super().__init__(sessions)
+        self._transient_failure = transient_failure
+        self.renewal_threads: list[int] = []
+        self.renewed = threading.Event()
+
+    @override
+    @contextmanager
+    def change(self, run_id: str, *, tenant_id: str) -> Generator[LockedTraceRun | None]:
+        renewal = False
+        with super().change(run_id, tenant_id=tenant_id) as locked:
+            lease = _export_lease(locked)
+            yield locked
+            renewal = lease is not None and _export_lease(locked) == lease
+            if renewal:
+                self.renewal_threads.append(threading.get_ident())
+                if self._transient_failure and len(self.renewal_threads) == 1:
+                    raise RuntimeError("private-provider-value")
+        if renewal:
+            self.renewed.set()
+
+
+class _UnavailableCompletionRepository(ApplicationTraceRepository):
+    """Loses the database when the export outcome is recorded."""
+
+    @override
+    @contextmanager
+    def change(self, run_id: str, *, tenant_id: str) -> Generator[LockedTraceRun | None]:
+        with super().change(run_id, tenant_id=tenant_id) as locked:
+            lease = _export_lease(locked)
+            yield locked
+            if lease is not None and _export_lease(locked) is None:
+                raise TracingStoreUnavailableError("database unavailable")
+
+
+def result(trace_id: str) -> SendResult:
+    return SendResult(trace_id=trace_id, trace_url=None, span_urls={})
+
+
+def _renew_export_lease(case: _ExportLeaseCollection, token: str, now: datetime) -> bool:
+    with case.change() as run:
+        return run.renew_export_lease(token, now=now)
+
+
+def _release_for_retry(case: _ExportLeaseCollection) -> None:
+    """An operator's retry that acknowledges possible duplicates."""
+    with case.change() as run:
+        run.release_for_retry(acknowledge_possible_duplicates=True, now=naive_utc_now())
+
+
+def _stored(case: _ExportLeaseCollection) -> ApplicationTraceRun:
+    """The run's row: its record does not carry the export lease."""
+    with case.sessions() as session:
+        row = session.get(ApplicationTraceRun, case.run.id)
+        assert row is not None
+        return row
+
+
+def _expire(case: _ExportLeaseCollection) -> str:
+    leased = _export_lease_claim(case)
+    assert leased is not None
+    with case.sessions.begin() as session:
+        row = session.get(ApplicationTraceRun, case.run.id)
+        assert row is not None
+        row.export_started_at = naive_utc_now() - timedelta(seconds=60)
+        row.export_heartbeat_at = row.export_started_at
+    assert _export_lease_claim(case) is None
+    assert _stored(case).state == TraceRunState.UNCERTAIN
+    return leased[1]
+
+
+class TestExportLeaseCases:
+    @staticmethod
+    @pytest.fixture
+    def case(sqlite_session_factory: sessionmaker[Session]) -> _ExportLeaseCollection:
+        collection = _export_lease_seed(sqlite_session_factory, "lease-test")
+        _export_lease_ingest(collection, _export_lease_batch_for(collection.run, collection.invocation()))
+        _export_lease_terminal(collection)
+        return collection
+
+    @staticmethod
+    def test_renewal_keeps_long_export_alive_then_missing_heartbeat_expires(case: _ExportLeaseCollection) -> None:
+        now = naive_utc_now()
+        leased = _claim_at(case, lease_seconds=30, now=now)
+        assert leased is not None
+        token = leased[1]
+        now += timedelta(seconds=20)
+        assert _renew_export_lease(case, token, now)
+        now += timedelta(seconds=20)
+        assert _claim_at(case, lease_seconds=30, now=now) is None
+        current = _stored(case)
+        assert current.state == TraceRunState.EXPORTING
+        assert current.attempts == 1
+        assert current.export_started_at is not None
+        assert current.export_started_at + timedelta(seconds=30) < now
+        now += timedelta(seconds=11)
+        assert _claim_at(case, lease_seconds=30, now=now) is None
+        expired = _stored(case)
+        assert expired.state == TraceRunState.UNCERTAIN
+        assert expired.error_code == "export_lease_expired"
+        assert expired.export_token == token
+        assert not _renew_export_lease(case, token, now)
+
+    @staticmethod
+    def test_old_rows_without_heartbeat_use_started_at(case: _ExportLeaseCollection) -> None:
+        leased = _export_lease_claim(case)
+        assert leased is not None
+        with case.sessions.begin() as session:
+            row = session.get(ApplicationTraceRun, case.run.id)
+            assert row is not None
+            row.export_started_at = naive_utc_now() - timedelta(seconds=60)
+            row.export_heartbeat_at = None
+        assert _export_lease_claim(case) is None
+        current = _stored(case)
+        assert current.state == TraceRunState.UNCERTAIN
+        assert current.export_token == leased[1]
+
+    @staticmethod
+    def test_wrong_token_cannot_renew_or_complete(case: _ExportLeaseCollection) -> None:
+        leased = _export_lease_claim(case)
+        assert leased is not None
+        before = _stored(case)
+        assert not _renew_export_lease(case, "other-token", naive_utc_now())
+        _accept_export(case, "other-token", result("wrong"))
+        current = _stored(case)
+        assert current.export_token == leased[1]
+        assert current.export_heartbeat_at == before.export_heartbeat_at
+        assert current.state == TraceRunState.EXPORTING
+        assert current.provider_trace_id is None
+
+    @staticmethod
+    def test_late_success_wins_before_manual_retry_and_is_idempotent(case: _ExportLeaseCollection) -> None:
+        token = _expire(case)
+        confirmed = SendResult(
+            trace_id="confirmed",
+            trace_url="https://example.com/trace",
+            span_urls={"a" * 16: "https://example.com/span"},
+        )
+        _accept_export(case, token, confirmed)
+        current = _stored(case)
+        assert current.state == TraceRunState.ACCEPTED
+        assert current.error_code is None
+        assert current.export_token is None
+        assert current.accepted_at is not None
+        assert current.trace_url == confirmed.trace_url
+        assert current.span_urls == {"a" * 16: "https://example.com/span"}
+        _accept_export(case, token, result("duplicate-ack"))
+        assert _stored(case).provider_trace_id == "confirmed"
+        with pytest.raises(TraceRunConflictError, match="tracing_already_accepted"):
+            _release_for_retry(case)
+
+    @staticmethod
+    def test_manual_retry_revokes_old_heartbeat_and_ack_before_and_after_new_claim(
+        case: _ExportLeaseCollection,
+    ) -> None:
+        old_token = _expire(case)
+        _release_for_retry(case)
+        assert not _renew_export_lease(case, old_token, naive_utc_now())
+        _accept_export(case, old_token, result("old"))
+        assert _stored(case).state == TraceRunState.READY
+        second = _export_lease_claim(case)
+        assert second is not None
+        assert second[1] != old_token
+        _accept_export(case, old_token, result("old"))
+        current = _stored(case)
+        assert current.state == TraceRunState.EXPORTING
+        assert current.export_token == second[1]
+        assert current.provider_trace_id is None
+        _accept_export(case, second[1], result("new"))
+        assert _stored(case).provider_trace_id == "new"
+
+    @staticmethod
+    @pytest.mark.parametrize("late_state", [TraceRunState.FAILED, TraceRunState.RETRYING, TraceRunState.UNCERTAIN])
+    def test_late_non_success_cannot_overwrite_lease_expiry(
+        case: _ExportLeaseCollection, late_state: TraceRunState
+    ) -> None:
+        token = _expire(case)
+        now = naive_utc_now()
+        with case.change() as run:
+            if late_state is TraceRunState.FAILED:
+                run.export_failed(token, "late-failure", now=now)
+            elif late_state is TraceRunState.RETRYING:
+                run.export_deferred(token, max_attempts=AGENT_TRACE_SETTINGS.max_export_attempts, now=now)
+            else:
+                run.export_uncertain(token, now=now)
+        current = _stored(case)
+        assert current.state == TraceRunState.UNCERTAIN
+        assert current.error_code == "export_lease_expired"
+
+    @staticmethod
+    def test_other_uncertain_reason_cannot_be_promoted_by_late_ack(case: _ExportLeaseCollection) -> None:
+        token = _expire(case)
+        with case.sessions.begin() as session:
+            row = session.get(ApplicationTraceRun, case.run.id)
+            assert row is not None
+            row.error_code = "provider_acceptance_unknown"
+        _accept_export(case, token, result("late"))
+        assert _stored(case).state == TraceRunState.UNCERTAIN
+
+    @staticmethod
+    @pytest.mark.parametrize("transient_failure", [False, True])
+    @pytest.mark.parametrize(
+        ("outcome", "reply"),
+        [
+            (TraceRunState.ACCEPTED, response(200, {"trace_id": "ack"})),
+            (TraceRunState.UNCERTAIN, EgressError("lost acknowledgement", request_sent=True)),
+        ],
+    )
+    def test_service_heartbeats_during_export_and_stops_on_every_outcome(
+        case: _ExportLeaseCollection,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+        transient_failure: bool,
+        outcome: TraceRunState,
+        reply: EgressResponse | Exception,
+    ) -> None:
+        clock = [naive_utc_now()]
+        # The service dates its claim, renewals, and outcome; the second claimant below passes the same clock.
+        monkeypatch.setattr(service_module, "naive_utc_now", lambda: clock[0])
+        renewals = _RenewalRecordingRepository(case.sessions, transient_failure=transient_failure)
+        observed: list[tuple[bool, bool, str]] = []
+
+        def while_exporting() -> None:
+            # The original start time is now beyond the lease; only a real background
+            # transaction can prevent a second claimant from marking it uncertain.
+            clock[0] += timedelta(seconds=3)
+            heartbeat_committed = renewals.renewed.wait(3)
+            second_claim = _claim_at(case, lease_seconds=1, now=clock[0])
+            observed.append((heartbeat_committed, second_claim is None, _stored(case).state))
+
+        ports = ServicePorts(
+            _SlowDestination([reply], while_exporting), settings=replace(AGENT_TRACE_SETTINGS, export_lease_seconds=1)
+        )
+        ports.service(replace(case, repository=renewals)).deliver(case.run.id)
+        assert observed == [(True, True, TraceRunState.EXPORTING)]
+        assert _stored(case).state == outcome
+        assert renewals.renewal_threads
+        assert all(thread_id != threading.get_ident() for thread_id in renewals.renewal_threads)
+        assert not any(thread.name == f"application-trace-lease-{case.run.id}" for thread in threading.enumerate())
+        assert "private-provider-value" not in caplog.text
+
+    @staticmethod
+    def test_heartbeat_stops_even_when_completion_database_write_raises(case: _ExportLeaseCollection) -> None:
+        unavailable = replace(case, repository=_UnavailableCompletionRepository(case.sessions))
+        destination = _export_lease_accepted("ack")
+        with pytest.raises(TracingStoreUnavailableError, match="database unavailable"):
+            ServicePorts(destination).service(unavailable).deliver(case.run.id)
+        # The database is lost only once the destination answered, so the export ran under its heartbeat.
+        assert len(destination.requests) == 1
+        assert not any(thread.name == f"application-trace-lease-{case.run.id}" for thread in threading.enumerate())
+
+
+_application_trace_ownership_no_egress = _application_trace_collection_no_egress
+_application_trace_ownership_seed = _application_trace_collection_seed
+
+
+class TestApplicationTraceOwnershipCases:
+    @staticmethod
+    def test_naming_without_a_message_stays_with_its_agent_app(sqlite_session_factory: sessionmaker[Session]) -> None:
+        case = _application_trace_ownership_seed(sqlite_session_factory, "naming")
+        service = ServicePorts(_application_trace_ownership_no_egress()).service(case)
+        record = GenerateNameTraceInfo(
+            message_id=None,
+            message_data=None,
+            inputs="hello",
+            outputs="Greeting",
+            start_time=datetime(2026, 1, 1),
+            end_time=datetime(2026, 1, 1),
+            metadata={"app_id": case.run.app_id, "conversation_id": "conversation-1", "trace_event_id": "event-1"},
+            conversation_id="conversation-1",
+            tenant_id=case.run.tenant_id,
+        )
+
+        assert service.capture_terminal(tenant_id=case.run.tenant_id, info=record) is True
+
+    @staticmethod
+    def test_runs_frozen_for_an_unavailable_provider_report_no_capabilities(
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        case = _application_trace_ownership_seed(sqlite_session_factory, "retired-capabilities")
+        freeze_config(case, "not-a-provider", FROZEN_LANGFUSE)
+        result = (
+            ServicePorts(_application_trace_ownership_no_egress())
+            .service(case)
+            .status(**source(case.run), node_execution_id=None)
+        )
+        assert result.provider == "not-a-provider"
+        assert result.capabilities is None

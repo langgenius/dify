@@ -1,0 +1,395 @@
+import os
+import subprocess
+import sys
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
+from pathlib import Path
+
+import pytest
+from dify_trace_sdk.ids import span_id_for, trace_id_for
+from dify_trace_sdk.model import SpanKind, SpanStatus
+
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from services.tracing.canonical import CanonicalTraceBuilder, message_trace_id
+from services.tracing.records import (
+    MessageTraceInfo,
+    PromptGenerationTraceInfo,
+    ToolTraceInfo,
+    TraceMessage,
+    WorkflowTraceInfo,
+)
+
+STARTED_AT = datetime(2026, 1, 1, 8, 0, 0)
+MESSAGE_ID = "6f1c0b52-6ad4-4c4e-9d7c-2a3f0d0c7a11"
+CONVERSATION_ID = "0b7f86a3-5f8e-4d51-a4c5-6a8b2f1b6e22"
+WORKFLOW_RUN_ID = "4b4b8c2e-1a0f-4bd0-93c1-0f2f0e9d6a33"
+
+
+def _message() -> TraceMessage:
+    return TraceMessage(
+        id=MESSAGE_ID,
+        app_id="app-1",
+        conversation_id=CONVERSATION_ID,
+        workflow_run_id=None,
+        query="What is Dify?",
+        answer="An LLM app platform.",
+        error=None,
+        created_at=STARTED_AT,
+        model_provider="openai",
+        model_id="gpt-4o",
+        total_price=Decimal("0.0042"),
+        currency="USD",
+    )
+
+
+def _message_record(**metadata: object) -> MessageTraceInfo:
+    return MessageTraceInfo(
+        message_id=MESSAGE_ID,
+        message_data=_message(),
+        inputs=[{"role": "user", "text": "What is Dify?"}],
+        outputs="An LLM app platform.",
+        start_time=STARTED_AT,
+        end_time=STARTED_AT + timedelta(seconds=2),
+        metadata={"user_id": "account-1", **metadata},
+        trace_id=None,
+        conversation_model="chat",
+        message_tokens=12,
+        answer_tokens=8,
+        total_tokens=20,
+        error=None,
+        file_list=[],
+        conversation_mode="chat",
+        gen_ai_server_time_to_first_token=0.4,
+        llm_streaming_time_to_generate=1.2,
+        is_streaming_request=True,
+    )
+
+
+def _node(execution_id: str, node_type: str, *, index: int, offset: int, **fields: object) -> WorkflowNodeExecution:
+    return WorkflowNodeExecution.model_validate(
+        {
+            "id": execution_id,
+            "workflow_id": "workflow-1",
+            "workflow_execution_id": WORKFLOW_RUN_ID,
+            "index": index,
+            "node_id": f"node-{index}",
+            "node_type": node_type,
+            "title": node_type.upper(),
+            "status": WorkflowNodeExecutionStatus.SUCCEEDED,
+            "created_at": STARTED_AT + timedelta(seconds=offset),
+            "finished_at": STARTED_AT + timedelta(seconds=offset + 1),
+            **fields,
+        }
+    )
+
+
+def _workflow_record(*, message_id: str | None, metadata: dict[str, object]) -> WorkflowTraceInfo:
+    llm = _node(
+        "exec-llm",
+        BuiltinNodeTypes.LLM,
+        index=2,
+        offset=1,
+        process_data={
+            "prompts": [{"role": "user", "text": "hi"}],
+            "model_name": "gpt-4o",
+            "model_provider": "openai",
+            "usage": {"prompt_tokens": 5, "completion_tokens": 7, "total_tokens": 12, "time_to_first_token": -1},
+        },
+        outputs={"text": "hello"},
+        metadata={WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: 0.01, WorkflowNodeExecutionMetadataKey.CURRENCY: "USD"},
+    )
+    start = _node("exec-start", BuiltinNodeTypes.START, index=1, offset=0, inputs={"query": "hi"})
+    return WorkflowTraceInfo(
+        message_id=message_id,
+        node_executions=[llm, start],
+        conversation_id=CONVERSATION_ID if message_id else None,
+        message_started_at=STARTED_AT - timedelta(seconds=1) if message_id else None,
+        workflow_app_log_id=None,
+        workflow_id="workflow-1",
+        tenant_id="tenant-1",
+        workflow_run_id=WORKFLOW_RUN_ID,
+        workflow_run_elapsed_time=3,
+        workflow_run_status="succeeded",
+        workflow_run_inputs={"query": "hi"},
+        workflow_run_outputs={"answer": "hello"},
+        workflow_run_version="1",
+        error=None,
+        total_tokens=12,
+        prompt_tokens=5,
+        completion_tokens=7,
+        file_list=[],
+        invoked_by=None,
+        query="hi" if message_id else "",
+        start_time=STARTED_AT,
+        end_time=STARTED_AT + timedelta(seconds=3),
+        metadata=metadata,
+    )
+
+
+def _tool_record(**metadata: object) -> ToolTraceInfo:
+    return ToolTraceInfo(
+        message_id=MESSAGE_ID,
+        message_data=_message(),
+        tool_name="web_search",
+        tool_inputs={"q": "dify"},
+        tool_outputs="results",
+        error=None,
+        tool_config={},
+        time_cost=0.5,
+        tool_parameters={"q": "dify"},
+        file_url=None,
+        start_time=STARTED_AT + timedelta(seconds=1),
+        end_time=STARTED_AT + timedelta(seconds=2),
+        metadata=dict(metadata),
+    )
+
+
+def test_message_record_becomes_a_root_span_with_one_llm_child() -> None:
+    trace = CanonicalTraceBuilder().build(_message_record(end_user_session_id="customer-42"))
+
+    assert trace is not None
+    assert trace.trace_id == message_trace_id(None, MESSAGE_ID) == trace_id_for(MESSAGE_ID)
+    assert trace.session_id == CONVERSATION_ID
+    assert trace.user_id == "customer-42"
+    root, llm = trace.spans
+    assert (root.span_id, root.parent_span_id, root.name) == (span_id_for(MESSAGE_ID), None, "message")
+    assert llm.parent_span_id == root.span_id
+    assert llm.kind is SpanKind.LLM
+    assert (llm.model_name, llm.model_provider) == ("gpt-4o", "openai")
+    assert llm.usage is not None
+    assert (llm.usage.prompt_tokens, llm.usage.completion_tokens) == (12, 8)
+    assert llm.cost is not None
+    assert llm.cost.currency == "USD"
+    assert llm.time_to_first_token == 0.4
+    assert root.start_time.tzinfo is UTC
+
+
+def test_caller_trace_id_names_the_trace_and_is_kept_verbatim() -> None:
+    record = _message_record().model_copy(update={"trace_id": "caller-trace"})
+
+    trace = CanonicalTraceBuilder().build(record)
+
+    assert trace is not None
+    assert trace.trace_id == trace_id_for("caller-trace")
+    assert trace.external_trace_id == "caller-trace"
+
+
+def test_chatflow_run_hangs_under_its_message_and_orders_nodes_parent_first() -> None:
+    record = _workflow_record(message_id=MESSAGE_ID, metadata={"trace_session_id": "session-1"})
+
+    trace = CanonicalTraceBuilder().build(record)
+
+    assert trace is not None
+    names = [span.name for span in trace.spans]
+    assert names == ["message", "workflow", "start_START", "llm_LLM"]
+    message_span, workflow_span, _, llm = trace.spans
+    assert trace.trace_id == trace_id_for(MESSAGE_ID)
+    assert trace.session_id == "session-1"
+    assert message_span.start_time == (STARTED_AT - timedelta(seconds=1)).replace(tzinfo=UTC)
+    assert workflow_span.parent_span_id == message_span.span_id
+    assert llm.parent_span_id == workflow_span.span_id
+    assert llm.inputs == [{"role": "user", "text": "hi"}]
+    assert llm.cost is not None
+    assert llm.cost.amount == 0.01
+    assert llm.time_to_first_token is None
+
+
+def test_nested_workflow_is_its_own_trace_linked_by_attributes() -> None:
+    record = _workflow_record(
+        message_id=None,
+        metadata={
+            "parent_trace_context": {"parent_workflow_run_id": "outer-run", "parent_node_execution_id": "outer-node"}
+        },
+    )
+
+    trace = CanonicalTraceBuilder().build(record)
+
+    assert trace is not None
+    assert trace.trace_id == trace_id_for(WORKFLOW_RUN_ID)
+    assert trace.parent is None
+    assert trace.session_id == "outer-run"
+    root = trace.root
+    assert root.name == "workflow"
+    assert root.attributes["parent_workflow_run_id"] == "outer-run"
+    assert root.attributes["parent_node_execution_id"] == "outer-node"
+
+
+def test_failed_node_marks_its_span_as_error() -> None:
+    record = _workflow_record(message_id=None, metadata={})
+    failed = record.node_executions[0].model_copy(
+        update={"status": WorkflowNodeExecutionStatus.FAILED, "error": "model timeout"}
+    )
+    record = record.model_copy(update={"node_executions": [failed, record.node_executions[1]]})
+
+    trace = CanonicalTraceBuilder().build(record)
+
+    assert trace is not None
+    llm = next(span for span in trace.spans if span.kind is SpanKind.LLM)
+    assert (llm.status, llm.error) == (SpanStatus.ERROR, "model timeout")
+
+
+def test_workflow_tool_calls_and_retries_resolve_predecessors_within_each_invocation() -> None:
+    record = _workflow_record(message_id=None, metadata={})
+    nodes = [
+        _node("root-start", "start", index=0, offset=0, node_id="start"),
+        _node("tool-a", "tool", index=1, offset=0),
+        _node("tool-b", "tool", index=2, offset=0),
+    ]
+    parents: dict[str, str] = {}
+    expected: dict[str, str] = {}
+    for invocation, caller in (("first", "tool-a"), ("retry", "tool-a"), ("second", "tool-b")):
+        for node_id, predecessor, node_type in (("start", None, "start"), ("llm", "start", "llm")):
+            execution_id = f"{invocation}-{node_id}"
+            nodes.append(
+                _node(
+                    execution_id,
+                    node_type,
+                    index=3,
+                    offset=1,
+                    node_id=node_id,
+                    predecessor_node_id=predecessor,
+                    process_data={"workflow_tool_invocation_id": invocation},
+                )
+            )
+            parents[execution_id] = caller
+            expected[execution_id] = f"{invocation}-{predecessor}" if predecessor else caller
+    nodes.extend(
+        [
+            _node(
+                "inner-tool",
+                "tool",
+                index=4,
+                offset=2,
+                predecessor_node_id="llm",
+                process_data={"workflow_tool_invocation_id": "first"},
+            ),
+            _node("deep-child", "code", index=5, offset=2, node_id="start", status="failed", error="nested failure"),
+        ]
+    )
+    parents.update({"inner-tool": "tool-a", "deep-child": "inner-tool"})
+    expected.update({"inner-tool": "first-llm", "deep-child": "inner-tool"})
+    record = record.model_copy(update={"node_executions": nodes, "workflow_tool_parents": parents})
+
+    trace = CanonicalTraceBuilder().build(record)
+
+    assert trace is not None
+    spans = {span.span_id: span for span in trace.spans}
+    for child, parent in expected.items():
+        assert spans[span_id_for(child)].parent_span_id == span_id_for(parent)
+    assert spans[span_id_for("deep-child")].status is SpanStatus.ERROR
+    assert len(trace.spans) == len(nodes) + 1
+    assert CanonicalTraceBuilder().build(record) == trace
+
+
+@pytest.mark.parametrize("container_type", ["iteration", "loop"])
+def test_workflow_tool_container_rounds_stay_with_their_own_invocation(container_type: str) -> None:
+    record = _workflow_record(message_id=None, metadata={})
+    nodes = [_node("caller", "tool", index=0, offset=0)]
+    parents: dict[str, str] = {}
+    for invocation in ("first", "second"):
+        nodes.extend(
+            (
+                _node(
+                    f"{invocation}-container",
+                    container_type,
+                    index=1,
+                    offset=0,
+                    node_id="container",
+                    process_data={"workflow_tool_invocation_id": invocation},
+                ),
+                _node(
+                    f"{invocation}-llm",
+                    "llm",
+                    index=2,
+                    offset=1,
+                    node_id="llm",
+                    process_data={"workflow_tool_invocation_id": invocation},
+                    metadata={f"{container_type}_id": "container", f"{container_type}_index": 0},
+                ),
+            )
+        )
+        parents[f"{invocation}-container"] = "caller"
+        parents[f"{invocation}-llm"] = "caller"
+
+    trace = CanonicalTraceBuilder().build(
+        record.model_copy(update={"node_executions": nodes, "workflow_tool_parents": parents})
+    )
+
+    assert trace is not None
+    spans = {span.span_id: span for span in trace.spans}
+    for invocation in ("first", "second"):
+        container_id = f"{invocation}-container"
+        wrapper = spans[span_id_for(f"{container_type}:{container_id}:0")]
+        assert wrapper.parent_span_id == span_id_for(container_id)
+        assert spans[span_id_for(container_id)].parent_span_id == span_id_for("caller")
+        assert spans[span_id_for(f"{invocation}-llm")].parent_span_id == wrapper.span_id
+
+
+def test_tool_call_joins_its_message_trace_as_a_fragment() -> None:
+    trace = CanonicalTraceBuilder().build(_tool_record(trace_event_id="event-1"))
+
+    assert trace is not None
+    assert trace.trace_id == trace_id_for(MESSAGE_ID)
+    assert trace.parent is not None
+    assert trace.parent.span_id == span_id_for(MESSAGE_ID)
+    (span,) = trace.spans
+    assert span.span_id == span_id_for("event:event-1")
+    assert span.parent_span_id == trace.parent.span_id
+    assert (span.name, span.kind, span.inputs, span.outputs) == ("web_search", SpanKind.TOOL, {"q": "dify"}, "results")
+
+
+def test_auxiliary_record_without_event_id_is_not_exported() -> None:
+    assert CanonicalTraceBuilder().build(_tool_record()) is None
+
+
+def test_records_without_a_provider_mapping_are_not_exported() -> None:
+    record = PromptGenerationTraceInfo(
+        metadata={},
+        tenant_id="tenant-1",
+        user_id="account-1",
+        app_id=None,
+        operation_type="rule_generate",
+        instruction="write a rule",
+        prompt_tokens=1,
+        completion_tokens=1,
+        total_tokens=2,
+        model_provider="openai",
+        model_name="gpt-4o",
+        latency=0.1,
+        total_price=None,
+        currency=None,
+        error=None,
+    )
+
+    assert CanonicalTraceBuilder().build(record) is None
+
+
+def test_tracing_application_imports_do_not_load_runtime_dependencies() -> None:
+    api_root = Path(__file__).resolve().parents[4]
+    script = """
+import sys
+import services.tracing.canonical
+import services.tracing.collection
+import services.tracing.service
+
+forbidden = (
+    "celery", "configs", "controllers", "core", "enterprise", "extensions",
+    "flask", "models", "repositories", "sqlalchemy", "tasks", "werkzeug",
+)
+loaded = sorted(
+    name for name in sys.modules
+    if any(name == prefix or name.startswith(prefix + ".") for prefix in forbidden)
+)
+assert not loaded, loaded
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=api_root,
+        env={**os.environ, "PYTHONPATH": str(api_root)},
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr

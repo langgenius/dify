@@ -38,6 +38,15 @@ class WorkflowNodeExecutionSnapshotRow(Protocol):
 
 
 @dataclass(frozen=True)
+class WorkflowNodeExecutionPayloads:
+    """Full node payloads; ``None`` means the execution has no value for that field."""
+
+    inputs: Mapping[str, Any] | None
+    process_data: Mapping[str, Any] | None
+    outputs: Mapping[str, Any] | None
+
+
+@dataclass(frozen=True)
 class WorkflowNodeExecutionSnapshot:
     """
     Minimal snapshot of workflow node execution for stream recovery.
@@ -181,6 +190,24 @@ class DifyAPIWorkflowNodeExecutionRepository(Protocol):
 
         Returns:
             A sequence of WorkflowNodeExecutionSnapshot ordered by creation time
+        """
+        ...
+
+    def load_full_inputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        """Return complete inputs, resolving offloaded files within the admitted execution's tenant."""
+        ...
+
+    def load_full_outputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        """Return complete outputs, resolving offloaded files within the admitted execution's tenant."""
+        ...
+
+    def load_full_payloads(
+        self, executions: Sequence[WorkflowNodeExecutionModel]
+    ) -> Mapping[str, WorkflowNodeExecutionPayloads]:
+        """Batch-load payloads by execution ID for already admitted executions.
+
+        Resolve file references within each execution's tenant in bounded queries,
+        then read storage after the database session closes. Shared files load once.
         """
         ...
 

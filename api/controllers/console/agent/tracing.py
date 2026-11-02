@@ -1,6 +1,7 @@
 """Agent tracing settings address Agent resources, never hidden inline Apps."""
 
 from collections.abc import Callable
+from dataclasses import asdict
 from typing import Literal
 from uuid import UUID
 
@@ -9,7 +10,6 @@ from flask_restx import Resource
 from pydantic import Field
 from werkzeug.exceptions import NotFound
 
-from configs import dify_config
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models
 from controllers.console import console_ns
@@ -206,22 +206,22 @@ class AgentTraceConfigApi(Resource):
 
 
 def _provider_capabilities():
-    from services.tracing.provider_dispatch import provider_capabilities
-
     query = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))
     try:
-        capabilities = provider_capabilities(query.tracing_provider)
-    except ValueError as error:
+        capabilities = application_services().tracing.provider_capabilities.get(query.tracing_provider)
+    except AppTracingConfigInvalidProviderError as error:
         raise UnsupportedTracingProviderError() from error
+    except AppTracingConfigProviderUnavailableError as error:
+        raise TracingProviderUnavailableError() from error
     return dump_response(
         TraceProviderCapabilitiesResponse,
-        {**capabilities, "api_collection_enabled": dify_config.OPS_AGENT_TRACE_ENABLED},
+        {**asdict(capabilities.support), "api_collection_enabled": capabilities.api_collection_enabled},
     )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/trace-capabilities")
 class AgentTraceCapabilitiesApi(Resource):
-    @error_responses(UnsupportedTracingProviderError)
+    @error_responses(TracingProviderUnavailableError, UnsupportedTracingProviderError)
     @console_ns.doc("get_agent_trace_capabilities", params=query_params_from_model(TraceProviderQuery))
     @console_ns.response(
         200, "Provider support declarations", console_ns.models[TraceProviderCapabilitiesResponse.__name__]
@@ -234,7 +234,7 @@ class AgentTraceCapabilitiesApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/trace-capabilities")
 class AppTraceCapabilitiesApi(Resource):
-    @error_responses(UnsupportedTracingProviderError)
+    @error_responses(TracingProviderUnavailableError, UnsupportedTracingProviderError)
     @console_ns.doc("get_app_trace_capabilities", params=query_params_from_model(TraceProviderQuery))
     @console_ns.response(
         200, "Provider support declarations", console_ns.models[TraceProviderCapabilitiesResponse.__name__]

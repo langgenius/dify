@@ -387,7 +387,12 @@ class TestMessageCycleManagerOptimization:
         assert conversation is not None
         assert conversation.name == "generated-title"
         mock_llm_generator.generate_conversation_name.assert_called_once_with(
-            "tenant-1", "hello", "conv-1", "app-id", message_id="message-1"
+            "tenant-1",
+            "hello",
+            "conv-1",
+            "app-id",
+            message_id="message-1",
+            trace_scope=message_cycle_manager._application_generate_entity.trace_scope,
         )
         mock_redis.setex.assert_called_once()
 

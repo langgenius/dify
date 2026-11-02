@@ -20,7 +20,6 @@ from clients.agent_backend import (
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
-from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
@@ -30,6 +29,7 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     build_knowledge_layer_config,
     build_shell_layer_config,
 )
+from extensions.tracing import bind_tracing
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import (
@@ -50,14 +50,10 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
-from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
+from services.tracing.adapters import CeleryTraceEmitter
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
-
-
-@pytest.fixture(autouse=True)
-def _application_tracing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
+from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
 
 
 @pytest.fixture(autouse=True)
@@ -246,9 +242,7 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
 
 
 @pytest.mark.parametrize("preview", [False, True])
-def test_builder_passes_inline_or_preview_context_to_application_tracing(
-    monkeypatch: pytest.MonkeyPatch, preview: bool
-):
+def test_builder_passes_inline_or_preview_context_to_application_tracing(preview: bool):
     from uuid import uuid4
 
     from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
@@ -261,24 +255,20 @@ def test_builder_passes_inline_or_preview_context_to_application_tracing(
         session_id="session",
         capture_content=False,
     )
-    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
     context = replace(_context(), workflow_run_id=None if preview else "run-1", attempt=2)
-    calls: list[tuple[WorkflowAgentRuntimeBuildContext, str | None]] = []
-
-    def prepare(value: WorkflowAgentRuntimeBuildContext, conversation_id: str | None) -> ApplicationTracingContext:
-        calls.append((value, conversation_id))
-        return tracing
-
-    monkeypatch.setattr(RuntimeApplicationTracingHooks, "prepare_workflow_agent", staticmethod(prepare))
-    hooks = RuntimeApplicationTracingHooks()
+    hooks = RecordingTracingHooks(tracing)
     app = Flask(__name__)
-    bind_application_tracing_hooks(app, hooks)
+    bind_tracing(
+        app,
+        scopes=kernel_trace_scopes(CeleryTraceEmitter(), policies=NoTracingPolicies(), enterprise_enabled=False),
+        hooks=hooks,
+    )
 
     with app.app_context():
         result = WorkflowAgentRuntimeRequestBuilder(dify_tools_builder=WorkflowAgentDifyToolsBuilder()).build(context)
     layer = next(item for item in result.request.composition.layers if item.name == DIFY_EXECUTION_CONTEXT_LAYER_ID)
     assert DifyExecutionContextLayerConfig.model_validate(layer.config).tracing == tracing
-    assert calls == [(context, None)]
+    assert hooks.workflow_agents == [(context, None)]
 
 
 def _request_layers(result) -> dict[str, dict[str, object]]:

@@ -268,6 +268,7 @@
   "tracing.config": "Cấu hình",
   "tracing.configProvider.clientId": "ID Khách Hàng OAuth",
   "tracing.configProvider.clientSecret": "Bí mật Khách hàng OAuth",
+  "tracing.configProvider.configuredSecretPlaceholder": "Đã cấu hình. Để trống để giữ giá trị đã lưu.",
   "tracing.configProvider.databricksHost": "URL Workspace của Databricks",
   "tracing.configProvider.experimentId": "Mã thí nghiệm",
   "tracing.configProvider.password": "Mật khẩu",
