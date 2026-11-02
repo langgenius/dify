@@ -101,8 +101,14 @@ def test_concurrent_and_sequential_calls_refresh_once() -> None:
     assert lock.keys == [("tool", "workspace", "credential")] * 4
 
 
-@pytest.mark.parametrize("expires_at", [-1, int(time.time()) + 3600])
+# Keep xdist node names stable when workers collect on different seconds.
+@pytest.mark.parametrize("expires_at", [-1, int(time.time()) + 3600], ids=["no-expiration", "unexpired"])
 def test_valid_credentials_do_not_acquire_a_lock(expires_at: int) -> None:
+    """Resolve valid credentials without refresh side effects.
+
+    Preconditions: expires_at is the no-expiration sentinel or a future timestamp.
+    Postconditions: resolution returns the stored token without locks, refreshes, or writes.
+    """
     store, runtime, lock = (
         CredentialStore(_record(expires_at=expires_at)),
         CredentialRuntime(),
