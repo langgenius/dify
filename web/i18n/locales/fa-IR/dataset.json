@@ -159,7 +159,7 @@
   "serviceApi.card.endpoint": "نقطه انتهایی رابط برنامه‌نویسی سرویس",
   "serviceApi.card.title": "رابط برنامه‌نویسی سرویس پشتیبان",
   "serviceApi.disabled": "معلول",
-  "serviceApi.enabled": "در حال خدمت",
+  "serviceApi.enabled": "فعال",
   "serviceApi.title": "رابط برنامه‌نویسی سرویس",
   "unavailable": "در دسترس نیست",
   "unknownError": "خطای ناشناخته",

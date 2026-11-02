@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "숨김 필드 미리 채우기",
   "overview.status.disable": "비활성",
   "overview.triggerInfo.learnAboutTriggers": "트리거에 대해 자세히 알아보기",
-  "overview.triggerInfo.triggerStatusDescription": "트리거는 해당 트리거가 포함된 버전을 게시한 후 여기에 표시됩니다."
+  "overview.triggerInfo.triggerStatusDescription": "게시한 후 트리거가 여기에 표시됩니다."
 }

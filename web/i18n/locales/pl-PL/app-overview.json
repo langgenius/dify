@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "Wstępnie wypełnij ukryte pola",
   "overview.status.disable": "Wyłącz",
   "overview.triggerInfo.learnAboutTriggers": "Dowiedz się więcej o wyzwalaczach",
-  "overview.triggerInfo.triggerStatusDescription": "Wyzwalacze pojawią się tutaj po opublikowaniu wersji, która je zawiera."
+  "overview.triggerInfo.triggerStatusDescription": "Wyzwalacze pojawią się tutaj po opublikowaniu."
 }

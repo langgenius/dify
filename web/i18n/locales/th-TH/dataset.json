@@ -159,7 +159,7 @@
   "serviceApi.card.endpoint": "จุดเชื่อมต่อ API บริการ",
   "serviceApi.card.title": "บริการแบ็กเอนด์ API",
   "serviceApi.disabled": "ถูกปิดใช้งาน",
-  "serviceApi.enabled": "ให้บริการ",
+  "serviceApi.enabled": "เปิดใช้งาน",
   "serviceApi.title": "บริการ API",
   "unavailable": "ไม่",
   "unknownError": "ข้อผิดพลาดที่ไม่รู้จัก",

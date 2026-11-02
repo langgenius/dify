@@ -159,7 +159,7 @@
   "serviceApi.card.endpoint": "نقطة نهاية واجهة برمجة تطبيقات الخدمة",
   "serviceApi.card.title": "واجهة برمجة تطبيقات خدمة الخلفية",
   "serviceApi.disabled": "معطل",
-  "serviceApi.enabled": "في الخدمة",
+  "serviceApi.enabled": "مفعّل",
   "serviceApi.title": "واجهة برمجة تطبيقات الخدمة",
   "unavailable": "غير متاح",
   "unknownError": "خطأ غير معروف",

@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "Предзаполнить скрытые поля",
   "overview.status.disable": "Отключено",
   "overview.triggerInfo.learnAboutTriggers": "Узнайте больше о триггерах",
-  "overview.triggerInfo.triggerStatusDescription": "Триггеры появятся здесь после публикации версии, которая их содержит."
+  "overview.triggerInfo.triggerStatusDescription": "Триггеры появятся здесь после публикации."
 }

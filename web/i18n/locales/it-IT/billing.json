@@ -88,7 +88,7 @@
   "plansCommon.memberAfter": "Membro",
   "plansCommon.messageRequest.title": "{{count,number}} crediti messaggi",
   "plansCommon.messageRequest.titlePerMonth": "{{count,number}} messaggi/mese",
-  "plansCommon.messageRequest.tooltip": "Quote di invocazione dei messaggi per vari piani utilizzando i modelli OpenAI (eccetto gpt4). I messaggi oltre il limite utilizzeranno la tua chiave API OpenAI.",
+  "plansCommon.messageRequest.tooltip": "I crediti messaggi ti aiutano a provare facilmente in Dify diversi modelli di OpenAI, Anthropic, Gemini, xAI, DeepSeek e Tongyi. I crediti vengono consumati in base al tipo di modello. Una volta esauriti, puoi passare alla tua chiave API.",
   "plansCommon.modelProviders": "Fornitori di Modelli",
   "plansCommon.month": "mese",
   "plansCommon.mostPopular": "Più Popolare",

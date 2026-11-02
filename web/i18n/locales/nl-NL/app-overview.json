@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "Verborgen velden vooraf invullen",
   "overview.status.disable": "Disabled",
   "overview.triggerInfo.learnAboutTriggers": "Meer informatie over triggers",
-  "overview.triggerInfo.triggerStatusDescription": "Triggers verschijnen hier nadat je de versie hebt gepubliceerd waarin ze staan."
+  "overview.triggerInfo.triggerStatusDescription": "Triggers verschijnen hier nadat je hebt gepubliceerd."
 }

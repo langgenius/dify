@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "Prerrellenar Campos Ocultos",
   "overview.status.disable": "Deshabilitar",
   "overview.triggerInfo.learnAboutTriggers": "Más información sobre los desencadenantes",
-  "overview.triggerInfo.triggerStatusDescription": "Los desencadenantes aparecerán aquí después de que publiques la versión que los contiene."
+  "overview.triggerInfo.triggerStatusDescription": "Los disparadores aparecen aquí después de publicar."
 }

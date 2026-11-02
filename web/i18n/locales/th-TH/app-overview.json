@@ -87,5 +87,5 @@
   "overview.appInfo.workflowLaunchHiddenInputs.title": "กรอกช่องที่ซ่อนล่วงหน้า",
   "overview.status.disable": "พิการ",
   "overview.triggerInfo.learnAboutTriggers": "เรียนรู้เพิ่มเติมเกี่ยวกับทริกเกอร์",
-  "overview.triggerInfo.triggerStatusDescription": "ทริกเกอร์จะแสดงที่นี่หลังจากที่คุณเผยแพร่เวอร์ชันที่มีทริกเกอร์เหล่านั้น"
+  "overview.triggerInfo.triggerStatusDescription": "ทริกเกอร์จะแสดงที่นี่หลังจากที่คุณเผยแพร่"
 }
