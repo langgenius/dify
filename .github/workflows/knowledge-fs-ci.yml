@@ -57,6 +57,7 @@ jobs:
               - 'api/.env.example'
               - 'api/app_factory.py'
               - 'api/commands/__init__.py'
+              - 'api/controllers/common/errors.py'
               - 'api/controllers/console/__init__.py'
               - 'api/controllers/console/workspace/rbac/**'
               - 'api/controllers/inner_api/__init__.py'
@@ -84,7 +85,10 @@ jobs:
               - 'api/tests/unit_tests/dev/test_generate_knowledge_fs_contract.py'
               - 'api/tests/unit_tests/extensions/test_ext_celery.py'
               - 'api/tests/unit_tests/models/test_agent_config_entities.py'
+              - 'api/tests/unit_tests/controllers/common/test_errors.py'
+              - 'api/tests/unit_tests/controllers/console/datasets/test_data_source.py'
               - 'api/tests/unit_tests/controllers/console/workspace/rbac/test_roles.py'
+              - 'api/tests/unit_tests/controllers/inner_api/agent/test_tools.py'
               - 'api/tests/unit_tests/core/agent/test_base_agent_runner.py'
               - 'api/tests/unit_tests/core/app/apps/agent_app/test_runtime_request_builder.py'
               - 'api/tests/unit_tests/core/workflow/nodes/agent_v2/test_runtime_request_builder.py'
@@ -196,6 +200,7 @@ jobs:
           production_touchpoints=(
             api/app_factory.py
             api/commands/__init__.py
+            api/controllers/common/errors.py
             api/controllers/console/__init__.py
             api/controllers/console/datasets/datasets.py
             api/controllers/console/workspace/rbac/__init__.py
@@ -257,9 +262,12 @@ jobs:
           test_touchpoints=(
             api/tests/unit_tests/extensions/test_ext_celery.py
             api/tests/unit_tests/models/test_agent_config_entities.py
+            api/tests/unit_tests/controllers/common/test_errors.py
+            api/tests/unit_tests/controllers/console/datasets/test_data_source.py
             api/tests/unit_tests/controllers/console/datasets/test_datasets.py
             api/tests/unit_tests/controllers/console/test_wraps.py
             api/tests/unit_tests/controllers/console/workspace/rbac/test_roles.py
+            api/tests/unit_tests/controllers/inner_api/agent/test_tools.py
             api/tests/unit_tests/core/agent/test_base_agent_runner.py
             api/tests/unit_tests/core/app/apps/agent_app/test_runtime_request_builder.py
             api/tests/unit_tests/core/workflow/nodes/agent_v2/test_runtime_request_builder.py

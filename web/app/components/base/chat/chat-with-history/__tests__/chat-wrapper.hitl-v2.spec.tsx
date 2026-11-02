@@ -1,118 +1,106 @@
-import type { ChatConfig } from '../../types'
+import type { ChatConfig, ChatItemInTree } from '../../types'
 import type { ChatWithHistoryContextValue } from '../context'
-import type { AppData, AppMeta, ConversationItem } from '@/models/share'
+import type { AppData } from '@/models/share'
 import type { HumanInputFormData } from '@/types/workflow'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { onTestFinished } from 'vite-plus/test'
+import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
+import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
+// oxlint-disable-next-line no-restricted-imports -- Exercise the existing chat SSE transport at its network boundary.
+import { sseGet } from '@/service/base'
 import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { useChat } from '../../chat/hooks'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createChatConfigFixture } from '@/test/fixtures/chat'
+import {
+  createHumanInputFormFixture,
+  createWorkflowProcessFixture,
+} from '@/test/fixtures/workflow-process'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ChatWrapper from '../chat-wrapper'
-import { useChatWithHistoryContext } from '../context'
+import { ChatWithHistoryContext } from '../context'
+
+// oxlint-disable-next-line typescript/no-deprecated -- Existing workflow event transport boundary.
+const workflowEvents = vi.mocked(sseGet)
 
 vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
   ENABLE_HITL_IM: true,
 }))
-
-const mockTrackEvent = vi.hoisted(() => vi.fn())
-
-vi.mock('@/app/components/base/amplitude/web-app-event', () => ({
-  trackWebAppEvent: mockTrackEvent,
-}))
-
-vi.mock('../../chat/hooks', () => ({
-  useChat: vi.fn(),
-}))
-
-vi.mock('../context', () => ({
-  useChatWithHistoryContext: vi.fn(),
-}))
-
 vi.mock('@/next/navigation', () => ({
-  useRouter: vi.fn(() => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-    prefetch: vi.fn(),
-  })),
-  usePathname: vi.fn(() => '/'),
-  useSearchParams: vi.fn(() => new URLSearchParams()),
-  useParams: vi.fn(() => ({ token: 'test-token' })),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+  useParams: () => ({ token: 'test-token' }),
 }))
-
-vi.mock('../../utils', () => ({
-  isValidGeneratedAnswer: vi.fn(),
-  getLastAnswer: vi.fn(),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  sseGet: vi.fn(),
+  ssePost: vi.fn(),
 }))
-
-vi.mock('@/service/share', () => ({
-  fetchChatList: vi.fn(),
-  fetchSuggestedQuestions: vi.fn(),
-  getUrl: vi.fn(() => 'mock-url'),
-  stopChatMessageResponding: vi.fn(),
-  submitHumanInputForm: vi.fn(),
-  AppSourceType: {
-    installedApp: 'installedApp',
-    webApp: 'webApp',
-  },
-}))
-
-vi.mock('@/service/workflow', () => ({
-  submitHumanInputForm: vi.fn(),
-}))
-
 vi.mock('@/service/webapp-human-input', () => ({
-  submitWebAppHumanInputForm: vi.fn(),
+  submitWebAppHumanInputForm: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div>{content}</div>,
-}))
+const createForm = (formVersion: HumanInputFormData['form_version']): HumanInputFormData =>
+  createHumanInputFormFixture({
+    form_version: formVersion,
+    form_token: 'form-token',
+    node_title: 'Approval',
+    form_content: '{{#$output.review#}}',
+    inputs: [
+      {
+        type: InputVarType.paragraph,
+        output_variable_name: 'review',
+        default: { type: 'constant', value: '', selector: [] },
+      },
+    ],
+    actions: [{ id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary }],
+  })
 
-vi.mock('@/utils/model-config', () => ({
-  formatBooleanInputs: vi.fn((forms, inputs) => inputs),
-}))
-
-vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({
-    formatTime: (timestamp: number) => `formatted-${timestamp}`,
-    formatDate: (value: string) => `formatted-${value}`,
-  }),
-}))
-
-type ChatHookReturn = ReturnType<typeof useChat>
-
-const mockAppData = {
-  mode: 'advanced-chat',
-  site: {
-    title: 'Test Chat',
-    chat_color_theme: 'blue',
-    icon_type: 'image',
-    icon: 'test-icon',
-    icon_background: '#000000',
-    icon_url: 'https://example.com/icon.png',
-    use_icon_as_answer_icon: false,
+const pausedConversation = (formVersion: HumanInputFormData['form_version']): ChatItemInTree[] => [
+  {
+    id: 'question',
+    content: 'Please review',
+    isAnswer: false,
+    children: [
+      {
+        id: 'paused-answer',
+        content: '',
+        isAnswer: true,
+        parentMessageId: 'question',
+        workflow_run_id: 'run-1',
+        workflowProcess: createWorkflowProcessFixture({ status: WorkflowRunningStatus.Paused }),
+        humanInputFormDataList: [createForm(formVersion)],
+      },
+    ],
   },
-} as unknown as AppData
+]
 
-const defaultContextValue: ChatWithHistoryContextValue = {
-  appData: mockAppData,
-  appParams: {
-    system_parameters: { vision_config: { enabled: true } },
-    opening_statement: 'Default opening statement',
-  } as unknown as ChatConfig,
-  appMeta: { tool_icons: {} } as unknown as AppMeta,
-  currentConversationId: '1',
-  currentConversationItem: { id: '1', name: 'Conv 1' } as unknown as ConversationItem,
-  appPrevChatTree: [],
+const createContext = (
+  formVersion: HumanInputFormData['form_version'],
+): ChatWithHistoryContextValue => ({
+  appData: {
+    app_id: 'app-1',
+    mode: 'advanced-chat',
+    custom_config: null,
+    site: { title: 'Test Chat' },
+  } as AppData,
+  appParams: createChatConfigFixture() as ChatConfig,
+  appMeta: { tool_icons: {} },
+  currentConversationId: 'conversation-1',
+  currentConversationItem: {
+    id: 'conversation-1',
+    name: 'Conversation',
+    inputs: {},
+    introduction: '',
+  },
+  appPrevChatTree: pausedConversation(formVersion),
   newConversationInputs: {},
-  newConversationInputsRef: {
-    current: {},
-  } as ChatWithHistoryContextValue['newConversationInputsRef'],
+  newConversationInputsRef: { current: {} },
   inputsForms: [],
   isInstalledApp: false,
-  currentChatInstanceRef: {
-    current: { handleStop: vi.fn() },
-  } as ChatWithHistoryContextValue['currentChatInstanceRef'],
+  currentChatInstanceRef: { current: { handleStop: vi.fn() } },
   setIsResponding: vi.fn(),
   setClearChatList: vi.fn(),
   appChatListDataLoading: false,
@@ -126,99 +114,65 @@ const defaultContextValue: ChatWithHistoryContextValue = {
   handleRenameConversation: vi.fn(),
   handleNewConversation: vi.fn(),
   handleNewConversationInputsChange: vi.fn(),
-  handleStartChat: vi.fn(),
+  handleStartChat: (callback) => callback?.(),
   handleChangeConversation: vi.fn(),
   handleNewConversationCompleted: vi.fn(),
-  handleFeedback: vi.fn(),
+  handleFeedback: vi.fn().mockResolvedValue(undefined),
   pinnedConversationList: [],
   chatShouldReloadKey: '',
   isMobile: false,
-  currentConversationInputs: null,
+  currentConversationInputs: {},
   setCurrentConversationInputs: vi.fn(),
   allInputsHidden: false,
-  initUserVariables: undefined,
-  appId: 'test-app-id',
+  appId: 'app-1',
+})
+
+const renderSubject = (formVersion: HumanInputFormData['form_version']) => {
+  renderWithConsoleQuery(
+    // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider component.
+    <ChatWithHistoryContext.Provider value={createContext(formVersion)}>
+      <ChatWrapper />
+    </ChatWithHistoryContext.Provider>,
+  )
+  return userEvent.setup()
 }
 
-const defaultChatHookReturn: Partial<ChatHookReturn> = {
-  chatList: [],
-  handleSend: vi.fn(),
-  handleStop: vi.fn(),
-  handleSwitchSibling: vi.fn(),
-  prepareHumanInputSubmission: vi.fn().mockResolvedValue(true),
-  isResponding: false,
-  suggestedQuestions: [],
-}
-
-describe('ChatWrapper', () => {
+describe('ChatWithHistory human-input submission', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    vi.mocked(useChatWithHistoryContext).mockReturnValue(defaultContextValue)
-    vi.mocked(useChat).mockReturnValue(defaultChatHookReturn as ChatHookReturn)
+    const stopGuard = guardUnexpectedFetch()
+    onTestFinished(stopGuard)
   })
 
   it.each(['1', '2', undefined] as const)(
-    'submits Web App forms with event version %s',
+    'submits Web App form version %s only after the real workflow stream is ready',
     async (formVersion) => {
-      vi.mocked(useChatWithHistoryContext).mockReturnValue({
-        ...defaultContextValue,
-        isInstalledApp: false,
-      })
+      const user = renderSubject(formVersion)
+      await user.type(await screen.findByRole('textbox', { name: 'review' }), 'Approved')
+      await user.click(screen.getByRole('button', { name: 'Approve' }))
+      expect(submitWebAppHumanInputForm).not.toHaveBeenCalled()
 
-      vi.mocked(useChat).mockReturnValue({
-        ...defaultChatHookReturn,
-        chatList: [
-          { id: 'q1', content: 'Question' },
-          {
-            id: 'a1',
-            isAnswer: true,
-            content: '',
-            humanInputFormDataList: [
-              {
-                id: 'node1',
-                form_id: 'form1',
-                form_token: 'token-web-1',
-                form_version: formVersion,
-                node_id: 'node1',
-                node_title: 'Node Web 1',
-                display_in_ui: true,
-                form_content: '{{#$output.test#}}',
-                inputs: [
-                  {
-                    variable: 'test',
-                    label: 'Test',
-                    type: 'paragraph',
-                    required: true,
-                    output_variable_name: 'test',
-                    default: { type: 'text', value: '' },
-                  },
-                ],
-                actions: [{ id: 'run', title: 'Run', button_style: 'primary' }],
-              },
-            ] as unknown as HumanInputFormData[],
+      await waitFor(() => expect(workflowEvents).toHaveBeenCalledOnce())
+      act(() =>
+        workflowEvents.mock.calls[0]![2].onWorkflowPaused?.({
+          task_id: 'task-1',
+          workflow_run_id: 'run-1',
+          event: 'workflow_paused',
+          data: {
+            workflow_run_id: 'run-1',
+            outputs: {},
+            paused_nodes: ['human-input'],
+            reasons: [],
           },
-        ],
-      } as unknown as ChatHookReturn)
+        }),
+      )
 
-      render(<ChatWrapper />)
-      expect(await screen.findByText('Node Web 1'))!.toBeInTheDocument()
-
-      const input =
-        screen.getAllByRole('textbox').find((el) => el.closest('.chat-answer-container')) ||
-        screen.getAllByRole('textbox')[0]
-      fireEvent.change(input!, { target: { value: 'web-test' } })
-      fireEvent.click(screen.getByText('Run'))
-
-      await waitFor(() => {
-        expect(submitWebAppHumanInputForm).toHaveBeenCalledWith(
-          'token-web-1',
-          {
-            inputs: { test: 'web-test' },
-            action: 'run',
-          },
+      await waitFor(() =>
+        expect(submitWebAppHumanInputForm).toHaveBeenCalledExactlyOnceWith(
+          'form-token',
+          { inputs: { review: 'Approved' }, action: 'approve' },
           formVersion,
-        )
-      })
+        ),
+      )
     },
   )
 })

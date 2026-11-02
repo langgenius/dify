@@ -297,7 +297,14 @@ export function ExternalContactDialog({
             {t(($) => $[contact ? 'external.editDescription' : 'external.description'])}
           </DialogDescription>
         </div>
-        <Form<ExternalContactDraft> onFormSubmit={handleSubmit}>
+        <Form<ExternalContactDraft>
+          errors={
+            fieldError && fieldErrorMessage
+              ? { [nameError ? 'displayName' : 'email']: fieldErrorMessage }
+              : undefined
+          }
+          onFormSubmit={handleSubmit}
+        >
           <div className="relative flex flex-col items-center gap-2 px-4 pt-10 pb-2">
             <div
               aria-hidden
@@ -370,10 +377,9 @@ export function ExternalContactDialog({
             )}
           </div>
           <div className="space-y-4 px-6 py-3">
-            <Field name="displayName" invalid={nameError}>
+            <Field name="displayName">
               <FieldLabel>{t(($) => $['external.name'])}</FieldLabel>
               <Input
-                aria-describedby={nameError ? 'external-name-error' : undefined}
                 autoComplete="name"
                 placeholder={t(($) => $['external.namePlaceholder'])}
                 disabled={busy}
@@ -381,28 +387,14 @@ export function ExternalContactDialog({
                 value={draft.displayName}
                 onChange={(event) => updateDraft('displayName', event.currentTarget.value)}
               />
-              {nameError && (
-                <p
-                  id="external-name-error"
-                  role="alert"
-                  className="body-xs-regular text-text-destructive"
-                >
-                  {fieldErrorMessage}
-                </p>
-              )}
+              {nameError && <FieldError match>{fieldErrorMessage}</FieldError>}
               <FieldError match="valueMissing">
                 {t(($) => $['external.validation.name_required'])}
               </FieldError>
             </Field>
-            <Field
-              name="email"
-              invalid={fieldError === 'email_required' || fieldError === 'email_invalid'}
-            >
+            <Field name="email">
               <FieldLabel>{t(($) => $['external.email'])}</FieldLabel>
               <Input
-                aria-describedby={
-                  fieldError?.startsWith('email') ? 'external-email-error' : undefined
-                }
                 autoComplete="email"
                 placeholder={t(($) => $['external.email'])}
                 disabled={busy}
@@ -412,13 +404,7 @@ export function ExternalContactDialog({
                 onChange={(event) => updateDraft('email', event.currentTarget.value)}
               />
               {fieldError?.startsWith('email') && (
-                <p
-                  id="external-email-error"
-                  role="alert"
-                  className="body-xs-regular text-text-destructive"
-                >
-                  {fieldErrorMessage}
-                </p>
+                <FieldError match>{fieldErrorMessage}</FieldError>
               )}
               <FieldError match="valueMissing">
                 {t(($) => $['external.validation.email_required'])}

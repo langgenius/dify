@@ -1,6 +1,9 @@
+import type { ReactElement } from 'react'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
+import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
+import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { AppSourceType } from '@/service/share'
 import {
   createHumanInputFormFixture,
@@ -8,160 +11,93 @@ import {
 } from '@/test/fixtures/workflow-process'
 import GenerationItem from '../index'
 
-const mockFetchMoreLikeThis = vi.fn()
-const mockFetchTextGenerationMessage = vi.fn()
-const mockUpdateFeedback = vi.fn()
-const mockSubmitHumanInputForm = vi.fn()
-const mockSubmitWebAppHumanInputForm = vi.fn()
-const mockSubmitHumanInputFormWorkflow = vi.fn()
-const mockToastWarning = vi.fn()
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({
-    appId: 'app-1',
-  }),
+const mocks = vi.hoisted(() => ({
+  submitShare: vi.fn(),
+  submitWebApp: vi.fn(),
+  submitWorkflow: vi.fn(),
 }))
 
-vi.mock('@/service/share', async () => {
-  const actual = await vi.importActual<typeof import('@/service/share')>('@/service/share')
-  return {
-    ...actual,
-    fetchMoreLikeThis: (...args: unknown[]) => mockFetchMoreLikeThis(...args),
-    submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
-    updateFeedback: (...args: unknown[]) => mockUpdateFeedback(...args),
-  }
-})
-
-vi.mock('@/service/workflow', () => ({
-  submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputFormWorkflow(...args),
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  ENABLE_HITL_IM: true,
 }))
-
+vi.mock('@/next/navigation', () => ({ useParams: () => ({ appId: 'app-1' }) }))
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  fetchMoreLikeThis: vi.fn(),
+  submitHumanInputForm: mocks.submitShare,
+  updateFeedback: vi.fn(),
+}))
+vi.mock('@/service/workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/workflow')>()),
+  submitHumanInputForm: mocks.submitWorkflow,
+}))
 vi.mock('@/service/webapp-human-input', () => ({
-  submitWebAppHumanInputForm: (...args: unknown[]) => mockSubmitWebAppHumanInputForm(...args),
+  submitWebAppHumanInputForm: mocks.submitWebApp,
 }))
+const renderItem = (ui: ReactElement) =>
+  render(<ChatContextProvider chatList={[]}>{ui}</ChatContextProvider>)
 
-vi.mock('@/service/debug', () => ({
-  fetchTextGenerationMessage: (...args: unknown[]) => mockFetchTextGenerationMessage(...args),
-}))
-
-vi.mock('@/app/components/base/chat/chat/context', () => ({
-  useChatContext: () => ({
-    config: {
-      text_to_speech: {
-        voice: 'alloy',
+const reachableForm = (formVersion?: '1' | '2') =>
+  createHumanInputFormFixture({
+    form_content: 'Name {{#$output.name#}}',
+    form_version: formVersion,
+    inputs: [
+      {
+        type: InputVarType.paragraph,
+        output_variable_name: 'name',
+        default: { type: 'constant', value: '', selector: [] },
       },
-    },
-  }),
-}))
-
-vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div>{`markdown:${content}`}</div>,
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    warning: (...args: unknown[]) => mockToastWarning(...args),
-    success: vi.fn(),
-  },
-}))
-
-vi.mock('../workflow-body', () => ({
-  default: ({
-    currentTab,
-    onSubmitHumanInputForm,
-    onSwitchTab,
-  }: {
-    currentTab: string
-    onSubmitHumanInputForm: (
-      token: string,
-      data: { inputs: Record<string, string>; action: string },
-    ) => Promise<void>
-    onSwitchTab: (tab: string) => Promise<void>
-  }) => (
-    <div>
-      <div>{`workflow-body:${currentTab}`}</div>
-      <button
-        onClick={() =>
-          void onSubmitHumanInputForm('token-1', { action: 'submit', inputs: { name: 'dify' } })
-        }
-      >
-        submit-human-input
-      </button>
-      <button onClick={() => void onSwitchTab('LOG')}>switch-workflow-tab</button>
-    </div>
-  ),
-}))
-
-describe('GenerationItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+    ],
+    actions: [{ id: 'submit', title: 'Submit', button_style: UserActionButtonType.Primary }],
   })
 
+describe('GenerationItem HITL routing', () => {
   it.each([
-    {
-      appSourceType: AppSourceType.webApp,
-      formVersion: '1' as const,
-      submit: mockSubmitWebAppHumanInputForm,
-      unusedSubmit: mockSubmitHumanInputForm,
-    },
-    {
-      appSourceType: AppSourceType.webApp,
-      formVersion: '2' as const,
-      submit: mockSubmitWebAppHumanInputForm,
-      unusedSubmit: mockSubmitHumanInputForm,
-    },
-    {
-      appSourceType: AppSourceType.webApp,
-      formVersion: undefined,
-      submit: mockSubmitWebAppHumanInputForm,
-      unusedSubmit: mockSubmitHumanInputForm,
-    },
-    {
-      appSourceType: AppSourceType.tryApp,
-      formVersion: undefined,
-      submit: mockSubmitHumanInputForm,
-      unusedSubmit: mockSubmitWebAppHumanInputForm,
-    },
+    { appSourceType: AppSourceType.webApp, formVersion: '1' as const },
+    { appSourceType: AppSourceType.webApp, formVersion: '2' as const },
+    { appSourceType: AppSourceType.webApp, formVersion: undefined },
+    { appSourceType: AppSourceType.tryApp, formVersion: undefined },
   ])(
-    'preserves $appSourceType version $formVersion submission and workflow tab switching',
-    async ({ appSourceType, formVersion, submit, unusedSubmit }) => {
+    'submits a real $appSourceType form with version $formVersion and switches tabs',
+    async ({ appSourceType, formVersion }) => {
       const user = userEvent.setup()
-      render(
+      renderItem(
         <GenerationItem
           appSourceType={appSourceType}
-          content="workflow result"
+          content={{ detail: 'workflow detail' }}
           isError={false}
           isWorkflow
           messageId="msg-1"
           onRetry={vi.fn()}
           siteInfo={null}
           workflowProcessData={createWorkflowProcessFixture({
+            status: WorkflowRunningStatus.Paused,
             resultText: 'workflow result',
-            humanInputFormDataList: [createHumanInputFormFixture({ form_version: formVersion })],
+            humanInputFormDataList: [reachableForm(formVersion)],
           })}
         />,
       )
 
-      expect(screen.getByText('workflow-body:RESULT')).toBeInTheDocument()
+      expect(screen.getByText('runLog.result')).toBeInTheDocument()
+      await user.type(screen.getByRole('textbox', { name: 'name' }), 'Dify')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+      await user.click(screen.getByText('runLog.detail'))
 
-      await user.click(screen.getByRole('button', { name: 'submit-human-input' }))
-      await user.click(screen.getByRole('button', { name: 'switch-workflow-tab' }))
-
-      expect(submit).toHaveBeenCalledWith(
+      const expectedSubmit =
+        appSourceType === AppSourceType.webApp ? mocks.submitWebApp : mocks.submitShare
+      expect(expectedSubmit).toHaveBeenCalledWith(
         'token-1',
-        {
-          action: 'submit',
-          inputs: { name: 'dify' },
-        },
+        { action: 'submit', inputs: { name: 'Dify' } },
         ...(appSourceType === AppSourceType.webApp ? [formVersion] : []),
       )
-      expect(unusedSubmit).not.toHaveBeenCalled()
-      expect(mockSubmitHumanInputFormWorkflow).not.toHaveBeenCalled()
-      expect(screen.getByText('workflow-body:LOG')).toBeInTheDocument()
+      expect(mocks.submitWorkflow).not.toHaveBeenCalled()
+      expect(screen.getByText('JSON OUTPUT')).toBeInTheDocument()
     },
   )
 
   it.each([true, false])(
-    'waits for approval events and submits only when ready is %s',
+    'waits for preparation before submitting when ready is %s',
     async (ready) => {
       const user = userEvent.setup()
       let resolvePreparation: ((ready: boolean) => void) | undefined
@@ -171,7 +107,7 @@ describe('GenerationItem', () => {
             resolvePreparation = resolve
           }),
       )
-      render(
+      renderItem(
         <GenerationItem
           appSourceType={AppSourceType.webApp}
           content=""
@@ -180,27 +116,29 @@ describe('GenerationItem', () => {
           onRetry={vi.fn()}
           prepareHumanInputSubmission={prepareHumanInputSubmission}
           siteInfo={null}
-          workflowProcessData={{ status: WorkflowRunningStatus.Paused, tracing: [], expand: false }}
+          workflowProcessData={createWorkflowProcessFixture({
+            status: WorkflowRunningStatus.Paused,
+            humanInputFormDataList: [reachableForm()],
+          })}
         />,
       )
-      await user.click(screen.getByRole('button', { name: 'submit-human-input' }))
+
+      await user.type(screen.getByRole('textbox', { name: 'name' }), 'Dify')
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
       expect(prepareHumanInputSubmission).toHaveBeenCalledOnce()
-      expect(mockSubmitWebAppHumanInputForm).not.toHaveBeenCalled()
+      expect(mocks.submitWebApp).not.toHaveBeenCalled()
+
       await act(async () => resolvePreparation?.(ready))
+
       if (ready) {
-        expect(mockSubmitWebAppHumanInputForm).toHaveBeenCalledExactlyOnceWith(
+        expect(mocks.submitWebApp).toHaveBeenCalledExactlyOnceWith(
           'token-1',
-          {
-            inputs: { name: 'dify' },
-            action: 'submit',
-          },
+          { inputs: { name: 'Dify' }, action: 'submit' },
           undefined,
         )
       } else {
-        expect(mockSubmitWebAppHumanInputForm).not.toHaveBeenCalled()
+        expect(mocks.submitWebApp).not.toHaveBeenCalled()
       }
-      expect(mockSubmitHumanInputForm).not.toHaveBeenCalled()
-      expect(mockSubmitHumanInputFormWorkflow).not.toHaveBeenCalled()
     },
   )
 })

@@ -7,6 +7,7 @@ from flask import current_app, got_request_exception
 from core.logging.context import get_request_id
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.errors.base import NoPermissionError
 
 
@@ -181,3 +182,20 @@ def register_permission_error_handler(api: ExternalApi) -> None:
     # Flask-RESTX picks the first matching handler, including the generic Exception handler.
     cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(NoPermissionError, last=False)
     api.document_error_handler(NoPermissionError, status=HTTPStatus.BAD_REQUEST, code=InvalidArgumentError.error_code)
+
+
+def register_credential_refresh_error_handler(api: ExternalApi) -> None:
+    """Give temporary refresh failures the same retryable response on each API surface."""
+
+    @api.errorhandler(CredentialRefreshUnavailableError)
+    def handle_refresh_unavailable(error: CredentialRefreshUnavailableError) -> tuple[dict[str, str | int], int]:
+        got_request_exception.send(current_app, exception=error)
+        status = HTTPStatus.SERVICE_UNAVAILABLE
+        return {"code": "service_unavailable", "message": str(error), "status": status.value}, status.value
+
+    handlers: object = api.error_handlers
+    assert isinstance(handlers, OrderedDict)
+    handlers.move_to_end(CredentialRefreshUnavailableError, last=False)
+    api.document_error_handler(
+        CredentialRefreshUnavailableError, status=HTTPStatus.SERVICE_UNAVAILABLE, code="service_unavailable"
+    )

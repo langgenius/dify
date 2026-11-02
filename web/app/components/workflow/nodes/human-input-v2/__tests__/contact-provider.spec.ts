@@ -34,7 +34,14 @@ vi.mock('@/service/console', async () => {
 
 const firstPage: ListContactOptionsResponse = {
   data: [
-    { id: 'contact-1', name: 'First contact', email: null, avatar_url: null, type: 'platform' },
+    {
+      id: 'contact-1',
+      name: 'First contact',
+      email: null,
+      avatar_url: null,
+      type: 'platform',
+      im_providers: [],
+    },
   ],
   page: 1,
   limit: 20,
@@ -50,7 +57,13 @@ describe('Contact recipient API provider', () => {
     api.search.mockResolvedValueOnce(firstPage).mockResolvedValueOnce({
       ...firstPage,
       data: [
-        { id: 'contact-21', name: 'Last contact', email: 'last@example.com', type: 'external' },
+        {
+          id: 'contact-21',
+          name: 'Last contact',
+          email: 'last@example.com',
+          type: 'external',
+          im_providers: [],
+        },
       ],
       page: 2,
     })

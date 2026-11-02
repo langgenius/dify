@@ -107,6 +107,18 @@ jobs:
           GUARD_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}
         run: uv run --project api python scripts/check_no_new_base_model.py --base-rev "$GUARD_BASE_REV"
 
+      - name: Run No New Cast Guard
+        if: inputs.run-python-style
+        env:
+          GUARD_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}
+        run: uv run --project api python scripts/check_no_new_cast.py --base-rev "$GUARD_BASE_REV"
+
+      - name: Run No New Constructor Bypass Guard
+        if: inputs.run-python-style
+        env:
+          GUARD_BASE_REV: ${{ github.event_name == 'pull_request' && 'HEAD^1' || inputs.base-rev }}
+        run: uv run --project api python scripts/check_no_new_constructor_bypass.py --base-rev "$GUARD_BASE_REV"
+
       - name: Run No New Test Doubles Guard
         if: inputs.run-python-style || inputs.run-dify-agent-style
         # A PR event can retain an older base SHA after its target branch advances.

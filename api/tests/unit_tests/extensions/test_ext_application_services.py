@@ -255,6 +255,10 @@ def test_init_app_registers_services_for_the_current_app(
 
     ext_application_services.init_app(app)
 
+    from extensions.application_services.tools import resolve_tool_credentials
+
+    assert ext_application_services.ToolManager._credential_resolver is resolve_tool_credentials
+
     with app.app_context():
         services = ext_application_services.application_services()
         assert services is app.extensions["application_services"]

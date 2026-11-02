@@ -1,93 +1,41 @@
+import type { ReactNode } from 'react'
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
+import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store/store'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { Node } from '@/app/components/workflow/types'
 import { ORPCError } from '@orpc/client'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { use } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useStoreApi } from 'reactflow'
 import { createDefaultFormInputByType } from '@/app/components/workflow/nodes/human-input/types'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createEdge, createNode } from '../../../../__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '../../../../__tests__/workflow-test-env'
+import { useNodeDataUpdate } from '../../../../hooks/use-node-data-update'
 import { HumanInputMigrationContext } from '../context'
 import HumanInputMigrationProvider from '../provider'
 
-const runtime = vi.hoisted(() => ({
-  nodes: [] as Node[],
-  edges: [] as never[],
-  releaseEnabled: true,
-}))
+const runtime = vi.hoisted(() => ({ releaseEnabled: true }))
+const postMigration = vi.hoisted(() => vi.fn())
 vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
   get ENABLE_HITL_IM() {
     return runtime.releaseEnabled
   },
 }))
-const mocks = vi.hoisted(() => ({
-  postMigration: vi.fn(),
-  setNodes: vi.fn(),
-  doSync: vi.fn(),
-  saveHistory: vi.fn(),
-  toastError: vi.fn(),
-  toastSuccess: vi.fn(),
-}))
-
-vi.mock('reactflow', () => ({
-  useNodes: () => runtime.nodes,
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: () => runtime.nodes,
-      edges: runtime.edges,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.humanInput.v2.nodeDataMigration.post': postMigration,
     }),
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-collaborative-workflow', () => ({
-  useCollaborativeWorkflow: () => ({
-    setNodes: (...args: unknown[]) => mocks.setNodes(...args),
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-nodes-meta-data', () => ({
-  useNodesMetaData: () => ({
-    nodesMap: {
-      [BlockEnum.HumanInputV2]: {
-        metaData: { helpLinkUri: 'https://docs.example/human-input' },
-      },
-    },
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({
-    doSyncWorkflowDraft: (...args: unknown[]) => mocks.doSync(...args),
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-workflow-history', () => ({
-  useWorkflowHistory: () => ({ saveStateToHistory: mocks.saveHistory }),
-  WorkflowHistoryEvent: { HumanInputMigration: 'HumanInputMigration' },
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    workspaces: {
-      current: {
-        humanInput: {
-          v2: {
-            nodeDataMigration: { post: (...args: unknown[]) => mocks.postMigration(...args) },
-          },
-        },
-      },
-    },
-  },
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    error: (...args: unknown[]) => mocks.toastError(...args),
-    success: (...args: unknown[]) => mocks.toastSuccess(...args),
-  },
-}))
+  }
+})
 
 const createLegacyNode = (
   unsupported = false,
@@ -123,361 +71,266 @@ const PolicyProbe = () => {
   )
 }
 
-const renderProvider = (canEdit = true) =>
-  render(
+const migrationResponse = (nodes: Node[]) => ({
+  data: nodes
+    .filter((node) => node.data.type === BlockEnum.HumanInput)
+    .map((node) => ({
+      node_id: node.id,
+      node_data: {
+        title: node.data.title,
+        type: 'human-input',
+        version: '2',
+        form_content: '',
+        inputs: 'inputs' in node.data ? node.data.inputs : [],
+        user_actions: [],
+        timeout: 3,
+        timeout_unit: 'day',
+        recipients_spec: [{ type: 'initiator' }],
+        message_template: { subject: '', body: '' },
+        debug_mode: { enabled: false, channels: [] },
+      },
+    })),
+})
+
+function setup({
+  nodes = [createLegacyNode()],
+  canEdit = true,
+  sync = async () => ({ hash: 'saved-draft', updatedAt: 123 }),
+}: {
+  nodes?: Node[]
+  canEdit?: boolean
+  sync?: HooksStoreShape['doSyncWorkflowDraft']
+} = {}) {
+  const edges = nodes.length > 1 ? [createEdge({ source: nodes[0]!.id, target: nodes[1]!.id })] : []
+  const { queryClient } = createConsoleQueryWrapper()
+  seedModelProviderQueries(queryClient)
+  postMigration.mockResolvedValue(migrationResponse(nodes))
+  const Wrapper = ({ children }: { children: ReactNode }) => (
     <HumanInputMigrationProvider canEdit={canEdit}>
+      <div>Original workflow canvas</div>
       <PolicyProbe />
-    </HumanInputMigrationProvider>,
+      {children}
+    </HumanInputMigrationProvider>
   )
+  const view = renderWorkflowCanvasHook(() => ({ canvas: useStoreApi(), ...useNodeDataUpdate() }), {
+    nodes,
+    edges,
+    queryClient,
+    wrapper: Wrapper,
+    historyStore: { nodes, edges },
+    hooksStoreProps: { doSyncWorkflowDraft: sync },
+  })
+  const graph = () => ({
+    nodes: view.result.current.canvas.getState().getNodes(),
+    edges: view.result.current.canvas.getState().edges,
+  })
+  return { ...view, graph }
+}
 
-describe('Human Input migration provider', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    runtime.releaseEnabled = true
-    runtime.nodes = [createLegacyNode()]
-    runtime.edges = []
-    mocks.postMigration.mockImplementation(async () => ({
-      data: runtime.nodes.map((node) => ({
-        node_id: node.id,
-        node_data: {
-          title: node.data.title,
-          type: 'human-input',
-          version: '2',
-          form_content: '',
-          inputs: 'inputs' in node.data ? node.data.inputs : [],
-          user_actions: [],
-          timeout: 3,
-          timeout_unit: 'day',
-          recipients_spec: [{ type: 'initiator' }],
-          message_template: { subject: '', body: '' },
-          debug_mode: { enabled: false, channels: [] },
+const openDialog = async (user: ReturnType<typeof userEvent.setup>) =>
+  user.click(
+    screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrateNow' }),
+  )
+const confirmMigration = async (user: ReturnType<typeof userEvent.setup>) => {
+  await openDialog(user)
+  await user.click(
+    screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
+  )
+}
+
+beforeEach(() => {
+  runtime.releaseEnabled = true
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+})
+afterEach(() => {
+  vi.clearAllTimers()
+  vi.useRealTimers()
+})
+const newUser = () => userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+
+it('keeps the original graph without migration UI or requests when the release gate is off', () => {
+  runtime.releaseEnabled = false
+  const view = setup()
+  expect(screen.getByText('Original workflow canvas')).toBeInTheDocument()
+  expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  expect(view.graph().nodes[0]!.data).toEqual(createLegacyNode().data)
+  expect(postMigration).not.toHaveBeenCalled()
+})
+
+it('migrates the real graph through one shared dialog and updates the insertion policy', async () => {
+  const user = newUser()
+  const unrelated = createNode({ id: 'unrelated' })
+  const view = setup({ nodes: [createLegacyNode(), unrelated] })
+  const edges = view.graph().edges
+  expect(screen.getByText('insertion-blocked')).toBeInTheDocument()
+  expect(
+    screen.getByRole('complementary', {
+      name: 'workflow.nodes.humanInputMigration.banner.ariaLabel',
+    }),
+  ).toBeInTheDocument()
+  await confirmMigration(user)
+  expect(await screen.findByText('insertion-enabled')).toBeInTheDocument()
+  expect(view.graph().nodes[0]!.data).toMatchObject({
+    version: '2',
+    recipients_spec: [{ type: 'initiator' }],
+  })
+  expect(view.graph().nodes[0]!.data).not.toHaveProperty('delivery_methods')
+  expect(view.graph().nodes[1]!.data).toEqual(unrelated.data)
+  expect(view.graph().edges).toEqual(edges)
+  expect(postMigration).toHaveBeenCalledExactlyOnceWith(
+    {
+      body: { nodes: [{ node_id: 'legacy-human-input', node_data: createLegacyNode().data }] },
+    },
+    { context: { silent: true } },
+  )
+  expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  await act(async () => vi.advanceTimersByTime(500))
+})
+
+it('shows the current legacy count in the shared confirmation dialog', async () => {
+  setup({ nodes: [createLegacyNode(false, 'legacy-one'), createLegacyNode(false, 'legacy-two')] })
+  await openDialog(newUser())
+  expect(
+    screen.getByRole('alertdialog', {
+      name: 'workflow.nodes.humanInputMigration.dialog.title:{"count":2}',
+    }),
+  ).toBeInTheDocument()
+})
+
+it('reports the server preflight blocker without changing the graph', async () => {
+  const view = setup({ nodes: [createLegacyNode(true)] })
+  const original = view.graph()
+  postMigration.mockRejectedValueOnce(
+    new ORPCError('BAD_REQUEST', {
+      status: 400,
+      data: {
+        body: {
+          status: 400,
+          code: 'hitl_node_data_migration_failure',
+          message: 'Human Input node-data migration failed.',
+          blockers: [
+            {
+              code: 'invalid-default-value',
+              node_id: 'legacy-human-input',
+              node_title: 'Approval',
+              value: 'default_value',
+            },
+          ],
         },
-      })),
-    }))
-    mocks.setNodes.mockImplementation((nodes: Node[]) => {
-      runtime.nodes = nodes
-    })
-    mocks.doSync.mockImplementation(
-      async (_notRefreshWhenSyncError: boolean, callback?: SyncDraftCallback) => {
-        callback?.onSuccess?.()
-        callback?.onSettled?.()
       },
-    )
-  })
+    }),
+  )
+  await confirmMigration(newUser())
+  expect(await screen.findByRole('alert')).toHaveTextContent('Approval')
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'workflow.nodes.humanInputMigration.blocker.invalidDefaultValue',
+  )
+  expect(view.graph()).toEqual(original)
+  expect(screen.getByText('insertion-blocked')).toBeInTheDocument()
+})
 
-  it('keeps the original canvas without migration UI or writes when the release gate is off', () => {
-    runtime.releaseEnabled = false
-    render(
-      <HumanInputMigrationProvider canEdit>
-        <div>Original workflow canvas</div>
-      </HumanInputMigrationProvider>,
-    )
+it('preserves a supported select field through migration', async () => {
+  const input = createDefaultFormInputByType(InputVarType.select, 'decision')
+  const view = setup({ nodes: [createLegacyNode(false, 'legacy-human-input', [input])] })
+  await confirmMigration(newUser())
+  expect(await screen.findByText('insertion-enabled')).toBeInTheDocument()
+  expect(view.graph().nodes[0]!.data).toMatchObject({ version: '2', inputs: [input] })
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
 
-    expect(screen.getByText('Original workflow canvas')).toBeInTheDocument()
-    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(mocks.postMigration).not.toHaveBeenCalled()
-    expect(mocks.setNodes).not.toHaveBeenCalled()
-    expect(mocks.doSync).not.toHaveBeenCalled()
-  })
-
-  it('migrates through one shared dialog, syncs once, and derives the completed UI state', async () => {
-    const user = userEvent.setup()
-    const view = renderProvider()
-    expect(screen.getByText('insertion-blocked')).toBeInTheDocument()
-    expect(
-      screen.getByRole('complementary', {
-        name: 'workflow.nodes.humanInputMigration.banner.ariaLabel',
+it('starts only one migration when confirmation is double-clicked during a draft save', async () => {
+  let finishSave!: () => void
+  const sync = vi.fn(
+    () =>
+      new Promise<{ hash: string; updatedAt: number }>((resolve) => {
+        finishSave = () => resolve({ hash: 'saved', updatedAt: 1 })
       }),
-    ).toBeInTheDocument()
+  )
+  const view = setup({ sync })
+  const user = newUser()
+  await openDialog(user)
+  await user.dblClick(
+    screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
+  )
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  expect(view.graph().nodes[0]!.data.version).toBe('2')
+  expect(postMigration).toHaveBeenCalledTimes(1)
+  expect(sync).toHaveBeenCalledTimes(1)
+  await act(async () => finishSave())
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  expect(screen.getByText('insertion-enabled')).toBeInTheDocument()
+})
 
-    await user.click(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.humanInputMigration.action.migrateNow',
-      }),
-    )
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
-    )
-
-    await waitFor(() => expect(mocks.doSync).toHaveBeenCalledTimes(1))
-    expect(mocks.setNodes).toHaveBeenCalledTimes(1)
-    expect(mocks.postMigration).toHaveBeenCalledTimes(1)
-    expect(mocks.postMigration).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: { nodes: [expect.objectContaining({ node_id: 'legacy-human-input' })] },
-      }),
-      { context: { silent: true } },
-    )
-    expect(mocks.saveHistory).toHaveBeenCalledTimes(1)
-    expect(mocks.toastSuccess).toHaveBeenCalledWith('workflow.nodes.humanInputMigration.success')
-    expect((runtime.nodes[0]!.data as { version?: unknown }).version).toBe('2')
-
-    view.rerender(
-      <HumanInputMigrationProvider canEdit>
-        <PolicyProbe />
-      </HumanInputMigrationProvider>,
-    )
-    expect(screen.getByText('insertion-enabled')).toBeInTheDocument()
-    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-  })
-
-  it('shows the current legacy-node count in the shared confirmation dialog', async () => {
-    runtime.nodes = [createLegacyNode(false, 'legacy-one'), createLegacyNode(false, 'legacy-two')]
-    const user = userEvent.setup()
-    renderProvider()
-
-    await user.click(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.humanInputMigration.action.migrateNow',
-      }),
-    )
-
-    expect(
-      screen.getByRole('alertdialog', {
-        name: 'workflow.nodes.humanInputMigration.dialog.title:{"count":2}',
-      }),
-    ).toBeInTheDocument()
-  })
-
-  it('finishes preflight before mutation and reports a node-specific blocker', async () => {
-    runtime.nodes = [createLegacyNode(true)]
-    mocks.postMigration.mockRejectedValueOnce(
-      new ORPCError('BAD_REQUEST', {
-        status: 400,
-        data: {
-          body: {
-            status: 400,
-            code: 'hitl_node_data_migration_failure',
-            message: 'Human Input node-data migration failed.',
-            blockers: [
-              {
-                code: 'invalid-default-value',
-                node_id: 'legacy-human-input',
-                node_title: 'Approval',
-                value: 'default_value',
-              },
-            ],
-          },
-        },
-      }),
-    )
-    const user = userEvent.setup()
-    renderProvider()
-    await user.click(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.humanInputMigration.action.migrateNow',
-      }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.humanInputMigration.action.migrate',
-      }),
-    )
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('Approval')
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'workflow.nodes.humanInputMigration.blocker.invalidDefaultValue',
-    )
-    expect(mocks.setNodes).not.toHaveBeenCalled()
-    expect(mocks.doSync).not.toHaveBeenCalled()
-    expect(mocks.saveHistory).not.toHaveBeenCalled()
-    expect(mocks.toastSuccess).not.toHaveBeenCalled()
-  })
-
-  it('migrates a supported select field and enables insertion without an unsupported-field alert', async () => {
-    const input = createDefaultFormInputByType(InputVarType.select, 'decision')
-    runtime.nodes = [createLegacyNode(false, 'legacy-human-input', [input])]
-    const user = userEvent.setup()
-    const view = renderProvider()
-    await user.click(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.humanInputMigration.action.migrateNow',
-      }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.humanInputMigration.action.migrate',
-      }),
-    )
-
-    await waitFor(() =>
-      expect(runtime.nodes[0]?.data).toMatchObject({ version: '2', inputs: [input] }),
-    )
-    view.rerender(
-      <HumanInputMigrationProvider canEdit>
-        <PolicyProbe />
-      </HumanInputMigrationProvider>,
-    )
-    expect(await screen.findByText('insertion-enabled')).toBeInTheDocument()
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-  })
-
-  it('locks duplicate confirmation while pending', async () => {
-    let settleSync: (() => void) | undefined
-    mocks.doSync.mockImplementation(
-      (_notRefreshWhenSyncError: boolean, callback?: SyncDraftCallback) =>
-        new Promise<void>((resolve) => {
-          settleSync = () => {
-            callback?.onSuccess?.()
-            callback?.onSettled?.()
-            resolve()
-          }
-        }),
-    )
-    const user = userEvent.setup()
-    renderProvider()
-    await user.click(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.humanInputMigration.action.migrateNow',
-      }),
-    )
-    const confirm = screen.getByRole('button', {
-      name: 'workflow.nodes.humanInputMigration.action.migrate',
-    })
-    await user.dblClick(confirm)
-
-    expect(mocks.setNodes).toHaveBeenCalledTimes(1)
-    expect(mocks.doSync).toHaveBeenCalledTimes(1)
-    expect(
-      screen.getByRole('button', { name: /workflow.nodes.humanInputMigration.action.migrating/ }),
-    ).toHaveAttribute('aria-disabled', 'true')
-
-    await act(async () => settleSync?.())
-    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledTimes(1))
-  })
-
-  it('rolls back the complete graph and retains retry guidance after sync failure', async () => {
-    const originalNode = runtime.nodes[0]!
-    mocks.doSync.mockImplementation(
-      async (_notRefreshWhenSyncError: boolean, callback?: SyncDraftCallback) => {
-        callback?.onError?.()
-        callback?.onSettled?.()
-      },
-    )
-    const user = userEvent.setup()
-    renderProvider()
-    await user.click(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.humanInputMigration.action.migrateNow',
-      }),
-    )
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
-    )
-
+it.each(['failed', 'skipped', 'skipped-without-settled', 'undefined'] as const)(
+  'rolls back the graph and retains retry guidance when saving is %s',
+  async (outcome) => {
+    const sync = async (_notRefresh?: boolean, callback?: SyncDraftCallback) => {
+      if (outcome === 'failed') callback?.onError?.()
+      if (outcome !== 'skipped-without-settled') callback?.onSettled?.()
+      return outcome === 'undefined' ? undefined : null
+    }
+    const view = setup({ nodes: [createLegacyNode(), createNode({ id: 'unrelated' })], sync })
+    const original = view.graph()
+    await confirmMigration(newUser())
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'workflow.nodes.humanInputMigration.error.sync',
     )
-    expect(mocks.setNodes).toHaveBeenCalledTimes(2)
-    expect(runtime.nodes).toEqual([originalNode])
-    expect(mocks.saveHistory).not.toHaveBeenCalled()
-    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+    expect(view.graph()).toEqual(original)
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.getByText('insertion-blocked')).toBeInTheDocument()
     expect(
       screen.getByText('workflow.nodes.humanInputMigration.banner.description'),
     ).toBeInTheDocument()
-  })
+  },
+)
 
-  it.each([
-    { result: null, settles: true },
-    { result: null, settles: false },
-    { result: undefined, settles: true },
-  ])(
-    'rolls back when draft saving is skipped ($result, settled: $settles)',
-    async ({ result, settles }) => {
-      const originalNodes = runtime.nodes
-      mocks.doSync.mockImplementation(
-        async (_notRefreshWhenSyncError: boolean, callback?: SyncDraftCallback) => {
-          if (settles) callback?.onSettled?.()
-          return result
-        },
-      )
-      const user = userEvent.setup()
-      renderProvider()
-      await user.click(
-        screen.getByRole('button', {
-          name: 'workflow.nodes.humanInputMigration.action.migrateNow',
-        }),
-      )
-      await user.click(
-        screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
-      )
-
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        'workflow.nodes.humanInputMigration.error.sync',
-      )
-      expect(mocks.setNodes).toHaveBeenCalledTimes(2)
-      expect(runtime.nodes).toEqual(originalNodes)
-      expect(mocks.saveHistory).not.toHaveBeenCalled()
-      expect(mocks.toastSuccess).not.toHaveBeenCalled()
+it('accepts an actual draft result without a success callback', async () => {
+  const view = setup({
+    sync: async (_notRefresh, callback) => {
+      callback?.onSettled?.()
+      return { hash: 'saved-draft-hash', updatedAt: 123 }
     },
-  )
-
-  it('accepts an actual draft save result even without a success callback', async () => {
-    mocks.doSync.mockImplementation(
-      async (_notRefreshWhenSyncError: boolean, callback?: SyncDraftCallback) => {
-        callback?.onSettled?.()
-        return { hash: 'saved-draft-hash', updatedAt: 123 }
-      },
-    )
-    const user = userEvent.setup()
-    renderProvider()
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrateNow' }),
-    )
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
-    )
-
-    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledTimes(1))
-    expect(mocks.setNodes).toHaveBeenCalledTimes(1)
-    expect(mocks.saveHistory).toHaveBeenCalledTimes(1)
   })
+  await confirmMigration(newUser())
+  expect(await screen.findByText('insertion-enabled')).toBeInTheDocument()
+  expect(view.graph().nodes[0]!.data.version).toBe('2')
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+})
 
-  it('retains new node edits and shows retry guidance when the graph changes during conversion', async () => {
-    mocks.postMigration.mockImplementationOnce(async () => {
-      runtime.nodes = [createLegacyNode(false, 'new-node')]
-      return {
-        data: [
-          {
-            node_id: 'legacy-human-input',
-            node_data: {
-              title: 'Approval',
-              version: '2',
-              recipients_spec: [{ type: 'initiator' }],
-              message_template: { subject: '', body: '' },
-              debug_mode: { channels: [] },
-            },
-          },
-        ],
-      }
-    })
-    const user = userEvent.setup()
-    renderProvider()
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrateNow' }),
-    )
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrate' }),
-    )
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'workflow.nodes.humanInputMigration.error.graphChanged',
-    )
-    expect(runtime.nodes[0]?.id).toBe('new-node')
-    expect(mocks.setNodes).not.toHaveBeenCalled()
-    expect(mocks.doSync).not.toHaveBeenCalled()
-    expect(mocks.saveHistory).not.toHaveBeenCalled()
-  })
-
-  it('does not offer migration to a user without editing permission', () => {
-    renderProvider(false)
-    expect(
-      screen.queryByRole('button', {
-        name: 'workflow.nodes.humanInputMigration.action.migrateNow',
+it('retains edits made through the real node owner during conversion and requests retry', async () => {
+  const view = setup()
+  let finishConversion!: () => void
+  postMigration.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finishConversion = () => resolve(migrationResponse([createLegacyNode()]))
       }),
-    ).not.toBeInTheDocument()
-    expect(mocks.postMigration).not.toHaveBeenCalled()
+  )
+  await confirmMigration(newUser())
+  act(() =>
+    view.result.current.handleNodeDataUpdate({
+      id: 'legacy-human-input',
+      data: { title: 'Edited approval' },
+    }),
+  )
+  await act(async () => finishConversion())
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'workflow.nodes.humanInputMigration.error.graphChanged',
+  )
+  expect(view.graph().nodes[0]!.data).toEqual({
+    ...createLegacyNode().data,
+    title: 'Edited approval',
   })
+  expect(screen.getByText('insertion-blocked')).toBeInTheDocument()
+})
+
+it('offers no migration to a user without editing permission', () => {
+  const view = setup({ canEdit: false })
+  expect(
+    screen.queryByRole('button', { name: 'workflow.nodes.humanInputMigration.action.migrateNow' }),
+  ).not.toBeInTheDocument()
+  expect(view.graph().nodes[0]!.data).toEqual(createLegacyNode().data)
+  expect(postMigration).not.toHaveBeenCalled()
 })

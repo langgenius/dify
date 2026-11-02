@@ -36,16 +36,24 @@ const useSingleRunFormParams = ({
   setRunInputData,
 }: Params) => {
   const { mutateAsync: previewWorkflowForm } = useMutation(
-    consoleQuery.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form.preview.post.mutationOptions(),
+    consoleQuery.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form.preview.post.mutationOptions(
+      { context: { silent: true } },
+    ),
   )
   const { mutateAsync: previewChatflowForm } = useMutation(
-    consoleQuery.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form.preview.post.mutationOptions(),
+    consoleQuery.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form.preview.post.mutationOptions(
+      { context: { silent: true } },
+    ),
   )
   const { mutateAsync: submitWorkflowForm } = useMutation(
-    consoleQuery.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form.run.post.mutationOptions(),
+    consoleQuery.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form.run.post.mutationOptions(
+      { context: { silent: true } },
+    ),
   )
   const { mutateAsync: submitChatflowForm } = useMutation(
-    consoleQuery.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form.run.post.mutationOptions(),
+    consoleQuery.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form.run.post.mutationOptions(
+      { context: { silent: true } },
+    ),
   )
   const { t } = useTranslation(['workflow', 'workflowHumanInput', 'common'])
   const { inputs } = useNodeCrud<HumanInputSharedNodeType>(id, payload)

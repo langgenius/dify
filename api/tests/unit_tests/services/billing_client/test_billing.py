@@ -42,11 +42,21 @@ def test_request_body_is_serialized_from_the_model(respond_with: RespondWith) ->
     assert body.model_validate_json(requests[0].content) == body
 
 
-def test_missing_required_field_is_an_invalid_response(respond_with: RespondWith) -> None:
+def test_missing_required_balance_field_is_an_invalid_response(respond_with: RespondWith) -> None:
     respond_with(httpx.Response(200, json={"available": "1"}))
 
     with pytest.raises(BillingUpstreamInvalidResponseError):
         billing.quota_get_balance(tenant_id="t1", feature_key="api_rate_limit", bucket="")
+
+
+def test_invalid_reservation_id_is_rejected_before_business_decisions(respond_with: RespondWith) -> None:
+    respond_with(httpx.Response(200, json={"reservation_id": 123, "available": 99, "reserved": 1}))
+    body = billing.QuotaReserveReq(
+        tenant_id="t1", feature_key="trigger_event", request_id="req", amount=1, meta={}, bucket=""
+    )
+
+    with pytest.raises(BillingUpstreamInvalidResponseError):
+        billing.quota_reserve(body=body)
 
 
 def test_omitted_optional_field_parses_as_none(respond_with: RespondWith) -> None:

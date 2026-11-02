@@ -1,9 +1,11 @@
-import type { ComponentPropsWithoutRef, ReactNode } from 'react'
+import type { FormProps } from '@langgenius/dify-ui/form'
+import type { ComponentPropsWithoutRef, ReactNode, SubmitEventHandler } from 'react'
 import type { HumanInputFormDefinition } from './types'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { UnsubmittedHumanInputContentProps } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { MarkdownProps } from '@/app/components/base/markdown'
 import { Button } from '@langgenius/dify-ui/button'
+import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,6 +32,7 @@ type LoadedFormContentProps = {
   isSubmitting: boolean
   actionsDisabled?: boolean
   verificationContent?: ReactNode
+  errors?: FormProps['errors']
   onSubmit: (inputs: Record<string, unknown>, actionID: string) => void | Promise<void>
 }
 
@@ -211,6 +214,7 @@ const FormBody = ({
   isSubmitting,
   actionsDisabled = false,
   verificationContent,
+  errors,
   onSubmit,
   layout = 'standalone',
 }: FormBodyProps) => {
@@ -246,12 +250,21 @@ const FormBody = ({
       setPending(false)
     }
   }
+  const handleSubmit: SubmitEventHandler<HTMLFormElement> = (event) => {
+    event.preventDefault()
+    const submitter = event.nativeEvent.submitter
+    if (submitter instanceof HTMLButtonElement && submitter.value) void submit(submitter.value)
+  }
   const hasInvalidInput = compact ? hasInvalidSelectOrFileInput : hasInvalidRequiredHumanInput
   const disabled =
     actionsDisabled || isSubmitting || pending || hasInvalidInput(renderedFormInputs, inputs)
 
   return (
-    <div className={compact ? 'flex flex-col gap-2' : 'flex flex-col gap-3'}>
+    <Form
+      className={compact ? 'flex flex-col gap-2' : 'flex flex-col gap-3'}
+      errors={errors}
+      onSubmit={handleSubmit}
+    >
       {contentList.map(({ key, content }) => {
         const match = /\{\{#\$output\.([^#]+)#\}\}/.exec(content)
         if (!match) {
@@ -294,16 +307,18 @@ const FormBody = ({
         {definition.actions.map((action) => (
           <Button
             key={action.id}
+            type="submit"
+            name="action"
+            value={action.id}
             size={compact ? 'small' : 'medium'}
             disabled={disabled}
             variant={getButtonStyle(action.button_style)}
-            onClick={() => submit(action.id)}
           >
             {action.title}
           </Button>
         ))}
       </div>
-    </div>
+    </Form>
   )
 }
 
@@ -348,6 +363,7 @@ const LoadedFormContent = ({
   isSubmitting,
   actionsDisabled = false,
   verificationContent,
+  errors,
   onSubmit,
 }: LoadedFormContentProps) => {
   const branding = definition.branding
@@ -373,6 +389,7 @@ const LoadedFormContent = ({
               isSubmitting={isSubmitting}
               actionsDisabled={actionsDisabled}
               verificationContent={verificationContent}
+              errors={errors}
               onSubmit={onSubmit}
             />
             <div>

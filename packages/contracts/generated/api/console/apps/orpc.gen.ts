@@ -17,6 +17,8 @@ import {
   zAppUnavailableError,
   zAudioTooLargeError,
   zBadRequestError,
+  zBillingOperationFailedError,
+  zBillingUnavailableError,
   zBindingFileDownloadUnavailableError,
   zCompletionRequestError,
   zConversationNotFoundError,
@@ -30,12 +32,21 @@ import {
   zMaxKeysExceededError,
   zMessageFeedbackRatingRequiredError,
   zModelCurrentlyNotSupportError,
+  zNetworkAccessForbiddenError,
+  zNetworkAccessGroupNotFoundError,
+  zNetworkAccessInvalidInputError,
+  zNetworkAccessNotEntitledError,
+  zNetworkAccessRoleDeniedError,
+  zNetworkAccessUnsupportedAccessPointsError,
+  zNetworkAccessUnsupportedAppModeError,
+  zNetworkAccessVersionConflictError,
   zNoActiveBindingError,
   zNoAudioUploadedError,
   zNoFileUploadedError,
   zNodeNotInWorkflowRunError,
   zNodeOutputNotDeclaredError,
   zOpenuiBlockNotReadyError,
+  zPaidPlanRequiredError,
   zPlaintextSecretNotAllowedError,
   zProviderNotInitializeError,
   zProviderNotSupportSpeechToTextError,
@@ -2302,7 +2313,18 @@ export const get33 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdNetworkAccessGroupStatusPath }))
   .output(zGetAppsByAppIdNetworkAccessGroupStatusResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+    network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+    network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+    network_access_unsupported_app_mode: {
+      status: 400,
+      data: zNetworkAccessUnsupportedAppModeError,
+    },
+  })
 
 export const status2 = {
   get: get33,
@@ -2318,7 +2340,18 @@ export const get34 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdNetworkAccessGroupPath }))
   .output(zGetAppsByAppIdNetworkAccessGroupResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+    network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+    network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+    network_access_unsupported_app_mode: {
+      status: 400,
+      data: zNetworkAccessUnsupportedAppModeError,
+    },
+  })
 
 export const put2 = oc
   .route({
@@ -2335,7 +2368,26 @@ export const put2 = oc
     }),
   )
   .output(zPutAppsByAppIdNetworkAccessGroupResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+    network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+    network_access_invalid_input: { status: 400, data: zNetworkAccessInvalidInputError },
+    network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+    network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+    network_access_unsupported_access_points: {
+      status: 400,
+      data: zNetworkAccessUnsupportedAccessPointsError,
+    },
+    network_access_unsupported_app_mode: {
+      status: 400,
+      data: zNetworkAccessUnsupportedAppModeError,
+    },
+    network_access_version_conflict: { status: 409, data: zNetworkAccessVersionConflictError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
 
 export const networkAccessGroup = {
   get: get34,

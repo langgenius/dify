@@ -40,12 +40,35 @@ changes, and CI checks the PR against its target revision.
 ## Billing And SaaS Calls
 
 - Call billing and saas only through the generated functions in `services/billing_client`; do not hand-write paths or response types.
+- Ruff's banned-api rule (TID251) enforces this: outside `services/billing_client`, reading the billing URL and secret settings or calling `transport.request` fails lint.
 - To call a new endpoint, add it to `ALLOWED_OPERATIONS` in `dev/generate_billing_client.py` and rerun that script against a dify-saas checkout. Never edit the generated modules or snapshots by hand.
 
 ## Typing Best Practises
 
 - Treat nullable types (`T | None`) strictly as union types; document the semantic meaning for each branch.
 - Treat default parameter values as introducing distinct function overloads; verify that every added default has demonstrable practical utility and avoids masking unsafe runtime states.
+
+## Invariants And Construction
+
+- Start each design from explicit principles and domain invariants. An invariant is a condition that all valid states preserve.
+- Derive implementation rules and memory documents from these principles. Explain the invariant that each rule protects.
+- Document each invariant in the docstring of the module, class, or function that owns it. Use a comment for a local invariant.
+- Use abstract interpretation to reason about possible values and state transitions. Check that each operation preserves the relevant invariants.
+- Use dedicated types to distinguish domain values with different meanings. Use `NewType` for static distinctions between values with identical representations.
+- `NewType` does not validate values at runtime. Use validated value objects when an invariant requires runtime checks.
+- Model mutually exclusive alternatives (an OR relationship) with union types. Use a tagged union when variants need an explicit discriminator.
+- Give each tagged variant a distinct `Literal` tag. Include only the fields that are valid for that variant.
+- Prefer safe-by-construction functional idioms. Use immutable values, explicit result variants, and pure functions where practical.
+- Validate external values at boundaries with Pydantic v2 models or `TypeAdapter`. Construct trusted domain values only after validation succeeds.
+
+## Control Flow And Contracts
+
+- Use structured control flow. Do not add `continue` or `break` statements.
+- Express iteration with explicit conditions, comprehensions, or small functions that return a result.
+- State preconditions and postconditions for each new or changed function in the code you produce.
+- Put these contracts in the function docstring. Include accepted inputs, required state, results, side effects, and failure behavior as applicable.
+- Specify which invariants remain true after success and failure. Use types and executable checks to enforce contracts where practical.
+- Include preconditions and postconditions in the change report. State which checks support the claimed postconditions.
 
 [architecture]: ../docs/BACKEND_ARCHITECTURE.md
 [repositories]: ../docs/BACKEND_REPOSITORIES.md

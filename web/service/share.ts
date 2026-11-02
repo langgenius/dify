@@ -82,16 +82,23 @@ export const stopChatMessageResponding = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
+  options?: Pick<IOtherOptions, 'silent'>,
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.chatMessages.byTaskId.stop.post({
-      params: { installed_app_id: installedAppId, task_id: taskId },
-    })
+    return consoleClient.installedApps.byInstalledAppId.chatMessages.byTaskId.stop.post(
+      {
+        params: { installed_app_id: installedAppId, task_id: taskId },
+      },
+      { context: options },
+    )
   if (appSourceType === AppSourceType.tryApp)
-    return consoleClient.trialApps.byAppId.chatMessages.byTaskId.stop.post({
-      params: { app_id: installedAppId, task_id: taskId },
-    })
-  return post(getUrl(`chat-messages/${taskId}/stop`, appSourceType, installedAppId))
+    return consoleClient.trialApps.byAppId.chatMessages.byTaskId.stop.post(
+      {
+        params: { app_id: installedAppId, task_id: taskId },
+      },
+      { context: options },
+    )
+  return post(getUrl(`chat-messages/${taskId}/stop`, appSourceType, installedAppId), {}, options)
 }
 
 export const sendCompletionMessage = async (
@@ -157,17 +164,24 @@ export const stopWorkflowMessage = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
+  options?: Pick<IOtherOptions, 'silent'>,
 ) => {
   if (!taskId) return
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.workflows.tasks.byTaskId.stop.post({
-      params: { installed_app_id: installedAppId, task_id: taskId },
-    })
+    return consoleClient.installedApps.byInstalledAppId.workflows.tasks.byTaskId.stop.post(
+      {
+        params: { installed_app_id: installedAppId, task_id: taskId },
+      },
+      { context: options },
+    )
   if (appSourceType === AppSourceType.tryApp)
-    return consoleClient.trialApps.byAppId.workflows.tasks.byTaskId.stop.post({
-      params: { app_id: installedAppId, task_id: taskId },
-    })
-  return post(getUrl(`workflows/tasks/${taskId}/stop`, appSourceType, installedAppId))
+    return consoleClient.trialApps.byAppId.workflows.tasks.byTaskId.stop.post(
+      {
+        params: { app_id: installedAppId, task_id: taskId },
+      },
+      { context: options },
+    )
+  return post(getUrl(`workflows/tasks/${taskId}/stop`, appSourceType, installedAppId), {}, options)
 }
 
 export const fetchAppInfo = async () => {

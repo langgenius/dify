@@ -213,9 +213,10 @@ def _workflow_tool_container_workflow_tool_node(
         ),
         runtime=ToolRuntime(tenant_id="tenant", invoke_from=InvokeFrom.DEBUGGER),
     )
-    tool.prepare_container_inputs = lambda *_args, **_kwargs: (payload.inputs, [])
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(tool, "prepare_container_inputs", lambda *_args, **_kwargs: (payload.inputs, []))
     runtime = DifyToolNodeRuntime(init_params.run_context)
-    runtime.get_runtime = lambda **_kwargs: ToolRuntimeHandle(raw=tool)
+    monkeypatch.setattr(runtime, "get_runtime", lambda **_kwargs: ToolRuntimeHandle(raw=tool))
     node = DifyWorkflowToolNode(
         node_id="tool",
         data=ToolNodeData.model_validate(graph_config["nodes"][0]["data"]),

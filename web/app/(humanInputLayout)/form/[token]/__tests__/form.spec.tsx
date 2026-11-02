@@ -1,9 +1,7 @@
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { LegacyHumanInputFormData } from '@/features/human-input/form/types'
 import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useFileUploadContext } from '@/app/components/base/file-uploader/upload-context'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -18,15 +16,12 @@ vi.mock('@/config', async (importOriginal) => ({
   },
 }))
 
-const { mockGetForm, mockSubmitForm, mockUploadLocal, mockUploadRemote, uploadState } = vi.hoisted(
-  () => ({
-    mockGetForm: vi.fn(),
-    mockSubmitForm: vi.fn(),
-    mockUploadLocal: vi.fn(),
-    mockUploadRemote: vi.fn(),
-    uploadState: { onChange: undefined as ((files: FileEntity[]) => void) | undefined },
-  }),
-)
+const { mockGetForm, mockSubmitForm, mockUploadLocal, mockUploadRemote } = vi.hoisted(() => ({
+  mockGetForm: vi.fn(),
+  mockSubmitForm: vi.fn(),
+  mockUploadLocal: vi.fn<typeof import('@/service/share').uploadHumanInputFormLocalFile>(),
+  mockUploadRemote: vi.fn(),
+}))
 
 vi.mock('@/next/navigation', () => ({ useParams: () => ({ token: 'token-123' }) }))
 vi.mock('@/service/share', async (importOriginal) => ({
@@ -37,49 +32,29 @@ vi.mock('@/service/share', async (importOriginal) => ({
   uploadHumanInputFormRemoteFileInfo: mockUploadRemote,
 }))
 
-// Retain the callback captured when upload starts, as the asynchronous uploader does.
-// Form parsing, text fields, validation and submission all remain real.
-vi.mock('@/app/components/base/file-uploader', () => ({
-  FileUploaderInAttachmentWrapper: ({ onChange }: { onChange: (files: FileEntity[]) => void }) => {
-    const { uploadStrategy } = useFileUploadContext()
-    if (!uploadState.onChange) uploadState.onChange = onChange
-    return (
-      <div aria-label="Attachment upload">
-        <button
-          type="button"
-          onClick={() =>
-            uploadStrategy?.uploadLocal({
-              file: new File(['review'], 'review.pdf', { type: 'application/pdf' }),
-              onProgressCallback: vi.fn(),
-              onSuccessCallback: vi.fn(),
-              onErrorCallback: vi.fn(),
-            })
-          }
-        >
-          Upload local attachment
-        </button>
-        <button
-          type="button"
-          onClick={() => uploadStrategy?.uploadRemote('https://example.com/review.pdf')}
-        >
-          Upload linked attachment
-        </button>
-      </div>
-    )
-  },
-}))
-
-const uploadedFile: FileEntity = {
-  id: 'file-1',
-  name: 'review.pdf',
-  size: 128,
-  type: 'document',
-  progress: 100,
-  transferMethod: TransferMethod.local_file,
-  supportFileType: SupportUploadFileTypes.document,
-  uploadedId: 'upload-file-1',
+const uploadLocalAttachment = async (user: ReturnType<typeof userEvent.setup>) => {
+  // The native file input currently has no accessible label.
+  const input = document.querySelector<HTMLInputElement>('input[type="file"]')!
+  await user.upload(input, new File(['review'], 'review.pdf', { type: 'application/pdf' }))
+  await waitFor(() => expect(mockUploadLocal).toHaveBeenCalledOnce())
+  return mockUploadLocal.mock.calls[0]![0]
 }
-const completeUpload = () => act(() => uploadState.onChange?.([uploadedFile]))
+
+const completeUpload = async () => {
+  await act(async () => {
+    mockUploadLocal.mock.calls[0]![0].onSuccessCallback({
+      id: 'upload-file-1',
+      name: 'review.pdf',
+      size: 6,
+      mime_type: 'application/pdf',
+      extension: 'pdf',
+      created_by: 'form-user',
+      created_at: 0,
+      preview_url: null,
+      source_url: '',
+    })
+  })
+}
 
 describe.each([false, true])('Human input share form with IM gate %s', (enabled) => {
   const originalTitle = document.title
@@ -119,7 +94,7 @@ describe.each([false, true])('Human input share form with IM gate %s', (enabled)
         output_variable_name: 'attachments',
         allowed_file_extensions: ['.pdf'],
         allowed_file_types: [SupportUploadFileTypes.document],
-        allowed_file_upload_methods: [TransferMethod.local_file],
+        allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
         number_limits: 3,
       },
     ],
@@ -141,8 +116,13 @@ describe.each([false, true])('Human input share form with IM gate %s', (enabled)
     mockGetForm.mockResolvedValue(formData)
     mockSubmitForm.mockResolvedValue({})
     mockUploadLocal.mockReset().mockResolvedValue(undefined)
-    mockUploadRemote.mockReset().mockResolvedValue({ id: 'remote-file' })
-    uploadState.onChange = undefined
+    mockUploadRemote.mockReset().mockResolvedValue({
+      id: 'remote-file',
+      name: 'review.pdf',
+      mime_type: 'application/pdf',
+      size: 6,
+      url: 'https://example.com/review.pdf',
+    })
   })
 
   it('moves from loading to the requested form and updates its document title', async () => {
@@ -170,8 +150,16 @@ describe.each([false, true])('Human input share form with IM gate %s', (enabled)
     const user = userEvent.setup()
     render(<FormContent />)
 
-    await user.click(await screen.findByRole('button', { name: 'Upload local attachment' }))
-    await user.click(screen.getByRole('button', { name: 'Upload linked attachment' }))
+    await screen.findByRole('textbox', { name: 'summary' })
+    await uploadLocalAttachment(user)
+    await completeUpload()
+    await user.click(screen.getByRole('button', { name: 'common.fileUploader.pasteFileLink' }))
+    await user.type(
+      screen.getByPlaceholderText('common.fileUploader.pasteFileLinkInputPlaceholder'),
+      'https://example.com/review.pdf',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
+    await screen.findByText('https://example.com/review.pdf')
 
     expect(mockUploadLocal).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
@@ -233,9 +221,10 @@ describe.each([false, true])('Human input share form with IM gate %s', (enabled)
     const user = userEvent.setup()
     render(<FormContent />)
     const summary = await screen.findByRole('textbox', { name: 'summary' })
+    await uploadLocalAttachment(user)
     await user.clear(summary)
     await user.type(summary, 'updated summary')
-    completeUpload()
+    await completeUpload()
     expect(summary).toHaveValue('updated summary')
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
@@ -266,7 +255,8 @@ describe.each([false, true])('Human input share form with IM gate %s', (enabled)
     const user = userEvent.setup()
     render(<FormContent />)
     await screen.findByRole('textbox', { name: 'summary' })
-    completeUpload()
+    await uploadLocalAttachment(user)
+    await completeUpload()
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
     await waitFor(() =>
@@ -285,9 +275,10 @@ describe.each([false, true])('Human input share form with IM gate %s', (enabled)
     const approve = await screen.findByRole('button', { name: 'Approve' })
     expect(approve).toBeDisabled()
 
-    act(() => uploadState.onChange?.([{ ...uploadedFile, progress: 50, uploadedId: undefined }]))
+    const upload = await uploadLocalAttachment(user)
+    act(() => upload.onProgressCallback(50))
     expect(approve).toBeDisabled()
-    completeUpload()
+    await completeUpload()
     expect(approve).toBeEnabled()
     await user.clear(screen.getByRole('textbox', { name: 'summary' }))
     expect(approve).toBeDisabled()

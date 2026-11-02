@@ -426,6 +426,23 @@ class EndpointConfig(BaseSettings):
 
     TRIGGER_URL: str = Field(description="Template url for triggers", default="http://localhost:5001")
 
+    BILLING_API_URL: str = Field(
+        description="Internal billing and SaaS API base URL, including the API version path; Cloud edition only. "
+        "Only services.billing_client may read it",
+        default="",
+    )
+
+    BILLING_API_SECRET_KEY: str = Field(
+        description="Shared secret sent to the billing and SaaS APIs. Only services.billing_client may read it",
+        default="",
+    )
+
+    BILLING_QUOTA_API_URL: str = Field(
+        description="Optional billing API base URL for quota requests; falls back to BILLING_API_URL. "
+        "Only services.billing_client may read it",
+        default="",
+    )
+
     NETWORK_ACCESS_API_URL: str = Field(
         description="Optional internal SaaS API base URL for network access policy requests; "
         "falls back to BILLING_API_URL",
