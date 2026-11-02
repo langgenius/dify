@@ -395,8 +395,6 @@ def test_preserves_paragraph_json_values_and_ignores_extra_input_fields(approval
     ],
 )
 def test_v1_json_paragraph_submission_resumes_the_node(approval: Approval, note: JsonValue, rendered_note: str) -> None:
-    from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
-    from core.workflow.nodes.human_input.callback import DifyHITLCallback
     from core.workflow.nodes.human_input.constants import OUTPUT_FIELD_RENDERED_CONTENT
     from graphon.engine_events import NodeRunSucceededEvent
     from graphon.enums import WorkflowNodeExecutionStatus
@@ -405,6 +403,8 @@ def test_v1_json_paragraph_submission_resumes_the_node(approval: Approval, note:
     from graphon.runtime import RuntimeState, VariablePool
     from graphon.runtime.init_params import InitParams
     from models.human_input_entities import HumanInputNodeData
+    from repositories.human_input.form_repository import HumanInputFormRepositoryImpl
+    from services.workflow.execution.adapters.human_input import DifyHITLCallback
 
     response = approval.submit(inputs={"note": note, "choice": "Yes"})
     assert response.status_code == 200, response.json
@@ -419,7 +419,10 @@ def test_v1_json_paragraph_submission_resumes_the_node(approval: Approval, note:
         user_actions=definition.user_actions,
     )
     repository = HumanInputFormRepositoryImpl(
-        tenant_id=approval.tenant_id, app_id=approval.app_id, workflow_execution_id=approval.run_id
+        tenant_id=approval.tenant_id,
+        app_id=approval.app_id,
+        workflow_execution_id=approval.run_id,
+        sessions=approval.sessions,
     )
     node = HumanInputNode(
         node_id="approval",

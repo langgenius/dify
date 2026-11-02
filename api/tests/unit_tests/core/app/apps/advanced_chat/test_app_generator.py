@@ -28,8 +28,6 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow import node_factory as node_factory_module
-from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
 from graphon.engine import Engine as _pause_resume_Engine
 from graphon.engine.command import InMemoryChannel
@@ -66,11 +64,12 @@ from services.app.generation.adapters import message_cycle as message_cycle_mana
 from services.app.generation.adapters.message_cycle import MessageCycleManager
 from services.app.generation.ports import ConversationSnapshot, MessageSnapshot, WorkflowSnapshot
 from services.errors.conversation import ConversationNotExistsError
+from services.workflow.execution.adapters import node_factory as node_factory_module
 from services.workflow.execution.adapters.chatflow import app_generator as adv_app_gen_module
 from services.workflow.execution.adapters.chatflow.app_generator import AdvancedChatAppGenerator
 from services.workflow.execution.adapters.chatflow.record_preparation import prepare_chat_records
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from services.workflow.execution.ports import WorkflowRuntime
-from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_upload_file
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -2002,7 +2001,9 @@ def _node_successes(events: list[EngineEvent]) -> list[str]:
     return [evt.node_id for evt in events if isinstance(evt, NodeRunSucceededEvent)]
 
 
-def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
+def test_workflow_app_pause_resume_matches_baseline(
+    mocker: MockerFixture, *, workflow_runtime: WorkflowRuntime
+) -> None:
     _patch_tool_node(mocker)
 
     baseline_state = _build_runtime_state("baseline")
@@ -2019,7 +2020,9 @@ def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
 
     resumed_state = RuntimeState.from_snapshot(snapshot)
 
-    generator = wf_app_gen_module.WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+    generator = wf_app_gen_module.WorkflowAppGenerator(
+        runtime=workflow_runtime, execution_driver=workflow_runtime.execution_driver
+    )
 
     def _fake_generate(**kwargs):
         state: RuntimeState = kwargs["graph_runtime_state"]

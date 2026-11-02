@@ -16,7 +16,6 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.ops.entities.trace_entity import (
@@ -30,7 +29,6 @@ from core.ops.exceptions import RetryableTraceDispatchError
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.ops.unified_trace.trace_builder import CanonicalTraceBuilder
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
 from extensions.ext_database import db
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import VariablePool
@@ -57,10 +55,12 @@ from models.workflow import (
 )
 from models.workflow import WorkflowType as _application_trace_handoff_WorkflowType
 from repositories.application_trace_repository import ApplicationTraceRepository
+from services.app.generation.adapters.agent_request_builder import AgentAppRuntimeBuildContext
 from services.tracing import runtime_bridge
 from services.tracing.normalization import remap_outer_trace
 from services.tracing.provider_dispatch import export_trace
 from services.tracing.service import ApplicationTracingService
+from services.workflow.execution.adapters.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
 from tasks import ops_trace_task
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_workflow

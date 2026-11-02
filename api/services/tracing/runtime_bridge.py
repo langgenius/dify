@@ -19,8 +19,8 @@ if TYPE_CHECKING:
     from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
     from core.ops.base_trace_instance import AgentAppTracingContext
     from core.ops.entities.trace_entity import BaseTraceInfo
-    from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
     from services.tracing.service import ApplicationTracingService
+    from services.workflow.execution.adapters.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
 
 logger = logging.getLogger(__name__)
 

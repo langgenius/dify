@@ -6,9 +6,8 @@ import sys
 import time
 import types
 import uuid
-from collections.abc import Generator, Iterator, Mapping
+from collections.abc import Generator, Mapping
 from dataclasses import replace
-from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import cast, override
@@ -16,11 +15,14 @@ from unittest.mock import MagicMock, Mock, create_autospec, patch, sentinel
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, event
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
-from core.app.file_access import FileAccessScope, bind_file_access_scope, grant_retriever_segment_access
+from core.app.file_access import (
+    FileAccessScope,
+    bind_file_access_scope,
+    get_current_file_access_scope,
+    grant_retriever_segment_access,
+)
 from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.helper.ssrf_proxy import graphon_ssrf_proxy
@@ -36,9 +38,7 @@ from core.tools.entities.tool_entities import ToolProviderType as CoreToolProvid
 from core.tools.errors import ToolInvokeError
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.workflow import node_runtime as core_node_runtime
 from core.workflow.file_reference import parse_file_reference
-from core.workflow.node_runtime import DifyRetrieverAttachmentLoader
 from core.workflow.system_variables import build_system_variables
 from enums.human_input import DeliveryMethodType
 from extensions.application_services.workflow import WorkflowExecutionDependencies
@@ -71,9 +71,6 @@ from graphon.nodes.tool.tool_node import ToolNode
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables.segments import ArrayFileSegment, FileSegment
-from models.base import TypeBase
-from models.dataset import SegmentAttachmentBinding
-from models.enums import CreatorUserRole
 from models.human_input_delivery import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -82,8 +79,8 @@ from models.human_input_delivery import (
     _InteractiveSurfaceDeliveryConfig,
 )
 from models.human_input_entities import FileInputConfig, FileListInputConfig, HumanInputNodeData
-from models.model import StorageType, UploadFile
 from models.tools import ToolFile
+from services.knowledge.entities.segments import SegmentAttachmentRecord
 from services.tools.tool_engine import ToolEngine
 from services.tools.tool_manager import ToolManager
 from services.workflow.execution.adapters import node_runtime
@@ -94,6 +91,7 @@ from services.workflow.execution.adapters.node_runtime import (
     DifyPreparedLLM,
     DifyPreparedPollingLLM,
     DifyPromptMessageSerializer,
+    DifyRetrieverAttachmentLoader,
     DifyToolFileManager,
     DifyToolNodeRuntime,
     apply_dify_debug_email_recipient,
@@ -1421,44 +1419,16 @@ class TestToolNodeRuntimeCases:
         assert str(error) == message
 
 
-def _persist_attachment(
-    session: Session,
-    *,
-    segment_id: str,
-    upload_file_id: str,
-    upload_file_tenant_id: str = "tenant-id",
-) -> UploadFile:
-    """Persist an attachment binding for the test tenant and its referenced upload file."""
-
-    upload_file = UploadFile(
-        tenant_id=upload_file_tenant_id,
-        storage_type=StorageType.LOCAL,
-        key="storage-key",
+def _attachment_record(file_id: str = "upload-file-id") -> SegmentAttachmentRecord:
+    return SegmentAttachmentRecord(
+        id=file_id,
         name="diagram.png",
         size=128,
         extension="png",
         mime_type="image/png",
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="user-id",
-        created_at=datetime.now(UTC).replace(tzinfo=None),
-        used=False,
         source_url="https://example.com/diagram.png",
+        storage_key="storage-key",
     )
-    upload_file.id = upload_file_id
-    session.add_all(
-        [
-            upload_file,
-            SegmentAttachmentBinding(
-                tenant_id="tenant-id",
-                dataset_id="dataset-id",
-                document_id="document-id",
-                segment_id=segment_id,
-                attachment_id=upload_file_id,
-            ),
-        ]
-    )
-    session.commit()
-    return upload_file
 
 
 def _build_model_schema(*, features: list[ModelFeature] | None = None) -> AIModelEntity:
@@ -1534,15 +1504,6 @@ def _build_email_method(*, debug_mode: bool = False) -> EmailDeliveryMethod:
 
 
 class TestNodeRuntimeCases:
-    @staticmethod
-    @pytest.fixture
-    def attachment_session(sqlite_engine: Engine) -> Iterator[Session]:
-        """Provide real attachment and upload-file persistence to node runtime tests."""
-
-        TypeBase.metadata.create_all(sqlite_engine, tables=[SegmentAttachmentBinding.__table__, UploadFile.__table__])
-        with Session(sqlite_engine, expire_on_commit=False) as session:
-            yield session
-
     @staticmethod
     def test_resolve_dify_run_context_accepts_mapping_payload() -> None:
         run_context = resolve_dify_run_context(_build_run_context())
@@ -1961,43 +1922,36 @@ class TestNodeRuntimeCases:
         )
 
     @staticmethod
-    def test_dify_retriever_attachment_loader_builds_graph_files(
-        monkeypatch: pytest.MonkeyPatch, attachment_session: Session
-    ) -> None:
-        _persist_attachment(attachment_session, segment_id="segment-id", upload_file_id="upload-file-id")
-        build_from_mapping = MagicMock(return_value=sentinel.file)
-        monkeypatch.setattr(core_node_runtime, "db", SimpleNamespace(engine=attachment_session.get_bind()))
-        loader = DifyRetrieverAttachmentLoader(
-            file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping)
-        )
+    def test_dify_retriever_attachment_loader_builds_graph_files(monkeypatch: pytest.MonkeyPatch) -> None:
+        load_attachments = MagicMock(return_value=[_attachment_record()])
+        monkeypatch.setattr(node_runtime, "sign_upload_file_url", lambda *, upload_file_id: f"signed:{upload_file_id}")
+        loader = DifyRetrieverAttachmentLoader(load_attachments=load_attachments)
 
         files = loader.load(segment_id="segment-id")
 
-        assert files == [sentinel.file]
-        build_from_mapping.assert_called_once()
-        mapping = build_from_mapping.call_args.kwargs["mapping"]
-        assert mapping["id"] == "upload-file-id"
-        assert mapping["transfer_method"] == FileTransferMethod.LOCAL_FILE
-        assert mapping["type"] == FileType.IMAGE
-        assert parse_file_reference(mapping["reference"]).storage_key is None
+        assert len(files) == 1
+        assert files[0].id == "upload-file-id"
+        assert files[0].filename == "diagram.png"
+        assert files[0].extension == ".png"
+        assert files[0].transfer_method == FileTransferMethod.LOCAL_FILE
+        assert files[0].type == FileType.IMAGE
+        assert files[0].remote_url == "signed:upload-file-id"
+        reference = parse_file_reference(files[0].reference)
+        assert reference is not None
+        assert reference.record_id == "upload-file-id"
+        assert reference.storage_key is None
+        load_attachments.assert_called_once_with("segment-id")
 
     @staticmethod
     def test_dify_retriever_attachment_loader_grants_upload_files_for_allowed_segment(
         monkeypatch: pytest.MonkeyPatch,
-        attachment_session: Session,
     ) -> None:
-        from factories.file_factory import builders as file_builders
-
         upload_file_id = str(uuid4())
         segment_id = str(uuid4())
-        _persist_attachment(attachment_session, segment_id=segment_id, upload_file_id=upload_file_id)
-        engine = attachment_session.get_bind()
-        assert engine is not None
-        monkeypatch.setattr(core_node_runtime, "db", SimpleNamespace(engine=engine))
-        session_maker = sessionmaker(engine, expire_on_commit=False)
-        monkeypatch.setattr(file_builders.session_factory, "create_session", session_maker)
-
-        loader = DifyRetrieverAttachmentLoader(file_reference_factory=DifyFileReferenceFactory(_build_run_context()))
+        monkeypatch.setattr(node_runtime, "sign_upload_file_url", lambda *, upload_file_id: upload_file_id)
+        loader = DifyRetrieverAttachmentLoader(
+            load_attachments=lambda _segment_id: [_attachment_record(upload_file_id)]
+        )
         scope = FileAccessScope(
             tenant_id="tenant-id",
             user_id="end-user-id",
@@ -2008,33 +1962,18 @@ class TestNodeRuntimeCases:
         with bind_file_access_scope(scope):
             grant_retriever_segment_access([segment_id])
             files = loader.load(segment_id=segment_id)
+            active_scope = get_current_file_access_scope()
 
-        assert files[0].related_id == upload_file_id
+        assert files[0].id == upload_file_id
         assert files[0].filename == "diagram.png"
+        assert active_scope is not None
+        assert active_scope.granted_upload_file_ids == frozenset({upload_file_id})
 
     @staticmethod
-    def test_dify_retriever_attachment_loader_rejects_granted_upload_file_from_another_tenant(
-        monkeypatch: pytest.MonkeyPatch,
-        attachment_session: Session,
-    ) -> None:
-        from factories.file_factory import builders as file_builders
-
-        upload_file_id = str(uuid4())
+    def test_dify_retriever_attachment_loader_honors_the_scoped_attachment_reader() -> None:
         segment_id = str(uuid4())
-        _persist_attachment(
-            attachment_session,
-            segment_id=segment_id,
-            upload_file_id=upload_file_id,
-            upload_file_tenant_id="other-tenant-id",
-        )
-        engine = attachment_session.get_bind()
-        assert engine is not None
-        monkeypatch.setattr(core_node_runtime, "db", SimpleNamespace(engine=engine))
-        monkeypatch.setattr(
-            file_builders.session_factory, "create_session", sessionmaker(engine, expire_on_commit=False)
-        )
-
-        loader = DifyRetrieverAttachmentLoader(file_reference_factory=DifyFileReferenceFactory(_build_run_context()))
+        load_attachments = MagicMock(return_value=[])
+        loader = DifyRetrieverAttachmentLoader(load_attachments=load_attachments)
         scope = FileAccessScope(
             tenant_id="tenant-id",
             user_id="end-user-id",
@@ -2044,28 +1983,14 @@ class TestNodeRuntimeCases:
 
         with bind_file_access_scope(scope):
             grant_retriever_segment_access([segment_id])
-            with pytest.raises(ValueError, match="Invalid upload file"):
-                loader.load(segment_id=segment_id)
+            assert loader.load(segment_id=segment_id) == []
+
+        load_attachments.assert_called_once_with(segment_id)
 
     @staticmethod
-    def test_dify_retriever_attachment_loader_skips_ungranted_segment_for_end_user(
-        monkeypatch: pytest.MonkeyPatch,
-        attachment_session: Session,
-    ) -> None:
-        build_from_mapping = MagicMock()
-        engine = attachment_session.get_bind()
-        assert engine is not None
-        monkeypatch.setattr(core_node_runtime, "db", SimpleNamespace(engine=engine))
-        statement_count = 0
-
-        def count_statements(*_args, **_kwargs) -> None:
-            nonlocal statement_count
-            statement_count += 1
-
-        event.listen(engine, "before_cursor_execute", count_statements)
-        loader = DifyRetrieverAttachmentLoader(
-            file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping)
-        )
+    def test_dify_retriever_attachment_loader_skips_ungranted_segment_for_end_user() -> None:
+        load_attachments = MagicMock(return_value=[_attachment_record()])
+        loader = DifyRetrieverAttachmentLoader(load_attachments=load_attachments)
         scope = FileAccessScope(
             tenant_id="tenant-id",
             user_id="end-user-id",
@@ -2076,33 +2001,16 @@ class TestNodeRuntimeCases:
         with bind_file_access_scope(scope):
             files = loader.load(segment_id=str(uuid4()))
 
-        try:
-            assert files == []
-            assert statement_count == 0
-            build_from_mapping.assert_not_called()
-        finally:
-            event.remove(engine, "before_cursor_execute", count_statements)
+        assert files == []
+        load_attachments.assert_not_called()
 
     @staticmethod
-    def test_dify_retriever_attachment_loader_skips_segment_rejected_by_checker(
-        monkeypatch: pytest.MonkeyPatch,
-        attachment_session: Session,
-    ) -> None:
+    def test_dify_retriever_attachment_loader_skips_segment_rejected_by_checker() -> None:
         segment_id = str(uuid4())
-        build_from_mapping = MagicMock()
+        load_attachments = MagicMock(return_value=[_attachment_record()])
         segment_access_checker = MagicMock(return_value=False)
-        engine = attachment_session.get_bind()
-        assert engine is not None
-        monkeypatch.setattr(core_node_runtime, "db", SimpleNamespace(engine=engine))
-        statement_count = 0
-
-        def count_statements(*_args, **_kwargs) -> None:
-            nonlocal statement_count
-            statement_count += 1
-
-        event.listen(engine, "before_cursor_execute", count_statements)
         loader = DifyRetrieverAttachmentLoader(
-            file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping),
+            load_attachments=load_attachments,
             segment_access_checker=segment_access_checker,
         )
         scope = FileAccessScope(
@@ -2116,13 +2024,9 @@ class TestNodeRuntimeCases:
             grant_retriever_segment_access([segment_id])
             files = loader.load(segment_id=segment_id)
 
-        try:
-            assert files == []
-            segment_access_checker.assert_called_once_with(segment_id)
-            assert statement_count == 0
-            build_from_mapping.assert_not_called()
-        finally:
-            event.remove(engine, "before_cursor_execute", count_statements)
+        assert files == []
+        segment_access_checker.assert_called_once_with(segment_id)
+        load_attachments.assert_not_called()
 
     @staticmethod
     def test_dify_tool_file_manager_resolves_conversation_id_for_tool_files(monkeypatch: pytest.MonkeyPatch) -> None:

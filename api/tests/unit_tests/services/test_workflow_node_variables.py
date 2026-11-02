@@ -1,10 +1,12 @@
 from collections.abc import Mapping, Sequence
 from typing import Literal
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.file_access import DatabaseFileAccessController
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.nodes.list_operator.entities import FilterOperator
 from graphon.runtime import VariablePool
@@ -12,9 +14,23 @@ from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from graphon.variables import StringSegment, VariableBase
 from models.human_input_entities import HumanInputNodeData
 from models.workflow import WorkflowDraftVariable
+from repositories.workflow.draft_variable_repository import WorkflowDraftVariableRepository
+from services.workflow.draft_variable_service import DraftVarLoader
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
-from services.workflow_draft_variable_service import DraftVarLoader
+from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
 from services.workflow_node_variables import get_human_input_form_variable_mapping, load_additional_node_variables
+
+
+def _make_draft_var_loader(sqlite_engine: Engine) -> DraftVarLoader:
+    sessions = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    return DraftVarLoader(
+        repository=WorkflowDraftVariableRepository(sessions=sessions),
+        app_id="app",
+        tenant_id="tenant",
+        user_id="user",
+        load_file=Mock(),
+        file_inputs=WorkflowVariableFileGateway(sessions, DatabaseFileAccessController()),
+    )
 
 
 @pytest.mark.parametrize("container_type", [None, "iteration", "loop"])
@@ -122,7 +138,7 @@ def test_value_free_list_filters_do_not_require_stale_operands(
             },
         }
     )
-    loader = DraftVarLoader(sqlite_engine, "app", "tenant", "user")
+    loader = _make_draft_var_loader(sqlite_engine)
     selectors_loaded: list[list[list[str]]] = []
     original_load = loader.load_variables
 
@@ -216,7 +232,7 @@ def test_missing_end_input_loads_saved_draft_value(
         )
     )
     sqlite_session.commit()
-    loader = DraftVarLoader(sqlite_engine, "app", "tenant", "user")
+    loader = _make_draft_var_loader(sqlite_engine)
     selectors_loaded: list[list[list[str]]] = []
     original_load = loader.load_variables
 
@@ -256,7 +272,7 @@ def test_unavailable_end_output_remains_unset_after_draft_loading(
         }
     )
     variable_pool = VariablePool()
-    loader = DraftVarLoader(sqlite_engine, "app", "tenant", "user")
+    loader = _make_draft_var_loader(sqlite_engine)
     selectors_loaded: list[list[list[str]]] = []
     original_load = loader.load_variables
 

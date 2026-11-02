@@ -22,7 +22,7 @@ if TYPE_CHECKING:
         DifyRunContext,
         WorkflowAppGenerateEntity,
     )
-    from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
+    from services.workflow.execution.adapters.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
 
 
 class AgentAppTracingContext(Protocol):
