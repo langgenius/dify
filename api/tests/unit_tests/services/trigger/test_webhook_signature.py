@@ -60,3 +60,29 @@ def test_signature_bound_to_body():
     body = b'{"a": 1}'
     headers = {"X-Dify-Signature": _signature("s3cr3t", b'{"a": 2}')}
     assert WebhookService.verify_webhook_signature(_node_config("s3cr3t"), headers, body) is False
+
+
+def test_scheme_case_insensitive():
+    body = b"{}"
+    headers = {"X-Dify-Signature": _signature("s3cr3t", body).replace("sha256=", "SHA256=", 1)}
+    assert WebhookService.verify_webhook_signature(_node_config("s3cr3t"), headers, body) is True
+
+
+def test_hex_case_insensitive():
+    body = b"{}"
+    signature = _signature("s3cr3t", body)
+    headers = {"X-Dify-Signature": "sha256=" + signature.split("=", 1)[1].upper()}
+    assert WebhookService.verify_webhook_signature(_node_config("s3cr3t"), headers, body) is True
+
+
+def test_signature_whitespace_stripped():
+    body = b"{}"
+    headers = {"X-Dify-Signature": "  " + _signature("s3cr3t", body) + "  "}
+    assert WebhookService.verify_webhook_signature(_node_config("s3cr3t"), headers, body) is True
+
+
+def test_wrong_scheme_rejected():
+    body = b"{}"
+    signature = _signature("s3cr3t", body).replace("sha256=", "md5=", 1)
+    headers = {"X-Dify-Signature": signature}
+    assert WebhookService.verify_webhook_signature(_node_config("s3cr3t"), headers, body) is False

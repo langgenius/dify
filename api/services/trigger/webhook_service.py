@@ -225,7 +225,9 @@ class WebhookService:
         Postconditions: returns True when no secret is configured (legacy
         behavior is preserved) or when the signature matches; returns False
         when a configured secret has a missing, malformed, or wrong
-        signature. No side effects; comparison is constant-time.
+        signature. The scheme is matched case-insensitively and the hex
+        digest case-insensitively; surrounding whitespace is ignored.
+        No side effects; comparison is constant-time.
         """
         node_data = WebhookData.model_validate(node_config["data"], from_attributes=True)
         secret = node_data.signature_secret
@@ -234,11 +236,12 @@ class WebhookService:
         provided = next(
             (value for key, value in headers.items() if key.lower() == cls.WEBHOOK_SIGNATURE_HEADER.lower()),
             "",
-        )
-        if not provided.startswith("sha256="):
+        ).strip()
+        scheme, sep, provided_hex = provided.partition("=")
+        if sep != "=" or scheme.lower() != "sha256" or not provided_hex:
             return False
         expected = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
-        return hmac.compare_digest(f"sha256={expected}", provided)
+        return hmac.compare_digest(expected, provided_hex.lower())
 
     @classmethod
     def extract_webhook_data(cls, webhook_trigger: WorkflowWebhookTrigger) -> RawWebhookDataDict:

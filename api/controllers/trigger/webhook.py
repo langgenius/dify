@@ -4,6 +4,7 @@ import time
 from flask import jsonify, request
 from werkzeug.exceptions import RequestEntityTooLarge
 
+from configs import dify_config
 from controllers.common.access_response import webhook_not_found_response
 from controllers.trigger import bp
 from core.trigger.debug.event_bus import TriggerDebugEventBus
@@ -64,16 +65,32 @@ def handle_webhook(webhook_id: str):
     Handle webhook trigger calls.
 
     This endpoint receives webhook calls and processes them according to the
-    configured webhook trigger settings.
+    configured webhook trigger settings. The signature is verified before
+    request data is extracted, so forged calls never persist uploads.
     """
     try:
-        webhook_trigger, workflow, node_config, webhook_data, error = _prepare_webhook_execution(webhook_id)
-        if error:
-            return jsonify({"error": "Bad Request", "message": error}), 400
+        webhook_trigger, workflow, node_config = WebhookService.get_webhook_trigger_and_workflow(webhook_id)
 
-        # Reject unsigned calls only when the owner configured a secret.
-        if not WebhookService.verify_webhook_signature(node_config, request.headers, request.get_data()):
+        # Reject forged calls before extraction persists any upload.
+        content_length = getattr(request, "content_length", None)
+        if content_length and content_length > dify_config.WEBHOOK_REQUEST_BODY_MAX_SIZE:
+            raise RequestEntityTooLarge(
+                f"Webhook request too large: {content_length} bytes exceeds maximum allowed size "
+                f"of {dify_config.WEBHOOK_REQUEST_BODY_MAX_SIZE} bytes"
+            )
+        raw_body = request.get_data()
+        if len(raw_body) > dify_config.WEBHOOK_REQUEST_BODY_MAX_SIZE:
+            raise RequestEntityTooLarge(
+                f"Webhook request too large: {len(raw_body)} bytes exceeds maximum allowed size "
+                f"of {dify_config.WEBHOOK_REQUEST_BODY_MAX_SIZE} bytes"
+            )
+        if not WebhookService.verify_webhook_signature(node_config, request.headers, raw_body):
             return jsonify({"error": "Unauthorized", "message": "Invalid webhook signature."}), 401
+
+        try:
+            webhook_data = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
+        except ValueError as e:
+            return jsonify({"error": "Bad Request", "message": str(e)}), 400
 
         # Process webhook call (send to Celery)
         WebhookService.trigger_workflow_execution(

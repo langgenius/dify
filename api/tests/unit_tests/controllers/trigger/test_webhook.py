@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 from dataclasses import dataclass
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -338,3 +339,30 @@ class TestHandleWebhookSignature:
         assert status == 401
         assert response["error"] == "Unauthorized"
         mock_trigger.assert_not_called()
+
+    @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow")
+    @patch.object(module.WebhookService, "extract_and_validate_webhook_data")
+    @patch.object(module.WebhookService, "trigger_workflow_execution")
+    def test_invalid_signature_skips_extraction(self, mock_trigger, mock_extract, mock_get, monkeypatch):
+        body = b'{"hello": "world"}'
+        mock_get.return_value = (_webhook_trigger(), _workflow(), _node_config("s3cr3t"))
+        monkeypatch.setattr(module, "request", _SigningRequestStub(body, "sha256=deadbeef"))
+
+        response, status = module.handle_webhook("wh-1")
+
+        assert status == 401
+        mock_extract.assert_not_called()
+        mock_trigger.assert_not_called()
+
+    @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow")
+    @patch.object(module.WebhookService, "extract_and_validate_webhook_data")
+    def test_oversized_body_rejected_before_verification(self, mock_extract, mock_get, monkeypatch):
+        body = b"12345"
+        mock_get.return_value = (_webhook_trigger(), _workflow(), _node_config("s3cr3t"))
+        monkeypatch.setattr(module, "request", _SigningRequestStub(body, "sha256=deadbeef"))
+        monkeypatch.setattr(module, "dify_config", SimpleNamespace(WEBHOOK_REQUEST_BODY_MAX_SIZE=4))
+
+        with pytest.raises(RequestEntityTooLarge):
+            module.handle_webhook("wh-1")
+
+        mock_extract.assert_not_called()
