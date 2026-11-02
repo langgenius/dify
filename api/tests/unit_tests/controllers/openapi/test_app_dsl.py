@@ -141,7 +141,7 @@ def test_permission_denial_maps_to_forbidden(
         raise NoPermissionError("denied")
 
     monkeypatch.setattr(app_query_services.apps.imports, "import_app", denied)
-    monkeypatch.setattr(app_query_services.apps.imports, "confirm_import", denied)
+    monkeypatch.setattr(app_query_services.apps.console, "confirm_import", denied)
     context = RequestContext("request-1", None, "account-1", "workspace-1")
 
     with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
@@ -471,7 +471,7 @@ def test_a_draft_changed_during_the_save_answers_draft_changed(
 
     monkeypatch.setattr(app_query_services.apps.dsl_imports, "prepare", lambda *_args, **_kwargs: "prepared yaml")
     monkeypatch.setattr(app_query_services.apps.imports, "import_app", changed)
-    monkeypatch.setattr(app_query_services.apps.imports, "confirm_import", changed)
+    monkeypatch.setattr(app_query_services.apps.console, "confirm_import", changed)
 
     with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
         with pytest.raises(DraftChanged) as exc_info:
@@ -1267,7 +1267,8 @@ def test_confirming_a_pending_package_import_keeps_its_links(
     sqlite_session: Session,
     sqlite_engine: Engine,
 ) -> None:
-    """A package whose DSL version needs confirmation answers 202; the confirm keeps roster and skill links."""
+    """A package whose DSL version needs confirmation answers 202; the confirm keeps roster and skill links
+    and gives the new App its default access mode, as a direct import does."""
     storage = _package_storage(monkeypatch, sqlite_engine)
     source = _source(sqlite_session, storage)
     _add_roster_node(sqlite_session, source)
@@ -1283,6 +1284,12 @@ def test_confirming_a_pending_package_import_keeps_its_links(
     )
     monkeypatch.setattr("services.app_dsl_service.redis_client.get", pending.get)
     monkeypatch.setattr("services.app_dsl_service.redis_client.delete", pending.pop)
+    access_modes: list[tuple[str, str]] = []
+    monkeypatch.setattr("services.app.console_gateway.SystemFeatureService.is_webapp_auth_enabled", lambda: True)
+    monkeypatch.setattr(
+        "services.app.console_gateway.EnterpriseService.WebAppAuth.update_app_access_mode",
+        lambda app_id, mode: access_modes.append((app_id, mode)),
+    )
 
     response, status = _import_package(
         app,
@@ -1311,6 +1318,7 @@ def test_confirming_a_pending_package_import_keeps_its_links(
         select(AgentSkillBinding.skill_id).where(AgentSkillBinding.agent_id == rows["node-1"].agent_id)
     ).all()
     assert skill_links == ["source-workspace-skill"]
+    assert access_modes == [(confirmed.app_id, "private")]
     assert not pending
 
 
