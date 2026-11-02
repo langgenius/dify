@@ -9,14 +9,15 @@ from opentelemetry.sdk.trace import ReadableSpan, SpanProcessor
 from opentelemetry.trace import StatusCode, get_current_span
 
 from core.app.workflow.layers.observability import ObservabilityLayer
-from core.workflow.workflow_entry import WorkflowEntry
 from extensions.otel.semconv import DifySpanAttributes
 from graphon.engine_events import GraphRunAbortedEvent, GraphRunSucceededEvent
 from graphon.graph import Graph
 from graphon.nodes.start import StartNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import RuntimeState, VariablePool
+from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from tests.helpers.unit.config_override import apply_config_overrides
+from tests.unit_tests.workflow_execution import NO_HUMAN_INPUT_FORMS
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -113,7 +114,10 @@ class TestObservabilityCases:
     @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_true", "tracer_provider_with_memory_exporter")
     def test_instrument_flag_enables_workflow_node_spans(memory_span_exporter, config_overrides, monkeypatch):
         config_overrides(ENABLE_OTEL=False, GRAPH_ENGINE_MAX_WORKERS=1)
-        monkeypatch.setattr("core.workflow.workflow_entry.is_instrument_flag_enabled", lambda: True)
+        monkeypatch.setattr(
+            "services.workflow.execution.adapters.workflow_entry.is_instrument_flag_enabled",
+            lambda: True,
+        )
         state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
         node = StartNode(
             node_id="start",
@@ -126,6 +130,7 @@ class TestObservabilityCases:
             graph=Graph.new().add_root(node).build(),
             call_depth=0,
             graph_runtime_state=state,
+            human_form_reader=NO_HUMAN_INPUT_FORMS,
         )
 
         events = list(entry.run())

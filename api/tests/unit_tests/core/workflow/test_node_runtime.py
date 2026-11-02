@@ -7,11 +7,12 @@ import time
 import types
 import uuid
 from collections.abc import Generator, Iterator, Mapping
+from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import override
-from unittest.mock import MagicMock, Mock, patch, sentinel
+from typing import cast, override
+from unittest.mock import MagicMock, Mock, create_autospec, patch, sentinel
 from uuid import uuid4
 
 import pytest
@@ -33,28 +34,14 @@ from core.plugin.plugin_service import PluginService
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.entities.tool_entities import ToolProviderType as CoreToolProviderType
 from core.tools.errors import ToolInvokeError
-from core.tools.tool_engine import ToolEngine
-from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.workflow import node_runtime
+from core.workflow import node_runtime as core_node_runtime
 from core.workflow.file_reference import parse_file_reference
-from core.workflow.node_factory import DifyNodeFactory
-from core.workflow.node_runtime import (
-    DifyFileReferenceFactory,
-    DifyHumanInputNodeRuntime,
-    DifyPreparedLLM,
-    DifyPreparedPollingLLM,
-    DifyPromptMessageSerializer,
-    DifyRetrieverAttachmentLoader,
-    DifyToolFileManager,
-    DifyToolNodeRuntime,
-    apply_dify_debug_email_recipient,
-    build_dify_llm_file_saver,
-    resolve_dify_run_context,
-)
+from core.workflow.node_runtime import DifyRetrieverAttachmentLoader
 from core.workflow.system_variables import build_system_variables
 from enums.human_input import DeliveryMethodType
+from extensions.application_services.workflow import WorkflowExecutionDependencies
 from extensions.ext_database import db
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
@@ -87,12 +74,33 @@ from graphon.variables.segments import ArrayFileSegment, FileSegment
 from models.base import TypeBase
 from models.dataset import SegmentAttachmentBinding
 from models.enums import CreatorUserRole
-from models.human_input_delivery import EmailDeliveryConfig, EmailDeliveryMethod, EmailRecipients
-from models.human_input_delivery import InteractiveSurfaceDeliveryMethod as WebAppDeliveryMethod
-from models.human_input_delivery import _InteractiveSurfaceDeliveryConfig as _WebAppDeliveryConfig
+from models.human_input_delivery import (
+    EmailDeliveryConfig,
+    EmailDeliveryMethod,
+    EmailRecipients,
+    InteractiveSurfaceDeliveryMethod,
+    _InteractiveSurfaceDeliveryConfig,
+)
 from models.human_input_entities import FileInputConfig, FileListInputConfig, HumanInputNodeData
 from models.model import StorageType, UploadFile
 from models.tools import ToolFile
+from services.tools.tool_engine import ToolEngine
+from services.tools.tool_manager import ToolManager
+from services.workflow.execution.adapters import node_runtime
+from services.workflow.execution.adapters.node_factory import DifyNodeFactory
+from services.workflow.execution.adapters.node_runtime import (
+    DifyFileReferenceFactory,
+    DifyHumanInputNodeRuntime,
+    DifyPreparedLLM,
+    DifyPreparedPollingLLM,
+    DifyPromptMessageSerializer,
+    DifyToolFileManager,
+    DifyToolNodeRuntime,
+    apply_dify_debug_email_recipient,
+    build_dify_llm_file_saver,
+    resolve_dify_run_context,
+)
+from services.workflow.execution.ports import WorkflowToolInvoker
 from tests.helpers.unit.core.model_fixtures import make_model_config, make_model_instance
 from tests.helpers.unit.core.workflow.nodes.parameter_extractor.fixtures.model import get_mocked_fetch_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context, build_test_variable_pool
@@ -890,7 +898,7 @@ class TestParameterExtractorExecutionBehaviorCases:
 """Unit coverage for tool-node invocation with the tool boundary patched."""
 
 
-def init_tool_node(config: dict[str, object]) -> ToolNode:
+def init_tool_node(config: dict[str, object], workflow_runtime: WorkflowExecutionDependencies) -> ToolNode:
     graph_config = {
         "edges": [
             {
@@ -929,6 +937,7 @@ def init_tool_node(config: dict[str, object]) -> ToolNode:
     node_factory = DifyNodeFactory(
         init_params=init_params,
         runtime_state=graph_runtime_state,
+        workflow_runtime=workflow_runtime,
     )
 
     Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
@@ -941,7 +950,7 @@ def init_tool_node(config: dict[str, object]) -> ToolNode:
         init_params=init_params,
         runtime_state=graph_runtime_state,
         tool_file_manager=tool_file_manager,
-        runtime=DifyToolNodeRuntime(init_params.run_context),
+        runtime=DifyToolNodeRuntime(init_params.run_context, workflow_runtime=workflow_runtime),
     )
     node.bind_execution_id(str(uuid.uuid4()))
     return node
@@ -949,7 +958,7 @@ def init_tool_node(config: dict[str, object]) -> ToolNode:
 
 class TestToolNodeInvocationBehaviorCases:
     @staticmethod
-    def test_tool_variable_invoke() -> None:
+    def test_tool_variable_invoke(workflow_runtime: WorkflowExecutionDependencies) -> None:
         node = init_tool_node(
             config={
                 "id": "1",
@@ -965,7 +974,8 @@ class TestToolNodeInvocationBehaviorCases:
                     "tool_configurations": {},
                     "tool_parameters": {},
                 },
-            }
+            },
+            workflow_runtime=workflow_runtime,
         )
 
         with patch.object(
@@ -979,12 +989,14 @@ class TestToolNodeInvocationBehaviorCases:
             result = node._run()
             for item in result:
                 if isinstance(item, StreamCompletedEvent):
-                    assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                    assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED, (
+                        item.node_run_result.error
+                    )
                     assert item.node_run_result.outputs is not None
                     assert item.node_run_result.outputs.get("text") is not None
 
     @staticmethod
-    def test_tool_mixed_invoke() -> None:
+    def test_tool_mixed_invoke(workflow_runtime: WorkflowExecutionDependencies) -> None:
         node = init_tool_node(
             config={
                 "id": "1",
@@ -1002,7 +1014,8 @@ class TestToolNodeInvocationBehaviorCases:
                     },
                     "tool_parameters": {},
                 },
-            }
+            },
+            workflow_runtime=workflow_runtime,
         )
 
         with patch.object(
@@ -1038,7 +1051,9 @@ def _build_tool_node_data() -> ToolNodeData:
 class TestToolNodeRuntimeCases:
     @staticmethod
     @pytest.fixture
-    def runtime(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> DifyToolNodeRuntime:
+    def runtime(
+        monkeypatch: pytest.MonkeyPatch, workflow_runtime: WorkflowExecutionDependencies
+    ) -> DifyToolNodeRuntime:
         module_name = "core.ops.ops_trace_manager"
         if module_name not in sys.modules:
             ops_stub = types.ModuleType(module_name)
@@ -1056,8 +1071,7 @@ class TestToolNodeRuntimeCases:
             invoke_from="debugger",
             call_depth=0,
         )
-        session_maker = sessionmaker(sqlite_engine, expire_on_commit=False)
-        return DifyToolNodeRuntime(init_params.run_context, session_maker=session_maker)
+        return DifyToolNodeRuntime(init_params.run_context, workflow_runtime=workflow_runtime)
 
     @staticmethod
     def test_invoke_creates_callback_and_converts_messages(runtime: DifyToolNodeRuntime) -> None:
@@ -1070,10 +1084,14 @@ class TestToolNodeRuntimeCases:
             variables=build_system_variables(conversation_id="conversation-id")
         )
         workflow_tool = MagicMock()
+        tool_invoker = create_autospec(WorkflowToolInvoker, instance=True, spec_set=True)
+        tool_invoker.return_value = (message for message in [core_message])
+        assert runtime._workflow_runtime is not None
+        dependencies = cast(WorkflowExecutionDependencies, runtime._workflow_runtime)
+        runtime._workflow_runtime = replace(dependencies, tool_invoker=tool_invoker)
 
         with (
             patch.object(ToolManager, "get_workflow_tool_runtime", return_value=workflow_tool),
-            patch.object(ToolEngine, "generic_invoke", return_value=iter([core_message])) as generic_invoke_mock,
             patch.object(
                 ToolFileMessageTransformer,
                 "transform_tool_invoke_messages",
@@ -1101,10 +1119,10 @@ class TestToolNodeRuntimeCases:
         assert isinstance(graph_message.message, ToolRuntimeMessage.TextMessage)
         assert graph_message.message.text == "https://dify.ai"
 
-        callback = generic_invoke_mock.call_args.kwargs["workflow_tool_callback"]
+        callback = tool_invoker.call_args.kwargs["workflow_tool_callback"]
         assert isinstance(callback, DifyWorkflowCallbackHandler)
-        assert generic_invoke_mock.call_args.kwargs["session"] is not None
-        assert generic_invoke_mock.call_args.kwargs["conversation_id"] == "conversation-id"
+        assert "session" not in tool_invoker.call_args.kwargs
+        assert tool_invoker.call_args.kwargs["conversation_id"] == "conversation-id"
 
         transform_kwargs = transform_tool_messages.call_args.kwargs
         assert transform_kwargs["conversation_id"] == "conversation-id"
@@ -1330,30 +1348,51 @@ class TestToolNodeRuntimeCases:
             name="search",
             declaration=SimpleNamespace(icon={"plugin": "icon"}),
         )
-        builtin_tool = SimpleNamespace(
-            name="langgenius/tools/search",
-            icon={"builtin": "icon"},
-            icon_dark={"builtin": "dark"},
+        from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
+        from core.tools.plugin_tool.provider import PluginToolProviderController
+
+        builtin_tool = PluginToolProviderController(
+            entity=ToolProviderEntityWithPlugin.model_validate(
+                {
+                    "identity": {
+                        "name": "langgenius/tools/search",
+                        "author": "author",
+                        "description": {"en_US": "Search"},
+                        "label": {"en_US": "Search"},
+                        "icon": "light.svg",
+                        "icon_dark": "dark.svg",
+                    },
+                }
+            ),
+            plugin_id="langgenius/tools",
+            plugin_unique_identifier="langgenius/tools:1",
+            tenant_id="tenant-id",
         )
 
         with (
-            patch("core.workflow.node_runtime.PluginInstaller") as installer_cls,
+            patch("services.workflow.execution.adapters.node_runtime.PluginInstaller") as installer_cls,
             patch(
-                "core.workflow.node_runtime.BuiltinToolManageService.list_builtin_tools", return_value=[builtin_tool]
+                "services.workflow.execution.adapters.node_runtime.ToolManager.list_builtin_providers",
+                return_value=[builtin_tool],
             ),
         ):
             installer_cls.return_value.list_plugins.return_value = [plugin]
 
             icon, icon_dark = runtime.resolve_provider_icons(provider_name="langgenius/tools/search")
 
-        assert icon == {"builtin": "icon"}
-        assert icon_dark == {"builtin": "dark"}
+        assert isinstance(icon, str)
+        assert "light.svg" in icon
+        assert isinstance(icon_dark, str)
+        assert "dark.svg" in icon_dark
 
     @staticmethod
     def test_resolve_provider_icons_returns_default_when_provider_is_unknown(runtime: DifyToolNodeRuntime) -> None:
         with (
-            patch("core.workflow.node_runtime.PluginInstaller") as installer_cls,
-            patch("core.workflow.node_runtime.BuiltinToolManageService.list_builtin_tools", return_value=[]),
+            patch("services.workflow.execution.adapters.node_runtime.PluginInstaller") as installer_cls,
+            patch(
+                "services.workflow.execution.adapters.node_runtime.ToolManager.list_builtin_providers",
+                return_value=[],
+            ),
         ):
             installer_cls.return_value.list_plugins.return_value = []
 
@@ -1533,7 +1572,7 @@ class TestNodeRuntimeCases:
         [
             (False, _build_email_method(debug_mode=True)),
             (True, _build_email_method(debug_mode=False)),
-            (True, WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())),
+            (True, InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig())),
         ],
     )
     def test_apply_dify_debug_email_recipient_noops_when_override_is_not_needed(
@@ -1927,7 +1966,7 @@ class TestNodeRuntimeCases:
     ) -> None:
         _persist_attachment(attachment_session, segment_id="segment-id", upload_file_id="upload-file-id")
         build_from_mapping = MagicMock(return_value=sentinel.file)
-        monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=attachment_session.get_bind()))
+        monkeypatch.setattr(core_node_runtime, "db", SimpleNamespace(engine=attachment_session.get_bind()))
         loader = DifyRetrieverAttachmentLoader(
             file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping)
         )
@@ -1954,7 +1993,7 @@ class TestNodeRuntimeCases:
         _persist_attachment(attachment_session, segment_id=segment_id, upload_file_id=upload_file_id)
         engine = attachment_session.get_bind()
         assert engine is not None
-        monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
+        monkeypatch.setattr(core_node_runtime, "db", SimpleNamespace(engine=engine))
         session_maker = sessionmaker(engine, expire_on_commit=False)
         monkeypatch.setattr(file_builders.session_factory, "create_session", session_maker)
 
@@ -1990,7 +2029,7 @@ class TestNodeRuntimeCases:
         )
         engine = attachment_session.get_bind()
         assert engine is not None
-        monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
+        monkeypatch.setattr(core_node_runtime, "db", SimpleNamespace(engine=engine))
         monkeypatch.setattr(
             file_builders.session_factory, "create_session", sessionmaker(engine, expire_on_commit=False)
         )
@@ -2016,7 +2055,7 @@ class TestNodeRuntimeCases:
         build_from_mapping = MagicMock()
         engine = attachment_session.get_bind()
         assert engine is not None
-        monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
+        monkeypatch.setattr(core_node_runtime, "db", SimpleNamespace(engine=engine))
         statement_count = 0
 
         def count_statements(*_args, **_kwargs) -> None:
@@ -2054,7 +2093,7 @@ class TestNodeRuntimeCases:
         segment_access_checker = MagicMock(return_value=False)
         engine = attachment_session.get_bind()
         assert engine is not None
-        monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
+        monkeypatch.setattr(core_node_runtime, "db", SimpleNamespace(engine=engine))
         statement_count = 0
 
         def count_statements(*_args, **_kwargs) -> None:
@@ -2146,6 +2185,7 @@ class TestNodeRuntimeCases:
     @staticmethod
     def test_dify_tool_node_runtime_injects_outer_workflow_run_id_for_workflow_tools(
         monkeypatch: pytest.MonkeyPatch,
+        workflow_runtime,
     ) -> None:
         runtime_tool = SimpleNamespace(runtime=SimpleNamespace(runtime_parameters={}))
         get_runtime = MagicMock(return_value=runtime_tool)
@@ -2158,7 +2198,7 @@ class TestNodeRuntimeCases:
             ),
         )
 
-        runtime = node_runtime.DifyToolNodeRuntime(_build_run_context())
+        runtime = node_runtime.DifyToolNodeRuntime(_build_run_context(), workflow_runtime=workflow_runtime)
         node_data = ToolNodeData(
             title="Workflow Tool Node",
             desc=None,
@@ -2189,6 +2229,7 @@ class TestNodeRuntimeCases:
     @staticmethod
     def test_dify_tool_node_runtime_stores_trace_session_id_for_workflow_tools(
         monkeypatch: pytest.MonkeyPatch,
+        workflow_runtime,
     ) -> None:
         runtime_tool = SimpleNamespace(runtime=SimpleNamespace(runtime_parameters={}))
         get_runtime = MagicMock(return_value=runtime_tool)
@@ -2203,7 +2244,7 @@ class TestNodeRuntimeCases:
 
         run_context = _build_run_context()
         run_context[DIFY_RUN_CONTEXT_KEY].trace_session_id = "session-1"
-        runtime = node_runtime.DifyToolNodeRuntime(run_context)
+        runtime = node_runtime.DifyToolNodeRuntime(run_context, workflow_runtime=workflow_runtime)
         node_data = ToolNodeData(
             title="Workflow Tool Node",
             desc=None,
@@ -2229,13 +2270,14 @@ class TestNodeRuntimeCases:
     @staticmethod
     def test_dify_tool_node_runtime_does_not_inject_outer_workflow_run_id_for_non_workflow_tools(
         monkeypatch: pytest.MonkeyPatch,
+        workflow_runtime,
     ) -> None:
         runtime_tool = SimpleNamespace(runtime=SimpleNamespace(runtime_parameters={}))
         get_runtime = MagicMock(return_value=runtime_tool)
         monkeypatch.setattr(node_runtime.ToolManager, "get_workflow_tool_runtime", get_runtime)
         monkeypatch.setattr(node_runtime, "get_system_text", lambda _pool, _key: None)
 
-        runtime = node_runtime.DifyToolNodeRuntime(_build_run_context())
+        runtime = node_runtime.DifyToolNodeRuntime(_build_run_context(), workflow_runtime=workflow_runtime)
         node_data = ToolNodeData(
             title="Builtin Tool Node",
             desc=None,
@@ -2255,8 +2297,6 @@ class TestNodeRuntimeCases:
         )
 
         assert handle.raw.tool is runtime_tool
-        assert runtime_tool.runtime.dify_run_context.tenant_id == "tenant-id"
-        assert runtime_tool.runtime.dify_run_context.app_id == "app-id"
         assert "outer_workflow_run_id" not in runtime_tool.runtime.runtime_parameters
         get_runtime.assert_called_once()
 
@@ -2295,7 +2335,7 @@ class TestNodeRuntimeCases:
             return {"amount": Decimal("1.25")}, [{"id": "file-id", "name": "input.txt"}]
 
         monkeypatch.setattr(tool, "prepare_container_inputs", prepare_container_inputs)
-        runtime = DifyToolNodeRuntime(_build_run_context())
+        runtime = core_node_runtime.DifyToolNodeRuntime(_build_run_context())
 
         payload = runtime.build_workflow_tool_container_payload(
             tool_runtime=ToolRuntimeHandle(raw=tool),
@@ -2318,7 +2358,7 @@ class TestNodeRuntimeCases:
 
     @staticmethod
     def test_dify_tool_node_runtime_rejects_non_workflow_tool_container_payload() -> None:
-        runtime = DifyToolNodeRuntime(_build_run_context())
+        runtime = core_node_runtime.DifyToolNodeRuntime(_build_run_context())
         with pytest.raises(ToolRuntimeResolutionError, match="resolved tool is not a Workflow Tool"):
             runtime.build_workflow_tool_container_payload(
                 tool_runtime=ToolRuntimeHandle(raw=object()),
@@ -2328,24 +2368,30 @@ class TestNodeRuntimeCases:
             )
 
     @staticmethod
-    def test_dify_human_input_runtime_builds_debug_repository(monkeypatch: pytest.MonkeyPatch) -> None:
-        repository = MagicMock()
-        repository_cls = MagicMock(return_value=repository)
-        monkeypatch.setattr(node_runtime, "HumanInputFormRepositoryImpl", repository_cls)
+    def test_dify_human_input_runtime_builds_debug_repository() -> None:
+        calls = []
+        repository = object()
+
+        def forms(**kwargs):
+            calls.append(kwargs)
+            return repository
 
         runtime = DifyHumanInputNodeRuntime(
             _build_run_context(),
+            forms=forms,
             workflow_execution_id_getter=lambda: "workflow-execution-id",
         )
 
         assert runtime.build_form_repository() is repository
-        repository_cls.assert_called_once_with(
-            tenant_id="tenant-id",
-            app_id="app-id",
-            workflow_execution_id="workflow-execution-id",
-            invoke_source="debugger",
-            submission_actor_id="user-id",
-        )
+        assert calls == [
+            {
+                "tenant_id": "tenant-id",
+                "app_id": "app-id",
+                "workflow_execution_id": "workflow-execution-id",
+                "invoke_source": "debugger",
+                "submission_actor_id": "user-id",
+            }
+        ]
 
     @staticmethod
     def test_dify_tool_runtime_spec_prefers_tool_parameters_for_runtime_form_values() -> None:
@@ -2389,14 +2435,14 @@ class TestNodeRuntimeCases:
         node_data = HumanInputNodeData(
             title="Human Input",
             delivery_methods=[
-                WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig()),
+                InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig()),
                 _build_email_method(debug_mode=True),
             ],
         )
         runtime = DifyHumanInputNodeRuntime(
             _build_run_context(),
             workflow_execution_id_getter=lambda: "workflow-execution-id",
-            form_repository=repository,
+            forms=lambda **_kwargs: repository,
         )
 
         result = runtime.create_form(
@@ -2427,13 +2473,15 @@ class TestNodeRuntimeCases:
         repository.create_form.return_value = sentinel.form
         node_data = HumanInputNodeData(
             title="Human Input",
-            delivery_methods=[WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())],
+            delivery_methods=[
+                InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig())
+            ],
         )
         runtime = DifyHumanInputNodeRuntime(
             _build_run_context(),
             workflow_execution_id_getter=lambda: "workflow-execution-id",
             conversation_id_getter=lambda: "conversation-id",
-            form_repository=repository,
+            forms=lambda **_kwargs: repository,
         )
 
         runtime.create_form(
@@ -2454,13 +2502,13 @@ class TestNodeRuntimeCases:
         node_data = HumanInputNodeData(
             title="Human Input",
             delivery_methods=[
-                WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig()),
+                InteractiveSurfaceDeliveryMethod(enabled=True, config=_InteractiveSurfaceDeliveryConfig()),
                 _build_email_method(debug_mode=True),
             ],
         )
         runtime = DifyHumanInputNodeRuntime(
             _build_run_context(invoke_from=InvokeFrom.WEB_APP),
-            form_repository=repository,
+            forms=lambda **_kwargs: repository,
         )
 
         runtime.create_form(
@@ -2479,8 +2527,8 @@ class TestNodeRuntimeCases:
         assert params.delivery_methods[1].config.recipients.include_bound_group is True
 
     @staticmethod
-    def test_dify_human_input_runtime_restore_submitted_data_rehydrates_files() -> None:
-        runtime = DifyHumanInputNodeRuntime(_build_run_context())
+    def test_dify_human_input_runtime_restore_submitted_data_rehydrates_files(workflow_runtime) -> None:
+        runtime = DifyHumanInputNodeRuntime(_build_run_context(), forms=workflow_runtime.human_forms)
         file_value = File(
             file_id="file-1",
             file_type=FileType.DOCUMENT,
