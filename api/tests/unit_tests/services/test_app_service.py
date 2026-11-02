@@ -5,6 +5,7 @@ from collections.abc import Callable
 from copy import deepcopy
 from datetime import datetime
 from types import SimpleNamespace
+from typing import NoReturn
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -1049,6 +1050,28 @@ class TestAgentAppType:
         enqueue_collection.assert_not_called()
 
 
+class _TenantDefaultModelManager:
+    """Tenant model manager the fallback branch needs, built without a mock.
+
+    Contract: `get_default_model_instance` always raises `ProviderTokenNotInitError`
+    and `get_default_provider_model_name` returns the tenant-scoped provider/model pair.
+    Those are the only two calls `AppService` makes on a tenant manager while it reads
+    `default_app_templates`, so the fallback path is exercised against real code.
+    """
+
+    def __init__(self, provider: str, model: str) -> None:
+        self._provider = provider
+        self._model = model
+
+    def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> NoReturn:
+        raise ProviderTokenNotInitError(f"no default {model_type} model instance for tenant {tenant_id}")
+
+    def get_default_provider_model_name(self, *, tenant_id: str, model_type: ModelType) -> tuple[str, str]:
+        if not tenant_id or model_type is not ModelType.LLM:
+            raise AssertionError(f"unexpected default model lookup: {tenant_id!r} ({model_type})")
+        return self._provider, self._model
+
+
 class TestSharedAppTemplateIsolation:
     """`default_app_templates` is imported once per process, so app creation must read it without writing to it.
 
@@ -1058,14 +1081,8 @@ class TestSharedAppTemplateIsolation:
     """
 
     @staticmethod
-    def _tenant_default_model_manager() -> MagicMock:
-        model_manager = MagicMock()
-        model_manager.get_default_model_instance.side_effect = ProviderTokenNotInitError("No default model")
-        model_manager.get_default_provider_model_name.return_value = (
-            "langgenius/anthropic/anthropic",
-            "claude-3-5-sonnet",
-        )
-        return model_manager
+    def _tenant_default_model_manager() -> _TenantDefaultModelManager:
+        return _TenantDefaultModelManager("langgenius/anthropic/anthropic", "claude-3-5-sonnet")
 
     @staticmethod
     def _use_clean_template_model(monkeypatch: pytest.MonkeyPatch, mode: AppMode) -> dict[str, object]:
