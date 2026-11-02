@@ -40,13 +40,14 @@ class ApiBasedToolSchemaParser:
         # set description to extra_info
         extra_info["description"] = openapi["info"].get("description", "")
 
-        if len(openapi["servers"]) == 0:
+        servers = openapi.get("servers", [])
+        if len(servers) == 0:
             raise ToolProviderNotFoundError("No server found in the openapi yaml.")
 
-        server_url = openapi["servers"][0]["url"]
+        server_url = servers[0]["url"]
         request_env = request.headers.get("X-Request-Env") if has_request_context() else None
         if request_env:
-            matched_servers = [server["url"] for server in openapi["servers"] if server.get("env") == request_env]
+            matched_servers = [server["url"] for server in servers if server.get("env") == request_env]
             server_url = matched_servers[0] if matched_servers else server_url
 
         # list all interfaces
