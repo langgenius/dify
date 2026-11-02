@@ -6,7 +6,7 @@ requires-python = "~=3.13.0"
 dependencies = [
     # Legacy: mature and widely deployed
     "bleach>=6.4.0,<7.0.0",
-    "boto3>=1.43.107,<2.0.0",
+    "boto3>=1.43.122,<2.0.0",
     "celery>=5.6.3,<6.0.0",
     "croniter>=6.2.2,<7.0.0",
     "dify-agent",
@@ -25,7 +25,7 @@ dependencies = [
     "sseclient-py>=1.8.0,<2.0.0",
     # Stable: production-proven, cap below the next major
     "aliyun-log-python-sdk==0.9.44",
-    "azure-identity>=1.26.0,<2.0.0",
+    "azure-identity>=1.27.0,<2.0.0",
     "email-validator>=2.3.0,<3.0.0",
     "flask-compress>=1.25,<2.0.0",
     "flask-login==0.6.3",
@@ -206,7 +206,7 @@ dev = [
 # Required for key management / credential encryption key providers
 ############################################################
 kms = [
-    "azure-keyvault-keys>=4.11.2,<5.0.0",
+    "azure-keyvault-keys>=4.11.3,<5.0.0",
 ]
 
 ############################################################
@@ -214,14 +214,14 @@ kms = [
 # Required for storage clients
 ############################################################
 storage = [
-    "azure-storage-blob>=12.31.0,<13.0.0",
+    "azure-storage-blob>=12.31.1,<13.0.0",
     "bce-python-sdk==0.9.79",
     "cos-python-sdk-v5>=1.9.44,<2.0.0",
     "esdk-obs-python>=3.26.6,<4.0.0",
-    "google-cloud-storage>=3.16.0,<4.0.0",
+    "google-cloud-storage>=3.17.1,<4.0.0",
     "opendal==0.46.0",
     "oss2>=2.19.1,<3.0.0",
-    "supabase>=2.31.0,<3.0.0",
+    "supabase>=2.33.0,<3.0.0",
     "tos>=2.9.3,<3.0.0",
 ]
 
