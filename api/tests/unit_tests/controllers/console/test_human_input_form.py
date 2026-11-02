@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from inspect import unwrap
@@ -96,6 +97,27 @@ def test_jsonify_form_definition() -> None:
     assert isinstance(response, Response)
     payload = json.loads(response.get_data(as_text=True))
     assert payload["expiration_time"] == int(expiration.timestamp())
+
+
+def test_jsonify_form_definition_reads_a_naive_expiration_time_as_utc(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stored expiration times are naive UTC, so the host timezone must not shift them."""
+    if not hasattr(time, "tzset"):
+        pytest.skip("tzset is only available on POSIX platforms")
+
+    recorded_at = datetime(2024, 1, 1)
+    definition = SimpleNamespace(model_dump=lambda: {"fields": []})
+    form = SimpleNamespace(get_definition=lambda: definition, expiration_time=recorded_at)
+
+    monkeypatch.setenv("TZ", "Asia/Shanghai")
+    time.tzset()
+    try:
+        response = _jsonify_form_definition(form)
+    finally:
+        monkeypatch.undo()
+        time.tzset()
+
+    payload = json.loads(response.get_data(as_text=True))
+    assert payload["expiration_time"] == int(recorded_at.replace(tzinfo=UTC).timestamp())
 
 
 def test_ensure_console_access_rejects(monkeypatch: pytest.MonkeyPatch) -> None:

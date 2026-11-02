@@ -35,6 +35,7 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from core.workflow.nodes.human_input.entities import FormInputConfig
 from extensions.ext_database import db
+from libs.datetime_utils import to_utc_timestamp
 from libs.external_api import error_responses
 from libs.login import login_required
 from models import Account, App
@@ -75,7 +76,7 @@ def _jsonify_form_definition(form: Form, *, inputs: Sequence[FormInputConfig] | 
     payload = form.get_definition().model_dump()
     if inputs is not None:
         payload["inputs"] = [form_input.model_dump(mode="json") for form_input in inputs]
-    payload["expiration_time"] = int(form.expiration_time.timestamp())
+    payload["expiration_time"] = to_utc_timestamp(form.expiration_time)
     return Response(json.dumps(payload, ensure_ascii=False), mimetype="application/json")
 
 
