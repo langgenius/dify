@@ -33,7 +33,7 @@ import { ContactEmailConfigContent } from './email-config-dialog'
 import { channelError } from './hooks'
 import { ContactImProviderCard } from './provider-card'
 import { ContactImSyncDetailsDialog } from './sync-details-dialog'
-import { useContactImSyncRunUrlState } from './sync-run-url-state'
+import { useContactImSyncResultUrlState, useContactImSyncRunUrlState } from './sync-run-url-state'
 import { ContactImDirectorySyncSection } from './sync-section'
 import { ContactImRepositoryErrorCode } from './types'
 
@@ -141,6 +141,7 @@ export function ContactsImPlatformManagementSurface() {
   const [deleteTarget, setDeleteTarget] = useState<ChannelSummary | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [syncRunId, setSyncRunId] = useContactImSyncRunUrlState()
+  const [, setSyncResult] = useContactImSyncResultUrlState()
   const integrations = integrationsQuery.data?.channels ?? []
   const providers = [
     ...(providersQuery.data?.email_providers ?? []),
@@ -409,7 +410,9 @@ export function ContactsImPlatformManagementSurface() {
         open={Boolean(syncRunId)}
         runId={syncRunId}
         onOpenChange={(open) => {
-          if (!open) void setSyncRunId(null)
+          if (open) return
+          void setSyncRunId(null)
+          void setSyncResult(null)
         }}
       />
     </div>

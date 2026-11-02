@@ -4,8 +4,7 @@ import type { ImSyncResultItem } from '@dify/contracts/api/console/workspaces/ty
 import { parseAsString, parseAsStringEnum, useQueryState } from 'nuqs'
 
 type SyncResult = ImSyncResultItem['result']['type']
-export const useContactImSyncRunUrlState = () =>
-  useQueryState('sync_run_id', parseAsString.withOptions({ history: 'push' }))
+export const useContactImSyncRunUrlState = () => useQueryState('sync_run_id', parseAsString)
 
 export const useContactImSyncResultUrlState = () =>
   useQueryState(

@@ -480,7 +480,7 @@ it('refuses a report when a newer run replaced the requested one', async () => {
   expect(network.handle).toHaveBeenCalledTimes(1)
 })
 
-it('stores the actual run ID and result filter in URL state', async () => {
+it('stores the actual run ID and result filter in URL state without adding history entries', async () => {
   const update = vi.fn()
   function Probe() {
     const [run, setRun] = useContactImSyncRunUrlState()
@@ -506,6 +506,7 @@ it('stores the actual run ID and result filter in URL state', async () => {
   await waitFor(() =>
     expect(update.mock.lastCall?.[0].searchParams.get('sync_run_id')).toBe('run-42'),
   )
+  expect(update.mock.calls.map(([event]) => event.options.history)).not.toContain('push')
   await waitFor(() =>
     expect(update.mock.lastCall?.[0].searchParams.get('sync_result')).toBe('removed'),
   )
