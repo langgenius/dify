@@ -371,16 +371,15 @@ function getDatasetAttributeName(envKey: ClientEnvKey) {
 }
 
 /**
- * Browser-only function to get runtime env value from the HTML dataset.
- * Dify stamps the root element, which exists before streamed body content.
- * The standalone Marketplace host stamps its own body.
+ * Browser-only function to get runtime env value from the root element dataset.
+ * The root element exists before streamed body content, so module-level reads are safe.
  */
 function getRuntimeEnv(key: DatasetKey) {
   if (typeof window === 'undefined') {
     throw new TypeError('getRuntimeEnv can only be called in the browser')
   }
 
-  const value = document.body?.dataset[key] ?? document.documentElement.dataset[key]
+  const value = document.documentElement.dataset[key]
   return value || undefined
 }
 

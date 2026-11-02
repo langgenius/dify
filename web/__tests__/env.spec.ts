@@ -98,16 +98,6 @@ describe('env runtime transport', () => {
     }
   })
 
-  it('reads runtime configuration stamped on body by the standalone Marketplace host', async () => {
-    document.body.setAttribute('data-turnstile-site-key', 'marketplace-site-key')
-    try {
-      const { env } = await import('../env')
-      expect(env.NEXT_PUBLIC_TURNSTILE_SITE_KEY).toBe('marketplace-site-key')
-    } finally {
-      document.body.removeAttribute('data-turnstile-site-key')
-    }
-  })
-
   it('should read NEXT_PUBLIC_ENABLE_AGENT_V2 from the browser runtime dataset key', async () => {
     document.documentElement.setAttribute('data-enable-agent-v2', 'true')
 
