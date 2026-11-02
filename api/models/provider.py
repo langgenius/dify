@@ -2,15 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum, auto
-from functools import cached_property
 from typing import override
 from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, String, func, select, text
+from sqlalchemy import DateTime, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core.db.session_factory import session_factory
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.uuid_utils import uuidv7
 
@@ -81,11 +79,26 @@ class Provider(TypeBase):
             f" provider_type='{self.provider_type}')>"
         )
 
-    @cached_property
-    def credential(self):
-        if self.credential_id:
-            with session_factory.create_session() as session:
-                return session.scalar(select(ProviderCredential).where(ProviderCredential.id == self.credential_id))
+    def attach_credential(self, credential: ProviderCredential | None) -> None:
+        """Keep the active credential loaded through the caller's session.
+
+        Precondition: ``credential`` is the row for ``credential_id``, or None when that row is missing.
+        Postcondition: reading ``credential`` returns this value without database access.
+        """
+        self.__dict__["_active_credential"] = credential
+
+    @property
+    def credential(self) -> ProviderCredential | None:
+        """Return the attached credential without database access.
+
+        Precondition: ``attach_credential`` ran when ``credential_id`` is set.
+        Raises RuntimeError when it did not, so a missing load never reads as an unset credential.
+        """
+        if not self.credential_id:
+            return None
+        if "_active_credential" not in self.__dict__:
+            raise RuntimeError(f"Credential of provider {self.id} was not attached")
+        return self.__dict__["_active_credential"]
 
     @property
     def credential_name(self):
@@ -144,24 +157,6 @@ class ProviderModel(TypeBase):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
-
-    @cached_property
-    def credential(self):
-        if self.credential_id:
-            with session_factory.create_session() as session:
-                return session.scalar(
-                    select(ProviderModelCredential).where(ProviderModelCredential.id == self.credential_id)
-                )
-
-    @property
-    def credential_name(self):
-        credential = self.credential
-        return credential.credential_name if credential else None
-
-    @property
-    def encrypted_config(self):
-        credential = self.credential
-        return credential.encrypted_config if credential else None
 
 
 class TenantDefaultModel(TypeBase):
