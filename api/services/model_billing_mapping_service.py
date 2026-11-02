@@ -60,6 +60,7 @@ from services.model_billing_source_variants import (
     ModelMappingRevision,
     SelectedModelMapping,
     SourceVariantContext,
+    source_endpoint_class,
 )
 from services.model_billing_source_variants import source_mapping_revision as parse_source_mapping_revision
 from services.model_billing_tts_adapter import TTSVoiceContract as TTSVoiceContract  # noqa: PLC0414
@@ -110,6 +111,7 @@ def build_source_adapter_contract(
                 source_schema=source_schema,
                 target_model=mapping.target.model,
                 source_api_protocol=None if settings.protocol_selector == "absent" else settings.protocol_selector,
+                source_endpoint_class="official_root" if settings.source_base_is_set else "unset",
             )
         if contract != restore_variant_source_contract(mapping):
             raise ValueError("Source variant evidence changed")
@@ -735,13 +737,17 @@ def hosted_source_variant_fact(
     protocol = credentials.get("api_protocol")
     if protocol is not None and protocol not in ("chat", "responses"):
         return None
+    metadata = credentials.get("enable_request_metadata")
+    if metadata is not None and (type(metadata) is not str or metadata not in {"disabled", "enabled"}):
+        return None
     return HostedSourceVariantFact(
         provider=str(ModelProviderID(provider)),
         plugin_unique_identifier=source_uid,
         catalog_schema_digests=tuple((item.model_type, item.model, model_schema_digest(item)) for item in models),
         selector="absent" if protocol is None else protocol,
         source_base_is_set=bool(credentials.get("openai_api_base")),
-        request_metadata_enabled=credentials.get("enable_request_metadata") == "enabled",
+        request_metadata_enabled=metadata == "enabled",
+        source_endpoint_class=source_endpoint_class(source_uid, credentials.get("openai_api_base")),
     )
 
 
@@ -749,6 +755,8 @@ def source_variant_context(
     fact: HostedSourceVariantFact | None, *, provider: str, source_uid: str, schema: AIModelEntity | None = None
 ) -> SourceVariantContext | None:
     if fact is None or fact.provider != str(ModelProviderID(provider)) or fact.plugin_unique_identifier != source_uid:
+        return None
+    if fact.source_endpoint_class != ("official_root" if fact.source_base_is_set else "unset"):
         return None
     if schema is not None and [
         digest
@@ -783,15 +791,24 @@ def restore_variant_source_contract(mapping: SelectedSourceVariant) -> SourcePar
         "target_model": mapping.target.model,
     }
     settings = variant.source_settings
-    if settings.source_base_is_set or settings.request_metadata_enabled:
-        # Both initial V2 families were reviewed only for these derived
-        # False/False facts. The V1 042 factory deliberately remains unchanged.
+    if (
+        settings.request_metadata_enabled
+        or settings.source_base_is_set
+        and variant.parameter_adapter.revision
+        != ("3" if variant.parameter_adapter.id == "openai_chat_source_v1" else "2")
+    ):
+        # Old V2 profiles remain False/False. Only append-only official-root
+        # profiles may restore True prospectively; actual selected sources
+        # separately require a positive request-local endpoint classification.
         raise ValueError("Unreviewed V2 source public settings")
     if variant.parameter_adapter.id == "openai_chat_source_v1":
         if settings.protocol_selector not in {"absent", "chat"}:
             raise ValueError("Unreviewed source protocol")
         contract: SourceParameterContract = restore_openai_chat_source_contract(
-            marker, **arguments, source_api_protocol=None if settings.protocol_selector == "absent" else "chat"
+            marker,
+            **arguments,
+            source_api_protocol=None if settings.protocol_selector == "absent" else "chat",
+            source_endpoint_class="official_root" if settings.source_base_is_set else "unset",
         )
     else:
         contract = restore_openai_provider110_source_contract(

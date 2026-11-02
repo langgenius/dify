@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Iterator
+from copy import deepcopy
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -27,11 +28,128 @@ from tests.unit_tests.core.test_provider_manager import (
 from tests.unit_tests.services.test_model_billing_mapping_service import mapping, section
 from tests.unit_tests.services.test_model_billing_openai_chat_adapter import build_inputs
 from tests.unit_tests.services.test_model_billing_source_variants import (
+    OFFICIAL_ROOT_REVISION,
     REVISION,
     current_source_schemas,
+    full_official_registry,
     full_variant_record,
     variant_record,
 )
+
+
+@pytest.mark.parametrize(
+    ("version", "selector"),
+    [("042", "absent"), ("042", "chat"), ("110", "absent"), ("110", "chat"), ("110", "responses")],
+)
+def test_false_preparation_full_revision_allows_fresh_official_caller_not_custom_boolean_drift(
+    version: str, selector: str, variant_case: ProviderCase
+) -> None:
+    from services.model_billing_openai_chat_adapter import _OFFICIAL_ROOT_REVIEWED_CONTRACT as OFFICIAL042
+    from services.model_billing_openai_provider110_adapter import _OFFICIAL_ROOT_REVIEWED_CONTRACTS as OFFICIAL110
+
+    source = build_inputs(runtime=True)["source_schema"] if version == "042" else current_source_schemas()[0]
+    variant_case.provider.models = [source]
+    variant_case.provider.plugin_unique_identifier = (
+        OFFICIAL042.source_plugin_unique_identifier
+        if version == "042"
+        else OFFICIAL110[0].source_plugin_unique_identifier
+    )
+    records = full_official_registry()
+    raw = json.dumps(records)
+    digest = source_mapping_revision(raw, OFFICIAL_ROOT_REVISION).digest
+    variant_case.state["model_mapping_version"] = OFFICIAL_ROOT_REVISION
+    variant_case.state["source_variant_registry_digest"] = digest
+    preparation = variant_case.state["preparation"]
+    assert isinstance(preparation, dict)
+    preparation["source_variant_registry_digest"] = digest
+    hosting = variant_case.hosting[variant_case.provider.provider]
+    hosting.credentials = {"api_key": "NEVER_FORWARD_ORIGINAL_SOURCE"}
+    if selector != "absent":
+        hosting.credentials["api_protocol"] = selector
+    frozen_state = deepcopy(variant_case.state)
+
+    def admit(credentials: RoutedModelCredentials) -> None:
+        validate_invocation_admission(
+            credentials,
+            tenant_id=TENANT_ID,
+            provider=variant_case.provider.provider,
+            model_type=ModelType.LLM,
+            model="gpt-4o-mini",
+        )
+
+    with config_overrides_context(
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=raw,
+        TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=json.dumps(
+            [
+                {
+                    "schema_version": 1,
+                    "mapping_revision": OFFICIAL_ROOT_REVISION,
+                    "inventory_policy": "saved_system_dependencies_v2",
+                }
+            ]
+        ),
+    ):
+        false_call = route(variant_case)
+        admit(false_call)
+        assert false_call.plan.mapping_revision_digest == digest
+        assert false_call.plan.source_variant_binding is not None
+        assert "official-root" not in false_call.plan.source_variant_binding.variant_id
+        # Fresh caller-local configuration only: no global environment change,
+        # no different-mode readiness/activation and no persisted settings write.
+        hosting.credentials["openai_api_base"] = "https://api.openai.com"
+        # Use the normal public assembly-cache owner. A genuinely separate
+        # CLI process starts with this cache empty; reusing a cached False
+        # configuration in this unit test would not model that caller.
+        variant_case.manager.clear_configurations_cache(TENANT_ID)
+        official_call = route(variant_case)
+        binding = official_call.plan.source_variant_binding
+        assert binding is not None
+        assert binding.variant_id == "openai" + version + "-official-root-" + selector
+        assert official_call.plan.mapping_revision_digest == digest
+        assert official_call.plan.source_parameter_contract is not None
+        assert "official-root" in official_call.plan.source_parameter_contract.profile_id
+        assert official_call.plan.cache_identity != false_call.plan.cache_identity
+        assert dict(official_call) == {}
+        admit(official_call)
+        with pytest.raises(ModelInvocationReprepare):
+            admit(false_call)
+        for unreviewed in (
+            "https://api.openai.com/v1",
+            "https://api.openai.com/",
+            "https://custom.invalid",
+            "https://api.openai.com?secret=NEVER_LOG",
+        ):
+            hosting.credentials["openai_api_base"] = unreviewed
+            # Same truthy flag and plan settings digest, different endpoint
+            # class: fresh pre-reserve admission must still reject it.
+            assert bool(hosting.credentials["openai_api_base"])
+            with pytest.raises(ModelInvocationReprepare) as denied:
+                admit(official_call)
+            assert "NEVER_LOG" not in str(denied.value)
+        hosting.credentials["openai_api_base"] = "https://api.openai.com"
+        for metadata in ("enabled", "unknown", True):
+            hosting.credentials["enable_request_metadata"] = metadata
+            with pytest.raises(ModelInvocationReprepare):
+                admit(official_call)
+        hosting.credentials.pop("enable_request_metadata")
+        with config_overrides_context(
+            TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps([*records, mapping(revision="unrelated")])
+        ):
+            admit(official_call)
+        changed = deepcopy(records)
+        sibling_variants = changed[0]["variants"]
+        assert isinstance(sibling_variants, list)
+        sibling_variants.remove(
+            next(
+                item
+                for item in sibling_variants
+                if item["source_settings"]["source_base_is_set"] and item["variant_id"] != binding.variant_id
+            )
+        )
+        with config_overrides_context(TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps(changed)):
+            with pytest.raises(ModelInvocationReprepare):
+                admit(official_call)
+    assert variant_case.state == frozen_state
 
 
 @pytest.fixture

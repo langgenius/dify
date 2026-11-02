@@ -64,6 +64,32 @@ _REVIEWED_CONTRACTS = (
     ),
 )
 
+_OFFICIAL_ROOT_REVIEWED_CONTRACTS = (
+    OpenAIProvider110SourceContract(
+        profile_id="openai-110-chat-official-root-runtime-v1:gpt-4o-mini",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c",
+        source_model="gpt-4o-mini",
+        source_schema_digest="sha256:ebda9a686193f5f2e19da7cf059d4357dacfb09e09c010480d2003792236d8a0",
+        source_runtime_schema_digest="sha256:224a3127e23eb4d47ebe765dc5af81ba6b7c9510167d8dceedbe33c7c3ad3d2d",
+        target_model="gpt-4o-mini",
+        rules_digest="sha256:b2ab77722d6f3b40442e92c751722fa614959001b4b7da4bf5a13592abe98ec3",
+        adapter_id="openai_provider110_source_v1",
+        algorithm_revision="2",
+    ),
+    OpenAIProvider110SourceContract(
+        profile_id="openai-110-responses-official-root-runtime-v1:gpt-4o-mini",
+        source_plugin_unique_identifier="langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c",
+        source_model="gpt-4o-mini",
+        source_schema_digest="sha256:ebda9a686193f5f2e19da7cf059d4357dacfb09e09c010480d2003792236d8a0",
+        source_runtime_schema_digest="sha256:224a3127e23eb4d47ebe765dc5af81ba6b7c9510167d8dceedbe33c7c3ad3d2d",
+        target_model="gpt-4o-mini",
+        rules_digest="sha256:16e05389cc3735a9332be93b7396df0ed89d3e0175f07fb0755fe1b2ffd8a200",
+        adapter_id="openai_provider110_source_v1",
+        algorithm_revision="2",
+    ),
+)
+_ALL_REVIEWED_CONTRACTS = (*_REVIEWED_CONTRACTS, *_OFFICIAL_ROOT_REVIEWED_CONTRACTS)
+
 
 def _protocol(settings: OpenAI110SourceSettings) -> Literal["chat", "responses"]:
     if (
@@ -72,15 +98,17 @@ def _protocol(settings: OpenAI110SourceSettings) -> Literal["chat", "responses"]
         or settings.protocol_selector not in {"absent", "chat", "responses"}
         or type(settings.source_base_is_set) is not bool
         or type(settings.request_metadata_enabled) is not bool
-        or settings.source_base_is_set
         or settings.request_metadata_enabled
     ):
         raise OpenAIProvider110SourceAdapterError("OpenAI1.1.0 source settings are not reviewed")
     return "chat" if settings.protocol_selector == "chat" else "responses"
 
 
-def _matches_protocol(contract: OpenAIProvider110SourceContract, protocol: str) -> bool:
-    return contract.profile_id == f"openai-110-{protocol}-runtime-v1:gpt-4o-mini"
+def _matches_settings(
+    contract: OpenAIProvider110SourceContract, protocol: str, settings: OpenAI110SourceSettings
+) -> bool:
+    family = "official-root-runtime-v1" if settings.source_base_is_set else "runtime-v1"
+    return contract.profile_id == f"openai-110-{protocol}-{family}:gpt-4o-mini"
 
 
 def openai_provider110_source_marker(
@@ -92,7 +120,7 @@ def openai_provider110_source_marker(
     target_model: str,
 ) -> dict[str, object]:
     if (
-        contract not in _REVIEWED_CONTRACTS
+        contract not in _ALL_REVIEWED_CONTRACTS
         or source_provider != OPENAI_PROVIDER110_SOURCE_PROVIDER
         or source_model != contract.source_model
         or model_type != ModelType.LLM
@@ -127,8 +155,8 @@ def build_openai_provider110_source_contract(
     contract = next(
         (
             item
-            for item in _REVIEWED_CONTRACTS
-            if _matches_protocol(item, protocol)
+            for item in _ALL_REVIEWED_CONTRACTS
+            if _matches_settings(item, protocol, source_settings)
             and item.algorithm_revision == adapter_revision
             and item.source_schema_digest == expected_source_schema_digest
             and item.rules_digest == expected_rules_digest
@@ -185,8 +213,8 @@ def restore_openai_provider110_source_contract(
     contract = next(
         (
             item
-            for item in _REVIEWED_CONTRACTS
-            if item.profile_id == marker["profile_id"] and _matches_protocol(item, protocol)
+            for item in _ALL_REVIEWED_CONTRACTS
+            if item.profile_id == marker["profile_id"] and _matches_settings(item, protocol, source_settings)
         ),
         None,
     )

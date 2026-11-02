@@ -106,6 +106,9 @@ class HostedSourceVariantFact:
     selector: Literal["absent", "chat", "responses"]
     source_base_is_set: bool
     request_metadata_enabled: bool
+    # Request-local positive classification, never a persisted V2 setting or
+    # a raw URL. A truthy base flag alone cannot authorize an official route.
+    source_endpoint_class: Literal["unset", "official_root", "unreviewed"]
 
 
 class SystemConfiguration(BaseModel):

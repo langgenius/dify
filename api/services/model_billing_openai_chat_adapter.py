@@ -10,6 +10,7 @@ This policy performs no I/O and never reads credentials/configuration itself.
 
 import hmac
 from dataclasses import dataclass
+from typing import Literal
 
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ModelType
 from services.entities.model_billing_mapping import SourceParameterContract, model_schema_digest
@@ -55,6 +56,33 @@ _RUNTIME_REVIEWED_CONTRACT = OpenAIChatSourceContract(
 )
 _REVIEWED_CONTRACTS = (_REVIEWED_CONTRACT, _RUNTIME_REVIEWED_CONTRACT)
 
+# Append-only: older profile IDs, rules, revisions and V1 factories retain
+# their semantics. This profile explicitly requires the reviewed official root.
+_OFFICIAL_ROOT_REVIEWED_CONTRACT = OpenAIChatSourceContract(
+    profile_id="openai-042-chat-official-root-runtime-v1:gpt-4o-mini",
+    source_plugin_unique_identifier="langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+    source_model="gpt-4o-mini",
+    source_schema_digest="sha256:a6252c47636c0aa0b3c66327d3a512711abcd61cca079ac53a51c435a2d65771",
+    source_runtime_schema_digest="sha256:b068793d31c93e11b44e31374e24f62ce25b7c8744aae708213f7caa41be4783",
+    target_model="gpt-4o-mini",
+    rules_digest="sha256:24a22201b52da002bcbf882158ba90bbdfd9b9047a6904b9c8c1c8a2977ae3e3",
+    adapter_id=OPENAI_CHAT_SOURCE_ADAPTER_ID,
+    algorithm_revision="3",
+)
+_ALL_REVIEWED_CONTRACTS = (*_REVIEWED_CONTRACTS, _OFFICIAL_ROOT_REVIEWED_CONTRACT)
+
+
+def _require_endpoint_policy(
+    contract: OpenAIChatSourceContract, source_endpoint_class: Literal["unset", "official_root"] | None
+) -> None:
+    # None exists solely for unchanged V1 callers. New V2 True rows must name
+    # the official profile. Actual URL authority is separately captured from
+    # the request-local SYSTEM dictionary, never from this prospective policy.
+    if source_endpoint_class not in (None, "unset", "official_root") or (
+        contract == _OFFICIAL_ROOT_REVIEWED_CONTRACT
+    ) != (source_endpoint_class == "official_root"):
+        raise OpenAIChatSourceAdapterError("Source endpoint does not match the reviewed Chat profile")
+
 
 def _require_chat_protocol(source_api_protocol: object) -> None:
     # None is meaningful: exact source runtime chooses Chat when the optional
@@ -73,7 +101,7 @@ def openai_chat_source_marker(
 ) -> dict[str, object]:
     """Revalidate the frozen source binding, not caller-supplied model settings."""
     if (
-        contract not in _REVIEWED_CONTRACTS
+        contract not in _ALL_REVIEWED_CONTRACTS
         or source_provider != OPENAI_CHAT_SOURCE_PROVIDER
         or source_model != contract.source_model
         or model_type != ModelType.LLM
@@ -102,6 +130,7 @@ def build_openai_chat_source_contract(
     expected_source_schema_digest: str,
     target_model: str,
     source_api_protocol: object,
+    source_endpoint_class: Literal["unset", "official_root"] | None = None,
 ) -> OpenAIChatSourceContract:
     """Require fresh installed schema/UID, mapping and SYSTEM protocol evidence."""
     _require_chat_protocol(source_api_protocol)
@@ -109,7 +138,7 @@ def build_openai_chat_source_contract(
     contract = next(
         (
             item
-            for item in _REVIEWED_CONTRACTS
+            for item in _ALL_REVIEWED_CONTRACTS
             if item.algorithm_revision == adapter_revision
             and item.source_schema_digest == expected_source_schema_digest
             and item.rules_digest == expected_rules_digest
@@ -128,6 +157,7 @@ def build_openai_chat_source_contract(
         or not hmac.compare_digest(expected_rules_digest, contract.rules_digest)
     ):
         raise OpenAIChatSourceAdapterError("OpenAI Chat evidence does not match a reviewed profile")
+    _require_endpoint_policy(contract, source_endpoint_class)
     openai_chat_source_marker(
         contract,
         source_provider=source_provider,
@@ -146,6 +176,7 @@ def restore_openai_chat_source_contract(
     model_type: ModelType,
     target_model: str,
     source_api_protocol: object,
+    source_endpoint_class: Literal["unset", "official_root"] | None = None,
 ) -> OpenAIChatSourceContract:
     """Restore only evidence from a fresh source inventory, never a public marker."""
     _require_chat_protocol(source_api_protocol)
@@ -164,9 +195,10 @@ def restore_openai_chat_source_contract(
         or any(not isinstance(value, str) for key, value in marker.items() if key != "schema_version")
     ):
         raise OpenAIChatSourceAdapterError("Invalid frozen OpenAI Chat source marker")
-    contract = next((item for item in _REVIEWED_CONTRACTS if item.profile_id == marker["profile_id"]), None)
+    contract = next((item for item in _ALL_REVIEWED_CONTRACTS if item.profile_id == marker["profile_id"]), None)
     if contract is None:
         raise OpenAIChatSourceAdapterError("Invalid frozen OpenAI Chat source marker")
+    _require_endpoint_policy(contract, source_endpoint_class)
     expected = openai_chat_source_marker(
         contract,
         source_provider=source_provider,

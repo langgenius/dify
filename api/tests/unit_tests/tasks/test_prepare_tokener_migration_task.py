@@ -30,23 +30,31 @@ class HistoricalReadinessQuery:
 
 
 @pytest.mark.parametrize("pin_kind", ["valid", "missing", "wrong"])
+@pytest.mark.parametrize("official_variants", [False, True])
 def test_variant_readiness_pin_flows_internally_worker_sql_claim_and_narrow_runtime_projection(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
     pin_kind: str,
+    official_variants: bool,
 ) -> None:
     from core.repositories import model_billing_migration_repository
     from services.model_billing_mapping_service import source_mapping_revision
     from services.model_billing_migration_service import MigrationError
     from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
-    from tests.unit_tests.services.test_model_billing_source_variants import REVISION, variant_record
+    from tests.unit_tests.services.test_model_billing_source_variants import (
+        OFFICIAL_ROOT_REVISION,
+        REVISION,
+        full_official_registry,
+        variant_record,
+    )
 
+    revision = OFFICIAL_ROOT_REVISION if official_variants else REVISION
     tenant = Tenant(name="New source-variant internal preparation")
     sqlite_session.add(tenant)
     sqlite_session.commit()
-    raw = json.dumps([variant_record()])
-    registry = source_mapping_revision(raw, REVISION)
+    raw = json.dumps(full_official_registry() if official_variants else [variant_record()])
+    registry = source_mapping_revision(raw, revision)
     apply_config_overrides(
         monkeypatch,
         TOKENER_LEGACY_MIGRATION_ENABLED=True,
@@ -54,7 +62,7 @@ def test_variant_readiness_pin_flows_internally_worker_sql_claim_and_narrow_runt
         TOKENER_PLUGIN_UNIQUE_IDENTIFIER="langgenius/tokener:0.1.3@fixture",
         TOKENER_LEGACY_MODEL_MAPPING_JSON=raw,
         TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=json.dumps(
-            [{"schema_version": 1, "mapping_revision": REVISION, "inventory_policy": "saved_system_dependencies_v2"}]
+            [{"schema_version": 1, "mapping_revision": revision, "inventory_policy": "saved_system_dependencies_v2"}]
         ),
     )
     monkeypatch.setattr(ModelBillingMigrationService, "enqueue_prepare", lambda *_args: None)
@@ -66,7 +74,7 @@ def test_variant_readiness_pin_flows_internally_worker_sql_claim_and_narrow_runt
         migration_id=str(uuid4()),
         batch_id="variant-internal",
         eligibility_policy_version="paid-v1",
-        model_mapping_version=REVISION,
+        model_mapping_version=revision,
         inventory_hash=inventory_hash,
         billing_preparation_ref="existing-internal-binding",
     )
@@ -96,7 +104,7 @@ def test_variant_readiness_pin_flows_internally_worker_sql_claim_and_narrow_runt
             self, tenant_id: str, revision: str, *, eligibility_policy_version: str | None = None
         ) -> dict[str, object]:
             assert tenant_id == tenant.id
-            assert revision == REVISION
+            assert revision == payload.model_mapping_version
             assert eligibility_policy_version == "paid-v1"
             result: dict[str, object] = {
                 "inventory_hash": inventory_hash,
@@ -125,6 +133,8 @@ def test_variant_readiness_pin_flows_internally_worker_sql_claim_and_narrow_runt
     assert row.phase == "prepared"
     assert row.state["source_variant_registry_digest"] == registry.digest
     assert row.state["preparation"]["source_variant_registry_digest"] == registry.digest
+    assert "source_variant" not in row.state
+    assert "source_variant" not in row.state["preparation"]
     monkeypatch.setattr(model_billing_migration_repository.session_factory, "create_session", sqlite_session_factory)
     projected = model_billing_migration_repository.get_routing_state(tenant.id)
     assert projected is not None
@@ -133,9 +143,9 @@ def test_variant_readiness_pin_flows_internally_worker_sql_claim_and_narrow_runt
     ModelBillingMigrationService.assert_claim_readiness(
         sqlite_session, row, module.naive_utc_now(), row.state["preparation_binding_hash"]
     )
-    changed = variant_record()
-    changed["pool_types"] = ["paid"]
-    with config_overrides_context(TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps([changed])):
+    changed = json.loads(raw)
+    changed[0]["pool_types"] = ["paid"]
+    with config_overrides_context(TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps(changed)):
         with pytest.raises(MigrationError, match="readiness_changed"):
             ModelBillingMigrationService.assert_claim_readiness(
                 sqlite_session, row, module.naive_utc_now(), row.state["preparation_binding_hash"]

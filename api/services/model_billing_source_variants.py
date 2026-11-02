@@ -18,7 +18,7 @@ import hashlib
 import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field, TypeAdapter
 
@@ -35,6 +35,29 @@ from services.entities.model_billing_mapping import (
 type MappingIdentity = tuple[str, ModelType, str]
 type MappingDeclaration = ModelMapping | SourceVariantMapping
 type SelectedModelMapping = ModelMapping | SelectedSourceVariant
+
+
+def source_endpoint_class(source_uid: str, source_base: object) -> Literal["unset", "official_root", "unreviewed"]:
+    """Classify exact source settings without retaining or disclosing URLs.
+
+    This is not URL normalization. In particular, 042 appends ``/v1`` even
+    when one is already present, so an official-looking suffix is not an
+    interchangeable source contract. Only these exact archives and the one
+    reviewed literal are admitted; custom/malformed values prove nothing.
+    """
+    if source_base is None or type(source_base) is str and source_base == "":
+        return "unset"
+    if (
+        type(source_base) is str
+        and source_base == "https://api.openai.com"
+        and source_uid
+        in {
+            "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+            "langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c",
+        }
+    ):
+        return "official_root"
+    return "unreviewed"
 
 
 @dataclass(frozen=True, slots=True)

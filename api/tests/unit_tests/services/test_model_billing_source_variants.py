@@ -1,5 +1,6 @@
 """Exact-version registry/availability; real reviewed042 contracts, no model calls."""
 
+import hashlib
 import json
 from copy import deepcopy
 from dataclasses import replace
@@ -24,14 +25,20 @@ from services.model_billing_mapping_service import (
     resolve_source_mapping,
     restore_variant_source_contract,
     source_mapping_revision,
+    source_variant_context,
     validate_frozen_mapping_evidence,
 )
+from services.model_billing_openai_chat_adapter import _OFFICIAL_ROOT_REVIEWED_CONTRACT as OFFICIAL042
+from services.model_billing_openai_provider110_adapter import (
+    _OFFICIAL_ROOT_REVIEWED_CONTRACTS as OFFICIAL110,
+)
 from services.model_billing_openai_provider110_adapter import _REVIEWED_CONTRACTS
-from services.model_billing_source_variants import SourceVariantContext, selection_payload
-from tests.unit_tests.services.test_model_billing_mapping_service import mapping, section
+from services.model_billing_source_variants import SourceVariantContext, selection_payload, source_endpoint_class
+from tests.unit_tests.services.test_model_billing_mapping_service import mapping, schema, section
 from tests.unit_tests.services.test_model_billing_openai_chat_adapter import build_inputs
 
 REVISION = "source-variants-new-v2"
+OFFICIAL_ROOT_REVISION = "source-variants-official-root-v1"
 IDENTITY = ("langgenius/openai/openai", ModelType.LLM, "gpt-4o-mini")
 
 
@@ -116,6 +123,229 @@ def full_variant_record() -> dict[str, object]:
             }
         )
     return record
+
+
+def full_official_variant_record() -> dict[str, object]:
+    """A NEW revision: preserve all five old rows and append five official rows."""
+    record = full_variant_record()
+    record["mapping_revision"] = OFFICIAL_ROOT_REVISION
+    template = variants(record)[0]
+    for contract in (OFFICIAL042, *OFFICIAL110):
+        selectors = (
+            ("absent", "chat")
+            if contract == OFFICIAL042
+            else (("chat",) if "-chat-" in contract.profile_id else ("absent", "responses"))
+        )
+        for selector in selectors:
+            variants(record).append(
+                {
+                    **template,
+                    "variant_id": ("openai042" if contract == OFFICIAL042 else "openai110")
+                    + "-official-root-"
+                    + selector,
+                    "source_plugin_uid": contract.source_plugin_unique_identifier,
+                    "source_settings": {
+                        "protocol_selector": selector,
+                        "source_base_is_set": True,
+                        "request_metadata_enabled": False,
+                    },
+                    "source_schema_digest": contract.source_schema_digest,
+                    "source_runtime_schema_digest": contract.source_runtime_schema_digest,
+                    "source_profile_id": contract.profile_id,
+                    "parameter_adapter": {
+                        "id": contract.adapter_id,
+                        "revision": contract.algorithm_revision,
+                        "rules_digest": contract.rules_digest,
+                    },
+                    "conformance_fixture_ids": ["exact-source-official-root-sdk-wire"],
+                }
+            )
+    return record
+
+
+def full_official_registry() -> list[dict[str, object]]:
+    return [
+        full_official_variant_record(),
+        mapping(
+            schema("text-embedding-3-small", ModelType.TEXT_EMBEDDING),
+            revision=OFFICIAL_ROOT_REVISION,
+            target="text-embedding-3-small",
+        ),
+    ]
+
+
+def test_official_profiles_have_exact_lossless_source_json_not_placeholder_rules() -> None:
+    document = json.loads(
+        (Path(__file__).parent / "fixtures/model_billing_openai_official_root_profiles.json").read_text()
+    )
+    contracts = {item.profile_id: item for item in (OFFICIAL042, *OFFICIAL110)}
+    assert len(document["profiles"]) == len(contracts) == 3
+    for profile in document["profiles"]:
+        contract = contracts[profile["profile_id"]]
+        assert profile["source_endpoint_requirement"] == "https://api.openai.com"
+        assert profile["source_settings"] == {"source_base_is_set": True, "request_metadata_enabled": False}
+        assert (
+            contract.rules_digest
+            == "sha256:"
+            + hashlib.sha256(
+                json.dumps(profile, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+            ).hexdigest()
+        )
+        assert profile["source_schema_digest"] == contract.source_schema_digest
+        assert profile["source_runtime_schema_digest"] == contract.source_runtime_schema_digest
+
+
+@pytest.mark.parametrize(
+    ("version", "selector"),
+    [("042", "absent"), ("042", "chat"), ("110", "absent"), ("110", "chat"), ("110", "responses")],
+)
+@pytest.mark.parametrize("official", [False, True])
+def test_new_full_revision_selects_only_fresh_source_facts_and_matching_profiles(
+    version: str, selector: str, official: bool
+) -> None:
+    source = build_inputs(runtime=True)["source_schema"] if version == "042" else current_source_schemas()[0]
+    uid = (
+        OFFICIAL042.source_plugin_unique_identifier
+        if version == "042"
+        else OFFICIAL110[0].source_plugin_unique_identifier
+    )
+    registry = source_mapping_revision(json.dumps([full_official_variant_record()]), OFFICIAL_ROOT_REVISION)
+    fact = hosted_source_variant_fact(
+        provider=IDENTITY[0],
+        source_uid=uid,
+        models=[source],
+        credentials={
+            "api_protocol": None if selector == "absent" else selector,
+            "openai_api_base": "https://api.openai.com" if official else None,
+        },
+    )
+    selected = resolve_source_mapping(registry, IDENTITY, source_uid=uid, fact=fact, schema=source)
+    assert isinstance(selected, SelectedSourceVariant)
+    assert selected.variant.variant_id == "openai" + version + ("-official-root-" if official else "-") + selector
+    contract = restore_variant_source_contract(selected)
+    assert ("official-root" in contract.profile_id) == official
+    assert (
+        build_source_adapter_contract(
+            selected,
+            source_provider=IDENTITY[0],
+            source_plugin_unique_identifier=uid,
+            source_schema=source,
+            source_credentials=None,
+        )
+        == contract
+    )
+    assert registry.restore_selection(IDENTITY, selection_payload(selected).model_dump(mode="json")) == selected
+    # Every declared row must restore prospectively even while the installed
+    # source fact is False. These are target capability proofs, not source RPCs.
+    assert len(registry.selected_prospective()) == 10
+    assert all(restore_variant_source_contract(item) for item in registry.selected_prospective())
+
+
+@pytest.mark.parametrize("official", [False, True])
+def test_new_profile_cannot_be_relabelled_as_opposite_base_settings(official: bool) -> None:
+    record = full_official_variant_record()
+    record["variants"] = [
+        row for row in variants(record) if section(row, "source_settings")["source_base_is_set"] is official
+    ]
+    for row in variants(record):
+        section(row, "source_settings")["source_base_is_set"] = not official
+    registry = source_mapping_revision(json.dumps([record]), OFFICIAL_ROOT_REVISION)
+    for selected in registry.selected_prospective():
+        with pytest.raises(ValueError, match="[Ss]ource|[Vv]ariant|[Ee]ndpoint"):
+            restore_variant_source_contract(selected)
+
+
+def test_historical_false_variant_json_and_revision_digests_are_unchanged() -> None:
+    assert source_mapping_revision(json.dumps([variant_record()]), REVISION).digest == (
+        "sha256:da190033b7d81c777fc43974262135d1a66d29428c10713a9c181cd967e9cdf8"
+    )
+    assert source_mapping_revision(json.dumps([full_variant_record()]), REVISION).digest == (
+        "sha256:5a00d12934280b513c6903c15c04f540207ff5f769f1d28faee6f15812f0739d"
+    )
+    assert SourceVariantSettings(
+        protocol_selector="absent", source_base_is_set=False, request_metadata_enabled=False
+    ).model_dump_json() == (
+        '{"protocol_selector":"absent","source_base_is_set":false,"request_metadata_enabled":false}'
+    )
+
+
+@pytest.mark.parametrize(
+    "source_uid",
+    [
+        build_inputs(runtime=True)["source_plugin_unique_identifier"],
+        _REVIEWED_CONTRACTS[0].source_plugin_unique_identifier,
+    ],
+)
+@pytest.mark.parametrize(
+    ("base", "expected"),
+    [
+        (None, "unset"),
+        ("", "unset"),
+        ("https://api.openai.com", "official_root"),
+        ("https://api.openai.com/", "unreviewed"),
+        ("https://api.openai.com/v1", "unreviewed"),
+        ("https://api.openai.com:443", "unreviewed"),
+        ("https://API.OPENAI.COM", "unreviewed"),
+        ("http://api.openai.com", "unreviewed"),
+        ("https://api.openai.com.evil.invalid", "unreviewed"),
+        ("https://user:secret@api.openai.com", "unreviewed"),
+        ("https://api.openai.com?secret=never-exported", "unreviewed"),
+        ("https://api.openai.com#fragment", "unreviewed"),
+        (" https://api.openai.com", "unreviewed"),
+        (True, "unreviewed"),
+        (False, "unreviewed"),
+        (0, "unreviewed"),
+        ({}, "unreviewed"),
+    ],
+)
+def test_endpoint_classification_is_exact_not_url_normalization(source_uid: str, base: object, expected: str) -> None:
+    assert source_endpoint_class(source_uid, base) == expected
+    fact = hosted_source_variant_fact(
+        provider=IDENTITY[0], source_uid=source_uid, models=[], credentials={"openai_api_base": base}
+    )
+    assert fact is not None
+    assert fact.source_endpoint_class == expected
+    context = source_variant_context(fact, provider=IDENTITY[0], source_uid=source_uid)
+    assert (context is not None) == (expected != "unreviewed")
+    assert "never-exported" not in repr(fact)
+    assert "user:secret" not in repr(fact)
+
+
+def test_official_root_requires_the_exact_source_archive_and_an_actual_dictionary() -> None:
+    uid = build_inputs(runtime=True)["source_plugin_unique_identifier"]
+    for unknown in ("unreviewed", uid + "changed"):
+        fact = hosted_source_variant_fact(
+            provider=IDENTITY[0],
+            source_uid=unknown,
+            models=[],
+            credentials={"openai_api_base": "https://api.openai.com"},
+        )
+        assert fact is not None
+        assert fact.source_endpoint_class == "unreviewed"
+        assert source_variant_context(fact, provider=IDENTITY[0], source_uid=unknown) is None
+    for missing in (None, [], ""):
+        assert hosted_source_variant_fact(provider=IDENTITY[0], source_uid=uid, models=[], credentials=missing) is None
+    fact = hosted_source_variant_fact(
+        provider=IDENTITY[0], source_uid=uid, models=[], credentials={"openai_api_base": "https://api.openai.com"}
+    )
+    assert fact is not None
+    assert (
+        source_variant_context(replace(fact, source_endpoint_class="unset"), provider=IDENTITY[0], source_uid=uid)
+        is None
+    )
+
+
+@pytest.mark.parametrize("metadata", [True, False, 0, 1, "true", "unknown", {}, []])
+def test_unknown_metadata_values_are_not_treated_as_reviewed_disabled(metadata: object) -> None:
+    assert (
+        hosted_source_variant_fact(
+            provider=IDENTITY[0],
+            source_uid=build_inputs(runtime=True)["source_plugin_unique_identifier"],
+            models=[],
+            credentials={"enable_request_metadata": metadata},
+        )
+        is None
+    )
 
 
 def test_global_registry_preserves_old_revision_model_and_bytes_when_new_v2_revision_exists() -> None:
@@ -236,7 +466,7 @@ def test_unreviewed_true042_v2_flags_cannot_gain_authority_even_when_the_row_mat
         models=[inputs["source_schema"]],
         credentials=credentials,
     )
-    with pytest.raises(ValueError, match="Unreviewed V2"):
+    with pytest.raises(ValueError, match="Unreviewed V2|Positive source variant"):
         resolve_source_mapping(
             registry,
             IDENTITY,

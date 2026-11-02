@@ -411,21 +411,27 @@ def test_whole_v2_facade_does_not_admit_actual_custom_dependencies_as_system(
         (True, True, "responses"),
     ],
 )
+@pytest.mark.parametrize("official_variants", [False, True])
 def test_variant_readiness_separates_saved_exact_set_from_prospective_target_only_evidence(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
     selected: bool,
     all_sources: bool,
     current_selector: str | None,
+    official_variants: bool,
 ) -> None:
     from tests.unit_tests.services.test_model_billing_openai_chat_adapter import RUNTIME_PROFILE, build_inputs
     from tests.unit_tests.services.test_model_billing_source_variants import (
+        OFFICIAL_ROOT_REVISION,
         REVISION,
         current_source_schemas,
+        full_official_registry,
         full_variant_record,
         variant_record,
     )
 
+    revision = OFFICIAL_ROOT_REVISION if official_variants else REVISION
+    all_sources = all_sources or official_variants
     gateway, metadata, _, selections = setup_gateway(monkeypatch, sqlite_session_factory)
     inputs = build_inputs(runtime=True)
     uid = inputs["source_plugin_unique_identifier"]
@@ -454,8 +460,14 @@ def test_variant_readiness_separates_saved_exact_set_from_prospective_target_onl
     monkeypatch.setattr(
         module.dify_config,
         "TOKENER_LEGACY_MODEL_MAPPING_JSON",
-        json.dumps([full_variant_record() if all_sources else variant_record()]),
+        json.dumps(
+            full_official_registry()
+            if official_variants
+            else [full_variant_record() if all_sources else variant_record()]
+        ),
     )
+    seen_target_profiles: list[str] = []
+    blocked_profile: list[str] = []
     if all_sources:
         original_lookup = metadata.get_model_schema
 
@@ -473,6 +485,9 @@ def test_variant_readiness_separates_saved_exact_set_from_prospective_target_onl
             if isinstance(credentials, RoutedModelCredentials):
                 contract = credentials.plan.source_parameter_contract
                 assert contract is not None
+                seen_target_profiles.append(contract.profile_id)
+                if contract.profile_id in blocked_profile:
+                    return None
                 if metadata.target is not initial_target:
                     return metadata.target
                 return runtime110 if "openai-110-" in contract.profile_id else runtime042
@@ -489,14 +504,17 @@ def test_variant_readiness_separates_saved_exact_set_from_prospective_target_onl
 
         monkeypatch.setattr(metadata, "get_model_schema", source_or_target)
     required = (RequiredSavedCreditModel(PROVIDER, "llm", "gpt-4o-mini", ("paid",)),) if selected else ()
-    evidence = gateway.sources("tenant", REVISION, required, inventory_policy="saved_system_dependencies_v2")
+    evidence = gateway.sources("tenant", revision, required, inventory_policy="saved_system_dependencies_v2")
     assert len(evidence.models) == int(selected)
-    assert len(evidence.prospective_variants) == (5 if all_sources else 2)
+    assert len(evidence.prospective_variants) == (10 if official_variants else 5 if all_sources else 2)
     assert all(item["evidence"] == "reviewed_target_profile_only" for item in evidence.prospective_variants)
     assert metadata.dynamic_uid == (uid if selected else None)
     if selected:
         assert evidence.models[0]["source_plugin_uid"] == uid
         assert evidence.models[0]["source_runtime_schema_digest"] == module.model_schema_digest(metadata.dynamic)
+        selection = evidence.models[0]["source_variant"]
+        assert isinstance(selection, dict)
+        assert selection["source_settings"]["source_base_is_set"] is False
         if current_selector is not None:
             selection = evidence.models[0]["source_variant"]
             assert isinstance(selection, dict)
@@ -524,7 +542,24 @@ def test_variant_readiness_separates_saved_exact_set_from_prospective_target_onl
         "prospective_variants": list(evidence.prospective_variants),
         "source_variant_registry_digest": evidence.source_variant_registry_digest,
     }
-    assert gateway.validate_target("tenant", REVISION, inventory) == expected
+    assert gateway.validate_target("tenant", revision, inventory) == expected
+    if official_variants:
+        from services.model_billing_openai_chat_adapter import _OFFICIAL_ROOT_REVIEWED_CONTRACT
+        from services.model_billing_openai_provider110_adapter import _OFFICIAL_ROOT_REVIEWED_CONTRACTS
+
+        expected_official = {
+            _OFFICIAL_ROOT_REVIEWED_CONTRACT.profile_id,
+            *(item.profile_id for item in _OFFICIAL_ROOT_REVIEWED_CONTRACTS),
+        }
+        assert expected_official <= set(seen_target_profiles)
+        assert len(seen_target_profiles) == 10 + int(selected)
+        # A single unsupported official profile blocks preparation even when
+        # the selected installed source and its RPC evidence remain False.
+        for profile_id in expected_official:
+            blocked_profile[:] = [profile_id]
+            with pytest.raises(ModelRouteUnmapped):
+                gateway.validate_target("tenant", revision, inventory)
+        blocked_profile.clear()
     if selected:
         for changed_source in (
             {**evidence.models[0], "source_plugin_uid": "untrusted"},
@@ -532,21 +567,21 @@ def test_variant_readiness_separates_saved_exact_set_from_prospective_target_onl
             {**evidence.models[0], "source_parameter_settings": {"api_protocol": "default_chat"}},
         ):
             with pytest.raises(ModelRouteUnmapped):
-                gateway.validate_target("tenant", REVISION, {**inventory, "models": [changed_source]})
+                gateway.validate_target("tenant", revision, {**inventory, "models": [changed_source]})
     altered_sets: tuple[Sequence[Mapping[str, object]], ...] = (
         (),
         (*evidence.prospective_variants, evidence.prospective_variants[0]),
     )
     for altered in altered_sets:
         with pytest.raises(ModelRouteUnmapped):
-            gateway.validate_target("tenant", REVISION, {**inventory, "prospective_variants": altered})
+            gateway.validate_target("tenant", revision, {**inventory, "prospective_variants": altered})
     with pytest.raises(ModelRouteUnmapped):
         gateway.validate_target(
-            "tenant", REVISION, {**inventory, "source_variant_registry_digest": "sha256:" + "f" * 64}
+            "tenant", revision, {**inventory, "source_variant_registry_digest": "sha256:" + "f" * 64}
         )
     metadata.target = catalog  # Catalog is not the source runtime/schema handshake.
     with pytest.raises(ModelRouteUnmapped):
-        gateway.validate_target("tenant", REVISION, inventory)
+        gateway.validate_target("tenant", revision, inventory)
 
 
 def test_variant_sources_require_explicit_stable_saved_policy(
