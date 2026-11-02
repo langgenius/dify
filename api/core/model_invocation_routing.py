@@ -35,9 +35,10 @@ from services.entities.model_billing_mapping import MappingTarget as MappingTarg
 from services.entities.model_billing_mapping import ModelMapping as ModelMapping  # noqa: PLC0414
 from services.entities.model_billing_mapping import ParameterAdapter as ParameterAdapter  # noqa: PLC0414
 from services.model_billing_mapping_service import (
+    SourceParameterContract,
     TTSVoiceContract,
     additional_model_is_authorized,
-    build_tts_voice_contract,
+    build_source_adapter_contract,
     hosted_migration_sources,
     managed_source_schemas,
     mapping_supports_installed_plugin,
@@ -47,7 +48,10 @@ from services.model_billing_mapping_service import (
     partition_hosted_migration_sources,
     partition_known_unavailable_sources,
     resolve_source_capability_policy,
+    restore_source_parameter_contract,
     retirement_policy_for_revision,
+    source_parameter_marker,
+    source_parameter_public_settings,
     uses_published_tokener_balance,
 )
 from services.model_billing_mapping_service import normalize_tts_voice as normalize_tts_voice  # noqa: PLC0414
@@ -187,6 +191,7 @@ class FrozenModelInvocation:
     operations: tuple[str, ...]
     settlement_backend: str = "tokener"
     tts_voice_contract: TTSVoiceContract | None = None
+    source_parameter_contract: SourceParameterContract | None = None
 
     @property
     def cache_identity(self) -> str:
@@ -207,6 +212,19 @@ class FrozenModelInvocation:
                     self.tts_voice_contract.source_plugin_unique_identifier,
                     self.tts_voice_contract.source_schema_digest,
                     self.tts_voice_contract.rules_digest,
+                ]
+            )
+        if self.source_parameter_contract is not None:
+            identity.extend(
+                [
+                    self.source_parameter_contract.adapter_id,
+                    self.source_parameter_contract.algorithm_revision,
+                    self.source_parameter_contract.profile_id,
+                    self.source_parameter_contract.source_model,
+                    self.source_parameter_contract.source_plugin_unique_identifier,
+                    self.source_parameter_contract.source_schema_digest,
+                    self.source_parameter_contract.target_model,
+                    self.source_parameter_contract.rules_digest,
                 ]
             )
         return hashlib.sha256(json.dumps(identity, separators=(",", ":")).encode()).hexdigest()
@@ -361,6 +379,7 @@ def routed_credentials(
     ):
         raise ModelRouteUnmapped
     tts_voice_contract = None
+    source_parameter_contract = None
     if mapping.parameter_adapter.id != "identity_v1":
         matching_sources = [
             schema for schema in source_schemas if (schema.model_type, schema.model) == (model_type, model)
@@ -369,18 +388,21 @@ def routed_credentials(
         if len(matching_sources) != 1 or not isinstance(source_uid, str):
             raise ModelRouteUnmapped
         try:
-            tts_voice_contract = build_tts_voice_contract(
-                adapter_id=mapping.parameter_adapter.id,
-                adapter_revision=mapping.parameter_adapter.revision,
-                expected_rules_digest=mapping.parameter_adapter.rules_digest,
+            contract = build_source_adapter_contract(
+                mapping,
                 source_provider=provider,
-                source_model=model,
                 source_plugin_unique_identifier=source_uid,
                 source_schema=matching_sources[0],
-                expected_source_schema_digest=mapping.source_schema_digest,
+                source_credentials=configuration.system_configuration.credentials,
             )
         except ValueError:
             raise ModelRouteUnmapped from None
+        if isinstance(contract, TTSVoiceContract):
+            tts_voice_contract = contract
+        elif isinstance(contract, SourceParameterContract):
+            source_parameter_contract = contract
+        else:
+            raise ModelRouteUnmapped
     with session_factory.create_session() as session:
         integration = session.scalar(
             select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == configuration.tenant_id)
@@ -413,6 +435,7 @@ def routed_credentials(
             target_model=mapping.target.model,
             operations=tuple(mapping.operations),
             tts_voice_contract=tts_voice_contract,
+            source_parameter_contract=source_parameter_contract,
         )
     return RoutedModelCredentials(plan)
 
@@ -493,6 +516,27 @@ def redirect_payload(plan: FrozenModelInvocation, data: dict[str, Any]) -> dict[
         or data.get("provider") != ModelProviderID(plan.logical_provider).provider_name
     ):
         raise ModelRouteUnavailable
+    marker = None
+    if plan.source_parameter_contract is not None:
+        if plan.tts_voice_contract is not None:
+            raise ModelRouteUnavailable
+        try:
+            marker = source_parameter_marker(
+                plan.source_parameter_contract,
+                source_provider=plan.logical_provider,
+                source_model=plan.logical_model,
+                model_type=plan.model_type,
+                target_model=plan.target_model,
+            )
+        except ValueError:
+            raise ModelRouteUnavailable from None
+    target_credentials = managed_credentials(plan)
+    if "_dify_source_contract" in target_credentials:
+        # A stored or user-supplied field is never authority for a source
+        # profile. Only the server-frozen verified contract can create it.
+        raise ModelRouteUnavailable
+    if marker is not None:
+        target_credentials = {**target_credentials, "_dify_source_contract": marker}
     return {
         "version": 1,
         "route_id": plan.route_id,
@@ -502,7 +546,7 @@ def redirect_payload(plan: FrozenModelInvocation, data: dict[str, Any]) -> dict[
             "model_type": plan.model_type.value,
             "model": plan.target_model,
             "expected_unique_identifier": plan.plugin_unique_identifier,
-            "credentials": managed_credentials(plan),
+            "credentials": target_credentials,
         },
     }
 
@@ -558,8 +602,16 @@ def migration_inventory(
         raise ModelRouteUnmapped from None
     client = PluginModelClient()
     source_bindings: dict[str, str] = {}
-    if source_capability_policy.declarations:
-        evidence_providers = {item.provider_id for item in source_capability_policy.declarations}
+    parameter_profile_bindings: dict[str, str] = {}
+    parameter_profile_providers = {
+        provider
+        for (provider, _kind, _model), rule in registry.items()
+        if rule.parameter_adapter.id in {"anthropic_source_v1", "openai_chat_source_v1"}
+    }
+    evidence_providers = {
+        item.provider_id for item in source_capability_policy.declarations
+    } | parameter_profile_providers
+    if evidence_providers:
         seen_bindings: set[str] = set()
         # A cached catalog is insufficient: require a fresh, unique immutable
         # installation. Mutable remote-debug code cannot satisfy this proof.
@@ -574,7 +626,14 @@ def migration_inventory(
             if binding_provider in seen_bindings:
                 raise ModelRouteUnavailable
             seen_bindings.add(binding_provider)
-            if binding.source != PluginInstallationSource.Remote and binding.runtime_type == "local":
+            if binding.source == PluginInstallationSource.Remote:
+                continue
+            if binding.runtime_type in {"local", "serverless"}:
+                parameter_profile_bindings[binding_provider] = binding.plugin_unique_identifier
+            declaration = source_capability_policy.for_package(binding_provider, binding.plugin_unique_identifier)
+            # The old source-schema evidence was local-only. A v2 record can
+            # opt into an immutable serverless package under a new revision.
+            if declaration is not None and declaration.allows_runtime(binding.runtime_type):
                 source_bindings[binding_provider] = binding.plugin_unique_identifier
     inventory = []
     retired_inventory = []
@@ -687,7 +746,7 @@ def migration_inventory(
                 required_ops.add(f"{model_type.value}/invoke")
             if not required_ops <= set(rule.operations):
                 raise ModelRouteUnmapped
-            item = {
+            item: dict[str, Any] = {
                 "provider": str(ModelProviderID(provider_name)),
                 "model_type": model_type.value,
                 "model": model,
@@ -702,22 +761,37 @@ def migration_inventory(
                 source_uid = getattr(configuration.provider, "plugin_unique_identifier", None)
                 if not isinstance(source_uid, str):
                     raise ModelRouteUnmapped
+                if (
+                    rule.parameter_adapter.id in {"anthropic_source_v1", "openai_chat_source_v1"}
+                    and parameter_profile_bindings.get(str(source_id)) != source_uid
+                ):
+                    # A cached historical declaration cannot attest today's
+                    # immutable source installation at preparation time.
+                    raise ModelRouteUnavailable
                 try:
-                    contract = build_tts_voice_contract(
-                        adapter_id=rule.parameter_adapter.id,
-                        adapter_revision=rule.parameter_adapter.revision,
-                        expected_rules_digest=rule.parameter_adapter.rules_digest,
+                    contract = build_source_adapter_contract(
+                        rule,
                         source_provider=str(source_id),
-                        source_model=model,
                         source_plugin_unique_identifier=source_uid,
                         source_schema=source_schema,
-                        expected_source_schema_digest=rule.source_schema_digest,
+                        source_credentials=system.credentials,
                     )
                 except ValueError:
                     raise ModelRouteUnmapped from None
                 if contract is None:
                     raise ModelRouteUnmapped
                 item["source_adapter_rules_digest"] = contract.rules_digest
+                if isinstance(contract, SourceParameterContract):
+                    item["source_parameter_contract"] = source_parameter_marker(
+                        contract,
+                        source_provider=str(source_id),
+                        source_model=model,
+                        model_type=model_type,
+                        target_model=rule.target.model,
+                    )
+                    public_settings = source_parameter_public_settings(contract, source_credentials=system.credentials)
+                    if public_settings is not None:
+                        item["source_parameter_settings"] = public_settings
             inventory.append(item)
     if (
         not inventory
@@ -809,6 +883,16 @@ def validate_migration_readiness(
             raise ModelRouteUnavailable
         if Version(actual_version) < Version(rule.target.minimum_plugin_version):
             raise ModelRouteUnavailable
+        source_parameter_contract = None
+        if rule.parameter_adapter.id not in {"identity_v1", "tts_source_voice_v1"}:
+            try:
+                source_parameter_contract = restore_source_parameter_contract(
+                    source.get("source_parameter_contract"),
+                    mapping=rule,
+                    source_public_settings=source.get("source_parameter_settings"),
+                )
+            except ValueError:
+                raise ModelRouteUnmapped from None
         plan = FrozenModelInvocation(
             tenant_id=tenant_id,
             route_id=str(uuid4()),
@@ -822,6 +906,7 @@ def validate_migration_readiness(
             plugin_unique_identifier=plugin_unique_identifier,
             target_model=rule.target.model,
             operations=tuple(rule.operations),
+            source_parameter_contract=source_parameter_contract,
         )
         target_schema = client.get_model_schema(
             tenant_id,
@@ -834,6 +919,16 @@ def validate_migration_readiness(
         )
         if target_schema is None or target_schema.model_type != model_type:
             raise ModelRouteUnmapped
+        if source_parameter_contract is not None:
+            # A minimum version/mode match is not proof that the target
+            # understands the private source profile. Native schema fallback
+            # must fail before funds are issued. The target may report its
+            # physical model ID, but every other source field must match.
+            logical_schema = target_schema.model_copy(update={"model": source["model"]})
+            if not hmac.compare_digest(
+                model_schema_digest(logical_schema), source_parameter_contract.source_schema_digest
+            ):
+                raise ModelRouteUnmapped
         if (
             model_type == ModelType.LLM
             and target_schema.model_properties.get(ModelPropertyKey.MODE) != rule.source.mode

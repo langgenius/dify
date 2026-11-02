@@ -26,7 +26,20 @@ from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPr
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from models.provider_ids import ModelProviderID
 from services.entities.model_billing_mapping import ModelMapping
+from services.entities.model_billing_mapping import SourceParameterContract as SourceParameterContract  # noqa: PLC0414
 from services.entities.model_billing_mapping import model_schema_digest as model_schema_digest  # noqa: PLC0414
+from services.model_billing_anthropic_adapter import AnthropicSourceContract as AnthropicSourceContract  # noqa: PLC0414
+from services.model_billing_anthropic_adapter import anthropic_source_marker as anthropic_source_marker  # noqa: PLC0414
+from services.model_billing_anthropic_adapter import build_anthropic_source_contract
+from services.model_billing_anthropic_adapter import (
+    restore_anthropic_source_contract as restore_anthropic_source_contract,  # noqa: PLC0414
+)
+from services.model_billing_openai_chat_adapter import (
+    OpenAIChatSourceContract,
+    build_openai_chat_source_contract,
+    openai_chat_source_marker,
+    restore_openai_chat_source_contract,
+)
 from services.model_billing_retirement_policy import ModelRetirementPolicy, resolve_retirement_policy
 from services.model_billing_source_capability_policy import SourceCapabilityDeclaration, UnavailableSourceEvidence
 from services.model_billing_source_capability_policy import (
@@ -39,6 +52,118 @@ from services.model_billing_tts_adapter import normalize_tts_voice as normalize_
 type SourceIdentity = tuple[ModelType, str]
 type MappingIdentity = tuple[str, ModelType, str]
 type SchemaLookup = Callable[[ModelType, str, dict[str, Any]], AIModelEntity | None]
+
+
+def build_source_adapter_contract(
+    mapping: ModelMapping,
+    *,
+    source_provider: str,
+    source_plugin_unique_identifier: str,
+    source_schema: AIModelEntity,
+    source_credentials: dict[str, Any] | None,
+) -> TTSVoiceContract | SourceParameterContract | None:
+    """Dispatch the typed source adapter; identity preserves historical behavior."""
+    if mapping.parameter_adapter.id == "identity_v1":
+        return None
+    arguments = {
+        "adapter_id": mapping.parameter_adapter.id,
+        "adapter_revision": mapping.parameter_adapter.revision,
+        "expected_rules_digest": mapping.parameter_adapter.rules_digest,
+        "source_provider": source_provider,
+        "source_model": mapping.source.model,
+        "source_plugin_unique_identifier": source_plugin_unique_identifier,
+        "expected_source_schema_digest": mapping.source_schema_digest,
+    }
+    if mapping.parameter_adapter.id == "anthropic_source_v1":
+        return build_anthropic_source_contract(
+            **arguments, source_schema=source_schema, target_model=mapping.target.model
+        )
+    if mapping.parameter_adapter.id == "openai_chat_source_v1":
+        if source_credentials is None:
+            raise ValueError("Actual source SYSTEM credential settings are unavailable")
+        return build_openai_chat_source_contract(
+            **arguments,
+            source_schema=source_schema,
+            target_model=mapping.target.model,
+            source_api_protocol=source_credentials.get("api_protocol"),
+        )
+    return build_tts_voice_contract(**arguments, source_schema=source_schema)
+
+
+def source_parameter_marker(
+    contract: SourceParameterContract,
+    *,
+    source_provider: str,
+    source_model: str,
+    model_type: ModelType,
+    target_model: str,
+) -> dict[str, Any]:
+    """Dispatch only a reviewed concrete family, never an arbitrary record."""
+    arguments = {
+        "source_provider": source_provider,
+        "source_model": source_model,
+        "target_model": target_model,
+    }
+    if isinstance(contract, OpenAIChatSourceContract):
+        return openai_chat_source_marker(contract, **arguments, model_type=model_type)
+    if isinstance(contract, AnthropicSourceContract):
+        return anthropic_source_marker(contract, **arguments, model_type=model_type)
+    raise ValueError("Unsupported source parameter adapter family")
+
+
+def source_parameter_public_settings(
+    contract: SourceParameterContract, *, source_credentials: dict[str, Any] | None
+) -> dict[str, str] | None:
+    """Record only reviewed non-secret protocol facts; never serialize keys.
+
+    None means this adapter family has no public settings attestation. For
+    OpenAI, an absent optional protocol value is recorded explicitly as its
+    source runtime's default Chat choice, not as an invented Responses override.
+    """
+    if not isinstance(contract, OpenAIChatSourceContract):
+        return None
+    if source_credentials is None:
+        raise ValueError("Actual source SYSTEM credential settings are unavailable")
+    protocol = source_credentials.get("api_protocol")
+    if protocol is None:
+        return {"api_protocol": "default_chat"}
+    if protocol == "chat":
+        return {"api_protocol": "chat"}
+    raise ValueError("Unreviewed source SYSTEM protocol settings")
+
+
+def restore_source_parameter_contract(
+    marker: object, *, mapping: ModelMapping, source_public_settings: object
+) -> SourceParameterContract:
+    """Restore freshly verified inventory by its exact registry adapter family."""
+    arguments = {
+        "source_provider": str(ModelProviderID(mapping.source.provider_id)),
+        "source_model": mapping.source.model,
+        "target_model": mapping.target.model,
+    }
+    if mapping.parameter_adapter.id == "openai_chat_source_v1":
+        if (
+            not isinstance(source_public_settings, dict)
+            or set(source_public_settings) != {"api_protocol"}
+            or source_public_settings["api_protocol"] not in ("default_chat", "chat")
+        ):
+            raise ValueError("Missing or invalid source SYSTEM protocol proof")
+        protocol = None if source_public_settings["api_protocol"] == "default_chat" else "chat"
+        contract: SourceParameterContract = restore_openai_chat_source_contract(
+            marker, **arguments, model_type=mapping.source.model_type, source_api_protocol=protocol
+        )
+    elif mapping.parameter_adapter.id == "anthropic_source_v1" and source_public_settings is None:
+        contract = restore_anthropic_source_contract(marker, **arguments, model_type=mapping.source.model_type)
+    else:
+        raise ValueError("Unsupported source parameter adapter family or settings")
+    if (
+        contract.rules_digest != mapping.parameter_adapter.rules_digest
+        or contract.source_schema_digest != mapping.source_schema_digest
+        or contract.adapter_id != mapping.parameter_adapter.id
+        or contract.algorithm_revision != mapping.parameter_adapter.revision
+    ):
+        raise ValueError("Source parameter adapter mapping mismatch")
+    return contract
 
 
 def migration_policy_allows_empty_sources(eligibility_policy_version: str | None) -> bool:

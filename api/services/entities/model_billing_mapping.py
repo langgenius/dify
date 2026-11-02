@@ -2,11 +2,30 @@
 
 import hashlib
 import json
+from dataclasses import dataclass
 from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
+
+
+@dataclass(frozen=True, slots=True)
+class SourceParameterContract:
+    """Reviewed, non-secret source profile frozen into a managed invocation.
+
+    Concrete adapter families own construction and validate against their own
+    exact allowlist. This record alone never authorizes routing or a profile.
+    """
+
+    profile_id: str
+    source_plugin_unique_identifier: str
+    source_model: str
+    source_schema_digest: str
+    target_model: str
+    rules_digest: str
+    adapter_id: str
+    algorithm_revision: str
 
 
 def model_schema_digest(schema: AIModelEntity) -> str:
@@ -42,7 +61,7 @@ class MappingTarget(_StrictModel):
 
 
 class ParameterAdapter(_StrictModel):
-    id: Literal["identity_v1", "tts_source_voice_v1"]
+    id: Literal["identity_v1", "tts_source_voice_v1", "anthropic_source_v1", "openai_chat_source_v1"]
     revision: str = Field(min_length=1)
     rules_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
 
@@ -60,10 +79,20 @@ class ModelMapping(_StrictModel):
     conformance_fixture_ids: list[str] = Field(min_length=1)
 
     @model_validator(mode="after")
-    def validate_tts_voice_adapter(self) -> Self:
+    def validate_parameter_adapter(self) -> Self:
         if self.parameter_adapter.id == "tts_source_voice_v1":
             if self.source.model_type != ModelType.TTS or self.target.model_type != ModelType.TTS:
                 raise ValueError("TTS voice adapter requires TTS source and target")
             if self.parameter_adapter.revision != "1":
                 raise ValueError("Unsupported TTS voice adapter revision")
+        if self.parameter_adapter.id == "anthropic_source_v1":
+            if self.source.model_type != ModelType.LLM or self.target.model_type != ModelType.LLM:
+                raise ValueError("Anthropic source adapter requires LLM source and target")
+            if self.parameter_adapter.revision != "1":
+                raise ValueError("Unsupported Anthropic source adapter revision")
+        if self.parameter_adapter.id == "openai_chat_source_v1":
+            if self.source.model_type != ModelType.LLM or self.target.model_type != ModelType.LLM:
+                raise ValueError("OpenAI Chat source adapter requires LLM source and target")
+            if self.parameter_adapter.revision != "1":
+                raise ValueError("Unsupported OpenAI Chat source adapter revision")
         return self

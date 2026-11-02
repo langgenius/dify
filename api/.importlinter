@@ -1356,6 +1356,40 @@ forbidden_modules =
     tasks
     werkzeug
 
+[importlinter:contract:model-billing-source-anthropic-adapter-boundary]
+name = Source Anthropic adapter is pure and infrastructure independent
+type = forbidden
+source_modules =
+    services.model_billing_anthropic_adapter
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:model-billing-source-openai-chat-adapter-boundary]
+name = Source OpenAI Chat adapter is pure and infrastructure independent
+type = forbidden
+source_modules =
+    services.model_billing_openai_chat_adapter
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
 [importlinter:contract:model-billing-free-migration-controller-boundary]
 name = Migration control transport reaches persistence through application owners
 type = forbidden

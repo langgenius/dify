@@ -67,6 +67,9 @@ class SourceCapabilityDeclaration(BaseModel):
     original_configurate_methods: tuple[ConfigurateMethod, ...] = Field(min_length=1)
     supported_model_types: tuple[ModelType, ...] = Field(min_length=1)
     unavailable: tuple[UnavailableSourceEvidence, ...] = Field(min_length=1)
+    # None preserves the original local-only policy and its frozen digest.
+    # Serverless attestation is explicit, reviewed and revision-scoped in v2.
+    allowed_runtime_types: tuple[Literal["local", "serverless"], ...] | None = Field(default=None, min_length=1)
 
     @model_validator(mode="after")
     def validate_evidence_identity(self) -> Self:
@@ -81,6 +84,11 @@ class SourceCapabilityDeclaration(BaseModel):
             raise ValueError("Duplicate negative source identity")
         if any(item.model_type not in self.supported_model_types for item in self.unavailable):
             raise ValueError("Negative evidence has an unsupported model type")
+        if self.allowed_runtime_types is not None:
+            if self.schema_version != 2:
+                raise ValueError("Runtime installation scope requires schema version 2")
+            if len(set(self.allowed_runtime_types)) != len(self.allowed_runtime_types):
+                raise ValueError("Duplicate source runtime type")
         runtime_evidence = [item for item in self.unavailable if item.reason == "source_runtime_unavailable"]
         if runtime_evidence and self.schema_version != 2:
             raise ValueError("Runtime source evidence requires schema version 2")
@@ -92,6 +100,10 @@ class SourceCapabilityDeclaration(BaseModel):
         ):
             raise ValueError("Runtime endpoint evidence does not match the reviewed source guard")
         return self
+
+    def allows_runtime(self, runtime_type: str) -> bool:
+        """Only explicitly reviewed immutable execution kinds can attest absence."""
+        return runtime_type in (self.allowed_runtime_types or ("local",))
 
 
 def _digest(payload: object) -> str:
@@ -117,6 +129,8 @@ class ModelSourceCapabilityPolicy:
             record = declaration.model_dump(mode="json", exclude_none=True)
             record["original_configurate_methods"] = sorted(record["original_configurate_methods"])
             record["supported_model_types"] = sorted(record["supported_model_types"])
+            if "allowed_runtime_types" in record:
+                record["allowed_runtime_types"] = sorted(record["allowed_runtime_types"])
             record["unavailable"] = sorted(record["unavailable"], key=itemgetter("model_type", "model"))
             records.append(record)
         return _digest(sorted(records, key=itemgetter("provider_id", "plugin_unique_identifier")))

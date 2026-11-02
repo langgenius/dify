@@ -43,6 +43,7 @@ class DeclarationData(TypedDict):
     original_configurate_methods: list[str]
     supported_model_types: list[str]
     unavailable: list[NegativeEvidenceData]
+    allowed_runtime_types: NotRequired[list[str]]
 
 
 def declaration(model: str = "absent", revision: str = "new") -> DeclarationData:
@@ -243,6 +244,39 @@ def test_runtime_evidence_does_not_change_independent_or_unmetered_pools(
     partition = partition_known_unavailable_sources(original, [schema()], METHODS, TYPES, frozenset(), evidence)
     assert partition.system == original
     assert partition.unavailable == {}
+
+
+def test_runtime_scope_is_explicit_v2_only_and_default_keeps_original_local_digest() -> None:
+    original = declaration()
+    old = resolve_source_capability_policy(json.dumps([original]), "new")
+    assert old.declarations[0].allowed_runtime_types is None
+    assert old.declarations[0].allows_runtime("local")
+    assert not old.declarations[0].allows_runtime("serverless")
+    assert not old.declarations[0].allows_runtime("remote")
+    opted = {**original, "schema_version": 2, "allowed_runtime_types": ["local", "serverless"]}
+    selected = resolve_source_capability_policy(json.dumps([opted]), "new")
+    assert selected.declarations[0].allows_runtime("serverless")
+    assert selected.digest != old.digest
+    reverse = {**opted, "allowed_runtime_types": ["serverless", "local"]}
+    assert resolve_source_capability_policy(json.dumps([reverse]), "new").digest == selected.digest
+    # Unknown later revisions cannot change the historical policy/hash.
+    later = {**opted, "mapping_revision": "later"}
+    assert resolve_source_capability_policy(json.dumps([original, later]), "new").digest == old.digest
+
+
+@pytest.mark.parametrize("runtimes", [[], ["remote"], ["unknown"], ["local", "local"]])
+def test_runtime_scope_cannot_attest_debug_unknown_empty_or_duplicate_kinds(runtimes: list[str]) -> None:
+    with pytest.raises(ValidationError):
+        resolve_source_capability_policy(
+            json.dumps([{**declaration(), "schema_version": 2, "allowed_runtime_types": runtimes}]), "new"
+        )
+
+
+def test_v1_cannot_silently_opt_into_serverless() -> None:
+    with pytest.raises(ValueError, match="version 2"):
+        resolve_source_capability_policy(
+            json.dumps([{**declaration(), "allowed_runtime_types": ["local", "serverless"]}]), "new"
+        )
 
 
 def test_default_other_revisions_and_record_order_preserve_contract() -> None:

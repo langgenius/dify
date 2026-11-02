@@ -254,6 +254,10 @@ def credential_pin() -> dict[str, str]:
         "binding_duplicate",
         "binding_remote",
         "binding_rpc_error",
+        "binding_serverless_default",
+        "binding_serverless_opted",
+        "binding_serverless_remote_source",
+        "binding_local_disallowed",
     ],
 )
 def test_source_capability_inventory_uses_exact_complete_bound_catalog(
@@ -312,6 +316,9 @@ def test_source_capability_inventory_uses_exact_complete_bound_catalog(
         return manager
 
     record = declaration()
+    if case in {"binding_serverless_opted", "binding_local_disallowed"}:
+        record["schema_version"] = 2
+        record["allowed_runtime_types"] = ["serverless"]
     record["catalog_digest"] = source_catalog_digest(models, METHODS, TYPES)
     if case == "catalog_mismatch":
         record["catalog_digest"] = "sha256:" + "c" * 64
@@ -338,8 +345,14 @@ def test_source_capability_inventory_uses_exact_complete_bound_catalog(
         installation_id="installation",
         plugin_id="langgenius/openai",
         plugin_unique_identifier=UID.replace("0.4.2", "0.4.3") if case == "binding_uid_mismatch" else UID,
-        runtime_type="remote" if case == "binding_remote" else "local",
-        source=PluginInstallationSource.Remote if case == "binding_remote" else PluginInstallationSource.Marketplace,
+        runtime_type=(
+            "serverless" if case.startswith("binding_serverless") else "remote" if case == "binding_remote" else "local"
+        ),
+        source=(
+            PluginInstallationSource.Remote
+            if case in {"binding_remote", "binding_serverless_remote_source"}
+            else PluginInstallationSource.Marketplace
+        ),
         version="0.4.2",
         verified=True,
     )
@@ -358,7 +371,7 @@ def test_source_capability_inventory_uses_exact_complete_bound_catalog(
         assert lookups == []
         assert provider.model_dump() == before
         return
-    if case == "matched":
+    if case in {"matched", "binding_serverless_opted"}:
         result = migration_inventory(provider.tenant_id, "new")
         assert result["model_count"] == 1
         assert {item["model"] for item in result["models"]} == {"gpt-4o"}
@@ -381,6 +394,9 @@ def test_source_capability_inventory_uses_exact_complete_bound_catalog(
             "binding_uid_mismatch",
             "binding_missing",
             "binding_remote",
+            "binding_serverless_default",
+            "binding_serverless_remote_source",
+            "binding_local_disallowed",
         }:
             assert lookups == ["absent", "absent"]
     assert provider.model_dump() == before
@@ -964,6 +980,8 @@ def test_readiness_uses_redirect_and_pins_installed_version(
 ) -> None:
     from core.model_invocation_routing import validate_migration_readiness
     from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+    from services.entities.model_billing_mapping import ModelMapping
+    from tests.unit_tests.services.test_model_billing_mapping_service import mapping, schema
 
     inventory: dict[str, object] = {
         "models": []
@@ -974,11 +992,7 @@ def test_readiness_uses_redirect_and_pins_installed_version(
     }
     inventory_call = mocker.patch("core.model_invocation_routing.migration_inventory", return_value=inventory)
     eligibility_policy_version = "free-legacy-v1" if empty_sources else None
-    rule = SimpleNamespace(
-        operations=list(plan().operations),
-        source=SimpleNamespace(mode="chat"),
-        target=SimpleNamespace(minimum_plugin_version="0.1.0", model="fixture-target"),
-    )
+    rule = ModelMapping.model_validate(mapping(schema(), revision="fixture-v1", target="fixture-target"))
     registry = mocker.patch(
         "core.model_invocation_routing.model_mappings",
         return_value={(plan().logical_provider, ModelType.LLM, "gpt-4o"): rule},
@@ -1140,6 +1154,347 @@ def test_tts_route_and_preparation_bind_the_same_verified_source_contract(
         assert credentials.plan.tts_voice_contract == contract
         assert inventory["models"][0]["source_adapter_rules_digest"] == contract.rules_digest
         assert credentials.plan.cache_identity != replace(credentials.plan, tts_voice_contract=None).cache_identity
+
+
+@pytest.mark.parametrize(
+    ("index", "case"),
+    [
+        (index, case)
+        for index in range(17)
+        for case in [
+            "valid",
+            "identity",
+            "wrong_uid",
+            "wrong_rules",
+            "wrong_target",
+            "byok",
+            "native_schema_fallback",
+            "binding_missing",
+            "binding_mismatch",
+            "binding_remote",
+            "binding_duplicate",
+            "serverless",
+            "binding_serverless_mismatch",
+            "binding_serverless_remote_source",
+            "binding_unknown",
+        ]
+    ]
+    + [(16, "explicit_chat"), (16, "explicit_responses"), (16, "missing_system_settings")],
+)
+def test_source_profile_inventory_route_readiness_and_private_marker_use_same_exact_contract(
+    monkeypatch: pytest.MonkeyPatch, index: int, case: str
+) -> None:
+    from sqlalchemy import Table, create_engine, update
+    from sqlalchemy.orm import Session
+
+    from core.entities.provider_entities import CustomProviderConfiguration
+    from core.model_invocation_routing import migration_inventory, validate_migration_readiness
+    from core.plugin.entities.plugin import PluginInstallationSource
+    from core.plugin.entities.plugin_daemon import PluginModelProviderBinding, PluginModelProviderDeclaration
+    from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+    from models.account import Tenant
+    from models.provider import ProviderCredential
+    from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
+    from services.model_billing_anthropic_adapter import ANTHROPIC_SOURCE_PROVIDER
+    from services.model_billing_mapping_service import source_parameter_marker
+    from tests.unit_tests.services.test_model_billing_anthropic_adapter import (
+        contract_for,
+        model_mapping,
+        peer_binding_index,
+        source_schema,
+    )
+    from tests.unit_tests.services.test_model_billing_mapping_service import mapping, system
+
+    if index == 16:
+        from services.entities.model_billing_mapping import ModelMapping
+        from services.model_billing_openai_chat_adapter import (
+            OPENAI_CHAT_SOURCE_PROVIDER,
+            build_openai_chat_source_contract,
+        )
+        from tests.unit_tests.services.test_model_billing_openai_chat_adapter import PROFILE, build_inputs
+
+        source = AIModelEntity.model_validate(PROFILE["source_schema"])
+        contract = build_openai_chat_source_contract(**build_inputs())
+        provider_id = OPENAI_CHAT_SOURCE_PROVIDER
+        initial_record = mapping(source, revision="anthropic-profile-v1", target=contract.target_model)
+        initial_record["parameter_adapter"] = {
+            "id": contract.adapter_id,
+            "revision": contract.algorithm_revision,
+            "rules_digest": contract.rules_digest,
+        }
+        record = ModelMapping.model_validate(initial_record).model_dump(mode="json")
+    else:
+        source = source_schema(index)
+        contract = contract_for(index)
+        provider_id = ANTHROPIC_SOURCE_PROVIDER
+        record = model_mapping(index).model_dump(mode="json")
+    expected_marker = source_parameter_marker(
+        contract,
+        source_provider=provider_id,
+        source_model=source.model,
+        model_type=ModelType.LLM,
+        target_model=contract.target_model,
+    )
+    provider_name = provider_id.rsplit("/", 1)[1]
+    if case == "identity":
+        record["parameter_adapter"]["id"] = "identity_v1"
+    elif case == "wrong_rules":
+        record["parameter_adapter"]["rules_digest"] = "sha256:" + "f" * 64
+    elif case == "wrong_target":
+        record["target"]["model"] = "wrong-snapshot"
+    apply_config_overrides(
+        monkeypatch,
+        TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps([record]),
+        TOKENER_LEGACY_RETIRED_MODELS_JSON="[]",
+        TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON="[]",
+    )
+    provider = ProviderConfiguration(
+        tenant_id=plan().tenant_id,
+        provider=PluginModelProviderDeclaration(
+            provider=provider_id,
+            label=I18nObject(en_US="Anthropic"),
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[],
+            models=[source],
+            installation_source=PluginInstallationSource.Marketplace,
+            plugin_unique_identifier="wrong" if case == "wrong_uid" else contract.source_plugin_unique_identifier,
+        ),
+        preferred_provider_type=ProviderType.CUSTOM if case == "byok" else ProviderType.SYSTEM,
+        using_provider_type=ProviderType.CUSTOM if case == "byok" else ProviderType.SYSTEM,
+        system_configuration=system([RestrictModel(model=source.model, model_type=ModelType.LLM)]),
+        custom_configuration=CustomConfiguration(
+            provider=CustomProviderConfiguration(credentials={"anthropic_api_key": "BYOK-TEST-KEY"})
+        ),
+        model_settings=[],
+    )
+    if case == "explicit_chat":
+        assert provider.system_configuration.credentials is not None
+        provider.system_configuration.credentials["api_protocol"] = "chat"
+    elif case == "explicit_responses":
+        assert provider.system_configuration.credentials is not None
+        provider.system_configuration.credentials["api_protocol"] = "responses"
+    elif case == "missing_system_settings":
+        provider.system_configuration.credentials = None
+    configurations = ProviderConfigurations(tenant_id=provider.tenant_id)
+    configurations.configurations[provider_id] = provider
+    manager = InventoryProviderManager(configurations)
+
+    def discover(*, tenant_id: str) -> ProviderManager:
+        assert tenant_id == provider.tenant_id
+        return manager
+
+    monkeypatch.setattr("core.plugin.impl.model_runtime_factory.create_plugin_provider_manager", discover)
+
+    def source_bindings(_client: PluginModelClient, tenant_id: str) -> list[PluginModelProviderBinding]:
+        assert tenant_id == provider.tenant_id
+        if case == "binding_missing":
+            return []
+        fresh = PluginModelProviderBinding(
+            provider=provider_name,
+            installation_id="fresh-source-profile-installation",
+            plugin_id=provider_id.rsplit("/", 1)[0],
+            plugin_unique_identifier=(
+                contract.source_plugin_unique_identifier + "changed"
+                if case in {"binding_mismatch", "binding_serverless_mismatch"}
+                else contract.source_plugin_unique_identifier
+            ),
+            runtime_type=(
+                "serverless"
+                if "serverless" in case
+                else "remote"
+                if case == "binding_remote"
+                else "unknown"
+                if case == "binding_unknown"
+                else "local"
+            ),
+            source=PluginInstallationSource.Remote
+            if case in {"binding_remote", "binding_serverless_remote_source"}
+            else PluginInstallationSource.Marketplace,
+            version="reviewed-source-fixture",
+            verified=True,
+        )
+        return [fresh, fresh] if case == "binding_duplicate" else [fresh]
+
+    monkeypatch.setattr(PluginModelClient, "fetch_model_provider_bindings", source_bindings)
+    state: dict[str, object] = {
+        "phase": "active",
+        "persisted_model_billing_source": "tokener",
+        "route_epoch": 3,
+        "model_mapping_version": "anthropic-profile-v1",
+        "preparation": credential_pin(),
+        "source_ownership": {},
+    }
+    monkeypatch.setattr("core.model_invocation_routing.migration_routing_state", lambda _tenant_id: state)
+    before = provider.model_dump()
+    if case in {
+        "binding_missing",
+        "binding_mismatch",
+        "binding_remote",
+        "binding_duplicate",
+        "binding_serverless_mismatch",
+        "binding_serverless_remote_source",
+        "binding_unknown",
+    }:
+        with pytest.raises(ModelRouteUnavailable):
+            migration_inventory(provider.tenant_id, "anthropic-profile-v1")
+        assert provider.model_dump() == before
+        return
+    if case in {"wrong_uid", "wrong_rules", "wrong_target", "explicit_responses", "missing_system_settings"}:
+        with pytest.raises(ModelRouteUnavailable if case == "wrong_uid" else ModelRouteUnmapped):
+            migration_inventory(provider.tenant_id, "anthropic-profile-v1")
+        with pytest.raises(ModelRouteUnmapped):
+            routed_credentials(provider, ModelType.LLM, source.model)
+        assert provider.model_dump() == before
+        return
+    inventory = migration_inventory(provider.tenant_id, "anthropic-profile-v1")
+    if case == "byok":
+        assert routed_credentials(provider, ModelType.LLM, source.model) is None
+        byok = {"api_key": "BYOK-TEST-KEY", "_dify_source_contract": expected_marker}
+        payload = PluginModelClient._dispatch_payload(user_id=None, data={"credentials": byok})
+        assert "redirect" not in payload
+        assert payload["data"]["credentials"] == byok
+        assert provider.model_dump() == before
+        return
+
+    # Real ORM models/session/query execution against an isolated in-memory DB;
+    # no fake session or production/dev database is used by this unit test.
+    engine = create_engine("sqlite://")
+    for table in (Tenant.__table__, ProviderCredential.__table__, TenantTokenerIntegration.__table__):
+        assert isinstance(table, Table)
+        table.create(engine)
+    tenant = Tenant(name="source-contract-test")
+    tenant.id = provider.tenant_id
+    credential = ProviderCredential(
+        tenant_id=provider.tenant_id,
+        provider_name="langgenius/tokener/tokener",
+        credential_name="managed-test",
+        encrypted_config=TEST_ENCRYPTED_CONFIG,
+    )
+    credential.id = plan().credential_id
+    with Session(engine) as session:
+        session.add_all([tenant, credential])
+        session.add(
+            TenantTokenerIntegration(
+                tenant_id=provider.tenant_id,
+                status=TenantTokenerIntegrationStatus.READY,
+                provider_credential_id=plan().credential_id,
+                plugin_unique_identifier=plan().plugin_unique_identifier,
+            )
+        )
+        session.commit()
+    monkeypatch.setattr("core.model_invocation_routing.session_factory.create_session", lambda: Session(engine))
+    decrypted: list[str] = []
+
+    def decrypt(*, tenant_id: str, token: str) -> str:
+        assert tenant_id == provider.tenant_id
+        assert token == "encrypted"
+        decrypted.append(token)
+        return "MANAGED-TEST-KEY"
+
+    def credential_policy(*, credential_id: str, provider: str, credential_type: object) -> None:
+        from core.entities import PluginCredentialType
+
+        assert credential_id == plan().credential_id
+        assert provider == "langgenius/tokener/tokener"
+        assert credential_type == PluginCredentialType.MODEL
+
+    monkeypatch.setattr("core.helper.encrypter.decrypt_token", decrypt)
+    monkeypatch.setattr("core.helper.credential_utils.runtime_check_credential_policy_compliance", credential_policy)
+    credentials = routed_credentials(provider, ModelType.LLM, source.model)
+    assert credentials is not None
+    frozen = credentials.plan
+    assert frozen.expected_credential_fingerprint == plan().expected_credential_fingerprint
+    if case == "identity":
+        assert frozen.source_parameter_contract is None
+        assert "source_parameter_contract" not in inventory["models"][0]
+    else:
+        assert frozen.source_parameter_contract == contract
+        assert inventory["models"][0]["source_parameter_contract"] == expected_marker
+        if index == 16:
+            assert inventory["models"][0]["source_parameter_settings"] == {
+                "api_protocol": "chat" if case == "explicit_chat" else "default_chat"
+            }
+        assert frozen.cache_identity != replace(frozen, source_parameter_contract=None).cache_identity
+        assert (
+            frozen.cache_identity
+            != replace(
+                frozen, source_parameter_contract=contract_for(0 if index == 16 else peer_binding_index(index))
+            ).cache_identity
+        )
+    payload = PluginModelClient._dispatch_payload(
+        user_id=None,
+        data={
+            "provider": provider_name,
+            "model": source.model,
+            "model_type": "llm",
+            "credentials": credentials,
+            "model_parameters": {"_dify_source_contract": {"forged": True}},
+        },
+    )
+    assert payload["data"]["credentials"] == {}
+    target = payload["redirect"]["target"]
+    assert target["model"] == contract.target_model
+    assert target["credentials"]["api_key"] == "MANAGED-TEST-KEY"
+    assert (target["credentials"].get("_dify_source_contract")) == (None if case == "identity" else expected_marker)
+
+    def capabilities(_client: PluginModelClient, method: str, path: str, _response_type: object) -> dict[str, object]:
+        assert method == "GET"
+        assert path.endswith("/redirect/v1/capabilities")
+        return {"protocols": ["model-redirect/v1"], "operations": list(frozen.operations)}
+
+    def target_schema(_client: PluginModelClient, *args: object, **_kwargs: object) -> AIModelEntity:
+        prepared = args[6]
+        assert isinstance(prepared, RoutedModelCredentials)
+        assert prepared.plan.source_parameter_contract == frozen.source_parameter_contract
+        result = source.model_copy(deep=True, update={"model": contract.target_model})
+        if case == "native_schema_fallback":
+            result.model_properties[ModelPropertyKey.CONTEXT_SIZE] = 42
+        return result
+
+    monkeypatch.setattr(PluginModelClient, "_request_with_plugin_daemon_response", capabilities)
+    monkeypatch.setattr(PluginModelClient, "get_model_schema", target_schema)
+    if case == "native_schema_fallback":
+        with pytest.raises(ModelRouteUnmapped):
+            validate_migration_readiness(provider.tenant_id, "anthropic-profile-v1")
+        assert provider.model_dump() == before
+        engine.dispose()
+        return
+    readiness = validate_migration_readiness(provider.tenant_id, "anthropic-profile-v1")
+    assert readiness["inventory_hash"] == inventory["inventory_hash"]
+    assert readiness["credential_fingerprint"] == frozen.expected_credential_fingerprint
+    assert provider.model_dump() == before
+    with Session(engine) as session:
+        session.execute(
+            update(ProviderCredential)
+            .where(ProviderCredential.tenant_id == provider.tenant_id, ProviderCredential.id == frozen.credential_id)
+            .values(encrypted_config='{"api_key":"EDITED-CIPHERTEXT"}')
+        )
+        session.commit()
+    decrypt_count = len(decrypted)
+    with pytest.raises(ModelRouteUnavailable):
+        redirect_payload(frozen, {"provider": provider_name, "model": source.model, "model_type": "llm"})
+    assert len(decrypted) == decrypt_count
+    engine.dispose()
+
+
+def test_invalid_frozen_source_profile_fails_before_managed_key_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
+    from tests.unit_tests.services.test_model_billing_anthropic_adapter import contract_for
+
+    contract = contract_for()
+    frozen = replace(
+        plan(),
+        logical_provider="langgenius/anthropic/anthropic",
+        logical_model=contract.source_model,
+        target_model=contract.target_model,
+        source_parameter_contract=replace(contract, rules_digest="sha256:" + "f" * 64),
+    )
+
+    def forbidden_key_lookup(_plan: FrozenModelInvocation) -> dict[str, object]:
+        raise AssertionError("Unreviewed source profile must fail before any managed key is loaded")
+
+    monkeypatch.setattr("core.model_invocation_routing.managed_credentials", forbidden_key_lookup)
+    with pytest.raises(ModelRouteUnavailable):
+        redirect_payload(frozen, {"provider": "anthropic", "model": contract.source_model, "model_type": "llm"})
 
 
 def test_llm_inventory_is_real_strict_canonical_json_without_null_dimension(mocker: MockerFixture) -> None:
