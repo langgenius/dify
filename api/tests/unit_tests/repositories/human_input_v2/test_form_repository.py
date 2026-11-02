@@ -20,7 +20,7 @@ from sqlalchemy.pool import ConnectionPoolEntry
 
 from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import RecipientId, TenantId
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums.human_input import HumanInputFormKind, HumanInputFormStatus
 from graphon.file.enums import FileTransferMethod, FileType
 from graphon.file.models import File
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment

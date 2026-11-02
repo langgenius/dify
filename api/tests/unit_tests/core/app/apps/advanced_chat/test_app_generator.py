@@ -20,7 +20,7 @@ from sqlalchemy.engine import Engine as _advanced_chat_app_generator_Engine
 from sqlalchemy.orm import Session
 
 import core.app.apps.advanced_chat.app_generator as app_generator_module
-import core.workflow.nodes.human_input.entities  # noqa: F401
+import models.human_input_entities  # noqa: F401
 from constants import UUID_NIL
 from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.apps.advanced_chat import app_generator as adv_app_gen_module

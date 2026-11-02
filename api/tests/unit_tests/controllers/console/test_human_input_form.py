@@ -25,12 +25,11 @@ from controllers.console.human_input_form import (
 )
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.human_input_policy import HumanInputSurface
-from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
-from core.workflow.nodes.human_input.enums import ValueSourceType
+from enums.human_input import RecipientType, ValueSourceType
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.human_input import RecipientType
+from models.human_input_entities import SelectInputConfig, StringListSource
 from models.model import App, AppMode
 from models.workflow import WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType

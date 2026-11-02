@@ -12,8 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 import services.human_input_file_upload_service as service_module
-from core.workflow.human_input_adapter import DeliveryMethodType
-from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums.human_input import DeliveryMethodType, HumanInputFormKind, HumanInputFormStatus, RecipientType
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin
@@ -24,7 +23,6 @@ from models.human_input import (
     HumanInputFormRecipient,
     HumanInputFormUploadFile,
     HumanInputFormUploadToken,
-    RecipientType,
 )
 from models.model import App, AppMode, EndUser, UploadFile
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository

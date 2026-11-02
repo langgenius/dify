@@ -18,12 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.workflow.human_input_adapter import (
-    DeliveryMethodType,
-    EmailDeliveryConfig,
-    EmailDeliveryMethod,
-    InstantMessageDeliveryMethod,
-)
+from enums.human_input import DeliveryMethodType, RecipientType
 from extensions.ext_mail import mail
 from graphon.runtime import VariablePool
 from models.human_input import (
@@ -34,8 +29,8 @@ from models.human_input import (
     HumanInputFormRecipient,
     InstantMessageRecipientPayload,
     RecipientPayload,
-    RecipientType,
 )
+from models.human_input_delivery import EmailDeliveryConfig, EmailDeliveryMethod, InstantMessageDeliveryMethod
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,8 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, BaseModel, ConfigDict, Discriminator, Field, field_validator
 
 from core.human_input_v2.entities import DebugChannel
-from core.workflow.nodes.human_input.entities import (
+from graphon.entities.base_node_data import BaseNodeData
+from models.human_input_entities import (
     FormInputConfig,
     TimeoutUnit,
     UserActionConfig,
@@ -14,7 +15,6 @@ from core.workflow.nodes.human_input.entities import (
     validate_unique_action_ids,
     validate_unique_input_names,
 )
-from graphon.entities.base_node_data import BaseNodeData
 
 
 class RecipientType(enum.StrEnum):

@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.workflow.nodes.human_input.enums import HumanInputFormKind
+from enums.human_input import HumanInputFormKind
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import to_utc_timestamp
 from repositories.factory import DifyAPIRepositoryFactory
