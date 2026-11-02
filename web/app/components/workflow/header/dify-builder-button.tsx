@@ -25,7 +25,7 @@ const DifyBuilderButton = ({ disabled }: { disabled: boolean }) => {
           >
             <span
               aria-hidden
-              className="i-custom-public-app-builder-builder-mark size-4 shrink-0"
+              className="i-custom-public-app-builder-builder-mark size-4 shrink-0 [button[data-disabled]_&]:opacity-30 [html[data-theme=dark]_&]:brightness-0 [html[data-theme=dark]_&]:invert"
             />
             {!showDifyBuilderPanel && <span className="system-xs-semibold-uppercase">{label}</span>}
           </Button>
