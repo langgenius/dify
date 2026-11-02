@@ -426,7 +426,7 @@ class AppService:
 
         # get model config
         default_model_config = app_template.get("model_config")
-        default_model_config = default_model_config.copy() if default_model_config else None
+        default_model_config = deepcopy(default_model_config) if default_model_config else None
         if default_model_config and "model" in default_model_config:
             default_model_dict = default_model_config["model"]
             # get model provider
@@ -910,7 +910,7 @@ class AppService:
 
         # get model config
         default_model_config = app_template.get("model_config")
-        default_model_config = default_model_config.copy() if default_model_config else None
+        default_model_config = deepcopy(default_model_config) if default_model_config else None
         if default_model_config and "model" in default_model_config:
             default_model_dict = default_model_config["model"]
             # get model provider
