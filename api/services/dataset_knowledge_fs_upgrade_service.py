@@ -217,12 +217,11 @@ class KnowledgeFSUpgradeModelResolver:
         """Resolve all three choices or report each unusable field without creating a job."""
         selected: dict[str, KnowledgeFSModelIntent] = {}
         issues: list[KnowledgeFSUpgradeModelIssueResponse] = []
-        for field, model_type in (
-            ("embedding", ModelType.TEXT_EMBEDDING),
-            ("rerank", ModelType.RERANK),
-            ("reasoning", ModelType.LLM),
+        for field, model_type, choice in (
+            ("embedding", ModelType.TEXT_EMBEDDING, models.embedding),
+            ("rerank", ModelType.RERANK, models.rerank),
+            ("reasoning", ModelType.LLM, models.reasoning),
         ):
-            choice = getattr(models, field)
             reason = self._unavailable_reason(model_type, choice)
             if reason is not None:
                 issues.append(

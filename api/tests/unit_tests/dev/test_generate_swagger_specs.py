@@ -92,6 +92,8 @@ def test_console_stdout_export_contains_both_surfaces_without_spec_files(tmp_pat
                 assert source_line.startswith(("def ", "async def "))
     datasets = documents["console"]["paths"]["/datasets"]["get"]["x-source-location"]
     assert datasets["file"].endswith("/controllers/console/datasets/datasets.py")
+    upgrade_start = documents["console"]["paths"]["/datasets/{dataset_id}/knowledge-fs-upgrades"]["post"]
+    assert upgrade_start["requestBody"]["required"] is False
     cached_script = script.with_name("cached_console_openapi.py")
     try:
         cached = subprocess.run(
