@@ -179,7 +179,11 @@ class SavedModelSelectionRuntimeQuery:
                 trustworthy
                 and binding
                 and binding.verified
-                and declaration.installation_source == PluginInstallationSource.Marketplace
+                # Management declarations may omit this optional enrichment;
+                # the fresh exact-UID installation binding owns source/signature
+                # authority. An explicit conflicting declaration is not ignored.
+                and binding.source == PluginInstallationSource.Marketplace
+                and declaration.installation_source in {None, PluginInstallationSource.Marketplace}
                 and hosting
                 and hosting.enabled
                 and (stored.billing_source is None or compatibility)
