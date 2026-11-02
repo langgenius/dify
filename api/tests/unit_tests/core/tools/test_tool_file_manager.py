@@ -27,7 +27,7 @@ from models.tools import ToolFile
 @pytest.fixture
 def sqlite_tool_file_session(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Iterator[Session]:
     """Bind manager-owned sessions to SQLite and expose a setup/assertion session."""
-    TypeBase.metadata.create_all(sqlite_engine, tables=[ToolFile.__table__, MessageFile.__table__])
+    TypeBase.metadata.create_all(sqlite_engine, tables=[ToolFile.__table__, MessageFile.__table__])  # pyrefly: ignore[bad-argument-type]
     factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     monkeypatch.setattr(tool_file_manager_module.session_factory, "create_session", factory)
     with factory() as session:

@@ -159,7 +159,7 @@ def test_empty_query_behavior(sqlite_session: Session) -> None:
 
     # Assert
     assert len(empty_query) == 1
-    assert empty_query[0].message.text == "please input query"
+    assert empty_query[0].message.text == "please input query"  # pyrefly: ignore[missing-attribute]
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
@@ -173,7 +173,7 @@ def test_query_invocation_result(sqlite_session: Session) -> None:
 
     # Assert
     assert len(result) == 1
-    assert result[0].message.text == "result:hello"
+    assert result[0].message.text == "result:hello"  # pyrefly: ignore[missing-attribute]
     retrieve.assert_called_once_with(sqlite_session, "hello")
 
 

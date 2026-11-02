@@ -444,8 +444,8 @@ def test_binding_resolver_uses_pinned_snapshot_for_existing_node_execution(
     )
 
     assert bundle.snapshot.id == pinned_snapshot.id
-    assert binding.id in orm_statements[0].compile().params.values()
-    assert pinned_snapshot.id in orm_statements[-1].compile().params.values()
+    assert binding.id in orm_statements[0].compile().params.values()  # pyrefly: ignore[missing-attribute]
+    assert pinned_snapshot.id in orm_statements[-1].compile().params.values()  # pyrefly: ignore[missing-attribute]
 
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)
