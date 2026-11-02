@@ -12,13 +12,22 @@ from machinery.context import RequestContext
 from models import Dataset
 from models.knowledge_fs import KnowledgeFSUpgradeJob, KnowledgeFSUpgradeJobStatus
 from services.dataset_knowledge_fs_upgrade_service import (
+    KnowledgeFSUpgradeModelPreferences,
+    KnowledgeFSUpgradeModelsUnavailableError,
     KnowledgeFSUpgradeNotFoundError,
+    KnowledgeFSUpgradeResolvedModels,
     KnowledgeFSUpgradeSnapshotService,
 )
 from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess, DatasetAccessDeniedError
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetVisibility
 from services.knowledge.datasets.upgrades import KnowledgeFSUpgradeUnavailableError, KnowledgeUpgradeApplicationService
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSModelIntent,
+    KnowledgeFSUpgradeModelChoice,
+    KnowledgeFSUpgradeModelIssueResponse,
+    KnowledgeFSUpgradeModelsPayload,
+)
 from tests.helpers.unit.services.knowledge_fs_services_a_fakes import UnusedSessionFactory, upgrade_job
 
 CONTEXT = RequestContext("request", None, "account-1", "tenant-1")
@@ -55,12 +64,23 @@ class FakeEnqueue:
 class FakeSnapshots:
     job: KnowledgeFSUpgradeJob | None = None
     jobs: list[KnowledgeFSUpgradeJob] = field(default_factory=list)
-    create_calls: list[dict[str, str]] = field(default_factory=list)
+    create_calls: list[dict[str, object]] = field(default_factory=list)
     list_calls: list[dict[str, object]] = field(default_factory=list)
     retry_calls: list[dict[str, str]] = field(default_factory=list)
 
+    def get_by_idempotency_key(self, *, tenant_id: str, idempotency_key: str) -> KnowledgeFSUpgradeJob | None:
+        assert tenant_id == "tenant-1"
+        assert idempotency_key == "upgrade-request-1"
+        return None
+
     def create(
-        self, *, tenant_id: str, dataset_id: str, requested_by_account_id: str, idempotency_key: str
+        self,
+        *,
+        tenant_id: str,
+        dataset_id: str,
+        requested_by_account_id: str,
+        idempotency_key: str,
+        models: KnowledgeFSUpgradeResolvedModels,
     ) -> KnowledgeFSUpgradeJob:
         self.create_calls.append(
             {
@@ -68,6 +88,7 @@ class FakeSnapshots:
                 "dataset_id": dataset_id,
                 "requested_by_account_id": requested_by_account_id,
                 "idempotency_key": idempotency_key,
+                "models": models,
             }
         )
         assert self.job is not None
@@ -133,8 +154,19 @@ def test_start_snapshots_and_enqueues_without_remote_work() -> None:
     enqueue = FakeEnqueue()
     service = _service(enqueue=enqueue)
     snapshots = FakeSnapshots(job=upgrade_job(job_id="job-1", old_dataset_id="dataset-1"))
+    model_intent = KnowledgeFSModelIntent(plugin_id="langgenius/openai", provider="openai", model="chosen")
+    resolved = KnowledgeFSUpgradeResolvedModels(embedding=model_intent, rerank=model_intent, reasoning=model_intent)
 
-    with patch("services.knowledge.datasets.upgrades.KnowledgeFSUpgradeSnapshotService", return_value=snapshots):
+    with (
+        patch("services.knowledge.datasets.upgrades.KnowledgeFSUpgradeSnapshotService", return_value=snapshots),
+        patch.object(
+            service,
+            "_load_model_preferences",
+            return_value=("vendor", KnowledgeFSUpgradeModelPreferences(embedding=None, rerank=None, defaults={})),
+        ),
+        patch("services.knowledge.datasets.upgrades.KnowledgeFSUpgradeModelResolver") as resolver,
+    ):
+        resolver.return_value.resolve_recommendations.return_value = resolved
         job = service.start(CONTEXT, dataset_id="dataset-1", idempotency_key="upgrade-request-1")
 
     assert job.id == "job-1"
@@ -144,9 +176,40 @@ def test_start_snapshots_and_enqueues_without_remote_work() -> None:
             "dataset_id": "dataset-1",
             "requested_by_account_id": "account-1",
             "idempotency_key": "upgrade-request-1",
+            "models": resolved,
         }
     ]
     assert enqueue.calls == [(snapshots, "tenant-1", "job-1")]
+
+
+def test_start_rejects_unavailable_models_before_snapshot_or_enqueue() -> None:
+    enqueue = FakeEnqueue()
+    service = _service(enqueue=enqueue)
+    snapshots = FakeSnapshots()
+    choices = KnowledgeFSUpgradeModelsPayload(
+        embedding=KnowledgeFSUpgradeModelChoice(provider="openai", model="missing-embedding"),
+        rerank=KnowledgeFSUpgradeModelChoice(provider="cohere", model="rerank"),
+        reasoning=KnowledgeFSUpgradeModelChoice(provider="anthropic", model="reasoning"),
+    )
+    issue = KnowledgeFSUpgradeModelIssueResponse(
+        field="embedding", reason="not_found", provider="openai", model="missing-embedding"
+    )
+
+    with (
+        patch("services.knowledge.datasets.upgrades.KnowledgeFSUpgradeSnapshotService", return_value=snapshots),
+        patch.object(
+            service,
+            "_load_model_preferences",
+            return_value=("vendor", KnowledgeFSUpgradeModelPreferences(embedding=None, rerank=None, defaults={})),
+        ),
+        patch("services.knowledge.datasets.upgrades.KnowledgeFSUpgradeModelResolver") as resolver,
+    ):
+        resolver.return_value.validate.side_effect = KnowledgeFSUpgradeModelsUnavailableError([issue])
+        with pytest.raises(KnowledgeFSUpgradeModelsUnavailableError):
+            service.start(CONTEXT, dataset_id="dataset-1", idempotency_key="upgrade-request-1", models=choices)
+
+    assert snapshots.create_calls == []
+    assert enqueue.calls == []
 
 
 def test_start_rejects_an_inaccessible_dataset() -> None:
