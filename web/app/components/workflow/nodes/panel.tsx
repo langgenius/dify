@@ -1,6 +1,7 @@
 import type { Node } from '../types'
 import { memo } from 'react'
 import { CUSTOM_NODE } from '../constants'
+import { getNodeCatalogType } from '../utils/node'
 import BasePanel from './_base/components/workflow-panel'
 import { PanelComponentMap } from './panel-components'
 
@@ -17,7 +18,7 @@ const Panel = memo((props: PanelProps) => {
   const PanelComponent = PanelComponentMap[nodeData.type]!
 
   return (
-    <BasePanel key={`${props.id}-${nodeData.type}`} id={props.id} data={props.data}>
+    <BasePanel key={`${props.id}-${getNodeCatalogType(nodeData)}`} id={props.id} data={props.data}>
       <PanelComponent />
     </BasePanel>
   )

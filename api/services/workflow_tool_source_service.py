@@ -7,6 +7,7 @@ from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from core.workflow.workflow_tool_container_types import WorkflowToolContainerPayload
+from graphon.nodes.tool.exc import ToolRuntimeResolutionError
 from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
 from services.entities.workflow_tool_source_entities import MaterializedWorkflowTools, WorkflowToolSnapshot
 
@@ -87,4 +88,10 @@ class WorkflowToolSourceService:
                 if source.workflow_id not in sources:
                     pending.append(source.graph_config)
                 sources[source.workflow_id] = source
+        for source in sources.values():
+            if any(
+                node.get("data", {}).get("type") == "human-input" and node.get("data", {}).get("version") == "2"
+                for node in source.graph_config.get("nodes", [])
+            ):
+                raise ToolRuntimeResolutionError("Human Input V2 nodes are not supported in nested Workflow Tools.")
         return MaterializedWorkflowTools(sources=sources, tools=tools)

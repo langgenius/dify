@@ -1,0 +1,771 @@
+"""Database-backed behavior tests for Channel-bound reconciliation orchestration."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, replace
+from datetime import datetime
+from uuid import UUID
+
+import pytest
+import sqlalchemy as sa
+from pytest_mock import MockerFixture
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
+
+from core.human_input_v2.entities import IMProvider, IMSyncResultType, IMSyncRunStatus
+from core.human_input_v2.im_integration.adapters import (
+    CredentialTestFailure,
+    CredentialTestFailureKind,
+    Directory,
+    DirectoryEntry,
+    DirectoryReadFailure,
+    IMCardEventDecoder,
+    IMDynamicCardMessaging,
+    IMEventConsumer,
+    IMEventStream,
+    IMMessaging,
+    IMWebhookHandler,
+    ProviderUserId,
+)
+from core.human_input_v2.im_integration.adapters.entities import Avatar
+from core.human_input_v2.shared import AccountId, ContactId, IMSyncRunId, TenantId
+from extensions.ext_storage import storage
+from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models.enums import CreatorUserRole
+from models.human_input_v2 import (
+    HumanInputIMBinding,
+    HumanInputIMChannel,
+    HumanInputIMIdentity,
+    HumanInputIMReconciliationChange,
+    HumanInputIMSyncResult,
+    HumanInputIMSyncRun,
+    IMBindingReconciliationSnapshot,
+)
+from models.model import UploadFile
+from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
+from repositories.human_input_v2.contact import Contact, ContactType
+from repositories.human_input_v2.im_channel_repository import (
+    IMChannel,
+    IMChannelId,
+    IMChannelStatus,
+    WebhookId,
+)
+from repositories.human_input_v2.im_integration.repository import SQLAlchemyIMControlPlaneRepository
+from repositories.human_input_v2.sqlalchemy_im_channel_repository import WorkspaceIMChannelWriter
+from services.human_input_v2.im_contact_sync import coordinator as coordinator_module
+from services.human_input_v2.im_contact_sync.coordinator import IMChannelReconciliationService, IMSyncRetryableError
+from services.human_input_v2.im_contact_sync.service import IMSyncRunNotFoundError
+
+_NOW = datetime(2026, 8, 11, 8)
+_TENANT_ID = TenantId("00000000-0000-0000-0000-000000000101")
+_ACCOUNT_ID = AccountId("00000000-0000-0000-0000-000000000201")
+_CHANNEL_ID = IMChannelId("00000000-0000-0000-0000-000000000301")
+_RUN_ID = IMSyncRunId("00000000-0000-0000-0000-000000000401")
+_SECOND_RUN_ID = IMSyncRunId("00000000-0000-0000-0000-000000000402")
+_CONTACT_ID = ContactId("00000000-0000-0000-0000-000000000501")
+
+
+def _channel(
+    *,
+    channel_id: IMChannelId = _CHANNEL_ID,
+    config_version: int = 1,
+    provider: IMProvider = IMProvider.FEISHU,
+) -> IMChannel:
+    return IMChannel(
+        id=channel_id,
+        created_at=_NOW,
+        updated_at=_NOW,
+        provider=provider,
+        provider_tenant_id="provider-tenant-1",
+        encrypted_credentials=ChannelEncryptedCredentials(ciphertext="opaque-ciphertext"),
+        app_identifier="app-1",
+        webhook_id=WebhookId("00000000000000000000000000000001"),
+        config_version=config_version,
+        status=IMChannelStatus.CONNECTED,
+    )
+
+
+class _ContactReader:
+    def list_contacts(self, page: int, limit: int) -> tuple[Contact, ...]:
+        assert (page, limit) == (1, 500)
+        return (
+            Contact(
+                id=_CONTACT_ID,
+                type=ContactType.WORKSPACE,
+                name="Reviewer",
+                email="reviewer@example.com",
+                avatar_file_id=None,
+                created_at=_NOW,
+            ),
+        )
+
+    def get_contact(self, contact_id: ContactId) -> Contact | None:
+        if contact_id != _CONTACT_ID:
+            return None
+        return self.list_contacts(1, 500)[0]
+
+
+@dataclass(frozen=True)
+class _ContactListReader:
+    contacts: tuple[Contact, ...]
+
+    def list_contacts(self, page: int, limit: int) -> tuple[Contact, ...]:
+        return self.contacts[(page - 1) * limit : page * limit]
+
+    def get_contact(self, contact_id: ContactId) -> Contact | None:
+        return next((contact for contact in self.contacts if contact.id == contact_id), None)
+
+
+class _DirectoryCapability:
+    def __init__(self, result: Directory | DirectoryReadFailure | Exception) -> None:
+        self._result = result
+
+    def read_directory(self) -> Directory | DirectoryReadFailure:
+        if isinstance(self._result, Exception):
+            raise self._result
+        return self._result
+
+
+class _Adapter:
+    provider = IMProvider.FEISHU
+
+    def __init__(self, result: Directory | DirectoryReadFailure | Exception) -> None:
+        self.directory = _DirectoryCapability(result)
+        self.close_calls = 0
+        self.close_error: Exception | None = None
+
+    @classmethod
+    def card_event_decoder(cls) -> IMCardEventDecoder | None:
+        return None
+
+    def test_credentials(self) -> CredentialTestFailure:
+        return CredentialTestFailure(CredentialTestFailureKind.UNKNOWN, "not exercised")
+
+    @property
+    def messaging(self) -> IMMessaging:
+        raise AssertionError("messaging is outside reconciliation")
+
+    @property
+    def dynamic_card_messaging(self) -> IMDynamicCardMessaging | None:
+        return None
+
+    def create_webhook_handler(self, consumer: IMEventConsumer) -> IMWebhookHandler | None:
+        del consumer
+        return None
+
+    def create_stream_handler(self, consumer: IMEventConsumer) -> IMEventStream | None:
+        del consumer
+        return None
+
+    def close(self) -> None:
+        self.close_calls += 1
+        if self.close_error is not None:
+            raise self.close_error
+
+
+@dataclass(frozen=True)
+class _ReconciliationContext:
+    sessions: sessionmaker[Session]
+    channel: IMChannel
+
+    def service(self, adapter: _Adapter) -> IMChannelReconciliationService:
+        return IMChannelReconciliationService(
+            self.sessions,
+            self.channel,
+            lambda _channel: adapter,
+            lambda _session: _ContactReader(),
+            tenant_id=_TENANT_ID,
+            clock=lambda: _NOW,
+        )
+
+
+@pytest.fixture
+def reconciliation_context(sqlite_engine: Engine) -> _ReconciliationContext:
+    sessions = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    channel = _channel()
+    with sessions.begin() as session:
+        WorkspaceIMChannelWriter(session, _TENANT_ID, _ACCOUNT_ID).create(channel)
+        decision = SQLAlchemyIMControlPlaneRepository(session, channel).create_or_get_active_run(
+            sync_run_id=_RUN_ID,
+            started_by_account_id=_ACCOUNT_ID,
+            now=_NOW,
+        )
+        assert decision.run is not None
+    return _ReconciliationContext(sessions, channel)
+
+
+def _successful_directory() -> Directory:
+    return Directory(
+        (
+            DirectoryEntry(
+                ProviderUserId("provider-user-1"),
+                "Reviewer",
+                "reviewer@example.com",
+            ),
+        )
+    )
+
+
+def _create_active_run(
+    sessions: sessionmaker[Session],
+    channel: IMChannel,
+    sync_run_id: IMSyncRunId,
+) -> None:
+    with sessions.begin() as session:
+        decision = SQLAlchemyIMControlPlaneRepository(session, channel).create_or_get_active_run(
+            sync_run_id=sync_run_id,
+            started_by_account_id=_ACCOUNT_ID,
+            now=_NOW,
+        )
+        assert decision.run is not None
+
+
+@pytest.mark.parametrize("has_initiator", [True, False])
+def test_workspace_sync_stores_avatar_with_initiator_or_owner(
+    reconciliation_context: _ReconciliationContext,
+    mocker: MockerFixture,
+    has_initiator: bool,
+) -> None:
+    save = mocker.patch.object(storage, "save")
+    with reconciliation_context.sessions.begin() as session:
+        owner = Account(name="Owner", email="owner@example.com")
+        other_owner = Account(name="Other owner", email="other-owner@example.com")
+        session.add_all([owner, other_owner])
+        session.add_all(
+            [
+                TenantAccountJoin(tenant_id=str(_TENANT_ID), account_id=owner.id, role=TenantAccountRole.OWNER),
+                TenantAccountJoin(
+                    tenant_id="00000000-0000-0000-0000-000000000999",
+                    account_id=other_owner.id,
+                    role=TenantAccountRole.OWNER,
+                ),
+            ]
+        )
+        if not has_initiator:
+            session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).started_by_account_id = None
+        expected_creator = str(_ACCOUNT_ID) if has_initiator else owner.id
+    entry = replace(_successful_directory().entries[0], avatar=Avatar(mime_type="image/png", data=b"first avatar"))
+    service = reconciliation_context.service(_Adapter(Directory((entry,))))
+
+    assert service.reconcile(_RUN_ID).status is IMSyncRunStatus.SUCCEEDED
+
+    with reconciliation_context.sessions() as session:
+        identity = session.scalars(sa.select(HumanInputIMIdentity)).one()
+        assert identity.avatar_file_id is not None
+        first_avatar_id = identity.avatar_file_id
+        uploaded = session.get_one(UploadFile, first_avatar_id)
+        assert uploaded.tenant_id == str(_TENANT_ID)
+        assert uploaded.created_by == expected_creator
+        assert uploaded.created_by_role is CreatorUserRole.ACCOUNT
+        assert uploaded.mime_type == "image/png"
+        assert uploaded.size == len(b"first avatar")
+        assert uploaded.used is True
+        assert uploaded.used_by == expected_creator
+        save.assert_called_once_with(uploaded.key, b"first avatar")
+
+    assert service.reconcile(_RUN_ID).status is IMSyncRunStatus.SUCCEEDED
+    assert save.call_count == 1
+
+    _create_active_run(reconciliation_context.sessions, reconciliation_context.channel, _SECOND_RUN_ID)
+    replacement = replace(entry, avatar=Avatar(mime_type="image/jpeg", data=b"new avatar"))
+    assert (
+        reconciliation_context.service(_Adapter(Directory((replacement,)))).reconcile(_SECOND_RUN_ID).status
+        is IMSyncRunStatus.SUCCEEDED
+    )
+    with reconciliation_context.sessions() as session:
+        identity = session.scalars(sa.select(HumanInputIMIdentity)).one()
+        assert identity.avatar_file_id is not None
+        assert identity.avatar_file_id != first_avatar_id
+        assert session.get_one(UploadFile, identity.avatar_file_id).mime_type == "image/jpeg"
+
+    third_run_id = IMSyncRunId("00000000-0000-0000-0000-000000000403")
+    _create_active_run(reconciliation_context.sessions, reconciliation_context.channel, third_run_id)
+    assert (
+        reconciliation_context.service(_Adapter(_successful_directory())).reconcile(third_run_id).status
+        is IMSyncRunStatus.SUCCEEDED
+    )
+    with reconciliation_context.sessions() as session:
+        assert session.scalars(sa.select(HumanInputIMIdentity)).one().avatar_file_id is None
+        assert session.scalar(sa.select(sa.func.count(UploadFile.id))) == 2
+
+
+def test_missing_workspace_owner_fails_before_storing_avatars(
+    reconciliation_context: _ReconciliationContext,
+    mocker: MockerFixture,
+) -> None:
+    save = mocker.patch.object(storage, "save")
+    with reconciliation_context.sessions.begin() as session:
+        session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).started_by_account_id = None
+    entry = replace(_successful_directory().entries[0], avatar=Avatar(mime_type="image/png", data=b"avatar"))
+
+    run = reconciliation_context.service(_Adapter(Directory((entry,)))).reconcile(_RUN_ID)
+
+    assert run.status is IMSyncRunStatus.FAILED
+    save.assert_not_called()
+    with reconciliation_context.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMIdentity.id))) == 0
+
+
+def test_avatar_storage_failure_does_not_write_identity_or_file_metadata(
+    reconciliation_context: _ReconciliationContext,
+    mocker: MockerFixture,
+) -> None:
+    mocker.patch.object(storage, "save", side_effect=OSError("Storage unavailable"))
+    entry = replace(_successful_directory().entries[0], avatar=Avatar(mime_type="image/png", data=b"avatar"))
+
+    run = reconciliation_context.service(_Adapter(Directory((entry,)))).reconcile(_RUN_ID)
+
+    assert run.status is IMSyncRunStatus.FAILED
+    with reconciliation_context.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMIdentity.id))) == 0
+        assert session.scalar(sa.select(sa.func.count(UploadFile.id))) == 0
+
+
+def test_success_atomically_persists_current_state_history_results_and_terminal_run(
+    reconciliation_context: _ReconciliationContext,
+) -> None:
+    adapter = _Adapter(_successful_directory())
+
+    run = reconciliation_context.service(adapter).reconcile(_RUN_ID)
+
+    assert run.status is IMSyncRunStatus.SUCCEEDED
+    assert (run.added_count, run.not_matched_count, run.failed_count) == (1, 0, 0)
+    assert adapter.close_calls == 1
+    with reconciliation_context.sessions() as session:
+        identity = session.scalar(sa.select(HumanInputIMIdentity))
+        binding = session.scalar(sa.select(HumanInputIMBinding))
+        results = session.scalars(sa.select(HumanInputIMSyncResult)).all()
+        changes = session.scalars(sa.select(HumanInputIMReconciliationChange)).all()
+        assert identity is not None
+        assert identity.channel_id == str(_CHANNEL_ID)
+        assert binding is not None
+        assert binding.channel_id == str(_CHANNEL_ID)
+        assert binding.im_identity_id == identity.id
+        assert binding.contact_id == str(_CONTACT_ID)
+        assert [result.result_type for result in results] == [IMSyncResultType.ADDED]
+        assert len(changes) == 2
+        assert {change.subject_kind.value for change in changes} == {"identity", "binding"}
+
+
+@pytest.mark.parametrize(
+    "directory_result",
+    [DirectoryReadFailure("provider unavailable"), ConnectionError("provider exploded")],
+)
+def test_directory_failure_persists_safe_terminal_diagnostic_and_always_closes_adapter(
+    reconciliation_context: _ReconciliationContext,
+    directory_result: DirectoryReadFailure | Exception,
+) -> None:
+    adapter = _Adapter(directory_result)
+    adapter.close_error = RuntimeError("close failed")
+
+    run = reconciliation_context.service(adapter).reconcile(_RUN_ID)
+
+    assert run.status is IMSyncRunStatus.FAILED
+    assert run.error_code == "directory_read_failed"
+    assert run.failed_count == 1
+    assert adapter.close_calls == 1
+    with reconciliation_context.sessions() as session:
+        result = session.scalar(sa.select(HumanInputIMSyncResult))
+        assert result is not None
+        assert result.result_type is IMSyncResultType.FAILED
+        assert result.reason_code == "directory_read_failed"
+        assert result.directory_entry_payload is None
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMIdentity.id))) == 0
+
+
+@pytest.mark.parametrize("with_avatar", [False, True])
+def test_apply_failure_rolls_back_current_mutations_before_persisting_failure(
+    reconciliation_context: _ReconciliationContext,
+    monkeypatch: pytest.MonkeyPatch,
+    mocker: MockerFixture,
+    with_avatar: bool,
+) -> None:
+    mocker.patch.object(storage, "save")
+    entry = _successful_directory().entries[0]
+    if with_avatar:
+        entry = replace(entry, avatar=Avatar(mime_type="image/png", data=b"avatar"))
+    adapter = _Adapter(Directory((entry,)))
+
+    def fail_change_mapping(_change: object) -> None:
+        raise RuntimeError("change storage unavailable")
+
+    monkeypatch.setattr(coordinator_module, "reconciliation_change_to_record", fail_change_mapping)
+    run = reconciliation_context.service(adapter).reconcile(_RUN_ID)
+
+    assert run.status is IMSyncRunStatus.FAILED
+    assert run.error_code == "unexpected_apply_failure"
+    with reconciliation_context.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMIdentity.id))) == 0
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMBinding.id))) == 0
+        assert session.scalar(sa.select(sa.func.count(UploadFile.id))) == 0
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMReconciliationChange.id))) == 0
+        diagnostic = session.scalar(sa.select(HumanInputIMSyncResult))
+        assert diagnostic is not None
+        assert diagnostic.reason_code == "unexpected_apply_failure"
+
+
+@pytest.mark.parametrize(
+    ("changed_field", "changed_value"),
+    [("config_version", 2), ("provider", IMProvider.SLACK)],
+)
+def test_apply_revalidates_current_channel_revision_and_provider(
+    reconciliation_context: _ReconciliationContext,
+    changed_field: str,
+    changed_value: int | IMProvider,
+) -> None:
+    with reconciliation_context.sessions.begin() as session:
+        record = session.get_one(HumanInputIMChannel, str(_CHANNEL_ID))
+        if changed_field == "config_version":
+            assert isinstance(changed_value, int)
+            record.config_version = changed_value
+        else:
+            assert isinstance(changed_value, IMProvider)
+            record.provider = changed_value
+    adapter = _Adapter(_successful_directory())
+
+    run = reconciliation_context.service(adapter).reconcile(_RUN_ID)
+
+    assert run.status is IMSyncRunStatus.FAILED
+    assert run.error_code == "stale_revision"
+    assert adapter.close_calls == 1
+    with reconciliation_context.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMIdentity.id))) == 0
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMBinding.id))) == 0
+
+
+def test_foreign_channel_run_is_rejected_before_provider_or_current_state_access(
+    reconciliation_context: _ReconciliationContext,
+) -> None:
+    foreign_channel = replace(
+        reconciliation_context.channel,
+        id=IMChannelId("00000000-0000-0000-0000-000000000399"),
+        webhook_id=WebhookId("00000000000000000000000000000002"),
+    )
+    adapter = _Adapter(_successful_directory())
+    service = IMChannelReconciliationService(
+        reconciliation_context.sessions,
+        foreign_channel,
+        lambda _channel: adapter,
+        lambda _session: _ContactReader(),
+        clock=lambda: _NOW,
+    )
+
+    with pytest.raises(IMSyncRunNotFoundError):
+        service.reconcile(_RUN_ID)
+
+    assert adapter.close_calls == 0
+
+
+def test_duplicate_terminal_delivery_is_idempotent_without_provider_reentry(
+    reconciliation_context: _ReconciliationContext,
+) -> None:
+    adapters: list[_Adapter] = []
+
+    def build_adapter(_channel: IMChannel) -> _Adapter:
+        adapter = _Adapter(_successful_directory())
+        adapters.append(adapter)
+        return adapter
+
+    service = IMChannelReconciliationService(
+        reconciliation_context.sessions,
+        reconciliation_context.channel,
+        build_adapter,
+        lambda _session: _ContactReader(),
+        clock=lambda: _NOW,
+    )
+
+    first = service.reconcile(_RUN_ID)
+    duplicate = service.reconcile(_RUN_ID)
+
+    assert duplicate == first
+    assert len(adapters) == 1
+    assert adapters[0].close_calls == 1
+    with reconciliation_context.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMSyncRun.id))) == 1
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMSyncResult.id))) == 1
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMReconciliationChange.id))) == 2
+
+
+def test_next_run_replaces_an_absent_identity_binding_and_deletes_the_old_identity(
+    reconciliation_context: _ReconciliationContext,
+) -> None:
+    service = reconciliation_context.service(_Adapter(_successful_directory()))
+    assert service.reconcile(_RUN_ID).status is IMSyncRunStatus.SUCCEEDED
+    with reconciliation_context.sessions() as session:
+        original_binding_id = session.scalars(sa.select(HumanInputIMBinding.id)).one()
+    _create_active_run(reconciliation_context.sessions, reconciliation_context.channel, _SECOND_RUN_ID)
+    replacement_directory = Directory(
+        (
+            DirectoryEntry(
+                ProviderUserId("provider-user-2"),
+                "Replacement Reviewer",
+                "reviewer@example.com",
+            ),
+        )
+    )
+
+    run = reconciliation_context.service(_Adapter(replacement_directory)).reconcile(_SECOND_RUN_ID)
+
+    assert run.status is IMSyncRunStatus.SUCCEEDED
+    assert (run.added_count, run.removed_count) == (1, 1)
+    with reconciliation_context.sessions() as session:
+        identities = session.scalars(sa.select(HumanInputIMIdentity)).all()
+        binding = session.scalar(sa.select(HumanInputIMBinding))
+        changes = session.scalars(
+            sa.select(HumanInputIMReconciliationChange).where(
+                HumanInputIMReconciliationChange.sync_run_id == str(_SECOND_RUN_ID)
+            )
+        ).all()
+        assert [identity.provider_user_id for identity in identities] == ["provider-user-2"]
+        assert binding is not None
+        assert binding.id != original_binding_id
+        assert session.get(HumanInputIMBinding, original_binding_id) is None
+        assert binding.im_identity_id == identities[0].id
+        assert {change.operation.value for change in changes} == {"create", "replace", "delete"}
+        replacement = next(change for change in changes if change.operation.value == "replace")
+        assert isinstance(replacement.before_snapshot, IMBindingReconciliationSnapshot)
+        assert isinstance(replacement.after_snapshot, IMBindingReconciliationSnapshot)
+        assert replacement.before_snapshot.binding_id == original_binding_id
+        assert replacement.after_snapshot.binding_id == binding.id
+        assert replacement.im_binding_id == binding.id
+
+
+def test_credential_failure_persists_a_safe_terminal_result(
+    reconciliation_context: _ReconciliationContext,
+) -> None:
+    def fail_credentials(_channel: IMChannel) -> _Adapter:
+        raise coordinator_module.IMCredentialError("sensitive credential failure")
+
+    service = IMChannelReconciliationService(
+        reconciliation_context.sessions,
+        reconciliation_context.channel,
+        fail_credentials,
+        lambda _session: _ContactReader(),
+        clock=lambda: _NOW,
+    )
+
+    run = service.reconcile(_RUN_ID)
+
+    assert run.status is IMSyncRunStatus.FAILED
+    assert run.error_code == "directory_read_failed"
+    assert "sensitive" not in (run.error_message or "")
+
+
+@pytest.mark.parametrize("replacement_count", [1, 301])
+def test_sync_applies_creates_replacements_deletions_and_preserves_unchanged_bindings(
+    reconciliation_context: _ReconciliationContext,
+    sqlite_engine: Engine,
+    replacement_count: int,
+) -> None:
+    # A database guard also catches UPDATEs issued by ORM autoflush or bulk writes.
+    with sqlite_engine.begin() as connection:
+        connection.execute(
+            sa.text("""
+            CREATE TRIGGER reject_binding_update BEFORE UPDATE ON human_input_im_bindings
+            BEGIN
+                SELECT RAISE(ABORT, 'IM Bindings are immutable');
+            END
+        """)
+        )
+    contacts = tuple(
+        Contact(
+            id=ContactId(str(UUID(int=index + 501))),
+            type=ContactType.WORKSPACE,
+            name=f"Reviewer {index}",
+            email=f"reviewer-{index}@example.com",
+            avatar_file_id=None,
+            created_at=_NOW,
+        )
+        for index in range(replacement_count + 3)
+    )
+    reader = _ContactListReader(contacts)
+
+    def service(entries: tuple[DirectoryEntry, ...]) -> IMChannelReconciliationService:
+        return IMChannelReconciliationService(
+            reconciliation_context.sessions,
+            reconciliation_context.channel,
+            lambda _channel: _Adapter(Directory(entries)),
+            lambda _session: reader,
+            clock=lambda: _NOW,
+        )
+
+    first_entries = tuple(
+        DirectoryEntry(ProviderUserId(f"old-{index}"), contact.name, contact.email)
+        for index, contact in enumerate(contacts[:-1])
+    )
+    assert service(first_entries).reconcile(_RUN_ID).status is IMSyncRunStatus.SUCCEEDED
+    with reconciliation_context.sessions() as session:
+        original_ids = {record.contact_id: record.id for record in session.scalars(sa.select(HumanInputIMBinding))}
+    _create_active_run(reconciliation_context.sessions, reconciliation_context.channel, _SECOND_RUN_ID)
+
+    # Keep the first assignment, remove the second, replace the middle group,
+    # and bind the final Contact for the first time.
+    next_entries = (first_entries[0],) + tuple(
+        DirectoryEntry(ProviderUserId(f"new-{index}"), contacts[index].name, contacts[index].email)
+        for index in range(2, len(contacts))
+    )
+    run = service(next_entries).reconcile(_SECOND_RUN_ID)
+
+    assert run.status is IMSyncRunStatus.SUCCEEDED
+    assert (run.added_count, run.removed_count, run.skipped_count) == (replacement_count + 1, replacement_count + 1, 1)
+    with reconciliation_context.sessions() as session:
+        current = {
+            binding.contact_id: (binding.id, identity.provider_user_id)
+            for binding, identity in session.execute(
+                sa.select(HumanInputIMBinding, HumanInputIMIdentity).join(
+                    HumanInputIMIdentity, HumanInputIMIdentity.id == HumanInputIMBinding.im_identity_id
+                )
+            )
+        }
+        assert current[str(contacts[0].id)] == (original_ids[str(contacts[0].id)], "old-0")
+        assert str(contacts[1].id) not in current
+        assert len(current) == replacement_count + 2
+        for index in range(2, len(contacts)):
+            binding_id, provider_user_id = current[str(contacts[index].id)]
+            assert binding_id != original_ids.get(str(contacts[index].id))
+            assert provider_user_id == f"new-{index}"
+        changes = session.scalars(
+            sa.select(HumanInputIMReconciliationChange).where(
+                HumanInputIMReconciliationChange.sync_run_id == str(_SECOND_RUN_ID),
+                HumanInputIMReconciliationChange.subject_kind == "binding",
+            )
+        ).all()
+        assert (
+            sorted(change.operation.value for change in changes)
+            == ["create", "delete"] + ["replace"] * replacement_count
+        )
+        results = session.scalars(
+            sa.select(HumanInputIMSyncResult).where(
+                HumanInputIMSyncResult.sync_run_id == str(_SECOND_RUN_ID),
+                HumanInputIMSyncResult.result_type == IMSyncResultType.ADDED,
+            )
+        ).all()
+        assert {result.im_binding_id for result in results} == {current[str(contact.id)][0] for contact in contacts[2:]}
+
+
+def test_sync_replacement_insert_failure_restores_old_bindings_and_history(
+    reconciliation_context: _ReconciliationContext,
+) -> None:
+    assert (
+        reconciliation_context.service(_Adapter(_successful_directory())).reconcile(_RUN_ID).status
+        is IMSyncRunStatus.SUCCEEDED
+    )
+    with reconciliation_context.sessions.begin() as session:
+        original = session.scalars(sa.select(HumanInputIMBinding)).one()
+        original_id, original_identity_id = original.id, original.im_identity_id
+        original_change_count = session.scalar(sa.select(sa.func.count(HumanInputIMReconciliationChange.id)))
+        session.execute(
+            sa.text("""
+            CREATE TRIGGER reject_binding_insert BEFORE INSERT ON human_input_im_bindings
+            BEGIN
+                SELECT RAISE(ABORT, 'binding insert unavailable');
+            END
+        """)
+        )
+    _create_active_run(reconciliation_context.sessions, reconciliation_context.channel, _SECOND_RUN_ID)
+    directory = Directory((DirectoryEntry(ProviderUserId("replacement"), "Reviewer", "reviewer@example.com"),))
+
+    run = reconciliation_context.service(_Adapter(directory)).reconcile(_SECOND_RUN_ID)
+
+    assert run.status is IMSyncRunStatus.FAILED
+    with reconciliation_context.sessions() as session:
+        binding = session.scalars(sa.select(HumanInputIMBinding)).one()
+        assert (binding.id, binding.im_identity_id) == (original_id, original_identity_id)
+        assert session.scalars(sa.select(HumanInputIMIdentity.id)).one() == original_identity_id
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMReconciliationChange.id))) == original_change_count
+        result = session.scalars(
+            sa.select(HumanInputIMSyncResult).where(HumanInputIMSyncResult.sync_run_id == str(_SECOND_RUN_ID))
+        ).one()
+        assert result.result_type is IMSyncResultType.FAILED
+
+
+@pytest.mark.parametrize("status", [IMSyncRunStatus.QUEUED, IMSyncRunStatus.RUNNING])
+def test_worker_with_current_channel_finishes_old_revision_without_provider_access(
+    reconciliation_context: _ReconciliationContext,
+    status: IMSyncRunStatus,
+) -> None:
+    with reconciliation_context.sessions.begin() as session:
+        session.get_one(HumanInputIMChannel, str(_CHANNEL_ID)).config_version = 2
+        session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).status = status
+
+    def unexpected_adapter(_channel: IMChannel) -> _Adapter:
+        pytest.fail("stale synchronization must not access the provider")
+
+    service = IMChannelReconciliationService(
+        reconciliation_context.sessions,
+        replace(reconciliation_context.channel, config_version=2),
+        unexpected_adapter,
+        lambda _session: _ContactReader(),
+        clock=lambda: _NOW,
+    )
+    run = service.reconcile(_RUN_ID)
+    assert run.status is IMSyncRunStatus.FAILED
+    assert run.error_code == "stale_revision"
+    assert run.finished_at == _NOW
+    assert service.reconcile(_RUN_ID) == run
+    with reconciliation_context.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMSyncResult.id))) == 1
+        diagnostic = session.scalar(sa.select(HumanInputIMSyncResult))
+        assert diagnostic is not None
+        assert diagnostic.reason_code == "stale_revision"
+        assert diagnostic.sync_run_id == str(_RUN_ID)
+        assert diagnostic.channel_id == str(_CHANNEL_ID)
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMIdentity.id))) == 0
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMBinding.id))) == 0
+
+
+@pytest.mark.parametrize("status", [IMSyncRunStatus.QUEUED, IMSyncRunStatus.RUNNING])
+def test_trigger_retires_abandoned_old_revision_and_creates_current_run(
+    reconciliation_context: _ReconciliationContext,
+    status: IMSyncRunStatus,
+) -> None:
+    current_channel = replace(reconciliation_context.channel, config_version=2)
+    with reconciliation_context.sessions.begin() as session:
+        session.get_one(HumanInputIMChannel, str(_CHANNEL_ID)).config_version = 2
+        session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).status = status
+    with reconciliation_context.sessions.begin() as session:
+        repository = SQLAlchemyIMControlPlaneRepository(session, current_channel)
+        decision = repository.create_or_get_active_run(
+            sync_run_id=_SECOND_RUN_ID, started_by_account_id=_ACCOUNT_ID, now=_NOW
+        )
+        assert decision.run is not None
+        assert decision.run.id == _SECOND_RUN_ID
+        assert decision.run.channel_revision.config_version == 2
+        assert decision.run.status is IMSyncRunStatus.QUEUED
+    with reconciliation_context.sessions() as session:
+        old_run = session.get_one(HumanInputIMSyncRun, str(_RUN_ID))
+        assert old_run.status is IMSyncRunStatus.FAILED
+        assert old_run.error_code == "stale_revision"
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMSyncResult.id))) == 1
+
+
+def test_old_channel_snapshot_cannot_terminate_a_newer_run(
+    reconciliation_context: _ReconciliationContext,
+) -> None:
+    with reconciliation_context.sessions.begin() as session:
+        session.get_one(HumanInputIMChannel, str(_CHANNEL_ID)).config_version = 2
+        session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).channel_config_version = 2
+    with pytest.raises(IMSyncRunNotFoundError):
+        reconciliation_context.service(_Adapter(_successful_directory())).reconcile(_RUN_ID)
+    with reconciliation_context.sessions() as session:
+        assert session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).status is IMSyncRunStatus.QUEUED
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMSyncResult.id))) == 0
+
+
+def test_revision_change_during_stale_completion_requires_worker_retry(
+    reconciliation_context: _ReconciliationContext,
+) -> None:
+    with reconciliation_context.sessions.begin() as session:
+        session.get_one(HumanInputIMChannel, str(_CHANNEL_ID)).config_version = 3
+    service = IMChannelReconciliationService(
+        reconciliation_context.sessions,
+        replace(reconciliation_context.channel, config_version=2),
+        lambda _channel: pytest.fail("stale synchronization must not access the provider"),
+        lambda _session: _ContactReader(),
+        clock=lambda: _NOW,
+    )
+    with pytest.raises(IMSyncRetryableError):
+        service.reconcile(_RUN_ID)
+    with reconciliation_context.sessions() as session:
+        assert session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).status is IMSyncRunStatus.QUEUED
+        assert session.scalar(sa.select(sa.func.count(HumanInputIMSyncResult.id))) == 0

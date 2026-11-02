@@ -221,7 +221,7 @@ export const Collaborators: Story = {
         <MenuTrigger
           render={
             <IconButton
-              aria-label="View 4 collaborators"
+              aria-label="ES+2: View 4 collaborators"
               variant="secondary"
               size={null}
               className="rounded-2xl bg-components-panel-bg-blur py-1 ps-1 pe-1.5 inset-ring-components-panel-border hover:bg-components-panel-bg hover:inset-ring-components-panel-border data-popup-open:bg-components-panel-bg"
@@ -258,7 +258,7 @@ export const Collaborators: Story = {
     </div>
   ),
   play: async ({ canvas, canvasElement, userEvent }) => {
-    const trigger = canvas.getByRole('button', { name: 'View 4 collaborators' })
+    const trigger = canvas.getByRole('button', { name: 'ES+2: View 4 collaborators' })
     trigger.focus()
     await userEvent.keyboard('{Enter}')
     const body = within(canvasElement.ownerDocument.body)

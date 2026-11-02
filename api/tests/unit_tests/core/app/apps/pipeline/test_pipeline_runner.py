@@ -109,7 +109,7 @@ def _build_app_generate_entity() -> RagPipelineGenerateEntity:
         pipeline_config=app_config,
         invoke_from=InvokeFrom.WEB_APP,
         user_id="user",
-        trace_manager=None,
+        trace_scope=None,
         inputs={"input1": "v1"},
         files=[],
         workflow_execution_id="run",

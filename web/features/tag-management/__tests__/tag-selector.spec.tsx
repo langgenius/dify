@@ -232,7 +232,7 @@ describe('TagSelector', () => {
     await user.click(trigger)
 
     await waitFor(() => {
-      expect(mockToast.error).toHaveBeenCalledWith(i18n.modifiedUnsuccessfully, {
+      expect(mockToast.error).toHaveBeenCalledWith('Unbind failed', {
         id: 'tag-bindings-app-target-1',
       })
     })

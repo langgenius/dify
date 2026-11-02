@@ -6,6 +6,8 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from sqlalchemy import event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -366,6 +368,14 @@ class TestBaseAppRunnerMultimodal:
         message_file = sqlite_session.get(MessageFile, message_file_id)
         assert message_file is not None
         assert message_file.created_by_role == CreatorUserRole.END_USER
+
+
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
 
 
 @dataclass(eq=False, repr=False)
@@ -867,11 +877,31 @@ class TestAppRunner:
 
     def test_moderation_for_inputs_returns_result(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
-        monkeypatch.setattr(
-            "core.app.apps.base_app_runner.InputModeration.check",
-            lambda self, app_id, tenant_id, app_config, inputs, query, message_id, trace_manager: (True, {}, ""),
+        moderation_calls: list[dict[str, object]] = []
+
+        def check(self: object, **kwargs: object) -> tuple[bool, dict[str, object], str]:
+            moderation_calls.append(kwargs)
+            return True, {}, ""
+
+        monkeypatch.setattr("core.app.apps.base_app_runner.InputModeration.check", check)
+        trace_scope = TraceScope(
+            emitter=_TraceRecorder(),
+            tenant_id="tenant",
+            app_id="app",
+            user_id="user",
+            correlation=TraceCorrelation(
+                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+            ),
         )
-        app_generate_entity = AppGenerateEntity.model_construct(app_config=None, trace_manager=None)
+        app_generate_entity = AppGenerateEntity(
+            task_id="task",
+            inputs={},
+            files=[],
+            user_id="user",
+            stream=False,
+            invoke_from=InvokeFrom.WEB_APP,
+            trace_scope=trace_scope,
+        )
 
         result = runner.moderation_for_inputs(
             app_id="app",
@@ -883,6 +913,17 @@ class TestAppRunner:
         )
 
         assert result == (True, {}, "")
+        assert moderation_calls == [
+            {
+                "app_id": "app",
+                "tenant_id": "tenant",
+                "app_config": None,
+                "inputs": {},
+                "query": "q",
+                "message_id": "msg",
+                "trace_scope": trace_scope,
+            }
+        ]
 
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
     def test_query_app_annotations_to_reply(

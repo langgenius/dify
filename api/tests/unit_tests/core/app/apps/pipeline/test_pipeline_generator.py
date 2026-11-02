@@ -23,7 +23,7 @@ from models.model import EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
-from services.data_source.provider_service import DatasourceProviderService
+from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 PIPELINE_ID = "00000000-0000-0000-0000-000000000002"
@@ -48,7 +48,7 @@ def generator(mocker: MockerFixture, sqlite_engine: Engine):
     gen = module.PipelineGenerator(
         execution_driver=build_workflow_run_driver(database_client=get_session_maker()),
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
-        datasource_providers=DatasourceProviderService(
+        datasource_providers=build_datasource_provider_service(
             credentials=create_autospec(DatasourceProviderCredentialStore, instance=True)
         ),
     )
