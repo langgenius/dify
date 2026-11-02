@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Callable, Generator, Iterator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -877,7 +877,12 @@ def _fail_inserts(
     *,
     failure_count: int,
     duplicate: bool,
-) -> Iterator[ConflictEvents]:
+) -> Generator[ConflictEvents]:
+    """Record repository retries while injecting the requested insert failures.
+
+    Preconditions: engine belongs to the test and failure_count selects failed attempts.
+    Postconditions: yielded events record attempts and rollbacks; listeners are always removed.
+    """
     insert_attempts: list[str] = []
     rollbacks: list[bool] = []
 

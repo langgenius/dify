@@ -559,10 +559,9 @@ class TestWorkflowCases:
             sqlite_session: Session,
             config_overrides: Callable[..., None],
         ) -> None:
-            config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+            config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, BILLING_API_URL="http://billing/v1")
             payload = builders.subscription_info().model_dump()
             del payload["subscription"]["plan"]
-            monkeypatch.setenv("BILLING_API_URL", "http://billing/v1")
 
             def unexpected_generation(*_args: object, **_kwargs: object) -> None:
                 pytest.fail("Invalid billing data must be rejected before workflow execution")

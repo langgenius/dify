@@ -1,5 +1,6 @@
 """BillingService delegates to the generated billing and saas clients; HTTP behavior is covered in billing_client."""
 
+from collections.abc import Callable
 from unittest.mock import patch
 
 import httpx
@@ -53,7 +54,7 @@ class TestBillingServiceSubscriptionInfo:
         with patch.object(billing, "subscription_get_subscription_payment_link", return_value=reply) as get:
             result = BillingService.get_subscription("professional", "month", "user@example.com", TENANT_ID)
 
-        assert result == {"url": "https://payment.example.com/checkout"}
+        assert result is reply
         get.assert_called_once_with(
             plan="professional", interval="month", prefilled_email="user@example.com", tenant_id=TENANT_ID
         )
@@ -64,7 +65,7 @@ class TestBillingServiceSubscriptionInfo:
         with patch.object(billing, "invoice_get_invoices", return_value=reply) as get:
             result = BillingService.get_invoices("user@example.com", TENANT_ID)
 
-        assert result == {"url": "https://billing.example.com/invoices"}
+        assert result is reply
         get.assert_called_once_with(prefilled_email="user@example.com", tenant_id=TENANT_ID)
 
     def test_get_model_provider_payment_link_returns_the_generated_reply(self):
@@ -96,7 +97,9 @@ class TestBillingServiceSubscriptionInfo:
         assert set(result) == set(tenant_ids[:200] + tenant_ids[400:])
         assert result["tenant-0"] == builders.plan_item("team", 1735689600)
 
-    def test_get_plan_bulk_skips_invalid_items_from_http_response(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_get_plan_bulk_skips_invalid_items_from_http_response(
+        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+    ) -> None:
         payload = {
             "data": {
                 "valid": {"plan": "sandbox", "expiration_date": "-1"},
@@ -107,7 +110,7 @@ class TestBillingServiceSubscriptionInfo:
                 "null_item": None,
             }
         }
-        monkeypatch.setenv("BILLING_API_URL", "http://billing/v1")
+        config_overrides(BILLING_API_URL="http://billing/v1")
         with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
             monkeypatch.setattr(transport, "_http_client", client)
 
@@ -291,7 +294,7 @@ class TestBillingServiceAccountAndEducation:
         with patch.object(billing, "compliance_download_compliance_document", return_value=reply) as download:
             result = BillingService.get_compliance_download_link("soc2", ACCOUNT_ID, TENANT_ID, "127.0.0.1", "ua")
 
-        assert result == {"url": "https://billing.example.com/compliance"}
+        assert result is reply
         download.assert_called_once_with(
             body=billing.DownloadComplianceDocumentReq(
                 doc_name="soc2", account_id=ACCOUNT_ID, tenant_id=TENANT_ID, ip_address="127.0.0.1", device_info="ua"
@@ -318,7 +321,7 @@ class TestBillingServiceAccountAndEducation:
         )
 
     def test_education_reads_return_the_generated_replies(self):
-        verify = billing.VerifyEducationIdentityReply(token="token")
+        verify = billing.VerifyEducationIdentityReply(token="token", status="eligible")
         status = billing.GetEducationIdentityStatusReply(
             result=True, is_student=True, expire_at="2027-01-01T00:00:00+00:00", allow_refresh=False
         )

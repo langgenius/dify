@@ -1,7 +1,9 @@
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from unittest.mock import MagicMock, call, create_autospec, patch
 
+import httpx
 import pytest
 from redis import RedisError
 from sqlalchemy import select
@@ -26,14 +28,27 @@ from services.account.adapters import (
     TokenManagerAccountDeletionVerificationGateway,
     TokenManagerChangeEmailTokenGateway,
 )
-from services.account_errors import AccountDeletionRateLimitError
-from services.billing_client import billing
+from services.account_errors import (
+    AccountDeletionRateLimitError,
+    EducationActivationFailedError,
+    EducationRequestInProgressError,
+    EducationVerificationFailedError,
+)
+from services.billing_client import billing, transport
 from services.entities.account_activation_entities import InvitationLookup, InvitationToken
 from services.entities.account_entities import (
     AccountChangeEmailNewEmailToken,
     AccountEducationActivation,
     AccountEducationAutocomplete,
+    AccountEducationEligible,
+    AccountEducationNotEligible,
     AccountEducationStatus,
+    AccountEducationVerification,
+)
+from services.errors.billing import (
+    BillingUpstreamError,
+    BillingUpstreamInvalidResponseError,
+    UnknownErrorReason,
 )
 from tests.helpers.unit.account_domain import AccountDomain
 
@@ -191,13 +206,61 @@ def test_rbac_member_access_sync_enqueues_joined_member_sync_when_enabled() -> N
     delay.assert_called_once_with("workspace-1", "account-1", operator_account_id=None)
 
 
-def test_education_gateway_normalizes_billing_status_timestamp() -> None:
+@pytest.mark.parametrize(
+    ("reply", "expected"),
+    [
+        (
+            billing.VerifyEducationIdentityReply(token="education-token", status="eligible"),
+            AccountEducationEligible(token="education-token"),
+        ),
+        (billing.VerifyEducationIdentityReply(token="", status="not_eligible"), AccountEducationNotEligible()),
+    ],
+)
+def test_education_gateway_maps_verification_status(
+    reply: billing.VerifyEducationIdentityReply, expected: AccountEducationVerification
+) -> None:
+    gateway = BillingAccountEducationGateway()
+
+    with patch("services.account.adapters.BillingService.EducationIdentity.verify", return_value=reply):
+        result = gateway.verify(account_id="account-1")
+
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("read", "body"),
+    [
+        (lambda gateway: gateway.verify(account_id="account-1"), {"token": ""}),
+        (
+            lambda gateway: gateway.status("account-1"),
+            {"result": False, "is_student": False, "expire_at": "", "allow_refresh": False},
+        ),
+    ],
+)
+def test_education_gateway_rejects_invalid_billing_replies(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    read: Callable[[BillingAccountEducationGateway], object],
+    body: dict[str, object],
+) -> None:
+    config_overrides(BILLING_API_URL="http://billing/v1")
+    monkeypatch.setattr(
+        transport,
+        "_http_client",
+        httpx.Client(transport=httpx.MockTransport(lambda _request: httpx.Response(200, json=body))),
+    )
+
+    with pytest.raises(BillingUpstreamInvalidResponseError):
+        read(BillingAccountEducationGateway())
+
+
+def test_education_gateway_reads_billing_status_timestamp() -> None:
     gateway = BillingAccountEducationGateway()
 
     with patch(
         "services.account.adapters.BillingService.EducationIdentity.status",
         return_value=billing.GetEducationIdentityStatusReply(
-            result=True, is_student=True, expire_at="2027-01-01T00:00:00+00:00", allow_refresh=False
+            result=True, is_student=True, expire_at="2027-01-01T00:00:00Z", allow_refresh=False
         ),
     ):
         result = gateway.status("account-1")
@@ -249,16 +312,16 @@ def test_education_gateway_maps_autocomplete_reply() -> None:
     assert result == AccountEducationAutocomplete(data=("Example University",), curr_page=0, has_next=True)
 
 
-def test_education_gateway_reads_empty_expiry_as_none() -> None:
+def test_education_gateway_reads_no_identity_expiry() -> None:
     gateway = BillingAccountEducationGateway()
 
     with patch(
         "services.account.adapters.BillingService.EducationIdentity.status",
         return_value=billing.GetEducationIdentityStatusReply(
-            result=False, is_student=False, expire_at="", allow_refresh=False
+            result=False, is_student=False, expire_at="1997-01-01T00:00:00Z", allow_refresh=False
         ),
     ):
-        assert gateway.status("account-1").expire_at is None
+        assert gateway.status("account-1").expire_at == datetime(1997, 1, 1, tzinfo=UTC)
 
 
 def test_billing_email_policy_preserves_suspended_domain_reason() -> None:
@@ -485,3 +548,49 @@ def test_identity_rejects_banned_and_missing_accounts(account_domain: AccountDom
     with pytest.raises(Unauthorized, match="banned"):
         gateway.load_user(account.id)
     assert gateway.load_user("missing") is None
+
+
+@pytest.mark.parametrize(
+    ("reason", "expected"),
+    [
+        ("EDUCATION_VERIFY_FAILED", EducationVerificationFailedError),
+        ("EDUCATION_CREATE_FAILED", EducationActivationFailedError),
+        ("REQUEST_IN_PROGRESS", EducationRequestInProgressError),
+    ],
+)
+def test_education_gateway_maps_billing_reason(
+    reason: billing.BillingEducationErrorReason, expected: type[Exception]
+) -> None:
+    error = billing.BillingEducationUpstreamInvalidResponseError(status_code=400, reason=reason)
+
+    with (
+        patch("services.account.adapters.BillingService.EducationIdentity.verify", side_effect=error),
+        pytest.raises(expected) as exc_info,
+    ):
+        BillingAccountEducationGateway().verify(account_id="account-1")
+
+    assert exc_info.value.__cause__ is error
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        billing.BillingEducationUpstreamInvalidResponseError(status_code=400, reason="EDUCATION_STATUS_FAILED"),
+        billing.BillingEducationUpstreamUnavailableError(status_code=500, reason=""),
+        billing.BillingEducationUpstreamInvalidResponseError(
+            status_code=400, reason=UnknownErrorReason("EDUCATION_SHIPPED_LATER")
+        ),
+        billing.BillingEducationUpstreamUnavailableError(status_code=502),
+        billing.BillingEducationUpstreamUnavailableError(),
+    ],
+)
+def test_education_gateway_leaves_generic_reasons_to_billing_errors(
+    error: billing.BillingEducationUpstreamError,
+) -> None:
+    with (
+        patch("services.account.adapters.BillingService.EducationIdentity.status", side_effect=error),
+        pytest.raises(BillingUpstreamError) as exc_info,
+    ):
+        BillingAccountEducationGateway().status("account-1")
+
+    assert exc_info.value is error

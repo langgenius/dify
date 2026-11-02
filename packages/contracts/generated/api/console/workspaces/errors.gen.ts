@@ -138,6 +138,94 @@ const zRoleAlreadyAssignedError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zNetworkAccessForbiddenError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_forbidden'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zNetworkAccessNotEntitledError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_not_entitled'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zNetworkAccessRoleDeniedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_role_denied'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zBillingOperationFailedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('billing_operation_failed'),
+      status: z.literal(502),
+    }),
+  ))()
+
+const zBillingUnavailableError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('billing_unavailable'),
+      status: z.literal(503),
+    }),
+  ))()
+
+const zNetworkAccessInvalidInputError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_invalid_input'),
+      status: z.literal(400),
+    }),
+  ))()
+
+const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('paid_plan_required'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zNetworkAccessGroupNameConflictError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_group_name_conflict'),
+      status: z.literal(409),
+    }),
+  ))()
+
+const zNetworkAccessGroupNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_group_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
+const zNetworkAccessGroupBoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_group_bound'),
+      status: z.literal(409),
+    }),
+  ))()
+
+const zNetworkAccessVersionConflictError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('network_access_version_conflict'),
+      status: z.literal(409),
+    }),
+  ))()
+
 const zPluginError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -251,6 +339,72 @@ export const delete8Errors = {
   cannot_operate_self: { status: 400, data: zCannotOperateSelfError },
   forbidden: { status: 403, data: zForbiddenError },
   member_not_found: { status: 404, data: zMemberNotFoundError },
+}
+
+export const get35Errors = {
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+}
+
+export const get36Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+  network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+  network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+}
+
+export const delete12Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+  network_access_group_bound: { status: 409, data: zNetworkAccessGroupBoundError },
+  network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+  network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+  network_access_version_conflict: { status: 409, data: zNetworkAccessVersionConflictError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
+
+export const get37Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+  network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+  network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+}
+
+export const put9Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+  network_access_group_name_conflict: { status: 409, data: zNetworkAccessGroupNameConflictError },
+  network_access_group_not_found: { status: 404, data: zNetworkAccessGroupNotFoundError },
+  network_access_invalid_input: { status: 400, data: zNetworkAccessInvalidInputError },
+  network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+  network_access_version_conflict: { status: 409, data: zNetworkAccessVersionConflictError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
+
+export const get38Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+  network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+}
+
+export const post38Errors = {
+  billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+  billing_unavailable: { status: 503, data: zBillingUnavailableError },
+  network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
+  network_access_group_name_conflict: { status: 409, data: zNetworkAccessGroupNameConflictError },
+  network_access_invalid_input: { status: 400, data: zNetworkAccessInvalidInputError },
+  network_access_not_entitled: { status: 403, data: zNetworkAccessNotEntitledError },
+  network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
 }
 
 export const get40Errors = { plugin_error: { status: 400, data: zPluginError } }

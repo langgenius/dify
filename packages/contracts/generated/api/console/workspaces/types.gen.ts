@@ -676,6 +676,31 @@ export type NetworkAccessGroupListResponse = {
   tenant_id: string
 }
 
+export type NetworkAccessForbiddenError = ErrorResponse & {
+  code: 'network_access_forbidden'
+  status: 403
+}
+
+export type NetworkAccessNotEntitledError = ErrorResponse & {
+  code: 'network_access_not_entitled'
+  status: 403
+}
+
+export type NetworkAccessRoleDeniedError = ErrorResponse & {
+  code: 'network_access_role_denied'
+  status: 403
+}
+
+export type BillingOperationFailedError = ErrorResponse & {
+  code: 'billing_operation_failed'
+  status: 502
+}
+
+export type BillingUnavailableError = ErrorResponse & {
+  code: 'billing_unavailable'
+  status: 503
+}
+
 export type NetworkAccessGroupCreatePayload = {
   allowed_cidrs: Array<string>
   description?: string
@@ -686,12 +711,42 @@ export type NetworkAccessGroupMutationResponse = {
   group: NetworkAccessGroupResponse
 }
 
+export type NetworkAccessInvalidInputError = ErrorResponse & {
+  code: 'network_access_invalid_input'
+  status: 400
+}
+
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
+export type NetworkAccessGroupNameConflictError = ErrorResponse & {
+  code: 'network_access_group_name_conflict'
+  status: 409
+}
+
 export type NetworkAccessGroupCurrentIpResponse = {
   client_ip: string
 }
 
 export type NetworkAccessGroupDeleteResponse = {
   deleted: boolean
+}
+
+export type NetworkAccessGroupNotFoundError = ErrorResponse & {
+  code: 'network_access_group_not_found'
+  status: 404
+}
+
+export type NetworkAccessGroupBoundError = ErrorResponse & {
+  code: 'network_access_group_bound'
+  status: 409
+}
+
+export type NetworkAccessVersionConflictError = ErrorResponse & {
+  code: 'network_access_version_conflict'
+  status: 409
 }
 
 export type NetworkAccessGroupUpdatePayload = {
@@ -1921,6 +1976,7 @@ export type ContactOption = {
   avatar_url?: string | null
   email?: string | null
   id: string
+  im_providers: Array<ImProvider>
   name: string
   type: HumanInputContactType
 }
@@ -6459,6 +6515,13 @@ export type GetWorkspacesCurrentNetworkAccessGroupsData = {
 }
 
 export type GetWorkspacesCurrentNetworkAccessGroupsErrors = {
+  403:
+    | NetworkAccessForbiddenError
+    | NetworkAccessNotEntitledError
+    | NetworkAccessRoleDeniedError
+    | ErrorResponse
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6480,6 +6543,16 @@ export type PostWorkspacesCurrentNetworkAccessGroupsData = {
 }
 
 export type PostWorkspacesCurrentNetworkAccessGroupsErrors = {
+  400: NetworkAccessInvalidInputError | ErrorResponse
+  403:
+    | NetworkAccessForbiddenError
+    | NetworkAccessNotEntitledError
+    | NetworkAccessRoleDeniedError
+    | PaidPlanRequiredError
+    | ErrorResponse
+  409: NetworkAccessGroupNameConflictError | ErrorResponse
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6501,7 +6574,7 @@ export type GetWorkspacesCurrentNetworkAccessGroupsCurrentIpData = {
 }
 
 export type GetWorkspacesCurrentNetworkAccessGroupsCurrentIpErrors = {
-  403: ErrorResponse
+  403: NetworkAccessRoleDeniedError | ErrorResponse
   503: ErrorResponse
   default: ErrorResponse
 }
@@ -6528,6 +6601,16 @@ export type DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdData = {
 }
 
 export type DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdErrors = {
+  403:
+    | NetworkAccessForbiddenError
+    | NetworkAccessNotEntitledError
+    | NetworkAccessRoleDeniedError
+    | PaidPlanRequiredError
+    | ErrorResponse
+  404: NetworkAccessGroupNotFoundError | ErrorResponse
+  409: NetworkAccessGroupBoundError | NetworkAccessVersionConflictError | ErrorResponse
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6551,6 +6634,14 @@ export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdData = {
 }
 
 export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdErrors = {
+  403:
+    | NetworkAccessForbiddenError
+    | NetworkAccessNotEntitledError
+    | NetworkAccessRoleDeniedError
+    | ErrorResponse
+  404: NetworkAccessGroupNotFoundError | ErrorResponse
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6574,6 +6665,17 @@ export type PutWorkspacesCurrentNetworkAccessGroupsByGroupIdData = {
 }
 
 export type PutWorkspacesCurrentNetworkAccessGroupsByGroupIdErrors = {
+  400: NetworkAccessInvalidInputError | ErrorResponse
+  403:
+    | NetworkAccessForbiddenError
+    | NetworkAccessNotEntitledError
+    | NetworkAccessRoleDeniedError
+    | PaidPlanRequiredError
+    | ErrorResponse
+  404: NetworkAccessGroupNotFoundError | ErrorResponse
+  409: NetworkAccessGroupNameConflictError | NetworkAccessVersionConflictError | ErrorResponse
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6597,6 +6699,14 @@ export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpData =
 }
 
 export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpErrors = {
+  403:
+    | NetworkAccessForbiddenError
+    | NetworkAccessNotEntitledError
+    | NetworkAccessRoleDeniedError
+    | ErrorResponse
+  404: NetworkAccessGroupNotFoundError | ErrorResponse
+  502: BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 

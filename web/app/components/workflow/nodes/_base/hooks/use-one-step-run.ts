@@ -458,20 +458,21 @@ const useOneStepRun = <T>({
 
     try {
       const response: any =
-        await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post({
-          params: { app_id: resource.appId, node_id: id },
-        })
+        await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post(
+          {
+            params: { app_id: resource.appId, node_id: id },
+          },
+          { context: { silent: true } },
+        )
 
       if (!response) {
         const message = t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
-        toast.error(message)
         throw new Error(message)
       }
 
       if (response?.status === 'error') {
         const message =
           response?.message || t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
-        toast.error(message)
         throw new Error(message)
       }
 
@@ -495,7 +496,11 @@ const useOneStepRun = <T>({
           _singleRunningStatus: NodeRunningStatus.Failed,
         },
       })
-      toast.error(t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' }))
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' }),
+      )
       throw error
     }
   }, [resource, id, handleNodeDataUpdate, data, t])
@@ -514,7 +519,7 @@ const useOneStepRun = <T>({
         const response: any =
           await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post(
             { params: { app_id: resource.appId, node_id: id } },
-            { signal: controller.signal },
+            { context: { silent: true }, signal: controller.signal },
           )
 
         if (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
@@ -523,8 +528,6 @@ const useOneStepRun = <T>({
         if (!response) {
           const message =
             response?.message || t(($) => $['common.webhookDebugFailed'], { ns: 'workflow' })
-          toast.error(message)
-          cancelWebhookSingleRun()
           throw new Error(message)
         }
 
@@ -556,8 +559,6 @@ const useOneStepRun = <T>({
         if (response?.status === 'error') {
           const message =
             response.message || t(($) => $['common.webhookDebugFailed'], { ns: 'workflow' })
-          toast.error(message)
-          cancelWebhookSingleRun()
           throw new Error(message)
         }
 
@@ -580,7 +581,11 @@ const useOneStepRun = <T>({
           return null
         if (controller.signal.aborted) return null
 
-        toast.error(t(($) => $['common.webhookDebugRequestFailed'], { ns: 'workflow' }))
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t(($) => $['common.webhookDebugRequestFailed'], { ns: 'workflow' }),
+        )
         cancelWebhookSingleRun()
         if (error instanceof Error) throw error
         throw new Error(String(error))
@@ -605,7 +610,10 @@ const useOneStepRun = <T>({
       let requestError: unknown
       const response: any =
         await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run
-          .post({ params: { app_id: resource.appId, node_id: id } }, { signal: controller.signal })
+          .post(
+            { params: { app_id: resource.appId, node_id: id } },
+            { signal: controller.signal, context: { silent: true } },
+          )
           .catch((error: unknown) => {
             requestError = error
             return null

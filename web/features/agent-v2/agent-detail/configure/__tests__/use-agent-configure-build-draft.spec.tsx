@@ -85,7 +85,7 @@ describe('build draft refresh errors', () => {
       expect(refreshed.error).toBe(serverError)
     })
 
-    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('common.api.actionFailed')
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('HTTP 500')
     expect(setSoulSourceOverride).not.toHaveBeenCalled()
   })
 })

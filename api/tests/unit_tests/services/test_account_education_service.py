@@ -19,8 +19,9 @@ from services.billing_service import BillingService
 from services.entities.account_entities import (
     AccountEducationActivation,
     AccountEducationAutocomplete,
+    AccountEducationEligible,
+    AccountEducationNotEligible,
     AccountEducationStatus,
-    AccountEducationVerification,
 )
 from tests.helpers.unit.model_factories import make_account
 
@@ -76,14 +77,24 @@ def test_verify_reads_account_before_billing_gateway_call(
     def verify(*, account_id: str) -> billing.VerifyEducationIdentityReply:
         lookup.assert_called_once_with(account_id)
         events.append("verify")
-        return billing.VerifyEducationIdentityReply(token="education-token")
+        return billing.VerifyEducationIdentityReply(token="education-token", status="eligible")
 
     billing_call = mocker.patch.object(BillingService.EducationIdentity, "verify", side_effect=verify)
 
-    assert service.verify(_context()) == AccountEducationVerification(token="education-token")
+    assert service.verify(_context()) == AccountEducationEligible(token="education-token")
     assert events == ["check", "increment", "verify"]
     billing_call.assert_called_once_with(account_id="account-1")
     assert all(call.args[1] == "verification:student@example.edu" for call in commands.call_args_list)
+
+
+def test_verify_returns_not_eligible_without_token(service: AccountEducationService, mocker: MockerFixture) -> None:
+    mocker.patch.object(
+        BillingService.EducationIdentity,
+        "verify",
+        return_value=billing.VerifyEducationIdentityReply(token="", status="not_eligible"),
+    )
+
+    assert service.verify(_context()) == AccountEducationNotEligible()
 
 
 def test_status_and_autocomplete_delegate_framework_neutral_contracts(

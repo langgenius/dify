@@ -92,34 +92,39 @@ describe('SkillDetailPage editor', () => {
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
   })
 
-  it('does not render the code editor when external file content fails to load', async () => {
-    const user = userEvent.setup()
-    mocks.fetchSkillFileBlob.mockRejectedValue(new Error('content unavailable'))
-    mocks.skillDetail = createSkillDetail({
-      files: [
-        ...createSkillDetail().files!,
-        {
-          id: 'file-2',
-          path: 'scripts/action.ts',
-          kind: 'file',
-          storage: 'tool_file',
-          mime_type: 'text/typescript',
-          content: null,
-          tool_file_id: 'tool-file-action',
-          size: 128,
-          hash: 'hash-2',
-        },
-      ],
-    })
-    renderSkillDetailPage()
+  it.each(['content unavailable', ''])(
+    'shows the text load error %j without opening the code editor',
+    async (message) => {
+      const user = userEvent.setup()
+      mocks.fetchSkillFileBlob.mockRejectedValue(new Error(message))
+      mocks.skillDetail = createSkillDetail({
+        files: [
+          ...createSkillDetail().files!,
+          {
+            id: 'file-2',
+            path: 'scripts/action.ts',
+            kind: 'file',
+            storage: 'tool_file',
+            mime_type: 'text/typescript',
+            content: null,
+            tool_file_id: 'tool-file-action',
+            size: 128,
+            hash: 'hash-2',
+          },
+        ],
+      })
+      renderSkillDetailPage()
 
-    await screen.findByText('skill.skillManagement.detail.builder.title')
-    await user.click(getFileTreeButton('scripts/action.ts'))
+      await screen.findByText('skill.skillManagement.detail.builder.title')
+      await user.click(getFileTreeButton('scripts/action.ts'))
 
-    expect(await screen.findByText('skill.skillManagement.detail.loadFailed')).toBeInTheDocument()
-    expect(screen.queryByLabelText('code-editor')).not.toBeInTheDocument()
-    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
-  })
+      expect(
+        await screen.findByText(message || 'skill.skillManagement.detail.loadFailed'),
+      ).toBeInTheDocument()
+      expect(screen.queryByLabelText('code-editor')).not.toBeInTheDocument()
+      expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
+    },
+  )
 
   it('renders CSV files as a table preview', async () => {
     const user = userEvent.setup()
@@ -224,9 +229,9 @@ describe('SkillDetailPage editor', () => {
     })
   })
 
-  it('shows a toast when downloading a binary file fails', async () => {
+  it.each(['download failed', ''])('reports the binary download error %j once', async (message) => {
     const user = userEvent.setup()
-    mocks.fetchSkillFileBlob.mockRejectedValue(new Error('download failed'))
+    mocks.fetchSkillFileBlob.mockRejectedValue(new Error(message))
     mocks.skillDetail = createSkillDetail({
       files: [
         ...createSkillDetail().files!,
@@ -253,7 +258,9 @@ describe('SkillDetailPage editor', () => {
     )
 
     await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith('skill.skillManagement.detail.loadFailed')
+      expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith(
+        message || 'skill.skillManagement.detail.loadFailed',
+      )
     })
   })
 
@@ -304,33 +311,38 @@ describe('SkillDetailPage editor', () => {
     revokeObjectURL.mockRestore()
   })
 
-  it('shows an image preview error when the tool file blob cannot be loaded', async () => {
-    const user = userEvent.setup()
-    mocks.fetchSkillFileBlob.mockRejectedValue(new Error('preview unavailable'))
-    mocks.skillDetail = createSkillDetail({
-      files: [
-        ...createSkillDetail().files!,
-        {
-          id: 'file-image',
-          path: 'assets/logo.png',
-          kind: 'file',
-          storage: 'tool_file',
-          mime_type: 'image/png',
-          content: null,
-          tool_file_id: 'tool-file-image',
-          size: 128,
-          hash: 'hash-image',
-        },
-      ],
-    })
+  it.each(['preview unavailable', ''])(
+    'shows the image preview error %j inline',
+    async (message) => {
+      const user = userEvent.setup()
+      mocks.fetchSkillFileBlob.mockRejectedValue(new Error(message))
+      mocks.skillDetail = createSkillDetail({
+        files: [
+          ...createSkillDetail().files!,
+          {
+            id: 'file-image',
+            path: 'assets/logo.png',
+            kind: 'file',
+            storage: 'tool_file',
+            mime_type: 'image/png',
+            content: null,
+            tool_file_id: 'tool-file-image',
+            size: 128,
+            hash: 'hash-image',
+          },
+        ],
+      })
 
-    renderSkillDetailPage()
+      renderSkillDetailPage()
 
-    await screen.findByText('skill.skillManagement.detail.builder.title')
-    await user.click(getFileTreeButton('assets/logo.png'))
+      await screen.findByText('skill.skillManagement.detail.builder.title')
+      await user.click(getFileTreeButton('assets/logo.png'))
 
-    expect(await screen.findByText('skill.skillManagement.detail.loadFailed')).toBeInTheDocument()
-  })
+      expect(
+        await screen.findByText(message || 'skill.skillManagement.detail.loadFailed'),
+      ).toBeInTheDocument()
+    },
+  )
 
   it('keeps line breaks typed in the live markdown editor', async () => {
     const user = userEvent.setup()

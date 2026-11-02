@@ -181,6 +181,59 @@ def test_retry_exhaustion_preserves_the_last_request_error(monkeypatch: pytest.M
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_retry_exhaustion_keeps_the_last_status(mock_get_client, client_factory, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", lambda _seconds: None)
+    mock_response = httpx.Response(503)
+    mock_client, send_calls = client_factory(mock_response)
+    mock_get_client.return_value = mock_client
+
+    with pytest.raises(max_retries_exceeded_error) as exc_info:
+        make_request("GET", "http://example.com", max_retries=2)
+
+    assert exc_info.value.status_code == 503
+    assert len(send_calls) == 3
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_retry_exhaustion_without_a_response_keeps_no_status(mock_get_client, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", lambda _seconds: None)
+    sends = 0
+
+    def refuse(request: httpx.Request) -> httpx.Response:
+        nonlocal sends
+        sends += 1
+        raise httpx.ConnectError("connection refused", request=request)
+
+    with httpx.Client(transport=httpx.MockTransport(refuse)) as client:
+        mock_get_client.return_value = client
+        with pytest.raises(max_retries_exceeded_error) as exc_info:
+            make_request("GET", "http://example.com", max_retries=2)
+
+    assert exc_info.value.status_code is None
+    assert sends == 3
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_retry_then_success_returns_the_later_response(mock_get_client, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", lambda _seconds: None)
+    responses = iter([httpx.Response(503), httpx.Response(200, content=b"ok")])
+    sends = 0
+
+    def answer(_request: httpx.Request) -> httpx.Response:
+        nonlocal sends
+        sends += 1
+        return next(responses)
+
+    with httpx.Client(transport=httpx.MockTransport(answer)) as client:
+        mock_get_client.return_value = client
+        response = make_request("GET", "http://example.com", max_retries=2)
+
+    assert response.status_code == 200
+    assert response.content == b"ok"
+    assert sends == 2
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
 def test_force_list_response_returns_when_retries_disabled(mock_get_client, client_factory):
     mock_response = httpx.Response(500)
     mock_client, send_calls = client_factory(mock_response)

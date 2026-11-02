@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import patch
 
 import httpx
@@ -44,7 +45,9 @@ def test_get_active_maps_billing_proto_json_contract() -> None:
 
 @pytest.mark.parametrize("localized_content", [None, {}])
 def test_get_active_falls_back_to_english_for_empty_upstream_translation(
-    monkeypatch: pytest.MonkeyPatch, localized_content: dict[str, str] | None
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    localized_content: dict[str, str] | None,
 ) -> None:
     payload = {
         "shouldShow": True,
@@ -70,7 +73,7 @@ def test_get_active_falls_back_to_english_for_empty_upstream_translation(
         request_id="request-1", trace_id="trace-1", account_id="account-1", active_workspace_id="workspace-1"
     )
     service = NotificationService(notifications=BillingNotificationGateway())
-    monkeypatch.setenv("BILLING_API_URL", "http://billing/v1")
+    config_overrides(BILLING_API_URL="http://billing/v1")
     with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
         monkeypatch.setattr(transport, "_http_client", client)
         result = service.get_active(context, "zh-Hans")

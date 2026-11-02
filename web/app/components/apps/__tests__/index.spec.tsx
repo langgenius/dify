@@ -208,7 +208,10 @@ it('imports fresh canonical detail through the real list and form, then checks d
   )
   await submit(user)
   await waitFor(() => expect(api.push).toHaveBeenCalledWith('/app/created-app/configuration'))
-  expect(api.detail).toHaveBeenCalledExactlyOnceWith({ params: { app_id: 'canonical-template' } })
+  expect(api.detail).toHaveBeenCalledExactlyOnceWith(
+    { params: { app_id: 'canonical-template' } },
+    { context: { silent: true } },
+  )
   expect(api.import).toHaveBeenCalledWith({
     body: expect.objectContaining({
       yaml_content: 'fresh-dsl',
@@ -260,7 +263,7 @@ it('shows a detail error once without importing or navigating, and preserves the
   const { user } = await setup()
   await openCreate(user)
   await submit(user)
-  expect(await screen.findAllByText('app.newApp.appCreateFailed')).toHaveLength(1)
+  expect(await screen.findAllByText('Unavailable')).toHaveLength(1)
   await waitFor(() =>
     expect(
       screen.queryByRole('dialog', { name: /^explore.appCustomize.title/ }),
