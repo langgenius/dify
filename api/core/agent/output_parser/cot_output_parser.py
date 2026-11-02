@@ -40,17 +40,15 @@ class CotAgentOutputParser:
                 return json.dumps(action)
 
         def extra_json_from_code_block(code_block) -> list[list | dict]:
-            blocks = re.findall(r"```[json]*\s*([\[{].*[]}])\s*```", code_block, re.DOTALL | re.IGNORECASE)
-            if not blocks:
-                return []
-            try:
-                json_blocks = []
-                for block in blocks:
+            blocks = re.findall(r"```[json]*\s*([\[{].*?[]}])\s*```", code_block, re.DOTALL | re.IGNORECASE)
+            json_blocks = []
+            for block in blocks:
+                try:
                     json_text = re.sub(r"^[a-zA-Z]+\n", "", block.strip(), flags=re.MULTILINE)
                     json_blocks.append(json.loads(json_text, strict=False))
-                return json_blocks
-            except Exception:
-                return []
+                except Exception:
+                    continue
+            return json_blocks
 
         code_block_cache = ""
         code_block_delimiter_count = 0
