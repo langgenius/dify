@@ -1044,7 +1044,7 @@ class TestWorkflowCases:
             lambda: SimpleNamespace(get_draft_workflow=lambda **_k: workflow),
         )
 
-        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+        from services.agent.legacy_workflow_publish_service import WorkflowAgentPublishService
 
         monkeypatch.setattr(
             WorkflowAgentPublishService,
