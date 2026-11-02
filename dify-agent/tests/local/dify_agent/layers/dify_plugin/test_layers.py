@@ -157,6 +157,7 @@ async def test_native_plugin_tool_converts_file_inputs(value, download):
         if request.url.path.endswith("/download/file/request"):
             assert download
             assert payload["file"] == {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"}
+            assert payload["for_external"] is False
             return httpx.Response(
                 200,
                 json={
