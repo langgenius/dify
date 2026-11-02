@@ -1,12 +1,13 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
-from unittest.mock import Mock
+from unittest.mock import create_autospec
 
 import pytest
 from sqlalchemy.orm import Session
 
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.apps.workflow_app_runner import WorkflowRunDriver
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolParameter
@@ -14,6 +15,7 @@ from models import Account
 from models.model import App, AppMode, EndUser
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
+from repositories.entities.workflow_execution import WorkflowExecutionIdentity
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.tools.workflow.tool import WorkflowTool
 from services.workflow.contracts import WorkflowSnapshot
@@ -57,6 +59,7 @@ class _WorkflowQueries:
 
 @dataclass(frozen=True)
 class _GenerateCall:
+    execution_identity: WorkflowExecutionIdentity
     app_model: App
     workflow: WorkflowSnapshot
     user: Account | EndUser
@@ -76,12 +79,15 @@ def test_public_invoke_passes_explicit_session_and_uses_available_workflow_gener
     actor = make_account()
     calls: list[_GenerateCall] = []
     generators: list[WorkflowAppGenerator] = []
-    execution_driver = Mock(name="execution_driver")
-    workflow_runtime: WorkflowRuntime = Mock(spec=WorkflowRuntime, execution_driver=execution_driver)
+    execution_driver = create_autospec(WorkflowRunDriver, instance=True)
+    workflow_runtime: WorkflowRuntime = create_autospec(
+        WorkflowRuntime, instance=True, execution_driver=execution_driver
+    )
 
     def generate(
         _generator: WorkflowAppGenerator,
         *,
+        execution_identity: WorkflowExecutionIdentity,
         app_model: App,
         workflow: WorkflowSnapshot,
         user: Account | EndUser,
@@ -95,6 +101,7 @@ def test_public_invoke_passes_explicit_session_and_uses_available_workflow_gener
         generators.append(_generator)
         calls.append(
             _GenerateCall(
+                execution_identity=execution_identity,
                 app_model=app_model,
                 workflow=workflow,
                 user=user,
@@ -148,6 +155,7 @@ def test_public_invoke_passes_explicit_session_and_uses_available_workflow_gener
 
     assert calls == [
         _GenerateCall(
+            execution_identity=WorkflowExecutionIdentity(user_id=actor.id, user_from=UserFrom.ACCOUNT),
             app_model=app,
             workflow=workflow_snapshot(workflow),
             user=actor,

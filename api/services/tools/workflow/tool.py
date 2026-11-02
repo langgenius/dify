@@ -4,7 +4,7 @@ import json
 import logging
 from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import suppress
-from typing import Any, cast, override
+from typing import Any, override
 
 from sqlalchemy.orm import Session
 
@@ -28,15 +28,15 @@ from core.workflow.file_reference import resolve_file_record_id
 from factories.file_factory import build_from_mapping
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
-from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from models import Account
 from models.model import App, EndUser
 from models.tool_runtime_contracts import WorkflowToolQueries
 from models.utils.file_input_compat import build_file_from_stored_mapping
-from models.workflow import Workflow
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.ports import WorkflowRuntime
+from services.workflow_execution_identity import build_workflow_execution_identity
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
@@ -131,9 +131,11 @@ class WorkflowTool(Tool):
         if self._trace_session_id:
             generator_args.update(extract_trace_session_id_from_args({"trace_session_id": self._trace_session_id}))
 
+        workflow_arg: Any = workflow
         result = generator.generate(
+            execution_identity=build_workflow_execution_identity(user),
             app_model=app,
-            workflow=cast(Workflow, workflow),
+            workflow=workflow_arg,
             user=user,
             args=generator_args,
             invoke_from=self.runtime.invoke_from,
@@ -189,7 +191,7 @@ class WorkflowTool(Tool):
     def _derive_usage_from_result(cls, data: Mapping[str, Any]) -> LLMUsage:
         usage_dict = cls._extract_usage_dict(data)
         if usage_dict is not None:
-            return LLMUsage.from_metadata(cast(LLMUsageMetadata, dict(usage_dict)))
+            return LLMUsage.from_metadata(usage_dict)
 
         total_tokens = data.get("total_tokens")
         total_price = data.get("total_price")
@@ -209,7 +211,7 @@ class WorkflowTool(Tool):
         if not usage_metadata:
             return LLMUsage.empty_usage()
 
-        return LLMUsage.from_metadata(cast(LLMUsageMetadata, usage_metadata))
+        return LLMUsage.from_metadata(usage_metadata)
 
     @classmethod
     def _extract_usage_dict(cls, payload: Mapping[str, Any]) -> Mapping[str, Any] | None:
@@ -318,7 +320,7 @@ class WorkflowTool(Tool):
                     try:
                         file_var_list = [
                             build_file_from_stored_mapping(
-                                file_mapping=cast(Mapping[str, Any], f),
+                                file_mapping=dict(f),
                                 tenant_id=str(self.runtime.tenant_id),
                             )
                             for f in file
