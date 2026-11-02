@@ -383,3 +383,259 @@ it('does not retain failed-save secrets in Query mutation variables', async () =
     ),
   ).not.toContain('private-retry-secret')
 })
+
+it('tests a new IM channel before creating it with the entered credentials', async () => {
+  let saved = false
+  network.handle.mockImplementation((request) => {
+    if (request.url.endsWith('/channels')) return json({ channels: saved ? [channel] : [] })
+    if (request.method === 'POST' && request.url.endsWith('/channels/im/test'))
+      return json({ status: 'connected', status_description: 'Credentials verified' })
+    if (request.method === 'POST' && request.url.endsWith('/channels/im')) {
+      saved = true
+      return json({ summary: channel })
+    }
+    return defaultResponse(request)
+  })
+  const user = userEvent.setup()
+  renderSurface()
+  await user.click(
+    await screen.findByRole('button', { name: 'Feishu — contacts.imPlatform.action.connect' }),
+  )
+  const dialog = await screen.findByRole('dialog')
+  await user.type(
+    within(dialog).getByLabelText('contacts.imPlatform.bindingDialog.field.appId'),
+    'new-app',
+  )
+  await user.type(
+    within(dialog).getByLabelText('contacts.imPlatform.bindingDialog.field.secret'),
+    'new-secret',
+  )
+  await user.click(
+    within(dialog).getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
+  )
+  await waitFor(() =>
+    expect(within(dialog).getByRole('status')).toHaveTextContent(
+      'contacts.imPlatform.email.testSucceeded',
+    ),
+  )
+  expect(calls('/channels/im', 'POST')).toHaveLength(0)
+  const test = calls('/channels/im/test', 'POST')[0]
+  if (!test) throw new Error('Expected a generated channel test request')
+  const payload = {
+    credentials: {
+      provider: 'feishu',
+      app_id: 'new-app',
+      app_secret: 'new-secret',
+      verification_token: null,
+      encrypt_key: null,
+    },
+  }
+  expect(await test.json()).toEqual(payload)
+
+  await user.click(
+    within(dialog).getByRole('button', {
+      name: 'contacts.imPlatform.bindingDialog.saveAndContinue',
+    }),
+  )
+  await waitFor(() => expect(calls('/channels/im', 'POST')).toHaveLength(1))
+  expect(await calls('/channels/im', 'POST')[0]!.json()).toEqual(payload)
+  await waitFor(() => expect(calls('/channels/im/channel-1')).toHaveLength(1))
+  expect(
+    await within(dialog).findByLabelText('contacts.imPlatform.bindingDialog.callback'),
+  ).toHaveValue(channel.webhook_url)
+  await user.click(
+    within(dialog).getByRole('button', { name: 'contacts.imPlatform.bindingDialog.finish' }),
+  )
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(await screen.findByRole('group', { name: 'Feishu' })).toHaveTextContent('saved-tenant')
+})
+
+it('keeps credentials editable after a failed connection test and retries without saving', async () => {
+  let verified = false
+  network.handle.mockImplementation((request) => {
+    if (request.method === 'POST' && request.url.endsWith('/channels/im/channel-1/test')) {
+      if (!verified)
+        return json({
+          status: 'invalid_credentials',
+          status_description: 'The app secret was rejected',
+        })
+      return json({ status: 'connected', status_description: 'Connected' })
+    }
+    return defaultResponse(request)
+  })
+  const user = userEvent.setup()
+  renderSurface()
+  await user.click(
+    await screen.findByRole('button', { name: /contacts\.imPlatform\.action\.configureChannel/ }),
+  )
+  const dialog = await screen.findByRole('dialog')
+  await user.click(
+    within(dialog).getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }),
+  )
+  const secret = await within(dialog).findByLabelText(
+    'contacts.imPlatform.bindingDialog.field.secret',
+  )
+  await user.type(secret, 'rejected-secret')
+  await user.click(
+    within(dialog).getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
+  )
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent('The app secret was rejected')
+  expect(secret).toHaveValue('rejected-secret')
+  expect(secret).toBeEnabled()
+  verified = true
+  await user.clear(secret)
+  await user.type(secret, 'corrected-secret')
+  expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+  await user.click(
+    within(dialog).getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
+  )
+  await waitFor(() =>
+    expect(within(dialog).getByRole('status')).toHaveTextContent(
+      'contacts.imPlatform.email.testSucceeded',
+    ),
+  )
+  const requests = calls('/channels/im/channel-1/test', 'POST')
+  expect(requests).toHaveLength(2)
+  expect(await requests[1]!.json()).toMatchObject({
+    expected_config_version: channel.config_version,
+    credentials: { provider: 'feishu', app_secret: 'corrected-secret' },
+  })
+  expect(calls('/channels/im/channel-1', 'PUT')).toHaveLength(0)
+})
+
+it('clears secrets and prevents duplicate writes when a successful save cannot reload its redacted details', async () => {
+  let saved = false
+  network.handle.mockImplementation((request) => {
+    if (request.method === 'PUT') {
+      saved = true
+      return json({ summary: channel })
+    }
+    if (saved && request.url.endsWith('/channels/im/channel-1'))
+      return json({ code: 'internal_server_error', message: 'Details unavailable' }, 500)
+    return defaultResponse(request)
+  })
+  const user = userEvent.setup()
+  renderSurface()
+  await user.click(
+    await screen.findByRole('button', { name: /contacts\.imPlatform\.action\.configureChannel/ }),
+  )
+  const dialog = await screen.findByRole('dialog')
+  await user.click(
+    within(dialog).getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }),
+  )
+  const secret = await within(dialog).findByLabelText(
+    'contacts.imPlatform.bindingDialog.field.secret',
+  )
+  await user.type(secret, 'saved-secret')
+  const save = within(dialog).getByRole('button', {
+    name: 'contacts.imPlatform.bindingDialog.saveAndContinue',
+  })
+  await user.click(save)
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+    'contacts.imPlatform.bindingDialog.savedDetailsUnavailable',
+  )
+  expect(secret).toHaveValue('')
+  expect(secret).toBeDisabled()
+  expect(save).toBeDisabled()
+  expect(
+    within(dialog).getByRole('button', { name: 'contacts.imPlatform.action.testConnection' }),
+  ).toBeDisabled()
+  await user.click(save)
+  expect(calls('/channels/im/channel-1', 'PUT')).toHaveLength(1)
+})
+
+it('keeps an IM draft after management permission is revoked without displaying server diagnostics', async () => {
+  network.handle.mockImplementation((request) =>
+    request.method === 'PUT'
+      ? json({ code: 'forbidden', message: 'Internal workspace permission diagnostics' }, 403)
+      : defaultResponse(request),
+  )
+  const user = userEvent.setup()
+  renderSurface()
+  await user.click(
+    await screen.findByRole('button', { name: /contacts\.imPlatform\.action\.configureChannel/ }),
+  )
+  const dialog = await screen.findByRole('dialog')
+  await user.click(
+    within(dialog).getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }),
+  )
+  const secret = await within(dialog).findByLabelText(
+    'contacts.imPlatform.bindingDialog.field.secret',
+  )
+  await user.type(secret, 'unsaved-secret')
+  await user.click(
+    within(dialog).getByRole('button', {
+      name: 'contacts.imPlatform.bindingDialog.saveAndContinue',
+    }),
+  )
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+    'contacts.imPlatform.bindingDialog.saveFailed',
+  )
+  expect(
+    within(dialog).queryByText('Internal workspace permission diagnostics'),
+  ).not.toBeInTheDocument()
+  expect(secret).toHaveValue('unsaved-secret')
+  expect(secret).toBeEnabled()
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+})
+
+it('retains a channel after a conflicted deletion and uses its refreshed version when retrying', async () => {
+  let version = channel.config_version
+  let removed = false
+  let attempts = 0
+  network.handle.mockImplementation((request) => {
+    const url = new URL(request.url)
+    if (url.pathname.endsWith('/channels'))
+      return json({ channels: removed ? [] : [{ ...channel, config_version: version }] })
+    if (request.method === 'DELETE' && url.pathname.endsWith('/channels/im/channel-1')) {
+      attempts++
+      if (attempts === 1) {
+        version = 'updated-config-version'
+        return json({ code: 'provider_configuration_updated', message: 'Channel changed' }, 409)
+      }
+      removed = true
+      return json({ channel_id: channel.id })
+    }
+    return defaultResponse(request)
+  })
+  const user = userEvent.setup()
+  const client = renderSurface()
+  await user.click(
+    await screen.findByRole('button', { name: /contacts\.imPlatform\.action\.deleteChannel/ }),
+  )
+  const first = await screen.findByRole('alertdialog')
+  await user.click(
+    within(first).getByRole('button', { name: 'contacts.imPlatform.delete.confirm' }),
+  )
+  expect(await within(first).findByRole('alert')).toHaveTextContent(
+    'contacts.imPlatform.configurationUpdated',
+  )
+  await user.click(within(first).getByRole('button', { name: 'common.operation.cancel' }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(screen.getByRole('group', { name: 'Feishu' })).toHaveTextContent('saved-tenant')
+  await act(async () => {
+    await client.refetchQueries({
+      queryKey: consoleQuery.workspaces.current.humanInput.v2.channels.get.queryKey(),
+    })
+  })
+  await user.click(
+    screen.getByRole('button', { name: /contacts\.imPlatform\.action\.deleteChannel/ }),
+  )
+  const retry = await screen.findByRole('alertdialog')
+  await user.click(
+    within(retry).getByRole('button', { name: 'contacts.imPlatform.delete.confirm' }),
+  )
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  expect(
+    await screen.findByRole('button', { name: 'Feishu — contacts.imPlatform.action.connect' }),
+  ).toBeInTheDocument()
+  expect(screen.getByRole('group', { name: 'Feishu' })).not.toHaveTextContent('saved-tenant')
+  const deletions = calls('/channels/im/channel-1', 'DELETE')
+  expect(deletions).toHaveLength(2)
+  expect(new URL(deletions[0]!.url).searchParams.get('expected_config_version')).toBe(
+    channel.config_version,
+  )
+  expect(new URL(deletions[1]!.url).searchParams.get('expected_config_version')).toBe(
+    'updated-config-version',
+  )
+})

@@ -86,7 +86,7 @@ export type SaveContactImCredentialsCommand = {
   values: Partial<Record<Exclude<ContactImProviderField, 'secret'>, string>>
 }
 
-export type ContactImProviderCommand = {
+type ContactImProviderCommand = {
   channelId?: string
   expectedConfigVersion?: string
   provider: ContactImProvider

@@ -3,9 +3,9 @@ import type {
   HumanInputContactType,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 
-export type ContactsDeployment = 'ce' | 'saas' | 'ee'
+type ContactsDeployment = 'ce' | 'saas' | 'ee'
 
-export type ContactsPermissions = {
+type ContactsPermissions = {
   canManageContacts: boolean
   canManageMembers: boolean
   canViewContacts: boolean

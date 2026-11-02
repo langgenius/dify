@@ -3013,7 +3013,7 @@ function invalidateAgentAccessQueries(
   ])
 }
 
-export function invalidateHumanInputContactQueries(
+function invalidateHumanInputContactQueries(
   query: RouterUtils<ConsoleClient>,
   client: QueryClient,
 ) {
@@ -3025,7 +3025,7 @@ export function invalidateHumanInputContactQueries(
   ])
 }
 
-export function invalidateHumanInputChannelQueries(
+function invalidateHumanInputChannelQueries(
   query: RouterUtils<ConsoleClient>,
   client: QueryClient,
 ) {
